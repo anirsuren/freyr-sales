@@ -173,7 +173,7 @@ export function NeededByTimeline({
           runs the full width and the two circles are laid over it rather than
           bookending it. They carry a white ring, which is what makes them read
           as on top rather than as a break in the line. */}
-      <div className="relative mt-3 h-[86px]">
+      <div className="relative mt-3 h-[116px]">
         <div className="absolute inset-x-[11px] top-0 h-full">
         <div
           className="absolute -left-[11px] -right-[11px] h-[6px] rounded-full bg-border-light"
@@ -202,54 +202,53 @@ export function NeededByTimeline({
         {/* DUE — the other real date. */}
         <Marker left={at(due)} hue={tone.hue} icon={Flag} />
 
-        {/* THE TWO CAPTIONS SIT AT THE TWO ENDS, ON ONE LINE.
-            (Anir, Sep 6: "that's not good... you can definitely fit 'needed
-            by' there.")
+        {/* REQUESTED FLUSH LEFT, NEEDED BY ON THE LINE BELOW, UNDER ITS OWN
+            FLAG (Anir, Sep 6: "the requested text should be all the way to the
+            left, and then the needed by should be right under, centered. It
+            can obviously fit").
 
-            They used to hang inward from their own dots, which collides the
-            moment the dots are close — and stacking them onto two lines, my
-            last answer, looked exactly as bad as he says. The width was never
-            the problem: the card is hundreds of pixels wide and the two
-            captions are under 90px each. It was the anchoring. Pinned to the
-            ends of the rail instead, they cannot collide at any date spacing,
-            they read the way a timeline reads — start on the left, deadline on
-            the right — and the dots still carry which is which, in their own
-            colours, with the elapsed bar running between them.
+            The history of this small block: both captions used to hang inward
+            from their own dots, which collides as soon as the dots are close.
+            I stacked them on two lines with a guessed threshold, which still
+            overlapped; then pinned both to the ends on one line, which cannot
+            collide but puts the deadline as far from its flag as the card
+            allows. This is his layout, and it is the one that actually says
+            what the chart means: the request is the start of the rail, so its
+            label sits at the start; the deadline is somewhere along it, so its
+            label sits under the flag that marks it.
 
-            The pair swaps sides if a request is somehow needed before it was
-            asked for, so the labels always follow the rail's direction. */}
-        {(
-          [
-            {
-              key: "asked",
-              title: "Requested",
-              date: label(asked),
-              edge: asked <= due ? "left" : "right",
-            },
-            {
-              key: "due",
-              title: "Needed by",
-              date: label(due),
-              edge: due >= asked ? "right" : "left",
-            },
-          ] as const
-        ).map((c) => (
-          <span
-            key={c.key}
-            className={cn(
-              "absolute whitespace-nowrap",
-              c.edge === "left" ? "left-0 text-left" : "right-0 text-right"
-            )}
-            style={{ top: RAIL_TOP + 18 }}
-          >
-            <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
-              {c.title}
-            </span>
-            <span className="block text-[11.5px] font-semibold tnum text-text-primary">
-              {c.date}
-            </span>
+            The deadline caption is centred on its marker and CLAMPED to the
+            rail, so a request due today — flag hard right — keeps its date on
+            the card instead of hanging off the edge. */}
+        <span
+          className="absolute left-0 whitespace-nowrap"
+          style={{ top: RAIL_TOP + 18 }}
+        >
+          <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
+            Requested
           </span>
-        ))}
+          <span className="block text-[11.5px] font-semibold tnum text-text-primary">
+            {label(asked)}
+          </span>
+        </span>
+
+        <span
+          className="absolute flex -translate-x-1/2 flex-col items-center whitespace-nowrap"
+          style={{
+            /* Never past either end: 14% of the rail is about half a caption,
+               which is what keeps a flag at 0% or 100% from taking its words
+               off the card. */
+            left: `${Math.min(86, Math.max(14, ((due - from) / span) * 100))}%`,
+            top: RAIL_TOP + 18 + 34,
+          }}
+        >
+          <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
+            Needed by
+          </span>
+          <span className="block text-[11.5px] font-semibold tnum text-text-primary">
+            {label(due)}
+          </span>
+        </span>
 
         {/* TODAY. The one mark here that is not a plan, so it is always drawn.
             It hugs whichever end it sits at, for the same reason the captions
