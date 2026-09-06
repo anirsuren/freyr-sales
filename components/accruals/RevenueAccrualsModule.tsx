@@ -1625,7 +1625,8 @@ export function RevenueAccrualsModule({
                   {" · "}
                   <b className="text-text-primary tnum">{shown.length}</b> of{" "}
                   <b className="text-text-primary tnum">{shownOpportunities.length}</b>{" "}
-                  {shownOpportunities.length === 1 ? "deal" : "deals"} carry months
+                  {shownOpportunities.length === 1 ? "deal has" : "deals have"} a
+                  schedule
                 </span>
                 <ChevronDown
                   size={16}

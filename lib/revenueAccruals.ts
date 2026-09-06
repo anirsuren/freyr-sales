@@ -854,8 +854,48 @@ export async function saveAccrualPlan(
        version marked expired. */
     const versions = existing?.versions;
     const target = existing ? latestActiveVersion(existing).version : 1;
+    /* A PLAN MUST KNOW WHOSE DEAL IT IS. Both searches on the accruals page
+       match a plan by its opportunityName / customer / offeringLabel, so a
+       plan saved with those blank is invisible to every search while sitting
+       plainly in the table (Anir, Sep 6: "I'm searching up E2E, why is it not
+       showing up... I can't even search up the company name"). A caller that
+       omits them — a thin DealOption from one of the two mount sites — is
+       backfilled here from the opportunity itself, and an existing plan's
+       identity is never overwritten with a blank. Server-side on purpose:
+       this is the one door every save comes through. */
+    const opp = input.opportunityId
+      ? (await readOpportunities()).opportunities.find(
+          (o) => o.id === input.opportunityId
+        )
+      : undefined;
+    const identity = {
+      opportunityName:
+        input.opportunityName?.trim() ||
+        existing?.opportunityName ||
+        opp?.name ||
+        (opp?.customer ? `${opp.customer} deal` : ""),
+      customer:
+        input.customer?.trim() || existing?.customer || opp?.customer || "",
+      ...(input.customerId || existing?.customerId || opp?.customerId
+        ? {
+            customerId:
+              input.customerId || existing?.customerId || opp?.customerId,
+          }
+        : {}),
+      ...(input.offeringLabel?.trim() ||
+      existing?.offeringLabel ||
+      opp?.offeringLabels?.[0]
+        ? {
+            offeringLabel:
+              input.offeringLabel?.trim() ||
+              existing?.offeringLabel ||
+              opp?.offeringLabels?.[0],
+          }
+        : {}),
+    };
     const draft = normalizePlan({
       ...input,
+      ...identity,
       ...(versions
         ? {
             versions: versions.map((v) =>

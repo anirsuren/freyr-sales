@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Avatar } from "@/components/ui/Avatar";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { useRouter } from "next/navigation";
@@ -1042,7 +1043,15 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
     const lines = [...editing.lines];
     while (lines.length <= index)
       lines.push({ month: planRows(editing)[lines.length]?.month ?? "", amount: "" });
-    lines[index] = { ...lines[index], amount: raw };
+    /* TYPING A MONTH PINS IT (Anir, Sep 6: "I can't change the values...
+       I want September a certain amount, February a certain amount, and the
+       other four spread evenly"). `reshape` only leaves a month's typed
+       figure alone when it is pinned; editAmount never set that, so every
+       keystroke was overwritten by the even split one render later — the
+       field would not hold what you typed. A month you clear (raw === "")
+       un-pins and rejoins the spread. */
+    const pinned = raw.trim() !== "";
+    lines[index] = { ...lines[index], amount: raw, pinned };
     setEditing(reshape({ ...editing, lines }));
   }
 
@@ -1050,7 +1059,15 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
     const lines = [...editing.lines];
     while (lines.length <= index)
       lines.push({ month: planRows(editing)[lines.length]?.month ?? "", amount: "" });
-    lines[index] = { ...lines[index], [field]: raw };
+    const nextLine = { ...lines[index], [field]: raw };
+    /* A filled split half holds its month too — same rule as a typed total,
+       so the loose months absorb the rest and this one is not re-spread. It
+       un-pins only when both halves are empty. */
+    const anyHalf =
+      (nextLine.ots ?? "").trim() !== "" ||
+      (nextLine.arr ?? "").trim() !== "" ||
+      (nextLine.mrr ?? "").trim() !== "";
+    lines[index] = { ...nextLine, pinned: anyHalf };
     setEditing(reshape({ ...editing, lines }));
   }
 
@@ -1508,6 +1525,15 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                  its logo, and seventy deals as seventy identical grey
                  dots said nothing about which account you were picking. */
               logoName: d.customer,
+              /* FINDABLE BY THE ACCOUNT, ALWAYS. The description below drops
+                 the customer when the deal name already contains it, so a
+                 deal called "New Opportunity" for "E2E Pharma GmbH" carried
+                 that account in NEITHER searched field (Anir, Sep 6: "I can't
+                 even search up the company name"). searchText is never
+                 rendered; it only makes the row findable. */
+              searchText: [d.customer, d.offeringLabel, d.name]
+                .filter(Boolean)
+                .join(" "),
               /* SAY EACH THING ONCE (Anir, Aug 28: "why are you
                  repeating"). A deal is named after its offering and its
                  account — "GRI — Takeda (ARR)" — so printing "Takeda ·
@@ -2331,7 +2357,7 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
             <section className="mt-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-[13px] font-semibold text-text-primary">
-                  Previous deviations
+                  Change history
                 </h3>
                 {/* NO CHIP CLUSTER UP HERE ANY MORE (Anir, Sep 4: "what's the
                     point of the three tags at the top right? What's the point
@@ -2342,10 +2368,10 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
               </div>
               <p className="mt-1 text-[12px] text-text-secondary">
                 {history.length === 1
-                  ? "Nobody has deviated this record yet. Version 1 is the plan as it was first written."
-                  : `${record?.deviationCount ?? history.length - 1} deviation${
+                  ? "Nobody has changed this plan yet. This is the original."
+                  : `${record?.deviationCount ?? history.length - 1} change${
                       (record?.deviationCount ?? history.length - 1) === 1 ? "" : "s"
-                    } across ${history.length} versions. Every report reads the newest one that has figures in it.`}
+                    } across ${history.length} versions. Reports use the newest version that has numbers in it.`}
               </p>
               <div className="mt-2 overflow-hidden rounded-lg border border-border-light">
                 <div className="max-h-[176px] overflow-y-auto">
@@ -2389,7 +2415,24 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                             </div>
                           </td>
                           <td className="px-3 py-2 text-[12.5px] text-text-secondary">
-                            {row.by || "Unknown"}
+                            {/* A PERSON GETS THEIR FACE (Anir, Sep 6: "here I
+                                need the profile picture") — the standing rule
+                                every other person-row in the app follows.
+                                "Unknown" is not a person, so it keeps plain
+                                text: Avatar resolves photos BY NAME, and
+                                handing it a placeholder is how somebody
+                                else's face lands on a row that has none. */}
+                            {row.by ? (
+                              <span className="flex min-w-0 items-center gap-1.5">
+                                <Avatar
+                                  name={row.by}
+                                  className="h-5 w-5 shrink-0 text-[9px]"
+                                />
+                                <span className="truncate">{row.by}</span>
+                              </span>
+                            ) : (
+                              "Unknown"
+                            )}
                           </td>
                           <td className="px-3 py-2 text-[12.5px] tnum text-text-secondary">
                             {new Date(row.at).toLocaleDateString("en-US", {
@@ -2414,7 +2457,7 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                             ) : row.origin === "system" ? (
                               "The signing date passed unsigned."
                             ) : (
-                              "The plan as first written."
+                              "The original plan."
                             )}
                           </td>
                         </tr>

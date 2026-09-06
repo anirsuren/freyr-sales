@@ -40,6 +40,17 @@ export type ColorOption = {
   logoName?: string;
   description?: string;
   /**
+   * EXTRA WORDS THIS ROW SHOULD BE FINDABLE BY, never rendered.
+   *
+   * A row often deliberately omits something it would otherwise repeat — the
+   * deal picker drops the customer from the description when the deal name
+   * already contains it — and search then cannot see that word at all. Anir,
+   * Sep 6, typing his customer's name into the deal picker: "Nothing matches
+   * that... I can't even search up the company name." Anything a person would
+   * reasonably type goes here.
+   */
+  searchText?: string;
+  /**
    * DRAW THE EYE TO THE ROWS THAT HAVE SOMETHING (Suren, Aug 28: "make the
    * ones that have a deal pop more").
    *
@@ -310,7 +321,8 @@ export function ColorSelect({
       ? options.filter(
           (o) =>
             o.label.toLowerCase().includes(menuQ) ||
-            (o.description ?? "").toLowerCase().includes(menuQ)
+            (o.description ?? "").toLowerCase().includes(menuQ) ||
+            (o.searchText ?? "").toLowerCase().includes(menuQ)
         )
       : options;
   // An exact typed name beats row order — typing "Novartis" in full and
@@ -864,13 +876,7 @@ export function ColorSelect({
           })}
           {searchable &&
             menuQuery.trim() &&
-            options.every(
-              (o) =>
-                !o.label.toLowerCase().includes(menuQuery.trim().toLowerCase()) &&
-                !(o.description ?? "")
-                  .toLowerCase()
-                  .includes(menuQuery.trim().toLowerCase())
-            ) && (
+            visibleOptions.length === 0 && (
               <p className="px-2.5 py-2 text-[12.5px] text-text-tertiary">
                 Nothing matches that.
               </p>
