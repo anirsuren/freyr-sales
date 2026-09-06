@@ -801,7 +801,7 @@ export function SolutioningModule({
         body={
           <>
             You become the person doing <b>{confirmPickUp?.label}</b>, and
-            whoever asked for it sees your name against it.
+            whoever asked for it sees your name on it.
           </>
         }
         detail="You can hand it back afterwards if it turns out to be somebody else's."
