@@ -147,28 +147,6 @@ export function RelatedOfferingNote({
         setEditing(false);
       }}
       title={`How ${relatedName} relates`}
-      actions={
-        <>
-          <button
-            type="button"
-            onClick={() => {
-              setDraft(note);
-              setEditing(false);
-            }}
-            className="rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={save}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            <Check size={14} strokeWidth={2.6} /> Save the note
-          </button>
-        </>
-      }
     >
       <p className="text-[12.5px] leading-relaxed text-text-secondary">
         One or two sentences a rep can use on a call: when these two are sold
@@ -190,6 +168,34 @@ export function RelatedOfferingNote({
           Saving with the box empty removes this note.
         </p>
       )}
+
+      {/* BOTTOM RIGHT, WHERE EVERY OTHER DIALOG PUTS THEM (Anir, Sep 6: "why
+          the fuck would the save button be there... the save the note and the
+          cancel button should be at the bottom, obviously, at the bottom
+          right"). Modal's `actions` prop draws into the HEADER — I read it as
+          a footer slot, so the two buttons landed beside the title and
+          squeezed it to "How Label Mana…". Own footer, same shape as the
+          deliverables dialog. */}
+      <div className="mt-4 flex items-center justify-end gap-2 border-t border-border-light pt-4">
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(note);
+            setEditing(false);
+          }}
+          className="rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={save}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          <Check size={14} strokeWidth={2.6} /> Save the note
+        </button>
+      </div>
     </Modal>
     </>
   );
