@@ -76,7 +76,7 @@ export function OfferingOpportunities({
       <EmptyState
         icon={Target}
         title="No opportunity is running on this offering yet"
-        description={`Add an opportunity against ${offeringName} on the Opportunities page and it appears here, with its customer, its value and where it stands.`}
+        description={`Add an opportunity for ${offeringName} on the Opportunities page and it appears here, with its customer, its value and where it stands.`}
       />
     );
   }

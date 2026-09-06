@@ -155,6 +155,16 @@ export function SolutioningModule({
     id: string;
     ref: string;
   } | null>(null);
+  /* PICKING UP WORK IS A COMMITMENT, SO IT ASKS (Anir, Sep 6: "I just pressed
+     'Pick it up' on accident. I didn't know it wouldn't ask me for any
+     confirmation. That's a problem"). It writes your name onto somebody
+     else's request as the person doing it, and the row it sits in is a click
+     target itself — an easy button to catch on the way past. Not destructive,
+     so it is the ordinary dialog rather than the red one. */
+  const [confirmPickUp, setConfirmPickUp] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
   const search = useSearchParams();
   const [state, setState] = useState(initial);
   const [query, setQuery] = useState("");
@@ -716,7 +726,7 @@ export function SolutioningModule({
                     {ROOM_META[room].rowNoun}
                   </th>
                   <th className="w-[14%] px-4 py-2.5">Customer</th>
-                  <th className="w-[16%] px-4 py-2.5">Against</th>
+                  <th className="w-[16%] px-4 py-2.5">What it is for</th>
                   <th className="w-[14%] px-4 py-2.5">
                     {room === "requests" ? "Requested by" : "Raised by"}
                   </th>
@@ -753,7 +763,9 @@ export function SolutioningModule({
                         return next;
                       })
                     }
-                    onPickUp={() => post({ op: "pick-up", requestId: r.id }, r.id)}
+                    onPickUp={() =>
+                      setConfirmPickUp({ id: r.id, label: `${r.ref} · ${r.title}` })
+                    }
                     /* THE SAME RULE THE ROUTE APPLIES: an admin, or the person
                        who raised it while nothing has started. Anyone else has
                        Cancel on the record instead — cancelling keeps the
@@ -775,6 +787,26 @@ export function SolutioningModule({
           removed it (Aug 27: "remove this... remove this too") — the person
           rollups still exist on each person's own profile page. */}
       </SolutioningTabs>
+
+      <ConfirmDialog
+        open={confirmPickUp !== null}
+        onClose={() => setConfirmPickUp(null)}
+        onConfirm={() => {
+          if (confirmPickUp)
+            void post({ op: "pick-up", requestId: confirmPickUp.id }, confirmPickUp.id);
+          setConfirmPickUp(null);
+        }}
+        tone="primary"
+        title="Take this on?"
+        body={
+          <>
+            You become the person doing <b>{confirmPickUp?.label}</b>, and
+            whoever asked for it sees your name against it.
+          </>
+        }
+        detail="You can hand it back afterwards if it turns out to be somebody else's."
+        confirmLabel="Yes, I'll take it"
+      />
 
       <ConfirmDialog
         open={confirmDelete !== null}
@@ -1172,7 +1204,7 @@ function RequestPanel({
                 <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                    Against
+                    What it is for
                   </span>
                   {r.opportunityLabels.length + r.contactNames.length === 0 ? (
                     <p className="mt-1.5 text-[12.5px] text-text-tertiary">
@@ -2115,7 +2147,7 @@ export function NewRequestDialog({
             </label>
           </div>
 
-          {/* Against one or MORE opportunities, or one or more contacts —
+          {/* Attached to one or MORE opportunities, or one or more contacts —
               his exact multiplicity, both optional: a request can be about
               the account itself. */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

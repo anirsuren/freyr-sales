@@ -1128,7 +1128,7 @@ export function OfferingsBrowser({
                     ))}
                   </div>
                   <p className="mt-1.5 text-[10.5px] leading-snug text-text-tertiary">
-                    In use today, no revenue recorded against it yet.
+                    In use today, no revenue recorded on it yet.
                   </p>
                 </div>
               ) : (

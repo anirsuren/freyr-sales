@@ -244,6 +244,7 @@ export function RequestDetail({
   /** The document open in the in-app viewer, if any. */
   const [viewing, setViewing] = useState<SolutionDoc | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmPickUp, setConfirmPickUp] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   /* The one door to the facts on this record, so nothing on the header writes
      the moment it is brushed. */
@@ -483,7 +484,14 @@ export function RequestDetail({
           const existingWork =
             r.type === "request" && openChildren.length > 0 ? openChildren[0] : null;
           const primary = mayTakeUp
-            ? { label: "Take this up", icon: Hand, run: () => post({ op: "pick-up" }) }
+            ? {
+                label: "Take this up",
+                icon: Hand,
+                /* Asks first, like the list does (Anir, Sep 6: "I just pressed
+                   'Pick it up' on accident... I should have said, do you want
+                   to pick this up?"). Same commitment either door. */
+                run: async () => setConfirmPickUp(true),
+              }
             : existingWork
               ? {
                   label: `Open ${existingWork.ref}`,
@@ -1527,6 +1535,26 @@ export function RequestDetail({
         confirmLabel="Remove it"
       />
       <ConfirmDialog
+        open={confirmPickUp}
+        onClose={() => setConfirmPickUp(false)}
+        onConfirm={() => {
+          setConfirmPickUp(false);
+          void post({ op: "pick-up" });
+        }}
+        busy={busy}
+        tone="primary"
+        title="Take this on?"
+        body={
+          <>
+            You become the person doing <b>{r.ref}</b>, and {r.requestedBy}{" "}
+            sees your name on it.
+          </>
+        }
+        detail="You can hand it back afterwards if it turns out to be somebody else's."
+        confirmLabel="Yes, I'll take it"
+      />
+
+      <ConfirmDialog
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={async () => {
@@ -2142,7 +2170,7 @@ function AddDocForm({
                 {picked.name} v{picked.version}
               </span>
               <span className="shrink-0 text-text-tertiary">
-                No file uploaded against this one
+                No file uploaded for this one
               </span>
             </span>
           ) : null}

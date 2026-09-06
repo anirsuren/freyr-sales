@@ -1329,7 +1329,7 @@ export function ContractsModule({
                 }
               />
             </Field>
-            <Field label="Against which deal">
+            <Field label="Which deal is this for?">
               <ColorSelect
                 value={editing.opportunityId}
                 ariaLabel="Opportunity"
