@@ -699,7 +699,7 @@ function HowItWorksModal({
       title: "How Org performance works",
       steps: [
         { title: "Only tracked goals appear here", body: "The Goal Master decides what is on the plan; this room shows those goals with their targets and the numbers achieved so far." },
-        { title: "Numbers roll one way", body: "A result is always entered against a person. Person rolls into group, group rolls into organization. Never the other way." },
+        { title: "Numbers roll one way", body: "A result is always entered for a person. Person rolls into group, group rolls into organization. Never the other way." },
         { title: "Pace compares against the calendar", body: "Lagging / On track / Ahead measure achieved against where the goal's own schedule says it should be today. No schedule set. Click the chip and add one." },
       ],
     },
@@ -3360,7 +3360,7 @@ function GoalPopupBody({
                         <b>{goal.name}</b>.
                       </>
                     }
-                    detail="Anything they already logged against it stays on the record."
+                    detail="Anything they already logged on it stays on the record."
                     /* Red is for what cannot be taken back. Assigning the goal
                        again puts this straight, so it wears the ordinary blue. */
                     tone="primary"

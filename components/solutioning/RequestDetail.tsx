@@ -763,7 +763,7 @@ export function RequestDetail({
             <section className="border-b border-border-light py-7">
               <SectionHeading
                 icon={Building2}
-                title="Against"
+                title="What this is for"
                 description="The customer, and the opportunities and contacts this is for."
               />
               <div className="mt-4 space-y-2.5 pl-11">

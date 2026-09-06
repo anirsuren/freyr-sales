@@ -113,6 +113,15 @@ export function NewMeetingDialog({
     { id: string; name: string; title?: string }[]
   >([]);
   const [addingContact, setAddingContact] = useState(false);
+  /* Deals started from inside this dialog (Anir, Sep 6: "for the deals this
+     is against, I should be able to do the same thing... it's annoying if
+     you're going to make me go to the deals page"). Same shape as
+     addedContacts: held locally so the new row is pickable immediately,
+     without waiting for the parent's list to come back around. */
+  const [addedDeals, setAddedDeals] = useState<
+    { id: string; label: string; customer: string }[]
+  >([]);
+  const [addingDeal, setAddingDeal] = useState(false);
 
   /**
    * ADD THE PERSON WITHOUT LEAVING (Anir, Aug 31: "instead of making the user
@@ -125,6 +134,50 @@ export function NewMeetingDialog({
    * the customer page later; a name is the only thing the endpoint requires,
    * and the only thing somebody has to hand mid-meeting.
    */
+  /**
+   * START A DEAL FROM HERE. A meeting is very often the first thing that
+   * happens on a new deal, so being sent to the Opportunities page to make one
+   * — and losing this half-filled form — is the wrong order of work.
+   *
+   * A deal needs an estimated TCV, a confidence level and a signing date
+   * (Suren, Sep 1), none of which belong in a meeting form. So this creates
+   * the SHELL — name and account — and the deal page collects the rest when
+   * somebody opens it. The toast says so rather than implying it is finished.
+   */
+  async function addDeal(name: string) {
+    if (!customerId || addingDeal) return;
+    setAddingDeal(true);
+    try {
+      const res = await fetch("/api/opportunities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          op: "add",
+          name: name.trim(),
+          customer: customers.find((c) => c.id === customerId)?.name ?? "",
+          customerId,
+          estimatedTcv: 0,
+          lines: [{ confidence: 0, estSignDate: "" }],
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.opportunity?.id) {
+        toast(data?.error || "Could not start that deal.", "error");
+        return;
+      }
+      const o = data.opportunity as { id: string; name?: string };
+      const label = o.name || name.trim();
+      const customerName = customers.find((c) => c.id === customerId)?.name ?? "";
+      setAddedDeals((cur) => [...cur, { id: o.id, label, customer: customerName }]);
+      setOpportunityIds((cur) => [...cur, o.id]);
+      toast(`${label} started. Add its value and dates on the deal itself.`);
+    } catch {
+      toast("Could not start that deal.", "error");
+    } finally {
+      setAddingDeal(false);
+    }
+  }
+
   async function addContact(name: string) {
     if (!customerId || addingContact) return;
     setAddingContact(true);
@@ -436,31 +489,44 @@ export function NewMeetingDialog({
             </Field>
           </div>
           <div className="mt-3">
-            <Field label="Which deals this is against">
-              {theirDeals.length === 0 ? (
+            {/* WHICH DEALS THIS MEETING IS PART OF. "Against" read as jargon
+                (Anir, Sep 6), and the picker used to disappear entirely when
+                an account had no deals — leaving no way to start one without
+                abandoning this form. Now it behaves exactly like the attendee
+                picker beside it: type a name, press create, and it is added
+                and selected on the spot. */}
+            <Field label="Which deals this meeting is part of">
+              {!customerId ? (
                 <p className="text-[12.5px] text-text-secondary">
-                  {customerId
-                    ? "No open deals on this account. The meeting can still stand on its own."
-                    : "Pick the account first."}
+                  Pick the account first.
                 </p>
               ) : (
-                <MultiPicker
-                  variant="dropdown"
-                  options={theirDeals.map((o) => ({
-                    id: o.id,
-                    label: o.label,
-                    sub: o.customer,
-                    logoName: o.customer,
-                  }))}
-                  selected={opportunityIds}
-                  onToggle={(id) =>
-                    setOpportunityIds((cur) =>
-                      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
-                    )
-                  }
-                  placeholder="Pick the deals…"
-                  emptyLabel="No deals."
-                />
+                <>
+                  <MultiPicker
+                    variant="dropdown"
+                    options={[...theirDeals, ...addedDeals].map((o) => ({
+                      id: o.id,
+                      label: o.label,
+                      sub: o.customer,
+                      logoName: o.customer,
+                    }))}
+                    selected={opportunityIds}
+                    onToggle={(id) =>
+                      setOpportunityIds((cur) =>
+                        cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
+                      )
+                    }
+                    onCreate={(name) => void addDeal(name)}
+                    placeholder="Pick or type a deal…"
+                    emptyLabel="No deals on this account yet. Type a name to start one."
+                  />
+                  {theirDeals.length === 0 && addedDeals.length === 0 && (
+                    <p className="mt-1 text-[11.5px] text-text-tertiary">
+                      No open deals on this account. Type a name to start one,
+                      or leave this empty — the meeting can stand on its own.
+                    </p>
+                  )}
+                </>
               )}
             </Field>
           </div>

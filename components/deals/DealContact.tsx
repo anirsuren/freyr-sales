@@ -66,7 +66,7 @@ export function DealContact({ contact }: { contact: Contact }) {
             The person this deal runs through, and how to reach them
           </p>
         </div>
-        <InfoHint text="The primary contact on this deal. Every touch in the history below was logged against them." />
+        <InfoHint text="The primary contact on this deal. Every touch in the history below was logged for them." />
       </div>
 
       <Card className="p-4">

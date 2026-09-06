@@ -696,7 +696,7 @@ export function CustomersBrowser({
             icon={Building2}
             label="Customers"
             value={String(filtered.length)}
-            sub={`${summaryScope.scoped.length} ${summaryScope.scoped.length === 1 ? "deal" : "deals"} against them`}
+            sub={`${summaryScope.scoped.length} ${summaryScope.scoped.length === 1 ? "deal" : "deals"} on these accounts`}
           />
           <StatTile
             icon={Target}

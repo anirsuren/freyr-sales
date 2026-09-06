@@ -2116,7 +2116,7 @@ export function NewRequestDialog({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
-                Against which opportunities?
+                Which deals is this for?
               </span>
               <div className="mt-1.5">
                 <MultiColorSelect
@@ -2147,7 +2147,7 @@ export function NewRequestDialog({
             </label>
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
-                Against which contacts?
+                Which contacts is this for?
               </span>
               <div className="mt-1.5">
                 <MultiColorSelect
