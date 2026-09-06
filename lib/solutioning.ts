@@ -472,6 +472,15 @@ function normalizeActivity(v: unknown): RequestActivity | null {
     /^(Added|Removed) m-[a-z0-9]{4,}( v\d+)?$/,
     (_, verb: string, ver: string | undefined) => `${verb} a document${ver ?? ""}`
   );
+  /* A few rows carry the STORED filename — the upload's epoch prefix and all
+     ("Added 1787968276101-A-1 v1"; Anir, Sep 6: "why is it saying the
+     number?"). The number is the millisecond the bytes landed, which nobody
+     means when they name a document. Strip it on read so history heals
+     without rewriting anybody's data. */
+  what = what.replace(
+    /^(Added|Removed|Linked) \d{10,14}-/,
+    (_, verb: string) => `${verb} `
+  );
   return {
     at: str(r.at, 40) || new Date().toISOString(),
     by: str(r.by, 80) || "Unknown",
@@ -1605,7 +1614,9 @@ export async function addDocument(input: {
   ref?: { requestId: string; docId: string };
 }): Promise<SolutionDoc> {
   return withWrite(async () => {
-    const name = str(input.name, 160);
+    /* Same defence at the door: whatever client sent a stored-path stem as
+       the name, the record keeps the human half. */
+    const name = str(input.name, 160).replace(/^\d{10,14}-/, "");
     if (!name) throw new Error("Give the document a name.");
     const state = await readRow();
     const r = mustFind(state, input.requestId);

@@ -30,6 +30,7 @@ import {
   ArrowUpRight,
   UploadCloud,
   Paperclip,
+  AlertCircle,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/Textarea";
 import { Field, Input } from "@/components/ui/Input";
@@ -1150,7 +1151,26 @@ export function RequestDetail({
                 today, when the thing was requested, and when it is needed by.
                 Just like the FDL components timeline"). */}
             {r.neededBy && (
-              <SectionCard title="Where it stands" icon={CalendarDays}>
+              <SectionCard
+                title={
+                  <span className="inline-flex items-center gap-1.5">
+                    Where it stands
+                    {/* The red mark (Anir, Sep 6: "put an exclamation point
+                        like a red one next to 'where it stands'"). Only while
+                        the request is actually late — a permanent red mark on
+                        every healthy request would stop meaning anything. */}
+                    {overdue && (
+                      <AlertCircle
+                        size={14}
+                        strokeWidth={2.4}
+                        aria-label="Overdue"
+                        className="text-[color:var(--status-red)]"
+                      />
+                    )}
+                  </span>
+                }
+                icon={CalendarDays}
+              >
                 <NeededByTimeline
                   requestedAt={r.requestedAt}
                   neededBy={r.neededBy}

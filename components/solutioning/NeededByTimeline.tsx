@@ -199,7 +199,9 @@ export function NeededByTimeline({
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           <CalendarClock size={13} strokeWidth={2.2} className="text-blue-primary" />
-          Needed by
+          {/* One word (Anir, Sep 6: "instead of 'needed by,' just say
+              'needed'"). */}
+          Needed
         </span>
         <span className={cn("text-[11.5px] font-bold", tone.text)}>{remaining}</span>
       </div>
@@ -315,7 +317,7 @@ export function NeededByTimeline({
           }}
         >
           <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
-            Needed by
+            Needed
           </span>
           <span className="block text-[11.5px] font-semibold tnum text-text-primary">
             {label(due)}

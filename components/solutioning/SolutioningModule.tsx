@@ -730,7 +730,7 @@ export function SolutioningModule({
                   <th className="w-[14%] px-4 py-2.5">
                     {room === "requests" ? "Requested by" : "Raised by"}
                   </th>
-                  <th className="w-[10%] px-4 py-2.5">Needed by</th>
+                  <th className="w-[10%] px-4 py-2.5">Needed</th>
                   <th className="w-[12%] px-4 py-2.5">Owner</th>
                   <th className="w-[10%] px-4 py-2.5">Status</th>
                   {/* AN ACTIONS COLUMN, NAMED AND LEFT-ALIGNED (Anir, Aug 31:
