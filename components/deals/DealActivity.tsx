@@ -1,4 +1,5 @@
 import { CalendarClock, MessageSquareText } from "lucide-react";
+import { LocalTime } from "@/components/ui/LocalTime";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -119,7 +120,7 @@ export function DealActivity({
                     </span>
                   </div>
                   <p className="mt-0.5 text-[11.5px] leading-snug text-text-tertiary tnum">
-                    {formatDateTime(it.created_at)}
+                    <LocalTime value={it.created_at} />
                   </p>
 
                   {it.notes && (

@@ -448,6 +448,47 @@ export function CustomersBrowser({
     return v;
   }, [customers, query, sort, sizeRank]);
 
+  /**
+   * WHAT THE SUMMARY IS LOOKING AT, hoisted out of the render branch so the
+   * headline tiles can sit ABOVE the toolbar (Anir, Sep 6: "the search bar has
+   * to be... below the three tiles") while reading the same scope as the
+   * table beneath them. Deal matching is by id where a deal has one and by
+   * name where it does not — the imported pipeline predates customer ids.
+   */
+  const summaryScope = useMemo(() => {
+    const shown = new Set(filtered.map((c) => c.id));
+    const shownNames = new Set(
+      filtered.map((c) => c.company_name.trim().toLowerCase())
+    );
+    const scoped = deals.filter(
+      (d) =>
+        (d.customerId && shown.has(d.customerId)) ||
+        shownNames.has(d.customer.trim().toLowerCase())
+    );
+    const live = new Set(
+      scoped
+        .filter((d) => d.status !== "Won" && d.status !== "Lost")
+        .map((d) => d.customer.trim().toLowerCase())
+    );
+    /* Accounts on screen that own no deal at all — the Summary pivot renders
+       these as zero rows so a just-added customer is visible immediately
+       (Anir, Sep 6: "I just added a customer and it's not showing up"). */
+    const withDeals = new Set(
+      scoped.map((d) => d.customer.trim().toLowerCase())
+    );
+    const dealIds = new Set(
+      scoped.map((d) => d.customerId).filter(Boolean) as string[]
+    );
+    const emptyCustomerLabels = filtered
+      .filter(
+        (c) =>
+          !dealIds.has(c.id) &&
+          !withDeals.has(c.company_name.trim().toLowerCase())
+      )
+      .map((c) => c.company_name);
+    return { scoped, live, emptyCustomerLabels };
+  }, [filtered, deals]);
+
   // reset to first page whenever the result set changes
   useEffect(() => {
     setPage(1);
@@ -642,6 +683,43 @@ export function CustomersBrowser({
         </>}
       </TabActions>
 
+      {/* THE HEADLINES COME FIRST, THE CONTROLS SECOND (Anir, Sep 6: "the
+          search bar has to be above the view... below the three tiles" — the
+          three glance numbers sit right under the tabs, and the search/sort
+          bar drops beneath them, swapping places with where it used to be). */}
+      {shape === "summary" && (
+        <div
+          key={`tiles-${shape}`}
+          className="tab-panel mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3"
+        >
+          <StatTile
+            icon={Building2}
+            label="Customers"
+            value={String(filtered.length)}
+            sub={`${summaryScope.scoped.length} ${summaryScope.scoped.length === 1 ? "deal" : "deals"} against them`}
+          />
+          <StatTile
+            icon={Target}
+            label="Estimated TCV"
+            value={(() => {
+              const t = sumEstimates(summaryScope.scoped, "tcv");
+              return t.entered === 0 ? "·" : moneyShort(t.total);
+            })()}
+            sub="across the accounts on screen"
+          />
+          <StatTile
+            icon={Users}
+            label="With open deals"
+            value={String(
+              filtered.filter((c) =>
+                summaryScope.live.has(c.company_name.trim().toLowerCase())
+              ).length
+            )}
+            sub="accounts with something live"
+          />
+        </div>
+      )}
+
       {/* The toolbar is its own FULL-WIDTH bar, the same shape the offerings
           page uses. The search is `grow`: its left edge is pinned and focusing
           it expands it RIGHTWARD into the space the compressing filters
@@ -808,70 +886,12 @@ export function CustomersBrowser({
           here from Aug 30 so the customer list carried the same grouping as
           the pipeline; that view still exists, on Opportunities, which is
           where the pipeline question belongs. */}
-      {shape === "summary" && (() => {
-        /* THE SUMMARY READS WHAT THE PAGE IS SHOWING (Anir, Aug 30: "that
-           list and then the filtering and all that should be based on whatever
-           I show"). Scoped to the accounts left after the search and filters,
-           by id where a deal has one and by name where it does not — the
-           imported pipeline predates customer ids on every row. */
-        const shown = new Set(filtered.map((c) => c.id));
-        const shownNames = new Set(
-          filtered.map((c) => c.company_name.trim().toLowerCase())
-        );
-        const scoped = deals.filter(
-          (d) =>
-            (d.customerId && shown.has(d.customerId)) ||
-            shownNames.has(d.customer.trim().toLowerCase())
-        );
-        const live = new Set(
-          scoped
-            .filter((d) => d.status !== "Won" && d.status !== "Lost")
-            .map((d) => d.customer.trim().toLowerCase())
-        );
-        return (
-        /* SWITCHING VIEWS SHOULD LOOK LIKE SOMETHING HAPPENED (Anir, Sep 4:
-           "I need proper animations when I switch from list to summary. You
-           have it when I go to list, but not when I go to summary").
-
-           The list carried `stagger` on its rows and this branch carried
-           nothing, so List faded in and Summary appeared instantly — which
-           reads as a glitch rather than a change of view. `key` is the shape,
-           so React remounts on the switch and the entrance actually replays
-           instead of only firing on first paint. */
+      {shape === "summary" && (
+        /* SWITCHING VIEWS SHOULD LOOK LIKE SOMETHING HAPPENED (Anir, Sep 4):
+           `key` is the shape, so React remounts on the switch and the entrance
+           replays. The tiles that used to open this block now live ABOVE the
+           toolbar (Anir, Sep 6); scope comes from the summaryScope memo. */
         <div key={shape} className="tab-panel mb-4">
-          {/* THE TILES STAY. Item 22 read "remove opportunities, tiles, and
-              all other data and filters", and they came out — then Manoj, Sep
-              4, looking at the page without them: "Number of customers, uh,
-              with open deals. Okay, let these tiles be there, but from this
-              filtering point of view, whatever these are, just have only these
-              three." The line was about the CUTS, not the headline numbers. */}
-          <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <StatTile
-              icon={Building2}
-              label="Customers"
-              value={String(filtered.length)}
-              sub={`${scoped.length} ${scoped.length === 1 ? "deal" : "deals"} against them`}
-            />
-            <StatTile
-              icon={Target}
-              label="Estimated TCV"
-              value={(() => {
-                const t = sumEstimates(scoped, "tcv");
-                return t.entered === 0 ? "·" : moneyShort(t.total);
-              })()}
-              sub="across the accounts on screen"
-            />
-            <StatTile
-              icon={Users}
-              label="With open deals"
-              value={String(
-                filtered.filter((c) =>
-                  live.has(c.company_name.trim().toLowerCase())
-                ).length
-              )}
-              sub="accounts with something live"
-            />
-          </div>
           <Card className="p-4">
             <OpportunitySummary
               storageKey="freyr.customers.summaryOpen"
@@ -898,7 +918,13 @@ export function CustomersBrowser({
                 );
                 return match ? `/customers/${match.id}` : null;
               }}
-              deals={scoped}
+              deals={summaryScope.scoped}
+              /* Zero-deal accounts still get a row, so a just-added customer
+                 is visible right here (Anir, Sep 6). */
+              emptyGroupLabels={{
+                dimension: "customer",
+                labels: summaryScope.emptyCustomerLabels,
+              }}
               order={custDims}
               onReorder={setCustDims}
               measure={custMeasure}
@@ -918,8 +944,7 @@ export function CustomersBrowser({
             />
           </Card>
         </div>
-        );
-      })()}
+      )}
       {/* Bulk action bar */}
       {selectMode && selectedInScope.length > 0 && (
         <div className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-lg border border-blue-primary bg-blue-light flex-wrap">

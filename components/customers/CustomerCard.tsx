@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LocalTime } from "@/components/ui/LocalTime";
 import {
   CheckSquare,
   CircleDashed,
@@ -315,7 +316,7 @@ export function CustomerCard({
                 />
               )}
               {lastSessionDate && (
-                <span className="shrink-0">Last session {formatDateTime(lastSessionDate)}</span>
+                <span className="shrink-0">Last session <LocalTime value={lastSessionDate} /></span>
               )}
             </span>
           </div>

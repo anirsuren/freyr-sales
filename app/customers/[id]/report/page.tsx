@@ -1,4 +1,5 @@
 import { CircleDot } from "lucide-react";
+import { LocalTime } from "@/components/ui/LocalTime";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { ReportToolbar } from "@/components/customers/ReportToolbar";
@@ -252,7 +253,7 @@ export default async function AccountReportPage({
                     {i.notes ? ` - ${i.notes}` : ""}
                   </span>
                   <span className="text-[12px] text-text-tertiary tnum shrink-0">
-                    {formatDateTime(i.created_at)}
+                    <LocalTime value={i.created_at} />
                   </span>
                 </li>
               ))}

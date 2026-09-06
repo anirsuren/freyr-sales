@@ -26,7 +26,7 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import { cn, OUTCOME_META } from "@/lib/utils";
+import { formatDateTime, cn, OUTCOME_META } from "@/lib/utils";
 import { STAGE_COLOR, STAGE_ICON } from "@/lib/pipeline";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
@@ -660,6 +660,12 @@ export type TipItem = {
    *  should just put the clause here ("18d since last touch") and let `avatar`
    *  carry the name. */
   sub?: string;
+  /** A timestamp for the `sub` slot, as the raw ISO instant. Formatted HERE,
+   *  in the browser, so it prints on the reader's clock — a server-formatted
+   *  string bakes the server's UTC into the tooltip (Anir, Sep 6: "it should
+   *  always show whatever time the device is in... literally everything").
+   *  Wins over `sub` when both are given. */
+  subIso?: string;
   logo?: string; // company name → CompanyLogo
   avatar?: string; // person name → headshot
   /** The pipeline stage this record sits on ("Qualified"). Rendered as the
@@ -848,7 +854,7 @@ function TipBreakdown({
           // already spoken for by the company — otherwise the face has nothing
           // to sit beside. A person-only row keeps its headshot on the left.
           const showPerson = !!t.logo && !!t.avatar && t.avatar !== t.name;
-          const note = tipRowNote(t.sub, showPerson ? t.avatar : undefined);
+          const note = tipRowNote(t.subIso ? formatDateTime(t.subIso) : t.sub, showPerson ? t.avatar : undefined);
           // Explicit fields first; whatever is left of the note is scanned for
           // stage/outcome names so rows from call sites that still pack them
           // into `sub` get chips too, instead of flat gray text.

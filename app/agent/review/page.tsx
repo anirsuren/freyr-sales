@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LocalTime } from "@/components/ui/LocalTime";
 import { SmartBack } from "@/components/ui/BackButton";
 import {
   ArrowLeft,
@@ -257,7 +258,7 @@ export default async function WeeklyReviewPage() {
                     {c.title}
                   </span>
                   <span className="text-[12px] text-text-tertiary tnum shrink-0">
-                    {formatDateTime(c.created_at)}
+                    <LocalTime value={c.created_at} />
                   </span>
                 </li>
               ))}

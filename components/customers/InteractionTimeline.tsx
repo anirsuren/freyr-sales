@@ -1,4 +1,5 @@
 import { MessageSquareText, CalendarClock } from "lucide-react";
+import { LocalTime } from "@/components/ui/LocalTime";
 import { Card } from "@/components/ui/Card";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -72,7 +73,7 @@ export function InteractionTimeline({
                     )}
                   </div>
                   <span className="text-[11.5px] text-text-tertiary tnum whitespace-nowrap shrink-0">
-                    {formatDateTime(it.created_at)}
+                    <LocalTime value={it.created_at} />
                   </span>
                 </div>
                 {it.notes && (

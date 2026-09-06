@@ -2210,9 +2210,17 @@ export function OpportunitiesBrowser({
           label="Opportunities"
           value={String(totals.count)}
           sub={
-            levelFilter.length === 0
-              ? "in the pipeline"
-              : levelFilter.map((l) => l.toLowerCase()).join(", ")
+            /* SAY WHY THE NUMBER SHRANK. These tiles read the FILTERED list,
+               so with "e2" typed the count is honestly 0 — but the caption
+               still said "in the pipeline", which reads as an empty pipeline
+               (Anir, Sep 6: "it's not showing up at opportunities" — over a
+               search he had forgotten was narrowing everything). Name the
+               search when one is active, so 0 explains itself. */
+            query.trim()
+              ? `matching "${query.trim()}"`
+              : levelFilter.length === 0
+                ? "in the pipeline"
+                : levelFilter.map((l) => l.toLowerCase()).join(", ")
           }
         />
         {/* TCV LEADS, ACV SITS BESIDE IT (Suren, Sep 1: "estimated ACV is
@@ -2225,7 +2233,9 @@ export function OpportunitiesBrowser({
           value={totals.tcv.entered === 0 ? "·" : money(totals.tcv.total)}
           sub={
             totals.tcv.entered === 0
-              ? "nobody has entered one yet"
+              ? query.trim()
+                ? `no match for "${query.trim()}" carries one`
+                : "nobody has entered one yet"
               : totals.tcv.entered < totals.tcv.of
                 ? `across ${totals.tcv.entered} of ${totals.tcv.of} ${plural(totals.tcv.of, "deal")}`
                 : "total contract value"

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LocalTime } from "@/components/ui/LocalTime";
 import { SmartBack } from "@/components/ui/BackButton";
 import {
   ArrowLeft,
@@ -249,7 +250,7 @@ export default async function AgentImpactPage({
                         </span>
                         <span className="block text-[12px] text-text-secondary">
                           {parts.join(" · ") || "activity logged"} · last{" "}
-                          {formatDateTime(r.lastAt)}
+                          <LocalTime value={r.lastAt} />
                         </span>
                       </span>
                       <span className="text-right shrink-0">

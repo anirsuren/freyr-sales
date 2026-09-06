@@ -1,4 +1,5 @@
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { LocalTime } from "@/components/ui/LocalTime";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -131,7 +132,7 @@ export default async function DashboardPage({
       note: i.notes,
       followUp: i.follow_up_date,
       loggedBy: i.logged_by,
-      when: formatDateTime(i.created_at),
+      when: i.created_at,
       customerId: i.customer_id,
       contactId: i.contact_id,
     }));
@@ -872,7 +873,7 @@ export default async function DashboardPage({
                                 <p className="mt-1 text-[11.5px] leading-relaxed text-text-secondary">{a.note || "No note was recorded for this interaction."}</p>
                               </div>
                               <div className="mt-3 grid grid-cols-3 gap-2 text-[10.5px]">
-                                <div><p className="text-text-tertiary">Logged</p><p className="mt-0.5 font-semibold text-text-primary">{a.when}</p></div>
+                                <div><p className="text-text-tertiary">Logged</p><p className="mt-0.5 font-semibold text-text-primary"><LocalTime value={a.when} /></p></div>
                                 <div><p className="text-text-tertiary">Follow-up</p><p className="mt-0.5 font-semibold text-text-primary">{a.followUp ? formatDateTime(a.followUp) : "Not scheduled"}</p></div>
                                 <div><p className="text-text-tertiary">Account owner</p><p className="mt-0.5 truncate font-semibold text-text-primary">{activityCustomer?.owner || activityDeals[0]?.owner || "Unassigned"}</p></div>
                               </div>
@@ -914,7 +915,7 @@ export default async function DashboardPage({
                                 {a.contact}
                               </div>
                               <div className="text-[11px] text-text-tertiary uppercase tracking-[0.04em]">
-                                {a.when}
+                                <LocalTime value={a.when} />
                               </div>
                             </div>
                           </Link>

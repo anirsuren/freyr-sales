@@ -388,6 +388,7 @@ export function OpportunitySummary({
   rowHref,
   storageKey,
   revealDealId,
+  emptyGroupLabels,
 }: {
   deals: Opportunity[];
   /**
@@ -481,6 +482,16 @@ export function OpportunitySummary({
    * an account into its deals turned it back into the opportunities list.
    */
   hideDealRows?: boolean;
+  /**
+   * ROWS THAT EXIST EVEN WITH NO DEALS (Anir, Sep 6, adding his first test
+   * customer and finding the Summary empty of it: "I just added a customer
+   * and it's not showing up... where did it go?"). This pivot is built from
+   * deals, so an account with none had no row and a freshly added customer
+   * looked lost. The page passes every on-screen account here; ones that own
+   * no deals still get a row — zero count, quiet dashes — whenever the FIRST
+   * dimension is the one named, so reordering to Owner-first is unaffected.
+   */
+  emptyGroupLabels?: { dimension: SummaryDimension; labels: readonly string[] };
   /** Where a row at this dimension should link instead of opening a deal. */
   rowHref?: (dimension: SummaryDimension, label: string) => string | null;
   /**
@@ -580,7 +591,28 @@ export function OpportunitySummary({
     return m;
   }, [deals, timeline]);
 
-  const tree = useMemo(() => buildTree(deals, order, valueFor), [deals, order, valueFor]);
+  const tree = useMemo(() => {
+    const built = buildTree(deals, order, valueFor);
+    if (
+      emptyGroupLabels &&
+      order[0] === emptyGroupLabels.dimension &&
+      emptyGroupLabels.labels.length
+    ) {
+      const have = new Set(built.map((n) => n.label.trim().toLowerCase()));
+      const extras = emptyGroupLabels.labels
+        .filter((l) => l.trim() && !have.has(l.trim().toLowerCase()))
+        .sort((a, b) => a.localeCompare(b))
+        .map((label) => ({
+          key: `/empty/${emptyGroupLabels.dimension}:${label}`,
+          label,
+          dimension: emptyGroupLabels.dimension,
+          deals: [],
+          children: [],
+        }));
+      return [...built, ...extras];
+    }
+    return built;
+  }, [deals, order, valueFor, emptyGroupLabels]);
 
   /**
    * OPEN THE BOOK AT A PARTICULAR DEAL.
@@ -1218,7 +1250,7 @@ export function OpportunitySummary({
     return out;
   }
 
-  if (deals.length === 0) {
+  if (deals.length === 0 && !(emptyGroupLabels && emptyGroupLabels.labels.length)) {
     return (
       <p className="rounded-xl bg-surface px-4 py-8 text-center text-[14px] text-text-secondary">
         No opportunities match these filters.

@@ -37,7 +37,7 @@ import {
   type TabOffering,
 } from "@/components/customers/CustomerOfferingsTab";
 import { CustomerDigitalComponents } from "@/components/customers/CustomerDigitalComponents";
-import { Badge, OutcomeBadge } from "@/components/ui/Badge";
+import { SizeBadge, Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
@@ -1051,6 +1051,13 @@ export function CustomerTabs({
                     })),
                   ]}
                   format={(v) => SIZE_TIER_LABEL[v.toLowerCase()] ?? titleCase(v)}
+                  /* THE SAME CHIP THE HEADER WEARS (Anir, Sep 6: "when you're
+                     saying midsize, make sure you have that color and the
+                     tag... in the edit mode you had the tag and the icon, but
+                     here you don't"). Plain text here while the header and the
+                     edit picker carry the coloured badge read as two different
+                     facts; one look, everywhere (standing chip rule). */
+                  renderValue={(v) => <SizeBadge tier={v} />}
                   onSave={async (v) =>
                     (await patchCustomer({ size_tier: v })) ? null : "That didn't save."
                   }

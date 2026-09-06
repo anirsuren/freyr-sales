@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { LocalTime } from "@/components/ui/LocalTime";
 import { CalendarClock, CalendarDays } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -395,7 +396,7 @@ function TouchRow({
           </span>
         </p>
         <p className="mt-0.5 text-[10px] text-text-tertiary tnum">
-          {formatDateTime(interaction.created_at)} · logged by{" "}
+          <LocalTime value={interaction.created_at} /> · logged by{" "}
           {interaction.logged_by}
         </p>
         {interaction.notes && (

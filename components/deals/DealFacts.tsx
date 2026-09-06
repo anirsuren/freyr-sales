@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LocalTime } from "@/components/ui/LocalTime";
 import {
   CalendarPlus,
   Clock,
@@ -183,7 +184,7 @@ export function DealFacts({
             className={`mt-2.5 ${VALUE} tnum`}
             style={rotting ? { color: RISK } : undefined}
           >
-            {lastActivityAt ? formatDateTime(lastActivityAt) : "No activity yet"}
+            {lastActivityAt ? <LocalTime value={lastActivityAt} /> : "No activity yet"}
           </span>
           <p className={`mt-auto pt-2 ${NOTE}`}>
             {lastActivityAt

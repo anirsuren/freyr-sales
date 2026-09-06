@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LocalTime } from "@/components/ui/LocalTime";
 import { SmartBack } from "@/components/ui/BackButton";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -162,7 +163,7 @@ export default async function AgentRunDetailPage({
               When
             </dt>
             <dd className="text-[13px] font-medium text-text-primary mt-1">
-              {formatDateTime(run.created_at)}
+              <LocalTime value={run.created_at} />
             </dd>
           </div>
         </dl>
@@ -301,7 +302,7 @@ export default async function AgentRunDetailPage({
                         )}
                       </div>
                       <span className="text-[12px] text-text-tertiary shrink-0">
-                        {formatDateTime(it.created_at)}
+                        <LocalTime value={it.created_at} />
                       </span>
                     </div>
                     {it.notes && (

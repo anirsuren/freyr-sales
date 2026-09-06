@@ -84,7 +84,7 @@ export async function CustomersScreen({ tab }: { tab: CustomerRouteTab }) {
                   tip: ints.map<TipItem>((x) => ({
                     avatar: contactName.get(x.contact_id) || "Contact",
                     name: contactName.get(x.contact_id) || "A contact",
-                    sub: formatDateTime(x.created_at),
+                    subIso: x.created_at,
                   })),
                 };
               })
@@ -111,7 +111,7 @@ export async function CustomersScreen({ tab }: { tab: CustomerRouteTab }) {
           .map<TipItem>((x) => ({
             avatar: contactName.get(x.contact_id) || "Contact",
             name: contactName.get(x.contact_id) || "A contact",
-            sub: formatDateTime(x.created_at),
+            subIso: x.created_at,
             value: x.outcome
               ? OUTCOME_META[x.outcome as keyof typeof OUTCOME_META]?.label
               : undefined,

@@ -1,5 +1,15 @@
+"use client";
+
 import { Avatar } from "@/components/ui/Avatar";
 import { stampedAt } from "@/lib/performanceShared";
+
+/* "use client" IS THE TIMEZONE FIX (Anir, Sep 6: "why is it saying 1:23 PM?
+   It's 9:26 PM for me... it should always show whatever time the device is
+   in"). The comment below always EXPECTED the browser to re-render this line
+   in the reader's zone — but as a server component it rendered once, on the
+   server, in UTC, and no hydration ever came to correct it. As a client
+   component stampedAt runs on the device, so the device's clock is what
+   prints; suppressHydrationWarning below absorbs the server/browser diff. */
 
 /**
  * WHO PUT THIS HERE, AND WHEN — ONE LINE, ONE COMPONENT, EVERY PAGE.
