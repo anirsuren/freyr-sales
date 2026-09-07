@@ -2392,8 +2392,10 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                   comes to in the currency the contract was written in. */}
               {editingValue > 0 && Math.abs(editingTotal - editingValue) > 1 && (
                 <span className="font-semibold" style={{ color: ACCRUAL_AMBER }}>
-                  {" "}
-                  — that is {formatMoney(Math.abs(editingTotal - editingValue))}{" "}
+                  {/* A SENTENCE, NOT A FRAGMENT. The total it used to hang off
+                      moved into the footer row, which left this opening with
+                      a dangling dash (Sep 7 test loop). */}
+                  That is {formatMoney(Math.abs(editingTotal - editingValue))}{" "}
                   {editingTotal > editingValue ? "more" : "less"} than the contract
                   value. Saving is allowed; the plan will be flagged.
                 </span>
