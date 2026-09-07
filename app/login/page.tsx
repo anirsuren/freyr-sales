@@ -72,7 +72,19 @@ export default async function LoginPage() {
       )}
       <Card className="max-h-[calc(100dvh-2rem)] w-full max-w-[420px] overflow-y-auto p-8">
         <div className="text-center">
-          <span className="text-[25px] font-bold text-blue-primary tracking-tight">FREYR</span>
+          {/* THE SAME DEV CHIP THE SIDEBAR WEARS, on the one screen that has
+              no sidebar (Anir, Sep 7: "on this screen, I would like there to
+              definitely be a dev highlight, just like you have in the top
+              left, except it should be in the middle somewhere"). Beside the
+              wordmark, centred with it; never on the prod host. */}
+          <span className="inline-flex items-center justify-center gap-2">
+            <span className="text-[25px] font-bold text-blue-primary tracking-tight">FREYR</span>
+            {isDevHome && (
+              <span className="rounded-md bg-[rgba(217,119,6,0.12)] px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[color:#B45309]">
+                Dev
+              </span>
+            )}
+          </span>
           <h1 className="mt-4 text-[20px] font-semibold text-text-primary">Sales Intelligence</h1>
           <p className="mt-2 text-[13px] leading-relaxed text-text-secondary">
             {!authenticationReady
