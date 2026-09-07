@@ -1732,6 +1732,10 @@ export function RevenueAccrualsModule({
                    this to a few rows, they are the answer and must be open. */
                 filtering={
                   query.trim().length > 0 ||
+                  /* Show: Flagged is a filter like any other, so the two rows
+                     it leaves must be ON SCREEN rather than four levels deep
+                     in a collapsed tree. */
+                  only !== "all" ||
                   fyFilter.length > 0 ||
                   groupFilter.length > 0 ||
                   customerFilter.length > 0 ||
