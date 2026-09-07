@@ -222,8 +222,39 @@ export function ConnectedComponents({
            "again, we need a table view here, brother"). The version this
            offering covers stays editable in the row, because scanning is only
            half of why anyone opens this tab. */
-        <div className="mt-4 overflow-x-auto rounded-xl border border-border-light bg-white">
-          <table className="w-full min-w-[720px] text-left">
+        /* ONE CARD PER KIND, WITH AIR BETWEEN THEM (Anir, Sep 7: "I said I
+            wanted it separate, like the goals page... when I reload it, I see
+            it for a split second exactly the way I want it, but then it
+            doesn't"). The split second was the cards view, which already
+            draws each kind as its own section; the moment the stored "table"
+            preference applied, everything collapsed into one grid with tinted
+            divider rows inside it. The table view now has the same bones as
+            the cards view: a title bar per kind, then that kind's own table,
+            and a gap before the next. One kind, no title bar, as before. */
+        <div className="mt-4 space-y-5">
+          {groups.map((group) => (
+            <div key={group.kind}>
+              {groups.length > 1 && (
+                <p
+                  className="mb-2.5 flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-bold tracking-[0.01em]"
+                  style={{
+                    color: FDL_TYPE_META[group.kind].color,
+                    background: FDL_TYPE_META[group.kind].bg,
+                    borderColor: FDL_TYPE_META[group.kind].border,
+                  }}
+                >
+                  {(() => {
+                    const KindIcon = FDL_TYPE_META[group.kind].Icon;
+                    return <KindIcon size={15} strokeWidth={2.4} aria-hidden="true" />;
+                  })()}
+                  {group.title}
+                  <span className="tnum font-semibold opacity-70">
+                    ({group.items.length})
+                  </span>
+                </p>
+              )}
+              <div className="overflow-x-auto rounded-xl border border-border-light bg-white">
+                <table className="w-full min-w-[720px] text-left">
             <thead>
               <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
                 <th className="w-[26%] px-4 py-2.5">Component</th>
@@ -235,55 +266,7 @@ export function ConnectedComponents({
                 <th className="w-[13%] px-3 py-2.5 text-left">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-light stagger">
-              {groups.map((group) => (
-                <Fragment key={group.kind}>
-                  {/* The band that says which kind you are looking at. A row
-                      inside the table, not a second table, so every column
-                      stays in one grid and nothing has to line up twice.
-
-                      IT IS A REAL TITLE BAR, not a caption. At 10.5px on a
-                      neutral tint it was smaller than the component names
-                      underneath it, so "Modules" and "Agents" read as noise
-                      above the list rather than as the thing dividing it
-                      (Saras, Aug 14, change log #36). Now it carries the
-                      kind's own tint and border and sits at heading size.
-
-                      AND IT ONLY APPEARS WHEN IT DIVIDES SOMETHING. A band
-                      reading "Modules (5)" above five rows whose Type column
-                      already says Module on every one is a header for a
-                      grouping that isn't happening (Anir, Aug 14: "I don't
-                      understand what that is"). Suren asked for modules at the
-                      top and agents at the bottom, which only means anything
-                      when an offering holds both — today that is
-                      Freya.intelligence and Freya.GRR-PAC. One kind, no
-                      divider. */}
-                  {groups.length > 1 && (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="border-y px-4 py-2"
-                      style={{
-                        background: FDL_TYPE_META[group.kind].bg,
-                        borderColor: FDL_TYPE_META[group.kind].border,
-                      }}
-                    >
-                      <span
-                        className="inline-flex items-center gap-2 text-[13px] font-bold tracking-[0.01em]"
-                        style={{ color: FDL_TYPE_META[group.kind].color }}
-                      >
-                        {(() => {
-                          const KindIcon = FDL_TYPE_META[group.kind].Icon;
-                          return <KindIcon size={15} strokeWidth={2.4} aria-hidden="true" />;
-                        })()}
-                        {group.title}
-                        <span className="tnum font-semibold opacity-70">
-                          ({group.items.length})
-                        </span>
-                      </span>
-                    </td>
-                  </tr>
-                  )}
+                  <tbody className="divide-y divide-border-light stagger">
                   {group.items.map((component) => {
                 const current = fdlCurrentVersion(component);
                 return (
@@ -423,10 +406,11 @@ export function ConnectedComponents({
                   </tr>
                 );
               })}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
         ) : (
         <div className="mt-4 space-y-5">
