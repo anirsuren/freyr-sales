@@ -1153,11 +1153,17 @@ export function RevenueAccrualsModule({
                 <Lock size={14} strokeWidth={2.2} />
                 {frozenThisMonth ? "Re-freeze this month" : "Freeze this month"}
               </button>
+              {/* RED, LIKE EVERY CONTROL THAT DESTROYS A RECORD. Unfreeze
+                  throws away the month's frozen sheet, the baseline every
+                  deviation is measured against, so it wears the delete colour
+                  and keeps its confirm (Anir, Sep 7: "I think this button
+                  should be red"). Re-freeze saves over rather than deletes,
+                  so it stays neutral. */}
               {frozenThisMonth && (
                 <button
                   type="button"
                   onClick={() => setConfirmUnfreeze(monthKey(new Date()))}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-3 py-2 text-[13px] font-semibold text-[color:var(--status-red)] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.07)]"
                 >
                   <Unlock size={14} strokeWidth={2.2} /> Unfreeze
                 </button>
