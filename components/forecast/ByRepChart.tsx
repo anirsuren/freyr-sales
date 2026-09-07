@@ -174,7 +174,7 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                               }}
                             />
                           </span>
-                          <span className="min-w-[116px] text-right">
+                          <span className="min-w-[116px]">
                             <span className="block text-[13px] font-bold text-text-primary tnum">
                               {formatMoney(r.weighted)}
                             </span>

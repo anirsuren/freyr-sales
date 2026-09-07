@@ -614,7 +614,7 @@ export function CustomerTypesManager({
             <span>Revenue</span>
             <span>Employees</span>
             <span>Operational focus</span>
-            <span className="text-right">Offerings</span>
+            <span >Offerings</span>
           </div>
           <div className="divide-y divide-border-light">
             {types.map((t, ti) => {

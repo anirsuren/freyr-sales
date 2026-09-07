@@ -657,7 +657,7 @@ export function MeetingsModule({
                             </span>
                           )}
                         </span>
-                        <span className="w-[96px] shrink-0 text-right text-[12.5px] font-semibold tnum text-text-primary">
+                        <span className="w-[96px] shrink-0 text-[12.5px] font-semibold tnum text-text-primary">
                           {formatDate(m.meetingAt)}
                         </span>
                         <span

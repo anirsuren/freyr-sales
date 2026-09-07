@@ -88,7 +88,7 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
             />
           </span>
           <span
-            className="w-8 shrink-0 text-right text-[10px] font-semibold tnum"
+            className="w-8 shrink-0 text-[10px] font-semibold tnum"
             style={{ color }}
           >
             {Math.round(probability * 100)}%

@@ -494,9 +494,8 @@ export default async function ReportsPage() {
                     ].map(({ h, num }) => (
                       <th
                         key={h}
-                        className={cn(
-                          "px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap",
-                          num && "text-right w-[1%]"
+                        className={cn("px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap",
+                          num &&" w-[1%]"
                         )}
                       >
                         {h}
@@ -617,11 +616,11 @@ export default async function ReportsPage() {
                       <td className="px-5 py-3 text-[12.5px] text-text-secondary whitespace-nowrap">
                         {o.category}
                       </td>
-                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum text-right">{o.customers}</td>
-                      <td className="px-5 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap text-right">
+                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum">{o.customers}</td>
+                      <td className="px-5 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap">
                         {formatMoney(o.revenue)}
                       </td>
-                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum text-right">
+                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum">
                         {o.licenses || "-"}
                       </td>
                       <td className="w-[150px] px-5 py-3">
@@ -645,7 +644,7 @@ export default async function ReportsPage() {
                           )}
                         />
                       </td>
-                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum text-right">{o.lines}</td>
+                      <td className="px-5 py-3 text-[13px] text-text-secondary tnum">{o.lines}</td>
                     </tr>
                   )})}
                 </tbody>
@@ -686,10 +685,9 @@ export default async function ReportsPage() {
                       ].map(({ h, num, shrink }) => (
                         <th
                           key={h}
-                          className={cn(
-                            "px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap",
-                            num && "text-right w-[1%]",
-                            shrink && "w-[1%]"
+                          className={cn("px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap",
+                            num &&" w-[1%]",
+                            shrink &&"w-[1%]"
                           )}
                         >
                           {h}
@@ -729,10 +727,10 @@ export default async function ReportsPage() {
                             {REVENUE_TYPE_META[r.revenue_type].short}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap text-right">
+                        <td className="px-5 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap">
                           {formatMoney(r.amount)}
                         </td>
-                        <td className="px-5 py-3 text-[12.5px] text-text-secondary tnum whitespace-nowrap text-right">
+                        <td className="px-5 py-3 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
                           {formatDate(r.end_date)}
                         </td>
                         <td className="px-5 py-3 whitespace-nowrap">

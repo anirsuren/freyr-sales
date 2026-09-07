@@ -990,7 +990,7 @@ export function OpportunitySummary({
             </span>
           </button>
         </th>
-        <td className={cn(cellCls, "font-bold text-text-primary")}>
+        <td className={cn(cellCls,"font-bold text-text-primary")}>
           <Money n={total.total} />
         </td>
         {byPeriod.map((v, i) => (
@@ -1236,7 +1236,7 @@ export function OpportunitySummary({
                     : own;
                   return (
                     <>
-                      <td className={cn(cellCls, "font-semibold text-text-primary")}>
+                      <td className={cn(cellCls,"font-semibold text-text-primary")}>
                         {leafTotal === undefined ? (
                           <span className="font-normal text-text-tertiary">·</span>
                         ) : (
@@ -1250,7 +1250,7 @@ export function OpportunitySummary({
                           stay empty — that is the pipeline's own shape and it
                           was never the thing that failed to reconcile. */}
                       {periods.map((per, pi) => (
-                        <td key={per} className={cn(cellCls, "text-text-tertiary")}>
+                        <td key={per} className={cn(cellCls,"text-text-tertiary")}>
                           {spread ? (
                             <Money n={cells[pi] ?? 0} dim />
                           ) : p === per && own !== undefined ? (
@@ -1352,13 +1352,13 @@ export function OpportunitySummary({
                   >
                     {order.length ? DIMENSION_LABEL[order[0]] : "Opportunity"}
                   </th>
-                  <th className="whitespace-nowrap px-3 py-2 text-right text-[12px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
+                  <th className="whitespace-nowrap px-3 py-2 text-[12px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
                     Total
                   </th>
                   {periods.map((p) => (
                     <th
                       key={p}
-                      className="whitespace-nowrap px-3 py-2 text-right text-[12px] font-bold uppercase tracking-[0.04em] text-text-tertiary"
+                      className="whitespace-nowrap px-3 py-2 text-[12px] font-bold uppercase tracking-[0.04em] text-text-tertiary"
                     >
                       {periodLabel(p, timeline)}
                     </th>
@@ -1375,13 +1375,13 @@ export function OpportunitySummary({
                   >
                     All {deals.length} {deals.length === 1 ? "deal" : "deals"}
                   </th>
-                  <td className={cn(cellCls, "font-bold text-text-primary")}>
+                  <td className={cn(cellCls,"font-bold text-text-primary")}>
                     <Money n={grandCells.total.total} />
                   </td>
                   {grandCells.byPeriod.map((v, i) => (
                     <td
                       key={periods[i]}
-                      className={cn(cellCls, "font-semibold text-text-primary")}
+                      className={cn(cellCls,"font-semibold text-text-primary")}
                     >
                       <Money n={v} />
                     </td>
@@ -1427,7 +1427,7 @@ export function OpportunitySummary({
                               )}
                             </button>
                           </th>
-                          <td className={cn(cellCls, "font-semibold text-text-primary")}>
+                          <td className={cn(cellCls,"font-semibold text-text-primary")}>
                             {own === undefined ? (
                               <span className="font-normal text-text-tertiary">·</span>
                             ) : (
@@ -1435,7 +1435,7 @@ export function OpportunitySummary({
                             )}
                           </td>
                           {periods.map((per) => (
-                            <td key={per} className={cn(cellCls, "text-text-tertiary")}>
+                            <td key={per} className={cn(cellCls,"text-text-tertiary")}>
                               {p === per && own !== undefined ? money(own) : ""}
                             </td>
                           ))}

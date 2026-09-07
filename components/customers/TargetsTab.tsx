@@ -441,7 +441,7 @@ export function TargetsTab({
                   <th className="w-[15%] px-2 py-2.5">Owner</th>
                   <th className="w-[11%] px-2 py-2.5">HQ</th>
                   <th className="w-[10%] px-2 py-2.5">Potential</th>
-                  <th className={cn("px-2 py-2.5", showConnection ? "w-[9%]" : "w-[20%]")}>
+                  <th className={cn("px-2 py-2.5", showConnection ?"w-[9%]" :"w-[20%]")}>
                     Quarter
                   </th>
                   {showConnection && (

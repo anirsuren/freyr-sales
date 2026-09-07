@@ -232,7 +232,7 @@ export function PeoplePrivileges() {
                 Person
               </th>
               {state.privileges.map((p) => (
-                <th key={p.id} className="px-3 py-3 text-center align-bottom">
+                <th key={p.id} className="px-3 py-3 align-bottom">
                   <span className="whitespace-nowrap">{p.label}</span>
                 </th>
               ))}
@@ -262,7 +262,7 @@ export function PeoplePrivileges() {
                   {state.privileges.map((p) => {
                     const on = held.has(p.id);
                     return (
-                      <td key={p.id} className="px-3 py-2.5 text-center align-middle">
+                      <td key={p.id} className="px-3 py-2.5 align-middle">
                         <button
                           type="button"
                           role="checkbox"

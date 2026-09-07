@@ -119,7 +119,7 @@ export function ContactTalkTimePanel({ calls, color }: { calls: TalkTimeCall[]; 
                             <span className="text-text-tertiary">Outcome</span>
                             <span className="flex justify-end"><OutcomeBadge outcome={call.outcome} /></span>
                             <span className="text-text-tertiary">When</span>
-                            <span className="text-right text-text-secondary">{formatDateTime(call.createdAt)}</span>
+                            <span className="text-text-secondary">{formatDateTime(call.createdAt)}</span>
                           </div>
                           <Link href={call.href} className="mt-3 inline-flex text-[11.5px] font-semibold text-blue-primary">Open transcript →</Link>
                         </div>

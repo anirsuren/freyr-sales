@@ -246,8 +246,7 @@ export function SessionsBrowser({
                   {COLUMNS.map((c) => (
                     <th
                       key={c.label}
-                      className={cn(
-                        "px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap",
+                      className={cn("px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary whitespace-nowrap",
                         c.width
                       )}
                     >
@@ -438,7 +437,7 @@ export function SessionsBrowser({
                       <div className="text-[13px] text-text-secondary">{formatDate(r.date)}</div>
                       <div className="text-[11px] text-text-tertiary">{formatTime(r.date)}</div>
                     </td>
-                    <td className="px-4 py-4 text-right">
+                    <td className="px-4 py-4">
                       <Link
                         href={`/sessions/${r.id}`}
                         aria-label={`Open session for ${r.company}`}

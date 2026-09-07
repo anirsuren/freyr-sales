@@ -222,7 +222,7 @@ export function AgentAttentionQueue({ actions }: { actions: AttentionRow[] }) {
                     <p className="truncate text-[11.5px] text-text-secondary">{action.rationale}</p>
                   </div>
                 </div>
-                <p className="text-right text-[13px] font-semibold text-text-primary tnum">{action.value}</p>
+                <p className="text-[13px] font-semibold text-text-primary tnum">{action.value}</p>
                 <p className={cn("text-[11.5px] font-semibold", action.overdue ? "text-error" : "text-text-secondary")}>{action.due}</p>
                 <div className="flex justify-end">
                   {isDone ? (

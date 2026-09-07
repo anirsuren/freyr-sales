@@ -1623,7 +1623,7 @@ export function CustomerTabs({
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
-                        <div className="text-right">
+                        <div >
                           <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Current</p>
                           <p className="text-[19px] font-bold text-text-primary tnum">{formatMoney(totalOpen)}</p>
                         </div>
@@ -2106,7 +2106,7 @@ export function CustomerTabs({
                               <span className="font-semibold text-text-primary tnum">
                                 {segment.value}
                               </span>
-                              <span className="w-9 text-right text-text-tertiary tnum">
+                              <span className="w-9 text-text-tertiary tnum">
                                 {percentage}%
                               </span>
                             </div>

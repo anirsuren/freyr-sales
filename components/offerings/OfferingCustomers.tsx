@@ -135,7 +135,7 @@ export function OfferingCustomers({
                     </span>
                   )}
                 </td>
-                <td className="py-2.5 text-right">
+                <td className="py-2.5">
                   <ChevronRight
                     size={15}
                     strokeWidth={2}

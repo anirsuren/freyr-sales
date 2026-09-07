@@ -1399,7 +1399,7 @@ export function SettingsTabs({
                   {ROLES.map((r) => (
                     <th
                       key={r}
-                      className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary text-center"
+                      className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary"
                     >
                       {r}
                     </th>
@@ -1420,7 +1420,7 @@ export function SettingsTabs({
                       )}
                     </td>
                     {(["admin", "bd_owner", "bd_member"] as const).map((k) => (
-                      <td key={k} className="px-3 py-3 text-center">
+                      <td key={k} className="px-3 py-3">
                         {p[k] ? (
                           <Check size={15} strokeWidth={2.5} className="text-success inline" />
                         ) : (

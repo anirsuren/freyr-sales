@@ -827,7 +827,7 @@ export function CustomersBrowser({
           )}
         </td>
         )}
-        <td className="px-5 py-4 text-right">
+        <td className="px-5 py-4">
           <Link href={`/customers/${c.id}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open customer">
             <ArrowRight size={16} strokeWidth={1.5} />
           </Link>
@@ -1413,7 +1413,7 @@ filtered.length === 0 ? (
                               {h}
                             </th>
                           ))}
-                        <th className="px-5 py-3 text-right" />
+                        <th className="px-5 py-3" />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-light">
@@ -1452,7 +1452,7 @@ filtered.length === 0 ? (
                     </th>
                   ))}
                   {/* Trailing arrow column: header aligns like its cells. */}
-                  <th className="px-5 py-3 text-right" />
+                  <th className="px-5 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light stagger">

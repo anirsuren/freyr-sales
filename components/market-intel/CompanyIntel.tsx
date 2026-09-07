@@ -263,7 +263,7 @@ export function CompanyIntel({
                       <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                         When
                       </th>
-                      <th className="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                         Article
                       </th>
                     </tr>
@@ -290,7 +290,7 @@ export function CompanyIntel({
                           <td className="whitespace-nowrap px-4 py-3 align-top text-[12px] text-text-secondary">
                             {miDateLabel(item.daysAgo)}
                           </td>
-                          <td className="px-4 py-3 text-right align-top">
+                          <td className="px-4 py-3 align-top">
                             <a
                               href={SOURCE_HOME[item.source] || "#"}
                               target="_blank"

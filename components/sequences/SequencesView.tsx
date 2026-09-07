@@ -712,7 +712,7 @@ export function SequencesView({
                               <span className="mt-1 block w-fit rounded px-1.5 py-0.5 text-[9.5px] font-semibold" style={{ color: stage.color, background: stage.bg }}>{enrollment.stage}</span>
                             </span>
                           </Link>
-                          <span className="ml-auto text-right">
+                          <span className="ml-auto">
                             <span className="block text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Sequence position</span>
                             <span className={complete ? "mt-0.5 block text-[11.5px] font-semibold text-success" : "mt-0.5 block text-[11.5px] font-semibold text-text-primary"}>
                               {complete ? "All steps completed" : `Current: step ${stepIndex + 1} of ${active.steps.length}`}

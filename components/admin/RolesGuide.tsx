@@ -146,7 +146,7 @@ export function RolesGuide({ className }: { className?: string }) {
                     {privileges.map((p) => (
                       <th
                         key={p.id}
-                        className="px-2 py-2 text-center align-bottom text-[11px] font-bold leading-tight"
+                        className="px-2 py-2 align-bottom text-[11px] font-bold leading-tight"
                         style={{ color: privilegeColor(p.id) }}
                         title={p.blurb}
                       >
@@ -172,7 +172,7 @@ export function RolesGuide({ className }: { className?: string }) {
                           "none") as Access;
                         const meta = ACCESS_META[level];
                         return (
-                          <td key={p.id} className="px-2 py-2 text-center">
+                          <td key={p.id} className="px-2 py-2">
                             {level === "none" ? (
                               <span className="text-[12px] text-text-tertiary">
                                 ·

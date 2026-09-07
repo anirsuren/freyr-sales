@@ -802,7 +802,7 @@ export default async function RepPage({
                       <td className="px-5 py-3 text-[13px] text-text-secondary tnum whitespace-nowrap">{Math.round(prob * 100)}%</td>
                       <td className="px-5 py-3 text-[13px] font-semibold text-text-primary tnum whitespace-nowrap">{formatMoney(d.value)}</td>
                       <td className="px-5 py-3 text-[13px] text-text-tertiary tnum whitespace-nowrap">{ago(d.staleDays)}</td>
-                      <td className="px-5 py-3 text-right">
+                      <td className="px-5 py-3">
                         <Link href={`/deals/${d.sessionId}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open deal">
                           <ArrowRight size={16} strokeWidth={1.5} />
                         </Link>

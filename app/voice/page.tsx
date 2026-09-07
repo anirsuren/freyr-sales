@@ -851,7 +851,7 @@ export default async function VoicePage() {
                       <td className="px-5 py-3.5 text-[12.5px] text-text-tertiary tnum whitespace-nowrap transition-colors duration-200 group-hover:text-text-secondary">
                         {formatDateTime(q.created_at)}
                       </td>
-                      <td className="w-10 px-2 py-3.5 text-right">
+                      <td className="w-10 px-2 py-3.5">
                         <Link
                           href={href}
                           aria-label={`Open ${q.contact_name}'s call history`}

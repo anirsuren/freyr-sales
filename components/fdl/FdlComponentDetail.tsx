@@ -2820,7 +2820,7 @@ export function FdlComponentDetail({
                     </td>
                     {canEdit && (
                       <td className="py-2.5 pl-2">
-                        <span className="flex items-center justify-end gap-1">
+                        <span className="flex items-center gap-1">
                           <button
                             type="button"
                             aria-label={`Edit ${feature.name}`}
@@ -3190,7 +3190,7 @@ export function FdlComponentDetail({
                               </span>
                             )}
                           </td>
-                          <td className="py-3 text-right">
+                          <td className="py-3">
                             <ChevronRight
                               size={15}
                               strokeWidth={2}
@@ -3321,7 +3321,7 @@ export function FdlComponentDetail({
                       {compareReleases.map((r) => (
                         <th
                           key={r.id}
-                          className="w-[120px] min-w-[120px] px-2 py-2 text-center whitespace-nowrap"
+                          className="w-[120px] min-w-[120px] px-2 py-2 whitespace-nowrap"
                         >
                           {withV(r.version)}
                         </th>
@@ -3347,7 +3347,7 @@ export function FdlComponentDetail({
                           </span>
                         </td>
                         {compareReleases.map((release) => (
-                          <td key={release.id} className="px-2 py-2.5 text-center">
+                          <td key={release.id} className="px-2 py-2.5">
                             {feature.versionIds.includes(release.id) ? (
                               <Check size={14} strokeWidth={2.6} className="inline text-[color:var(--ink-green)]" />
                             ) : (

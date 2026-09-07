@@ -594,7 +594,7 @@ export function OfferingReports({
             <tbody className="divide-y divide-border-light">
               {customerSummaries.length === 0 && (
                 <tr>
-                  <td colSpan={99} className="px-5 py-8 text-center text-[12.5px] text-text-tertiary">
+                  <td colSpan={99} className="px-5 py-8 text-[12.5px] text-text-tertiary">
                     No accounts use {offeringName} yet. The first customer marked
                     as in use starts this table.
                   </td>
@@ -742,7 +742,7 @@ export function OfferingReports({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3.5 text-right">
+                    <td className="px-4 py-3.5">
                       <Link
                         href={`/customers/${customer.id}?tab=offerings`}
                         aria-label={`Open ${customer.name}`}
@@ -911,7 +911,7 @@ export function OfferingReports({
             <tbody className="divide-y divide-border-light">
               {report.customers.length === 0 && (
                 <tr>
-                  <td colSpan={99} className="px-5 py-8 text-center text-[12.5px] text-text-tertiary">
+                  <td colSpan={99} className="px-5 py-8 text-[12.5px] text-text-tertiary">
                     Nothing has been recorded yet. Every contract, license and
                     service agreement shows up here as it is added.
                   </td>

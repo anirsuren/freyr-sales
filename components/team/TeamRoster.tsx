@@ -857,7 +857,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                 <th className="px-4 py-2.5">Meetings</th>
                 <th className="px-4 py-2.5 w-[120px]">Activity · 10w</th>
                 {/* Trailing arrow column: header aligns like its cells. */}
-                <th className="px-4 py-2.5 text-right" />
+                <th className="px-4 py-2.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light stagger">
@@ -1130,8 +1130,8 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                     <td className="px-4 py-3.5">
                       <ActivityTrendInspector rep={r} />
                     </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <span className="flex items-center justify-end gap-0.5">
+                    <td className="px-4 py-3.5">
+                      <span className="flex items-center gap-0.5">
                         <Link
                           href={`/analytics/reps/${r.slug}`}
                           onClick={(e) => e.stopPropagation()}

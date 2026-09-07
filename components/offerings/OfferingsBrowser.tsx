@@ -1739,7 +1739,7 @@ export function OfferingsBrowser({
                           rowAccent
                             ? {
                                 /* AN OPEN ROW'S RAIL DOES NOT BREAK (Anir,
-                                   Aug 27: "that blue line should go all the
+                                   Aug 27:"that blue line should go all the
                                    way down and on the left side"). Closed, it
                                    insets 8px top and bottom so consecutive
                                    rows read as separate rows. Open, the row
@@ -1749,9 +1749,9 @@ export function OfferingsBrowser({
                                 backgroundImage: openRows.has(o.id)
                                   ? `linear-gradient(to bottom, ${rowAccent} 0 100%)`
                                   : `linear-gradient(to bottom, transparent 0 8px, ${rowAccent} 8px calc(100% - 8px), transparent calc(100% - 8px) 100%)`,
-                                backgroundSize: "3px 100%",
-                                backgroundRepeat: "no-repeat",
-                                backgroundPosition: "left center",
+                                backgroundSize:"3px 100%",
+                                backgroundRepeat:"no-repeat",
+                                backgroundPosition:"left center",
                               }
                             : undefined
                         }
@@ -2009,7 +2009,7 @@ export function OfferingsBrowser({
                           <span className="text-text-tertiary">-</span>
                         )}
                       </td>
-                      <td className="px-2 py-3 text-right align-middle">
+                      <td className="px-2 py-3 align-middle">
                         <ChevronDown
                           size={15}
                           strokeWidth={2.2}
@@ -2034,9 +2034,9 @@ export function OfferingsBrowser({
                             rowAccent
                               ? {
                                   backgroundImage: `linear-gradient(to bottom, ${rowAccent} 0 calc(100% - 8px), transparent calc(100% - 8px) 100%)`,
-                                  backgroundSize: "3px 100%",
-                                  backgroundRepeat: "no-repeat",
-                                  backgroundPosition: "left top",
+                                  backgroundSize:"3px 100%",
+                                  backgroundRepeat:"no-repeat",
+                                  backgroundPosition:"left top",
                                 }
                               : undefined
                           }

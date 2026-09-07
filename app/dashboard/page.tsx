@@ -998,7 +998,7 @@ export default async function DashboardPage({
                       <td className="px-5 py-4 text-[13px] text-text-secondary tnum whitespace-nowrap">
                         {formatDateTime(s.created_at)}
                       </td>
-                      <td className="px-5 py-4 text-right">
+                      <td className="px-5 py-4">
                         <Link href={`/sessions/${s.id}`} className="inline-flex p-1 rounded text-text-tertiary group-hover:text-blue-primary hover:bg-surface transition-colors" aria-label="Open session">
                           <MoreVertical size={18} strokeWidth={1.5} />
                         </Link>

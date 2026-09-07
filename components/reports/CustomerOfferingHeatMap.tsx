@@ -1958,14 +1958,13 @@ export function CustomerOfferingHeatMap({
               <thead>
                 <tr>
                   <th
-                    className={cn(
-                      "w-[220px] border-b border-r border-border bg-surface px-4 py-3",
+                    className={cn("w-[220px] border-b border-r border-border bg-surface px-4 py-3",
                       // The corner belongs to both headers, so it sticks in
                       // whichever directions they do — and outranks them, or
                       // the customer names would slide underneath it.
-                      (pinCustomers || pinOfferings) && "sticky z-30",
-                      pinCustomers && "left-0",
-                      pinOfferings && "top-0"
+                      (pinCustomers || pinOfferings) &&"sticky z-30",
+                      pinCustomers &&"left-0",
+                      pinOfferings &&"top-0"
                     )}
                   >
                     <span className="flex items-center gap-2">
@@ -2025,10 +2024,9 @@ export function CustomerOfferingHeatMap({
                   {matrixOfferings.map((offering) => (
                     <th
                       key={offering.id}
-                      className={cn(
-                        "h-[78px] w-[156px] border-b border-r border-border px-2.5 py-2 transition-colors duration-150",
-                        cross?.col === offering.id ? "bg-blue-light" : "bg-surface",
-                        pinOfferings && "sticky top-0 z-20"
+                      className={cn("h-[78px] w-[156px] border-b border-r border-border px-2.5 py-2 transition-colors duration-150",
+                        cross?.col === offering.id ?"bg-blue-light" :"bg-surface",
+                        pinOfferings &&"sticky top-0 z-20"
                       )}
                     >
                       <Link
@@ -2062,10 +2060,9 @@ export function CustomerOfferingHeatMap({
                 {matrixCustomers.map((customer) => (
                   <tr key={customer.id}>
                     <th
-                      className={cn(
-                        "w-[220px] border-b border-r border-border px-3.5 py-2 transition-colors duration-150",
-                        cross?.row === customer.id ? "bg-blue-light" : "bg-white",
-                        pinCustomers && "sticky left-0 z-10"
+                      className={cn("w-[220px] border-b border-r border-border px-3.5 py-2 transition-colors duration-150",
+                        cross?.row === customer.id ?"bg-blue-light" :"bg-white",
+                        pinCustomers &&"sticky left-0 z-10"
                       )}
                     >
                       <div className="flex items-center gap-2.5">

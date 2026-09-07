@@ -479,7 +479,7 @@ export function ForecastRisk({
                   />
                 </span>
                 <span
-                  className="text-right text-[12px] font-bold tnum"
+                  className="text-[12px] font-bold tnum"
                   style={{ color: tone }}
                 >
                   {idleLabel(deal.staleDays)}
@@ -757,7 +757,7 @@ export function ForecastRisk({
                           <span className="shrink-0 font-bold text-text-primary tnum">
                             {formatMoney(s.weighted)}
                           </span>
-                          <span className="w-9 shrink-0 text-right text-text-secondary tnum">
+                          <span className="w-9 shrink-0 text-text-secondary tnum">
                             {share}%
                           </span>
                         </span>
@@ -881,7 +881,7 @@ export function ForecastRisk({
                               />
                             </span>
                             <span
-                              className="text-right text-[10.5px] font-semibold leading-tight tnum"
+                              className="text-[10.5px] font-semibold leading-tight tnum"
                               style={{ color: tone }}
                             >
                               {idleLabel(deal.staleDays)}

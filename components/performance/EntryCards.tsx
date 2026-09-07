@@ -1039,7 +1039,7 @@ export function MyEntriesCard({
               <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
                 <th className="px-4 py-2.5">Logged by</th>
                 <th className="px-4 py-2.5">Goal</th>
-                <th className="px-4 py-2.5 text-right">Amount</th>
+                <th className="px-4 py-2.5">Amount</th>
                 <th className="px-4 py-2.5">Customer</th>
                 <th className="px-4 py-2.5">Date</th>
                 <th className="px-4 py-2.5">Proof</th>
@@ -1097,7 +1097,7 @@ export function MyEntriesCard({
                         </span>
                       </td>
                       <td className="px-4 py-3.5">{goalChip(state, a.goalId)}</td>
-                      <td className="whitespace-nowrap px-4 py-3.5 text-right text-[14px] font-semibold text-text-primary tnum">
+                      <td className="whitespace-nowrap px-4 py-3.5 text-[14px] font-semibold text-text-primary tnum">
                         {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
                       </td>
                       <td className="px-4 py-3.5">
@@ -1265,13 +1265,11 @@ export function MyEntriesCard({
                                8 columns already have, so a wide expansion can
                                never stretch the TABLE itself — expanding a
                                row used to shove every column sideways and cut
-                               the last header off the card (Anir, Aug 22:
-                               "fix the column, it's not aligned — the last
-                               one"). */
-                            "max-w-0 pb-4 pl-7 pr-4 pt-1",
+                               the last header off the card (Anir, Aug 22:"fix the column, it's not aligned — the last
+                               one"). */"max-w-0 pb-4 pl-7 pr-4 pt-1",
                             sentBack
-                              ? "[box-shadow:inset_3px_0_0_0_#DC2626]"
-                              : "[box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                              ?"[box-shadow:inset_3px_0_0_0_#DC2626]"
+                              :"[box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                           )}
                         >
                           {/* THE REJECTION LEADS (Anir, Aug 19: "if it's sent
@@ -1913,14 +1911,14 @@ export function VerifyQueueCard({
                     />
                   </label>
                 </th>
-                <th className="w-10 px-4 py-2.5 text-right">#</th>
+                <th className="w-10 px-4 py-2.5">#</th>
                 <th className="px-4 py-2.5">Logged by</th>
                 <th className="px-4 py-2.5">Goal</th>
-                <th className="px-4 py-2.5 text-right">Amount</th>
+                <th className="px-4 py-2.5">Amount</th>
                 <th className="px-4 py-2.5">Customer</th>
                 <th className="px-4 py-2.5">Date</th>
                 <th className="px-4 py-2.5">Proof</th>
-                <th className="px-4 py-2.5 text-right">Your call</th>
+                <th className="px-4 py-2.5">Your call</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -1957,7 +1955,7 @@ export function VerifyQueueCard({
                           />
                         </label>
                       </td>
-                      <td className="px-4 py-3.5 text-right text-[13px] font-bold text-text-tertiary tnum">
+                      <td className="px-4 py-3.5 text-[13px] font-bold text-text-tertiary tnum">
                         {i + 1}
                       </td>
                       <td className="px-4 py-3.5">
@@ -1969,7 +1967,7 @@ export function VerifyQueueCard({
                         </span>
                       </td>
                       <td className="px-4 py-3.5">{goalChip(state, a.goalId)}</td>
-                      <td className="whitespace-nowrap px-4 py-3.5 text-right text-[14px] font-semibold text-text-primary tnum">
+                      <td className="whitespace-nowrap px-4 py-3.5 text-[14px] font-semibold text-text-primary tnum">
                         {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
                       </td>
                       <td className="px-4 py-3.5">
@@ -1993,7 +1991,7 @@ export function VerifyQueueCard({
                       <td className="px-4 py-3.5">
                         <EvidenceLinks entry={a} onOpen={setPreview} />
                       </td>
-                      <td className="px-4 py-3.5 text-right">
+                      <td className="px-4 py-3.5">
                         {/* ONE BUTTON: READ IT, THEN DECIDE. */}
                         <button
                           type="button"

@@ -545,8 +545,7 @@ export function OrgPerformanceTab({
                 ).map((col, i) => (
                   <th
                     key={i}
-                    className={cn(
-                      "px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
+                    className={cn("px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
                       // Column 0 (Goal) stays free and takes what is left.
                       i >= 1 && i <= 3 && "w-[130px]",
                       // % met carries a bar plus its value; 130 clipped it.

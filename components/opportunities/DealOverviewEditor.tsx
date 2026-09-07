@@ -1618,11 +1618,11 @@ export function DealOverviewEditor({
                       const shown = asUsd(typed);
                       return (
                         <td
-                          key={["tcv", "acv"][i]}
+                          key={["tcv","acv"][i]}
                           className={
                             shown.known
-                              ? "text-[13px] font-semibold text-text-primary tnum"
-                              : "text-[13px] text-text-tertiary"
+                              ?"text-[13px] font-semibold text-text-primary tnum"
+                              :"text-[13px] text-text-tertiary"
                           }
                         >
                           {shown.text}

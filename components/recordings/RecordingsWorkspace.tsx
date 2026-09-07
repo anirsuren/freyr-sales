@@ -134,7 +134,7 @@ function Player({
       >
         <SkipForward size={17} strokeWidth={1.75} />
       </button>
-      <span className="text-[12px] text-text-secondary tnum w-9 text-right">
+      <span className="text-[12px] text-text-secondary tnum w-9">
         {fmt(cur)}
       </span>
       <div

@@ -176,7 +176,7 @@ export function OutcomeMixPanel({
                                       />
                                       {part.label}
                                     </span>
-                                    <span className="text-right font-semibold text-text-primary tnum">
+                                    <span className="font-semibold text-text-primary tnum">
                                       {part.value}
                                     </span>
                                   </span>

@@ -766,7 +766,7 @@ export default async function VoiceAgentPage({
                       <td className="px-5 py-3.5 text-[12.5px] text-text-tertiary tnum whitespace-nowrap">
                         {formatDateTime(q.created_at)}
                       </td>
-                      <td className="px-5 py-3.5 text-right">
+                      <td className="px-5 py-3.5">
                         <Link
                           href={href}
                           className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors"

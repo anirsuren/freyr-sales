@@ -2013,8 +2013,7 @@ export function AccrualPlanDialog({
                           /* The revised pair is a group, so it is fenced off
                              from the planned figures rather than reading as
                              two more of them. */
-                          i === baseColumns.length &&
-                            "border-l border-border-light",
+                          i === baseColumns.length &&"border-l border-border-light",
                           i >= baseColumns.length && "text-[var(--ink-violet)] dark:text-[#C4B5FD]"
                         )}
                       >
@@ -2085,9 +2084,8 @@ export function AccrualPlanDialog({
                                 <td
                                   key={`revised-${field}`}
                                   style={{ width: monthColWidth }}
-                                  className={cn(
-                                    "px-3 py-1.5",
-                                    k === 0 && "border-l border-border-light"
+                                  className={cn("px-3 py-1.5",
+                                    k === 0 &&"border-l border-border-light"
                                   )}
                                 >
                                   <input
@@ -2561,12 +2559,12 @@ export function AccrualPlanDialog({
                   <table className="w-full table-fixed text-left">
                     <thead className="sticky top-0 z-[1] bg-surface">
                       <tr className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:px-3 [&>th]:py-2">
-                        <th style={{ width: "13%" }}>Version</th>
-                        <th style={{ width: "30%" }}>Status</th>
-                        <th style={{ width: "17%" }}>Changed by</th>
-                        <th style={{ width: "14%" }}>When</th>
-                        <th style={{ width: "14%" }}>Total</th>
-                        <th style={{ width: "12%" }}>Why</th>
+                        <th style={{ width:"13%" }}>Version</th>
+                        <th style={{ width:"30%" }}>Status</th>
+                        <th style={{ width:"17%" }}>Changed by</th>
+                        <th style={{ width:"14%" }}>When</th>
+                        <th style={{ width:"14%" }}>Total</th>
+                        <th style={{ width:"12%" }}>Why</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-light">

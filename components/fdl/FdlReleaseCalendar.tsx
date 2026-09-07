@@ -386,11 +386,10 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                     key={m}
                     className={cn(
                       // Solid backgrounds only: a translucent sticky header
-                      // lets rows read straight through it mid-scroll.
-                      "sticky top-0 z-20 min-w-[128px] border-b border-r border-border-light px-3 py-3 text-center text-[11px] font-bold uppercase tracking-[0.05em] transition-colors duration-150",
+                      // lets rows read straight through it mid-scroll."sticky top-0 z-20 min-w-[128px] border-b border-r border-border-light px-3 py-3 text-[11px] font-bold uppercase tracking-[0.05em] transition-colors duration-150",
                       m === nowIndex || cross?.col === m
-                        ? "bg-blue-light text-blue-primary"
-                        : "bg-white text-text-tertiary"
+                        ?"bg-blue-light text-blue-primary"
+                        :"bg-white text-text-tertiary"
                     )}
                   >
                     {monthLabel(m)}
@@ -402,7 +401,7 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                   </th>
                 ))}
                 {anyUndated && (
-                  <th className="min-w-[128px] border-b border-border-light px-3 py-3 text-center text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                  <th className="min-w-[128px] border-b border-border-light px-3 py-3 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                     Date TBD
                   </th>
                 )}
@@ -430,11 +429,10 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                 return (
                   <tr key={component.id} className="group">
                     <td
-                      className={cn(
-                        "sticky left-0 z-10 border-b border-r border-border-light px-4 py-3 transition-colors duration-150",
+                      className={cn("sticky left-0 z-10 border-b border-r border-border-light px-4 py-3 transition-colors duration-150",
                         cross?.row === component.id
-                          ? "bg-blue-light/45"
-                          : "bg-white group-hover:bg-surface"
+                          ?"bg-blue-light/45"
+                          :"bg-white group-hover:bg-surface"
                       )}
                     >
                       <Link
@@ -483,8 +481,8 @@ export function FdlReleaseCalendar({ components }: { components: FdlComponent[] 
                       );
                     })}
                     {anyUndated && (
-                      <td className="border-b border-border-light px-3 py-3 text-center align-middle">
-                        <span className="inline-flex flex-wrap items-center justify-center gap-1">
+                      <td className="border-b border-border-light px-3 py-3 align-middle">
+                        <span className="inline-flex flex-wrap items-center gap-1">
                           {releases.filter((r) => !r.date).map(chip)}
                         </span>
                       </td>

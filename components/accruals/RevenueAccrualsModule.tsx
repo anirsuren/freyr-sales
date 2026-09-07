@@ -1988,9 +1988,9 @@ export function RevenueAccrualsModule({
                     <thead>
                       <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap [&>th]:py-2">
                         <th className="w-[34%]">Month</th>
-                        <th className="w-[22%] text-right">Frozen sheet</th>
-                        <th className="w-[22%] text-right">Plan today</th>
-                        <th className="w-[22%] text-right">Gap</th>
+                        <th className="w-[22%]">Frozen sheet</th>
+                        <th className="w-[22%]">Plan today</th>
+                        <th className="w-[22%]">Gap</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-light">
@@ -1999,21 +1999,21 @@ export function RevenueAccrualsModule({
                           <td className="py-2 text-[13px] font-semibold text-text-primary">
                             {monthLabel(m.month)}
                           </td>
-                          <td className="py-2 text-right text-[12.5px] tnum text-text-secondary">
+                          <td className="py-2 text-[12.5px] tnum text-text-secondary">
                             {formatMoney(m.was)}
                           </td>
-                          <td className="py-2 text-right text-[12.5px] tnum text-text-primary">
+                          <td className="py-2 text-[12.5px] tnum text-text-primary">
                             {formatMoney(m.now)}
                           </td>
                           <td
-                            className="py-2 text-right text-[12.5px] font-semibold tnum"
+                            className="py-2 text-[12.5px] font-semibold tnum"
                             style={{
                               color:
                                 m.delta === 0
-                                  ? "var(--text-tertiary)"
+                                  ?"var(--text-tertiary)"
                                   : m.delta < 0
                                     ? AMBER
-                                    : "#16A34A",
+                                    :"#16A34A",
                             }}
                           >
                             {m.delta === 0

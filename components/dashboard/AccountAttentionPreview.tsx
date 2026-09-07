@@ -129,7 +129,7 @@ export function AccountAttentionPreview(
                     }}
                   />
                 </span>
-                <span className="text-right font-semibold text-text-primary tnum">
+                <span className="font-semibold text-text-primary tnum">
                   {formatMoney(stage.value)}
                 </span>
               </div>
@@ -159,7 +159,7 @@ export function AccountAttentionPreview(
             {account.primaryContactTitle} · {account.contactCount} mapped contacts
           </span>
         </span>
-        <span className="text-right">
+        <span >
           <span className="flex items-center justify-end gap-1 text-[9.5px] text-text-tertiary">
             <Clock3 size={10} /> {account.lastTouch}
           </span>

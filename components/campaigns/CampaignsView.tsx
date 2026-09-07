@@ -658,7 +658,7 @@ export function CampaignsView({
                     <h3 className="text-[16px] font-semibold text-text-primary">Build the audience</h3>
                     <p className="mt-1 text-[12px] text-text-tertiary">Choose the exact people who should receive this message.</p>
                   </div>
-                  <div className="flex gap-4 text-right">
+                  <div className="flex gap-4">
                     <span><strong className="block text-[18px] text-text-primary tnum">{picked.size}</strong><span className="text-[10px] uppercase text-text-tertiary">contacts</span></span>
                     <span><strong className="block text-[18px] text-text-primary tnum">{selectedCompanies}</strong><span className="text-[10px] uppercase text-text-tertiary">accounts</span></span>
                   </div>
