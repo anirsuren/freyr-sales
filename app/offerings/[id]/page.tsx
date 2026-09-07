@@ -15,10 +15,12 @@ import {
   type LucideIcon,
   CalendarClock,
   Info,
+  Target,
 } from "lucide-react";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { SectionCard } from "@/components/ui/SectionCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
@@ -732,6 +734,21 @@ export default async function OfferingDetailPage({
             preferenceOwnerId={me.memberId || me.id}
           />
         ) : tab === "opportunities" ? (
+          offeringOpportunities.length === 0 && offeringCustomers.length === 0 ? (
+            /* ONE EMPTY STATE, NOT TWO STACKED (Anir, Sep 7: "is it supposed
+               to say no customers and also no opportunities both? Doesn't
+               really make sense to me"). The tab has two halves, deals and
+               live customers, and each drew its own hero when it had nothing,
+               so a fresh offering showed two large apologies in a column. When
+               both are empty the tab has one thing to say, and both ways in
+               fit in one sentence. Each half keeps its own message only when
+               the other half has rows. */
+            <EmptyState
+              icon={Target}
+              title="Nothing is running on this offering yet"
+              description={`Add an opportunity for ${o.offering_name} on the Opportunities page, or log an activity for it on a customer's Activity tab, and it appears here with its customer, its value and where it stands.`}
+            />
+          ) : (
           <>
             <OfferingOpportunities
               rows={offeringOpportunities}
@@ -747,6 +764,7 @@ export default async function OfferingDetailPage({
               offeringName={o.offering_name}
             />
           </>
+          )
         ) : tab === "competition" ? (
           <OfferingCompetition
             offeringId={o.id}
