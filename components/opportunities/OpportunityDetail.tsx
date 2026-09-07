@@ -5,7 +5,7 @@ import { fmtMoney, type CurrencyCode } from "@/lib/currency";
 import Link from "next/link";
 import {
   CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, Package, Pencil, Plus, Target } from "lucide-react";
-import { SmartBack } from "@/components/ui/BackButton";
+import { SmartBack, sectionLabelFor, useBackTrail } from "@/components/ui/BackButton";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useRouter } from "next/navigation";
 import { EditDealDialog } from "./EditDealDialog";
@@ -173,6 +173,12 @@ export function OpportunityDetail({
   /** The accrual planner, open on THIS deal. Mounted only while it is open, so
    *  it seeds itself from the plan the server just handed us. */
   const [planningAccrual, setPlanningAccrual] = useState(false);
+  const trail = useBackTrail();
+  const trailSection = trail ? sectionLabelFor(trail) : null;
+  const backLabel =
+    trailSection && trailSection !== "Opportunities"
+      ? `Back to ${trailSection}`
+      : "All opportunities";
   const router = useRouter();
   const { toast } = useToast();
 
@@ -390,7 +396,10 @@ export function OpportunityDetail({
         fallback="/opportunities"
         className="mb-4 inline-flex cursor-pointer items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary"
       >
-        <ArrowLeft size={15} strokeWidth={1.8} /> All opportunities
+        <ArrowLeft size={15} strokeWidth={1.8} />{" "}
+        {/* Says where it actually goes: a deal opened from Revenue Accruals
+            reads "Back to Revenue Accruals", not "All opportunities". */}
+        {backLabel}
       </SmartBack>
 
       {/* THE ACTIONS STAY ON THE RIGHT (Anir, Sep 4: "why is the button here?

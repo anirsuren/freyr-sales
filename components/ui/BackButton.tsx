@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { askBeforeLeaving } from "@/lib/unsavedGuard";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -87,6 +87,51 @@ export function NavHistoryTracker() {
  * The one back control. Unstyled beyond what the caller passes, so every
  * existing arrow keeps its exact chrome; only where it goes changes.
  */
+/**
+ * WHERE THE BACK ARROW WILL GO, so a screen can say so. "All opportunities"
+ * on a deal opened from Revenue Accruals was a lie: the arrow went back to
+ * Revenue Accruals, the words said Opportunities (Anir, Sep 7: "the back
+ * arrow is showing me opportunities. That's definitely a problem"). Reads
+ * the same trail the click uses; null when there is none (deep link).
+ */
+export function useBackTrail(): string | null {
+  const [prev, setPrev] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const here = window.location.pathname + window.location.search;
+      const stack = readStack();
+      const candidate =
+        stack[stack.length - 1] === here ? stack[stack.length - 2] : stack[stack.length - 1];
+      setPrev(candidate && candidate !== here ? candidate : null);
+    } catch {
+      setPrev(null);
+    }
+  }, []);
+  return prev;
+}
+
+/** The plain name of the section a path belongs to, for "Back to …". */
+export function sectionLabelFor(path: string): string | null {
+  const p = path.split("?")[0];
+  const table: [string, string][] = [
+    ["/revenue-accruals", "Revenue Accruals"],
+    ["/opportunities", "Opportunities"],
+    ["/customers", "Customers"],
+    ["/contracts", "Contracts"],
+    ["/solutioning", "Solutioning"],
+    ["/meetings", "Meetings"],
+    ["/offerings", "Offerings"],
+    ["/components", "FDL Components"],
+    ["/performance", "Goals"],
+    ["/goals", "Goals"],
+    ["/leads", "Leads"],
+    ["/reports", "Reports"],
+    ["/market-intel", "Market Intel"],
+  ];
+  for (const [root, label] of table) if (p === root || p.startsWith(root + "/")) return label;
+  return null;
+}
+
 export function SmartBack({
   fallback,
   className,
