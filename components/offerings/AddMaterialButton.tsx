@@ -1274,7 +1274,12 @@ export function AddMaterialButton({
                   a folder chosen on its own card, so the modal looked unfinished
                   when it was complete (Anir, Aug 14). The badge now asks the
                   real question: is any file still without one? */}
-              {files.some((f) => !(fileOverrides[fileKey(f)]?.folder || folder)) && (
+              {/* …and with no file picked at all (a pasted link), the shared
+                  folder is the only folder there is, so it asks then too
+                  (Sep 7 test loop: link mode showed every pill but this one). */}
+              {(files.length
+                ? files.some((f) => !(fileOverrides[fileKey(f)]?.folder || folder))
+                : !folder) && (
                 <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
                   Required
                 </span>

@@ -259,8 +259,22 @@ export function RequestDetail({
       fileName?: string;
     }[]
   >([]);
+  /* FIVE FILES ON A COMMENT, SAID OUT LOUD. The server has always kept the
+     first five and quietly dropped the rest; the picker let you stage any
+     number, so a sixth file looked attached and never arrived (Sep 7 test
+     loop). The cap now lives where the person can see it. */
+  const COMMENT_FILE_CAP = 5;
   const stageCommentFiles = (list: FileList | null) => {
-    for (const file of Array.from(list ?? [])) {
+    const picked = Array.from(list ?? []);
+    const room = Math.max(0, COMMENT_FILE_CAP - commentFiles.length);
+    if (picked.length > room)
+      toast(
+        room === 0
+          ? `A comment can carry ${COMMENT_FILE_CAP} files. Remove one to add another.`
+          : `A comment can carry ${COMMENT_FILE_CAP} files, so only the first ${room} of those were added.`,
+        "error"
+      );
+    for (const file of picked.slice(0, room)) {
       const key = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
       setCommentFiles((cur) => [
         ...cur,
@@ -1467,6 +1481,11 @@ export function RequestDetail({
         open={commenting}
         onClose={() => setCommenting(false)}
         title="Add a comment"
+        /* THE FRAME DOES NOT MOVE. Staging files used to grow the pop-up and
+           re-centre it under the cursor (Sep 7 test loop). The body is one
+           fixed height with the footer parked at its foot; the attachment
+           list scrolls inside once it is taller than three rows. */
+        bodyClassName="min-h-[440px] max-h-[440px] flex flex-col"
       >
         <Textarea
           rows={5}
@@ -1495,7 +1514,7 @@ export function RequestDetail({
           Attach files
         </label>
         {commentFiles.length > 0 && (
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-2 max-h-[150px] space-y-2 overflow-y-auto pr-1">
             {commentFiles.map((f) => (
               <li key={f.key} className="flex items-center gap-2.5 rounded-lg border border-border-light bg-surface/50 px-3 py-2">
                 <FileText size={14} strokeWidth={2} className="shrink-0 text-blue-primary" />
@@ -1508,7 +1527,7 @@ export function RequestDetail({
                   )}
                   {f.status === "error" && (
                     <span className="block text-[11px] font-medium text-[color:var(--status-red)]">
-                      That file did not upload.
+                      That file did not upload. Remove it to send the comment.
                     </span>
                   )}
                 </span>
@@ -1527,7 +1546,7 @@ export function RequestDetail({
           </ul>
         )}
 
-        <div className="mt-4 flex items-center justify-end gap-2">
+        <div className="mt-auto flex items-center justify-end gap-2 pt-4">
           <button
             type="button"
             onClick={() => setCommenting(false)}
@@ -1537,10 +1556,14 @@ export function RequestDetail({
           </button>
           <button
             type="button"
+            /* A FAILED FILE BLOCKS THE SEND, it is not quietly left out. The
+               comment used to post without the file while its row still said
+               it had not uploaded, so a reader saw a comment about a file
+               that was never there (Sep 7 test loop). */
             disabled={
               busy ||
               !comment.trim() ||
-              commentFiles.some((f) => f.status === "uploading")
+              commentFiles.some((f) => f.status !== "done")
             }
             onClick={async () => {
               const text = comment.trim();
