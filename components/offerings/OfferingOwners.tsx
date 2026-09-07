@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
+import { DateText } from "@/components/ui/DateText";
 
 export type OwnerRow = {
   memberId: string;
@@ -110,7 +111,7 @@ function OwnerHoverCard({
                 {owner.status === "owner" ? "Owns this offering" : "Asked to own this"}
               </p>
               <p className="whitespace-nowrap text-[11.5px] leading-tight text-text-tertiary">
-                {formatDate(owner.claimed_at)}
+                <DateText value={owner.claimed_at} />
               </p>
             </div>
           </div>
@@ -402,7 +403,7 @@ export function OfferingOwners({
                       )}
                     </span>
                     <span className="text-[11.5px] text-text-secondary">
-                      Owner since {formatDate(o.claimed_at)}
+                      Owner since <DateText value={o.claimed_at} />
                     </span>
                   </span>
                 </span>
@@ -458,7 +459,7 @@ export function OfferingOwners({
               </span>
               <span className="inline-flex items-center gap-1 text-[11px] text-[color:var(--ink-orange)]">
                 <Clock3 size={10} strokeWidth={2.2} />
-                Asked {formatDate(o.claimed_at)}, waiting on an admin
+                Asked <DateText value={o.claimed_at} />, waiting on an admin
               </span>
             </span>
             <span className="ml-auto flex shrink-0 items-center gap-1">

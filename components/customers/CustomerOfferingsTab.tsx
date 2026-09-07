@@ -48,6 +48,7 @@ import type {
 } from "@/lib/types";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 // One colour + glyph per revenue type — the same accents the offering report's
 // header chips use, so a type reads identically wherever it appears.
@@ -379,7 +380,7 @@ function RevenueSection({
                 {(l.start_date || l.end_date) && (
                   <span className="text-text-tertiary tnum">
                     {" "}
-                    · {formatDate(l.start_date)} → {formatDate(l.end_date)}
+                    · <DateText value={l.start_date} /> → <DateText value={l.end_date} />
                   </span>
                 )}
                 {l.description && (

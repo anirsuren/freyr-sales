@@ -39,6 +39,7 @@ import {
   type OfferingReport,
 } from "@/lib/revenue";
 import type { OfferingRevenueLine } from "@/lib/types";
+import { DateText } from "@/components/ui/DateText";
 
 type ReportLine = {
   customerId: string;
@@ -711,7 +712,7 @@ export function OfferingReports({
                         <>
                           <span className="flex flex-wrap items-center gap-2">
                             <span className="whitespace-nowrap text-[12.5px] font-semibold text-text-primary tnum">
-                              {formatDate(customer.nextRenewal.end_date)}
+                              <DateText value={customer.nextRenewal.end_date} />
                             </span>
                             <span
                               className={cn(

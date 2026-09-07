@@ -90,6 +90,7 @@ import type {
 } from "@/lib/types";
 import type { FdlComponent } from "@/lib/offerings";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 // "Ask Agent" is no longer a tab — the agent rides in a right-side drawer so
 // it's reachable from every tab without hiding the account (Anir, Jul 3).
@@ -2407,7 +2408,7 @@ export function CustomerTabs({
                         {n.follow_up_date && (
                           <span className="inline-flex items-center gap-1.5 text-text-tertiary tnum">
                             <CalendarClock size={13} strokeWidth={1.8} />
-                            Follow-up {formatDate(n.follow_up_date)}
+                            Follow-up <DateText value={n.follow_up_date} />
                           </span>
                         )}
                       </div>

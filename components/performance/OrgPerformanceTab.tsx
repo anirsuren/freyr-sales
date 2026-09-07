@@ -76,6 +76,7 @@ import { VerifyGoalModal, type VerifyScope } from "./VerifyGoalModal";
 import type { CurrencyCode, CurrencyRates } from "@/lib/currency";
 import { GroupPill, MetPill, MiniBar, PacePill, PersonGoalPanel, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * ORG PERFORMANCE — his words, verbatim: "list the primary goals which I've
@@ -2121,7 +2122,7 @@ function GoalRows({
                                     )}
                                     {a.assignedAt ? (
                                       <span className="tnum">
-                                        · {formatDate(a.assignedAt)}
+                                        · <DateText value={a.assignedAt} />
                                       </span>
                                     ) : null}
                                   </span>
@@ -2276,7 +2277,7 @@ function GoalRows({
                                   `new Date` reads as UTC midnight, so a result
                                   logged on the 5th displayed as "Sep 4" for
                                   anybody west of UTC. Same shape, right day. */}
-                              {formatDate(e.date)}{" "}
+                              <DateText value={e.date} />{" "}
                               · {e.person.split(" ")[0]}
                             </span>
                           </span>

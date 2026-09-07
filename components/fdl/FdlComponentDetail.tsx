@@ -59,6 +59,7 @@ import { ScrollHint } from "@/components/ui/ScrollHint";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDate } from "@/lib/utils";
 import { downloadDocx } from "@/lib/docx";
+import { DateText } from "@/components/ui/DateText";
 
 /** An imported row whose sheet cell had a date but no version number. */
 const MONTH_ONLY = /^[A-Za-z]{3}'\d{2}$/;
@@ -1136,7 +1137,7 @@ export function FdlComponentDetail({
                           ) : (
                             <span className="inline-flex items-center gap-1 rounded-md bg-surface px-1.5 py-0.5 text-[11.5px] text-text-secondary tnum">
                               <CalendarDays size={11} strokeWidth={2} className="text-text-tertiary" />
-                              {release.date ? formatDate(release.date) : "Date not set"}
+                              {release.date ? <DateText value={release.date} /> : "Date not set"}
                             </span>
                           )}
                           {/* The count alone made you scroll to the features
@@ -4209,7 +4210,7 @@ function ReleaseDateChip({
                         </span>
                         {move.from && move.to && (
                           <span className="block text-[11.5px] text-text-secondary tnum">
-                            {formatDate(move.from)} → {formatDate(move.to)}
+                            <DateText value={move.from} /> → <DateText value={move.to} />
                           </span>
                         )}
                         {/* A NAME IN THIS APP COMES WITH A FACE (Anir, Aug 19:
@@ -4219,7 +4220,7 @@ function ReleaseDateChip({
                           <Avatar name={move.by} className="h-4 w-4 text-[7px]" />
                           {move.by}
                           <span className="text-text-tertiary">
-                            · {formatDate(move.at.slice(0, 10))}
+                            · <DateText value={move.at.slice(0, 10)} />
                           </span>
                         </span>
                         {move.reason && (

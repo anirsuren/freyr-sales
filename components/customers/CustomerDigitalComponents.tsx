@@ -22,6 +22,7 @@ import type { CustomerComponentLink } from "@/lib/types";
 import type { FdlComponent } from "@/lib/offerings";
 import { formatDate, plural } from "@/lib/utils";
 import { CircleCheck, Clock, Rocket } from "lucide-react";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * WHAT SOFTWARE THIS CUSTOMER ACTUALLY RUNS (Suren, Aug 8, via Anir): "from a
@@ -426,9 +427,9 @@ export function CustomerDigitalComponents({
                   {live?.date &&
                     (new Date(`${live.date}T00:00:00`) > new Date() ||
                     live.status === "next" ? (
-                      <span className="tnum">Due {formatDate(live.date)}</span>
+                      <span className="tnum">Due <DateText value={live.date} /></span>
                     ) : (
-                      <span className="tnum">Live since {formatDate(live.date)}</span>
+                      <span className="tnum">Live since <DateText value={live.date} /></span>
                     ))}
                   {behind && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(194,65,12,0.25)] bg-[rgba(194,65,12,0.08)] px-2 py-0.5 font-semibold text-[color:var(--ink-orange)]">

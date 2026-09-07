@@ -59,6 +59,7 @@ import {
 } from "@/lib/solutioning";
 import { KIND_META, KindChip, STATUS_META, StatusPill } from "./bits";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * THE SOLUTIONING ROOM (Suren, Aug 24). Sales creates requests here or from a
@@ -1006,7 +1007,7 @@ function RequestRow({
               {r.requestedBy}
             </span>
             <span className="block text-[10.5px] text-text-tertiary">
-              {formatDate(r.requestedAt)}
+              <DateText value={r.requestedAt} />
             </span>
           </span>
         </span>
@@ -1027,7 +1028,7 @@ function RequestRow({
                 never breaks; the verdict owns the next. The comparison above
                 still uses the raw ISO string, which is what a comparison
                 wants. */}
-            <span className="block whitespace-nowrap">{formatDate(r.neededBy)}</span>
+            <span className="block whitespace-nowrap"><DateText value={r.neededBy} /></span>
             {overdue && <span className="block">overdue</span>}
           </span>
         ) : (
@@ -1346,7 +1347,7 @@ function RequestPanel({
                                 />
                                 <span className="min-w-0 truncate">{a.by}</span>
                                 <span className="whitespace-nowrap tnum">
-                                  · {formatDate(a.at)} ·{" "}
+                                  · <DateText value={a.at} /> ·{" "}
                                   {new Date(a.at).toLocaleTimeString([], {
                                     hour: "numeric",
                                     minute: "2-digit",

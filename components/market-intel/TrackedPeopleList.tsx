@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import type { FeedPost } from "@/lib/marketIntelFeed";
 import type { TrackedPerson } from "@/lib/marketIntelTracking";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * The People tracked rail (Anir, Aug 11): every row opens a popup with the
@@ -268,11 +269,7 @@ export function TrackedPeopleList({
                 <p className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
                   <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-bright-blue)]">
                     Followed since{" "}
-                    {new Date(open.addedAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    <DateText value={open.addedAt} />
                   </span>
                   {open.followerCount != null && (
                     <span className="rounded-full bg-[rgba(15,118,110,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-teal-deep)] tnum">

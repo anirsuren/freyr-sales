@@ -41,6 +41,7 @@ import { getDataMode } from "@/lib/dataMode";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getCurrentUser } from "@/lib/currentUser";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 export const metadata = { title: "Forecast" };
 export const dynamic = "force-dynamic";
@@ -822,11 +823,7 @@ export default async function ForecastPage() {
                       space"). */}
                   <span className="min-w-0 text-[10.5px] leading-snug">
                     <span className="block text-text-secondary tnum">
-                      {new Date(deal.lastActivity).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
+                      <DateText value={deal.lastActivity} />
                     </span>
                     <span className="block text-text-tertiary tnum">
                       {new Date(deal.lastActivity).toLocaleTimeString("en-US", {

@@ -43,6 +43,7 @@ import type { PickablePerson } from "@/components/ui/PeoplePicker";
 import type { OwnerRow } from "@/components/offerings/OfferingOwners";
 import { OfferingContacts } from "@/components/offerings/OfferingContacts";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * PRODUCT ROADMAP — shipped history for everyone, future for approved people.
@@ -1430,7 +1431,7 @@ export function OfferingReleasesTab({
               {current.version} <StatusPill status={current.status} />
             </p>
             <p className="mt-1 text-[12.5px] text-text-secondary">
-              {current.date ? formatDate(current.date) : "No release date recorded"}
+              {current.date ? <DateText value={current.date} /> : "No release date recorded"}
             </p>
             {current.features.length > 0 && (
               <ul className="mt-3 space-y-1.5">
@@ -1548,7 +1549,7 @@ export function OfferingReleasesTab({
                   <StatusPill status={rel.status} />
                   {rel.date && (
                     <span className="text-[12.5px] text-text-secondary">
-                      {formatDate(rel.date)}
+                      <DateText value={rel.date} />
                     </span>
                   )}
                   {canEdit && (
@@ -1615,7 +1616,7 @@ export function OfferingReleasesTab({
                 {next.version} <StatusPill status={next.status} />
               </p>
               <p className="mt-1 text-[12.5px] text-text-secondary">
-                {next.date ? formatDate(next.date) : "Target date to be confirmed"}
+                {next.date ? <DateText value={next.date} /> : "Target date to be confirmed"}
               </p>
               {next.features.length > 0 && (
                 <ul className="mt-3 space-y-1.5">

@@ -71,6 +71,7 @@ import {
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 // Rows run Video → Presentation → Document → Others, and within a format they
 // keep the order the offering owner put them in. A sort (not a per-kind loop)
@@ -1531,7 +1532,7 @@ export function MaterialsSection({
                                 dateTime={uploadDate}
                                 title={new Date(uploadDate).toLocaleString()}
                               >
-                                {formatDate(uploadDate)}
+                                <DateText value={uploadDate} />
                               </time>
                             ) : (
                               "Date not recorded"

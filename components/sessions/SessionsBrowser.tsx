@@ -24,6 +24,7 @@ import { cn, OUTCOME_META, formatDate, formatDateTime, formatTime } from "@/lib/
 import { REVIEW_META } from "@/lib/review";
 import type { ReviewStatus } from "@/lib/types";
 import { toCSV, downloadCSV } from "@/lib/csv";
+import { DateText } from "@/components/ui/DateText";
 
 export interface SessionRow {
   id: string;
@@ -434,7 +435,7 @@ export function SessionsBrowser({
                         "the date is taking up too much room… stack the time on
                         top of the date or vice versa"). */}
                     <td className="px-4 py-4 whitespace-nowrap tnum">
-                      <div className="text-[13px] text-text-secondary">{formatDate(r.date)}</div>
+                      <div className="text-[13px] text-text-secondary"><DateText value={r.date} /></div>
                       <div className="text-[11px] text-text-tertiary">{formatTime(r.date)}</div>
                     </td>
                     <td className="px-4 py-4">

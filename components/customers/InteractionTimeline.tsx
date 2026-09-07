@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatDate, formatDateTime, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import type { Interaction } from "@/lib/types";
+import { DateText } from "@/components/ui/DateText";
 
 /** The agent stamps its own rows into the same interactions store. A touch log
  *  is a record of what a PERSON did with the account, and agent surfaces belong
@@ -85,7 +86,7 @@ export function InteractionTimeline({
                   {it.follow_up_date && (
                     <span className="inline-flex items-center gap-1">
                       <CalendarClock size={12} strokeWidth={1.7} />
-                      Follow-up {formatDate(it.follow_up_date)}
+                      Follow-up <DateText value={it.follow_up_date} />
                     </span>
                   )}
                   {it.logged_by && (

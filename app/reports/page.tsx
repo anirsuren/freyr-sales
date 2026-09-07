@@ -35,6 +35,7 @@ import { buildDeals, formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 export const metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
@@ -731,7 +732,7 @@ export default async function ReportsPage() {
                           {formatMoney(r.amount)}
                         </td>
                         <td className="px-5 py-3 text-[12.5px] text-text-secondary tnum whitespace-nowrap">
-                          {formatDate(r.end_date)}
+                          <DateText value={r.end_date} />
                         </td>
                         <td className="px-5 py-3 whitespace-nowrap">
                           <span

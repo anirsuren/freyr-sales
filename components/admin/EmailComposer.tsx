@@ -28,6 +28,7 @@ import type { AdminEmailRecord } from "@/lib/adminEmail";
 import { RichTextBox } from "./RichTextBox";
 import { OwnerDigestPicker } from "./OwnerDigestPicker";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * WRITING AND SENDING AN EMAIL FROM THE APP (Anir, Aug 25: "have you added
@@ -1311,7 +1312,7 @@ export function EmailComposer() {
                                 Date
                               </span>
                               <span className="text-[12px] text-text-secondary tnum">
-                                {formatDate(e.sentAt)},{" "}
+                                <DateText value={e.sentAt} />,{" "}
                                 {new Date(e.sentAt).toLocaleTimeString([], {
                                   hour: "numeric",
                                   minute: "2-digit",

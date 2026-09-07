@@ -50,6 +50,7 @@ import {
   type RevenueAccrualsState,
 } from "@/lib/revenueAccrualsShared";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * THE ONE SCREEN AN ACCRUAL IS WRITTEN ON.
@@ -2652,11 +2653,7 @@ export function AccrualPlanDialog({
                             )}
                           </td>
                           <td className="px-3 py-2 text-[12.5px] tnum text-text-secondary">
-                            {new Date(row.at).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
+                            <DateText value={row.at} />
                           </td>
                           <td className="px-3 py-2 text-[12.5px] tnum font-semibold text-text-primary">
                             {formatMoney(row.total)}

@@ -49,6 +49,7 @@ import type {
 } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * ACTIVITIES ON THE OFFERING THE CUSTOMER HAS (Suren, Aug 8, via Anir): "once
@@ -470,7 +471,7 @@ export function OfferingActivities({
                     <td className="whitespace-nowrap py-2.5 pr-3 text-[12px] text-text-secondary tnum">
                       {started ? (
                         <>
-                          {formatDate(started)}
+                          <DateText value={started} />
                           <span className="px-1 text-text-tertiary">to</span>
                           {version.end_date ? (
                             formatDate(version.end_date)

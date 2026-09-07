@@ -17,6 +17,7 @@ import type { Interaction } from "@/lib/types";
 import { daysLabel, daysSince, whenLabel } from "./dealTime";
 import { outcomeMark } from "./dealOutcome";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /* ---------------------------------------------------------------------------
    ONE AXIS, AND IT IS THE FUNNEL IN TIME.
@@ -201,7 +202,7 @@ export function DealTimeline({
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-light px-2.5 py-1 text-[11.5px] font-semibold text-blue-primary">
           <CalendarDays size={13} strokeWidth={2} />
-          Today is {formatDate(nowIso)}
+          Today is <DateText value={nowIso} />
         </span>
       </div>
 
@@ -291,7 +292,7 @@ export function DealTimeline({
         ) : (
           <>
             <span className="font-semibold text-text-primary tnum">
-              {formatDate(nextStep)}
+              <DateText value={nextStep} />
             </span>
             <span className="text-text-secondary">
               {nextStepOverdue
@@ -350,7 +351,7 @@ function StayHover({ rung }: { rung: Rung }) {
         ) : (
           <p className="text-[11px] leading-relaxed text-text-secondary">
             <span className="font-semibold text-text-primary">In:</span> the deal
-            was created on {formatDate(rung.enteredAt)}, no touch was needed to
+            was created on <DateText value={rung.enteredAt} />, no touch was needed to
             put it here.
           </p>
         )}

@@ -14,6 +14,7 @@ import { revenueTypeRule } from "@/lib/opportunitiesShared";
 import type { Opportunity } from "@/lib/opportunitiesShared";
 import { cn, formatDate, plural } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * EVERY DEAL RUNNING ON THIS OFFERING, ON THE OFFERING'S OWN PAGE.
@@ -212,7 +213,7 @@ export function OfferingOpportunities({
                 {/* whitespace-nowrap: "Aug 18, 2026" was breaking after the
                     comma and making the row two lines tall for no reason. */}
                 <td className="whitespace-nowrap py-2.5 pr-4 text-[12.5px] tnum text-text-secondary">
-                  {row.estSignDate ? formatDate(row.estSignDate) : "—"}
+                  {row.estSignDate ? <DateText value={row.estSignDate} /> : "—"}
                 </td>
                 <td className="py-2.5 pr-4">
                   {row.owner ? (

@@ -19,6 +19,7 @@ import { KeyRound, Search } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { tint } from "@/lib/tint";
 import { AccessHistory } from "@/components/admin/AccessHistory";
+import { DateText } from "@/components/ui/DateText";
 
 
 type Member = {
@@ -412,13 +413,7 @@ export function MemberRoles() {
                       {lastSeenLabel(m.lastSeenAt)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-[11.5px] text-text-tertiary">
-                      {m.joinedAt
-                        ? new Date(m.joinedAt).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })
-                        : "Not recorded"}
+                      {m.joinedAt ? <DateText value={m.joinedAt} /> : "Not recorded"}
                     </td>
                     {/* THE SAME POWER SPLIT VIEW HAS (Anir, Aug 31: "why in
                         split view is it different from the table view? That's

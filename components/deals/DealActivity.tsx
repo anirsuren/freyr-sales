@@ -8,6 +8,7 @@ import { formatDate, formatDateTime } from "@/lib/utils";
 import type { Interaction } from "@/lib/types";
 import { daysSince, whenLabel } from "./dealTime";
 import { outcomeMark } from "./dealOutcome";
+import { DateText } from "@/components/ui/DateText";
 
 /* ---------------------------------------------------------------------------
    THE ACTIVITY COLUMN, AND IT IS A VERTICAL TIMELINE.
@@ -145,7 +146,7 @@ export function DealActivity({
                       {it.follow_up_date && (
                         <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[11px] font-semibold text-blue-primary tnum">
                           <CalendarClock size={11} strokeWidth={2.1} />
-                          Follow-up {formatDate(it.follow_up_date)}
+                          Follow-up <DateText value={it.follow_up_date} />
                         </span>
                       )}
                     </div>

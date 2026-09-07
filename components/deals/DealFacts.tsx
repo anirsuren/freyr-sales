@@ -15,6 +15,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { daysLabel, daysSince } from "./dealTime";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /* ---------------------------------------------------------------------------
    THE FACTS BAND.
@@ -164,7 +165,7 @@ export function DealFacts({
             </span>
             <Tile color={MEASURE} Icon={CalendarPlus} />
           </div>
-          <span className={`mt-2.5 ${VALUE} tnum`}>{formatDate(openedAt)}</span>
+          <span className={`mt-2.5 ${VALUE} tnum`}><DateText value={openedAt} /></span>
           <p className={`mt-auto pt-2 ${NOTE}`}>
             {ageDays <= 0
               ? "Opened today."

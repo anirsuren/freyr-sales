@@ -125,6 +125,7 @@ import { OpportunityActivities } from "@/components/opportunities/OpportunityAct
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * OPPORTUNITIES — Suren's pipeline, as records you can change.
@@ -2028,7 +2029,7 @@ export function OpportunitiesBrowser({
                                                 <span className="font-bold tnum">{mt.ref}</span>
                                                 <span aria-hidden="true">·</span>
                                                 <span className="tnum">
-                                                  {formatDate(mt.meetingAt)}
+                                                  <DateText value={mt.meetingAt} />
                                                 </span>
                                               </span>
                                             </Link>

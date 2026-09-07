@@ -46,6 +46,7 @@ import { cn, formatDate } from "@/lib/utils";
 import type { RunOp } from "./PerformanceModule";
 import { typeMeta, GroupPill } from "./bits";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * THE EVIDENCE-AND-VERIFICATION SURFACES (Suren, Aug 13).
@@ -1974,7 +1975,7 @@ export function VerifyQueueCard({
                         <CustomerCell customer={a.customer} customerId={a.customerId} />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-text-secondary tnum">
-                        <span className="block">{formatDate(a.date)}</span>
+                        <span className="block"><DateText value={a.date} /></span>
                         {/* When it actually landed in your queue. Same
                             reason as the rep's table: on a day with two
                             claims, the day alone says nothing. */}
@@ -2371,7 +2372,7 @@ export function ClaimReviewDialog({
                   {a.person}
                 </span>
                 <span className="block text-[12px] text-text-secondary">
-                  claimed on {formatDate(a.date)}
+                  claimed on <DateText value={a.date} />
                 </span>
               </span>
               <span className="shrink-0 text-right">

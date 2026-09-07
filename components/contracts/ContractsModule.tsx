@@ -58,6 +58,7 @@ import {
   type ContractsState,
 } from "@/lib/contractsShared";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * CONTRACTS (Suren, Aug 25): "where we are logically closing."
@@ -1162,14 +1163,14 @@ export function ContractsModule({
                               </span>
                               <span className="block text-[11px] text-text-tertiary">
                                 {c.updatedBy === c.owner ? "Updated" : `Updated by ${c.updatedBy}`}{" "}
-                                {formatDate(c.updatedAt)}
+                                <DateText value={c.updatedAt} />
                               </span>
                             </span>
                           </>
                         ) : (
                           <span className="text-[11.5px] text-text-tertiary">
                             Updated by <b className="text-text-secondary">{c.updatedBy}</b>{" "}
-                            {formatDate(c.updatedAt)}
+                            <DateText value={c.updatedAt} />
                           </span>
                         )}
                       </span>

@@ -65,6 +65,7 @@ import {
   DELIVERABLE_STATUSES,
   REQUEST_PRIORITIES,
 } from "@/lib/solutioning";
+import { DateText } from "@/components/ui/DateText";
 
 /* Priority is the one place a red/amber/green scale IS the meaning — it is a
    ranking of urgency, not an identity. */
@@ -778,7 +779,7 @@ export function RequestDetail({
             )}
           >
             <CalendarDays size={12} strokeWidth={2} />
-            needed by {formatDate(r.neededBy)}
+            needed by <DateText value={r.neededBy} />
             {overdue ? " · overdue" : ""}
           </span>
         )}

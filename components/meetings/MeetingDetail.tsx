@@ -46,6 +46,7 @@ import {
   RECORD_ACTION_NEUTRAL,
 } from "@/components/solutioning/recordActions";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * ONE MEETING.
@@ -242,7 +243,7 @@ export function MeetingDetail({
               {done ? "Completed" : "Planned"}
             </span>
             <span className="text-[12.5px] text-text-secondary">
-              {formatDate(m.meetingAt)}
+              <DateText value={m.meetingAt} />
             </span>
           </div>
         </div>

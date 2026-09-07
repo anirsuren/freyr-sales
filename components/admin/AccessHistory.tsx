@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { History, ShieldCheck, UserCog, KeyRound, LogIn } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * WHAT HAS BEEN DONE TO ONE PERSON'S ACCESS, NEWEST FIRST.
@@ -106,7 +107,7 @@ export function AccessHistory({
                     {e.detail ? ` — ${e.detail}` : ""}
                   </span>
                   <span className="mt-0.5 block text-[11.5px] text-text-tertiary">
-                    {formatDate(e.at)}
+                    <DateText value={e.at} />
                   </span>
                 </span>
               </li>

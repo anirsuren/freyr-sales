@@ -42,6 +42,7 @@ import { buildDeals } from "@/lib/pipeline";
 import { rankOfferingsForContact } from "@/lib/outreach";
 import { listCustomerTypes, listOfferings } from "@/lib/offerings";
 import { hasElevenLabs } from "@/lib/env";
+import { DateText } from "@/components/ui/DateText";
 
 export const metadata = { title: "Contact" };
 export const dynamic = "force-dynamic";
@@ -292,7 +293,7 @@ export default async function ContactDetailPage({
             </p>
             <p className="text-[13px] font-bold text-blue-primary mt-0.5">Today</p>
             <p className="text-[11px] text-blue-primary/70 mt-0.5 tnum">
-              {formatDate(new Date().toISOString())}
+              <DateText value={new Date().toISOString()} />
             </p>
           </div>
 
@@ -314,7 +315,7 @@ export default async function ContactDetailPage({
               Next step
             </p>
             <p className="text-[13px] font-semibold text-text-primary mt-0.5 tnum">
-              {nextStep ? formatDate(nextStep) : "Not scheduled"}
+              {nextStep ? <DateText value={nextStep} /> : "Not scheduled"}
             </p>
             {nextStep && (
               <p className="text-[11px] text-text-tertiary mt-0.5">

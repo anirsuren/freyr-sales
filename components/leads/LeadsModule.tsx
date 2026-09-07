@@ -66,6 +66,7 @@ import {
 
 import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 type CustomerOption = { id: string; name: string };
 
@@ -678,7 +679,7 @@ export function LeadsModule({
                                   lives in the Actions column (Anir, Aug 27). */}
                               <span className="ml-auto text-[11.5px] text-text-tertiary">
                                 Last moved by {lead.updatedBy} ·{" "}
-                                {formatDate(lead.updatedAt)}
+                                <DateText value={lead.updatedAt} />
                               </span>
                             </div>
                           </div>

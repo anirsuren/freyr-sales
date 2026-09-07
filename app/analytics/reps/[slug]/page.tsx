@@ -48,6 +48,7 @@ import { buildPerson360 } from "@/lib/person360";
 import { Customer360 } from "@/components/customers/Customer360";
 import { opportunityValue } from "@/lib/opportunitiesShared";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * The teammate's own name in the tab. A static "Rep" label made every open profile
@@ -203,11 +204,13 @@ export default async function RepPage({
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarCheck size={12} strokeWidth={2} />
                   Joined{" "}
-                  {new Date(member.joinedAt).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+                  <DateText value={member.joinedAt}>
+                    {new Date(member.joinedAt).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </DateText>
                 </span>
               )}
             </p>

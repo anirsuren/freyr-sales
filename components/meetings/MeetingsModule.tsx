@@ -35,6 +35,7 @@ import {
   type MeetingsState,
 } from "@/lib/meetings";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 export type CustomerOption = { id: string; name: string };
 export type ContactOption = {
@@ -474,7 +475,7 @@ export function MeetingsModule({
                           <span className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-text-tertiary">
                             <span className="min-w-0 truncate">{m.customer}</span>
                             <span className="shrink-0 tnum">
-                              · {formatDate(m.meetingAt)}
+                              · <DateText value={m.meetingAt} />
                             </span>
                           </span>
                           {/* WHAT KIND OF MEETING IT WAS — the same chip the
@@ -535,7 +536,7 @@ export function MeetingsModule({
                       {picked.title}
                     </span>
                     <span className="mt-0.5 block truncate text-[11.5px] text-text-secondary tnum">
-                      {picked.customer} · {formatDate(picked.meetingAt)}
+                      {picked.customer} · <DateText value={picked.meetingAt} />
                     </span>
                   </span>
                   <Link
@@ -658,7 +659,7 @@ export function MeetingsModule({
                           )}
                         </span>
                         <span className="w-[96px] shrink-0 text-[12.5px] font-semibold tnum text-text-primary">
-                          {formatDate(m.meetingAt)}
+                          <DateText value={m.meetingAt} />
                         </span>
                         <span
                           aria-hidden="true"

@@ -23,6 +23,7 @@ import {
   type Customer360Band,
   type Customer360Item,
 } from "@/lib/customer360Shared";
+import { DateText } from "@/components/ui/DateText";
 /* Re-exported so the pages that already import these from here keep working;
    the definitions live in lib/customer360Shared.ts because server code needs
    BAND_ICONS as a real value, not a client reference. */
@@ -833,7 +834,7 @@ export function Customer360({
                         )}
                         {anyWhen && (
                           <td className="py-3 text-left text-[12.5px] tnum text-text-secondary">
-                            {item.when ? formatDate(item.when) : "—"}
+                            {item.when ? <DateText value={item.when} /> : "—"}
                           </td>
                         )}
                       </tr>
@@ -927,7 +928,7 @@ export function Customer360({
                         {item.sub && <span className="min-w-0">{item.sub}</span>}
                         {item.when && (
                           <span className="tnum text-text-tertiary">
-                            {formatDate(item.when)}
+                            <DateText value={item.when} />
                           </span>
                         )}
                       </p>

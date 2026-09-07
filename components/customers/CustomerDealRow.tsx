@@ -18,6 +18,7 @@ import {
 } from "@/lib/pipeline";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 export type CustomerDealRowData = {
   id: string;
@@ -193,7 +194,7 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
               <CalendarClock size={11} /> Expected close
             </span>
             <span className="mt-1.5 flex min-h-[26px] items-center text-[11.5px] font-semibold text-text-primary">
-              {deal.closeDate ? formatDate(deal.closeDate) : "Not scheduled"}
+              {deal.closeDate ? <DateText value={deal.closeDate} /> : "Not scheduled"}
             </span>
           </span>
           <span className="min-w-0">

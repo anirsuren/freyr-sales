@@ -67,6 +67,7 @@ import {
   type RevenueAccrualsState,
   type TabAccrualStatus,
 } from "@/lib/revenueAccrualsShared";
+import { DateText } from "@/components/ui/DateText";
 /* THE PLANNER ITSELF, in a file of its own so a deal's page can mount exactly
    the same screen (Suren, Sep 1: "it's just that same screen shows up here").
    The deal type and the reserved amber come with it rather than being written
@@ -592,7 +593,7 @@ function DeviationsTable({
                         : "Edited"}
                   </span>
                   <span className="text-[12px] text-text-tertiary">
-                    {h.by} · {formatDate(h.at)}
+                    {h.by} · <DateText value={h.at} />
                   </span>
                   <span className="ml-auto text-[12.5px] font-semibold tnum text-text-primary">
                     {formatMoney(h.total)}

@@ -24,6 +24,7 @@ import {
 import type { RecommendedService } from "@/lib/types";
 import { geographyWithFlag } from "@/lib/countryFlags";
 import { tint } from "@/lib/tint";
+import { DateText } from "@/components/ui/DateText";
 
 /** Which account's report. A static "Account report" was indistinguishable
  *  across open tabs, the same way the customer page itself was (found Aug 14
@@ -148,7 +149,7 @@ export default async function AccountReportPage({
             <p className="text-[12px] text-text-tertiary tnum text-right">
               Generated
               <br />
-              {formatDate(new Date().toISOString())}
+              <DateText value={new Date().toISOString()} />
             </p>
           </header>
 
