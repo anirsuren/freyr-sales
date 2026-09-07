@@ -2970,6 +2970,7 @@ export function OpportunitiesBrowser({
                           value: c.id,
                           label: c.name,
                           logoName: c.name,
+                          href: `/customers/${c.id}`,
                         })),
                       ]}
                     />

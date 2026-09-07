@@ -260,6 +260,7 @@ export function ContactOutreachPanel({
                   value: o.id,
                   label: o.name,
                   icon: Package,
+                  href: `/offerings/${o.id}`,
                   color: "var(--ink-bright-blue)",
                   // The match strength rides as a badge instead of being glued
                   // into the label text.

@@ -1735,12 +1735,17 @@ export function NewRequestDialog({
    * before today.
    */
   const todayISO = new Date().toISOString().slice(0, 10);
-  const dateProblem =
+  /* EACH DATE OWNS ITS OWN COMPLAINT, so the words can sit under the field
+     they are about rather than in the dialog's far corner (Anir, Sep 7). */
+  const neededByProblem =
     neededBy && neededBy < todayISO
       ? "That date has already passed. Pick today or later."
-      : meetingAt && meetingAt.slice(0, 10) < todayISO
-        ? "That meeting is in the past. Pick today or later."
-        : null;
+      : null;
+  const meetingProblem =
+    meetingAt && meetingAt.slice(0, 10) < todayISO
+      ? "That meeting is in the past. Pick today or later."
+      : null;
+  const dateProblem = neededByProblem ?? meetingProblem;
   const canSave =
     !!kind &&
     title.trim().length > 0 &&
@@ -2109,9 +2114,16 @@ export function NewRequestDialog({
                 <input
                   type="date"
                   value={meetingAt}
+                  min={todayISO}
                   onChange={(e) => setMeetingAt(e.target.value)}
                   className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
                 />
+                <span
+                  aria-live="polite"
+                  className="mt-1 block h-[16px] text-[12px] font-semibold leading-4 text-[color:var(--ink-orange)]"
+                >
+                  {meetingProblem}
+                </span>
               </label>
             )}
           </div>
@@ -2154,6 +2166,10 @@ export function NewRequestDialog({
                         value: c.id,
                         label: c.name,
                         logoName: c.name,
+                        /* A picker names records, and the name is often not
+                           enough to be sure (Anir, Sep 7). The arrow opens
+                           the account in a new tab; the form stays put. */
+                        href: `/customers/${c.id}`,
                         description: deals
                           ? `${deals} ${deals === 1 ? "deal" : "deals"}`
                           : "no deals",
@@ -2179,6 +2195,22 @@ export function NewRequestDialog({
                 onChange={(e) => setNeededBy(e.target.value)}
                 className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
               />
+              {/* THE COMPLAINT SITS UNDER THE FIELD IT IS ABOUT. It used to
+                  live beside the Create button at the far corner of the
+                  dialog, a full form away from the date it was talking about
+                  (Anir, Sep 7: "why would you put that message there? Put it
+                  next to the date selector"). */}
+              {/* THE LINE IS ALWAYS THERE, EMPTY OR NOT, so saying the date
+                  has passed does not grow the dialog and shove everything
+                  under it down a line (Anir, Sep 7: "it shouldn't increase
+                  the dimensions of the pop-up when it shows that"). Same rule
+                  as every other pop-up here: the frame holds still. */}
+              <span
+                aria-live="polite"
+                className="mt-1 block h-[16px] text-[12px] font-semibold leading-4 text-[color:var(--ink-orange)]"
+              >
+                {neededByProblem}
+              </span>
             </label>
           </div>
 
@@ -2209,6 +2241,7 @@ export function NewRequestDialog({
                     value: o.id,
                     label: o.label,
                     color: "var(--ink-bright-blue)",
+                    href: `/opportunities/${o.id}`,
                   }))}
                   /* Only once an account is chosen: an opportunity has to
                      belong to somebody. */
@@ -2240,6 +2273,7 @@ export function NewRequestDialog({
                     value: c.id,
                     label: c.title ? `${c.name} · ${c.title}` : c.name,
                     avatarName: c.name,
+                    href: `/contacts/${c.id}`,
                   }))}
                   createLabel={customer ? "Create a new contact" : undefined}
                   onCreate={customer ? () => setSub("contact") : undefined}
@@ -2438,11 +2472,6 @@ export function NewRequestDialog({
             >
               Back
             </button>
-            {dateProblem && (
-              <span className="order-last w-full text-[12.5px] font-semibold text-[color:var(--ink-orange)] sm:order-none sm:w-auto">
-                {dateProblem}
-              </span>
-            )}
             <button
               type="button"
               disabled={!canSave || saving}

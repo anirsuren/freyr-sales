@@ -1149,6 +1149,7 @@ export function DealOverviewEditor({
                       value: c.id,
                       label: c.name,
                       logoName: c.name,
+                      href: `/customers/${c.id}`,
                     })),
                   ]}
                 />
@@ -1195,6 +1196,7 @@ export function DealOverviewEditor({
                       value: o.id,
                       label: o.name,
                       color: OFFERING_TONE,
+                      href: `/offerings/${o.id}`,
                       /* The six agents wear Saras's artwork; everything else
                          keeps the offering tone dot. */
                       ...(agentIn(o.name) ? { agentName: o.name } : {}),

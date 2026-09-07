@@ -277,6 +277,7 @@ export default async function OpportunityPage({
       requestSolutioning={
         mayRequestSolutioning ? (
           <RequestSolutioningButton
+            landOnTab="solutionRequests"
             /* Keyed because it is created here and rendered among siblings in
                the detail's header: React counts that as a list and warns
                without one. Harmless to render, noisy in the console, and a

@@ -27,6 +27,7 @@ export function RequestSolutioningButton({
   opportunities,
   members,
   prefillOpportunityId = null,
+  landOnTab = null,
 }: {
   /**
    * MAY THEY RAISE ONE. Asking is a write on Solutioning, not a create — see
@@ -49,6 +50,10 @@ export function RequestSolutioningButton({
    *  opportunity page pre-fills it; the customer page has no single deal to
    *  name and passes nothing. */
   prefillOpportunityId?: string | null;
+  /** Which tab on THIS page now holds what was just raised, so the person
+   *  lands on it instead of the page they were already reading (Anir,
+   *  Sep 7). Null on pages with no such tab. */
+  landOnTab?: string | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -105,6 +110,11 @@ export function RequestSolutioningButton({
               }
               toast(`${data.request.ref} raised for ${companyName}.`);
               setOpen(false);
+              if (landOnTab) {
+                const url = new URL(window.location.href);
+                url.searchParams.set("tab", landOnTab);
+                router.replace(url.pathname + url.search);
+              }
               /* The 360 panel above counts submissions, presentations and
                  meetings, so the count it is showing is now one behind. */
               router.refresh();

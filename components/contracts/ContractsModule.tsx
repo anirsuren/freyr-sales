@@ -1365,6 +1365,7 @@ export function ContractsModule({
                   { value: "", label: "Not linked to a deal", color: "#8E98A8" },
                   ...deals.map((d) => ({
                     value: d.id,
+                    href: `/opportunities/${d.id}`,
                     /* SAY EACH THING ONCE (Anir, Aug 28: "why r u repeating").
                        A deal is named after its offering and its account, so
                        "GRI — Gilead · Gilead" printed the account twice. */

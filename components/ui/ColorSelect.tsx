@@ -3,7 +3,7 @@
 import { Fragment, useState, useRef, useEffect, type CSSProperties } from "react";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { createPortal } from "react-dom";
-import { ChevronDown, Check, Crown, Plus, Search, type LucideIcon } from "lucide-react";
+import { ChevronDown, Check, Crown, ExternalLink, Plus, Search, type LucideIcon } from "lucide-react";
 import {
   PriorityLabel,
   PriorityTooltip,
@@ -18,6 +18,29 @@ import { tint } from "@/lib/tint";
 /** The default floor for a trigger's width. Named so `dense` can tell a
  *  caller-set floor from the one it inherited. */
 const DEFAULT_MIN_WIDTH = 170;
+
+
+/**
+ * THE QUIET WAY OUT OF A PICKER. Sits at the right edge of an option row,
+ * invisible until the row is hovered or the link itself is focused, and
+ * opens the record in a new tab without touching the selection.
+ */
+function OpenInNewTab({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Open ${label} in a new tab`}
+      title={`Open ${label} in a new tab`}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      className="ml-0.5 hidden shrink-0 rounded p-1 text-text-tertiary opacity-0 transition-opacity hover:bg-surface hover:text-blue-primary focus-visible:opacity-100 group-hover/opt:opacity-100 sm:block"
+    >
+      <ExternalLink size={12} strokeWidth={2.2} aria-hidden="true" />
+    </a>
+  );
+}
 
 export type ColorOption = {
   value: string;
@@ -50,6 +73,18 @@ export type ColorOption = {
    * reasonably type goes here.
    */
   searchText?: string;
+  /**
+   * WHERE THIS ROW LIVES, so you can go and look without losing the form.
+   *
+   * Anir, Sep 7: "have a little thing to the right, subtle. I can click it
+   * and it'll open that thing in a new tab. If I forget what this opportunity
+   * is, I can click it. Do it on every drop-down." A picker names records —
+   * deals, accounts, people, offerings — and the name alone is often not
+   * enough to be sure you picked the right one. Set this to the record's page
+   * and the row grows a quiet arrow on hover that opens it in a new tab; the
+   * click never selects, so looking costs nothing.
+   */
+  href?: string;
   /**
    * DRAW THE EYE TO THE ROWS THAT HAVE SOMETHING (Suren, Aug 28: "make the
    * ones that have a deal pop more").
@@ -780,7 +815,7 @@ export function ColorSelect({
                   setOpen(false);
                 }}
                 className={cn(
-                  "menu-row-in relative w-full flex items-center rounded-lg text-left transition-[background-color,box-shadow,transform]",
+                  "menu-row-in group/opt relative w-full flex items-center rounded-lg text-left transition-[background-color,box-shadow,transform]",
                   detailed
                     ? inlineDescription
                       ? "gap-2.5 px-2.5 py-1.5"
@@ -870,6 +905,7 @@ export function ColorSelect({
                 {on && (
                   <Check size={15} strokeWidth={2.6} className="shrink-0" style={{ color: accent }} />
                 )}
+                {o.href && <OpenInNewTab href={o.href} label={o.label} />}
               </button>
               </Fragment>
             );
@@ -1340,7 +1376,7 @@ export function MultiColorSelect({
                 aria-selected={on}
                 onClick={() => toggle(o.value)}
                 className={cn(
-                  "menu-row-in w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors",
+                  "menu-row-in group/opt w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors",
                   !on && "hover:bg-surface"
                 )}
                 style={{
@@ -1388,6 +1424,7 @@ export function MultiColorSelect({
                     width from the longest label above; anything wider than
                     the 400px cap wraps rather than cutting. */}
                 <span className={cn("min-w-0 flex-1 whitespace-normal leading-tight", on && "font-semibold")}>{o.label}</span>
+                {o.href && <OpenInNewTab href={o.href} label={o.label} />}
               </button>
             );
           })}

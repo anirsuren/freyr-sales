@@ -1639,6 +1639,7 @@ export function AccrualPlanDialog({
             ...pickable.map((d) => ({
               value: d.id,
               label: d.name,
+              href: `/opportunities/${d.id}`,
               /* The account's own mark on every row (Anir, Aug 28: "I
                  need the company profile picture on the plan a deal") —
                  the standing rule that a company on screen always brings

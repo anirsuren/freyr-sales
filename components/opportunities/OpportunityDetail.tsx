@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { fmtMoney, type CurrencyCode } from "@/lib/currency";
 import Link from "next/link";
 import {
   CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, Package, Pencil, Plus, Target } from "lucide-react";
 import { SmartBack, sectionLabelFor, useBackTrail } from "@/components/ui/BackButton";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { EditDealDialog } from "./EditDealDialog";
 /* THE OVERVIEW TAB IS THE EDIT FORM (Suren, Sep 1: "This overview can be the
    edit deal, actually, and within the overview, let them edit if you want").
@@ -161,7 +161,24 @@ export function OpportunityDetail({
   const acv = estimatedAcvOf(deal);
   const tcv = estimatedTcvOf(deal);
   const level = effectiveRevenueType(deal);
-  const [tab, setTab] = useState<string>("overview");
+  /* THE TAB IS IN THE URL, so a link can land on one and an action can send
+     you to one. Raising a solution request from the header used to leave you
+     on Overview looking at the tab you had just added something to (Anir,
+     Sep 7: "I just created it, I'm still on this page. It should have opened
+     the solution request tab for me"). */
+  const tabParam = useSearchParams().get("tab");
+  const [tab, setTabState] = useState<string>(tabParam || "overview");
+  useEffect(() => {
+    if (tabParam && tabParam !== tab) setTabState(tabParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam]);
+  const setTab = (next: string) => {
+    setTabState(next);
+    const url = new URL(window.location.href);
+    if (next === "overview") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", next);
+    window.history.replaceState(null, "", url.toString());
+  };
   const [editing, setEditing] = useState(false);
   /**
    * ONE DIALOG, TWO DOORS (Anir, Aug 31: "I can add it from the edit page, or
