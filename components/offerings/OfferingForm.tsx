@@ -2495,7 +2495,149 @@ export function OfferingForm({
          somebody did before the tab was replaced. Nothing is lost if the tab
          ever returns; there is simply no way to edit it from here. */}
 
-      {/* ---------------------------------------------------- sales materials */}
+      {/* RELATED OFFERINGS (Anir, Aug 27: "when they press Edit at the top,
+          that's where it should be, and then it's a separate section").
+          ABOVE the materials now, and on an existing offering it is the last
+          section (Saras, Sep 7: "the Related Offerings box to be shifted
+          above the Sales Materials box. In fact, you can remove the Sales
+          Materials box entirely, since the edits can be made directly within
+          the Sales Materials tab"). The category siblings are the automatic
+          base; rows here remove them or pin extras in, and it all saves with
+          the one Save button like every other section of this form. */}
+      <FormSection
+        icon={Layers}
+        title="Related offerings"
+        hint="What shows in the Related offerings section of this offering's page. Anything in the same category shows up on its own. You can take any of those off, or add offerings from anywhere else."
+        count={
+          relatedPool.filter(
+            (x) =>
+              (x.category === offeringCategory && !relatedHide.includes(x.id)) ||
+              relatedAdd.includes(x.id)
+          ).length
+        }
+        action={
+          /* SOLID BLUE, WHITE TEXT (Anir, Aug 27: "it should be like a plus
+             button, kind of like how you have it on sales materials — make
+             that button that other blue color with the white text"). */
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setAddingRelated(true);
+            }}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-primary px-2.5 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            <Plus size={14} strokeWidth={2.2} /> Add offering
+          </button>
+        }
+      >
+        {(() => {
+          const visible = relatedPool.filter(
+            (x) =>
+              (x.category === offeringCategory && !relatedHide.includes(x.id)) ||
+              relatedAdd.includes(x.id)
+          );
+          const hidden = relatedPool.filter(
+            (x) => x.category === offeringCategory && relatedHide.includes(x.id)
+          );
+          return (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                {visible.map((x) => {
+                  const pinned =
+                    relatedAdd.includes(x.id) && x.category !== offeringCategory;
+                  return (
+                    <div
+                      key={x.id}
+                      className="flex items-center gap-3 rounded-xl border border-border-light bg-white px-3.5 py-2.5"
+                    >
+                      {/* No glyph beside the name (Anir, Sep 2: "can you
+                          just remove these icons from all the offering names?
+                          They're not really needed"). */}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-semibold text-text-primary">
+                          {x.name}
+                        </span>
+                        <span className="block text-[11.5px] text-text-tertiary">
+                          {x.category || "No category"}
+                        </span>
+                      </span>
+                      {/* WHY it is on the list, so removing is informed: a
+                          sibling comes back if the category ever matches
+                          again; a pinned one is this page's own choice. */}
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold",
+                          pinned
+                            ? "bg-blue-light text-blue-primary"
+                            : "bg-surface text-text-tertiary"
+                        )}
+                      >
+                        {pinned ? (
+                          <>
+                            <Pin size={10} strokeWidth={2.4} /> Added here
+                          </>
+                        ) : (
+                          "Same category"
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setConfirmRow({ kind: "related", id: x.id, label: x.name })
+                        }
+                        aria-label={`Remove ${x.name} from related offerings`}
+                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[color:#DC2626]/10"
+                      >
+                        <Trash2 size={14} strokeWidth={2} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {visible.length === 0 && (
+                  <p className="rounded-xl border border-dashed border-border-light bg-surface/40 px-3.5 py-4 text-center text-[12.5px] text-text-tertiary">
+                    Nothing on the list yet. Add the offerings that sell
+                    alongside this one.
+                  </p>
+                )}
+              </div>
+
+              {hidden.length > 0 && (
+                /* The removed siblings stay findable — a hide is a choice
+                   someone should be able to see and undo, not a hole. */
+                <div className="rounded-xl bg-surface/50 px-3.5 py-3">
+                  <p className="text-[11.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    Removed from this list
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {hidden.map((x) => (
+                      <button
+                        key={x.id}
+                        type="button"
+                        onClick={() =>
+                          setRelatedHide((cur) => cur.filter((i) => i !== x.id))
+                        }
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-2.5 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                      >
+                        <Plus size={12} strokeWidth={2.4} />
+                        {x.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </FormSection>
+      {/* ---------------------------------------------------- sales materials
+          ONLY WHILE CREATING. On an existing offering the Sales Materials tab
+          is the editor — folders, upload, tags, delete, all of it — and a
+          second copy of the same list inside this form was one more place for
+          the two to disagree (Saras, Sep 7). A brand-new offering has no tab
+          yet, so the box stays for that one case. The save is unaffected:
+          materials only ride the PATCH when they changed. */}
+      {!isEdit && (
       <FormSection
         icon={FolderOpen}
         title="Sales materials"
@@ -2750,137 +2892,7 @@ export function OfferingForm({
         </ScrollHint>
       </FormSection>
 
-      {/* RELATED OFFERINGS (Anir, Aug 27: "when they press Edit at the top,
-          that's where it should be, and then it's a separate section. Under
-          Sales Materials"). The category siblings are the automatic base;
-          rows here remove them or pin extras in, and it all saves with the
-          one Save button like every other section of this form. */}
-      <FormSection
-        icon={Layers}
-        title="Related offerings"
-        hint="What shows in the Related offerings section of this offering's page. Anything in the same category shows up on its own. You can take any of those off, or add offerings from anywhere else."
-        count={
-          relatedPool.filter(
-            (x) =>
-              (x.category === offeringCategory && !relatedHide.includes(x.id)) ||
-              relatedAdd.includes(x.id)
-          ).length
-        }
-        action={
-          /* SOLID BLUE, WHITE TEXT (Anir, Aug 27: "it should be like a plus
-             button, kind of like how you have it on sales materials — make
-             that button that other blue color with the white text"). */
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setAddingRelated(true);
-            }}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-primary px-2.5 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
-          >
-            <Plus size={14} strokeWidth={2.2} /> Add offering
-          </button>
-        }
-      >
-        {(() => {
-          const visible = relatedPool.filter(
-            (x) =>
-              (x.category === offeringCategory && !relatedHide.includes(x.id)) ||
-              relatedAdd.includes(x.id)
-          );
-          const hidden = relatedPool.filter(
-            (x) => x.category === offeringCategory && relatedHide.includes(x.id)
-          );
-          return (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                {visible.map((x) => {
-                  const pinned =
-                    relatedAdd.includes(x.id) && x.category !== offeringCategory;
-                  return (
-                    <div
-                      key={x.id}
-                      className="flex items-center gap-3 rounded-xl border border-border-light bg-white px-3.5 py-2.5"
-                    >
-                      {/* No glyph beside the name (Anir, Sep 2: "can you
-                          just remove these icons from all the offering names?
-                          They're not really needed"). */}
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-semibold text-text-primary">
-                          {x.name}
-                        </span>
-                        <span className="block text-[11.5px] text-text-tertiary">
-                          {x.category || "No category"}
-                        </span>
-                      </span>
-                      {/* WHY it is on the list, so removing is informed: a
-                          sibling comes back if the category ever matches
-                          again; a pinned one is this page's own choice. */}
-                      <span
-                        className={cn(
-                          "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold",
-                          pinned
-                            ? "bg-blue-light text-blue-primary"
-                            : "bg-surface text-text-tertiary"
-                        )}
-                      >
-                        {pinned ? (
-                          <>
-                            <Pin size={10} strokeWidth={2.4} /> Added here
-                          </>
-                        ) : (
-                          "Same category"
-                        )}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setConfirmRow({ kind: "related", id: x.id, label: x.name })
-                        }
-                        aria-label={`Remove ${x.name} from related offerings`}
-                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[color:#DC2626]/10"
-                      >
-                        <Trash2 size={14} strokeWidth={2} />
-                      </button>
-                    </div>
-                  );
-                })}
-                {visible.length === 0 && (
-                  <p className="rounded-xl border border-dashed border-border-light bg-surface/40 px-3.5 py-4 text-center text-[12.5px] text-text-tertiary">
-                    Nothing on the list yet. Add the offerings that sell
-                    alongside this one.
-                  </p>
-                )}
-              </div>
-
-              {hidden.length > 0 && (
-                /* The removed siblings stay findable — a hide is a choice
-                   someone should be able to see and undo, not a hole. */
-                <div className="rounded-xl bg-surface/50 px-3.5 py-3">
-                  <p className="text-[11.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                    Removed from this list
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {hidden.map((x) => (
-                      <button
-                        key={x.id}
-                        type="button"
-                        onClick={() =>
-                          setRelatedHide((cur) => cur.filter((i) => i !== x.id))
-                        }
-                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-2.5 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-                      >
-                        <Plus size={12} strokeWidth={2.4} />
-                        {x.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-      </FormSection>
+      )}
 
       {/* Add a related offering: a real PICKER, not a dropdown in a box
           (Anir, Aug 27: "this is ugly. Why is it so small"). Wide dialog,
