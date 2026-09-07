@@ -69,12 +69,21 @@ export async function POST(
      * like they broke every day — and once the bucket's missing CORS started
      * routing every browser upload through here, it would have hit everyone.
      */
+    /* ONE COPY OF THE FILE, NOT TWO. This handed the reader a second, full
+       copy of EVERY file, videos included, on top of the one the request
+       already holds. A 97 MB video therefore cost about 200 MB of memory on a
+       task that had 1 GB in total, and on Sep 7 that killed production
+       mid-upload (Antara: "Upload failed", twice). A file the reader cannot
+       read gets no copy at all; a readable one is handed the bytes the
+       request already has, so nothing is duplicated. */
     if (stored.docsPath) {
       indexStoredMaterialInBackground({
         offeringId: id,
         path: stored.docsPath,
         filename: file.name,
-        bytes: Buffer.from(await file.arrayBuffer()),
+        bytes: isReadableFile(file.name)
+          ? Buffer.from(await file.arrayBuffer())
+          : null,
       });
     }
 

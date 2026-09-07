@@ -75,6 +75,15 @@ import json,sys
 td=json.load(sys.stdin)
 c=td['containerDefinitions'][0]
 c['image']='$DST'
+# PROD IS SIZED LIKE DEV. The prod task family was created on Aug 23 at
+# 0.5 vCPU / 1 GB and this script carried that forward on every promote,
+# while dev moved to 1 vCPU / 2 GB on Aug 31. On Sep 7 a 97 MB video upload
+# took prod down with an out-of-memory kill. cpu/memory now come from the
+# same file the dev pipeline registers, so the two cannot drift again.
+import os
+repo=json.load(open(os.path.join(os.path.dirname(os.path.abspath('$0')),'ecs-task-definition.json')))
+td['cpu']=repo['cpu']
+td['memory']=repo['memory']
 env={e['name']:e['value'] for e in c.get('environment',[])}
 env['APP_VERSION']='$FULLSHA'
 c['environment']=[{'name':k,'value':v} for k,v in env.items()]
