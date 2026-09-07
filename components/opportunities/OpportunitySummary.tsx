@@ -1,5 +1,6 @@
 "use client";
 
+import { dealStamp, type DealSort } from "@/components/opportunities/dealSort";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
@@ -224,7 +225,11 @@ function buildTree(
   order: SummaryDimension[],
   valueFor: (d: Opportunity, dim: SummaryDimension) => string,
   depth = 0,
-  path = ""
+  path = "",
+  /** A time order puts the group holding the newest deal first, all the way
+   *  down the tree, so the deal you just touched is at the top of the page
+   *  and not alphabetically filed under its owner (Anir, Sep 7). */
+  timeOrder: "changed" | "added" | null = null
 ): Node[] {
   if (depth >= order.length) return [];
   const dim = order[depth];
@@ -248,8 +253,14 @@ function buildTree(
      which is what makes a row findable. */
   const isLeftovers = (label: string) =>
     label === NO_OWNER_LABEL || /^(no |unassigned|nobody|none$)/i.test(label);
+  const newest = (rows: Opportunity[]) =>
+    rows.reduce((max, d) => Math.max(max, dealStamp(d, timeOrder ?? "changed")), 0);
   return [...buckets.entries()]
     .sort((a, b) => {
+      if (timeOrder) {
+        const d = newest(b[1]) - newest(a[1]);
+        if (d !== 0) return d;
+      }
       const la = isLeftovers(a[0]);
       const lb = isLeftovers(b[0]);
       if (la !== lb) return la ? 1 : -1;
@@ -262,7 +273,7 @@ function buildTree(
         label,
         dimension: dim,
         deals: rows,
-        children: buildTree(rows, order, valueFor, depth + 1, key),
+        children: buildTree(rows, order, valueFor, depth + 1, key, timeOrder),
       };
     });
 }
@@ -429,7 +440,7 @@ export function OpportunitySummary({
    * confidence of its own — it would have to be an average of the deals under
    * it, which is a number nobody typed.
    */
-  confidenceSort?: "none" | "asc" | "desc";
+  confidenceSort?: DealSort;
   order: SummaryDimension[];
   onReorder: (next: SummaryDimension[]) => void;
   measure: EstimateMeasure;
@@ -592,7 +603,14 @@ export function OpportunitySummary({
   }, [deals, timeline]);
 
   const tree = useMemo(() => {
-    const built = buildTree(deals, order, valueFor);
+    const built = buildTree(
+      deals,
+      order,
+      valueFor,
+      0,
+      "",
+      confidenceSort === "changed" || confidenceSort === "added" ? confidenceSort : null
+    );
     if (
       emptyGroupLabels &&
       order[0] === emptyGroupLabels.dimension &&
@@ -612,7 +630,7 @@ export function OpportunitySummary({
       return [...built, ...extras];
     }
     return built;
-  }, [deals, order, valueFor, emptyGroupLabels]);
+  }, [deals, order, valueFor, emptyGroupLabels, confidenceSort]);
 
   /**
    * OPEN THE BOOK AT A PARTICULAR DEAL.
@@ -1006,7 +1024,11 @@ export function OpportunitySummary({
         const leafDeals =
           confidenceSort === "none"
             ? node.deals
-            : [...node.deals].sort((a, b) => {
+            : confidenceSort === "changed" || confidenceSort === "added"
+              ? [...node.deals].sort(
+                  (a, b) => dealStamp(b, confidenceSort) - dealStamp(a, confidenceSort)
+                )
+              : [...node.deals].sort((a, b) => {
                 const ca = opportunityConfidence(a);
                 const cb = opportunityConfidence(b);
                 if (ca === undefined && cb === undefined) return 0;

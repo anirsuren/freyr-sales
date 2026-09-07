@@ -53,7 +53,10 @@ import {
   KeyRound,
   UserRound,
   CalendarRange,
+  Clock,
+  History,
 } from "lucide-react";
+import { dealStamp, type DealSort } from "@/components/opportunities/dealSort";
 import { PriorityTooltip } from "@/components/ui/SearchPriority";
 import { FormRoom } from "@/components/ui/FormRoom";
 import { AccrualPlanDialog } from "@/components/accruals/AccrualPlanDialog";
@@ -680,10 +683,10 @@ export function OpportunitiesBrowser({
   const [fyFilter, setFyFilter] = useState<string[]>([]);
   /* Manoj, Sep 3: sort the pipeline by how likely the deals are. Remembered
      like every other view choice on this page. */
-  const [confidenceSort, setConfidenceSort] = useStoredView<"none" | "desc" | "asc">(
+  const [confidenceSort, setConfidenceSort] = useStoredView<DealSort>(
     "freyr.opportunities.confidenceSort",
     "none",
-    ["none", "desc", "asc"] as const
+    ["none", "desc", "asc", "changed", "added"] as const
   );
   /* Recurring licence money vs one-time services (Suren, Aug 30: "it's ARR
      and OTS — this also you have to put it in the filter"). It is already a
@@ -1030,7 +1033,13 @@ export function OpportunitiesBrowser({
     // Groups hold still too — a value edit must not reshuffle the cards any
     // more than the rows (same Suren rule as the sort above). A group sits
     // where its best-placed deal sits.
-    const ranks = stableRank.current;
+    /* Sorting by time puts the group with the newest deal first; the money
+       order stays frozen for the session the way Suren asked, this only
+       applies while a time order is picked. */
+    const ranks: Map<string, number> =
+      confidenceSort === "changed" || confidenceSort === "added"
+        ? new Map(shown.map((o) => [o.id, -dealStamp(o, confidenceSort)]))
+        : stableRank.current;
     const best = new Map<string, number>();
     for (const o of shown) {
       const k = groupKeyOf(o);
@@ -1046,7 +1055,7 @@ export function OpportunitiesBrowser({
       return (ranks.get(a.id) ?? 0) - (ranks.get(b.id) ?? 0);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shown, groupBy, offeringName]);
+  }, [shown, groupBy, offeringName, confidenceSort]);
 
   /** Which grouped cards are folded shut. Remembered across navigations, not
    *  session-local: closing eleven customers to read the twelfth and finding
@@ -2493,7 +2502,7 @@ export function OpportunitiesBrowser({
                   <ColorSelect
                     value={confidenceSort}
                     ariaLabel="Sort deals by confidence"
-                    onChange={(v) => setConfidenceSort(v as "none" | "desc" | "asc")}
+                    onChange={(v) => setConfidenceSort(v as DealSort)}
                     minWidth={150}
                     dense
                     collapsible={false}
@@ -2524,6 +2533,23 @@ export function OpportunitiesBrowser({
                         label: "Confidence, low",
                         color: "var(--ink-amber)",
                         icon: ArrowUpNarrowWide,
+                      },
+                      /* THE ONE YOU JUST TOUCHED, FIRST (Anir, Sep 7: "this is
+                         where I would need the feature where I can sort by the
+                         newest… I just did it and I don't know where it is").
+                         Newest change first, and newest deal first; the group
+                         holding that deal floats to the top with it. */
+                      {
+                        value: "changed",
+                        label: "Recently changed",
+                        color: "var(--ink-violet-soft)",
+                        icon: History,
+                      },
+                      {
+                        value: "added",
+                        label: "Recently added",
+                        color: "var(--ink-teal-deep)",
+                        icon: Clock,
                       },
                     ]}
                   />
