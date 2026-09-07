@@ -912,8 +912,29 @@ export function AccrualPlanDialog({
        one silently removes months they never touched. */
     const movingStart =
       patch.startMonth !== undefined && patch.startMonth !== editing.startMonth;
+    /* ASKING FOR FOUR MONTHS GIVES FOUR MONTHS. Months taken out with the ×
+       stay out, so a plan where three had been removed said "4" in the box
+       and drew one row, with the footer reading "1 month" beside it (Anir,
+       Sep 7: "it said 4 months but doesn't show 4 months"). Typing a count
+       is a fresh instruction about the span, so anything removed inside the
+       new span comes back; a removed month outside it stays removed. */
+    const settingCount = patch.months !== undefined;
+    const span = settingCount
+      ? monthsFrom(
+          patch.startMonth ?? editing.startMonth,
+          Math.max(1, Math.min(60, Number(patch.months) || 1))
+        )
+      : [];
     setEditing(
-      reshape({ ...editing, ...patch, ...(movingStart ? { dropped: [] } : {}) })
+      reshape({
+        ...editing,
+        ...patch,
+        ...(movingStart
+          ? { dropped: [] }
+          : settingCount
+            ? { dropped: editing.dropped.filter((m) => !span.includes(m)) }
+            : {}),
+      })
     );
   }
 
@@ -1163,6 +1184,19 @@ export function AccrualPlanDialog({
   } | null>(null);
 
   /** Does this differ from the version that is current right now? */
+  /** The lines exactly as savePlan would send them, so the "has anything
+   *  changed" question and the save itself can never disagree. */
+  function savableLines() {
+    return planRows(editing)
+      .map((l) => ({
+        month: l.month,
+        amount: Math.round(Number(rowTotal(l)) || 0),
+        ...(l.ots ? { ots: Math.round(Number(l.ots) || 0) } : {}),
+        ...(l.arr ? { arr: Math.round(Number(l.arr) || 0) } : {}),
+      }))
+      .filter((l) => l.month);
+  }
+
   function changedFromCurrent(
     lines: AccrualLine[],
     contractValue: number
@@ -1423,6 +1457,7 @@ export function AccrualPlanDialog({
    */
   const planProblem: string | null = (() => {
     if (!editing.opportunityId) return "Pick which deal this plan belongs to.";
+
     const contract = Math.round(Number(editing.contractValue) || 0);
     if (contract <= 0) return "Enter what the contract is worth.";
     const scheduled = planRows(editing).reduce(
@@ -1435,6 +1470,20 @@ export function AccrualPlanDialog({
       ? `${formatMoney(gap)} of the ${formatMoney(contract)} contract is not scheduled yet. Every month has to add up to the contract value.`
       : `The schedule adds up to ${formatMoney(scheduled)}, which is ${formatMoney(-gap)} more than the ${formatMoney(contract)} contract.`;
   })();
+
+  /* NOTHING TO SAVE IS NOT A SAVE. A plan just saved still offered a live
+     "Save plan", so pressing it asked to confirm a deviation that changes
+     nothing and would have written an identical version (Anir, Sep 7: "it
+     shouldn't let me save the plan unless I change anything"). The button
+     simply goes quiet: no sentence beside it, because a button nobody has
+     touched needs no explanation of why it is idle ("you don't have to say
+     that text"). The reason lives on hover for anyone who wonders. */
+  const nothingChanged =
+    !!currentVersion &&
+    !changedFromCurrent(
+      savableLines(),
+      Math.round(Number(editing.contractValue) || 0)
+    );
 
   /**
    * IN DRAFT MODE THE CONTRACT VALUE IS THE DEAL'S, AND IT FOLLOWS IT.
@@ -1796,6 +1845,13 @@ export function AccrualPlanDialog({
                 onBlur={() => {
                   if (!plausibleMonth(startMonthText)) setStartMonthText(editing.startMonth);
                 }}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  if (plausibleMonth(startMonthText)) editFormula({ startMonth: startMonthText });
+                  else setStartMonthText(editing.startMonth);
+                  settleAmounts();
+                }}
               />
             </Field>
             {/* ITEM 9 — "System should provide a suggested accrual schedule
@@ -1860,6 +1916,16 @@ export function AccrualPlanDialog({
                 }}
                 onBlur={() => {
                   if (Number(monthsText) < 1) setMonthsText(editing.months);
+                }}
+                /* Enter does what leaving the box does (Anir, Sep 7: "when I
+                   press enter it should do it, I shouldn't have to click
+                   outside"). */
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  if (Number(monthsText) >= 1) editFormula({ months: monthsText });
+                  else setMonthsText(editing.months);
+                  settleAmounts();
                 }}
               />
             </Field>
@@ -2660,8 +2726,11 @@ export function AccrualPlanDialog({
             )}
             <button
               type="button"
-              disabled={busy || planProblem !== null}
-              title={planProblem ?? undefined}
+              disabled={busy || planProblem !== null || nothingChanged}
+              title={
+                planProblem ??
+                (nothingChanged ? "Nothing has changed since the last save." : undefined)
+              }
               onClick={savePlan}
               className="rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >

@@ -324,7 +324,7 @@ export function CustomersBrowser({
     const res = await fetch("/api/import/crm", { method: "POST", body });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Import failed");
-    return data as { customers: number; contacts: number; skipped: number };
+    return data as { customers: number; contacts: number; skipped: number; customerIds?: string[] };
   }
 
   async function importCsv(file: File) {
@@ -362,7 +362,12 @@ export function CustomersBrowser({
         toast(`${name} added`);
         setAddOpen(false);
         setAddForm({ company: "", website: "", contactName: "", contactEmail: "" });
-        router.refresh();
+        /* STRAIGHT TO THE ACCOUNT YOU JUST MADE, the same rule as a new deal
+           (Anir, Sep 7). Falls back to refreshing the list when the import
+           did not say which id it created. */
+        const madeId = Array.isArray(r.customerIds) ? r.customerIds[0] : undefined;
+        if (madeId) router.push(`/customers/${madeId}`);
+        else router.refresh();
       }
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn't add that", "error");

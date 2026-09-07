@@ -1409,6 +1409,15 @@ export function OpportunitiesBrowser({
       toast(editing.id ? `${saved.name} saved` : `${saved.name} added`);
       delete draftStash.current[editing.id || "new"];
       setEditing(null);
+      /* A NEW DEAL OPENS ON ITS OWN PAGE. Saving used to leave you on a list
+         of 107 rows to go and find the thing you had just made (Anir, Sep 7:
+         "I would like it so that it goes to this page when I create one,
+         instead of being on the other page and then I have to find it").
+         An edit stays where it is, because you were already looking at it. */
+      if (!editing.id) {
+        router.push(`/opportunities/${saved.id}`);
+        return;
+      }
       // The list re-sorts on save, so walk the eye to where the deal landed.
       setFlashId(saved.id);
       setTimeout(() => {
@@ -2978,7 +2987,28 @@ export function OpportunitiesBrowser({
               offerings={offerings}
               colorForOfferingId={colorForOfferingId}
               rates={rates}
-              onChange={(line) => setEditing({ ...editing, rows: [line] })}
+              onChange={(line) =>
+                setEditing((current) => {
+                  const next = current ? { ...current, rows: [line] } : current;
+                  if (!next) return next;
+                  /* TCV STARTS AS THE DEAL VALUE, which is what its own hint
+                     has always promised ("It starts as the deal value above").
+                     It never actually did, so a form with everything filled
+                     still said "1 still needed" and the box sat there showing
+                     the answer as grey placeholder text (Anir, Sep 7: "TCV
+                     does not fill itself"). It follows the value only while
+                     nobody has typed their own figure: the moment the two
+                     differ, the typed one is the answer and stays put. */
+                  const before = String(current?.rows[0]?.value ?? "");
+                  const after = String(line.value ?? "");
+                  const tcvWasFollowing =
+                    !current?.id &&
+                    (String(current?.estimatedTcv ?? "") === "" ||
+                      String(current?.estimatedTcv ?? "") === before);
+                  if (after !== before && tcvWasFollowing) next.estimatedTcv = after;
+                  return next;
+                })
+              }
             />
 
 

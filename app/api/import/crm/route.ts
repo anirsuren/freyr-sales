@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
 
   const db = getDb();
   let customers = 0;
+  const createdIds: string[] = [];
   let contacts = 0;
   let skipped = 0;
   const errors: string[] = [];
@@ -112,7 +113,15 @@ export async function POST(request: NextRequest) {
         owner_user_id: assignment.owner_user_id,
       };
       if (customer) customer = (await db.customers.update(customer.id, customerPatch)) || customer;
-      else { customer = await db.customers.create(customerPatch); customers++; }
+      else {
+        customer = await db.customers.create(customerPatch);
+        customers++;
+        /* WHICH ACCOUNT WAS MADE, so "Add customer" can open it rather than
+           leaving somebody to find it in the list (Anir, Sep 7, on creating
+           anything: "it should go to this page when I create one"). A bulk
+           import ignores this; a one-row add uses it. */
+        if (customer?.id) createdIds.push(customer.id);
+      }
 
       const contactName = value(row, "contact_name");
       if (contactName) {
@@ -143,5 +152,12 @@ export async function POST(request: NextRequest) {
       errors.push(`Row ${line}: ${error instanceof Error ? error.message : "import failed"}`);
     }
   }
-  return NextResponse.json({ ok: true, customers, contacts, skipped, errors: errors.slice(0, 20) });
+  return NextResponse.json({
+    ok: true,
+    customers,
+    contacts,
+    skipped,
+    customerIds: createdIds,
+    errors: errors.slice(0, 20),
+  });
 }
