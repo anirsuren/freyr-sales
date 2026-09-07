@@ -1,38 +1,35 @@
 /**
- * ONE PLACE TO ASK "MAY I NAVIGATE AWAY?"
+ * THE APP-WIDE "ARE YOU SURE YOU WANT TO LEAVE" REGISTRY.
  *
- * The deal editor stages edits and writes nothing until Save, so anything that
- * takes you off the screen has to ask first. Its own click listener catches
- * ANCHORS — the sidebar, the breadcrumbs — but this app also navigates with
- * BUTTONS: `SmartBack` renders a `<button>` and pushes through the router, so
- * "Back to deal" walked off with the staged work in silence. Found in the loop
- * immediately after fixing the anchor case, by testing the fix's own edges
- * rather than trusting it.
+ * Anything on screen with unsaved work registers an asker. Every control
+ * that navigates through the router without a link (SmartBack, the command
+ * palette) calls `askBeforeLeaving` first: it returns true when nothing on
+ * the page is unsaved, which is the ordinary case, and otherwise hands the
+ * navigation to the first asker, which shows its own dialog and runs `go`
+ * only if the person confirms.
  *
- * A link listener cannot see a button, and the editor cannot know about every
- * control that might navigate. So the navigating control asks, and whichever
- * screen has unsaved work answers.
- *
- * THE ANSWER IS NOT A BOOLEAN, because the honest answer needs a dialog and a
- * dialog is not synchronous. `askBeforeLeaving` hands over the navigation
- * itself: a screen with nothing staged returns true and the caller proceeds
- * immediately; a screen with staged work keeps `go`, returns false, and runs it
- * later if the person says leave.
+ * A registry rather than one slot (Sep 7): the deal edit page has TWO
+ * savers on it, the deal fields and the accrual schedule. With a single
+ * slot whichever registered last won, and the moment one of them saved and
+ * cleared it, the other's unsaved edits walked out of the page in silence.
+ * Links and tab-close are handled by the hook in lib/useLeaveGuard, which
+ * is also what registers here.
  */
 type Asker = (go: () => void) => boolean;
 
-let asker: Asker | null = null;
+const askers = new Map<symbol, Asker>();
 
-/** Registered by a screen that holds unsaved work; cleared when it is clean. */
-export function setLeaveAsker(next: Asker | null): void {
-  asker = next;
+export function registerLeaveAsker(asker: Asker): () => void {
+  const key = Symbol("leave-asker");
+  askers.set(key, asker);
+  return () => {
+    askers.delete(key);
+  };
 }
 
-/**
- * Call before navigating. Returns true when it is safe to go NOW; false when
- * something has taken responsibility for asking and will run `go` itself.
- */
 export function askBeforeLeaving(go: () => void): boolean {
-  if (!asker) return true;
-  return asker(go);
+  for (const ask of askers.values()) {
+    if (!ask(go)) return false;
+  }
+  return true;
 }

@@ -14,6 +14,7 @@ import {
   LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { askBeforeLeaving } from "@/lib/unsavedGuard";
 import { canAccessModuleWith } from "@/lib/moduleAccess";
 import type { Access } from "@/lib/privileges";
 import { ALL_NAV_ITEMS, PALETTE_ONLY_ITEMS } from "./navItems";
@@ -165,6 +166,9 @@ export function CommandPalette({
   const go = useCallback(
     (href: string) => {
       onClose();
+      /* Unsaved work on the page behind the palette asks before the jump,
+         the same way Back does (lib/unsavedGuard). */
+      if (!askBeforeLeaving(() => router.push(href))) return;
       router.push(href);
     },
     [onClose, router]
@@ -177,7 +181,9 @@ export function CommandPalette({
       // (Anir: "press Enter, it should go to ask the agent — like Gemini").
       // The goals workspace was landing people on a wall of drafts for
       // "tell me about northwind" — wrong tool for a question.
-      router.push(`/agent?ask=${encodeURIComponent(goal)}`);
+      const href = `/agent?ask=${encodeURIComponent(goal)}`;
+      if (!askBeforeLeaving(() => router.push(href))) return;
+      router.push(href);
     },
     [onClose, router]
   );

@@ -22,6 +22,7 @@ import {
 } from "@/lib/currency";
 import { fetchFxDay } from "@/lib/fxClient";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useLeaveGuard } from "@/lib/useLeaveGuard";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Textarea } from "@/components/ui/Textarea";
@@ -201,6 +202,20 @@ function planMonthCount(d: Draft): number {
 
 /** The rows on screen: `months` of them, always keyed from the first month, so
  *  moving the start date slides the whole schedule instead of relabelling it. */
+/** The schedule as the leave guard compares it: every month's figures plus
+ *  the contract, in one string. */
+function scheduleKey(d: Draft): string {
+  return JSON.stringify([
+    Math.round(Number(d.contractValue) || 0),
+    planRows(d).map((l) => [
+      l.month,
+      Math.round(Number(rowTotal(l)) || 0),
+      Math.round(Number(l.ots) || 0),
+      Math.round(Number(l.arr) || 0),
+    ]),
+  ]);
+}
+
 function planRows(d: Draft): DraftLine[] {
   const count = planMonthCount(d);
   /* The suggestion, minus what was taken out of it. */
@@ -1549,6 +1564,27 @@ export function AccrualPlanDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [followsDeal, dealValue]);
 
+  /* WHAT "UNSAVED" MEANS HERE, for the leave guard. A saved plan is dirty
+     exactly when Save plan is lit. A plan that does not exist yet opens
+     already spread (buildDraft), so "dirty" cannot be "has months": it is
+     "differs from what the untouched editor would show", rebuilt from the
+     same inputs the editor seeds from, so the contract following the deal's
+     TCV a moment after mount does not count as the person's edit. */
+  const untouchedKey = useMemo(() => {
+    const seed = buildDraft(dealId);
+    return scheduleKey(
+      followsDeal
+        ? reshape({ ...seed, contractValue: String(Math.round(dealValue) || 0) })
+        : seed
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealId, followsDeal, dealValue, plans]);
+  const scheduleDirty = currentVersion
+    ? !nothingChanged
+    : scheduleKey(editing) !== untouchedKey;
+  /* Draft mode belongs to the New opportunity form, which owns the save. */
+  const guard = useLeaveGuard(!draft && scheduleDirty);
+
   /* In draft mode the form owns the save, so it needs the schedule and the
      reason it is not yet valid. Reported after render, never during one. */
   useEffect(() => {
@@ -2776,6 +2812,14 @@ export function AccrualPlanDialog({
            reads "Cancel", which is the other one. */
         confirmLabel="Accept"
         busy={busy}
+      />
+      <ConfirmDialog
+        open={guard.leaving !== null}
+        onClose={guard.stay}
+        onConfirm={guard.leave}
+        title="Do you really want to leave?"
+        body="The schedule has changes that are not saved. Leaving now throws them away."
+        confirmLabel="Leave without saving"
       />
     </>
   );

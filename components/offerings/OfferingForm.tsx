@@ -48,6 +48,7 @@ import { hasOfferingEditChanges } from "@/lib/offeringEditDirty";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useLeaveGuard } from "@/lib/useLeaveGuard";
 import { ScrollHint } from "@/components/ui/ScrollHint";
 import { useToast } from "@/components/ui/Toast";
 import type {
@@ -1187,6 +1188,8 @@ export function OfferingForm({
   // reloading with edits pending now costs a confirmation instead of the work.
   const unsavedRef = useRef(false);
   unsavedRef.current = isEdit ? hasOfferingChanges : false;
+  /* Links, the sidebar and Back ask too, not only the tab closing (Sep 7). */
+  const guard = useLeaveGuard(isEdit && hasOfferingChanges);
   useEffect(() => {
     function warn(event: BeforeUnloadEvent) {
       if (!unsavedRef.current) return;
@@ -1357,6 +1360,18 @@ export function OfferingForm({
         }
         detail="Everything you typed since the last save goes away. There is no undo."
         confirmLabel="Discard changes"
+      />
+      <ConfirmDialog
+        open={guard.leaving !== null}
+        onClose={guard.stay}
+        onConfirm={() => {
+          unsavedRef.current = false;
+          guard.leave();
+        }}
+        title="Do you really want to leave?"
+        body="The changes you made on this page are not saved. Leaving now throws them away."
+        detail="Everything you typed since the last save goes away. There is no undo."
+        confirmLabel="Leave without saving"
       />
       <ConfirmDialog
         open={confirmRemoveMaterial !== null}

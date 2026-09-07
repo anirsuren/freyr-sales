@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { setLeaveAsker } from "@/lib/unsavedGuard";
+import { useLeaveGuard } from "@/lib/useLeaveGuard";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { signDateOf, statusColor, opportunityConfidence } from "@/lib/opportunitiesShared";
 import { fetchFxDay } from "@/lib/fxClient";
@@ -845,65 +844,10 @@ export function DealOverviewEditor({
     }
   }
 
-  /* LEAVING WITH UNSAVED WORK SHOULD COST A CLICK, not a shrug. The whole
-     point of an explicit Save is that closing the tab must not quietly bin
-     what you typed. */
-  useEffect(() => {
-    if (!dirtyCount) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirtyCount]);
-
-  /**
-   * AND THE SAME FOR A CLICK ON THE SIDEBAR.
-   *
-   * `beforeunload` only fires when the BROWSER leaves the document. Every link
-   * in this app navigates through the router without one, so with staged edits
-   * on screen a click on "Opportunities" in the rail took them away and threw
-   * the work out in silence — found in the loop by clicking exactly that. A
-   * full reload warned; the thing people actually do did not, which is the
-   * worst shape for a promise that nothing is written until you press Save.
-   *
-   * The listener runs in the CAPTURE phase so it sees the click before the
-   * router does, and it only speaks for in-app links going somewhere else —
-   * a new tab, an external host, a download or an anchor on this page all pass
-   * straight through.
-   */
-  const router = useRouter();
-  /* The navigation being held back, whatever kind of control started it. */
-  const [leaving, setLeaving] = useState<(() => void) | null>(null);
-  useEffect(() => {
-    if (!dirtyCount) return;
-    const onClick = (e: MouseEvent) => {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
-      const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
-      if (!a) return;
-      const href = a.getAttribute("href") || "";
-      if (!href.startsWith("/") || a.target === "_blank" || a.hasAttribute("download")) return;
-      if (href === window.location.pathname) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setLeaving(() => () => router.push(href));
-    };
-    document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
-  }, [dirtyCount, router]);
-
-  /* AND FOR CONTROLS THAT ARE NOT LINKS. SmartBack is a button and pushes
-     through the router, so no click listener can recognise it as navigation.
-     It asks instead — see lib/unsavedGuard. */
-  useEffect(() => {
-    if (!dirtyCount) return;
-    setLeaveAsker((go) => {
-      setLeaving(() => go);
-      return false;
-    });
-    return () => setLeaveAsker(null);
-  }, [dirtyCount]);
+  /* LEAVING WITH UNSAVED WORK SHOULD COST A CLICK, not a shrug: tab close,
+     any link in the app, and the buttons that navigate without one (Back to
+     deal). One shared hook does all three; see lib/useLeaveGuard. */
+  const guard = useLeaveGuard(dirtyCount > 0);
 
   /**
    * THE RATE FOR THIS DEAL'S OWN DAY (Suren, Sep 1: "based on that date,
@@ -2016,16 +1960,13 @@ export function DealOverviewEditor({
       {children}
 
       <ConfirmDialog
-        open={leaving !== null}
-        onClose={() => setLeaving(null)}
+        open={guard.leaving !== null}
+        onClose={guard.stay}
         onConfirm={() => {
-          const go = leaving;
           /* Clear the bank BEFORE navigating, so the guard is not still armed
              when the next screen mounts. */
           setPending({});
-          setLeaveAsker(null);
-          setLeaving(null);
-          go?.();
+          guard.leave();
         }}
         title={`Leave with ${dirtyCount} unsaved change${dirtyCount === 1 ? "" : "s"}?`}
         body="Nothing on this deal has been written yet. Leaving now throws those edits away."
