@@ -1553,22 +1553,55 @@ export function DealOverviewEditor({
                   row above it. */}
               {!isBase && (
                 <tr className="align-middle [&>td]:px-3 [&>td]:py-2.5">
+                  {/* THIS ROW LINES UP WITH THE ONE ABOVE IT (Anir, Sep 7:
+                      "this is pissing me off, it's not aligned"). Both cells
+                      above hold a control, so their text starts inset by the
+                      control's own border and padding — the picker's symbol
+                      chip on the left, the money box's symbol on the money
+                      columns. Printed flush at the cell's padding, this row's
+                      dollars sat a third of an inch left of the euros they
+                      convert. USD_INSET is that offset, in one place. */}
                   <td className="text-[13px] text-text-secondary">
-                    USD US dollar
+                    <span className="flex items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface text-[11px] font-bold text-text-secondary"
+                      >
+                        $
+                      </span>
+                      USD US dollar
+                    </span>
                   </td>
                   {fxState === "ready" ? (
                     [tcv, acv].map((typed, i) => {
                       const shown = asUsd(typed);
                       return (
-                        <td
-                          key={["tcv","acv"][i]}
-                          className={
-                            shown.known
-                              ?"text-[13px] font-semibold text-text-primary tnum"
-                              :"text-[13px] text-text-tertiary"
-                          }
-                        >
-                          {shown.text}
+                        <td key={["tcv","acv"][i]}>
+                          {/* The symbol sits exactly where the money box's
+                              symbol sits above it, and the digits exactly
+                              where its digits do, so the two rows read as one
+                              column. Same offsets as components/ui/MoneyInput
+                              (absolute left-3, text at pl-7). */}
+                          <span className="relative block">
+                            {shown.known && (
+                              <span
+                                aria-hidden="true"
+                                className="absolute left-3 text-[13px] font-semibold text-text-tertiary"
+                              >
+                                $
+                              </span>
+                            )}
+                            <span
+                              className={cn(
+                                "block pl-7 text-[13px]",
+                                shown.known
+                                  ? "font-semibold text-text-primary tnum"
+                                  : "text-text-tertiary"
+                              )}
+                            >
+                              {shown.known ? shown.text.replace(/^\$/, "") : shown.text}
+                            </span>
+                          </span>
                         </td>
                       );
                     })
@@ -1577,9 +1610,11 @@ export function DealOverviewEditor({
                        fresh one, and never a blocked save: what saves is what
                        was typed, which needs no rate at all. */
                     <td colSpan={2} className="text-[13px] text-text-tertiary">
-                      {fxState === "loading"
-                        ? "Getting the rate."
-                        : "Cannot convert right now. What you typed still saves exactly as it is."}
+                      <span className="block pl-7">
+                        {fxState === "loading"
+                          ? "Getting the rate."
+                          : "Cannot convert right now. What you typed still saves exactly as it is."}
+                      </span>
                     </td>
                   )}
                 </tr>
