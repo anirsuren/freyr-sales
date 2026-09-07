@@ -101,7 +101,7 @@ export function contentTypeForFilename(filename: string): string {
  */
 export async function mirrorMaterialToSupabase(
   path: string,
-  bytes: Buffer | Uint8Array,
+  bytes: Buffer | Uint8Array | Blob,
   contentType?: string
 ): Promise<boolean> {
   try {
@@ -222,18 +222,28 @@ export async function uploadMaterialFile(
       // Rule 3: without complete(), the object stays pending and the path is
       // unusable until aborted.
       await docsStorage.completeUpload(path);
-      /* THE SUPABASE COPY IS WHAT READERS OPEN (see getMaterialServeUrl), so
-         it is no longer a best-effort mirror — an upload that reaches Docs but
-         not Supabase would list a material nobody can click. Awaited, and its
-         failure fails the upload: the uploader retries, and an orphaned copy
-         in the Docs archive is the harmless leftover. */
-      const mirrored = await file
-        .arrayBuffer()
-        .then((buf) => mirrorMaterialToSupabase(path, Buffer.from(buf), contentType));
-      if (!mirrored) {
-        await docsStorage.abortUpload(path).catch(() => undefined);
-        throw new Error("The file could not be stored for the app to serve. Try again.");
-      }
+      /* THE SUPABASE COPY IS WHAT READERS OPEN (see getMaterialServeUrl) —
+         but it is written AFTER this request has answered, not inside it.
+
+         Anir, Sep 7, a colleague adding a video: "Couldn't add that. Why do
+         you keep breaking the sales materials?" Awaiting the mirror here (my
+         Sep 5 change) meant two full uploads back to back inside one request
+         capped at 60 seconds — Docs, then Supabase — and `arrayBuffer()`
+         held the entire video in the container's memory to do the second.
+         A deck squeaks through; a video does not. The load balancer gives
+         up, answers with an HTML timeout, and the browser can only say
+         "Couldn't add that".
+
+         So the request returns as soon as Docs has the bytes, and the mirror
+         runs behind it. Until it lands, getMaterialServeUrl() falls back to a
+         signed Docs URL, so the material is clickable from the first second;
+         once the Supabase copy exists it takes over, as before. The File is
+         handed to the mirror as a stream rather than a Buffer, so a 500MB
+         video never sits whole in memory. */
+      void mirrorMaterialToSupabase(path, file, contentType).then((ok) => {
+        if (!ok)
+          console.error(`[materials] mirror to Supabase failed for ${path}; serving from Docs until retried`);
+      });
       return {
         // Downloads go through our own route, which mints a fresh signed URL
         // per click: a stored presign would expire and rot in the record.
@@ -302,9 +312,18 @@ export async function getMaterialServeUrl(path: string): Promise<string> {
   const client = storageClient();
   if (!client) throw new Error("Material storage is not configured here");
   const { data, error } = await client.storage.from(BUCKET).createSignedUrl(path, 60);
-  if (error || !data?.signedUrl)
-    throw new Error(error?.message || "Could not authorize that file");
-  return data.signedUrl;
+  if (data?.signedUrl) return data.signedUrl;
+  /* NOT MIRRORED YET (or the mirror failed): the upload answered before the
+     Supabase copy landed, so a click in the first seconds after an upload —
+     or on a file whose mirror is still retrying — comes here. Docs has the
+     bytes from the moment the upload returned, so serve those. */
+  if (await hasDocsStorage()) {
+    try {
+      const { presignUrl } = await docsStorage.getDownloadUrl(path);
+      if (presignUrl) return presignUrl;
+    } catch {}
+  }
+  throw new Error(error?.message || "Could not authorize that file");
 }
 
 /** The old name, kept so existing imports keep compiling. Same URL. */

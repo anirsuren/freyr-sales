@@ -1008,7 +1008,23 @@ export function AddMaterialButton({
           ),
         }),
       });
-      const data = await res.json();
+      /* SAY WHAT THE SERVER ACTUALLY ANSWERED. A timeout or a crash comes
+         back as an HTML page, not JSON; res.json() threw on it, the catch
+         below swallowed the reason, and the toast read "Couldn't add that"
+         with nothing to go on (Anir, Sep 7: "why do you keep breaking
+         this?"). Parse leniently and carry the status into the message. */
+      const rawAnswer = await res.text();
+      let data: { ok?: boolean; error?: string } = {};
+      try {
+        data = rawAnswer ? JSON.parse(rawAnswer) : {};
+      } catch {
+        data = {
+          error:
+            res.status >= 500
+              ? `The server timed out or crashed while saving (${res.status}). The file is uploaded; try Add again.`
+              : `The server answered ${res.status} with no detail.`,
+        };
+      }
       if (data.ok) {
         // SAY THE TRUE REASON. The old copy blamed the file type for every
         // outcome, so a PDF that extracts perfectly was reported as an
@@ -1070,8 +1086,13 @@ export function AddMaterialButton({
         setUploadingOpen(false);
         setOpen(true);
       }
-    } catch {
-      toast("Couldn't add that", "error");
+    } catch (e) {
+      toast(
+        e instanceof Error && e.message
+          ? `Couldn't add that: ${e.message}`
+          : "Couldn't add that: the request never reached the server. Check the connection and try again.",
+        "error"
+      );
       setUploadingOpen(false);
       setOpen(true);
     } finally {
