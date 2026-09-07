@@ -915,8 +915,22 @@ export function RevenueAccrualsModule({
    *  the same filter press the chart does. */
   const shownOpportunities = useMemo(() => {
     const planned = new Map(state.plans.map((p) => [p.opportunityId, p]));
+    const q = query.trim().toLowerCase();
     return opportunities.filter((o) => {
       if (!matchesDeal(o.id, o.customer)) return false;
+      /* THE SEARCH NARROWS THE TABLE TOO. It filtered the plans underneath
+         but not the deals the table is drawn from, so searching "TEST accrual"
+         left every other deal on screen, greyed as "no schedule" because its
+         plan had just been filtered away (Anir, Sep 7: "why are all these
+         things showing up? Where is TEST accrual?"). */
+      if (
+        q &&
+        ![o.name, o.customer, o.externalId ?? "", ...o.offeringLabels]
+          .join(" ")
+          .toLowerCase()
+          .includes(q)
+      )
+        return false;
       const plan = planned.get(o.id);
       /* A DEAL WITH NO PLAN IS NOT PART OF A YEAR'S ACCRUAL. With no year
          chosen it stays on the table, uncounted, exactly as it always has —
@@ -927,7 +941,7 @@ export function RevenueAccrualsModule({
       if (fyFilter.length > 0) return !!plan && linesInScope(plan).length > 0;
       return !plan || linesInScope(plan).length > 0;
     });
-  }, [opportunities, state.plans, matchesDeal, linesInScope, fyFilter]);
+  }, [opportunities, state.plans, matchesDeal, linesInScope, fyFilter, query]);
 
   /**
    * THE SHAPE OF THE YEAR, NOT A LIST OF NUMBERS (Anir, Aug 26: "the revenue
