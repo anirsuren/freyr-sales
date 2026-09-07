@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -67,23 +68,42 @@ export function UploadProgress({
         ? "Uploaded"
         : "Uploading";
 
+  /* A FINISHED UPLOAD SAYS SO WITH A CHECK, NOT A FULL GREY BAR (Anir, Sep 7:
+     "there should definitely be a check mark when it's done. It's kind of hard
+     to see, and it's very unclear"). Done is green with a check and no bar to
+     read; failed is red with a mark; only an upload in flight draws the bar. */
   return (
     <div className={cn("w-full", className)} aria-live="polite">
-      <div className="flex items-center justify-between gap-2 text-[10.5px] font-semibold text-text-secondary">
-        <span className={cn("min-w-0 truncate", status === "failed" && "text-[color:var(--status-red)]")}>
-          {name ? `${label} ${name}` : label}
-        </span>
-        <span className="shrink-0 tnum">{drawn}%</span>
-      </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-border-light">
-        <div
-          className={cn(
-            "h-full rounded-full transition-[width] duration-150",
-            status === "failed" ? "bg-[color:var(--status-red)]" : "bg-blue-primary"
+      <div
+        className={cn(
+          "flex items-center justify-between gap-2 text-[10.5px] font-semibold",
+          status === "done"
+            ? "text-[color:#15803D]"
+            : status === "failed"
+              ? "text-[color:var(--status-red)]"
+              : "text-text-secondary"
+        )}
+      >
+        <span className="inline-flex min-w-0 items-center gap-1 truncate">
+          {status === "done" ? (
+            <CheckCircle2 size={12} strokeWidth={2.6} className="shrink-0" />
+          ) : status === "failed" ? (
+            <AlertCircle size={12} strokeWidth={2.4} className="shrink-0" />
+          ) : (
+            <Loader2 size={12} strokeWidth={2.4} className="shrink-0 animate-spin" />
           )}
-          style={{ width: `${Math.max(2, Math.min(100, drawn))}%` }}
-        />
+          <span className="truncate">{name ? `${label} ${name}` : label}</span>
+        </span>
+        {status === "uploading" && <span className="shrink-0 tnum">{drawn}%</span>}
       </div>
+      {status === "uploading" && (
+        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-border-light">
+          <div
+            className="h-full rounded-full bg-blue-primary transition-[width] duration-150"
+            style={{ width: `${Math.max(2, Math.min(100, drawn))}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+
 import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -16,6 +18,8 @@ import {
   ShieldCheck,
   Trash2,
   X,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -1541,9 +1545,66 @@ export function AddMaterialButton({
                           aria-label={`Title for ${selected.name}`}
                           className="h-8 w-full rounded-md border border-border bg-white px-2.5 text-[12.5px] font-medium text-text-primary outline-none focus:border-blue-primary focus:shadow-input-focus"
                         />
-                        <p className="mt-1 truncate text-[10.5px] text-text-tertiary">
-                          {selected.webkitRelativePath || selected.name} · {fmtFileSize(selected.size)}
+                        {/* WHERE THE FILE STANDS, NEXT TO ITS NAME (Anir, Sep 7:
+                            "make the progress bar look better... there should
+                            definitely be a check mark when it's done. It's
+                            kind of hard to see, and it's very unclear").
+
+                            The bar used to be a thin stripe at the very foot of
+                            the card, under the description box, with "Uploaded
+                            100%" in grey beside it — a footer, not a state. The
+                            state now sits on the line the eye already reads,
+                            under the title: a spinner and a percentage while
+                            the bytes go up, a green check and the word
+                            Uploaded when they have, red and a reason if they
+                            did not. The bar itself only exists while there is
+                            something to measure. */}
+                        <p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-tertiary">
+                          <span className="min-w-0 truncate">
+                            {selected.webkitRelativePath || selected.name} · {fmtFileSize(selected.size)}
+                          </span>
+                          {fileProgress[key] && (
+                            <span
+                              aria-live="polite"
+                              className={cn(
+                                "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-[1px] text-[10px] font-semibold",
+                                fileProgress[key].status === "done"
+                                  ? "bg-[rgba(22,163,74,0.10)] text-[color:#15803D]"
+                                  : fileProgress[key].status === "failed"
+                                    ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--status-red)]"
+                                    : "bg-blue-light text-blue-primary"
+                              )}
+                            >
+                              {fileProgress[key].status === "done" ? (
+                                <>
+                                  <CheckCircle2 size={11} strokeWidth={2.6} />
+                                  Uploaded
+                                </>
+                              ) : fileProgress[key].status === "failed" ? (
+                                <>
+                                  <AlertCircle size={11} strokeWidth={2.4} />
+                                  Upload failed
+                                </>
+                              ) : (
+                                <>
+                                  <Loader2 size={11} strokeWidth={2.4} className="animate-spin" />
+                                  {fileProgress[key].status === "waiting" ? "Waiting" : "Uploading"}
+                                  <span className="tnum">{fileProgress[key].percent}%</span>
+                                </>
+                              )}
+                            </span>
+                          )}
                         </p>
+                        {fileProgress[key] &&
+                          (fileProgress[key].status === "uploading" ||
+                            fileProgress[key].status === "waiting") && (
+                            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-border-light">
+                              <div
+                                className="h-full rounded-full bg-blue-primary transition-[width] duration-150"
+                                style={{ width: `${Math.max(2, fileProgress[key].percent)}%` }}
+                              />
+                            </div>
+                          )}
                         </div>
                         <button
                           type="button"
@@ -1695,22 +1756,6 @@ export function AddMaterialButton({
                           className="h-9 w-full rounded-md border border-border bg-white px-2.5 text-[12px] text-text-primary outline-none focus:border-blue-primary"
                         />
                       </div>
-                      {fileProgress[key] && (
-                        <div className="mt-2" aria-live="polite">
-                          <div className="flex items-center justify-between text-[10.5px] font-semibold text-text-secondary">
-                            <span className={fileProgress[key].status === "failed" ? "text-error" : ""}>
-                              {fileProgress[key].status === "waiting" ? "Waiting" : fileProgress[key].status === "uploading" ? "Uploading" : fileProgress[key].status === "done" ? "Uploaded" : "Upload failed"}
-                            </span>
-                            <span className="tnum">{fileProgress[key].percent}%</span>
-                          </div>
-                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white">
-                            <div
-                              className={`h-full rounded-full ${fileProgress[key].status === "failed" ? "bg-error" : "bg-blue-primary"}`}
-                              style={{ width: `${fileProgress[key].percent}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
