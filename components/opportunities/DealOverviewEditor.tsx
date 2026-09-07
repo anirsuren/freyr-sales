@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { setLeaveAsker } from "@/lib/unsavedGuard";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
-import { signDateOf, statusColor } from "@/lib/opportunitiesShared";
+import { signDateOf, statusColor, opportunityConfidence } from "@/lib/opportunitiesShared";
 import { fetchFxDay } from "@/lib/fxClient";
 import { formatDayLabel } from "@/lib/utils";
 import { AgentAvatar, agentIn } from "@/components/ui/AgentAvatar";
@@ -618,8 +618,11 @@ export function DealOverviewEditor({
         ? String(deal.value)
         : ""
   );
+  /* THE SAME READ THE LIST USES. The create dialog writes confidence onto
+     the deal's single line; this read `deal.confidence` raw and said "Not
+     set" while the list beside it said 40% (Anir's TEST deal, Sep 7). */
   const [confidence, setConfidence] = useState(
-    deal.confidence === undefined ? "" : String(deal.confidence)
+    opportunityConfidence(deal) === undefined ? "" : String(opportunityConfidence(deal))
   );
   /* THE DATE THE REST OF THE APP READS (found in the loop, Sep 4: this page's
      tile said "Sep 18, 2026" while the field under it said "28 Sept 2026").
@@ -670,13 +673,13 @@ export function DealOverviewEditor({
     name: deal.name ?? "",
     level: deal.level ?? "Pipeline",
     status: deal.status ?? "",
-    revenueType: deal.revenueType ?? "",
+    revenueType: deal.revenueType ?? deal.lines?.find((l) => l.revenueType)?.revenueType ?? "",
     dealType: deal.dealType ?? "",
     currency: deal.currency ?? BASE_CURRENCY,
     value: deal.value ?? 0,
     estimatedAcv: deal.estimatedAcv ?? null,
     estimatedTcv: deal.estimatedTcv ?? null,
-    confidence: deal.confidence ?? null,
+    confidence: opportunityConfidence(deal) ?? null,
     estSignDate: deal.estSignDate ?? "",
     owner: deal.owner ?? "",
     nextSteps: deal.nextSteps ?? "",
@@ -745,7 +748,7 @@ export function DealOverviewEditor({
           : ""
         : String(deal.estimatedTcv)
     );
-    setConfidence(deal.confidence === undefined ? "" : String(deal.confidence));
+    setConfidence(opportunityConfidence(deal) === undefined ? "" : String(opportunityConfidence(deal)));
     setSigns(deal.estSignDate ?? "");
     setOwner(deal.owner ?? "");
     setNote(deal.nextSteps ?? "");
@@ -2081,7 +2084,7 @@ export function DealOverviewEditor({
 
   function commitConfidence() {
     return commit("confidence", { confidence: num(confidence) }, () =>
-      setConfidence(deal.confidence === undefined ? "" : String(deal.confidence))
+      setConfidence(opportunityConfidence(deal) === undefined ? "" : String(opportunityConfidence(deal)))
     );
   }
 }

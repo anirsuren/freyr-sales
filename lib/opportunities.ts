@@ -717,6 +717,16 @@ export async function updateOpportunity(
     updatedAt: new Date().toISOString(),
   });
   if (!merged) throw new Error("That opportunity could not be saved.");
+  /* ONE OFFERING PER OPPORTUNITY MEANS ONE CONFIDENCE. The list reads the
+     line's confidence and revenue type, the overview writes the deal's; on a
+     one-line deal a value saved here is copied onto the line, so the two
+     readers can never disagree again (Sep 7: overview "Not set", list 40%). */
+  if (merged.lines?.length === 1) {
+    const line = { ...merged.lines[0] };
+    if (patch.confidence !== undefined) line.confidence = merged.confidence;
+    if (patch.revenueType !== undefined) line.revenueType = merged.revenueType;
+    merged.lines = [line];
+  }
   /**
    * A MANDATORY FIELD THAT HAD A VALUE NEVER COMES BACK EMPTY.
    *
