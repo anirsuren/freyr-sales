@@ -481,7 +481,7 @@ export function AccrualPlanDialog({
 
   /** The terms a contract is actually written in (item 9). Not a cap: "Other"
  *  keeps a free box for everything in between. */
-const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
+
 
 
 /* ------------------------------------------------------------- deviating */
@@ -888,6 +888,14 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
     const month = Number(m[2]);
     return year >= 2000 && year <= 2100 && month >= 1 && month <= 12;
   }
+
+  /* What the Number of months box shows, kept in step with the draft when
+     the count changes from elsewhere (Add month, a removed month, Start
+     over), see the input below for why it is not the draft itself. */
+  const [monthsText, setMonthsText] = useState(editing.months);
+  useEffect(() => {
+    setMonthsText(editing.months);
+  }, [editing.months]);
 
   function editFormula(patch: Partial<Draft>) {
     if (patch.startMonth !== undefined && !plausibleMonth(patch.startMonth)) {
@@ -1795,8 +1803,7 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
               <input
                 type="text"
                 inputMode="numeric"
-                list="accrual-term-suggestions"
-                value={editing.months}
+                value={monthsText}
                 disabled={deviating}
                 aria-label="Number of months"
                 className={cn(
@@ -1808,15 +1815,22 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                   "h-11 w-full rounded-md border border-border bg-surface px-3.5 text-[15px] tnum outline-none transition focus:border-blue-primary focus:shadow-focus disabled:opacity-60",
                   deviating && "opacity-60"
                 )}
-                onChange={(e) =>
-                  editFormula({ months: e.target.value.replace(/[^0-9]/g, "") })
-                }
+                /* THE BOX HOLDS WHAT YOU TYPE. Every keystroke used to go
+                   through reshape(), which writes the clamped count back, so
+                   clearing the box snapped it to "1" and typing 4 after that
+                   made 14 (Anir, Sep 7: "I can't choose 4 because I can't get
+                   rid of the one"). The text is its own state now: the
+                   schedule follows only once there is a real number in it,
+                   and an empty box goes back to the count on blur. */
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^0-9]/g, "");
+                  setMonthsText(raw);
+                  if (Number(raw) >= 1) editFormula({ months: raw });
+                }}
+                onBlur={() => {
+                  if (Number(monthsText) < 1) setMonthsText(editing.months);
+                }}
               />
-              <datalist id="accrual-term-suggestions">
-                {SUGGESTED_TERMS.map((n) => (
-                  <option key={n} value={String(n)} />
-                ))}
-              </datalist>
             </Field>
             {!deviating && (
               /* Sits in a Field so its top edge lines up with the three labels

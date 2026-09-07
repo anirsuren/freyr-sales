@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { safeHref } from "@/lib/safeUrl";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { useRouter } from "next/navigation";
@@ -418,6 +418,15 @@ export function ContractsModule({
   }
 
   /** Edit the value, the start date or the month count; the table follows. */
+  /* What the Number of months box shows; see the input for why it is not
+     the draft itself. Follows the draft when the count changes elsewhere. */
+  const [scheduleMonthsText, setScheduleMonthsText] = useState(
+    editing?.scheduleMonths ?? ""
+  );
+  useEffect(() => {
+    setScheduleMonthsText(editing?.scheduleMonths ?? "");
+  }, [editing?.scheduleMonths]);
+
   function editSchedule(patch: Partial<Draft>) {
     if (!editing) return;
     setEditing(reshapeSchedule({ ...editing, ...patch }));
@@ -1579,15 +1588,25 @@ export function ContractsModule({
             </p>
             <div className="mt-2 flex items-end gap-2">
               <Field label="Number of months">
+                {/* THE BOX HOLDS WHAT YOU TYPE. Every keystroke went through
+                    reshapeSchedule(), which writes the clamped count back, so
+                    clearing the box snapped it to "1" and typing 4 after that
+                    made 14 (Anir, Sep 7, the same fault on the accrual
+                    editor). The text is its own state; the schedule follows a
+                    real number and an empty box goes back on blur. */}
                 <Input
-                  value={editing.scheduleMonths}
+                  value={scheduleMonthsText}
                   inputMode="numeric"
                   className="w-[140px]"
-                  onChange={(e) =>
-                    editSchedule({
-                      scheduleMonths: e.target.value.replace(/[^0-9]/g, ""),
-                    })
-                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                    setScheduleMonthsText(raw);
+                    if (Number(raw) >= 1) editSchedule({ scheduleMonths: raw });
+                  }}
+                  onBlur={() => {
+                    if (Number(scheduleMonthsText) < 1)
+                      setScheduleMonthsText(editing.scheduleMonths);
+                  }}
                 />
               </Field>
               {/* The table moves on its own now, so this became the way BACK:
