@@ -26,7 +26,7 @@ type State = "reading" | "read" | "no-text";
 
 /** "504 KB", "32.4 MB" — the size a person says out loud (Anir, Aug 20: "I
  *  want to see the file size on all these as well"). */
-function fmtBytes(n: number): string {
+export function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(n >= 100 * 1024 * 1024 ? 0 : 1)} MB`;
   if (n >= 1024) return `${Math.round(n / 1024)} KB`;
   return `${n} B`;

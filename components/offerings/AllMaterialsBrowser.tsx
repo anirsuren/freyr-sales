@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDownAZ,
@@ -23,6 +23,7 @@ import {
 } from "@/components/offerings/materialActions";
 import { CopyMaterialLinkButton } from "@/components/offerings/CopyMaterialLinkButton";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
+import { fmtBytes } from "@/components/offerings/MaterialReadState";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Avatar } from "@/components/ui/Avatar";
@@ -100,6 +101,57 @@ export function AllMaterialsBrowser({
    * new tab: it is somebody else's page, and there is nothing here to render.
    */
   const [viewing, setViewing] = useState<MaterialRow | null>(null);
+
+  /**
+   * HOW MUCH SPACE THESE TAKE UP (Anir, Sep 7: "I need to see the amount of
+   * space that these things take up somewhere. Just put it somewhere").
+   *
+   * A material's byte count is not on the record; it lives in the text index
+   * the read-status route serves, so this asks that route once per offering
+   * for every uploaded file on the page, and keeps the answers by path. The
+   * size then sits under each file name, adds up per offering in the group
+   * header, and adds up for the whole page next to "Showing".
+   */
+  const [bytesByPath, setBytesByPath] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let live = true;
+    const byOffering = new Map<string, string[]>();
+    for (const row of rows) {
+      const path = row.material.docsPath;
+      if (!path || !isUploadedMaterial(row.material)) continue;
+      const list = byOffering.get(row.offeringId) ?? [];
+      list.push(path);
+      byOffering.set(row.offeringId, list);
+    }
+    for (const [offeringId, paths] of byOffering) {
+      void fetch(`/api/offerings/${offeringId}/materials/read-status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paths }),
+      })
+        .then((res) => res.json())
+        .then((data: { status?: Record<string, { bytes?: number }> }) => {
+          if (!live) return;
+          const found: Record<string, number> = {};
+          for (const [path, entry] of Object.entries(data?.status ?? {}))
+            if (typeof entry?.bytes === "number") found[path] = entry.bytes;
+          if (Object.keys(found).length)
+            setBytesByPath((cur) => ({ ...cur, ...found }));
+        })
+        .catch(() => undefined);
+    }
+    return () => {
+      live = false;
+    };
+  }, [rows]);
+  const bytesOf = (row: MaterialRow): number | null => {
+    const path = row.material.docsPath;
+    if (!path) return null;
+    const n = bytesByPath[path];
+    return typeof n === "number" ? n : null;
+  };
+  const sumBytes = (list: MaterialRow[]): number =>
+    list.reduce((total, row) => total + (bytesOf(row) ?? 0), 0);
 
   const openRow = (row: MaterialRow) => {
     if (isUploadedMaterial(row.material)) setViewing(row);
@@ -354,6 +406,11 @@ const TABLE_CLASS =
                         className="mt-0.5 truncate text-[11.5px] leading-snug text-text-secondary"
                       >
                         {row.material.description}
+                      </p>
+                    )}
+                    {bytesOf(row) !== null && (
+                      <p className="mt-0.5 text-[10.5px] font-medium text-text-tertiary tnum">
+                        {fmtBytes(bytesOf(row) as number)}
                       </p>
                     )}
                   </td>
@@ -785,6 +842,13 @@ const TABLE_CLASS =
       <p className="mb-3 text-[13px] text-text-secondary">
         Showing <b className="text-text-primary tnum">{visible.length}</b> of{" "}
         <b className="text-text-primary tnum">{rows.length}</b> materials
+        {sumBytes(visible) > 0 && (
+          <>
+            {" · "}
+            <b className="text-text-primary tnum">{fmtBytes(sumBytes(visible))}</b>
+            {" in storage"}
+          </>
+        )}
         {anyFilter ? " · filters applied" : ""}
       </p>
 
@@ -896,7 +960,8 @@ const TABLE_CLASS =
                       from the offering name the way an aside reads. */}
                   <span className="text-[11px] font-semibold text-text-tertiary tnum">
                     ({group.rows.length}{" "}
-                    {group.rows.length === 1 ? "material" : "materials"})
+                    {group.rows.length === 1 ? "material" : "materials"}
+                    {sumBytes(group.rows) > 0 ? ` · ${fmtBytes(sumBytes(group.rows))}` : ""})
                   </span>
                 </button>
                 {!shut && (
