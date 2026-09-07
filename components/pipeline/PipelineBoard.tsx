@@ -47,6 +47,8 @@ import {
   type Stage,
 } from "@/lib/pipeline";
 import { tint } from "@/lib/tint";
+import { withCommas } from "@/lib/currency";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 
 const WIP_KEY = "freyr.pipeline.wip.v1";
 const VIEWS_KEY = "freyr.pipeline.views.v1";
@@ -1024,9 +1026,9 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                           aria-label="Deal value"
                           placeholder="0"
                           autoFocus
-                          value={editVal}
+                          value={withCommas(editVal)}
                           onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => setEditVal(e.target.value)}
+                          onChange={(e) => setEditVal(expandMoneyShorthand(e.target.value, { integer: true }))}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") commitValue(d.sessionId);
                             if (e.key === "Escape") setEditingId(null);

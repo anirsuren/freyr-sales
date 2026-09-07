@@ -5,7 +5,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { useRouter } from "next/navigation";
-import { CircleDot, Plus, Trash2, UserPen, X } from "lucide-react";
+import { ChevronRight, CircleDot, Plus, Trash2, UserPen, X } from "lucide-react";
 import {
   AccrualOriginChip,
   AccrualStatusChip,
@@ -518,6 +518,9 @@ export function AccrualPlanDialog({
    * but saveDeviation() posts `deviate`.
    */
   const [deviating, setDeviating] = useState(false);
+  /** The change-history fold. Closed by default: the line above it already
+   *  says how many changes there are, and this dialog is for planning. */
+  const [historyOpen, setHistoryOpen] = useState(false);
   /**
    * "Other…" IS A CHOICE, NOT A DERIVED STATE (item 9).
    *
@@ -2567,16 +2570,38 @@ export function AccrualPlanDialog({
               IT LIVES HERE AND NOT ON A SCREEN OF ITS OWN, which is the same
               instruction that put the planner in this dialog in the first
               place: "I don't want a different screen. It has to be
-              consistent." It is always open rather than folded away, because
-              he asked to SEE the versions, and it has its own scroll cap so a
-              record with a long history cannot push the buttons off the
-              bottom. */}
+              consistent."
+
+              A FOLD, AND WHOLE WHEN IT IS OPEN (Anir, Sep 7: "why is the
+              version history so small? Why is it condensed in here? You don't
+              even need to condense it at all, just show all of them, but then
+              I think you should put the entire thing in some sort of a
+              dropdown"). It used to sit open inside a 176px window, so a plan
+              with four versions showed two and a half of them with the rest
+              behind a scrollbar nobody noticed. Closed it is one line that
+              says how many changes there are; open it is every version, no
+              inner scroll. Safe for the frame either way: the dialog's height
+              is pinned and its body scrolls, so opening this cannot resize
+              the pop-up. */}
           {savedPlan && history.length > 0 && (
             <section className="mt-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-[13px] font-semibold text-text-primary">
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen((v) => !v)}
+                  aria-expanded={historyOpen}
+                  className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
+                >
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={2.4}
+                    className={cn(
+                      "text-text-tertiary transition-transform",
+                      historyOpen && "rotate-90 text-blue-primary"
+                    )}
+                  />
                   Change history
-                </h3>
+                </button>
                 {/* NO CHIP CLUSTER UP HERE ANY MORE (Anir, Sep 4: "what's the
                     point of the three tags at the top right? What's the point
                     of that shit?"). They repeated the current version's status
@@ -2591,8 +2616,9 @@ export function AccrualPlanDialog({
                       (record?.deviationCount ?? history.length - 1) === 1 ? "" : "s"
                     } across ${history.length} versions. Reports use the newest version that has numbers in it.`}
               </p>
+              {historyOpen && (
               <div className="mt-2 overflow-hidden rounded-lg border border-border-light">
-                <div className="max-h-[176px] overflow-y-auto">
+                <div>
                   <table className="w-full table-fixed text-left">
                     <thead className="sticky top-0 z-[1] bg-surface">
                       <tr className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:px-3 [&>th]:py-2">
@@ -2680,6 +2706,7 @@ export function AccrualPlanDialog({
                   </table>
                 </div>
               </div>
+              )}
             </section>
           )}
         </>

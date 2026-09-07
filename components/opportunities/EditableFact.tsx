@@ -5,6 +5,7 @@ import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
+import { withCommas } from "@/lib/currency";
 
 /**
  * ONE FACT ON THE DEAL, CHANGED WHERE IT IS READ.
@@ -240,7 +241,7 @@ export function EditableFact({
               ) : (
                 <input
                   autoFocus
-                  value={draft}
+                  value={kind === "money" ? withCommas(draft) : draft}
                   disabled={busy}
                   type={kind === "date" ? "date" : "text"}
                   inputMode={
@@ -334,7 +335,7 @@ export function EditableFact({
             ) : (
               <input
                 ref={inputRef as React.RefObject<HTMLInputElement>}
-                value={draft}
+                value={kind === "money" ? withCommas(draft) : draft}
                 disabled={busy}
                 type={kind === "date" ? "date" : "text"}
                 inputMode={kind === "money" || kind === "percent" ? "numeric" : undefined}

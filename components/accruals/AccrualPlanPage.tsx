@@ -23,7 +23,7 @@
  */
 
 import { useState } from "react";
-import { fmtMoney } from "@/lib/currency";
+import { fmtMoney, withCommas } from "@/lib/currency";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
@@ -368,7 +368,7 @@ export function AccrualPlanPage({
                 Contract value (USD)
               </span>
               <input
-                value={contractValue}
+                value={withCommas(contractValue)}
                 disabled={!canWrite}
                 inputMode="numeric"
                 onChange={(e) => {
@@ -521,7 +521,7 @@ export function AccrualPlanPage({
                       with nothing on screen to say so. It reads as a number
                       instead of a box that lies about being typeable. */}
                   <input
-                    value={rowTotal(l)}
+                    value={withCommas(rowTotal(l))}
                     disabled={!canWrite}
                     readOnly={split}
                     tabIndex={split ? -1 : undefined}

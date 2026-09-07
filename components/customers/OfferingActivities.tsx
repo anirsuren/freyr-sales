@@ -50,6 +50,7 @@ import type {
 import { formatDate } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { withCommas } from "@/lib/currency";
 
 /**
  * ACTIVITIES ON THE OFFERING THE CUSTOMER HAS (Suren, Aug 8, via Anir): "once
@@ -764,7 +765,7 @@ export function OfferingActivities({
                 Value
               </label>
               <input
-                value={amount}
+                value={withCommas(amount)}
                 onChange={(event) =>
                   setAmount(expandMoneyShorthand(event.target.value, { integer: true }))
                 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { signDateOf, statusColor, opportunityConfidence } from "@/lib/opportunitiesShared";
 import { fetchFxDay } from "@/lib/fxClient";
@@ -1480,14 +1481,14 @@ export function DealOverviewEditor({
                     <ReadValue text={tcv === "" ? "Not entered" : `${localSymbol}${withCommas(tcv)}`} empty={tcv === ""} />
                   ) : (
                     <>
-                      <input
+                      <MoneyInput
                         value={tcv}
-                        aria-label="Estimated TCV"
-                        /* K AND M HERE TOO. The shared MoneyInput learned this; these two
-                           boxes are hand-rolled inputs in the money table and were
-                           still eating the letter, so "1.5m" sat there as text and
-                           went to the server as NaN. */
-                        onChange={(e) => setTcv(expandMoneyShorthand(e.target.value))}
+                        ariaLabel="Estimated TCV"
+                        symbol={localSymbol}
+                        integer={false}
+                        /* The same box as the schedule underneath it: symbol
+                           inside, commas as you type (Anir, Sep 7). */
+                        onChange={setTcv}
                         onBlur={() =>
                           /* BOTH FIELDS, ONE NUMBER. `value` is what the
                              rollups read and `estimatedTcv` is what
@@ -1509,8 +1510,6 @@ export function DealOverviewEditor({
                         onKeyDown={(e) => {
                           if (e.key === "Enter") e.currentTarget.blur();
                         }}
-                        inputMode="numeric"
-                        className={INPUT}
                         placeholder="the whole signed number"
                       />
                       {errors.estimatedTcv && (
@@ -1523,10 +1522,12 @@ export function DealOverviewEditor({
                   {ro ? (
                     <ReadValue text={acv === "" ? "Not entered" : `${localSymbol}${withCommas(acv)}`} empty={acv === ""} />
                   ) : (
-                    <input
+                    <MoneyInput
                       value={acv}
-                      aria-label="Estimated ACV"
-                      onChange={(e) => setAcv(expandMoneyShorthand(e.target.value))}
+                      ariaLabel="Estimated ACV"
+                      symbol={localSymbol}
+                      integer={false}
+                      onChange={setAcv}
                       onBlur={() =>
                         void commit(
                           "estimatedAcv",
@@ -1542,8 +1543,6 @@ export function DealOverviewEditor({
                       onKeyDown={(e) => {
                         if (e.key === "Enter") e.currentTarget.blur();
                       }}
-                      inputMode="numeric"
-                      className={INPUT}
                       placeholder="one year of it"
                     />
                   )}

@@ -59,6 +59,7 @@ import {
 } from "@/lib/contractsShared";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { withCommas } from "@/lib/currency";
 
 /**
  * CONTRACTS (Suren, Aug 25): "where we are logically closing."
@@ -1384,7 +1385,7 @@ export function ContractsModule({
             </Field>
             <Field label="Contract value (USD)">
               <Input
-                value={editing.value}
+                value={withCommas(editing.value)}
                 placeholder="250000"
                 inputMode="numeric"
                 /* THE VALUE IS PART OF THE SCHEDULE'S FORMULA. Typing it used
@@ -1663,7 +1664,7 @@ export function ContractsModule({
                       {monthLabel(line.month)}
                     </span>
                     <input
-                      value={line.amount}
+                      value={withCommas(line.amount)}
                       placeholder="0"
                       inputMode="numeric"
                       aria-label={`Scheduled amount for ${monthLabel(line.month)}`}
