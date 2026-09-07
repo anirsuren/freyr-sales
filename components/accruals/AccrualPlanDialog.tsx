@@ -2549,10 +2549,23 @@ export function AccrualPlanDialog({
                 <span className="font-semibold" style={{ color: ACCRUAL_AMBER }}>
                   {/* A SENTENCE, NOT A FRAGMENT. The total it used to hang off
                       moved into the footer row, which left this opening with
-                      a dangling dash (Sep 7 test loop). */}
+                      a dangling dash (Sep 7 test loop).
+
+                      AND IT SAYS WHAT THE BUTTON SAYS. It used to promise
+                      "saving is allowed; the plan will be flagged" while the
+                      footer beside a greyed-out Save plan said the opposite:
+                      every month has to add up to the contract (Anir, Sep 7:
+                      "why is it not letting me save?"). A schedule that does
+                      not add up cannot be saved, so this now names the way
+                      out instead of contradicting the button two inches
+                      below it. */}
                   That is {formatMoney(Math.abs(editingTotal - editingValue))}{" "}
                   {editingTotal > editingValue ? "more" : "less"} than the contract
-                  value. Saving is allowed; the plan will be flagged.
+                  value.{" "}
+                  {editingTotal > editingValue
+                    ? "Take it off a month before saving"
+                    : `Put the remaining ${formatMoney(editingValue - editingTotal)} into a month, or press ${editingRows.some((l) => l.pinned) ? "Start over" : "Spread evenly"} to share the whole contract out again`}
+                  .
                 </span>
               )}
             </p>
