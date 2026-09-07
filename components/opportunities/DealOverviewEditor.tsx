@@ -1720,11 +1720,11 @@ export function DealOverviewEditor({
                     <tr>
                       <th className="px-3 py-2">Month</th>
                       {scheduleSplitFields.map((f) => (
-                        <th key={f} className="px-3 py-2 text-right">
+                        <th key={f} className="px-3 py-2">
                           {SPLIT_LABEL[f]} ({scheduleLocal && !isBase ? currency : "USD"})
                         </th>
                       ))}
-                      <th className="px-3 py-2 text-right">
+                      <th className="px-3 py-2">
                         {scheduleSplitFields.length ? "Total" : "Amount"} (
                         {scheduleLocal && !isBase ? currency : "USD"})
                       </th>
@@ -1741,12 +1741,12 @@ export function DealOverviewEditor({
                           {scheduleSplitFields.map((f) => (
                             <td
                               key={f}
-                              className="px-3 text-right text-[13px] tnum text-text-secondary"
+                              className="px-3 text-[13px] tnum text-text-secondary"
                             >
                               {Number(l[f]) > 0 ? scheduleMoney(Number(l[f])) : "·"}
                             </td>
                           ))}
-                          <td className="px-3 text-right text-[13px] font-semibold tnum text-text-primary">
+                          <td className="px-3 text-[13px] font-semibold tnum text-text-primary">
                             {scheduleMoney(l.amount || 0)}
                           </td>
                         </tr>
@@ -1783,7 +1783,7 @@ export function DealOverviewEditor({
                       {scheduleSplitFields.map((f) => (
                         <td
                           key={f}
-                          className="px-3 text-right text-[13.5px] font-bold tnum text-blue-primary"
+                          className="px-3 text-[13.5px] font-bold tnum text-blue-primary"
                         >
                           {scheduleMoney(
                             accrualPlan.lines.reduce(
@@ -1793,7 +1793,7 @@ export function DealOverviewEditor({
                           )}
                         </td>
                       ))}
-                      <td className="px-3 text-right text-[15px] font-bold tnum text-blue-primary">
+                      <td className="px-3 text-[15px] font-bold tnum text-blue-primary">
                         {scheduleMoney(
                           accrualPlan.lines.reduce((n, l) => n + (l.amount || 0), 0)
                         )}
