@@ -613,6 +613,9 @@ export function RequestDetail({
               key: "complete",
               label: "Mark it completed",
               icon: Check,
+              /* Green is done, amber is back in the queue, red is stopped:
+                 the app's own status colours, on the icon (Anir, Sep 7). */
+              tone: "done" as const,
               onClick: () => setConfirmComplete(true),
               disabled: busy,
               title: iRequested
@@ -636,6 +639,7 @@ export function RequestDetail({
               key: "release",
               label: "Hand it back",
               icon: Undo2,
+              tone: "warn" as const,
               onClick: () => void post({ op: "release" }),
               disabled: busy,
             });
@@ -644,6 +648,7 @@ export function RequestDetail({
               key: "cancel",
               label: "Cancel it",
               icon: Undo2,
+              tone: "stop" as const,
               onClick: () => setConfirmCancel(true),
               disabled: busy,
               title: "Stop this work and keep it in history",
@@ -859,16 +864,38 @@ export function RequestDetail({
                   {r.customer}
                 </p>
                 {r.opportunityLabels.length > 0 && (
+                  /* THE DEAL IS ONE CLICK AWAY. It was a chip that named the
+                     deal and went nowhere (Anir, Sep 7: "how can I go to the
+                     deal from here? It's associated with it"). Ids and labels
+                     are parallel arrays, so a label without an id stays a
+                     plain chip rather than becoming a broken link. */
                   <div className="flex flex-wrap gap-1.5">
-                    {r.opportunityLabels.map((label) => (
-                      <span
-                        key={label}
-                        className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[12px] font-medium text-blue-primary"
-                      >
-                        <ListChecks size={12} strokeWidth={2} />
-                        {label}
-                      </span>
-                    ))}
+                    {r.opportunityLabels.map((label, i) => {
+                      const id = r.opportunityIds?.[i];
+                      const inner = (
+                        <>
+                          <ListChecks size={12} strokeWidth={2} />
+                          {label}
+                          {id && <ArrowUpRight size={11} strokeWidth={2.4} className="opacity-70" />}
+                        </>
+                      );
+                      return id ? (
+                        <Link
+                          key={label}
+                          href={`/opportunities/${id}`}
+                          className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[12px] font-medium text-blue-primary transition-colors hover:bg-blue-primary hover:text-white"
+                        >
+                          {inner}
+                        </Link>
+                      ) : (
+                        <span
+                          key={label}
+                          className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[12px] font-medium text-blue-primary"
+                        >
+                          {inner}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
                 {r.contactNames.length > 0 && (
@@ -2483,19 +2510,29 @@ function PersonPick({
         {label}
       </span>
       <span className="block text-[11px] text-text-tertiary">{hint}</span>
-      <select
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onPick(e.target.value)}
-        className="mt-1.5 h-9 w-full cursor-pointer rounded-lg border border-border-light bg-white px-2 text-[12.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <option value="">Nobody yet</option>
-        {members.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
-        ))}
-      </select>
+      {/* THE APP'S OWN PICKER, NOT THE BROWSER'S (Anir, Sep 7: "fix these
+          drop-downs"). A raw <select> drew an unstyled grey system list of
+          forty names with no faces, no search and none of the app's own
+          shape, sitting between two controls that had all three. */}
+      <div className={cn("mt-1.5", disabled && "pointer-events-none opacity-60")}>
+        <ColorSelect
+          value={value}
+          ariaLabel={label}
+          searchable
+          collapsible={false}
+          dense
+          fill
+          minWidth={0}
+          className="w-full"
+          onChange={(v) => {
+            if (!disabled) void onPick(v);
+          }}
+          options={[
+            { value: "", label: "Nobody yet", color: "#8E98A8", icon: CircleDashed },
+            ...members.map((m) => ({ value: m, label: m, avatarName: m })),
+          ]}
+        />
+      </div>
     </label>
   );
 }

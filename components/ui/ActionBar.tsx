@@ -30,6 +30,15 @@ export type BarAction = {
   primary?: boolean;
   /** Red, and never promoted out of the menu. */
   danger?: boolean;
+  /**
+   * WHAT THIS ACTION MEANS, IN THE COLOUR THE APP RESERVES FOR IT (Anir,
+   * Sep 7: "have a colour for 'mark completed' and 'hand back' and 'cancel
+   * it', associated colours, like red for example"). A menu of four grey
+   * rows makes finishing something and stopping it look like the same act.
+   * Green is done, amber is back in somebody's queue, red is stopped. The
+   * icon takes the colour, the label stays readable.
+   */
+  tone?: "done" | "warn" | "stop";
   disabled?: boolean;
   title?: string;
 };
@@ -94,9 +103,22 @@ export function ActionBar({
               disabled={a.disabled}
               title={a.title}
               onClick={a.onClick}
-              className={a.danger ? OVERFLOW_ITEM_DANGER : OVERFLOW_ITEM}
+              className={cn(
+                a.danger ? OVERFLOW_ITEM_DANGER : OVERFLOW_ITEM,
+                a.tone === "done" && "hover:bg-[rgba(22,163,74,0.08)]",
+                a.tone === "warn" && "hover:bg-[rgba(217,119,6,0.08)]",
+                a.tone === "stop" && "hover:bg-red-50"
+              )}
             >
-              <a.icon size={14} strokeWidth={a.danger ? 2.2 : 2.2} />
+              <a.icon
+                size={14}
+                strokeWidth={2.2}
+                className={cn(
+                  a.tone === "done" && "text-[color:#15803D]",
+                  a.tone === "warn" && "text-[color:var(--ink-amber)]",
+                  a.tone === "stop" && "text-[color:var(--status-red)]"
+                )}
+              />
               {a.label}
             </button>
           ))}
