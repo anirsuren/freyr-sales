@@ -297,7 +297,7 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
       <p className="mt-4 text-[11px] text-text-tertiary">
         Deals are detected in real headlines and classified automatically:
         acquirer, target, status and division. Every card links to its source.
-        Refreshes twice a day with the rest of Market Intel.
+        Refreshes once a day.
       </p>
     </div>
   );

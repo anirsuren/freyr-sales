@@ -22,7 +22,7 @@ import {
  * imagine all 100 people clicking it at the same time"). Nobody clicks
  * anything:
  *
- * - Any live-mode visit to Market Intel checks the feed's age; past 20 hours,
+ * - Any live-mode visit to Market Intel checks the feed's age; past 11 hours,
  *   the request schedules ONE background refresh via after(). A lock row in
  *   the database makes sure a hundred simultaneous visitors produce exactly
  *   one run — everyone else just reads.
@@ -30,24 +30,44 @@ import {
  *   the first briefing shows up in minutes rather than a day.
  *
  * Costs stay bounded no matter what: lean per-pull limits, a hard per-run
- * dollar cap, per-company freshness skips (a crashed run resumes cheaply),
- * and the 20-hour spacing. If Apify credits run out the run fails quietly and
- * pages keep showing the last data with an honest "updated" stamp.
+ * dollar cap AND a rolling 24-hour one (DAY_CAP_USD, kept in the feed row as
+ * `apifyDay`), per-company freshness skips (a crashed run resumes cheaply),
+ * and Apify visits once a day. If Apify credits run out the run fails quietly
+ * and pages keep showing the last data with an honest "updated" stamp.
  */
 
 // Twice a day at whatever hour traffic lands (Aug 11 call: "twice a day
 // works... since we have folks across the globe") — one shared refresh, never
-// per-user.
+// per-user. These two clocks now govern only the same-day news pass
+// (Perplexity, its own bill); the Apify passes have their own, below.
 const STALE_AFTER_MS = 11 * 60 * 60 * 1000;
 const COMPANY_FRESH_MS = 10 * 60 * 60 * 1000;
+/** THE APIFY CLOCK: ONCE A DAY (Anir, Sep 7, after seeing the app was 72% of
+ *  the Apify bill at ~$6 a day: "let's do it once per day"). LinkedIn company
+ *  posts, the wider Google News search, the M&A board and followed people
+ *  are each visited in every OTHER twice-daily run: the runs are ~11.5 hours
+ *  apart, so a 20-hour stamp skips the next run and lands on the one after,
+ *  about 23 hours later. Same-day news still arrives twice a day through the
+ *  Perplexity pass, which costs a tenth as much. */
+const APIFY_FRESH_MS = 20 * 60 * 60 * 1000;
 /** The website pass's own clock: a company posts to its newsroom a handful
  *  of times a month, so checking it twice a day would buy the same answer
  *  twice. Once a day keeps the column fresh at a third of the spend. */
 const SITE_FRESH_MS = 22 * 60 * 60 * 1000;
 const LOCK_MS = 30 * 60 * 1000;
-// Sized to the $200/month Apify plan: ~$3.20 twice a day is ~$192/month,
-// with the rotation spreading whatever the cap cuts across runs.
+// Two Apify caps. RUN_CAP_USD bounds one run so it finishes inside the lock;
+// the rotation spreads whatever it cuts across later runs. DAY_CAP_USD is the
+// money knob, over a rolling 24 hours: at once a day the 76 companies need
+// about $5.70 of it (5 posts + ~10 articles ≈ $0.075 each; the news actor
+// returns a couple more than asked) and the M&A board $0.13, so followed
+// people share what is left, least-recently-refreshed first. Raise it and
+// people refresh faster; lower it and companies start being skipped. Before
+// Sep 7 there was only the per-run cap, which two runs a day filled to
+// ~$6.40 whatever the cadence said, so the cadence alone changed nothing.
+// These are the code's own estimates, which run ~10% above Apify's bill.
 const RUN_CAP_USD = 3.2;
+const DAY_CAP_USD = 6;
+const DAY_MS = 24 * 60 * 60 * 1000;
 const TARGETED_CAP_USD = 0.6;
 const POST_LIMIT = 5;
 /**
@@ -108,6 +128,32 @@ async function readRow(id: string): Promise<any | null> {
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data?.catalog ?? null;
+}
+
+/** Every Apify dollar lands in two ledgers: the all-time total the feed has
+ *  always carried, and the current 24-hour window, which is what DAY_CAP_USD
+ *  meters. The window opens at its first charge and closes 24 hours later,
+ *  rather than at midnight: with runs ~11.5 hours apart a third run can land
+ *  late in a calendar day, and a midnight window would have stalled it until
+ *  the next morning instead of the next tick. Perplexity spend goes only into
+ *  the total: it is a different bill and must never eat the Apify budget. */
+function windowOpen(feed: any): boolean {
+  const since = Date.parse(feed.apifyDay?.since ?? "");
+  return Number.isFinite(since) && Date.now() - since < DAY_MS;
+}
+
+function chargeApify(feed: any, usd: number): void {
+  feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + usd) * 1000) / 1000;
+  const open = windowOpen(feed);
+  const sofar = open ? Number(feed.apifyDay.usd) || 0 : 0;
+  feed.apifyDay = {
+    since: open ? feed.apifyDay.since : new Date().toISOString(),
+    usd: Math.round((sofar + usd) * 1000) / 1000,
+  };
+}
+
+function apifySpentToday(feed: any): number {
+  return windowOpen(feed) ? Number(feed.apifyDay.usd) || 0 : 0;
 }
 
 async function writeRow(id: string, catalog: unknown): Promise<void> {
@@ -474,6 +520,8 @@ export type RefreshSummary = {
   companiesSkippedFresh?: number;
   peopleRefreshed?: number;
   spentUsd?: number;
+  /** Apify dollars charged in the current 24-hour window, against DAY_CAP_USD. */
+  apifyTodayUsd?: number;
 };
 
 export async function runMarketIntelRefresh(options?: {
@@ -653,15 +701,20 @@ export async function runMarketIntelRefresh(options?: {
     // fresh). The company queue drained the run's budget every time, so the
     // ~$0.15 M&A pull never got a turn. Same twice-daily rhythm, same cap —
     // just no longer last in line.
+    // Both caps, checked before every Apify call from here down. `force`
+    // skips the freshness stamps, never the money.
+    const overBudget = () =>
+      spent > RUN_CAP_USD || apifySpentToday(feed) >= DAY_CAP_USD;
     if (
-      options?.force ||
-      !feed.mna?.fetchedAt ||
-      Date.now() - Date.parse(feed.mna.fetchedAt) > COMPANY_FRESH_MS
+      (options?.force ||
+        !feed.mna?.fetchedAt ||
+        Date.now() - Date.parse(feed.mna.fetchedAt) > APIFY_FRESH_MS) &&
+      !overBudget()
     ) {
       try {
         const mnaCost = await refreshMna(feed);
         spent += mnaCost;
-        feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + mnaCost) * 1000) / 1000;
+        chargeApify(feed, mnaCost);
         feed.updatedAt = new Date().toISOString();
         await writeRow(FEED_ROW, feed);
       } catch (error) {
@@ -672,12 +725,12 @@ export async function runMarketIntelRefresh(options?: {
     }
 
     for (const source of sources) {
-      if (spent > RUN_CAP_USD) break;
+      if (overBudget()) break;
       const existing: FeedCompany | undefined = feed.companies[source.id];
       if (
         !options?.force &&
         existing?.fetchedAt &&
-        Date.now() - Date.parse(existing.fetchedAt) < COMPANY_FRESH_MS
+        Date.now() - Date.parse(existing.fetchedAt) < APIFY_FRESH_MS
       ) {
         skippedFresh += 1;
         continue;
@@ -686,6 +739,7 @@ export async function runMarketIntelRefresh(options?: {
       spent += postsResult.cost;
       const newsResult = await scrapeNews(source);
       spent += newsResult.cost;
+      chargeApify(feed, postsResult.cost + newsResult.cost);
       if (postsResult.failed && newsResult.failed) {
         // Nothing came back at all. Before Aug 12 this still stamped the
         // company "fresh", so the UI said Refreshed over day-old data and the
@@ -725,29 +779,35 @@ export async function runMarketIntelRefresh(options?: {
       await applyDigest(entry);
       feed.companies[source.id] = entry;
       feed.updatedAt = new Date().toISOString();
-      feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + postsResult.cost + newsResult.cost) * 1000) / 1000;
       refreshed += 1;
       await writeRow(FEED_ROW, feed);
     }
 
-    const peopleQueue = [...trackedPeople].sort(
+    // `only` scopes this pass too. It used to run for every followed person
+    // whenever an admin refreshed one company, up to the whole run cap.
+    const peopleQueue = trackedPeople
+      .filter(
+        (p) => !options?.onlyCompanyIds || options.onlyCompanyIds.includes(p.companyId)
+      )
+      .sort(
       (a, b) =>
         (Date.parse(feed.people[a.id]?.fetchedAt ?? "") || 0) -
         (Date.parse(feed.people[b.id]?.fetchedAt ?? "") || 0)
     );
     for (const person of peopleQueue) {
-      if (spent > RUN_CAP_USD) break;
+      if (overBudget()) break;
       if (!person.linkedinUrl) continue;
       const existing = feed.people[person.id];
       if (
         !options?.force &&
         existing?.fetchedAt &&
-        Date.now() - Date.parse(existing.fetchedAt) < COMPANY_FRESH_MS
+        Date.now() - Date.parse(existing.fetchedAt) < APIFY_FRESH_MS
       ) {
         continue;
       }
       const result = await scrapePersonPosts(person);
       spent += result.cost;
+      chargeApify(feed, result.cost);
       if (result.failed) {
         console.error(
           `[market-intel] person ${person.id}: scrape failed. Keeping previous data, will retry next tick`
@@ -764,7 +824,6 @@ export async function runMarketIntelRefresh(options?: {
         fetchedAt: new Date().toISOString(),
       };
       feed.updatedAt = new Date().toISOString();
-      feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + result.cost) * 1000) / 1000;
       peopleRefreshed += 1;
       await writeRow(FEED_ROW, feed);
     }
@@ -778,6 +837,7 @@ export async function runMarketIntelRefresh(options?: {
     companiesSkippedFresh: skippedFresh,
     peopleRefreshed,
     spentUsd: Math.round((spent + spentFresh) * 1000) / 1000,
+    apifyTodayUsd: apifySpentToday(feed),
   };
 }
 
@@ -815,14 +875,10 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
   await applyDigest(entry);
   feed.companies[source.id] = entry;
   feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
+  chargeApify(feed, postsResult.cost + newsResult.cost);
   feed.spendUsd =
     Math.round(
-      ((feed.spendUsd ?? 0) +
-        postsResult.cost +
-        newsResult.cost +
-        freshResult.cost +
-        siteResult.cost) *
-        1000
+      ((feed.spendUsd ?? 0) + freshResult.cost + siteResult.cost) * 1000
     ) / 1000;
   await writeRow(FEED_ROW, feed);
 }
@@ -843,7 +899,7 @@ export async function refreshTrackedPersonNow(person: TrackedPerson): Promise<vo
     posts: result.posts,
     fetchedAt: new Date().toISOString(),
   };
-  feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + result.cost) * 1000) / 1000;
+  chargeApify(feed, result.cost);
   await writeRow(FEED_ROW, feed);
 }
 
@@ -938,14 +994,10 @@ export async function addCompanyByLink(
   await applyDigest(entry);
   feed.companies[id] = entry;
   feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
+  chargeApify(feed, probe.cost + newsResult.cost);
   feed.spendUsd =
     Math.round(
-      ((feed.spendUsd ?? 0) +
-        probe.cost +
-        newsResult.cost +
-        freshResult.cost +
-        resolved.cost +
-        siteResult.cost) *
+      ((feed.spendUsd ?? 0) + freshResult.cost + resolved.cost + siteResult.cost) *
         1000
     ) / 1000;
   await writeRow(FEED_ROW, feed);

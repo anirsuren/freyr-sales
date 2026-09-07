@@ -190,7 +190,9 @@ export function RefreshChip({ updatedAt }: { updatedAt: string | null }) {
               strokeWidth={2.2}
               className="mt-0.5 shrink-0 text-blue-primary"
             />
-            Everyone sees the same live feed.
+            Everyone sees the same live feed. Today&apos;s news lands twice
+            a day; LinkedIn posts, the wider news search and the M&amp;A board
+            once a day.
           </p>
         </div>
       )}

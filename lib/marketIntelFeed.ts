@@ -118,6 +118,9 @@ export type MarketIntelFeed = {
   mna?: MnaBoard;
   updatedAt: string | null;
   spendUsd?: number;
+  /** Apify dollars charged in the 24 hours from `since`, what the refresh's
+   *  daily cap meters. */
+  apifyDay?: { since: string; usd: number };
 };
 
 /** A briefing post; `by` is set when a followed person wrote it rather than
