@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import { useStoredSet } from "@/lib/useStoredView";
-import { Briefcase, ChevronDown, ChevronRight, GripVertical, Layers, Package, TrendingUp, UserRound } from "lucide-react";
+import { AlertTriangle, Briefcase, ChevronDown, ChevronRight, GripVertical, Layers, Package, TrendingUp, UserRound } from "lucide-react";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { BarChart } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
@@ -383,6 +384,7 @@ function ConfidencePill({ pct }: { pct: number }) {
 export function OpportunitySummary({
   deals,
   accrualPlans = {},
+  flags = {},
   confidenceSort = "none",
   order,
   onReorder,
@@ -429,6 +431,9 @@ export function OpportunitySummary({
    * the planned/invalid marks; this reads the total off it.
    */
   accrualPlans?: Record<string, { planned: boolean; total?: number }>;
+  /** Deal id → why its accrual plan is flagged. A flagged deal shows an
+   *  amber triangle beside its name; hover it for the reason. */
+  flags?: Record<string, string>;
   /**
    * ORDER THE DEALS UNDER A GROUP BY HOW LIKELY THEY ARE.
    *
@@ -1183,6 +1188,13 @@ export function OpportunitySummary({
                         which is correct and is the point: the money has left
                         the forward totals and this row should not still be
                         claiming it. */}
+                    {flags[d.id] ? (
+                      <Tooltip label={flags[d.id]}>
+                        <span className="inline-flex shrink-0 items-center text-[color:var(--ink-amber)]">
+                          <AlertTriangle size={13} strokeWidth={2.2} aria-label="Flagged" />
+                        </span>
+                      </Tooltip>
+                    ) : null}
                     {(() => {
                       const acc = accrualPlans[d.id];
                       if (!acc?.planned) return null;

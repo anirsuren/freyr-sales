@@ -17,6 +17,7 @@ import {
 } from "@/lib/opportunitiesShared";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Tooltip } from "@/components/ui/Tooltip";
 import {
   AlertTriangle,
   CalendarRange,
@@ -242,9 +243,13 @@ function DeviationsTable({
         const summary = buildPlanDeviation(plan);
         const deal = dealById.get(plan.opportunityId);
         const opp = oppById.get(plan.opportunityId);
+        const verdict = judgePlan(plan, deal);
         return {
           plan,
           summary,
+          /* Why the plan is flagged, or null: the same triangle the
+             dashboard shows, so a flag never depends on which tab is open. */
+          flag: verdict.invalid ? verdict.headline : null,
           /* His "Opportunity ID" is the one people quote — OPP-0011 — not the
              internal row id. Falls back to the row id when a deal predates
              external ids, rather than printing an empty cell. */
@@ -504,6 +509,14 @@ function DeviationsTable({
                   {r.externalId}
                 </td>
                 <td className="px-3 py-2.5">
+                  <span className="flex items-center gap-1.5">
+                    {r.flag ? (
+                      <Tooltip label={r.flag}>
+                        <span className="inline-flex shrink-0 items-center text-[color:var(--ink-amber)]">
+                          <AlertTriangle size={13} strokeWidth={2.2} aria-label="Flagged" />
+                        </span>
+                      </Tooltip>
+                    ) : null}
                   <button
                     type="button"
                     onClick={() => onOpen(r.plan)}
@@ -512,6 +525,7 @@ function DeviationsTable({
                   >
                     {r.plan.opportunityName}
                   </button>
+                  </span>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] font-semibold tnum text-[#7E22CE]">
                   v{r.summary.version}
@@ -637,9 +651,37 @@ export function RevenueAccrualsModule({
   const router = useRouter();
   const { toast } = useToast();
   const [state, setState] = useState(initial);
-  const [query, setQuery] = useState("");
-  const [only, setOnly] = useState<"all" | "flagged" | "missing">("all");
-  const [tab, setTab] = useState<"plans" | "deviation">("plans");
+  /* THE SEARCH, THE SHOW FILTER AND THE TAB LIVE IN THE ADDRESS, so the
+     back arrow brings them back (Anir, Sep 7: "when I press the back arrow,
+     it should take me back to this page, and if I had anything searched in
+     it, it should keep that"). Read once on arrival; written below. */
+  const params = useSearchParams();
+  const [query, setQuery] = useState(() => params.get("q") ?? "");
+  const [only, setOnly] = useState<"all" | "flagged" | "missing">(() => {
+    const show = params.get("show");
+    return show === "flagged" || show === "missing" ? show : "all";
+  });
+  const [tab, setTab] = useState<"plans" | "deviation">(() =>
+    params.get("tab") === "deviation" ? "deviation" : "plans"
+  );
+  useEffect(() => {
+    /* replaceState, not a navigation: nothing reloads, and Next folds it into
+       the router so the back trail records the address with the search in
+       it. A short wait so typing does not rewrite the address per keystroke. */
+    const t = setTimeout(() => {
+      const next = new URLSearchParams(window.location.search);
+      const put = (k: string, v: string) => (v ? next.set(k, v) : next.delete(k));
+      put("q", query.trim());
+      put("show", only === "all" ? "" : only);
+      put("tab", tab === "plans" ? "" : tab);
+      const qs = next.toString();
+      const url = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
+      if (url !== `${window.location.pathname}${window.location.search}`) {
+        window.history.replaceState(null, "", url);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query, only, tab]);
   /* THE SUMMARY'S OWN CONTROLS. No measure picker: this page is TCV and only
      TCV (Suren, Aug 30: "it's only TCV on the revenue page"). */
   const [accrDims, setAccrDims] = useStickyValue<SummaryDimension[]>(
@@ -667,7 +709,7 @@ export function RevenueAccrualsModule({
      that deal's editor open, so a deal page, a report or a message can point
      straight at the plan instead of "go to Revenue Accruals and find it"
      (Anir, Sep 7: "just give me a link where I can test the deviations"). */
-  const linkedDeal = useSearchParams().get("deal");
+  const linkedDeal = params.get("deal");
   useEffect(() => {
     if (linkedDeal && opportunities.some((o) => o.id === linkedDeal))
       setPlanning({ dealId: linkedDeal });
@@ -926,6 +968,7 @@ export function RevenueAccrualsModule({
    *  the same filter press the chart does. */
   const shownOpportunities = useMemo(() => {
     const planned = new Map(state.plans.map((p) => [p.opportunityId, p]));
+    const flaggedIds = new Set(flagged.map((j) => j.plan.opportunityId));
     const q = query.trim().toLowerCase();
     return opportunities.filter((o) => {
       if (!matchesDeal(o.id, o.customer)) return false;
@@ -943,6 +986,14 @@ export function RevenueAccrualsModule({
       )
         return false;
       const plan = planned.get(o.id);
+      /* THE SHOW FILTER NARROWS THE TABLE TOO (Anir, Sep 7: "it says there
+         are two, but then I'm looking here, there are like four"). It used
+         to narrow only the plans behind the chart while the table kept every
+         deal on screen, greyed. Flagged shows the flagged plans' deals and
+         nothing else; Need a plan shows the deals with no plan and nothing
+         else. */
+      if (only === "flagged") return !!plan && flaggedIds.has(o.id);
+      if (only === "missing") return !plan;
       /* A DEAL WITH NO PLAN IS NOT PART OF A YEAR'S ACCRUAL. With no year
          chosen it stays on the table, uncounted, exactly as it always has —
          that is how the page names the deals nobody has planned. The moment a
@@ -952,7 +1003,7 @@ export function RevenueAccrualsModule({
       if (fyFilter.length > 0) return !!plan && linesInScope(plan).length > 0;
       return !plan || linesInScope(plan).length > 0;
     });
-  }, [opportunities, state.plans, matchesDeal, linesInScope, fyFilter, query]);
+  }, [opportunities, state.plans, matchesDeal, linesInScope, fyFilter, query, only, flagged]);
 
   /**
    * THE SHAPE OF THE YEAR, NOT A LIST OF NUMBERS (Anir, Aug 26: "the revenue
@@ -1689,6 +1740,12 @@ export function RevenueAccrualsModule({
                   ownerFilter.length > 0
                 }
                 deals={shownOpportunities}
+                /* A FLAGGED DEAL WEARS ITS FLAG (Anir, Sep 7: "if it's
+                   flagged, shouldn't it show up as an icon or something?").
+                   Hover it for the reason. */
+                flags={Object.fromEntries(
+                  flagged.map((j) => [j.plan.opportunityId, j.verdict.headline])
+                )}
                 order={accrDims}
                 onReorder={setAccrDims}
                 measure="tcv"
