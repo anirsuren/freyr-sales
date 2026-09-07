@@ -40,6 +40,10 @@ import {
   monthLabel,
   monthsFrom,
   spreadEvenly,
+  splitFieldsFor,
+  usedSplitFieldsIn,
+  SPLIT_LABEL,
+  type SplitField,
   type AccrualLine,
   type AccrualPlan,
   type RevenueAccrualsState,
@@ -227,55 +231,10 @@ function planRows(d: Draft): DraftLine[] {
  * columns here and the width falls out of the count; the header row and every
  * cell read it from the same place.
  */
-/**
- * WHICH SPLIT COLUMNS A PLAN SHOWS, AND WHY IT DEPENDS ON THE DEAL.
- *
- * Manoj, Sep 4: "OTS and ARR typically is applicable for licenses kind of
- * deal. But if it is not license, if it is services deal, then the monthly tab
- * should be used." Showing all three to everybody would put two dead columns
- * on every services plan and one on every licence plan, and a column you must
- * leave at zero is worse than a column that is not there.
- *
- * A deal with no offering type yet gets all three, because we cannot know
- * which two to hide and hiding the wrong one would lose a number somebody
- * already typed.
- */
-type SplitField = "ots" | "arr" | "mrr";
+/* SplitField, splitFieldsFor and SPLIT_LABEL now live in
+   lib/revenueAccrualsShared so the deal page's copy of this schedule cannot
+   drift from this one again (Anir, Sep 6). */
 
-/**
- * WHICH SPLIT COLUMNS THIS PLAN GETS.
- *
- * The offering type decides it — Manoj, Sep 3: a licence schedules as OTS +
- * ARR, a service as one monthly figure. What it did NOT decide was the third
- * case, a deal whose type nobody has picked yet, and that fell through to all
- * three columns. Found in the loop, Sep 4: on a typeless deal the footer read
- * "$0  $0  $0  |  $500,000" — three empty parts beside a total that is not
- * their sum, on a table whose own hint says the total is "the three columns to
- * the left, added up". A row that contradicts its own header.
- *
- * With no type, the plan is simply a total per month, which the store has
- * always supported: the normaliser only adds the parts up when the plan is
- * split. So no type means no split columns — except any the plan is ALREADY
- * using, because a schedule written before the type existed still has to show
- * the figures somebody entered.
- */
-function splitFieldsFor(
-  kind: string | undefined,
-  used: readonly SplitField[] = []
-): SplitField[] {
-  const k = String(kind ?? "").toLowerCase();
-  if (k === "license") return ["ots", "arr"];
-  if (k === "services") return ["mrr"];
-  return ["ots", "arr", "mrr"].filter((f) =>
-    used.includes(f as SplitField)
-  ) as SplitField[];
-}
-
-const SPLIT_LABEL: Record<SplitField, string> = {
-  ots: "OTS",
-  arr: "ARR",
-  mrr: "Monthly",
-};
 
 /** Plain English for the words on the header row. */
 const COLUMN_HINT: Record<string, string> = {
@@ -955,12 +914,51 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
    * The month is dropped and its typed figure with it, so a row that comes
    * back comes back loose rather than carrying a number nobody re-entered.
    */
+  /**
+   * REMOVING A MONTH GIVES ITS MONEY TO THE ONE NEXT DOOR.
+   *
+   * Suren, Sep 6: "if I remove one, it has to go to near." It used to drop the
+   * month and let reshape() share its share across every untyped month at
+   * once, so taking out one month rewrote the whole schedule and any month he
+   * had deliberately shaped moved with it.
+   *
+   * Now the amount lands on the nearest REMAINING month — the one before it
+   * where there is one, otherwise the one after — and that month is held, so
+   * the rest of the schedule stays where he put it. Nothing is lost and the
+   * total still adds to the contract.
+   */
   function dropMonth(month: string) {
+    const rows = planRows(editing);
+    const going = editing.lines.find((l) => l.month === month);
+    const amount = Number(rowTotal(going ?? { month, amount: "" })) || 0;
+
+    const order = rows.map((r) => r.month).filter((m) => m !== month);
+    const at = rows.findIndex((r) => r.month === month);
+    const before = rows.slice(0, at).map((r) => r.month).filter((m) => order.includes(m)).pop();
+    const after = rows.slice(at + 1).map((r) => r.month).find((m) => order.includes(m));
+    const neighbour = before ?? after ?? null;
+
+    let lines = editing.lines.filter((l) => l.month !== month);
+    if (neighbour && amount > 0) {
+      const existing = lines.find((l) => l.month === neighbour);
+      const merged = (Number(rowTotal(existing ?? { month: neighbour, amount: "" })) || 0) + amount;
+      lines = existing
+        ? lines.map((l) =>
+            l.month === neighbour
+              ? /* Its split halves cannot survive a merge — two OTS figures do
+                   not add into one meaningful OTS — so the neighbour becomes a
+                   plain held total, which is what the money now is. */
+                { month: neighbour, amount: String(merged), pinned: true }
+              : l
+          )
+        : [...lines, { month: neighbour, amount: String(merged), pinned: true }];
+    }
+
     setEditing(
       reshape({
         ...editing,
         dropped: [...editing.dropped, month],
-        lines: editing.lines.filter((l) => l.month !== month),
+        lines,
       })
     );
   }
@@ -1052,7 +1050,25 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
        un-pins and rejoins the spread. */
     const pinned = raw.trim() !== "";
     lines[index] = { ...lines[index], amount: raw, pinned };
-    setEditing(reshape({ ...editing, lines }));
+    /* NO RE-SPREAD WHILE THE FINGER IS STILL ON THE KEY (Suren, testing with
+       Manoj, Sep 6: "it does not allow me to edit it... if I have to do
+       21,000, how will I do it?").
+
+       reshape() shares the contract value across every month nobody has
+       typed, and this called it on EVERY keystroke — so typing 21,000 into a
+       $100M schedule redistributed the other five months five times on the
+       way (2 → 21 → 210 → 2,100 → 21,000), and the half-typed "1" he stopped
+       on left four months reading $24,997,499 each. The numbers churned under
+       him mid-word, which is what "can't edit this" actually was.
+
+       The typed month is stored as typed and nothing else moves. The spread
+       settles once, on blur, when the number is finished. */
+    setEditing({ ...editing, lines });
+  }
+
+  /** The number is finished — now let the untyped months take up the rest. */
+  function settleAmounts() {
+    setEditing((current) => reshape(current));
   }
 
   function editSplit(index: number, field: "ots" | "arr" | "mrr", raw: string) {
@@ -1068,7 +1084,8 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
       (nextLine.arr ?? "").trim() !== "" ||
       (nextLine.mrr ?? "").trim() !== "";
     lines[index] = { ...nextLine, pinned: anyHalf };
-    setEditing(reshape({ ...editing, lines }));
+    /* Same rule as a typed total: settle on blur, not per keystroke. */
+    setEditing({ ...editing, lines });
   }
 
 
@@ -1322,9 +1339,7 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
   const dealKind = dealById.get(editing.opportunityId)?.offeringKind;
   /* The split columns a TYPELESS plan has already been filled in with, so
      nothing anybody entered goes invisible when the type is blank. */
-  const usedSplitFields = (["ots", "arr", "mrr"] as SplitField[]).filter((f) =>
-    editingRows.some((l) => Number(l[f]) > 0)
-  );
+  const usedSplitFields = usedSplitFieldsIn(editingRows);
   const splitFields = splitFieldsFor(dealKind, usedSplitFields);
   const baseColumns = monthColumnsFor(dealKind, usedSplitFields);
   const monthColumns: readonly string[] = deviating
@@ -2044,6 +2059,10 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                                     expandMoneyShorthand(e.target.value, { integer: true })
                                   )
                                 }
+                                /* The untyped months take up the rest once
+                                   this number is finished, not on every
+                                   keystroke — see editAmount. */
+                                onBlur={settleAmounts}
                                 className={cn(
                                   "h-8 w-full rounded-md border pl-5 pr-2 text-[13px] tnum outline-none focus:border-blue-subtle",
                                   /* A filled-in half is somebody's own number,
@@ -2090,16 +2109,24 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                                 adjusted. The store has always allowed this:
                                 the normaliser only sums the parts when the
                                 plan is split. */}
+                            {/* COMPUTED PER ROW, NOT PER TABLE. The columns
+                                are always offered now, so gating the total on
+                                "this table has split columns" would have made
+                                every month in every existing plan read-only —
+                                and every plan in the workspace is written as a
+                                plain total per month. A row that HAS a split
+                                shows the sum of its parts; a row that does not
+                                stays typeable, exactly as it was. */}
                             <input
                               value={
                                 readingLocal
                                   ? localDigits(
-                                      splitFields.length
+                                      isSplit(line)
                                         ? rowTotal(line)
                                         : (line.amount ?? "")
                                     )
                                   : withCommas(
-                                      splitFields.length
+                                      isSplit(line)
                                         ? rowTotal(line)
                                         : (line.amount ?? "")
                                     )
@@ -2107,17 +2134,19 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                               title={
                                 readingLocal
                                   ? `Shown in ${dealCurrency} at the sign-date rate. Switch to USD to edit.`
-                                  : undefined
+                                  : isSplit(line)
+                                    ? "The parts to the left, added up. Clear them to type a total instead."
+                                    : undefined
                               }
                               placeholder="0"
                               inputMode="numeric"
-                              readOnly={splitFields.length > 0 || readingLocal}
+                              readOnly={isSplit(line) || readingLocal}
                               tabIndex={
-                                splitFields.length || readingLocal ? -1 : undefined
+                                isSplit(line) || readingLocal ? -1 : undefined
                               }
                               aria-label={`Total for ${monthLabel(line.month)}`}
                               onChange={
-                                splitFields.length
+                                isSplit(line)
                                   ? undefined
                                   : (e) =>
                                       editAmount(
@@ -2127,9 +2156,10 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
                                         })
                                       )
                               }
+                              onBlur={isSplit(line) ? undefined : settleAmounts}
                               className={cn(
                                 "h-8 w-full rounded-md border pl-5 pr-2 text-[13px] font-semibold tnum outline-none",
-                                splitFields.length
+                                isSplit(line)
                                   ? "cursor-default border-transparent bg-surface text-text-primary"
                                   : line.amount
                                     ? "border-blue-subtle bg-blue-light/40 text-text-primary focus:border-blue-subtle"
@@ -2568,7 +2598,11 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
           setPendingDrop(null);
         }}
         title={pendingDrop ? `Remove ${monthLabel(pendingDrop)}?` : "Remove this month?"}
-        body="Its share goes back to the other months, so every figure you have not typed by hand will change. You can put the month back with Add month."
+        body={
+          pendingDrop
+            ? `Its money moves to the month next to it, so the total still adds up to the contract. You can put ${monthLabel(pendingDrop)} back with Add month.`
+            : "Its money moves to the month next to it, so the total still adds up to the contract."
+        }
         confirmLabel="Remove"
       />
       <ConfirmDialog
@@ -2577,6 +2611,13 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
         onConfirm={() => void commitPendingSave()}
         title="Save these changes?"
         body="Changes made to this revenue accrual schedule will be made current and Deviation will be logged."
+        /* BLUE, NOT RED (Anir, Sep 6: "this is the red button. Make it blue.
+           See how it's not supposed to be red?"). ConfirmDialog defaults to
+           the destructive tone, and this one inherited it — but saving a
+           schedule destroys nothing. Red is reserved for deletes; a save that
+           wears it teaches people to ignore the colour on the dialogs where
+           it actually means something. */
+        tone="primary"
         /* "Accept" is his word; the dialog's own cancel button already
            reads "Cancel", which is the other one. */
         confirmLabel="Accept"

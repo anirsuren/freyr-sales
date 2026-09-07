@@ -1715,8 +1715,32 @@ export function NewRequestDialog({
      Wait the two seconds rather than lose the document he just chose. */
   const uploading = docs.some((d) => d.status === "uploading");
 
+  /**
+   * WHY THE BUTTON IS WAITING, SAID OUT LOUD.
+   *
+   * Found in the loop, Sep 6: a needed-by date in the past left Create enabled
+   * and blue, and pressing it did nothing at all — the browser refused the
+   * value on the input's own `min`, the click went nowhere, and the dialog sat
+   * there with no message. Press-then-silence is the shape Anir has told me to
+   * stop building; the contracts dialog already does it the other way round,
+   * with the reason beside the button and the button waiting.
+   *
+   * Same rule the input enforces, said in words: a request cannot be needed
+   * before today.
+   */
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const dateProblem =
+    neededBy && neededBy < todayISO
+      ? "That date has already passed. Pick today or later."
+      : meetingAt && meetingAt.slice(0, 10) < todayISO
+        ? "That meeting is in the past. Pick today or later."
+        : null;
   const canSave =
-    !!kind && title.trim().length > 0 && !!customer && !uploading;
+    !!kind &&
+    title.trim().length > 0 &&
+    !!customer &&
+    !uploading &&
+    !dateProblem;
 
   return (
     <FrameOrNot
@@ -1988,7 +2012,7 @@ export function NewRequestDialog({
                 ]
               : [
                   ["1", "You raise it", "Say what you need and who it is for. It lands in the Solutioning team's queue straight away."],
-                  ["2", "Solutions takes it up", "Whoever takes it owns it, and builds the documents against your request."],
+                  ["2", "Solutions takes it up", "Whoever takes it owns it, and builds the documents you asked for."],
                   ["3", "You close it", "The requester decides when it is done, not the person who built it."],
                 ]
             ).map(([n, head, body]) => (
@@ -2400,7 +2424,7 @@ export function NewRequestDialog({
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2 pt-1">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-1">
             <button
               type="button"
               onClick={() => setKind(null)}
@@ -2408,6 +2432,11 @@ export function NewRequestDialog({
             >
               Back
             </button>
+            {dateProblem && (
+              <span className="order-last w-full text-[12.5px] font-semibold text-[color:var(--ink-orange)] sm:order-none sm:w-auto">
+                {dateProblem}
+              </span>
+            )}
             <button
               type="button"
               disabled={!canSave || saving}

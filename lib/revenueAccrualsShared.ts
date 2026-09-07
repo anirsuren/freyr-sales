@@ -819,3 +819,82 @@ export function buildDeviation(
     totalDelta: totalNow - totalWas,
   };
 }
+
+/**
+ * THE SPLIT COLUMNS, IN ONE PLACE.
+ *
+ * Suren, Sep 1: "what if we need a separation between month-on-month revenue
+ * and one-time revenue? You can make another column: OTS amount in USD, ARR
+ * amount in USD... and then you can have a total column, which will come for
+ * every month." Manoj, Sep 4, added the third: "this is not an annual
+ * recurring revenue. This is a monthly recurring revenue... can we have one
+ * more column, call it monthly."
+ *
+ * These lived inside AccrualPlanDialog, so the schedule shown on the DEAL
+ * (a second, read-only rendering of the very same plan) never grew the
+ * columns and showed one bare Amount instead — which is what Anir found on
+ * Sep 6: "there are two more fields to be there in this: one-time revenue,
+ * recurring revenue. That total has to come to you there." Two views of one
+ * plan disagreeing about what its columns are is exactly the drift that put
+ * them here.
+ */
+export type SplitField = "ots" | "arr" | "mrr";
+
+export const SPLIT_LABEL: Record<SplitField, string> = {
+  ots: "OTS",
+  arr: "ARR",
+  mrr: "Monthly",
+};
+
+/**
+ * WHICH SPLIT COLUMNS A PLAN GETS.
+ *
+ * A licence schedules as OTS + ARR, a service as one monthly figure.
+ *
+ * NO TYPE STILL GETS ONE-TIME AND RECURRING (Anir, Sep 6: "there are two more
+ * fields to be there in this: one-time revenue, recurring revenue. That total
+ * has to come to you there" — and then, looking at a schedule with neither:
+ * "where").
+ *
+ * This used to return NOTHING for a deal with no offering type, on the
+ * reasoning that empty parts beside a typed total contradict the header. The
+ * reasoning was sound and the effect was that the feature never appeared:
+ * `offeringKind` is empty on all 106 deals in the workspace, because the only
+ * control that sets it is one dropdown in the inline deal editor that nobody
+ * has ever used. So the columns Suren asked for on Sep 1 were gated behind a
+ * value nothing populates, and had been invisible everywhere since.
+ *
+ * The contradiction is handled where it actually lives instead: a row with no
+ * split keeps its total typeable, a row with one has its total computed. So
+ * these two columns can always be offered without taking away the plain
+ * total-per-month that every existing plan is written in.
+ */
+export function splitFieldsFor(
+  kind: string | undefined,
+  used: readonly SplitField[] = []
+): SplitField[] {
+  const k = String(kind ?? "").toLowerCase();
+  if (k === "license") return ["ots", "arr"];
+  if (k === "services") return ["mrr"];
+  /* No type: one-time and recurring, plus any third part this plan is
+     already using so a saved figure is never hidden. */
+  const base: SplitField[] = ["ots", "arr"];
+  return used.includes("mrr") ? [...base, "mrr"] : base;
+}
+
+/**
+ * The split fields these lines actually carry a figure in. Takes strings as
+ * well as numbers, because the planner's draft rows hold what a person has
+ * typed and the stored plan holds what was saved — one question, both shapes.
+ */
+export function usedSplitFieldsIn(
+  lines: readonly {
+    ots?: number | string;
+    arr?: number | string;
+    mrr?: number | string;
+  }[]
+): SplitField[] {
+  return (["ots", "arr", "mrr"] as SplitField[]).filter((f) =>
+    lines.some((l) => Number(l[f]) > 0)
+  );
+}

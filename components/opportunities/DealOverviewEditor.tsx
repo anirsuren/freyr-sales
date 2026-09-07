@@ -28,6 +28,9 @@ import { CalendarRange } from "lucide-react";
 import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import {
   monthLabel,
+  splitFieldsFor,
+  usedSplitFieldsIn,
+  SPLIT_LABEL,
   type AccrualPlan,
 } from "@/lib/revenueAccrualsShared";
 import {
@@ -999,6 +1002,14 @@ export function DealOverviewEditor({
     return `${localSymbol}${Math.round(usd * rate).toLocaleString("en-US")}`;
   };
 
+  /* WHICH SPLIT COLUMNS THIS SCHEDULE SHOWS. The same question the planner
+     asks, from the same helper, so the two renderings of one plan cannot
+     disagree about their own columns again (Anir, Sep 6). */
+  const scheduleSplitFields = splitFieldsFor(
+    deal.offeringKind,
+    usedSplitFieldsIn(accrualPlan?.lines ?? [])
+  );
+
   const rateNote = (() => {
     if (fx.state !== "ready" || !fx.on) return "";
     if (!signs) return `No sign date yet, so this is the ${dayLabel(fx.on)} rate.`;
@@ -1691,13 +1702,31 @@ export function DealOverviewEditor({
             </p>
           ) : (
             <>
-              <div className="mt-2 overflow-hidden rounded-lg border border-border-light">
-                <table className="w-full table-fixed border-collapse text-left">
+              {/* THE SAME COLUMNS THE PLANNER SHOWS (Anir, Sep 6: "there are
+                  two more fields to be there in this: one-time revenue,
+                  recurring revenue. That total has to come to you there").
+
+                  This table is a READ-ONLY rendering of the very plan the
+                  scheduler edits, and it had drifted: the planner grew the
+                  OTS / ARR / Monthly split on Sep 1 and Sep 4, and this copy
+                  kept showing a single "Amount". Both now ask
+                  splitFieldsFor() the same question, so a licence deal shows
+                  OTS and ARR, a services deal shows Monthly, and a deal with
+                  no type shows whichever parts its own numbers use. Total
+                  stays the last column, as the sum. */}
+              <div className="mt-2 overflow-x-auto rounded-lg border border-border-light">
+                <table className="w-full min-w-[420px] border-collapse text-left">
                   <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                     <tr>
-                      <th className="w-1/2 px-3 py-2">Month</th>
-                      <th className="w-1/2 px-3 py-2">
-                        Amount ({scheduleLocal && !isBase ? currency : "USD"})
+                      <th className="px-3 py-2">Month</th>
+                      {scheduleSplitFields.map((f) => (
+                        <th key={f} className="px-3 py-2 text-right">
+                          {SPLIT_LABEL[f]} ({scheduleLocal && !isBase ? currency : "USD"})
+                        </th>
+                      ))}
+                      <th className="px-3 py-2 text-right">
+                        {scheduleSplitFields.length ? "Total" : "Amount"} (
+                        {scheduleLocal && !isBase ? currency : "USD"})
                       </th>
                     </tr>
                   </thead>
@@ -1706,10 +1735,18 @@ export function DealOverviewEditor({
                       .sort((a, b) => a.month.localeCompare(b.month))
                       .map((l) => (
                         <tr key={l.month} className="h-11">
-                          <td className="px-3 text-[13px] text-text-secondary">
+                          <td className="px-3 text-[13px] text-text-secondary whitespace-nowrap">
                             {monthLabel(l.month)}
                           </td>
-                          <td className="px-3 text-[13px] font-semibold tnum text-text-primary">
+                          {scheduleSplitFields.map((f) => (
+                            <td
+                              key={f}
+                              className="px-3 text-right text-[13px] tnum text-text-secondary"
+                            >
+                              {Number(l[f]) > 0 ? scheduleMoney(Number(l[f])) : "·"}
+                            </td>
+                          ))}
+                          <td className="px-3 text-right text-[13px] font-semibold tnum text-text-primary">
                             {scheduleMoney(l.amount || 0)}
                           </td>
                         </tr>
@@ -1743,7 +1780,20 @@ export function DealOverviewEditor({
                           {accrualPlan.lines.length === 1 ? "" : "s"}
                         </span>
                       </td>
-                      <td className="px-3 text-[15px] font-bold tnum text-blue-primary">
+                      {scheduleSplitFields.map((f) => (
+                        <td
+                          key={f}
+                          className="px-3 text-right text-[13.5px] font-bold tnum text-blue-primary"
+                        >
+                          {scheduleMoney(
+                            accrualPlan.lines.reduce(
+                              (n, l) => n + (Number(l[f]) || 0),
+                              0
+                            )
+                          )}
+                        </td>
+                      ))}
+                      <td className="px-3 text-right text-[15px] font-bold tnum text-blue-primary">
                         {scheduleMoney(
                           accrualPlan.lines.reduce((n, l) => n + (l.amount || 0), 0)
                         )}

@@ -1733,8 +1733,11 @@ export function RequestDetail({
         title="Take this on?"
         body={
           <>
-            You become the person doing <b>{r.ref}</b>, and {r.requestedBy}{" "}
-            sees your name on it.
+            You become the person doing <b>{r.ref}</b>
+            {/* Naming the requester is the point — unless the requester is
+                you, in which case "and Anir Suren sees your name on it" is
+                telling me I will see my own name (found in the loop, Sep 6). */}
+            {iRequested ? "." : `, and ${r.requestedBy} sees your name on it.`}
           </>
         }
         detail="You can hand it back afterwards if it turns out to be somebody else's."
