@@ -941,17 +941,51 @@ const SUGGESTED_TERMS: number[] = [3, 6, 9, 12, 18, 24, 36];
     let lines = editing.lines.filter((l) => l.month !== month);
     if (neighbour && amount > 0) {
       const existing = lines.find((l) => l.month === neighbour);
-      const merged = (Number(rowTotal(existing ?? { month: neighbour, amount: "" })) || 0) + amount;
+      const base: DraftLine = existing ?? { month: neighbour, amount: "" };
+      /* THE MONEY KEEPS THE SHAPE OF THE MONTH IT LANDS ON. The first cut
+         flattened the neighbour into one plain total, which threw away an OTS
+         or ARR figure somebody had just typed there (Sep 7 test loop: OTS
+         60,000 in Jan, remove Feb, Jan became a plain 180,000 and the 60,000
+         was gone without a word). Now:
+         - a plain month stays plain and simply grows;
+         - a split month stays split: a split month arriving adds field by
+           field, a plain amount arriving is shared out in the proportions the
+           month already has, so what was typed is still there and the total
+           still adds up to the contract. */
+      const fields: readonly SplitField[] = ["ots", "arr", "mrr"];
+      const current = fields.map((f) => Number(base[f]) || 0);
+      const currentSum = current.reduce((a, b) => a + b, 0);
+      let merged: DraftLine;
+      if (isSplit(base) && isSplit(going)) {
+        const next: DraftLine = { ...base, pinned: true };
+        for (const f of fields) {
+          const add = Number(going?.[f]) || 0;
+          if (add) next[f] = String((Number(base[f]) || 0) + add);
+        }
+        merged = next;
+      } else if (isSplit(base) && currentSum > 0) {
+        const next: DraftLine = { ...base, pinned: true };
+        const carrying = fields.filter((f) => Number(base[f]) || 0);
+        let left = amount;
+        carrying.forEach((f, i) => {
+          const share =
+            i === carrying.length - 1
+              ? left
+              : Math.round((amount * (Number(base[f]) || 0)) / currentSum);
+          left -= share;
+          next[f] = String((Number(base[f]) || 0) + share);
+        });
+        merged = next;
+      } else {
+        merged = {
+          month: neighbour,
+          amount: String((Number(rowTotal(base)) || 0) + amount),
+          pinned: true,
+        };
+      }
       lines = existing
-        ? lines.map((l) =>
-            l.month === neighbour
-              ? /* Its split halves cannot survive a merge — two OTS figures do
-                   not add into one meaningful OTS — so the neighbour becomes a
-                   plain held total, which is what the money now is. */
-                { month: neighbour, amount: String(merged), pinned: true }
-              : l
-          )
-        : [...lines, { month: neighbour, amount: String(merged), pinned: true }];
+        ? lines.map((l) => (l.month === neighbour ? merged : l))
+        : [...lines, merged];
     }
 
     setEditing(

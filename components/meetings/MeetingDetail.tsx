@@ -597,6 +597,9 @@ export function MeetingDetail({
           downloadUrl={meetingDownloadUrl(m.id, viewing.id)}
           openInNewTabUrl={meetingDownloadUrl(m.id, viewing.id)}
           previewUrl={meetingPreviewUrl(m.id, viewing.id)}
+          memberUrl={(_path: string, member: string) =>
+            `${meetingDownloadUrl(m.id, viewing.id)}&member=${encodeURIComponent(member)}`
+          }
           onClose={() => setViewing(null)}
         />
       )}

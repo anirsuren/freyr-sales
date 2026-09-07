@@ -4,6 +4,7 @@ import { streamStoredFile } from "@/lib/storedFileResponse";
 import { readContracts } from "@/lib/contracts";
 import { sampleDocUrl } from "@/lib/sampleDocuments";
 import { canOpenModule } from "@/lib/moduleAccessServer";
+import { archiveMemberResponse } from "@/lib/archiveMemberResponse";
 
 /**
  * THE BYTES OF A DOCUMENT ON A CONTRACT.
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
   const contractId = search.get("contractId") ?? "";
   const docId = search.get("docId") ?? "";
   const inline = search.get("view") === "1";
+  const member = search.get("member");
   if (!contractId || !docId)
     return NextResponse.json({ error: "Which document?" }, { status: 400 });
 
@@ -66,6 +68,13 @@ export async function GET(req: NextRequest) {
       { error: "Document storage is not configured here" },
       { status: 503 }
     );
+
+  /* ONE FILE INSIDE A ZIP, resolved through the same record as the archive. */
+  if (member)
+    return archiveMemberResponse(doc.docsPath, member, {
+      inline,
+      range: req.headers.get("range"),
+    });
 
   const { presignUrl } = await docsStorage.getDownloadUrl(doc.docsPath);
   if (inline)

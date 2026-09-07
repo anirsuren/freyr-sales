@@ -1186,7 +1186,13 @@ export function MaterialsSection({
         </p>
       ) : columns === "table" ? (
         <div className="materials-view-enter mt-3 overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-          <table className="w-full min-w-[1280px] table-fixed border-collapse text-left">
+          {/* THE FLOOR FITS A MACBOOK. 1280px was 42px wider than the card on
+              a 1512px screen (the default 14" MacBook width), so the red
+              delete icon in the last column sat half behind the card edge
+              with nothing to say the row scrolls (Sep 7 test loop). 1200px
+              keeps every column readable and lets the table sit inside the
+              card at the size most of the team actually uses. */}
+          <table className="w-full min-w-[1200px] table-fixed border-collapse text-left">
             <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               {/* "Uploaded by" — the person is the headline and the date sits
                   under their name anyway, so the old "Upload date" labelled the

@@ -5,6 +5,7 @@ import { streamStoredFile } from "@/lib/storedFileResponse";
 import { getDb } from "@/lib/db";
 import { sampleDocUrl } from "@/lib/sampleDocuments";
 import { canOpenModule } from "@/lib/moduleAccessServer";
+import { archiveMemberResponse } from "@/lib/archiveMemberResponse";
 
 /**
  * THE BYTES OF A DOCUMENT ON AN ACCOUNT'S ACTIVITY. Same law as the meeting
@@ -25,6 +26,7 @@ export async function GET(req: NextRequest) {
   const customerId = search.get("customerId") ?? "";
   const docId = search.get("docId") ?? "";
   const inline = search.get("view") === "1";
+  const member = search.get("member");
   if (!customerId || !docId)
     return NextResponse.json({ error: "Which document?" }, { status: 400 });
 
@@ -48,6 +50,13 @@ export async function GET(req: NextRequest) {
       { error: "Document storage is not configured here" },
       { status: 503 }
     );
+
+  /* ONE FILE INSIDE A ZIP, resolved through the same record as the archive. */
+  if (member)
+    return archiveMemberResponse(doc.docsPath, member, {
+      inline,
+      range: req.headers.get("range"),
+    });
 
   const presignUrl = await getMaterialServeUrl(doc.docsPath);
   if (inline)

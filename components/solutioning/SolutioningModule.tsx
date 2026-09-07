@@ -547,7 +547,13 @@ export function SolutioningModule({
           draws the empty state bare; only this one framed it, so the same
           "nothing here yet" looked like two different things depending on
           which page you were on. */}
-      {state.requests.length === 0 ? (
+      {/* THE ROOM'S OWN COUNT DECIDES WHICH EMPTY STATE. This read the whole
+          store, so a room with nothing in it while another room had something
+          said "No solution requests match these filters. Clear the search
+          box…" with no filter set (Sep 7 test loop: one detached submission
+          in the store, the requests room told me to clear filters). Same
+          rule as the "Showing x of y" line above it. */}
+      {inRoom.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
           title={ROOM_META[room].empty}
@@ -2188,7 +2194,7 @@ export function NewRequestDialog({
                 <MultiColorSelect
                   values={oppIds}
                   onChange={setOppIds}
-                  ariaLabel="Opportunities this is against"
+                  ariaLabel="Deals this is for"
                   minWidth={220}
                   allLabel={
                     customer
@@ -2219,7 +2225,7 @@ export function NewRequestDialog({
                 <MultiColorSelect
                   values={contactIds}
                   onChange={setContactIds}
-                  ariaLabel="Contacts this is against"
+                  ariaLabel="Contacts this is for"
                   minWidth={220}
                   allLabel={
                     customer

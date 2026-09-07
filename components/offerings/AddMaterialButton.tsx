@@ -1213,6 +1213,20 @@ export function AddMaterialButton({
           <div>
               <label className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               File format <span className="font-medium normal-case tracking-normal">Shared default</span>
+              {/* THE ONE REQUIRED FIELD THAT NEVER SAID SO. Folder, stage,
+                  audience and division each wear a Required pill while they
+                  are empty; the format did not, so a form with everything
+                  else filled sat behind a greyed-out Add button with no
+                  reason on screen (found in the Sep 7 test loop: picked a
+                  file, filled the rest, clicked Add, nothing). Same rule as
+                  the folder pill: shown while any file is still without one. */}
+              {(files.length
+                ? files.some((f) => !(fileOverrides[fileKey(f)]?.kind || kind))
+                : !kind) && (
+                <span className="ml-0.5 rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
+                  Required
+                </span>
+              )}
             </label>
             {/* Four equal, colour-coded tiles on one row (item 9). */}
             <div className="grid grid-cols-4 gap-2">

@@ -132,6 +132,7 @@ export function MaterialViewer({
   embed = false,
   initialMember = null,
   previewUrl,
+  memberUrl: memberUrlFor,
   kicker = "Sales material",
   showOfferingFacts = true,
 }: {
@@ -166,6 +167,14 @@ export function MaterialViewer({
    * serves that file. Defaults to the offering route.
    */
   previewUrl?: (path: string, member: string | null) => string;
+  /**
+   * Where ONE FILE INSIDE A ZIP streams from. Defaults to the offerings
+   * archive route, which only knows sales materials; every other module
+   * passes its own download route with `member=` so a PDF inside a ZIP on a
+   * meeting, a request, a contract or an account opens instead of failing
+   * ("This PDF could not be opened here", Sep 7).
+   */
+  memberUrl?: (path: string, member: string) => string;
   /**
    * WHAT KIND OF THING THIS IS, on the standalone page's kicker line.
    *
@@ -306,7 +315,9 @@ export function MaterialViewer({
     ? archiveMember.split("/").pop() || archiveMember
     : label;
   const memberUrl = archiveMember
-    ? `/api/offerings/${offeringId}/materials/archive?path=${encodeURIComponent(path)}&member=${encodeURIComponent(archiveMember)}`
+    ? memberUrlFor
+      ? memberUrlFor(path, archiveMember)
+      : `/api/offerings/${offeringId}/materials/archive?path=${encodeURIComponent(path)}&member=${encodeURIComponent(archiveMember)}`
     : null;
   const currentDownloadUrl = memberUrl || downloadUrl;
   const ext = extensionOf(currentPath);

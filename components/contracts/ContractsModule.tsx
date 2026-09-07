@@ -1729,6 +1729,9 @@ export function ContractsModule({
           previewUrl={`/api/contracts/download?contractId=${encodeURIComponent(
             viewingDoc.contractId
           )}&docId=${encodeURIComponent(viewingDoc.docId)}&view=1`}
+          serverPreviewUrl={`/api/contracts/preview?contractId=${encodeURIComponent(
+            viewingDoc.contractId
+          )}&docId=${encodeURIComponent(viewingDoc.docId)}`}
           downloadUrl={`/api/contracts/download?contractId=${encodeURIComponent(
             viewingDoc.contractId
           )}&docId=${encodeURIComponent(viewingDoc.docId)}`}

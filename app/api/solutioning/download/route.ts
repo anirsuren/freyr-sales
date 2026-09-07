@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { streamStoredFile } from "@/lib/storedFileResponse";
 import { reachableSolutioningDoc } from "@/lib/solutioningDocAccess";
+import { archiveMemberResponse } from "@/lib/archiveMemberResponse";
 
 /**
  * THE BYTES OF A SOLUTIONING DOCUMENT.
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
   const requestId = search.get("requestId") ?? "";
   const docId = search.get("docId") ?? "";
   const inline = search.get("view") === "1";
+  const member = search.get("member");
   if (!requestId || !docId)
     return NextResponse.json({ error: "Which document?" }, { status: 400 });
 
@@ -31,6 +33,13 @@ export async function GET(req: NextRequest) {
       { error: "Document storage is not configured here" },
       { status: 503 }
     );
+
+  /* ONE FILE INSIDE A ZIP, resolved through the same record as the archive. */
+  if (member)
+    return archiveMemberResponse(access.docsPath, member, {
+      inline,
+      range: req.headers.get("range"),
+    });
 
   const name = access.doc.fileName || access.doc.name;
   const { presignUrl } = await docsStorage.getDownloadUrl(access.docsPath);

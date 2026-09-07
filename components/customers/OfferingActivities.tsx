@@ -812,6 +812,9 @@ export function OfferingActivities({
           previewUrl={`/api/customers/download?customerId=${encodeURIComponent(
             customerId
           )}&docId=${encodeURIComponent(viewingDoc.id)}&view=1`}
+          serverPreviewUrl={`/api/customers/preview?customerId=${encodeURIComponent(
+            customerId
+          )}&docId=${encodeURIComponent(viewingDoc.id)}`}
           downloadUrl={`/api/customers/download?customerId=${encodeURIComponent(
             customerId
           )}&docId=${encodeURIComponent(viewingDoc.id)}`}

@@ -1434,6 +1434,9 @@ export function RequestDetail({
           downloadUrl={solutioningDownloadUrl(r.id, viewing.id)}
           openInNewTabUrl={solutioningDownloadUrl(r.id, viewing.id)}
           previewUrl={solutioningPreviewUrl(r.id, viewing.id)}
+          memberUrl={(_path: string, member: string) =>
+            `${solutioningDownloadUrl(r.id, viewing.id)}&member=${encodeURIComponent(member)}`
+          }
           onClose={() => setViewing(null)}
         />
       )}
@@ -1447,6 +1450,9 @@ export function RequestDetail({
           previewUrl={`/api/solutioning/download?requestId=${encodeURIComponent(
             r.id
           )}&docId=${encodeURIComponent(viewingAttachment.id)}&view=1`}
+          serverPreviewUrl={`/api/solutioning/preview?requestId=${encodeURIComponent(
+            r.id
+          )}&docId=${encodeURIComponent(viewingAttachment.id)}`}
           downloadUrl={`/api/solutioning/download?requestId=${encodeURIComponent(
             r.id
           )}&docId=${encodeURIComponent(viewingAttachment.id)}`}

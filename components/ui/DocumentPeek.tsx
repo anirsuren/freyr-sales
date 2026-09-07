@@ -30,6 +30,7 @@ export function DocumentPeek({
   name,
   fileName,
   previewUrl,
+  serverPreviewUrl,
   downloadUrl,
   contextName,
   onClose,
@@ -40,18 +41,33 @@ export function DocumentPeek({
   fileName?: string | null;
   /** Streams the bytes for the in-app renderer. */
   previewUrl: string;
+  /**
+   * The module's JSON preview endpoint (its `/preview` route), for the formats
+   * a browser cannot draw from raw bytes: Excel, ZIP listings, a deck that
+   * defeats the in-browser renderer. The viewer parses this as JSON, so it
+   * must NEVER be the byte stream above.
+   */
+  serverPreviewUrl: string;
   /** Hands over the original file. */
   downloadUrl: string;
   /** What this document belongs to — the account, the contract, the request. */
   contextName?: string;
   onClose: () => void;
 }) {
+  /* THE VIEWER READS THE FILE TYPE OFF `path`. The first cut handed it the
+     preview URL — "/api/…/download?docId=…&view=1" — whose "extension" is
+     nothing, so every document, PDFs included, was sent down the
+     server-preview road and the viewer tried to parse raw PDF bytes as JSON
+     ("Unexpected token '%', '%PDF-1.4'… is not valid JSON", Sep 7 test
+     loop, a PDF on a comment). The stored filename is what says PDF vs Word
+     vs video, so that is the path; the URLs are passed on their own. */
+  const typedPath = fileName || name;
   const material: OfferingMaterial = {
     id: `doc-${name}`,
-    kind: formatFromFilename(fileName || name),
+    kind: formatFromFilename(typedPath),
     label: name,
     url: downloadUrl,
-    docsPath: previewUrl,
+    docsPath: typedPath,
   };
 
   return (
@@ -59,17 +75,20 @@ export function DocumentPeek({
       offeringId=""
       offeringName={contextName || "Document"}
       material={material}
-      path={previewUrl}
+      path={typedPath}
       label={name}
       downloadUrl={downloadUrl}
       openInNewTabUrl={downloadUrl}
-      /* The member argument is the viewer's own "who is reading this" hook;
-         these endpoints resolve the file through their record, so it rides
-         along only when the caller's URL already carries a query. */
+      /* The member argument is the viewer's own "which file inside the ZIP"
+         hook; the module's preview route resolves the file through its
+         record, so the member rides along on that route's query. */
       previewUrl={(_path: string, member: string | null) =>
         member
-          ? `${previewUrl}${previewUrl.includes("?") ? "&" : "?"}member=${encodeURIComponent(member)}`
-          : previewUrl
+          ? `${serverPreviewUrl}${serverPreviewUrl.includes("?") ? "&" : "?"}member=${encodeURIComponent(member)}`
+          : serverPreviewUrl
+      }
+      memberUrl={(_path: string, member: string) =>
+        `${downloadUrl}${downloadUrl.includes("?") ? "&" : "?"}member=${encodeURIComponent(member)}`
       }
       onClose={onClose}
     />
