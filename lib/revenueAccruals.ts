@@ -1,3 +1,4 @@
+import { signDateOf } from "./opportunitiesShared";
 import "server-only";
 
 import { getDataMode } from "./dataMode";
@@ -892,6 +893,28 @@ export async function saveAccrualPlan(
               opp?.offeringLabels?.[0],
           }
         : {}),
+      /* THE SIGN DATE THE PLAN WAS MADE AGAINST, stamped here because this is
+         the one door every save comes through. The New opportunity dialog
+         posts a thin plan — id, contract, lines — so a deal planned on the way
+         in never carried the stamp, and judgePlan's sign_date_changed can only
+         fire when it is present: the date could move by a year and the plan
+         sat there unflagged. Found by moving one (Sep 7).
+
+         A SAVE RE-AUTHORS THE STAMP, on purpose: the plan you just wrote was
+         written against today's date, so the flag clears when you re-plan and
+         fires again only if the date moves after that. The dialog already
+         sends the date it had on screen; the old stamp is the last resort,
+         for a save whose opportunity cannot be read. */
+      ...(input.signDateAtPlan ||
+      (opp && signDateOf(opp)) ||
+      existing?.signDateAtPlan
+        ? {
+            signDateAtPlan:
+              input.signDateAtPlan ||
+              (opp ? signDateOf(opp) : undefined) ||
+              existing?.signDateAtPlan,
+          }
+        : {}),
     };
     const draft = normalizePlan({
       ...input,
@@ -980,8 +1003,17 @@ export async function deviateAccrualPlan(
       by: who,
       at: new Date().toISOString(),
     };
+    /* RE-PLANNING CLEARS THE "the date moved" FLAG. A deviation is a plan
+       written against the deal as it stands now, so it re-authors the stamp
+       the flag compares against — otherwise fixing the schedule left the flag
+       on for good and the only way to clear it was to delete the plan. */
+    const opp = (await readOpportunities()).opportunities.find(
+      (o) => o.id === opportunityId
+    );
+    const signNow = opp ? signDateOf(opp) : undefined;
     const updated = normalizePlan({
       ...plan,
+      ...(signNow ? { signDateAtPlan: signNow } : {}),
       versions: [...history, next],
       updatedBy: who,
       updatedAt: next.at,
