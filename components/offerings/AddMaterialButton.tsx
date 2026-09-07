@@ -561,10 +561,18 @@ export function AddMaterialButton({
       !proposalNeedsDate(folder, description)
   );
   const canSave = !busy && (files.length ? fileReady : linkReady);
-  const folderOptions = allFolders(materials, [
-    ...materialFolders,
-    ...createdFolders,
-  ]);
+  /* THE SAME TREE THE TAB DRAWS (Saras, Sep 7: "in the offerings which
+     fall under Freyr Services / Freyr AI Native Services, you changed the
+     folder names as discussed, but the drop down menu for uploading files in
+     them wasn't changed. Can you sync the two?"). allFolders() picks the
+     product or the services shelf by offering type; this call left the type
+     off, so a services offering showed Service Brief on its tab and offered
+     Product Sheet in the picker. One list, one source. */
+  const folderOptions = allFolders(
+    materials,
+    [...materialFolders, ...createdFolders],
+    offeringType
+  );
   const selectableFolders = folderOptions.filter(
     (name) =>
       !folderOptions.some(
