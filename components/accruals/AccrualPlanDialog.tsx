@@ -1109,6 +1109,16 @@ export function AccrualPlanDialog({
   }
 
   /** The number is finished — now let the untyped months take up the rest. */
+  /* ENTER SETTLES THE ROW TOO (Anir, Sep 7: "when I click outside you're
+     calculating it, but when I press enter it should do the same thing").
+     Same settle as leaving the field; preventDefault so a dialog that sits
+     inside a form does not treat the key as submit. */
+  const settleOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    settleAmounts();
+  };
+
   function settleAmounts() {
     setEditing((current) => reshape(current));
   }
@@ -2111,6 +2121,7 @@ export function AccrualPlanDialog({
                                    this number is finished, not on every
                                    keystroke — see editAmount. */
                                 onBlur={settleAmounts}
+                onKeyDown={settleOnEnter}
                                 className={cn(
                                   "h-8 w-full rounded-md border pl-5 pr-2 text-[13px] tnum outline-none focus:border-blue-subtle",
                                   /* A filled-in half is somebody's own number,
@@ -2205,6 +2216,7 @@ export function AccrualPlanDialog({
                                       )
                               }
                               onBlur={isSplit(line) ? undefined : settleAmounts}
+                              onKeyDown={isSplit(line) ? undefined : settleOnEnter}
                               className={cn(
                                 "h-8 w-full rounded-md border pl-5 pr-2 text-[13px] font-semibold tnum outline-none",
                                 isSplit(line)
