@@ -314,6 +314,21 @@ export function AddMaterialButton({
   const [fileProgress, setFileProgress] = useState<
     Record<string, { percent: number; status: "waiting" | "uploading" | "done" | "failed" }>
   >({});
+  /**
+   * THE UPLOAD STARTS WHEN THE FILE IS PICKED, NOT WHEN "ADD MATERIAL" IS
+   * PRESSED (Anir, Sep 7: "when I press this file in this pop-up, it should
+   * already be uploading it... you do this everywhere else").
+   *
+   * Every other dialog in the app sends the bytes the moment a file lands in
+   * the drop zone and its Add button only records the row. This one held the
+   * file until Add, then uploaded, so a video sat idle for the whole time
+   * somebody filled in the card and the progress bar only appeared at the
+   * end. Now picking a file kicks off uploadFile() immediately and the
+   * promise is parked here by key; the review card draws its bar from
+   * fileProgress as it goes, and Add reuses the finished result — or retries
+   * only the ones that failed.
+   */
+  const preUploads = useRef<Map<string, Promise<Awaited<ReturnType<typeof uploadFile>>>>>(new Map());
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
   /** The dedicated upload-progress dialog. The form closes the moment the
@@ -347,6 +362,7 @@ export function AddMaterialButton({
     setDescription("");
     setUrl("");
     setFiles([]);
+    preUploads.current.clear();
     setFileLabels({});
     setFileOverrides({});
     setFileProgress({});
@@ -391,6 +407,11 @@ export function AddMaterialButton({
     for (const next of picked) unique.set(fileKey(next), next);
     const merged = Array.from(unique.values());
     setFiles(merged);
+    for (const next of picked) {
+      const key = fileKey(next);
+      if (preUploads.current.has(key)) continue;
+      preUploads.current.set(key, uploadFile(next));
+    }
     /**
      * WHAT YOU TYPED IN "NAME" IS THE NAME (Anir, Aug 13: "when I label the
      * file something, you're overwriting the name that I put").
@@ -453,6 +474,7 @@ export function AddMaterialButton({
 
   function removeFile(file: File) {
     const key = fileKey(file);
+    preUploads.current.delete(key);
     setFiles((current) => current.filter((item) => fileKey(item) !== key));
     setFileLabels((current) => {
       const next = { ...current };
@@ -814,12 +836,14 @@ export function AddMaterialButton({
     if (files.length) {
       setOpen(false);
       setUploadingOpen(true);
-      setFileProgress(
+      setFileProgress((current) =>
         Object.fromEntries(
-          files.map((file) => [
-            fileKey(file),
-            { percent: 0, status: "waiting" as const },
-          ])
+          files.map((file) => {
+            const key = fileKey(file);
+            /* A file that went up while the card was being filled in keeps
+               its full bar; only one nothing has touched starts at zero. */
+            return [key, current[key] ?? { percent: 0, status: "waiting" as const }];
+          })
         )
       );
     }
@@ -846,7 +870,15 @@ export function AddMaterialButton({
       for (let index = 0; index < files.length; index += 1) {
         const currentFile = files[index];
         setUploadIndex(index);
-        const stored = await uploadFile(currentFile);
+        const key = fileKey(currentFile);
+        let stored = await (preUploads.current.get(key) ?? uploadFile(currentFile));
+        if (!stored) {
+          /* The eager attempt failed (a dropped connection while the card was
+             open, say). One more try now, with the person watching. */
+          const retry = uploadFile(currentFile);
+          preUploads.current.set(key, retry);
+          stored = await retry;
+        }
         if (!stored) continue;
         uploaded.push({
           file: currentFile,
