@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { UploadState } from "@/components/ui/UploadProgress";
 
 import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -18,8 +18,6 @@ import {
   ShieldCheck,
   Trash2,
   X,
-  CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -1170,7 +1168,12 @@ export function AddMaterialButton({
         </button>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Add sales materials" size="workflow" tall>
+      {/* CLOSING FORGETS THE PICK (found Sep 7 while checking the new upload
+          chip: two files picked and cancelled earlier were still sitting in
+          the review list the next time the dialog opened, already uploaded,
+          one Add away from becoming materials nobody chose). Cancel and the X
+          both reset the form, which also drops the parked uploads. */}
+      <Modal open={open} onClose={() => { reset(); setOpen(false); }} title="Add sales materials" size="workflow" tall>
         <div className="space-y-4">
           {offeringName && (
             <div className="flex items-center gap-2.5 rounded-lg bg-blue-light/60 px-3 py-2">
@@ -1559,52 +1562,11 @@ export function AddMaterialButton({
                             Uploaded when they have, red and a reason if they
                             did not. The bar itself only exists while there is
                             something to measure. */}
-                        <p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-tertiary">
-                          <span className="min-w-0 truncate">
-                            {selected.webkitRelativePath || selected.name} · {fmtFileSize(selected.size)}
-                          </span>
-                          {fileProgress[key] && (
-                            <span
-                              aria-live="polite"
-                              className={cn(
-                                "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-[1px] text-[10px] font-semibold",
-                                fileProgress[key].status === "done"
-                                  ? "bg-[rgba(22,163,74,0.10)] text-[color:#15803D]"
-                                  : fileProgress[key].status === "failed"
-                                    ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--status-red)]"
-                                    : "bg-blue-light text-blue-primary"
-                              )}
-                            >
-                              {fileProgress[key].status === "done" ? (
-                                <>
-                                  <CheckCircle2 size={11} strokeWidth={2.6} />
-                                  Uploaded
-                                </>
-                              ) : fileProgress[key].status === "failed" ? (
-                                <>
-                                  <AlertCircle size={11} strokeWidth={2.4} />
-                                  Upload failed
-                                </>
-                              ) : (
-                                <>
-                                  <Loader2 size={11} strokeWidth={2.4} className="animate-spin" />
-                                  {fileProgress[key].status === "waiting" ? "Waiting" : "Uploading"}
-                                  <span className="tnum">{fileProgress[key].percent}%</span>
-                                </>
-                              )}
-                            </span>
-                          )}
-                        </p>
-                        {fileProgress[key] &&
-                          (fileProgress[key].status === "uploading" ||
-                            fileProgress[key].status === "waiting") && (
-                            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-border-light">
-                              <div
-                                className="h-full rounded-full bg-blue-primary transition-[width] duration-150"
-                                style={{ width: `${Math.max(2, fileProgress[key].percent)}%` }}
-                              />
-                            </div>
-                          )}
+                        <UploadState
+                          className="mt-1"
+                          label={`${selected.webkitRelativePath || selected.name} · ${fmtFileSize(selected.size)}`}
+                          progress={fileProgress[key] ?? null}
+                        />
                         </div>
                         <button
                           type="button"
@@ -1778,7 +1740,7 @@ export function AddMaterialButton({
 
           <div className="flex items-center justify-end gap-2 pt-1">
             <button
-              onClick={() => setOpen(false)}
+              onClick={() => { reset(); setOpen(false); }}
               className="cursor-pointer text-[13px] font-medium px-3.5 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"
             >
               Cancel
