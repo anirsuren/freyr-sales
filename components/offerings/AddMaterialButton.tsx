@@ -833,9 +833,19 @@ export function AddMaterialButton({
       return;
     }
     setBusy(true);
+    /* NO PROGRESS SCREEN WHEN THERE IS NOTHING LEFT TO SHOW (Anir, Sep 7:
+       "it still shows me 100% after I press Add Material. When I press Add
+       Material, it should just go back to the offering page with the sales
+       materials"). The files went up when they were picked; by the time Add
+       is pressed they are usually all done, and a screen that opens to show a
+       full bar for a second is a screen that should not open. It appears
+       only when a file still has to go up (or a failed one has to retry). */
+    const stillToUpload = files.some(
+      (file) => fileProgress[fileKey(file)]?.status !== "done"
+    );
     // Files get the dedicated progress screen; a pasted link is one quick
     // request and keeps the button spinner.
-    if (files.length) {
+    if (files.length && stillToUpload) {
       setOpen(false);
       setUploadingOpen(true);
       setFileProgress((current) =>
@@ -1088,8 +1098,9 @@ export function AddMaterialButton({
         );
         if (failedCount === 0) {
           // Let the finished state land for a beat — every bar full, the green
-          // check on — before the dialog hands off to the folder.
-          if (files.length) await new Promise((r) => setTimeout(r, 900));
+          // check on — before the dialog hands off to the folder. Only when
+          // that screen was shown at all.
+          if (files.length && stillToUpload) await new Promise((r) => setTimeout(r, 900));
           setUploadingOpen(false);
           setOpen(false);
           // GO TO THE FILE. Saving used to leave the page on the folder
