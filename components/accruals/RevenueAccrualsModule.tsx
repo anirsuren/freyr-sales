@@ -15,8 +15,8 @@ import {
   OPPORTUNITY_STATUSES,
   type Opportunity,
 } from "@/lib/opportunitiesShared";
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   CalendarRange,
@@ -662,6 +662,16 @@ export function RevenueAccrualsModule({
    * it can never re-open showing the deal before last.
    */
   const [planning, setPlanning] = useState<{ dealId: string } | null>(null);
+  /* A LINK CAN OPEN A DEAL'S PLAN. `/revenue-accruals?deal=<id>` lands with
+     that deal's editor open, so a deal page, a report or a message can point
+     straight at the plan instead of "go to Revenue Accruals and find it"
+     (Anir, Sep 7: "just give me a link where I can test the deviations"). */
+  const linkedDeal = useSearchParams().get("deal");
+  useEffect(() => {
+    if (linkedDeal && opportunities.some((o) => o.id === linkedDeal))
+      setPlanning({ dealId: linkedDeal });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedDeal]);
   const [busy, setBusy] = useState(false);
   /** The deal picker "Plan a deal" opens. A button that says it plans a
    *  deal has to ask which deal, not quietly change a filter behind you. */
@@ -1933,10 +1943,23 @@ export function RevenueAccrualsModule({
             onOpen={(plan) => setPlanning({ dealId: plan.opportunityId })}
           />
           {!deviation.againstMonth ? (
+            /* THE MONTH YOU JUST FROZE IS NOT "NO SHEET". The comparison reads
+               an EARLIER month's sheet, so the first freeze has nothing to
+               compare against yet; the old copy told the person who had just
+               frozen this month that there was no frozen sheet at all (Anir,
+               Sep 7). Say what is true for each case. */
             <EmptyState
               icon={Lock}
-              title="No frozen sheet to compare against yet"
-              description="Freeze a month once and every later change is measured against it: which months moved, and which deals moved them. Freezing at the end of each month is what makes the month-on-month gap possible."
+              title={
+                frozenThisMonth
+                  ? `${monthLabel(monthKey(new Date()))} is frozen. The month-on-month view starts next month.`
+                  : "No frozen sheet to compare against yet"
+              }
+              description={
+                frozenThisMonth
+                  ? "Every change from here on is measured against this sheet: which months moved, and which deals moved them. Freeze again at the end of next month and the gap between the two appears here."
+                  : "Freeze a month once and every later change is measured against it: which months moved, and which deals moved them. Freezing at the end of each month is what makes the month-on-month gap possible."
+              }
             />
           ) : (
             <>
