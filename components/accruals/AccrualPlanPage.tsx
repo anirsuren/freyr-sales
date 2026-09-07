@@ -387,9 +387,14 @@ export function AccrualPlanPage({
                 type="month"
                 value={startMonth}
                 disabled={!canWrite}
+                /* The native month picker reports the year digit by digit
+                   ("0002-02" on the first keystroke of 2026); the schedule
+                   follows only a month that can be real (Anir, Sep 7). */
                 onChange={(e) => {
                   setStartMonth(e.target.value);
-                  reshape({ startMonth: e.target.value });
+                  const m = /^(\d{4})-(\d{2})$/.exec(e.target.value);
+                  const year = m ? Number(m[1]) : 0;
+                  if (m && year >= 2000 && year <= 2100) reshape({ startMonth: e.target.value });
                 }}
                 className="h-[38px] w-full rounded-lg border border-border-light px-3 text-[13px] font-semibold text-text-primary outline-none focus:border-blue-primary disabled:bg-surface"
               />

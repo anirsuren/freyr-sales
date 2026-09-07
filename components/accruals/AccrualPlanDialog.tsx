@@ -896,11 +896,15 @@ export function AccrualPlanDialog({
   useEffect(() => {
     setMonthsText(editing.months);
   }, [editing.months]);
+  const [startMonthText, setStartMonthText] = useState(editing.startMonth);
+  useEffect(() => {
+    setStartMonthText(editing.startMonth);
+  }, [editing.startMonth]);
 
   function editFormula(patch: Partial<Draft>) {
     if (patch.startMonth !== undefined && !plausibleMonth(patch.startMonth)) {
-      /* Show what they typed, change nothing underneath it. */
-      setEditing({ ...editing, startMonth: patch.startMonth });
+      /* The box shows what they typed (its own state); nothing underneath
+         moves for a month that cannot be real. */
       return;
     }
     /* MOVING THE START CLEARS WHAT WAS TAKEN OUT. Those chips are months a
@@ -1769,12 +1773,29 @@ export function AccrualPlanDialog({
               />
             </Field>
             <Field label="First month" hint="The month the first payment lands. Moving it slides the whole schedule rather than relabelling it.">
+              {/* THE BOX HOLDS WHAT YOU TYPE, THE SCHEDULE WAITS FOR A REAL
+                  YEAR. The native month picker fires a change after every
+                  digit of the year, so typing 2026 first reports "0002-02".
+                  That used to be written straight into the draft as the start
+                  month; the rows are computed from it, so the whole table
+                  vanished after the first keystroke (Anir, Sep 7: "I pressed
+                  on the year, entered 2026, and boom, everything
+                  disappeared"). The text is its own state now: the schedule
+                  moves only for a plausible month, and an implausible one is
+                  put back to the real start on blur. */}
               <Input
                 type="month"
-                value={editing.startMonth}
+                value={startMonthText}
                 disabled={deviating}
                 className={deviating ? "opacity-60" : undefined}
-                onChange={(e) => editFormula({ startMonth: e.target.value })}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setStartMonthText(raw);
+                  if (plausibleMonth(raw)) editFormula({ startMonth: raw });
+                }}
+                onBlur={() => {
+                  if (!plausibleMonth(startMonthText)) setStartMonthText(editing.startMonth);
+                }}
               />
             </Field>
             {/* ITEM 9 — "System should provide a suggested accrual schedule
@@ -2262,9 +2283,12 @@ export function AccrualPlanDialog({
                               value={addingMonth}
                               aria-label="Add a specific month to the schedule"
                               title="Or pick any month"
+                              /* Same rule as First month: the native picker
+                                 reports the year digit by digit, so a row is
+                                 added only once the month is a real one. */
                               onChange={(e) => {
                                 setAddingMonth(e.target.value);
-                                if (e.target.value) addMonth(e.target.value);
+                                if (plausibleMonth(e.target.value)) addMonth(e.target.value);
                               }}
                               className="h-7 rounded-md border border-transparent bg-transparent px-1 text-[12px] text-text-tertiary outline-none transition-colors hover:border-border-light focus:border-blue-primary focus:text-text-primary"
                             />
