@@ -1490,13 +1490,38 @@ export function DealOverviewEditor({
                            inside, commas as you type (Anir, Sep 7). */
                         onChange={setTcv}
                         onBlur={() =>
-                          /* BOTH FIELDS, ONE NUMBER. `value` is what the
-                             rollups read and `estimatedTcv` is what
-                             `estimatedTcvOf` prefers, so they have to agree or
-                             the deal is worth two amounts. */
+                          /* BOTH FIELDS, ONE NUMBER — BUT ONLY WHEN THE DEAL
+                             IS IN DOLLARS.
+                             `value` is what every rollup reads and it is
+                             always USD; this box is "entered in the money it
+                             was agreed in", as the card above it says. On a
+                             dollar deal the two are the same number and both
+                             are written, so nothing can drift. On a euro deal
+                             they are not: sending the typed figure as `value`
+                             would file 10,000 EUR as 10,000 USD, which is how
+                             three deals in the book came to be worth two
+                             different amounts. The converted figure goes in
+                             when a rate is known, and when it is not the
+                             typed amount is still saved and `value` is left
+                             exactly as it was rather than being overwritten
+                             with the wrong currency. */
                           commit(
                             "estimatedTcv",
-                            { estimatedTcv: num(tcv), value: num(tcv) ?? 0 },
+                            isBase
+                              ? { estimatedTcv: num(tcv), value: num(tcv) ?? 0 }
+                              : {
+                                  estimatedTcv: num(tcv),
+                                  ...(() => {
+                                    const typed = num(tcv);
+                                    const asDollars =
+                                      typed === null
+                                        ? null
+                                        : convertToUsd(typed, currency, signs || undefined);
+                                    return asDollars === undefined || asDollars === null
+                                      ? {}
+                                      : { value: Math.round(asDollars) };
+                                  })(),
+                                },
                             () =>
                               setTcv(
                                 deal.estimatedTcv === undefined

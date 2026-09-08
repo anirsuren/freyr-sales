@@ -103,12 +103,21 @@ export function LeadsModule({
   members,
   customers,
   canWrite,
+  canCreate = false,
+  canDelete = false,
 }: {
   state: LeadsState;
   live: boolean;
   members: string[];
   customers: CustomerOption[];
   canWrite: boolean;
+  /** May start a new lead. The route asks CREATE for that and only WRITE to
+   *  change one that exists, so the button asks the same question. */
+  canCreate?: boolean;
+  /** May remove one. The routes ask CREATE-level access to delete (see
+   *  canDelete in lib/privileges), so a member who may edit is refused; the
+   *  control has to ask the same question or it lies. */
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -220,6 +229,25 @@ export function LeadsModule({
     );
   }
 
+  /** WHY ADD LEAD IS WAITING, or null. The same four rules save() enforces,
+   *  in the order the form is filled, so the answer arrives before the press
+   *  rather than one toast at a time. */
+  function leadProblemFor(d: typeof editing): string | null {
+    if (!d) return null;
+    if (!d.name.trim()) return "Who got in touch? A lead needs a person.";
+    if (!d.company.trim()) return "Which organisation are they from?";
+    const parsed = splitPhone(d.phone);
+    const digits = phoneDigits(parsed.number);
+    const email = d.email.trim();
+    if (!email && !digits)
+      return "Add an email or a phone number, so somebody can follow up.";
+    const why = phoneProblem(d.dialCode || parsed.dial, parsed.number);
+    if (why) return why;
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return "Enter a valid email address, or leave it empty.";
+    return null;
+  }
+
   async function save() {
     if (!editing) return;
     /* MANDATORY, AND STARRED TO MATCH (Anir, Sep 4: "we need some mandatory
@@ -272,13 +300,18 @@ export function LeadsModule({
         subtitle="Everything that came in before it is a deal. Qualify with a meeting or a presentation; when it turns real, it becomes an opportunity."
         action={
           canWrite ? (
-            <button
-              type="button"
-              onClick={() => openEditor()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90"
-            >
-              <Plus size={15} strokeWidth={2.4} /> New lead
-            </button>
+            /* WRITE IS NOT CREATE. A BD Member may work a lead that exists but
+               not start one — the route refuses that with a 403 — so the
+               button belongs to whoever may create. */
+            canCreate ? (
+              <button
+                type="button"
+                onClick={() => openEditor()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90"
+              >
+                <Plus size={15} strokeWidth={2.4} /> New lead
+              </button>
+            ) : null
           ) : (
             /* THE SHIELD IN THE TOP BAR ALREADY SAYS THIS (Anir, Sep 1: "I don't
                want you to say that... I want there to be somewhere on the page
@@ -433,7 +466,9 @@ export function LeadsModule({
           title={leads.length === 0 ? "No leads yet" : "Nothing matches those filters"}
           description={
             leads.length === 0
+              ? canCreate
               ? "A lead is anyone who got in touch before there is a real deal. A demo request from the website, a card from a conference, a referral. Press New lead at the top to add the first one."
+              : "A lead is anyone who got in touch before there is a real deal. An owner adds them; you can work any lead once it is here."
               : "Clear a filter to see the rest."
           }
         />
@@ -568,17 +603,19 @@ export function LeadsModule({
                               >
                                 <Pencil size={13} strokeWidth={2.2} />
                               </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setConfirmDelete(lead);
-                                }}
-                                title="Delete this lead"
-                                className="rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
-                              >
-                                <Trash2 size={13} strokeWidth={2.2} />
-                              </button>
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmDelete(lead);
+                                  }}
+                                  title="Delete this lead"
+                                  className="rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                                >
+                                  <Trash2 size={13} strokeWidth={2.2} />
+                                </button>
+                              )}
                             </>
                           )}
                           <ChevronDown
@@ -732,7 +769,9 @@ export function LeadsModule({
         />
       )}
 
-      {editing && (
+      {editing && (() => {
+        const leadProblem = leadProblemFor(editing);
+        return (
         <Modal
           open
           onClose={() => setEditing(null)}
@@ -1007,7 +1046,18 @@ export function LeadsModule({
               </div>
             )}
           </div>
-          <div className="mt-4 flex items-center justify-end gap-2">
+          {/* THE BUTTON WAITS AND SAYS WHY (Anir, Sep 4: "don't make it like u
+              can press the button and then it throws error. just dont let them
+              click in the first place and give reason").
+              Add lead was live on an empty form and save() answered with a
+              toast for each missing field in turn, so finding out what a lead
+              needs took four presses. Same four conditions save() enforces —
+              it stays as the backstop — named one at a time, on their own
+              fixed-height line so the buttons never move. */}
+          <p className="mt-4 min-h-[18px] text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+            {leadProblem}
+          </p>
+          <div className="mt-1.5 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => setEditing(null)}
@@ -1017,7 +1067,8 @@ export function LeadsModule({
             </button>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !!leadProblem}
+              title={leadProblem ?? undefined}
               onClick={save}
               className="rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
             >
@@ -1025,7 +1076,8 @@ export function LeadsModule({
             </button>
           </div>
         </Modal>
-      )}
+        );
+      })()}
 
       <ConfirmDialog
         open={!!confirmDelete}

@@ -17,6 +17,7 @@ import {
 } from "@/lib/privileges";
 import { tint } from "@/lib/tint";
 import { AccessHistory } from "@/components/admin/AccessHistory";
+import { DateText } from "@/components/ui/DateText";
 
 /**
  * ONE PERSON AT A TIME: names down the left, everything about them on the right.
@@ -431,7 +432,15 @@ export function PeopleSplit() {
                   person, so it can afford the whole sentence and the date they
                   joined with it. */}
               <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-text-tertiary">
-                <span>Joined {joinedLabel(selected.joinedAt)}</span>
+                {/* The exact time is one hover away, like every other date in
+                    the app (Anir, Sep 7). joinedLabel keeps the wording; the
+                    clock rides on the tooltip. */}
+                <span>
+                  Joined{" "}
+                  <DateText value={selected.joinedAt}>
+                    {joinedLabel(selected.joinedAt)}
+                  </DateText>
+                </span>
                 <span aria-hidden="true">·</span>
                 <span>
                   Last seen{" "}

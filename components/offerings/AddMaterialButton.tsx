@@ -561,6 +561,28 @@ export function AddMaterialButton({
       !proposalNeedsDate(folder, description)
   );
   const canSave = !busy && (files.length ? fileReady : linkReady);
+
+  /** WHY ADD MATERIAL IS WAITING. It sat disabled and silent while the form
+   *  asked for four things, so the answer to "why can't I press it" was to
+   *  hunt for the empty one. The Required pills already mark the fields; this
+   *  names the first one still missing (Anir, Sep 4: "give reason"). */
+  const addProblem: string | null = busy
+    ? null
+    : files.length
+      ? fileReady
+        ? null
+        : "Every file needs a name, a format and a folder."
+      : !label.trim()
+        ? "Give it a name."
+        : !validLink
+          ? "Paste a working link."
+          : !kind
+            ? "Say what format it is."
+            : !folder
+              ? "Pick a folder."
+              : !journeyStages.length
+                ? "Pick at least one stage it is used in."
+                : null;
   /* THE SAME TREE THE TAB DRAWS (Saras, Sep 7: "in the offerings which
      fall under Freyr Services / Freyr AI Native Services, you changed the
      folder names as discussed, but the drop down menu for uploading files in
@@ -1776,7 +1798,11 @@ export function AddMaterialButton({
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-1">
+          {/* Its own line, fixed height, so Cancel and Add material stay put. */}
+          <p className="min-h-[18px] pt-1 text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+            {addProblem}
+          </p>
+          <div className="flex items-center justify-end gap-2">
             <button
               onClick={() => { reset(); setOpen(false); }}
               className="cursor-pointer text-[13px] font-medium px-3.5 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"

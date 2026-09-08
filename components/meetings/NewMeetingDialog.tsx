@@ -274,6 +274,25 @@ export function NewMeetingDialog({
 
   const ready = title.trim() && customerId && meetingAt;
 
+  /**
+   * WHY THE BUTTON IS WAITING, said out loud (Anir, Sep 4: "don't make it like
+   * u can press the button and then it throws error. just dont let them click
+   * in the first place and give reason").
+   *
+   * Create meeting sat disabled with no explanation anywhere — no sentence, no
+   * hover title — so a half-filled form looked like a broken button. The
+   * contract dialog and the accrual planner both already answer this question;
+   * this is the same answer, in the same place, naming whichever piece is
+   * missing rather than a generic "fill everything in".
+   */
+  const meetingProblem: string | null = !title.trim()
+    ? "Say what the meeting is about."
+    : !customerId
+      ? "Pick which account it is with."
+      : !meetingAt
+        ? "Say when it is."
+        : null;
+
   const body = (
     /* Fills the frame it is given rather than floating at the top of it: as a
        page of the deal's dialog the rooms start collapsed, so a footer that
@@ -607,7 +626,13 @@ export function NewMeetingDialog({
         />
       </div>
 
-      <div className="mt-4 flex items-center justify-end gap-2">
+      {/* ITS OWN LINE, ALWAYS THE SAME HEIGHT, so Cancel and Create never
+          shift as the reason comes and goes (Anir, Sep 7: "you can't be moving
+          around the cancel button either"). */}
+      <p className="mt-4 min-h-[18px] text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+        {meetingProblem}
+      </p>
+      <div className="mt-1.5 flex items-center justify-end gap-2">
         <button
           type="button"
           onClick={onClose}

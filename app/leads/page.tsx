@@ -5,7 +5,12 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
-import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  requireModuleAccess,
+  moduleCreateRefusal,
+  moduleDeleteRefusal,
+  moduleWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Leads" };
 export const dynamic = "force-dynamic";
@@ -54,6 +59,10 @@ export default async function LeadsPage() {
          no button — the same defect Submissions and Presentations had until
          Aug 31, and Revenue accruals until today. */
       canWrite={!(await moduleWriteRefusal("/leads"))}
+      /* Starting one is a create; changing one that exists is an edit. The
+         route already draws that line, so the button must too. */
+      canCreate={!(await moduleCreateRefusal("/leads"))}
+      canDelete={!(await moduleDeleteRefusal("/leads"))}
       members={members}
       customers={customers
         .map((c) => ({ id: c.id, name: c.company_name }))

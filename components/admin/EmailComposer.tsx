@@ -555,6 +555,15 @@ export function EmailComposer() {
      "written" only when it carries actual words. */
   const wordsInBody = body.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
   const ready = !!to.trim() && !!subject.trim() && !!wordsInBody;
+  /** Why Send is waiting. It was disabled and silent, so an unfinished email
+   *  looked like a broken button (Anir's standing rule: give the reason). */
+  const sendProblem: string | null = !to.trim()
+    ? "Say who it goes to."
+    : !subject.trim()
+      ? "Give it a subject."
+      : !wordsInBody
+        ? "Write the message."
+        : null;
 
   async function send() {
     setSending(true);
@@ -789,7 +798,10 @@ export function EmailComposer() {
             really separating much"). With the count and the important toggle
             moved up to the fields they describe, this row is one button, and a
             hairline above a single button separates nothing. */}
-        <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
+        <p className="mt-4 min-h-[18px] text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+          {sendProblem}
+        </p>
+        <div className="mt-1.5 flex flex-wrap items-center justify-end gap-3">
           {/* STILL TWO PRESSES, NOW AS A POP-UP (Anir, Aug 27: "make the
               send button, like the confirmation thing, a pop-up instead of
               whatever you have right now"). The inline swap made the whole

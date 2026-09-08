@@ -135,6 +135,15 @@ export async function POST(req: Request) {
       if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       const state = await readMeetings();
       const target = state.meetings.find((m) => m.id === id);
+      /* SAY SO WHEN THERE WAS NOTHING TO DELETE. Answering ok for an id that
+         is not there means a caller naming the record by the wrong key gets a
+         success and the record stays put — the accruals route fixed exactly
+         this on Aug 30 and these four did not follow (found by the Sep 8
+         permission matrix, which deleted "__qa_nonexistent__" four times and
+         was told yes every time). */
+      if (!target) {
+        return NextResponse.json({ error: "That meeting is gone." }, { status: 404 });
+      }
       const mine =
         (target?.owner ?? "").trim().toLowerCase() === me.name.trim().toLowerCase();
       if (!mine && role !== "admin") {

@@ -1754,6 +1754,28 @@ export function NewRequestDialog({
     !uploading &&
     !dateProblem;
 
+  /**
+   * WHY THE BUTTON IS WAITING (Anir, Sep 4: "don't make it like u can press
+   * the button and then it throws error. just dont let them click in the
+   * first place and give reason").
+   *
+   * It waited, correctly, and said nothing — a half-filled form looked like a
+   * broken button. The date problems already had their own sentences under
+   * their own fields; the three missing-field cases had none. Named one at a
+   * time, in the order somebody fills the form.
+   */
+  const savingProblem: string | null = uploading
+    ? "Wait for the files to finish."
+    : !kind
+      ? "Pick what you need."
+      : !title.trim()
+        ? "Give it a title."
+        : !customer
+          ? "Say which account it is for."
+          : dateProblem
+            ? dateProblem
+            : null;
+
   return (
     <FrameOrNot
       chromeless={chromeless}
@@ -2465,7 +2487,13 @@ export function NewRequestDialog({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-1">
+          {/* THE REASON ON ITS OWN LINE, always the same height, so Back and
+              the submit button never shift as it comes and goes (Anir, Sep 7:
+              "you can't be moving around the cancel button either"). */}
+          <p className="min-h-[18px] pt-1 text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+            {savingProblem}
+          </p>
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <button
               type="button"
               onClick={() => setKind(null)}

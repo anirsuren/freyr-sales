@@ -178,6 +178,20 @@ export async function POST(req: NextRequest) {
         const refusal = await moduleCreateRefusal("/contracts");
         if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       }
+      /* A CONTRACT NEEDS A NAME AND A CUSTOMER, AND THE SERVER SAYS SO TOO.
+         The dialog has always refused to submit without them, but this route
+         did not check, so POSTing {"op":"save"} on its own answered 200 and
+         filed a contract with no name, no customer and no value. Found by
+         probing the route during the Sep 8 test loop; two blank rows came out
+         of two requests. The same two conditions the dialog enforces, in the
+         one place that cannot be bypassed. */
+      const draft = (body.contract ?? {}) as { name?: unknown; customer?: unknown };
+      if (!String(draft.name ?? "").trim() || !String(draft.customer ?? "").trim()) {
+        return NextResponse.json(
+          { error: "A contract needs a name and a customer." },
+          { status: 400 }
+        );
+      }
       const before = wasId
         ? (await readContracts()).contracts.find((c) => c.id === wasId) ?? null
         : null;
@@ -206,7 +220,16 @@ export async function POST(req: NextRequest) {
       if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       const id = String(body.id ?? "");
       const doomed = (await readContracts()).contracts.find((c) => c.id === id);
-      if (doomed) await settleGoal(doomed, { ...doomed, goalLink: undefined }, me.name);
+      /* SAY SO WHEN THERE WAS NOTHING TO DELETE. Answering ok for an id that
+         is not there means a caller naming the record by the wrong key gets a
+         success and the record stays put — the accruals route fixed exactly
+         this on Aug 30 and these four did not follow (found by the Sep 8
+         permission matrix, which deleted "__qa_nonexistent__" four times and
+         was told yes every time). */
+      if (!doomed) {
+        return NextResponse.json({ error: "That contract is gone." }, { status: 404 });
+      }
+      await settleGoal(doomed, { ...doomed, goalLink: undefined }, me.name);
       await removeContract(id);
       return NextResponse.json({ ok: true, state: await readContracts() });
     }

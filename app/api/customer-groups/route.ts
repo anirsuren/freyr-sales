@@ -76,6 +76,15 @@ export async function POST(req: NextRequest) {
       const refusal = await moduleDeleteRefusal("/customers");
       if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       if (!id) return NextResponse.json({ error: "Which group?" }, { status: 400 });
+      /* SAY SO WHEN THERE WAS NOTHING TO DELETE. Answering ok for an id that
+         is not there means a caller naming the record by the wrong key gets a
+         success and the record stays put — the accruals route fixed exactly
+         this on Aug 30 and these four did not follow (found by the Sep 8
+         permission matrix, which deleted "__qa_nonexistent__" four times and
+         was told yes every time). */
+      if (!(await readCustomerGroups()).groups.some((g) => g.id === id)) {
+        return NextResponse.json({ error: "That group is gone." }, { status: 404 });
+      }
       await deleteGroup(id);
     } else {
       return NextResponse.json({ error: "Unknown operation." }, { status: 400 });

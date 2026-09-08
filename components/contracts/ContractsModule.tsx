@@ -34,6 +34,7 @@ import { typeMeta } from "@/components/performance/bits";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { DocumentPeek } from "@/components/ui/DocumentPeek";
@@ -140,6 +141,8 @@ export function ContractsModule({
   goals,
   meName,
   canWrite,
+  canCreate = false,
+  canDelete = false,
   live = true,
 }: {
   state: ContractsState;
@@ -149,6 +152,12 @@ export function ContractsModule({
   goals: { id: string; name: string; year: number; type?: string }[];
   meName: string;
   canWrite: boolean;
+  /** May write a new contract. Editing an existing one only needs WRITE. */
+  canCreate?: boolean;
+  /** May remove one. The routes ask CREATE-level access to delete (see
+   *  canDelete in lib/privileges), so a member who may edit is refused; the
+   *  control has to ask the same question or it lies. */
+  canDelete?: boolean;
   /** Real workspace data, or the demo set. The pill above says which. */
   live?: boolean;
 }) {
@@ -536,13 +545,15 @@ export function ContractsModule({
         subtitle="Where sales closes. Every contract, the months its money is earned in, and the reference number the delivery platform knows it by."
         action={
           canWrite ? (
-            <button
+            canCreate ? (
+              <button
               type="button"
               onClick={() => openEditor()}
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90"
             >
               <Plus size={15} strokeWidth={2.4} /> New contract
             </button>
+            ) : null
           ) : (
             /* THE SHIELD IN THE TOP BAR ALREADY SAYS THIS (Anir, Sep 1:
                 "I don't want you to say that"). A pill announcing what you
@@ -773,7 +784,9 @@ export function ContractsModule({
           }
           description={
             contracts.length === 0
+              ? canCreate
               ? "Nothing has been contracted yet. Use New contract, up in the corner, to write the first one. A deal at “Submitted to client” also turns up here waiting for one."
+              : "Nothing has been contracted yet. An owner writes the first one; you can change any contract once it is here."
               : "Clear the search or the filter."
           }
         />
@@ -1262,14 +1275,16 @@ export function ContractsModule({
                           >
                             <Pencil size={12} strokeWidth={2.2} /> Edit
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDelete(c)}
-                            title="Delete this contract"
-                            className="rounded-lg p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
-                          >
-                            <Trash2 size={13} strokeWidth={2.2} />
-                          </button>
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDelete(c)}
+                              title="Delete this contract"
+                              className="rounded-lg p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                            >
+                              <Trash2 size={13} strokeWidth={2.2} />
+                            </button>
+                          )}
                         </span>
                       )}
                     </div>
@@ -1384,18 +1399,22 @@ export function ContractsModule({
               />
             </Field>
             <Field label="Contract value (USD)">
-              <Input
-                value={withCommas(editing.value)}
-                placeholder="250000"
-                inputMode="numeric"
+              {/* THE SAME MONEY BOX AS EVERYWHERE ELSE: the symbol inside on
+                  the left, separators as you type (Anir, Sep 7: "whatever you
+                  have in the table below, I need the same thing, and this
+                  applies everywhere"). It was a bare Input, so this dialog
+                  asked for money in a box that looked nothing like the one
+                  the schedule under it uses. */}
+              <MoneyInput
+                value={editing.value}
+                ariaLabel="Contract value"
+                placeholder="250,000"
                 /* THE VALUE IS PART OF THE SCHEDULE'S FORMULA. Typing it used
                    to leave the months below untouched, so the rows appeared
                    and stayed blank and the schedule read $0 against a $600K
                    contract. Same three fields the accrual dialog uses: value,
                    start, count. */
-                onChange={(e) =>
-                  editSchedule({ value: expandMoneyShorthand(e.target.value, { integer: true }) })
-                }
+                onChange={(v) => editSchedule({ value: v })}
               />
             </Field>
             <Field label="Status">
@@ -1715,12 +1734,16 @@ export function ContractsModule({
               shape: the reason sits beside the button and the button waits.
               The guard inside save() stays as a backstop; it is simply no
               longer how anybody finds out. */}
-          <div className="mt-4 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-            {contractProblem && (
-              <span className="text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
-                {contractProblem}
-              </span>
-            )}
+          {/* THE REASON SITS ABOVE THE BUTTONS, NOT BESIDE THEM (Anir, Sep 7,
+              on the accrual planner: "you can't be moving around the cancel
+              button either"). It used to share the row, so Cancel and Create
+              slid sideways the moment it appeared and slid back when the last
+              field was filled. Its own line, always the same height, so the
+              two buttons never move. */}
+          <p className="mt-4 min-h-[18px] text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+            {contractProblem}
+          </p>
+          <div className="mt-1.5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
             <button
               type="button"
               onClick={() => setEditing(null)}

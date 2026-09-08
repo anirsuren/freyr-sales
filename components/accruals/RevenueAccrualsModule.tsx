@@ -636,6 +636,7 @@ export function RevenueAccrualsModule({
   state: initial,
   deals,
   canWrite,
+  canCreate = false,
   live = true,
   opportunities = [],
   customerGroups = [],
@@ -644,6 +645,10 @@ export function RevenueAccrualsModule({
   state: RevenueAccrualsState;
   deals: DealOption[];
   canWrite: boolean;
+  /** May start a plan for a deal that has none. The route asks for CREATE
+   *  there and only WRITE to change an existing one, so the two questions
+   *  are separate here as well. */
+  canCreate?: boolean;
   /** Real workspace data, or the demo set. The pill above says which. */
   live?: boolean;
   /** The pipeline itself, for the summary. `deals` above is the flat picker
@@ -1245,6 +1250,7 @@ export function RevenueAccrualsModule({
               >
                 <ScanLine size={14} strokeWidth={2.2} /> Check signing dates
               </button>
+              {canCreate && (
               <button
                 type="button"
                 onClick={() => setPlanning({ dealId: "" })}
@@ -1252,6 +1258,7 @@ export function RevenueAccrualsModule({
               >
                 <Plus size={15} strokeWidth={2.4} /> Plan a deal
               </button>
+              )}
             </div>
           ) : (
             /* THE SHIELD IN THE TOP BAR ALREADY SAYS THIS (Anir, Sep 1:
@@ -1659,7 +1666,11 @@ export function RevenueAccrualsModule({
               }
               description={
                 state.plans.length === 0
-                  ? "An accrual plan says when a deal's money is expected to land, month by month. Press “Plan a deal” to pick one and set its months."
+                  ? canCreate
+                    ? "An accrual plan says when a deal's money is expected to land, month by month. Press “Plan a deal” to pick one and set its months."
+                    /* Do not send somebody to a button they cannot see. A BD
+                       Member may change a plan that exists but not start one. */
+                    : "An accrual plan says when a deal's money is expected to land, month by month. An owner starts one; you can change the months on any plan once it is there."
                   : "Clear the search or the filter."
               }
             />

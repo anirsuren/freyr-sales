@@ -6,7 +6,11 @@ import { listOfferings, initializeLiveOfferings } from "@/lib/offerings";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { requireServerMemberScope } from "@/lib/memberScope";
-import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  requireModuleAccess,
+  moduleCreateRefusal,
+  moduleWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Revenue Accruals" };
 export const dynamic = "force-dynamic";
@@ -57,6 +61,11 @@ export default async function RevenueAccrualsPage() {
        * where the route already asks it.
        */
       canWrite={!(await moduleWriteRefusal("/revenue-accruals"))}
+      /* STARTING a plan is a create; changing the months on one that exists is
+         an edit. The route has always drawn that line (see its "owner can
+         create, member can edit" note); the page had not, so a BD Member was
+         shown "Plan a deal" and got a 403 when she used it. */
+      canCreate={!(await moduleCreateRefusal("/revenue-accruals"))}
       live={getDataMode() === "live"}
       /* THE PIPELINE ITSELF, so the accrual summary can group and total the
          same way Opportunities does (Suren, Aug 30). The DealOption list below

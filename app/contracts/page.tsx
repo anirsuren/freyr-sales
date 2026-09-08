@@ -7,7 +7,12 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
-import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import {
+  requireModuleAccess,
+  moduleCreateRefusal,
+  moduleDeleteRefusal,
+  moduleWriteRefusal,
+} from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Contracts" };
 export const dynamic = "force-dynamic";
@@ -61,6 +66,9 @@ export default async function ContractsPage() {
          no button — the same defect Submissions and Presentations had until
          Aug 31, and Revenue accruals until today. */
       canWrite={!(await moduleWriteRefusal("/contracts"))}
+      /* Starting one is a create; changing one that exists is an edit. */
+      canCreate={!(await moduleCreateRefusal("/contracts"))}
+      canDelete={!(await moduleDeleteRefusal("/contracts"))}
       live={getDataMode() === "live"}
       members={members}
       meName={me.name}

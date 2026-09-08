@@ -91,7 +91,17 @@ export async function POST(req: NextRequest) {
     if (op === "delete") {
       const refusal = await moduleDeleteRefusal("/leads");
       if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
-      await removeLead(String(body.id ?? ""));
+      const leadId = String(body.id ?? "");
+      /* SAY SO WHEN THERE WAS NOTHING TO DELETE. Answering ok for an id that
+         is not there means a caller naming the record by the wrong key gets a
+         success and the record stays put — the accruals route fixed exactly
+         this on Aug 30 and these four did not follow (found by the Sep 8
+         permission matrix, which deleted "__qa_nonexistent__" four times and
+         was told yes every time). */
+      if (!(await readLeads()).leads.some((l) => l.id === leadId)) {
+        return NextResponse.json({ error: "That lead is gone." }, { status: 404 });
+      }
+      await removeLead(leadId);
       return NextResponse.json({ ok: true, state: await readLeads() });
     }
     if (op === "convert") {

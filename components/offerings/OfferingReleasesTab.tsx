@@ -474,6 +474,7 @@ function RowDialog({
   title,
   saveLabel,
   canSave,
+  problem = null,
   onCancel,
   onSave,
   children,
@@ -482,6 +483,10 @@ function RowDialog({
   title: string;
   saveLabel: string;
   canSave: boolean;
+  /** Why the save is waiting, when it is (Anir's rule: never a dead button
+   *  with no explanation). Optional so a shell with nothing to say renders
+   *  the same reserved line and no text. */
+  problem?: string | null;
   onCancel: () => void;
   onSave: () => void;
   children: ReactNode;
@@ -490,6 +495,9 @@ function RowDialog({
     <Modal open={open} onClose={onCancel} title={title} size="wide" stacked>
       <div className="space-y-4">
         {children}
+        <p className="min-h-[18px] text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+          {problem}
+        </p>
         <div className="flex items-center justify-end gap-3 border-t border-border-light pt-4">
           <button
             type="button"
@@ -595,6 +603,7 @@ function RoadmapModuleEditor({
         title={editing === -1 ? `Add to ${title}` : "Edit module"}
         saveLabel={editing === -1 ? "Add module" : "Save module"}
         canSave={draft.module.trim().length > 0}
+        problem={draft.module.trim() ? null : "Name the module."}
         onCancel={() => setEditing(null)}
         onSave={save}
       >
@@ -752,6 +761,7 @@ function RoadmapComparisonEditor({
         title={editing === -1 ? "Add a comparison row" : "Edit comparison row"}
         saveLabel={editing === -1 ? "Add row" : "Save row"}
         canSave={draft.area.trim().length > 0}
+        problem={draft.area.trim() ? null : "Name the area."}
         onCancel={() => setEditing(null)}
         onSave={save}
       >
@@ -870,6 +880,7 @@ function RoadmapHistoryEditor({
         title={editing === -1 ? "Add a release period" : "Edit release period"}
         saveLabel={editing === -1 ? "Add period" : "Save period"}
         canSave={draft.period.trim().length > 0}
+        problem={draft.period.trim() ? null : "Say which period this is."}
         onCancel={() => setEditing(null)}
         onSave={save}
       >
