@@ -583,7 +583,11 @@ export function LeadsModule({
                       </td>
                       <td className="px-4 py-2.5 text-[12px] tnum">
                         <span className={cn(isStale && "font-semibold text-[color:var(--ink-amber)]")}>
-                          {age === 0 ? "Today" : age === 1 ? "Yesterday" : `${age}d ago`}
+                          {/* "Last moved" in days tells you nothing about
+                              WHEN; the hover gives the moment (Anir, Sep 7). */}
+                          <DateText value={lead.updatedAt || lead.createdAt}>
+                            {age === 0 ? "Today" : age === 1 ? "Yesterday" : `${age}d ago`}
+                          </DateText>
                         </span>
                       </td>
                       <td className="px-4 py-2.5">

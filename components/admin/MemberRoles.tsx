@@ -410,7 +410,13 @@ export function MemberRoles() {
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-[11.5px] text-text-tertiary">
-                      {lastSeenLabel(m.lastSeenAt)}
+                      {/* Joined, next door, has hovered its exact time since
+                          Sep 7; this column said "3h ago" or a bare "Sep 3"
+                          and gave you no way to find out which moment that
+                          was. Same treatment, same table. */}
+                      <DateText value={m.lastSeenAt}>
+                        {lastSeenLabel(m.lastSeenAt)}
+                      </DateText>
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-[11.5px] text-text-tertiary">
                       {m.joinedAt ? <DateText value={m.joinedAt} /> : "Not recorded"}

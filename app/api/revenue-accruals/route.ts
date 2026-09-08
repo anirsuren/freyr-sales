@@ -166,21 +166,39 @@ export async function POST(req: NextRequest) {
         }
         const ots = row.ots === undefined ? undefined : parseFigure(row.ots);
         const arr = row.arr === undefined ? undefined : parseFigure(row.arr);
-        const split = row.ots !== undefined || row.arr !== undefined;
+        /**
+         * MONTHLY COUNTS TOO (Manoj, Sep 4: "this is not an annual recurring
+         * revenue. This is a monthly recurring revenue... can we have one more
+         * column here").
+         *
+         * The column shipped, the type carries it and the store normaliser has
+         * always summed it — this route was written when there were two halves
+         * and never grew the third. So on a SERVICES deal, where Monthly is the
+         * only split column offered, a person typed the months in, the total
+         * saved off the back of them, and the figures themselves were dropped
+         * on the way past. Reload and the column they had just filled read
+         * "·" all the way down with the money sitting in Total.
+         */
+        const mrr = row.mrr === undefined ? undefined : parseFigure(row.mrr);
+        const split =
+          row.ots !== undefined || row.arr !== undefined || row.mrr !== undefined;
         if (
           (row.ots !== undefined && ots === undefined) ||
-          (row.arr !== undefined && arr === undefined)
+          (row.arr !== undefined && arr === undefined) ||
+          (row.mrr !== undefined && mrr === undefined)
         ) {
           return NextResponse.json(
             {
-              error: `The one-time and recurring figures for ${month} have to be zero or more.`,
+              error: `The one-time, recurring and monthly figures for ${month} have to be zero or more.`,
             },
             { status: 400 }
           );
         }
         /* The split IS the total when it is present, the same rule the plan
            itself follows, so the two can never disagree. */
-        const amount = split ? (ots ?? 0) + (arr ?? 0) : parseFigure(row.amount);
+        const amount = split
+          ? (ots ?? 0) + (arr ?? 0) + (mrr ?? 0)
+          : parseFigure(row.amount);
         if (amount === undefined) {
           return NextResponse.json(
             { error: `The amount for ${month} has to be zero or more.` },
@@ -192,6 +210,7 @@ export async function POST(req: NextRequest) {
           amount,
           ...(ots === undefined ? {} : { ots }),
           ...(arr === undefined ? {} : { arr }),
+          ...(mrr === undefined ? {} : { mrr }),
         });
       }
 

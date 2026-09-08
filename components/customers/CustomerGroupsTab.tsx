@@ -181,14 +181,22 @@ export function CustomerGroupsTab({
                       >
                         <Pencil size={14} strokeWidth={2} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDelete(g)}
-                        aria-label={`Delete ${g.name}`}
-                        className="rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
-                      >
-                        <Trash2 size={14} strokeWidth={2} />
-                      </button>
+                      {/* DELETE IS NOT EDIT. /api/customer-groups asks
+                          moduleDeleteRefusal, which in this app means
+                          CREATE-level access, so a BD Member who may rename a
+                          group was shown the red trash and got a 403 on
+                          confirm. Same gate the New group button already
+                          uses (Sep 8 sweep; five other controls had it). */}
+                      {canCreate && (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDelete(g)}
+                          aria-label={`Delete ${g.name}`}
+                          className="rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                        >
+                          <Trash2 size={14} strokeWidth={2} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </header>

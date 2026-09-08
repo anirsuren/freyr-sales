@@ -1788,19 +1788,27 @@ export function DealOverviewEditor({
                           {accrualPlan.lines.length === 1 ? "" : "s"}
                         </span>
                       </td>
-                      {scheduleSplitFields.map((f) => (
-                        <td
-                          key={f}
-                          className="px-3 text-[13.5px] font-bold tnum text-blue-primary"
-                        >
-                          {scheduleMoney(
-                            accrualPlan.lines.reduce(
-                              (n, l) => n + (Number(l[f]) || 0),
-                              0
-                            )
-                          )}
-                        </td>
-                      ))}
+                      {/* A DOT IS NOT A ZERO. Every cell above prints "·" for
+                          a split nobody entered, and then this row summed the
+                          empties and printed "$0" under them — so an ARR deal
+                          whose months carry no split read "ARR $0" beside
+                          "Total $500,000", which is the table contradicting
+                          itself two rows apart. Nothing entered, nothing
+                          totalled: same mark as the column it sums. */}
+                      {scheduleSplitFields.map((f) => {
+                        const sum = accrualPlan.lines.reduce(
+                          (n, l) => n + (Number(l[f]) || 0),
+                          0
+                        );
+                        return (
+                          <td
+                            key={f}
+                            className="px-3 text-[13.5px] font-bold tnum text-blue-primary"
+                          >
+                            {sum > 0 ? scheduleMoney(sum) : "·"}
+                          </td>
+                        );
+                      })}
                       <td className="px-3 text-[15px] font-bold tnum text-blue-primary">
                         {scheduleMoney(
                           accrualPlan.lines.reduce((n, l) => n + (l.amount || 0), 0)

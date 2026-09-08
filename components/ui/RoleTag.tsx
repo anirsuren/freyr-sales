@@ -75,6 +75,24 @@ export function roleKey(role: string | null | undefined): WorkspaceRoleKey {
   if (r === "admin") return "admin";
   if (r === "editor" || r === "bd_owner") return "bd_owner";
   if (r === "sol_member" || r === "solution") return "sol_member";
+  /**
+   * AND THE LABELS THIS FILE ITSELF PRINTS.
+   *
+   * The rule above says "anything stored (or typed)", and it only ever knew
+   * the STORED spellings. The Team page turns a stored role into its display
+   * word before handing it over — "Owner" — which matched none of the tests
+   * and fell through to the least privilege. So all sixteen BD Owners in the
+   * workspace read "BD Member" on the roster, the role filter offered "BD
+   * Member" twice because two of its three options resolved to the same key,
+   * and only Admin came out right, because "Admin" happens to lowercase to
+   * the stored word. Downgrading somebody's title on the one screen that
+   * exists to say who everybody is.
+   *
+   * Nothing here decides what anyone may do — ROLE_META is a label, a colour
+   * and an icon. It just has to agree with the directory.
+   */
+  if (r === "owner") return "bd_owner";
+  if (r === "solutioning member") return "sol_member";
   return "bd_member";
 }
 

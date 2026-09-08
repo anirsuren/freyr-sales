@@ -1,6 +1,7 @@
 import { Briefcase, Compass, Fingerprint, type LucideIcon } from "lucide-react";
 import { NotificationMark } from "@/components/notifications/NotificationMark";
 import { Avatar } from "@/components/ui/Avatar";
+import { DateText } from "@/components/ui/DateText";
 import { cn } from "@/lib/utils";
 import type {
   AppNotification,
@@ -125,7 +126,14 @@ export function NotificationRow({
               )}
               style={stampColor ? { color: stampColor } : undefined}
             >
-              {n.stamp}
+              {/* "5d ago" does not even say which day. Hover gives the moment
+                  it counts from (Anir, Sep 7). Only the stamps computed from a
+                  real timestamp carry one — see stampAt. */}
+              {n.stampAt ? (
+                <DateText value={n.stampAt}>{n.stamp}</DateText>
+              ) : (
+                n.stamp
+              )}
             </span>
           )}
         </div>

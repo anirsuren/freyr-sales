@@ -489,8 +489,16 @@ export function LiveCompanyBriefing({
           <h1 className="flex flex-wrap items-center gap-2.5 text-[24px] font-bold tracking-[-0.02em] text-text-primary">
             {briefing.name}
             {briefing.momentumPct === null ? (
-              <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:var(--ink-bright-blue)] tnum">
-                <TrendingUp size={12} strokeWidth={2.4} />
+              /* A COUNT, NOT A TREND — no up-arrow (Anir, Aug 14, on the card
+                 beside this one: the arrow means "versus last month", and a
+                 plain count is not that). The card already dropped it; this
+                 one kept it, which mattered little while the count was rare
+                 and matters now that it is the usual case. */
+              <span
+                title="New items picked up this month. Not enough history yet to compare it with last month."
+                className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:var(--ink-bright-blue)] tnum"
+              >
+                <Newspaper size={12} strokeWidth={2.4} />
                 {briefing.itemsThisMonth} items this month
               </span>
             ) : (

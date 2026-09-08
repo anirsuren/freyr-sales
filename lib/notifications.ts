@@ -118,6 +118,18 @@ export interface AppNotification {
    * client clock can drift the markup between render and hydration.
    */
   stamp?: string;
+  /**
+   * The exact moment the stamp was computed from, when there is one. "5d ago"
+   * is deliberately coarse and, on its own, does not even say which day — and
+   * a coarse time on screen keeps its exact time one hover away (Anir, Sep 7:
+   * "if you're just showing me the date and you're not showing me the time,
+   * when I hover over the date, at least you'll say this time on this date").
+   * The row wraps the stamp in DateText whenever this is set.
+   *
+   * Left off the fixed stamps ("Not set up", "Not taken"): those name a state,
+   * not a moment, and hanging a timestamp on them would be inventing one.
+   */
+  stampAt?: string;
 }
 
 export function urgencyRank(u?: NotificationUrgency): number {
@@ -737,7 +749,11 @@ export function buildNotifications(input: {
   }
 
   return perfRows.concat(securityRows).concat(roadmapShown).concat(solutioningRows).concat(out)
-    .map((n) => ({ ...n, stamp: n.stamp || relativeStamp(n.ts, nowMs) }))
+    .map((n) =>
+      n.stamp
+        ? n
+        : { ...n, stamp: relativeStamp(n.ts, nowMs), stampAt: n.ts }
+    )
     .sort((a, b) => {
       // Your own account first: a rep can't be nagged about a customer while
       // their own sign-in is still half-finished.

@@ -5,7 +5,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Loader2, Search } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { cn } from "@/lib/utils";
+import { cn, formatDate, formatTime } from "@/lib/utils";
 import { PrivilegeCards } from "./PrivilegeCards";
 import {
   ROLE_PRIVILEGE,
@@ -82,6 +82,16 @@ function isOnline(iso: string | null | undefined): boolean {
   if (!iso) return false;
   const t = new Date(iso).getTime();
   return !Number.isNaN(t) && Date.now() - t < 5 * 60 * 1000;
+}
+
+/**
+ * "3:42 PM on Sep 7, 2026", or "" when the value carries no clock — the same
+ * sentence DateText hovers, for the one place that has to be a plain `title`
+ * string rather than a wrapped element.
+ */
+function exactMoment(iso: string | null | undefined): string {
+  const time = formatTime(iso);
+  return time ? `${time} on ${formatDate(iso)}` : "";
 }
 
 function joinedLabel(iso: string | null | undefined): string {
@@ -372,7 +382,10 @@ export function PeopleSplit() {
                     the app uses; the words say how long ago for everyone else. */}
                 {m.active && (
                   <span
-                    title={`Last seen ${lastSeenLabel(m.lastSeenAt)}`}
+                    /* The words beside the dot already give the coarse
+                       version, so the hover owes you the exact moment, not the
+                       same phrase twice (Anir, Sep 7). */
+                    title={`Last seen ${exactMoment(m.lastSeenAt) || lastSeenLabel(m.lastSeenAt)}`}
                     className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px]"
                   >
                     <span
@@ -451,7 +464,9 @@ export function PeopleSplit() {
                        instinct is to fold the label into it, but the label is
                        a date as often as it is a duration and "Last seen aug
                        20" is just wrong. */
-                    lastSeenLabel(selected.lastSeenAt)
+                    <DateText value={selected.lastSeenAt}>
+                      {lastSeenLabel(selected.lastSeenAt)}
+                    </DateText>
                   )}
                 </span>
               </p>

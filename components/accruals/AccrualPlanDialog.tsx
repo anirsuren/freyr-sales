@@ -220,6 +220,10 @@ function scheduleKey(d: Draft): string {
       Math.round(Number(rowTotal(l)) || 0),
       Math.round(Number(l.ots) || 0),
       Math.round(Number(l.arr) || 0),
+      /* Moving a month's money from one split column to another leaves the
+         total alone, so without this the guard would call an edited schedule
+         unchanged. */
+      Math.round(Number(l.mrr) || 0),
     ]),
   ]);
 }
@@ -759,9 +763,16 @@ export function AccrualPlanDialog({
              split when it had one, its bare total when it did not. */
           lines: deviationLines.map((l) => ({
             month: l.month,
-            ...(l.ots === undefined && l.arr === undefined
+            ...(l.ots === undefined && l.arr === undefined && l.mrr === undefined
               ? { amount: l.amount }
-              : { ots: l.ots ?? 0, arr: l.arr ?? 0 }),
+              : {
+                  ots: l.ots ?? 0,
+                  arr: l.arr ?? 0,
+                  /* Carried forward like the other two, or a services month
+                     would come back through a deviation stripped of the only
+                     figure it had. */
+                  mrr: l.mrr ?? 0,
+                }),
           })),
           reason: reason.trim(),
         }),
@@ -790,6 +801,7 @@ export function AccrualPlanDialog({
             pinned: true,
             ...(l.ots === undefined ? {} : { ots: String(l.ots) }),
             ...(l.arr === undefined ? {} : { arr: String(l.arr) }),
+            ...(l.mrr === undefined ? {} : { mrr: String(l.mrr) }),
           })),
         }));
       }
@@ -1219,6 +1231,11 @@ export function AccrualPlanDialog({
         amount: Math.round(Number(rowTotal(l)) || 0),
         ...(l.ots ? { ots: Math.round(Number(l.ots) || 0) } : {}),
         ...(l.arr ? { arr: Math.round(Number(l.arr) || 0) } : {}),
+        /* MONTHLY GOES TOO. It is the ONLY split column a services deal is
+           offered (splitFieldsFor), and both of these maps left it out — so a
+           services plan sent a total with nothing behind it and came back with
+           an empty column. rowTotal has always counted it. */
+        ...(l.mrr ? { mrr: Math.round(Number(l.mrr) || 0) } : {}),
       }))
       .filter((l) => l.month);
   }
@@ -1348,6 +1365,11 @@ export function AccrualPlanDialog({
         amount: Math.round(Number(rowTotal(l)) || 0),
         ...(l.ots ? { ots: Math.round(Number(l.ots) || 0) } : {}),
         ...(l.arr ? { arr: Math.round(Number(l.arr) || 0) } : {}),
+        /* MONTHLY GOES TOO. It is the ONLY split column a services deal is
+           offered (splitFieldsFor), and both of these maps left it out — so a
+           services plan sent a total with nothing behind it and came back with
+           an empty column. rowTotal has always counted it. */
+        ...(l.mrr ? { mrr: Math.round(Number(l.mrr) || 0) } : {}),
       }))
       .filter((l) => l.month);
     if (!lines.length) {

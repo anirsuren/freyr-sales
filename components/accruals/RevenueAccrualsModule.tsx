@@ -886,16 +886,35 @@ export function RevenueAccrualsModule({
     [state.plans, dealById]
   );
 
+  /**
+   * A PLAN WITH NO MONTHS IS NOT A SCHEDULE, and every counter on this page
+   * has to agree about that.
+   *
+   * The table already drew that line — it keeps a deal only when its plan has
+   * months in scope — but the two headline tiles counted plan RECORDS and the
+   * missing list treated any record as planned. So a deal whose months had all
+   * been removed read as "planned" in the tiles, was not in "nothing planned",
+   * and was absent from the table: 12 planned over a table headed "11 of 109".
+   * Three numbers on one screen, no two of them agreeing, and the deal itself
+   * unreachable from any of them.
+   *
+   * One predicate now, used by all three.
+   */
+  const scheduled = useMemo(
+    () => state.plans.filter((p) => p.lines.length > 0),
+    [state.plans]
+  );
+
   /** Open deals with money on them and no plan at all. Question 1. */
   const missing = useMemo(() => {
-    const planned = new Set(state.plans.map((p) => p.opportunityId));
+    const planned = new Set(scheduled.map((p) => p.opportunityId));
     return deals.filter(
       (d) =>
         !planned.has(d.id) &&
         d.status !== "Won" &&
         d.status !== "Lost"
     );
-  }, [deals, state.plans]);
+  }, [deals, scheduled]);
 
   const flagged = judged.filter((j) => j.verdict.invalid);
   const plannedTotal = judged.reduce((s, j) => s + planTotal(j.plan), 0);
@@ -1002,7 +1021,10 @@ export function RevenueAccrualsModule({
          nothing else; Need a plan shows the deals with no plan and nothing
          else. */
       if (only === "flagged") return !!plan && flaggedIds.has(o.id);
-      if (only === "missing") return !plan;
+      /* Same rule as the tile beside it: a plan whose months were all removed
+         is a deal with nothing planned, and this is the filter you would reach
+         for to go and plan it. */
+      if (only === "missing") return !plan || plan.lines.length === 0;
       /* A DEAL WITH NO PLAN IS NOT PART OF A YEAR'S ACCRUAL. With no year
          chosen it stays on the table, uncounted, exactly as it always has —
          that is how the page names the deals nobody has planned. The moment a
@@ -1286,13 +1308,13 @@ export function RevenueAccrualsModule({
           icon={Briefcase}
           label="Opportunities"
           value={String(opportunities.length)}
-          sub={`${state.plans.length} of them planned`}
+          sub={`${scheduled.length} of them planned`}
         />
         <StatTile
           icon={Coins}
           label="Total accrued revenue"
           value={formatMoney(plannedTotal)}
-          sub={`${state.plans.length} ${state.plans.length === 1 ? "plan" : "plans"} across the months`}
+          sub={`${scheduled.length} ${scheduled.length === 1 ? "plan" : "plans"} across the months`}
         />
         <StatTile
           icon={AlertTriangle}
