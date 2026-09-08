@@ -75,6 +75,7 @@ import { DateText } from "@/components/ui/DateText";
    out twice. */
 import {
   ACCRUAL_AMBER,
+  ACCRUAL_RED,
   AccrualPlanDialog,
   type DealOption,
 } from "@/components/accruals/AccrualPlanDialog";
@@ -102,6 +103,9 @@ import { tint } from "@/lib/tint";
    flags on this page and the over/under line inside that form are one colour
    and not two literals drifting apart. */
 const AMBER = ACCRUAL_AMBER;
+/* A FLAG IS RED, not amber (Anir, Sep 7). Amber still means "this month's
+   money moved"; red means somebody has to go and fix this plan. */
+const RED = ACCRUAL_RED;
 
 /**
  * WHICH FINANCIAL YEAR A PLANNED MONTH LANDS IN.
@@ -512,7 +516,7 @@ function DeviationsTable({
                   <span className="flex items-center gap-1.5">
                     {r.flag ? (
                       <Tooltip label={r.flag}>
-                        <span className="inline-flex shrink-0 items-center text-[color:var(--ink-amber)]">
+                        <span className="inline-flex shrink-0 items-center text-[color:var(--status-red)]">
                           <AlertTriangle size={13} strokeWidth={2.2} aria-label="Flagged" />
                         </span>
                       </Tooltip>
@@ -1287,7 +1291,7 @@ export function RevenueAccrualsModule({
           icon={AlertTriangle}
           label="Flagged"
           value={String(flagged.length)}
-          color={AMBER}
+          color={RED}
           warn={flagged.length > 0}
           sub="close month passed, needs re-planning"
         />
@@ -1516,7 +1520,7 @@ export function RevenueAccrualsModule({
                 onChange: (next) =>
                   setOnly((next[0] as typeof only) ?? "all"),
                 options: [
-                  { value: "flagged", label: `Flagged (${flagged.length})`, color: AMBER },
+                  { value: "flagged", label: `Flagged (${flagged.length})`, color: RED },
                   { value: "missing", label: `Need a plan (${missing.length})`, color: AMBER },
                 ],
               },

@@ -1190,7 +1190,7 @@ export function OpportunitySummary({
                         claiming it. */}
                     {flags[d.id] ? (
                       <Tooltip label={flags[d.id]}>
-                        <span className="inline-flex shrink-0 items-center text-[color:var(--ink-amber)]">
+                        <span className="inline-flex shrink-0 items-center text-[color:var(--status-red)]">
                           <AlertTriangle size={13} strokeWidth={2.2} aria-label="Flagged" />
                         </span>
                       </Tooltip>

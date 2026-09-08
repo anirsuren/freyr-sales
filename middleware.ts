@@ -3,6 +3,9 @@ import { DATA_MODE_COOKIE } from "@/lib/dataMode";
 import { ACCESS_COOKIE, isApprovalGateEnabled, verifyAccessGrant } from "@/lib/accessControl";
 import {
   APP_SESSION_COOKIE,
+  APP_SESSION_TTL_SECONDS,
+  requestUsesHttps,
+  signAppSession,
   type AppSession,
   verifyAppSession,
 } from "@/lib/appSession";
@@ -459,6 +462,38 @@ export async function middleware(request: NextRequest) {
    * failure disappears.
    */
   const response = NextResponse.next();
+  /* A SESSION THAT IS BEING USED DOES NOT EXPIRE UNDER YOU (Anir, Sep 7,
+     mid-flow: "stop logging me out. Oh fuck. Which one was I on? Damn it. I
+     lost it").
+   *
+   * The cookie was stamped once at sign-in with an eight-hour life and never
+   * touched again, so a working day ran out from under whoever was still
+   * typing, and the page they were on went to the login screen with the work
+   * on it. Now any request carrying a valid session past its halfway mark is
+   * handed a fresh one: same person, same eight hours, no new sign-in. Nobody
+   * who is not already signed in gains anything — an expired or forged token
+   * still fails verifyAppSession above and lands on /login exactly as before.
+   *
+   * Halfway rather than every request, so a busy tab is not re-signing a
+   * cookie on every fetch. */
+  if (appSession && typeof appSession.exp === "number") {
+    const left = appSession.exp - Math.floor(Date.now() / 1000);
+    if (left > 0 && left < APP_SESSION_TTL_SECONDS / 2) {
+      try {
+        const { exp: _dropped, ...user } = appSession;
+        response.cookies.set(APP_SESSION_COOKIE, await signAppSession(user), {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: requestUsesHttps(request),
+          path: "/",
+          maxAge: APP_SESSION_TTL_SECONDS,
+        });
+      } catch {
+        /* Signing needs the secret; without it the old cookie simply stands
+           and the person signs in again when it runs out, as before. */
+      }
+    }
+  }
   securityHeaders(response, requestId);
   return response;
 }

@@ -116,6 +116,13 @@ export type DealOption = {
  * the same one, and two literals of a single reserved colour drift.
  */
 export const ACCRUAL_AMBER = "var(--ink-amber)";
+/* WRONG IS RED (Anir, Sep 7: "if they're flagged make it red bro, why are you
+   making up this weird orange, make it red, make it prominent"). Amber stays
+   for a number that merely MOVED — a month up, a month down, which is news
+   rather than a fault. A plan that does not add up, or one the system has
+   flagged, is a fault, and wears the colour every other fault in this app
+   wears. */
+export const ACCRUAL_RED = "var(--status-red)";
 
 /**
  * ONE MONTH ON THE FORM. `amount` is that month's TOTAL, which is the number
@@ -2546,7 +2553,7 @@ export function AccrualPlanDialog({
                   honest shape: the schedule IS dollars, and this is what that
                   comes to in the currency the contract was written in. */}
               {editingValue > 0 && Math.abs(editingTotal - editingValue) > 1 && (
-                <span className="font-semibold" style={{ color: ACCRUAL_AMBER }}>
+                <span className="font-semibold" style={{ color: ACCRUAL_RED }}>
                   {/* A SENTENCE, NOT A FRAGMENT. The total it used to hang off
                       moved into the footer row, which left this opening with
                       a dangling dash (Sep 7 test loop).
@@ -2791,11 +2798,13 @@ export function AccrualPlanDialog({
                 mayPlan, and the API asks again. */}
             {/* The reason sits BESIDE the button it disables, so the answer to
                 "why can't I press this" is already on screen. */}
-            {planProblem && (
-              <span className="max-w-[420px] text-right text-[12px] font-medium leading-snug text-[color:var(--ink-amber)]">
-                {planProblem}
-              </span>
-            )}
+            {/* ONE MESSAGE, AND THE BUTTONS NEVER MOVE (Anir, Sep 7: "two
+                errors that say the same thing... you can't be moving around
+                the cancel button either"). The same complaint used to be
+                printed twice: once under the schedule, where the numbers are,
+                and again here, where it pushed Cancel and Save sideways every
+                time it appeared. The line under the table is the one that
+                stays; this button's reason lives on its hover. */}
             <button
               type="button"
               disabled={busy || planProblem !== null || nothingChanged}
