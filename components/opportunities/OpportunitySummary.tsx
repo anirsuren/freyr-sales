@@ -752,8 +752,14 @@ export function OpportunitySummary({
     );
   };
 
+  /* LEFT, LIKE EVERY OTHER TABLE IN THE APP (Anir, Aug 30 on the Actions
+     column, again Sep 7: "make sure the columns never get fucked up in
+     alignment like this"). Every money cell on this table goes through this
+     one constant and every header is plain left, so the two cannot drift
+     apart: change the alignment here and the whole table moves together.
+     Do not add text-right to it. */
   const cellCls =
-    "whitespace-nowrap px-3 py-2 text-right text-[14px] tabular-nums";
+    "whitespace-nowrap px-3 py-2 text-[14px] tabular-nums";
 
   /**
    * THE NAME COLUMN DOES NOT MOVE (Anir, Aug 30: "when I click on Go Get, it
