@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { autoApproveEmailDomains } from "@/lib/authEmailPolicy";
 import { ACCESS_COOKIE, type WorkspaceRole, verifyAccessGrant, normalizeWorkspaceRole } from "@/lib/accessControl";
+import { liftToAdmin } from "@/lib/effectiveRole";
 import {
   inviteWorkspaceUser,
   listWorkspaceAccess,
@@ -12,7 +13,11 @@ const ROLES = new Set<WorkspaceRole>(["bd_member", "bd_owner", "admin"]);
 
 async function adminGrant(request: NextRequest) {
   const grant = await verifyAccessGrant(request.cookies.get(ACCESS_COOKIE)?.value);
-  return grant?.role === "admin" ? grant : null;
+  if (!grant) return null;
+  /* The admin PRIVILEGE counts here too, not only the role string in the
+     cookie (lib/effectiveRole). Without this, a person the settings page now
+     treats as an admin got a 403 and a false "Active members 1" roster. */
+  return (await liftToAdmin(grant.role, grant.displayName)) === "admin" ? grant : null;
 }
 
 export async function GET(request: NextRequest) {

@@ -1,4 +1,5 @@
 import "server-only";
+import { liftToAdmin } from "./effectiveRole";
 
 import type { NextRequest } from "next/server";
 import {
@@ -62,7 +63,10 @@ export async function verifiedWorkflowActor(
       grant.displayName?.trim() ||
       principal.name.trim() ||
       "Workspace member",
-    role: grant.role,
+    /* The admin PRIVILEGE counts, not only the cookie's role string
+       (lib/effectiveRole): the materials, solutioning and performance routes
+       all ask this actor who is an admin. */
+    role: await liftToAdmin(grant.role, grant.displayName),
   };
 }
 

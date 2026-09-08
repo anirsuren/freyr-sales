@@ -10,6 +10,7 @@ import {
   type AuthenticatedUser,
 } from "./auth";
 import { APP_SESSION_COOKIE, verifyAppSession } from "./appSession";
+import { liftToAdmin } from "./effectiveRole";
 import {
   ACCESS_COOKIE,
   isApprovalGateEnabled,
@@ -73,7 +74,9 @@ export async function getCurrentUser(): Promise<UserIdentity> {
         cookieStore.get(ACCESS_COOKIE)?.value
       );
       if (grant?.sub === principal.id) {
-        role = grant.role;
+        /* Same lift as getRoleInfo, so an API route asking me.role and a page
+           asking getRole() agree about who is an admin (lib/effectiveRole). */
+        role = await liftToAdmin(grant.role, grant.displayName);
         memberId = grant.userId;
         if (grant.displayName) {
           principal.name = grant.displayName;

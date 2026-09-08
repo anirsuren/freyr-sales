@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { hasAppRole, parseAlbOidcPrincipal, parseEasyAuthPrincipal } from "./auth";
 import { ACCESS_COOKIE, isApprovalGateEnabled, normalizeWorkspaceRole, verifyAccessGrant } from "./accessControl";
+import { liftToAdmin } from "./effectiveRole";
 
 // Workspace roles come from the signed access grant in every protected
 // deployment. The browser-only role switch remains available solely in the
@@ -90,8 +91,12 @@ export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
   const viewAs = store.get("freyr_preview_role")?.value;
   if (isApprovalGateEnabled()) {
     const grant = await verifyAccessGrant(store.get(ACCESS_COOKIE)?.value);
-    if (grant)
-      return { role: applyViewAs(grant.role, viewAs), realRole: grant.role };
+    if (grant) {
+      /* The admin PRIVILEGE counts, not only the role string: see
+         lib/effectiveRole. */
+      const realRole = await liftToAdmin(grant.role, grant.displayName);
+      return { role: applyViewAs(realRole, viewAs), realRole };
+    }
     // Protected deployments must never turn a missing or invalid grant into
     // administrator access.
     return { role: "bd_member", realRole: "bd_member" };

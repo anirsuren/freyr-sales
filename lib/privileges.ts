@@ -868,7 +868,9 @@ export function hasViewAll(
   role: string
 ): boolean {
   if (ROLE_PRIVILEGE[role] === "admin") return true;
-  return privilegesForPerson(state, person).includes(VIEW_ALL);
+  const held = privilegesForPerson(state, person);
+  /* The admin privilege sees everything, the same as the admin role. */
+  return held.includes(VIEW_ALL) || held.includes("admin");
 }
 
 /** Which module row a path belongs to, longest match first. */

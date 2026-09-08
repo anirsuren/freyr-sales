@@ -7,7 +7,7 @@ import {
   type VerifiedOwnerAssignment,
 } from "@/lib/memberAssignments";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
-import { isAdmin } from "@/lib/role";
+import { moduleCreateRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -40,7 +40,20 @@ function parseCsv(input: string): string[][] {
 const normalize = (value: string) => value.trim().toLowerCase().replace(/[\s-]+/g, "_");
 
 export async function POST(request: NextRequest) {
-  if (!(await isAdmin())) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
+  /* CREATE ON CUSTOMERS, NOT THE ADMIN ROLE (Anir, Sep 8: "why am I the only
+     one who can add a customer, Manoj can't?").
+   *
+   * Add customer on the Customers page posts a one-row CSV to this route, so
+   * `isAdmin()` here meant only the single person whose app_role is admin
+   * could create an account, while the fifteen BD Owners could not — though
+   * the bd_owner row of the privilege matrix says CREATE on customers. The
+   * refusal now comes from the same helper the page's own button and the
+   * Groups tab use, so the button and the door agree, and a BD Member, whose
+   * row says edit rather than create, is still turned away.
+   *
+   * The verified-workspace check below is untouched. */
+  const refusal = await moduleCreateRefusal("/customers");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const liveScope =
     getDataMode() === "live"
       ? await verifiedRequestMemberScope(request)

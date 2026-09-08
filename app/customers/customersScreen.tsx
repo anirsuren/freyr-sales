@@ -207,6 +207,9 @@ export async function CustomersScreen({ tab }: { tab: CustomerRouteTab }) {
           offeringNames: Object.fromEntries(
             offeringList.map((o) => [o.id, o.offering_name])
           ),
+          /* Add customer and Import CSV, from the same helper the Groups tab
+             below uses. Was `role === "admin"` inside the component. */
+          canCreate: !(await moduleCreateRefusal("/customers")),
         }}
         targets={targets}
         groups={groups}

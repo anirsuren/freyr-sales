@@ -182,9 +182,13 @@ export function CustomersBrowser({
   deals = [],
   customerGroups = [],
   offeringNames = {},
+  canCreate = false,
 }: {
   customers: EnrichedCustomer[];
   includeDemoTeam: boolean;
+  /** CREATE on Customers, worked out on the server the way every other
+   *  module works it out. See the note on canAddCustomers below. */
+  canCreate?: boolean;
   /** The pipeline, so the summary can total each account's money. */
   deals?: Opportunity[];
   customerGroups?: { id: string; name: string; color: string; customerIds: string[] }[];
@@ -193,7 +197,22 @@ export function CustomersBrowser({
   const { toast } = useToast();
   const router = useRouter();
   const currentUser = useCurrentUser();
-  const canAddCustomers = currentUser.role === "admin";
+  /* THE MATRIX DECIDES THIS, NOT THE ROLE NAME (Anir, Sep 8: "why am I the
+     only one who can add a customer, Manoj can't?").
+   *
+   * This asked `role === "admin"` and nothing else, so the only person in the
+   * workspace whose app_role is admin — him — saw Add customer and Import CSV,
+   * while the fifteen BD Owners did not. Both the bd_owner row and the admin
+   * row of the privilege matrix say CREATE on customers, and Manoj carries
+   * both, so the app's own rules had already answered yes twice over and the
+   * button never asked them. Exactly the mistake lib/role.ts records for
+   * Offerings on Sep 1: it asked the ROLE only, so the privilege bought
+   * nothing.
+   *
+   * Now it comes from moduleCreateRefusal("/customers") on the server, which
+   * is what Opportunities and the Groups tab beside it already use, so there
+   * is one answer to "may this person make a customer" instead of two. */
+  const canAddCustomers = canCreate;
   const ownerOptions = repOptionsFor(currentUser.name, includeDemoTeam);
   const perPageStorageKey = userScopedStorageKey(
     "freyr.customers.perPage",
