@@ -72,6 +72,18 @@ export function MaterialPeek({
   const [everOpened, setEverOpened] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  /* A big video can take longer to render in the frame than anyone will
+     wait. After a few seconds the spinner gives way to a line that says so,
+     and the click still opens the real thing. */
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!open || loaded) {
+      setSlow(false);
+      return;
+    }
+    const t = window.setTimeout(() => setSlow(true), 6000);
+    return () => window.clearTimeout(t);
+  }, [open, loaded]);
   const unmountTimer = useRef<number | null>(null);
   /** The document's real height, reported by the embed — the card fits the
    *  file instead of padding a short one with dead space. */
@@ -188,19 +200,25 @@ export function MaterialPeek({
 
   useEffect(() => {
     if (!open) return;
-    // Close when the PAGE scrolls under the card — it would drift away from
-    // its row — but never while the pointer is on the card itself: scrolling
-    // the document you are reading closed it and re-hovering restarted the
-    // load from zero (Anir, Aug 8: "I scrolled and it went back to loading").
     const close = () => {
       if (overPanel.current) return;
       setOpen(false);
     };
+    /* Switching tab or window is not hovering. Without this the card stayed
+       open behind the tab the arrow opened. */
+    const away = () => {
+      overPanel.current = false;
+      setOpen(false);
+    };
     window.addEventListener("scroll", close, true);
     window.addEventListener("resize", close);
+    window.addEventListener("blur", away);
+    document.addEventListener("visibilitychange", away);
     return () => {
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("resize", close);
+      window.removeEventListener("blur", away);
+      document.removeEventListener("visibilitychange", away);
     };
   }, [open]);
 
@@ -210,6 +228,17 @@ export function MaterialPeek({
       className="contents"
       onMouseEnter={reveal}
       onMouseLeave={scheduleClose}
+      /* A CLICK ENDS THE PEEK (Anir, Sep 9, pressing the open-in-new-tab
+         arrow: "when I press it it does this", a preview card stuck on
+         "Loading preview…"). The new tab took the focus, the pointer never
+         left the name, so no mouseleave ever fired and the card sat there.
+         Pressing anything inside the trigger means the person is acting on
+         the file, not peeking at it: cancel the pending open and close. */
+      onMouseDownCapture={() => {
+        clear(openTimer);
+        clear(closeTimer);
+        setOpen(false);
+      }}
     >
       {children}
       {everOpened &&
@@ -267,14 +296,16 @@ export function MaterialPeek({
                 />
                 {!loaded && (
                   <div className="absolute inset-0 flex items-center justify-center gap-2 bg-white">
-                    <Loader2
-                      size={14}
-                      strokeWidth={2.2}
-                      className="animate-spin text-blue-primary"
-                      aria-hidden="true"
-                    />
+                    {!slow && (
+                      <Loader2
+                        size={14}
+                        strokeWidth={2.2}
+                        className="animate-spin text-blue-primary"
+                        aria-hidden="true"
+                      />
+                    )}
                     <span className="text-[12px] font-medium text-text-secondary">
-                      Loading preview…
+                      {slow ? "The preview is taking a while. Click the name to open it." : "Loading preview…"}
                     </span>
                   </div>
                 )}
