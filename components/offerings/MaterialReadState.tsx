@@ -34,10 +34,14 @@ export function fmtBytes(n: number): string {
 
 export function MaterialReadState({
   offeringId,
-  docsPath,
-}: {
+  docsPath, hideSize = false }: {
   offeringId: string;
   docsPath: string;
+  /** The row already prints the file size under its name (Anir, Sep 9:
+   *  "ur saying the size twice"), so this badge keeps only its meaning:
+   *  read, or nothing to read. The size shows here only for a file whose
+   *  record never got one. */
+  hideSize?: boolean;
 }) {
   const [state, setState] = useState<State | null>(null);
   const [words, setWords] = useState(0);
@@ -132,7 +136,7 @@ export function MaterialReadState({
             <Sparkles size={10} strokeWidth={2.4} aria-hidden="true" />
           </span>
         </Tooltip>
-        {bytes !== null && (
+        {!hideSize && bytes !== null && (
           <span className="whitespace-nowrap text-[10.5px] font-medium text-text-tertiary">
             {fmtBytes(bytes)}
           </span>
@@ -155,7 +159,7 @@ export function MaterialReadState({
             <FileQuestion size={10} strokeWidth={2.4} aria-hidden="true" />
           </span>
         </Tooltip>
-        {bytes !== null && (
+        {!hideSize && bytes !== null && (
           <span className="whitespace-nowrap text-[10.5px] font-medium text-text-tertiary">
             {fmtBytes(bytes)}
           </span>

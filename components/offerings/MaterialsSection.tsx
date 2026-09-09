@@ -1402,6 +1402,7 @@ export function MaterialsSection({
                               just uploaded it"). */}
                           {uploaded && material.docsPath && offeringId && (
                             <MaterialReadState
+                              hideSize={Boolean(material.bytes)}
                               offeringId={offeringId}
                               docsPath={material.docsPath}
                             />
