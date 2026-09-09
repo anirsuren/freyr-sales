@@ -2,7 +2,6 @@ import "server-only";
 import { getMaterialServeUrl } from "./materialStorage";
 
 import { docsStorage } from "./docsStorage";
-import { contentTypeForFilename, mirrorMaterialToSupabase } from "./materialStorage";
 import { extractFileContent, isReadableFile } from "./fileText";
 import {
   isTranscribableFile,
@@ -128,16 +127,9 @@ export async function indexStoredMaterial(args: {
       }
     }
 
-    // MIRROR INTO THE WORKSPACE'S OWN BUCKET (Anir, Aug 12: "store them in
-    // supabase storage as well"). Freya.Docs stays the source of truth, so a
-    // mirror failure is a no-op — the next backfill picks it up.
-    if (bytes.length <= MIRROR_LIMIT_BYTES) {
-      await mirrorMaterialToSupabase(
-        path,
-        bytes,
-        contentTypeForFilename(filename)
-      ).catch(() => undefined);
-    }
+    // (Until Sep 9 this copied the bytes into Supabase here. Supabase is
+    // where they were uploaded to begin with now, so there is nothing to
+    // copy; the Docs side copy is started by the upload routes themselves.)
 
     /**
      * A VIDEO HAS NO TEXT TO EXTRACT, SO LISTEN TO IT INSTEAD.

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
+import { hasMaterialStorage, getMaterialServeUrl } from "@/lib/materialStorage";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
-import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { extractFileContent, isReadableFile } from "@/lib/fileText";
 import { materialTextEntry, saveMaterialText } from "@/lib/materialText";
 
@@ -50,7 +50,7 @@ export async function POST(
       { error: "That file format does not contain searchable text" },
       { status: 422 }
     );
-  if (!(await hasDocsStorage()))
+  if (!(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }
@@ -67,7 +67,9 @@ export async function POST(
   }
 
   try {
-    const { fileName, presignUrl } = await docsStorage.getDownloadUrl(path);
+    /* Supabase is where the bytes live (Anir, Sep 9); Docs is the side copy. */
+    const presignUrl = await getMaterialServeUrl(path);
+    const fileName = path.split("/").pop() || "";
     const upstream = await fetch(presignUrl);
     if (!upstream.ok)
       return NextResponse.json(

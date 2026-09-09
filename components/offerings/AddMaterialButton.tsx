@@ -645,16 +645,21 @@ export function AddMaterialButton({
 
 
   /**
-   * PUT THE FILE STRAIGHT INTO STORAGE FROM THE BROWSER.
+   * PUT THE FILE STRAIGHT INTO SUPABASE STORAGE FROM THE BROWSER.
    *
    * Three calls: ask our server for a signed URL (it decides you may, and
-   * where it lands), send the bytes to S3, tell our server it landed. The file
-   * never passes through the app, so THERE IS NO SIZE LIMIT — a full recorded
-   * demo uploads the same way a one-pager does.
+   * where it lands), send the bytes into the workspace bucket, tell our
+   * server it landed. The file never passes through the app, so a full
+   * recorded demo uploads the same way a one-pager does; the only ceiling is
+   * the project's storage cap (5GB).
+   *
+   * Anir, Sep 9: "You upload it to Supabase, and that's the main thing...
+   * when you open it, you open it from Supabase, not Freya Docs." Until then
+   * this signed into FreyaFusion's Docs bucket, whose missing CORS policy
+   * failed every browser PUT and pushed every file through the server.
    *
    * If direct upload isn't configured in this environment the signing call
-   * answers 503 and we fall back to posting the file through the server, which
-   * still works and is what a laptop without the Docs credentials uses.
+   * answers 503 and we fall back to posting the file through the server.
    */
   async function uploadFile(f: File) {
     const key = fileKey(f);
@@ -670,14 +675,54 @@ export function AddMaterialButton({
         body: JSON.stringify({
           filename: f.name,
           contentType: f.type || "application/octet-stream",
+          // So a file over the storage cap is refused in words up front,
+          // not at the end of the bar.
+          size: f.size,
         }),
       }
     );
-    const grant = await signed.json();
+    /* READ IT AS TEXT FIRST, THEN DECIDE WHAT IT WAS.
 
-    if (signed.status === 503) return uploadThroughServer(f);
+       This was `await signed.json()` on the line before the status check, so
+       the ONE response type it could not handle was the one the load balancer
+       sends: an HTML page. A container that is busy, restarting or out of
+       memory never answers this call — the balancer does, with "<html>", and
+       .json() threw straight past every branch below into the outer catch,
+       which is where "Couldn't add that: Unexpected token '<', "<html> <h"...
+       is not valid JSON" came from (Anir, Sep 9, on a 309MB recording).
+
+       Uploads begin the moment a file is picked, so that throw was sitting in
+       preUploads for minutes and only surfaced when he pressed save, with no
+       word about which of the four calls in this function had produced it.
+
+       Now: a signing call that comes back as anything other than a JSON
+       answer we can act on falls back through our own server, the same way a
+       503 always has. Only a real, readable refusal (403 not an owner, 404)
+       stops the upload, and it says so. */
+    const signedText = await signed.text();
+    let grant: {
+      uploadUrl?: string;
+      uploadHeaders?: Record<string, string>;
+      path?: string;
+      error?: string;
+    } = {};
+    try {
+      grant = signedText ? JSON.parse(signedText) : {};
+    } catch {
+      grant = {};
+    }
+
+    if (
+      signed.status === 503 ||
+      signed.status >= 500 ||
+      (!signed.ok && !grant.error)
+    )
+      return uploadThroughServer(f);
     if (!signed.ok || !grant.uploadUrl) {
-      toast(grant.error || "Couldn't start that upload", "error");
+      toast(
+        grant.error || `Couldn't start that upload (HTTP ${signed.status})`,
+        "error"
+      );
       setFileProgress((current) => ({
         ...current,
         [key]: { percent: current[key]?.percent || 0, status: "failed" },
@@ -686,7 +731,11 @@ export function AddMaterialButton({
     }
 
     setProgress(0);
-    const sent = await putWithProgress(grant.uploadUrl, grant.uploadHeaders, f);
+    const sent = await putWithProgress(
+      grant.uploadUrl,
+      grant.uploadHeaders ?? {},
+      f
+    );
     if (!sent) {
       // Clear the half-finished path or this same file can never be re-sent.
       await fetch(`/api/offerings/${offeringId}/materials/complete`, {
@@ -694,15 +743,11 @@ export function AddMaterialButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path: grant.path, failed: true }),
       }).catch(() => undefined);
-      // THE DIRECT PUT DIES IN REAL BROWSERS (Anir, Aug 13: "Why is this
-      // creating a fucking error every single time?… You can't keep giving
-      // errors on the uploading files"). Diagnosis, proven with a server-side
-      // repro: FreyaFusion's bucket has NO CORS policy, so the preflight
-      // answers 403 and the browser never sends the bytes — while the very
-      // same signed PUT succeeds from a server. Until the bucket allows our
-      // origins, failing here silently reroutes the file through our own
-      // server, which stores into the SAME bucket server-side. No toast, no
-      // dead end; the rep just sees the upload finish.
+      // A dropped connection mid-PUT reroutes the file through our own
+      // server, which stores into the SAME bucket. No toast, no dead end; the
+      // rep just sees the upload finish. (Before Sep 9 this branch fired on
+      // EVERY upload: the old target was FreyaFusion's Docs bucket, which has
+      // no CORS policy, so the browser never got to send the bytes.)
       return uploadThroughServer(f);
     }
 
@@ -715,10 +760,33 @@ export function AddMaterialButton({
         body: JSON.stringify({ path: grant.path, filename: f.name }),
       }
     );
-    const stored = await done.json();
+    /* Same lesson as the signing call above: the balancer answers with HTML
+       when the container cannot, and .json() on that threw the whole save
+       into the outer catch. Read text, parse if it parses, and say what
+       happened instead of quoting a parser. */
+    const doneText = await done.text();
+    let stored: {
+      url?: string;
+      error?: string;
+      docsPath?: string;
+      indexing?: boolean;
+      supported?: boolean;
+    } = {};
+    try {
+      stored = doneText ? JSON.parse(doneText) : {};
+    } catch {
+      stored = {};
+    }
     setProgress(null);
-    if (!done.ok || !stored.url) {
-      toast(stored.error || "Couldn't finish that upload", "error");
+    const storedUrl = stored.url;
+    if (!done.ok || !storedUrl) {
+      toast(
+        stored.error ||
+          (done.ok
+            ? "Couldn't finish that upload"
+            : `Couldn't finish that upload (HTTP ${done.status})`),
+        "error"
+      );
       setFileProgress((current) => ({
         ...current,
         [key]: { percent: 100, status: "failed" },
@@ -729,7 +797,7 @@ export function AddMaterialButton({
       ...current,
       [key]: { percent: 100, status: "done" },
     }));
-    return stored;
+    return { ...stored, url: storedUrl };
   }
 
   /** XHR, not fetch: it is the only way to report upload progress, and a
@@ -818,8 +886,21 @@ export function AddMaterialButton({
     } catch {
       stored = {};
     }
-    if (!up.ok || !stored.url) {
-      toast(stored.error || "Couldn't upload that file", "error");
+    const storedUrl = stored.url;
+    if (!up.ok || !storedUrl) {
+      /* NAME THE STEP AND THE STATUS. "Couldn't upload that file" covered a
+         413 (too big), a 502 (the app was down or restarting), a 504 (the
+         balancer gave up waiting) and a dropped connection (status 0) with
+         the same six words, so nobody could tell Anir which one he had hit. */
+      toast(
+        stored.error ||
+          (status === 0
+            ? "The upload was cut off before the server answered. Check the connection and try again."
+            : status === 413
+              ? "That file is over the size limit."
+              : `The server did not accept the upload (HTTP ${status}). Try again in a minute.`),
+        "error"
+      );
       setFileProgress((current) => ({
         ...current,
         [key]: { percent: current[key]?.percent || 0, status: "failed" },
@@ -831,7 +912,7 @@ export function AddMaterialButton({
       ...current,
       [key]: { percent: 100, status: "done" },
     }));
-    return stored;
+    return { ...stored, url: storedUrl };
   }
 
   async function save() {

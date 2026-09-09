@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { getMaterialServeUrl } from "@/lib/materialStorage";
+import { getMaterialServeUrl, hasMaterialStorage } from "@/lib/materialStorage";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import nodePath from "node:path";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
-import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { canViewOfferingMaterial } from "@/lib/materialAccess";
 
@@ -163,7 +162,7 @@ export async function GET(
       { error: "Only presentations and documents are converted to PDF" },
       { status: 400 }
     );
-  if (!(await hasDocsStorage()))
+  if (!(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }

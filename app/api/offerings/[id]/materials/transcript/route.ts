@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { getMaterialServeUrl } from "@/lib/materialStorage";
+import { getMaterialServeUrl, hasMaterialStorage } from "@/lib/materialStorage";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
-import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import {
   materialTextEntry,
   saveMaterialText,
@@ -137,7 +136,7 @@ export async function POST(
       { error: "Transcription is not configured on this server" },
       { status: 503 }
     );
-  if (!(await hasDocsStorage()))
+  if (!(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }

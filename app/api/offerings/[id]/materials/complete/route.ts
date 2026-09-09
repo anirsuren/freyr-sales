@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { getOffering } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
-import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
-import { formatFromFilename } from "@/lib/materialStorage";
+import { getCurrentUser } from "@/lib/currentUser";
+import {
+  contentTypeForFilename,
+  formatFromFilename,
+  hasMaterialStorage,
+  materialExistsInStore,
+  mirrorMaterialToDocsInBackground,
+  removeMaterialFromStore,
+} from "@/lib/materialStorage";
 import { isReadableFile } from "@/lib/fileText";
 import { indexStoredMaterialInBackground } from "@/lib/materialIndexing";
 
@@ -10,16 +17,14 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * FINISH A DIRECT-TO-S3 UPLOAD, then read the file so the assistant can answer
- * from it.
+ * FINISH A DIRECT UPLOAD INTO SUPABASE.
  *
- * Two phases are the Docs API's own contract: without `complete` the object
- * stays pending and its path can never be reused. Once it is committed we pull
- * the text out — but only for formats that HAVE text, and only up to a budget.
- * A 3GB demo recording is stored happily and simply isn't searchable; reading
- * it would mean downloading 3GB into this process to find no words at all.
+ * The browser has PUT the bytes into the workspace bucket itself. This route
+ * confirms the object is really there, answers, and only then starts the two
+ * background jobs: reading the file for the assistant, and the side copy into
+ * Freya.Docs (Anir, Sep 9: "the Freya Docs is just a side thing"). Neither
+ * can fail the upload, because the upload is already done.
  */
-
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -33,7 +38,7 @@ export async function POST(
       { error: "Ask a workspace admin to assign you as an owner before uploading materials" },
       { status: 403 }
     );
-  if (!(await hasDocsStorage()))
+  if (!(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }
@@ -42,7 +47,7 @@ export async function POST(
   const body = ((await req.json().catch(() => ({}))) ?? {}) as {
     path?: string;
     filename?: string;
-    /** Whether the browser's PUT failed — then we abort instead of commit. */
+    /** Whether the browser's PUT failed — then we clean up instead. */
     failed?: boolean;
   };
   const path = (body.path || "").trim();
@@ -54,33 +59,38 @@ export async function POST(
       { status: 403 }
     );
 
-  // A failed browser upload leaves the path pending, which blocks re-sending
-  // the same file until it is cleared.
+  // A failed browser upload may have left a partial object behind.
   if (body.failed) {
-    await docsStorage.abortUpload(path).catch(() => undefined);
+    await removeMaterialFromStore(path);
     return NextResponse.json({ ok: true, aborted: true });
   }
 
-  try {
-    await docsStorage.completeUpload(path);
-  } catch (e) {
+  // THE OBJECT MUST BE THERE. A record pointing at nothing is exactly the
+  // "listed here but its file is missing" failure the download route has to
+  // explain to people, so refuse to say "done" until storage says so.
+  let present = false;
+  for (const waitMs of [0, 400, 1200]) {
+    if (waitMs) await new Promise((r) => setTimeout(r, waitMs));
+    if (await materialExistsInStore(path)) {
+      present = true;
+      break;
+    }
+  }
+  if (!present)
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Could not finish the upload" },
+      { error: "The upload did not land in storage. Try again." },
       { status: 502 }
     );
-  }
 
-  /**
-   * THE FILE IS IN. ANSWER NOW; READ IT AFTERWARDS.
-   *
-   * completeUpload() above is the last step that decides whether the object
-   * exists. Everything that used to follow — downloading it back, extracting
-   * text, mirroring it — is the SECOND job (Anir, Aug 13: "get it in the
-   * fucking system" first, "then train the AI on it"). It ran inline, so a
-   * slow read-back or a throw on a malformed file turned a finished upload
-   * into a red error in the rep's face.
-   */
+  const me = await getCurrentUser().catch(() => null);
+  // Second job, behind the response: read it for the assistant.
   indexStoredMaterialInBackground({ offeringId: id, path, filename });
+  // Third job, behind the response: the enterprise archive copy.
+  mirrorMaterialToDocsInBackground(
+    path,
+    contentTypeForFilename(filename),
+    me?.email || me?.name || undefined
+  );
 
   return NextResponse.json({
     ok: true,

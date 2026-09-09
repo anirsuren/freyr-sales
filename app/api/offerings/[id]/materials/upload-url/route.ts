@@ -1,24 +1,33 @@
 import { NextResponse } from "next/server";
 import { getOffering } from "@/lib/offerings";
 import { canEditOffering } from "@/lib/offeringOwnership";
-import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
-import { getCurrentUser } from "@/lib/currentUser";
-import { validateMaterialUpload } from "@/lib/materialStorage";
+import {
+  createMaterialUploadGrant,
+  hasMaterialStorage,
+  MAX_DIRECT_UPLOAD_BYTES,
+  validateMaterialUpload,
+} from "@/lib/materialStorage";
 
 export const dynamic = "force-dynamic";
 
 /**
- * HAND THE BROWSER A SIGNED URL SO IT CAN UPLOAD STRAIGHT TO S3.
+ * HAND THE BROWSER A SIGNED URL SO IT CAN UPLOAD STRAIGHT INTO SUPABASE.
  *
- * THERE IS NO SIZE LIMIT on this path, and that is the whole point (Anir,
- * Jul 29: "why are you restricting it to 100MB? This is an enterprise-level
- * application"). The bytes go from the rep's machine to FreyaFusion's bucket
- * without ever entering this server, so a two-hour recorded demo costs us no
- * memory and no request time — the old route buffered the entire file in the
- * Node process, which is exactly why it had to be capped.
+ * Anir, Sep 9: "You upload it to Supabase, and that's the main thing. The
+ * Freya Docs is just a side thing... when you open it, you open it from
+ * Supabase, not Freya Docs." Until today this route signed a URL into
+ * FreyaFusion's Docs bucket instead, and that bucket has no CORS policy, so
+ * every browser upload failed its preflight and fell back through the app
+ * server, which holds the whole file in memory under a time limit. That is
+ * how a 309MB recording became "Couldn't add that".
  *
- * We still decide WHO may upload and WHERE it lands: the signature is minted
- * only for an owner, and only for a path inside this offering's namespace.
+ * Now the bytes go from the rep's machine into the workspace's own bucket,
+ * the one the app already serves every file from. No memory, no clock, and
+ * the only ceiling is the project's storage cap (5GB). Docs gets its copy
+ * afterwards, in the background, from the finished upload.
+ *
+ * We still decide WHO may upload and WHERE it lands: the grant is minted only
+ * for an owner (or admin), for a path inside this offering's namespace.
  */
 export async function POST(
   req: Request,
@@ -33,7 +42,7 @@ export async function POST(
       { error: "Ask a workspace admin to assign you as an owner before uploading materials" },
       { status: 403 }
     );
-  if (!(await hasDocsStorage()))
+  if (!(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Direct upload is not configured here" },
       { status: 503 }
@@ -42,6 +51,7 @@ export async function POST(
   const body = ((await req.json().catch(() => ({}))) ?? {}) as {
     filename?: string;
     contentType?: string;
+    size?: number;
   };
   const filename = (body.filename || "").trim();
   if (!filename)
@@ -52,26 +62,33 @@ export async function POST(
   );
   if (validationError)
     return NextResponse.json({ error: validationError }, { status: 400 });
+  // Say no in words, before a byte moves, rather than letting storage refuse
+  // a gigabyte at the end of the bar.
+  const size = Number(body.size || 0);
+  if (size > MAX_DIRECT_UPLOAD_BYTES)
+    return NextResponse.json(
+      {
+        error: `That file is ${Math.round(size / 1024 / 1024)}MB; the limit is ${MAX_DIRECT_UPLOAD_BYTES / 1024 / 1024 / 1024}GB.`,
+      },
+      { status: 413 }
+    );
 
   // The path is built HERE, never taken from the request: a client that could
   // name its own path could write into another offering's namespace.
   const safe = filename.replace(/[^\w.\-]+/g, "_").slice(-120);
   const path = `${id}/${Date.now()}-${safe}`;
-  const me = await getCurrentUser().catch(() => null);
 
   try {
-    const signed = await docsStorage.requestUpload(
+    const grant = await createMaterialUploadGrant(
       path,
-      body.contentType || "application/octet-stream",
-      { offeringId: id, ...(me?.email ? { uploadedBy: me.email } : {}) }
+      body.contentType || "application/octet-stream"
     );
     return NextResponse.json({
       ok: true,
       path,
-      uploadUrl: signed.uploadUrl,
-      // Every signed header must be replayed verbatim on the PUT or S3
-      // answers 403 — the browser sends this object back untouched.
-      uploadHeaders: signed.uploadHeaders,
+      uploadUrl: grant.uploadUrl,
+      // Sent back verbatim on the PUT.
+      uploadHeaders: grant.uploadHeaders,
     });
   } catch (e) {
     return NextResponse.json(

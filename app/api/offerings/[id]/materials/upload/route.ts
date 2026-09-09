@@ -33,6 +33,24 @@ export async function POST(
       { status: 403 }
     );
 
+  /* REFUSE A FILE OVER THE CAP BEFORE READING IT, NOT AFTER.
+
+     The size check below sat after `req.formData()`, and formData() holds the
+     ENTIRE body in this process's memory to build the File it hands back. So
+     a gigabyte upload was accepted in full, buffered in full on a 2GB task,
+     and only THEN told it was over the 512MB limit — if the container had not
+     already died of it, which is one way the load balancer ends up answering
+     for us with an HTML page. The browser declares the size up front; ask it
+     first. A megabyte of slack covers the multipart framing around the file. */
+  const declared = Number(req.headers.get("content-length") || 0);
+  if (declared > MAX_UPLOAD_BYTES + 1024 * 1024)
+    return NextResponse.json(
+      {
+        error: `That file is ${Math.round(declared / 1024 / 1024)}MB; the limit is ${MAX_UPLOAD_BYTES / 1024 / 1024}MB.`,
+      },
+      { status: 413 }
+    );
+
   let form: FormData;
   try {
     form = await req.formData();
