@@ -36,6 +36,10 @@ export function EditDealDialog({
   mayEdit = true,
   accrualPlan = null,
   accrualScheduler = null,
+  planDirty = false,
+  planProblem = null,
+  onSavePlan,
+  onDiscardPlan,
   why = "",
   customers = [],
   offerings = [],
@@ -67,6 +71,13 @@ export function EditDealDialog({
    *  than on the overview, which only shows. */
   accrualPlan?: React.ComponentProps<typeof DealOverviewEditor>["accrualPlan"];
   accrualScheduler?: React.ReactNode;
+  /** The scheduler's own unsaved state, so the form's one save bar can carry
+   *  it (Anir, Sep 8: "any change in all the sections will just show up
+   *  there"). Passed straight through to the editor. */
+  planDirty?: boolean;
+  planProblem?: string | null;
+  onSavePlan?: () => void;
+  onDiscardPlan?: () => void;
   why?: string;
   customers?: { id: string; name: string }[];
   offerings?: { id: string; name: string; type?: string }[];
@@ -119,6 +130,10 @@ export function EditDealDialog({
       mayEdit={mayEdit}
       accrualPlan={accrualPlan}
       accrualScheduler={accrualScheduler}
+      planDirty={planDirty}
+      planProblem={planProblem}
+      {...(onSavePlan ? { onSavePlan } : {})}
+      {...(onDiscardPlan ? { onDiscardPlan } : {})}
       why={why}
       customers={customers}
       offerings={offerings}

@@ -333,6 +333,9 @@ export function AccrualPlanDialog({
   inline = false,
   draft = false,
   onDraftChange,
+  deferSave = false,
+  onSaveStateChange,
+  saveRef,
   pickable = [],
   plans = [],
   onClose,
@@ -362,6 +365,26 @@ export function AccrualPlanDialog({
    * reconciliation and the month controls are the one implementation.
    */
   draft?: boolean;
+  /**
+   * THE SAVE BUTTON BELONGS TO THE PAGE, NOT TO THIS CARD.
+   *
+   * Anir, Sep 8, on the deal edit screen: "I don't like the save plan here.
+   * Just have a sticky save thing at the bottom, and any change in all the
+   * sections will just show up there... But the pop-up worked, so do that."
+   *
+   * Different from `draft`. Draft is for a deal that has no id yet, so this
+   * component cannot persist at all and hands its lines to the form. Here the
+   * deal exists and this component still owns the writing — the confirm, the
+   * deviation log, the POST, all of savePlan() unchanged, which is the pop-up
+   * he asked to keep. Only the BUTTON moves: the footer goes away and the
+   * page's own save bar calls in through `saveRef`.
+   */
+  deferSave?: boolean;
+  /** Reported to the page's save bar so the schedule counts as one of its
+   *  unsaved changes, and so it can say why Save is refused. */
+  onSaveStateChange?: (next: { dirty: boolean; problem: string | null }) => void;
+  /** The page's save bar calls this to save the schedule. */
+  saveRef?: { current: (() => void) | null };
   /** Called whenever the draft schedule changes. `problem` is null when the
    *  schedule is complete and reconciles; the form gates its own save on it. */
   onDraftChange?: (next: {
@@ -1615,8 +1638,31 @@ export function AccrualPlanDialog({
   const scheduleDirty = currentVersion
     ? !nothingChanged
     : scheduleKey(editing) !== untouchedKey;
-  /* Draft mode belongs to the New opportunity form, which owns the save. */
-  const guard = useLeaveGuard(!draft && scheduleDirty);
+  /* Draft mode belongs to the New opportunity form, and deferred mode to the
+     deal edit page. Both own the save, so both own the leave guard too —
+     two prompts about the same unsaved schedule is one too many. */
+  const guard = useLeaveGuard(!draft && !deferSave && scheduleDirty);
+
+  /* DEFERRED MODE: THE PAGE'S SAVE BAR DRIVES THIS CARD.
+
+     It needs exactly two things — whether the schedule has unsaved changes,
+     so the bar can count it among the page's, and the reason it cannot be
+     saved, so the bar can say why. Saving itself stays here: `saveRef` hands
+     the page savePlan(), so the confirm, the deviation log and the POST are
+     all the same code the standalone dialog runs. */
+  useEffect(() => {
+    if (!deferSave || !onSaveStateChange) return;
+    onSaveStateChange({ dirty: scheduleDirty, problem: planProblem });
+  }, [deferSave, onSaveStateChange, scheduleDirty, planProblem]);
+  /* Re-pointed on every render so the page always calls the CURRENT closure
+     over the edited months, never the one from the render it first mounted. */
+  useEffect(() => {
+    if (!saveRef) return;
+    saveRef.current = savePlan;
+    return () => {
+      saveRef.current = null;
+    };
+  });
 
   /* In draft mode the form owns the save, so it needs the schedule and the
      reason it is not yet valid. Reported after render, never during one. */
@@ -2761,7 +2807,7 @@ export function AccrualPlanDialog({
           NO FOOTER AT ALL IN DRAFT MODE: the schedule is part of a form that
           has its own Add button, and a second Save inside it would be two
           buttons claiming to save the same thing. */}
-      {!draft && (
+      {!draft && !deferSave && (
       <div className="mt-4 flex shrink-0 items-center gap-2 border-t border-border-light pt-3">
         {/* A DELETE STANDS APART FROM THE THING THAT SAVES, on the left, red,
             and it asks the caller first. Nothing passes it today; see the prop

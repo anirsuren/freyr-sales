@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -105,6 +105,19 @@ export function DealEditScreen({
     }
   }
 
+  /* ONE SAVE BAR FOR THE WHOLE PAGE (Anir, Sep 8: "I don't like the save plan
+     here. Just have a sticky save thing at the bottom, and any change in all
+     the sections will just show up there"). The scheduler below runs in
+     deferSave mode: no button of its own, it reports whether it has changes
+     and hands its save up through this ref. Discard remounts it by bumping
+     the key, which re-seeds it from the stored plan. */
+  const savePlanRef = useRef<(() => void) | null>(null);
+  const [planState, setPlanState] = useState<{ dirty: boolean; problem: string | null }>({
+    dirty: false,
+    problem: null,
+  });
+  const [planNonce, setPlanNonce] = useState(0);
+
   return (
     <>
     <EditDealDialog
@@ -122,16 +135,32 @@ export function DealEditScreen({
       /* THE SAME COMPONENT THE ACCRUALS MODULE MOUNTS, without its modal
          chrome — not a copy, so the two cannot drift (Suren, Sep 1: "both the
          screens have to be the same"). */
+      planDirty={planState.dirty}
+      planProblem={planState.problem}
+      onSavePlan={() => savePlanRef.current?.()}
+      onDiscardPlan={() => {
+        setPlanState({ dirty: false, problem: null });
+        setPlanNonce((n) => n + 1);
+      }}
       accrualScheduler={
         accrual?.mayPlan && mayEdit ? (
           <AccrualPlanDialog
+            key={planNonce}
             inline
+            /* The page's save bar owns the button; this card keeps the
+               confirm, the deviation log and the write. */
+            deferSave
+            saveRef={savePlanRef}
+            onSaveStateChange={setPlanState}
             dealId={accrual.deal.id}
             deals={[accrual.deal]}
             pickable={[]}
             plans={accrual.plan ? [accrual.plan] : []}
             onClose={() => undefined}
-            onSaved={() => router.refresh()}
+            onSaved={() => {
+              setPlanState({ dirty: false, problem: null });
+              router.refresh();
+            }}
           />
         ) : null
       }

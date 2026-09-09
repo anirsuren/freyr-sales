@@ -525,6 +525,10 @@ export function DealOverviewEditor({
   mayChangeTeam = false,
   mayChangeOwner = false,
   accrualPlan = null,
+  planDirty = false,
+  planProblem = null,
+  onSavePlan,
+  onDiscardPlan,
   onOpenAccrual,
   accrualScheduler = null,
   onSave,
@@ -572,6 +576,22 @@ export function DealOverviewEditor({
   /** This deal's accrual schedule, shown inside the Revenue Accrual card
    *  (items 3 and 5). Read here, edited in the one accrual screen. */
   accrualPlan?: AccrualPlan | null;
+  /**
+   * THE SCHEDULE IS ONE OF THIS PAGE'S UNSAVED CHANGES.
+   *
+   * Anir, Sep 8: "I don't like the save plan here. Just have a sticky save
+   * thing at the bottom, and any change in all the sections will just show up
+   * there... But the pop-up worked, so do that."
+   *
+   * So the scheduler below stops carrying its own Save plan button and
+   * reports up instead: whether it has changes, and why it cannot be saved.
+   * `onSavePlan` calls back into it, which runs its own confirm — the pop-up
+   * he asked to keep — and its own deviation log and POST.
+   */
+  planDirty?: boolean;
+  planProblem?: string | null;
+  onSavePlan?: () => void;
+  onDiscardPlan?: () => void;
   /** Opens that screen. Absent when this person may not plan. */
   onOpenAccrual?: () => void;
   /** The scheduler itself, mounted in this card (Manoj, Sep 3). Null for a
@@ -717,6 +737,10 @@ export function DealOverviewEditor({
   const [pending, setPending] = useState<Record<string, Record<string, unknown>>>({});
   const [saving, setSaving] = useState(false);
   const dirtyCount = Object.keys(pending).length;
+  /* THE BAR COUNTS EVERY SECTION, not just the fields. The schedule is one
+     change however many months moved inside it, the same way the money box is
+     one change however many keys it writes. */
+  const dirtyTotal = dirtyCount + (planDirty ? 1 : 0);
   /* Bumped by Discard. Every field's local state re-seeds from `deal` when it
      changes — see the effect below. */
   const [resetNonce, setResetNonce] = useState(0);
@@ -828,19 +852,26 @@ export function DealOverviewEditor({
 
   /** Send everything banked, in one write. */
   async function saveAll() {
-    if (!dirtyCount || saving) return;
+    if (!dirtyTotal || saving) return;
     setSaving(true);
     try {
-      const patch = Object.assign({}, ...Object.values(pending));
-      const message = onSave ? await onSave(patch) : await postUpdate(deal.id, patch);
-      if (!alive.current) return;
-      if (message) {
-        setErrors((e) => ({ ...e, __form: message }));
-        return;
+      if (dirtyCount) {
+        const patch = Object.assign({}, ...Object.values(pending));
+        const message = onSave ? await onSave(patch) : await postUpdate(deal.id, patch);
+        if (!alive.current) return;
+        if (message) {
+          setErrors((e) => ({ ...e, __form: message }));
+          return;
+        }
+        setPending({});
+        setErrors((e) => ({ ...e, __form: "" }));
+        onSaved?.();
       }
-      setPending({});
-      setErrors((e) => ({ ...e, __form: "" }));
-      onSaved?.();
+      /* THE SCHEDULE LAST, and through its own save, which asks first:
+         "changes will be made current and a deviation will be logged",
+         Accept or Cancel. Not awaited, because that answer is the person's
+         to give — the fields are already safely written by here. */
+      if (planDirty) onSavePlan?.();
     } finally {
       if (alive.current) setSaving(false);
     }
@@ -849,7 +880,7 @@ export function DealOverviewEditor({
   /* LEAVING WITH UNSAVED WORK SHOULD COST A CLICK, not a shrug: tab close,
      any link in the app, and the buttons that navigate without one (Back to
      deal). One shared hook does all three; see lib/useLeaveGuard. */
-  const guard = useLeaveGuard(dirtyCount > 0);
+  const guard = useLeaveGuard(dirtyTotal > 0);
 
   /**
    * THE RATE FOR THIS DEAL'S OWN DAY (Suren, Sep 1: "based on that date,
@@ -2090,14 +2121,19 @@ export function DealOverviewEditor({
           It counts what is actually banked rather than saying "unsaved
           changes", because "3 changes" tells you whether you have edited what
           you think you edited. */}
-      {!ro && dirtyCount > 0 && (
+      {!ro && dirtyTotal > 0 && (
         <div className="sticky bottom-0 z-30 -mx-1 mt-2 px-1 pb-1">
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white/95 px-4 py-3 shadow-[0_-2px_18px_-6px_rgba(16,22,30,0.22)] backdrop-blur">
             <span className="text-[13px] font-semibold text-text-primary">
-              {dirtyCount} unsaved change{dirtyCount === 1 ? "" : "s"}
+              {dirtyTotal} unsaved change{dirtyTotal === 1 ? "" : "s"}
             </span>
             {errors.__form && (
               <span className="text-[12.5px] text-[color:var(--status-red)]">{errors.__form}</span>
+            )}
+            {/* WHY SAVE IS REFUSED, beside the button that is refusing, rather
+                than leaving somebody to hunt for the section that is wrong. */}
+            {!errors.__form && planDirty && planProblem && (
+              <span className="text-[12.5px] text-[color:var(--ink-orange)]">{planProblem}</span>
             )}
             <span className="ml-auto flex items-center gap-2">
               <button
@@ -2109,6 +2145,9 @@ export function DealOverviewEditor({
                   /* Re-seed every box from the record. Emptying the bank alone
                      left the discarded text sitting on screen. */
                   setResetNonce((n) => n + 1);
+                  /* And put the schedule back too: a Discard that quietly
+                     kept one section's edits is the same lie in a new place. */
+                  onDiscardPlan?.();
                   onSaved?.();
                 }}
                 className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary disabled:opacity-50"
@@ -2117,9 +2156,14 @@ export function DealOverviewEditor({
               </button>
               <button
                 type="button"
-                disabled={saving}
+                /* A schedule that does not add up cannot be saved, so the
+                   button says so on hover instead of being pressed and then
+                   refusing (Anir, Sep 4: "just dont let them click in the
+                   first place and give reason"). */
+                disabled={saving || Boolean(planDirty && planProblem)}
+                title={(planDirty && planProblem) || undefined}
                 onClick={() => void saveAll()}
-                className="cursor-pointer rounded-lg bg-blue-primary px-4 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                className="cursor-pointer rounded-lg bg-blue-primary px-4 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "Saving…" : "Save changes"}
               </button>
