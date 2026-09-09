@@ -598,11 +598,9 @@ export function AddMaterialButton({
   const addProblem: string | null = busy
     ? null
     : files.length
-      ? uploadingReason
-        ? uploadingReason
-        : fileReady
-          ? null
-          : "Every file needs a name, a format and a folder."
+      ? fileReady
+        ? null
+        : "Every file needs a name, a format and a folder."
       : !label.trim()
         ? "Give it a name."
         : !validLink
@@ -1944,6 +1942,11 @@ export function AddMaterialButton({
             <button
               onClick={save}
               disabled={!canSave}
+              /* Off while the file is still going up, but silently: the row's
+                 own pill already shows the bytes (Anir, Sep 9: "We don't need
+                 this. It already says the progress bar"). The reason lives on
+                 hover for anyone who wonders why it is grey. */
+              title={uploadingReason ?? undefined}
               className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-4 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-60"
             >
               <Plus size={14} strokeWidth={2.2} />
