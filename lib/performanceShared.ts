@@ -1201,7 +1201,16 @@ export function currentFiscalYear(now = new Date()): number {
 }
 
 export function fiscalLabel(fy: number): string {
-  return `FY ${fy}, ${String(fy + 1).slice(2)}`;
+  /* ONE SPAN, NOT TWO THINGS IN A LIST. A comma made the chip on a goal read
+     "FY 2026, 27", which parses as two items before it parses as a year that
+     runs across two. The rule two lines above writes it the ordinary way, and
+     a slash is the financial-year convention everywhere and needs no dash.
+     This is punctuation only: the year is still named for the one it STARTS
+     in, which is the Performance convention. The fact that Opportunities names
+     the same span for the year it ENDS in is a real question and a deliberate
+     one, already flagged for Suren in OpportunitiesBrowser; picking a winner
+     between the two is not mine to do here. */
+  return `FY ${fy}/${String(fy + 1).slice(2)}`;
 }
 
 export type FiscalLevel = "year" | "half" | "quarter" | "month" | "week";

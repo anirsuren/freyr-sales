@@ -22,7 +22,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { StatTile } from "@/components/ui/StatTile";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
+import { cn, todayISO} from "@/lib/utils";
 import { FDL_TYPE_META } from "./FdlComponentsBrowser";
 import { tint } from "@/lib/tint";
 
@@ -80,10 +80,14 @@ function fmtDay(date?: string): string {
 function ReleaseStats({ components }: { components: FdlComponent[] }) {
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const today = now.toISOString().slice(0, 10);
-  const in30 = new Date(now.getTime() + 30 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  /* THE SAME DAY THE MONTH BUCKET ABOVE USES. This pair read the UTC date
+     while the line above them read the local one, so for a few hours every
+     evening the two disagreed inside one function: a version expected TODAY
+     counted as "past their date", and the 30-day window slid a day early.
+     The sweep that fixed the other twenty-nine sites missed these two because
+     they call toISOString on a variable rather than on `new Date()`. */
+  const today = todayISO(now);
+  const in30 = todayISO(new Date(now.getTime() + 30 * 24 * 3600 * 1000));
 
   let thisMonth = 0;
   let expectedSoon = 0;

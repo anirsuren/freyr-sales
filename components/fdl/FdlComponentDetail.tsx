@@ -10,6 +10,7 @@ import { SmartBack } from "@/components/ui/BackButton";
 import { RoadmapFollowButton } from "@/components/notifications/RoadmapFollowButton";
 import { useRouter } from "next/navigation";
 import {
+  AlarmClock,
   GitBranch,
   ChevronDown,
   GanttChartSquare,
@@ -57,7 +58,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ScrollHint } from "@/components/ui/ScrollHint";
 import { useToast } from "@/components/ui/Toast";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, todayISO } from "@/lib/utils";
 import { downloadDocx } from "@/lib/docx";
 import { DateText } from "@/components/ui/DateText";
 
@@ -1109,6 +1110,29 @@ export function FdlComponentDetail({
                             )}
                             {shipped ? "Released" : "Expected"}
                           </span>
+                          {/* THE PAGE WHERE YOU WOULD FIX IT HAS TO SAY IT.
+                              The Release calendar counts these — "Past their
+                              date: 30, expected, not out yet" — using exactly
+                              this test. This page showed the same versions as a
+                              plain "Expected Aug 20, 2026" with nothing marking
+                              them late, so Freya.Chatbot reads as six upcoming
+                              versions when three of them are already overdue.
+                              The roll-up flagged it and the detail stayed
+                              quiet. */}
+                          {!shipped && release.date && release.date < todayISO() && (
+                            <span
+                              title={`Expected ${formatDate(release.date)} and not out yet.`}
+                              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                              style={{
+                                color: "var(--ink-orange)",
+                                background: tint("var(--ink-orange)", 8),
+                                border: `1px solid ${tint("var(--ink-orange)", 25)}`,
+                              }}
+                            >
+                              <AlarmClock size={11} strokeWidth={2.2} />
+                              Past its date
+                            </span>
+                          )}
                           {release.current && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-blue-primary px-2.5 py-1 text-[11.5px] font-bold uppercase tracking-[0.04em] text-white shadow-[0_2px_8px_rgba(0,113,227,0.35)]">
                               <Check size={12} strokeWidth={3.2} /> Current version
