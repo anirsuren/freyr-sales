@@ -11,7 +11,7 @@ import {
   FileText,
   MessageSquare,
   Mic,
-  LayoutTemplate,
+  Presentation,
   Pencil,
   Plus,
   UserCog,
@@ -530,7 +530,7 @@ export function MeetingDetail({
                 <PeopleRow names={[m.owner].filter(Boolean)} empty="Nobody named." />
               </div>
               <div className="py-3">
-                <WhoLabel icon={LayoutTemplate} text="Presented" />
+                <WhoLabel icon={Presentation} text="Presented" />
                 <PeopleRow names={m.presenters} empty="Nobody named as presenter." />
               </div>
               <div className="py-3">

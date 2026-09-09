@@ -4,7 +4,7 @@ import {
   DollarSign,
   File,
   FileText,
-  LayoutTemplate,
+  Presentation,
   Handshake,
   Lightbulb,
   Lock,
@@ -344,7 +344,10 @@ export const MATERIAL_FORMAT_META: Record<
   // and access pills beside them, which DO use colour to mean something. One
   // family, four glyphs, calmer row.
   video: { label: "Video", color: "var(--ink-bright-blue)", icon: Video },
-  presentation: { label: "Presentation", color: "var(--ink-bright-blue)", icon: LayoutTemplate },
+  /* A SCREEN ON A STAND, not a page layout (Anir, Sep 9: "that's not a
+     presentation icon, is it?"). LayoutTemplate drew a window with panes,
+     which read as a dashboard or a page. */
+  presentation: { label: "Presentation", color: "var(--ink-bright-blue)", icon: Presentation },
   document: { label: "Document", color: "var(--ink-bright-blue)", icon: FileText },
   other: { label: "Others", color: "var(--ink-bright-blue)", icon: Paperclip },
 };
@@ -499,7 +502,7 @@ export const MATERIAL_META: Record<MaterialKind, { label: string; plural: string
 // the icons. You had icons before that had, like, if it was a video").
 export const MATERIAL_ICON: Record<MaterialKind, LucideIcon> = {
   video: Video,
-  presentation: LayoutTemplate,
+  presentation: Presentation,
   document: FileText,
   other: Paperclip,
   whitepaper: FileText,

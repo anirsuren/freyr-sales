@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FileCheck2, Inbox, CalendarClock,
-  LayoutTemplate } from "lucide-react";
+  Presentation } from "lucide-react";
 import { PageTabs } from "@/components/ui/PageTabs";
 
 /**
@@ -41,7 +41,7 @@ const TABS = [
     key: "presentations",
     label: "Presentations",
     href: "/solutioning?tab=presentations",
-    icon: LayoutTemplate,
+    icon: Presentation,
     color: "var(--ink-violet-soft)",
     subtitle: "Decks and demos being prepared for a customer meeting.",
   },

@@ -1371,7 +1371,17 @@ export function MaterialsSection({
                             material={material}
                             previewUrl={uploaded ? `${materialPreviewUrl(material)}?embed=1` : null}
                           >
-                            <span className="block break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary">{material.label}</span>
+                            {/* TWO LINES, THEN AN ELLIPSIS (Anir, Sep 9: "the name
+                                should be on 2 lines max"). A recording named
+                                after its meeting ran to four lines and set the
+                                height of the whole row. The full name is on
+                                hover, and in the viewer. */}
+                            <span
+                              title={material.label}
+                              className="line-clamp-2 break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary"
+                            >
+                              {material.label}
+                            </span>
                           </MaterialPeek>
                           {/* HOW BIG THE FILE IS (Anir, Sep 9, after putting a
                               496MB video in: "need to see the actual size on

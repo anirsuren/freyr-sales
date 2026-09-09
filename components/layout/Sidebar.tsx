@@ -20,7 +20,7 @@ import {
   Globe2,
   Inbox,
   FileUp,
-  LayoutTemplate,
+  Presentation,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
@@ -519,7 +519,7 @@ export function Sidebar({
                 [
                   { href: "/solutioning", label: "Solution requests", icon: Inbox },
                   { href: "/solutioning?tab=submissions", label: "Submissions", icon: FileUp },
-                  { href: "/solutioning?tab=presentations", label: "Presentations", icon: LayoutTemplate },
+                  { href: "/solutioning?tab=presentations", label: "Presentations", icon: Presentation },
                   { href: "/meetings", label: "Meetings", icon: CalendarClock },
                 ].map(subNavLink)}
 
