@@ -314,7 +314,15 @@ export function AddMaterialButton({
     >
   >({});
   const [fileProgress, setFileProgress] = useState<
-    Record<string, { percent: number; status: "waiting" | "uploading" | "done" | "failed" }>
+    Record<
+      string,
+      {
+        percent: number;
+        status: "waiting" | "uploading" | "storing" | "done" | "failed";
+        loaded?: number;
+        total?: number;
+      }
+    >
   >({});
   /**
    * THE UPLOAD STARTS WHEN THE FILE IS PICKED, NOT WHEN "ADD MATERIAL" IS
@@ -560,7 +568,28 @@ export function AddMaterialButton({
       divisions.length &&
       !proposalNeedsDate(folder, description)
   );
-  const canSave = !busy && (files.length ? fileReady : linkReady);
+  /* NOT UNTIL THE FILE IS IN. Anir, Sep 9: "why the fuck is it letting me
+     press Add Material if it's not even uploaded yet?" Pressing it early only
+     ever made the button wait on the same upload, but a lit button says
+     "ready", and the screen was saying two things at once. A file still
+     going up, or still being written down by storage, keeps Add off; a
+     failed one leaves it on, because pressing Add is how a failed file is
+     retried. */
+  const stillUploading = files.find((file) => {
+    const status = fileProgress[fileKey(file)]?.status;
+    return !status || status === "waiting" || status === "uploading" || status === "storing";
+  });
+  const uploadingReason = (() => {
+    if (!stillUploading) return null;
+    const p = fileProgress[fileKey(stillUploading)];
+    if (p?.status === "storing") return "Storing the file. One moment.";
+    if (p?.total && p.loaded !== undefined) {
+      const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
+      return `Still uploading: ${mb(p.loaded)} of ${mb(p.total)} MB.`;
+    }
+    return "Still uploading.";
+  })();
+  const canSave = !busy && (files.length ? fileReady && !stillUploading : linkReady);
 
   /** WHY ADD MATERIAL IS WAITING. It sat disabled and silent while the form
    *  asked for four things, so the answer to "why can't I press it" was to
@@ -569,9 +598,11 @@ export function AddMaterialButton({
   const addProblem: string | null = busy
     ? null
     : files.length
-      ? fileReady
-        ? null
-        : "Every file needs a name, a format and a folder."
+      ? uploadingReason
+        ? uploadingReason
+        : fileReady
+          ? null
+          : "Every file needs a name, a format and a folder."
       : !label.trim()
         ? "Give it a name."
         : !validLink
@@ -819,9 +850,19 @@ export function AddMaterialButton({
           const key = fileKey(f);
           setFileProgress((current) => ({
             ...current,
-            [key]: { percent, status: "uploading" },
+            [key]: { percent, status: "uploading", loaded: e.loaded, total: e.total },
           }));
         }
+      };
+      /* EVERY BYTE HAS LEFT THE MACHINE. What follows is storage writing
+         them down and answering, which on a big file is a real wait — so it
+         gets its own name instead of a bar frozen at 99 (Anir, Sep 9). */
+      xhr.upload.onload = () => {
+        const key = fileKey(f);
+        setFileProgress((current) => ({
+          ...current,
+          [key]: { ...(current[key] ?? {}), percent: 100, status: "storing", loaded: f.size, total: f.size },
+        }));
       };
       xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
       xhr.onerror = () => resolve(false);
@@ -858,13 +899,19 @@ export function AddMaterialButton({
       xhr.open("POST", `/api/offerings/${offeringId}/materials/upload`);
       xhr.upload.onprogress = (e) => {
         if (!e.lengthComputable) return;
-        // Cap the sending phase at 95: the last stretch is the server storing
-        // the bytes, and a bar that hits 100 before the file is safe is a lie.
-        const percent = Math.min(95, Math.round((e.loaded / e.total) * 95));
+        // The real figure. The stretch after the last byte is named
+        // "storing" below rather than hidden inside a bar capped at 95.
+        const percent = Math.round((e.loaded / e.total) * 100);
         setProgress(percent);
         setFileProgress((current) => ({
           ...current,
-          [key]: { percent, status: "uploading" },
+          [key]: { percent, status: "uploading", loaded: e.loaded, total: e.total },
+        }));
+      };
+      xhr.upload.onload = () => {
+        setFileProgress((current) => ({
+          ...current,
+          [key]: { ...(current[key] ?? {}), percent: 100, status: "storing", loaded: f.size, total: f.size },
         }));
       };
       xhr.onload = () =>
@@ -1718,7 +1765,7 @@ export function AddMaterialButton({
                           onClick={() => removeFile(selected)}
                           aria-label={`Remove ${selected.name}`}
                           title={`Remove ${selected.name}`}
-                          className="text-[color:var(--status-red)] flex h-8 w-8 items-center justify-center rounded-md bg-[color:#B02020] text-white hover:opacity-85"
+                          className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--ink-red)] transition-colors hover:bg-[color:#B02020]/10"
                         >
                           <Trash2 size={14} strokeWidth={2.2} />
                         </button>
@@ -2002,8 +2049,8 @@ export function AddMaterialButton({
                           ? "Failed. Retry from the form"
                           : progress.status === "waiting"
                             ? "Waiting its turn"
-                            : progress.percent >= 100
-                              ? "Saving & reading with Freyr AI…"
+                            : progress.status === "storing"
+                              ? "Storing…"
                               : "Uploading…";
                     return (
                       <li
@@ -2044,7 +2091,11 @@ export function AddMaterialButton({
                               progress.status === "failed" ? "text-error" : "text-text-secondary"
                             }`}
                           >
-                            {progress.status === "failed" ? "Failed" : `${progress.percent}%`}
+                            {progress.status === "failed"
+                              ? "Failed"
+                              : progress.status === "storing"
+                                ? "Storing…"
+                                : `${progress.percent}%`}
                           </span>
                         </div>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">

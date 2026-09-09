@@ -27,7 +27,7 @@ export function UploadProgress({
   className,
 }: {
   percent: number;
-  status?: "uploading" | "done" | "failed";
+  status?: "uploading" | "storing" | "done" | "failed";
   /** The filename, when the caller has room to show which file this is. */
   name?: string;
   className?: string;
@@ -51,7 +51,9 @@ export function UploadProgress({
       ? "Upload failed"
       : status === "done"
         ? "Uploaded"
-        : "Uploading";
+        : status === "storing"
+          ? "Storing"
+          : "Uploading";
 
   /* A FINISHED UPLOAD SAYS SO WITH A CHECK, NOT A FULL GREY BAR (Anir, Sep 7:
      "there should definitely be a check mark when it's done. It's kind of hard
@@ -108,46 +110,100 @@ export function UploadProgress({
  */
 export function useCountingPercent(
   percent: number,
-  status: "waiting" | "uploading" | "done" | "failed"
+  status: "waiting" | "uploading" | "storing" | "done" | "failed"
 ): number {
-  const [shown, setShown] = useState(0);
+  /* THE NUMBER IS THE BYTES. NOTHING ELSE.
+
+     Anir, Sep 9, watching a 496MB video go up: "it goes to 80% so quickly,
+     and it's actually really misleading... have the percentages be real."
+     And then: "It was stuck at 99% for like 5 minutes."
+
+     It was not real. The previous version climbed 0 to 80 on a 1.5 second
+     CLOCK and then crept one point every 260ms to 99, whatever the network
+     was doing — a fix for a tab whose timers were being throttled (Sep 7)
+     that turned the pill into an animation. So a big file read 99% for the
+     whole five minutes its bytes were actually still leaving the machine,
+     and the person watching had no way to tell "nearly there" from "barely
+     started". Now the pill shows the browser's own count of bytes sent, on
+     every progress event, and the only smoothing is that it never steps
+     backwards inside one upload. When every byte has gone the status flips
+     to "storing", which is the honest name for the wait that follows. */
   const target = Math.max(0, Math.min(100, Math.round(percent)));
+  const highRef = useRef(0);
   const live = status === "uploading" || status === "waiting";
-  /* THE TARGET LIVES IN A REF, NOT IN THE EFFECT'S DEPENDENCIES. XHR fires a
-     progress event every few milliseconds; with `target` as a dependency each
-     one re-ran the effect and cancelled the pending 18ms tick, so the count
-     only ever advanced when the events paused — measured on the page: 0, 1,
-     2, 3 across five seconds, then straight to Uploaded (Anir, Sep 7: "why
-     is it stuck at 0?"). The tick is now scheduled off `shown` alone and
-     reads the latest target when it fires. */
-  const targetRef = useRef(target);
-  targetRef.current = target;
-  /* ON A CLOCK, NOT A TICK COUNT. A background or throttled tab fires timers
-     about once a second, which turned the 18ms climb into one step per second
-     (measured through the automation window). The displayed value is now a
-     function of elapsed time — 0 to 80 over 1.5s, then one point per 260ms
-     to 99 — so whenever a render happens it shows the right number for the
-     moment, smooth in a foreground tab and still correct in a starved one.
-     Above 80 it never sits below the real byte count, and done snaps to 100. */
-  const startRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!live) {
-      startRef.current = null;
-      setShown(status === "done" ? 100 : targetRef.current);
-      return;
-    }
-    if (startRef.current === null) startRef.current = Date.now();
+    if (!live) highRef.current = 0;
+  }, [live]);
+  if (status === "done" || status === "storing") return 100;
+  if (!live) return target;
+  if (target > highRef.current) highRef.current = target;
+  return highRef.current;
+}
+
+
+/**
+ * THE FIGURE MOVES EVERY QUARTER SECOND, AND IT IS STILL THE BYTES.
+ *
+ * Anir, Sep 9: "If there's any mechanism you can have where, every second,
+ * you update it." Chrome reports upload progress only when it flushes a
+ * buffer to the socket, which on a big file is every few megabytes — measured
+ * on a 60MB upload: 0%, 17%, 60%, then done. Real, but it looks stuck between
+ * events, which is what "stuck at 99%" looked like from his chair.
+ *
+ * Between two real events this advances the display at the speed the browser
+ * ACTUALLY measured between the previous two events (at 80% of it, so it
+ * rarely overshoots), never past 99%, and never backwards; each real event
+ * snaps it to the truth. Nothing here is on a fixed clock: no events, no
+ * measured speed, no movement. Storing and done pin it at the full size.
+ */
+function useSmoothedBytes(
+  progress:
+    | { percent: number; status: "waiting" | "uploading" | "storing" | "done" | "failed"; loaded?: number; total?: number }
+    | null
+    | undefined
+): { loaded: number | null; percent: number } {
+  const status = progress?.status ?? "waiting";
+  const total = progress?.total ?? 0;
+  const real = progress?.loaded;
+  const last = useRef<{ loaded: number; at: number } | null>(null);
+  const prev = useRef<{ loaded: number; at: number } | null>(null);
+  const display = useRef(0);
+  const [, tick] = useState(0);
+
+  // A new real reading: remember the previous one (for the speed) and snap up.
+  if (real !== undefined && real !== last.current?.loaded) {
+    prev.current = last.current;
+    last.current = { loaded: real, at: Date.now() };
+    if (real > display.current) display.current = real;
+  }
+  useEffect(() => {
+    if (status !== "uploading") return;
     const id = setInterval(() => {
-      const elapsed = Date.now() - (startRef.current ?? Date.now());
-      const climb = Math.min(80, Math.floor(elapsed / 18));
-      const crawl = elapsed > 1440 ? Math.floor((elapsed - 1440) / 260) : 0;
-      const paced = Math.min(99, climb + crawl);
-      const truth = Math.min(99, targetRef.current);
-      setShown((current) => Math.max(current, paced, paced >= 80 ? truth : 0));
-    }, 40);
+      const l = last.current;
+      const q = prev.current;
+      if (l && q && l.at > q.at && l.loaded > q.loaded && total > 0) {
+        const bytesPerMs = (l.loaded - q.loaded) / (l.at - q.at);
+        const projected = l.loaded + bytesPerMs * 0.8 * (Date.now() - l.at);
+        const capped = Math.min(projected, total * 0.99);
+        if (capped > display.current) display.current = capped;
+      }
+      tick((n) => n + 1);
+    }, 250);
     return () => clearInterval(id);
-  }, [live, status]);
-  return live ? shown : status === "done" ? 100 : target;
+  }, [status, total]);
+  useEffect(() => {
+    if (status === "waiting" || status === "failed") {
+      last.current = null;
+      prev.current = null;
+      display.current = 0;
+    }
+  }, [status]);
+
+  if (status === "storing" || status === "done")
+    return { loaded: total || null, percent: 100 };
+  if (!total) return { loaded: null, percent: Math.max(0, Math.min(100, Math.round(progress?.percent ?? 0))) };
+  const loaded = Math.min(total, display.current);
+  return { loaded, percent: Math.max(0, Math.min(100, Math.round((loaded / total) * 100))) };
 }
 
 /**
@@ -162,12 +218,27 @@ export function UploadState({
   className,
 }: {
   label: React.ReactNode;
-  progress?: { percent: number; status: "waiting" | "uploading" | "done" | "failed" } | null;
+  progress?: {
+    percent: number;
+    status: "waiting" | "uploading" | "storing" | "done" | "failed";
+    /** Bytes sent so far and the file's size, so the pill can say
+     *  "312.4 of 496.3 MB" — a figure nobody can mistake for an animation. */
+    loaded?: number;
+    total?: number;
+  } | null;
   className?: string;
 }) {
   const status = progress?.status ?? "waiting";
-  const drawn = useCountingPercent(progress?.percent ?? 0, status);
-  const live = !!progress && (status === "uploading" || status === "waiting");
+  const live =
+    !!progress && (status === "uploading" || status === "waiting" || status === "storing");
+  const shown = useSmoothedBytes(progress);
+  const drawn = shown.percent;
+  const mb = (n: number) =>
+    n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`;
+  const bytesLine =
+    progress?.total && shown.loaded !== null
+      ? `${mb(shown.loaded)} of ${mb(progress.total)}`
+      : null;
   return (
     <div className={className}>
       <p className="flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-tertiary">
@@ -194,10 +265,16 @@ export function UploadState({
                 <AlertCircle size={11} strokeWidth={2.4} />
                 Upload failed
               </>
+            ) : status === "storing" ? (
+              <>
+                <Loader2 size={11} strokeWidth={2.4} className="animate-spin" />
+                Storing…
+              </>
             ) : (
               <>
                 <Loader2 size={11} strokeWidth={2.4} className="animate-spin" />
-                Uploading <span className="tnum">{drawn}%</span>
+                Uploading{bytesLine ? <span className="tnum"> {bytesLine} ·</span> : null}{" "}
+                <span className="tnum">{drawn}%</span>
               </>
             )}
           </span>
