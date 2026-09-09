@@ -958,13 +958,55 @@ export function MaterialsSection({
       {/* Live count + one-click reset */}
       <div className="mt-3 flex items-center justify-between gap-3">
         <p className="text-[12px] text-text-secondary" aria-live="polite">
-          {anyFilter || showAllFiles || folder ? (
+          {/* COUNT WHERE YOU ARE STANDING (Anir, Sep 9, inside Product Sheet
+              with one file, reading "Showing 1 of 2 materials": "when I click
+              on a folder, I would assume it would show me the material total
+              number that's only in that folder, not in everything... label
+              this stuff properly"). The old line always measured against the
+              whole offering, so inside a folder it read like a file was
+              missing. Now: a folder counts its own files; a search inside a
+              folder says how many of THAT folder's files match; a filter,
+              which flattens the tree on purpose, says so in words; All files
+              counts everything and says everything. */}
+          {anyFilter ? (
             <>
-              Showing <span className="tnum font-semibold">{visible.length}</span> of{" "}
+              <span className="tnum font-semibold">{visible.length}</span> of{" "}
               <span className="tnum font-semibold">{mine.length}</span>{" "}
-              {mine.length === 1 ? "material" : "materials"}
-              {showAllFiles && !anyFilter && " across all folders"}
+              {mine.length === 1 ? "material" : "materials"} across all folders match the filter
             </>
+          ) : showAllFiles ? (
+            query.trim() ? (
+              <>
+                <span className="tnum font-semibold">{visible.length}</span> of{" "}
+                <span className="tnum font-semibold">{mine.length}</span>{" "}
+                {mine.length === 1 ? "material" : "materials"} across all folders match
+              </>
+            ) : (
+              <>
+                <span className="tnum font-semibold">{mine.length}</span>{" "}
+                {mine.length === 1 ? "material" : "materials"} across all folders
+              </>
+            )
+          ) : folder ? (
+            query.trim() ? (
+              <>
+                <span className="tnum font-semibold">{visible.length}</span> of{" "}
+                <span className="tnum font-semibold">{scoped.length}</span> in{" "}
+                <span className="font-semibold">{folder.split("/").pop()}</span> match
+              </>
+            ) : (
+              <>
+                <span className="tnum font-semibold">{scoped.length}</span>{" "}
+                {scoped.length === 1 ? "material" : "materials"} in{" "}
+                <span className="font-semibold">{folder.split("/").pop()}</span>
+                {subFolders.length > 0 && (
+                  <>
+                    {" "}and <span className="tnum font-semibold">{subFolders.length}</span>{" "}
+                    {subFolders.length === 1 ? "subfolder" : "subfolders"}
+                  </>
+                )}
+              </>
+            )
           ) : (
             <>
               <span className="tnum font-semibold">{mine.length}</span>{" "}
