@@ -24,9 +24,10 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { ColorSelect } from "@/components/ui/ColorSelect";
-import { CalendarRange } from "lucide-react";
+import { AlertTriangle, CalendarRange } from "lucide-react";
 import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import {
+  judgePlan,
   monthLabel,
   splitFieldsFor,
   usedSplitFieldsIn,
@@ -1710,6 +1711,43 @@ export function DealOverviewEditor({
             </p>
           ) : (
             <>
+              {/* WHY REVENUE ACCRUALS IS FLAGGING THIS PLAN, on the page where
+                  somebody would fix it.
+
+                  The module counts it — "Flagged 1: close month passed, needs
+                  re-planning" — and lists it on the Deviations tab. The deal
+                  itself said nothing at all: the months were drawn exactly as
+                  they are on a healthy plan, so the owner of the deal, standing
+                  on the one screen that can change it, had no way to know it
+                  needed changing. The empty-plan message a few lines above
+                  already points at the Deviations tab; this is the same
+                  courtesy for a plan that HAS months and is still wrong.
+
+                  judgePlan is the module's own verdict, so the sentence here is
+                  the sentence there and they cannot drift into two opinions. */}
+              {(() => {
+                const verdict = judgePlan(accrualPlan, {
+                  estSignDate: deal.estSignDate,
+                  status: deal.status,
+                });
+                if (!verdict.invalid) return null;
+                return (
+                  <p
+                    className="mt-2 flex items-start gap-1.5 rounded-lg px-3 py-2 text-[12.5px] font-semibold"
+                    style={{
+                      background: tint("var(--ink-amber)", 8),
+                      color: "var(--ink-amber)",
+                    }}
+                  >
+                    <AlertTriangle
+                      size={13}
+                      strokeWidth={2.4}
+                      className="mt-[1px] shrink-0"
+                    />
+                    {verdict.headline}
+                  </p>
+                );
+              })()}
               {/* THE SAME COLUMNS THE PLANNER SHOWS (Anir, Sep 6: "there are
                   two more fields to be there in this: one-time revenue,
                   recurring revenue. That total has to come to you there").

@@ -1,4 +1,5 @@
 import { ContractsModule } from "@/components/contracts/ContractsModule";
+import { getDb } from "@/lib/db";
 import { readContracts } from "@/lib/contracts";
 import { readOpportunities } from "@/lib/opportunities";
 import { readPerformance } from "@/lib/performance";
@@ -30,7 +31,7 @@ export default async function ContractsPage() {
   await initializeLiveOfferings().catch(() => undefined);
   const live = getDataMode() === "live";
   const workspace = process.env.FREYR_WORKSPACE_ID;
-  const [state, me, opportunities, perf, directory] = await Promise.all([
+  const [state, me, opportunities, perf, directory, customerRows] = await Promise.all([
     readContracts(),
     getCurrentUser(),
     readOpportunities()
@@ -41,6 +42,11 @@ export default async function ContractsPage() {
        the goal" — so the form needs the whole Goal Master to offer. */
     readPerformance().catch(() => null),
     live && workspace ? listWorkspaceAccess(workspace).catch(() => null) : null,
+    /* THE ACCOUNTS THE CUSTOMER PICKER OFFERS. It was a free-text box, so the
+       same company could be typed three ways and the contract would never line
+       up with the deal or the account (Anir, Sep 8: "the fucking customer has
+       to be a dropdown"). */
+    getDb().customers.list().catch(() => []),
   ]);
   const offeringName = new Map(
     listOfferings().map((o) => [o.id, o.offering_name])
@@ -72,6 +78,30 @@ export default async function ContractsPage() {
       live={getDataMode() === "live"}
       members={members}
       meName={me.name}
+      /* Real accounts first, then every company that carries a deal but has no
+         account record yet — 84 of the deals name one. Offering only the
+         seventeen accounts would leave most contracts unable to name their own
+         customer. */
+      customers={[
+        ...customerRows.map((c) => ({ id: c.id, name: c.company_name })),
+        ...opportunities
+          .map((o) => (o.customer ?? "").trim())
+          .filter(
+            (name) =>
+              name &&
+              !customerRows.some(
+                (c) => c.company_name.trim().toLowerCase() === name.toLowerCase()
+              )
+          )
+          .map((name) => ({ id: "", name })),
+      ]
+        .filter(
+          (c, i, all) =>
+            all.findIndex(
+              (x) => x.name.trim().toLowerCase() === c.name.trim().toLowerCase()
+            ) === i
+        )
+        .sort((a, b) => a.name.localeCompare(b.name))}
       goals={(perf?.goals ?? []).map((g) => ({
         id: g.id,
         name: g.name,

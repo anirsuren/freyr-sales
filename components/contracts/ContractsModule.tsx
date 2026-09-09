@@ -6,6 +6,7 @@ import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  Paperclip,
   ArrowUpRight,
   AlertTriangle,
   Briefcase,
@@ -137,6 +138,7 @@ function scheduleRowsOf(d: Draft): { month: string; amount: string; pinned?: boo
 export function ContractsModule({
   state: initial,
   deals,
+  customers,
   members,
   goals,
   meName,
@@ -147,6 +149,10 @@ export function ContractsModule({
 }: {
   state: ContractsState;
   deals: DealOption[];
+  /** Every account a contract may be with: the real customer records first,
+   *  then any company that carries a deal without one. `id` is empty for the
+   *  latter. */
+  customers: { id: string; name: string }[];
   members: string[];
   /** The Goal Master, so a signed contract can be put against one. */
   goals: { id: string; name: string; year: number; type?: string }[];
@@ -1374,14 +1380,47 @@ export function ContractsModule({
               </Field>
             </div>
             <Field label="Customer">
-              {/* Every empty box says what goes in it (Anir, Aug 26: "I need
-                  placeholders on all of em"). */}
-              <Input
+              {/* A LIST, NOT A TYPING BOX (Anir, Sep 8: "the fucking customer
+                  has to be a dropdown... the deals will go to that customer").
+
+                  It was free text, so the same company could be entered three
+                  ways and the contract would never line up with the account or
+                  the deal it belongs to. Same picker the deal below uses, with
+                  the account's own logo, so the two read as one pair. */}
+              <ColorSelect
                 value={editing.customer}
-                placeholder="Helix Therapeutics"
-                onChange={(e) =>
-                  setEditing({ ...editing, customer: e.target.value })
-                }
+                ariaLabel="Customer"
+                className="w-full"
+                collapsible={false}
+                dense
+                searchable
+                onChange={(v) => {
+                  const picked = customers.find((c) => c.name === v);
+                  /* Changing the account drops a deal that belongs to a
+                     different one, rather than leaving a contract pointing at
+                     two companies at once. */
+                  const dealStillFits =
+                    !editing.opportunityId ||
+                    deals.some(
+                      (d) => d.id === editing.opportunityId && d.customer === v
+                    );
+                  editSchedule({
+                    customer: v,
+                    customerId: picked?.id ?? "",
+                    ...(dealStillFits
+                      ? {}
+                      : { opportunityId: "", opportunityName: "" }),
+                  });
+                }}
+                options={[
+                  { value: "", label: "Pick the account", color: "#8E98A8" },
+                  ...customers.map((c) => ({
+                    value: c.name,
+                    label: c.name,
+                    logoName: c.name,
+                    color: "var(--ink-bright-blue)",
+                  })),
+                ]}
               />
             </Field>
             <Field label="Which deal is this for?">
@@ -1409,7 +1448,17 @@ export function ContractsModule({
                 }}
                 options={[
                   { value: "", label: "Not linked to a deal", color: "#8E98A8" },
-                  ...deals.map((d) => ({
+                  /* THE DEALS THAT BELONG TO THE ACCOUNT ABOVE. With an account
+                     chosen, offering all 103 deals invites picking one that
+                     belongs to somebody else; the pair then disagrees about who
+                     the contract is with. With no account chosen the whole list
+                     stays, because picking a deal is also how you fill the
+                     account in. */
+                  ...deals
+                    .filter(
+                      (d) => !editing.customer || d.customer === editing.customer
+                    )
+                    .map((d) => ({
                     value: d.id,
                     href: `/opportunities/${d.id}`,
                     /* SAY EACH THING ONCE (Anir, Aug 28: "why r u repeating").
@@ -1677,20 +1726,6 @@ export function ContractsModule({
                 dialog carries, for the same reason: a schedule that quietly
                 does not match the contract it belongs to is the thing that
                 sends people back to a spreadsheet. */}
-            {scheduleValue > 0 && (
-              <p className="mt-2 text-[12.5px]">
-                The months add up to{" "}
-                <b className="tnum text-text-primary">{formatMoney(scheduleTotalNow)}</b>
-                {Math.abs(scheduleTotalNow - scheduleValue) > 1 && (
-                  <span className="font-semibold text-[color:var(--ink-amber)]">
-                    {" "}
-                    — that is {formatMoney(Math.abs(scheduleTotalNow - scheduleValue))}{" "}
-                    {scheduleTotalNow > scheduleValue ? "more" : "less"} than the
-                    contract value.
-                  </span>
-                )}
-              </p>
-            )}
 
             {scheduleRows.length > 0 ? (
               /* TWO MONTHS TO A ROW (Anir, Aug 28: "I didn't like the way this
@@ -1711,23 +1746,58 @@ export function ContractsModule({
                     <span className="w-[74px] shrink-0 text-[12.5px] font-semibold text-text-primary">
                       {monthLabel(line.month)}
                     </span>
-                    <input
-                      value={withCommas(line.amount)}
-                      placeholder="0"
-                      inputMode="numeric"
-                      aria-label={`Scheduled amount for ${monthLabel(line.month)}`}
-                      onChange={(e) =>
-                        editScheduleMonth(i, expandMoneyShorthand(e.target.value, { integer: true }))
-                      }
-                      className={cn(
-                        "h-8 min-w-0 flex-1 rounded-md border px-2 text-right text-[13px] tnum outline-none focus:border-blue-subtle",
-                        line.pinned
-                          ? "border-blue-subtle bg-blue-light/40 font-semibold text-text-primary"
-                          : "border-border-light"
-                      )}
-                    />
+                    {/* THE SAME MONEY BOX AS THE CONTRACT VALUE ABOVE IT
+                        (Anir, Sep 7: "whatever you have in the table below, I
+                        need the same thing, and this applies everywhere"). The
+                        value at the top of this dialog already uses MoneyInput,
+                        symbol inside and separators as you type; these twelve
+                        were bare inputs with no currency mark at all, which is
+                        what made the section read as unfinished beside it. */}
+                    <span className="min-w-0 flex-1">
+                      <MoneyInput
+                        value={line.amount}
+                        ariaLabel={`Scheduled amount for ${monthLabel(line.month)}`}
+                        placeholder="0"
+                        onChange={(v) => editScheduleMonth(i, v)}
+                        className={cn(
+                          "h-8 text-[13px]",
+                          line.pinned &&
+                            "border-blue-subtle bg-blue-light/40 font-semibold"
+                        )}
+                      />
+                    </span>
                   </label>
                 ))}
+                {/* THE TOTAL IS A ROW, IN THE TABLE (Anir, Sep 3, on the
+                    accrual planner: "remove the text at the bottom and put a
+                    total row at the bottom", and Sep 4: "highlight the total
+                    properly, just like you did in the other place").
+
+                    Here the total was a sentence ABOVE the grid, so you read
+                    the answer before the numbers and the table just stopped.
+                    Same blue-washed row the planner has, spanning both columns,
+                    and the over/under warning now lives on it instead of
+                    floating on its own line. */}
+                <div className="col-span-full mt-1.5 flex flex-wrap items-center gap-x-3 rounded-md border-t-2 border-blue-subtle bg-blue-light/40 px-3 py-2">
+                  <span className="text-[12px] font-bold uppercase tracking-[0.05em] text-blue-primary">
+                    Total
+                    <span className="ml-1.5 text-[12px] font-semibold normal-case tracking-normal text-text-secondary">
+                      {scheduleRows.length} month
+                      {scheduleRows.length === 1 ? "" : "s"}
+                    </span>
+                  </span>
+                  {scheduleValue > 0 &&
+                    Math.abs(scheduleTotalNow - scheduleValue) > 1 && (
+                      <span className="text-[12.5px] font-semibold text-[color:var(--ink-amber)]">
+                        {formatMoney(Math.abs(scheduleTotalNow - scheduleValue))}{" "}
+                        {scheduleTotalNow > scheduleValue ? "more" : "less"} than
+                        the contract value
+                      </span>
+                    )}
+                  <span className="ml-auto text-[15px] font-bold tnum text-blue-primary">
+                    {formatMoney(scheduleTotalNow)}
+                  </span>
+                </div>
               </div>
             ) : null}
 
@@ -1743,12 +1813,32 @@ export function ContractsModule({
           </div>
           </FormRoom>
 
-          <DocumentDrop
-            docs={docs}
-            setDocs={setDocs}
-            uploadUrl="/api/contracts/upload"
-            hint="The signed contract, the SOW, anything that belongs with it."
-          />
+          {/* DOCUMENTS IS A SECTION LIKE THE OTHER FOUR (Anir, Sep 8: "make
+              sure the document flow is consistent").
+
+              The contract, Dates and signature, Booked revenue and Schedule
+              revenue are all collapsible rooms with an icon, a title and a
+              one-line summary of what is inside. Documents was a bare drop zone
+              hanging underneath them with no card, no chevron and no summary,
+              so the dialog read as four sections and then a loose attachment
+              box. It carries its own count now, the same way the others carry
+              their state. */}
+          <FormRoom
+            icon={Paperclip}
+            title="Documents"
+            summary={
+              docs.length === 0
+                ? "Nothing attached"
+                : `${docs.length} file${docs.length === 1 ? "" : "s"}`
+            }
+          >
+            <DocumentDrop
+              docs={docs}
+              setDocs={setDocs}
+              uploadUrl="/api/contracts/upload"
+              hint="The signed contract, the SOW, anything that belongs with it."
+            />
+          </FormRoom>
           </div>
 
           {/* SAY WHAT IS MISSING, DO NOT LET IT BE PRESSED (Anir, Sep 4:
@@ -1763,31 +1853,39 @@ export function ContractsModule({
               shape: the reason sits beside the button and the button waits.
               The guard inside save() stays as a backstop; it is simply no
               longer how anybody finds out. */}
-          {/* THE REASON SITS ABOVE THE BUTTONS, NOT BESIDE THEM (Anir, Sep 7,
-              on the accrual planner: "you can't be moving around the cancel
-              button either"). It used to share the row, so Cancel and Create
-              slid sideways the moment it appeared and slid back when the last
-              field was filled. Its own line, always the same height, so the
-              two buttons never move. */}
-          <p className="mt-4 min-h-[18px] text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
-            {contractProblem}
-          </p>
-          <div className="mt-1.5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-            <button
-              type="button"
-              onClick={() => setEditing(null)}
-              className="rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={busy || !!contractProblem}
-              onClick={save}
-              className="rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {editing.id ? "Save changes" : "Create contract"}
-            </button>
+          {/* ONE ROW: THE REASON ON THE LEFT, THE BUTTONS ON THE RIGHT (Anir,
+              Sep 8: "that should be to the left of the buttons so you don't
+              take up that much space, because the bottom is sticky").
+
+              It had its own line above them, which cost a whole row of a
+              sticky footer for a sentence that is usually absent. The reason
+              it was moved up there in the first place still holds — Sep 7,
+              "you can't be moving around the cancel button either" — so this
+              keeps the buttons still a different way: the reason takes the
+              slack with flex-1 and the button group is shrink-0 against the
+              right edge, so it cannot push them anywhere whether it is there
+              or not. min-h keeps the row from changing height either. */}
+          <div className="mt-4 flex items-center gap-x-4">
+            <p className="min-h-[18px] min-w-0 flex-1 text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+              {contractProblem}
+            </p>
+            <span className="flex shrink-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={busy || !!contractProblem}
+                onClick={save}
+                className="rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {editing.id ? "Save changes" : "Create contract"}
+              </button>
+            </span>
           </div>
         </Modal>
       )}
