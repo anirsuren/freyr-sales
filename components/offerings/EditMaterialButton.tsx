@@ -132,6 +132,10 @@ export function EditMaterialButton({
               label: label.trim(),
               url: m.url,
               docsPath: m.docsPath,
+              /* THE SIZE RIDES ALONG. This dialog rebuilds the row field by
+                 field, so a field it does not name is lost on save; renaming
+                 a file wiped its size (Sep 9 loop). */
+              ...(m.bytes ? { bytes: m.bytes } : {}),
               description: description.trim(),
               // Always sent, empty string included: that is how "move it back
               // to the top level" reaches the server.
@@ -148,6 +152,7 @@ export function EditMaterialButton({
               label: m.label,
               url: m.url,
               docsPath: m.docsPath,
+              ...(m.bytes ? { bytes: m.bytes } : {}),
               description: m.description,
               folder: m.folder,
               journeyStage: m.journeyStage,

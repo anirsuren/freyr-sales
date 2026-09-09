@@ -595,12 +595,29 @@ export function AddMaterialButton({
    *  asked for four things, so the answer to "why can't I press it" was to
    *  hunt for the empty one. The Required pills already mark the fields; this
    *  names the first one still missing (Anir, Sep 4: "give reason"). */
+  /* SAY WHICH ONE. This line read "a name, a format and a folder" whatever
+     was missing, so with a folder chosen and the division empty it sent
+     people looking at the wrong three fields (found in the Sep 9 loop). */
+  const firstMissing = (): string | null => {
+    for (const file of files) {
+      const key = fileKey(file);
+      const o = fileOverrides[key] || {};
+      if (!fileLabels[key]?.trim()) return "Every file needs a name.";
+      if (!(o.kind || kind)) return "Say what format each file is.";
+      if (!(o.folder || folder)) return "Pick a folder for every file.";
+      if (!(o.journeyStages || journeyStages).length) return "Pick at least one journey stage for every file.";
+      if (!(o.accessLevel || accessLevel)) return "Say who can view every file.";
+      if (!(o.divisions ?? divisions).length) return "Pick a division for every file.";
+      if (proposalNeedsDate(o.folder || folder, description)) return "A proposal needs the month and year it was submitted.";
+    }
+    return null;
+  };
   const addProblem: string | null = busy
     ? null
     : files.length
       ? fileReady
         ? null
-        : "Every file needs a name, a format and a folder."
+        : firstMissing() ?? "Every file needs a name, a format and a folder."
       : !label.trim()
         ? "Give it a name."
         : !validLink
