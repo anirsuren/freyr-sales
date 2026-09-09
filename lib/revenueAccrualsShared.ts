@@ -300,15 +300,38 @@ export function monthLabel(key: string): string {
   });
 }
 
+/**
+ * A MONTH KEY FROM PLAIN NUMBERS, never via a Date.
+ *
+ * Several places needed "the month `n` after this one" and reached for
+ * `monthKey(new Date(Date.UTC(y, m - 1 + n, 1)))`. That worked only while
+ * monthKey read a Date in UTC, and it is a trap: the Date is a real instant,
+ * so anyone west of Greenwich reads UTC midnight on the 1st as the EVENING OF
+ * THE LAST DAY OF THE MONTH BEFORE. I walked straight into it — teaching
+ * monthKey to answer "this month" in the reader's own zone turned
+ * `monthsFrom("2027-02", 6)` into Jan through Jun, so every saved accrual plan
+ * opened in the editor one month short, showed a shortfall against its own
+ * contract value, and armed the unsaved-changes guard on a plan nobody had
+ * touched.
+ *
+ * A calendar month is arithmetic on two integers. It does not need a clock,
+ * and anything that gives it one can be wrong by a month.
+ *
+ * `monthIndex` is zero-based and may run past either end: 12 is January of the
+ * next year, -1 is December of the last.
+ */
+export function monthKeyOf(year: number, monthIndex: number): string {
+  const y = year + Math.floor(monthIndex / 12);
+  const m = ((monthIndex % 12) + 12) % 12;
+  return `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+
 /** N months starting at `from`, inclusive. */
 export function monthsFrom(from: string, count: number): string[] {
   const [y, m] = from.split("-").map(Number);
   if (!y || !m || count < 1) return [];
   const out: string[] = [];
-  for (let i = 0; i < count; i += 1) {
-    const d = new Date(Date.UTC(y, m - 1 + i, 1));
-    out.push(monthKey(d));
-  }
+  for (let i = 0; i < count; i += 1) out.push(monthKeyOf(y, m - 1 + i));
   return out;
 }
 

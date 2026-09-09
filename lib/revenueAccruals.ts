@@ -8,6 +8,7 @@ import {
   judgePlan,
   latestActiveVersion,
   monthKey,
+  monthKeyOf,
   monthsFrom,
   planVersions,
   spreadEvenly,
@@ -473,7 +474,7 @@ function seedStamp(month: string, h: number): string {
 function seedSlip(lines: AccrualLine[], by: number): AccrualLine[] {
   return lines.map((l) => {
     const [y, m] = l.month.split("-").map(Number);
-    return { ...l, month: monthKey(new Date(Date.UTC(y, m - 1 + by, 1))) };
+    return { ...l, month: monthKeyOf(y, m - 1 + by) };
   });
 }
 
@@ -496,7 +497,7 @@ function seedRescope(lines: AccrualLine[], factor: number): AccrualLine[] {
   const [y, m] = last.month.split("-").map(Number);
   return [
     ...scaled,
-    { month: monthKey(new Date(Date.UTC(y, m, 1))), amount: last.amount },
+    { month: monthKeyOf(y, m), amount: last.amount },
   ];
 }
 
@@ -577,11 +578,10 @@ function seedPlan(deal: SeedDeal, now: string): AccrualPlan | null {
   const dateMoved = !emptyRecord && h % 11 === 0 && !!deal.estSignDate;
   const signDateAtPlan = deal.estSignDate
     ? dateMoved
-      ? monthKey(new Date(Date.UTC(
+      ? monthKeyOf(
           Number(signMonth.slice(0, 4)),
-          Number(signMonth.slice(5, 7)) - 2,
-          1
-        ))) + "-12"
+          Number(signMonth.slice(5, 7)) - 2
+        ) + "-12"
       : deal.estSignDate
     : undefined;
 

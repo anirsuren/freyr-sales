@@ -363,8 +363,23 @@ export function ActivityMasterCard({
                               </span>
                             );
                           })}
-                          {a.goalIds.length === 0 && !writable && (
-                            <span className="text-[11.5px] text-text-tertiary">none yet</span>
+                          {/* A COUNTING RULE THAT REACHES NOTHING SHOULD SAY SO.
+                              An activity set to "Not counted" already gets a
+                              sentence — "Logged for the record. It feeds no
+                              goal." — but one set to count dollars from
+                              completion, with no goal connected, said nothing at
+                              all and simply showed the picker. Contract is in
+                              exactly that state today: dollar value, when
+                              completed, feeding nowhere. Reading the card it
+                              looks configured; the money it counts goes into no
+                              goal and never shows on the Activity to Goal
+                              report. Same fact, said in both directions. */}
+                          {a.goalIds.length === 0 && (
+                            <span className="text-[11.5px] text-text-tertiary">
+                              {writable
+                                ? "No goal receives this yet, so it counts into nothing."
+                                : "none yet"}
+                            </span>
                           )}
                           {writable && (
                             <span className="w-full max-w-[190px]">

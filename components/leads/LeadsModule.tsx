@@ -788,7 +788,14 @@ export function LeadsModule({
              a short form collapsing into a strip. */
           size="workflow"
         >
-          <div className="grid min-h-[420px] grid-cols-2 content-start gap-3">
+          {/* ONE COLUMN ON A PHONE. Two columns were held at every width, and
+              the Phone cell holds two controls of its own — a dialling code
+              picker and the number. At 375px that left the number box THIRTY
+              FIVE PIXELS wide: you could not read what you typed, let alone
+              type it. The dialog itself fitted fine; the grid inside it did
+              not. min-h keeps the frame from resizing as fields come and go,
+              which is the standing rule for these popups. */}
+          <div className="grid min-h-[420px] grid-cols-1 content-start gap-3 sm:grid-cols-2">
             <Field label="Person" required>
               {/* THE CAP THE SERVER ALREADY KEEPS, said out loud. lib/leads
                   trims a name to 120 characters on the way in, so a longer one

@@ -540,11 +540,19 @@ export function TopBar({
             </>
           )}
         </div>
+        {/* NOT ON A PHONE, WHERE THERE IS NO KEYBOARD TO SHORTCUT.
+            At 375px the right-hand cluster is five 36px buttons, a divider and
+            the account menu, and it ran 10px past the viewport — enough to make
+            the whole document drag sideways on every page, which is the one
+            thing that reads as broken rather than cramped. Everything else in
+            this bar earns its place on a touch device; a list of keyboard
+            shortcuts cannot be used on one at all, so it is the honest thing to
+            drop. It returns at sm and up. */}
         <button
           data-tour="help"
           aria-label="Keyboard shortcuts"
           onClick={() => setHelpOpen(true)}
-          className="w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:bg-surface transition-colors"
+          className="hidden sm:flex w-9 h-9 items-center justify-center rounded-full text-text-secondary hover:bg-surface transition-colors"
         >
           <CircleHelp size={19} strokeWidth={1.5} />
         </button>
