@@ -69,6 +69,7 @@ import {
   materialJourneyStages,
   type MaterialFormat,
   type OfferingMaterial,
+  formatFileSize,
 } from "@/lib/offeringMaterials";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
@@ -1330,6 +1331,18 @@ export function MaterialsSection({
                           >
                             <span className="block break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary">{material.label}</span>
                           </MaterialPeek>
+                          {/* HOW BIG THE FILE IS (Anir, Sep 9, after putting a
+                              496MB video in: "need to see the actual size on
+                              here"). Under the name, not in a column of its
+                              own — he was explicit about that — so it reads as
+                              a fact about this file rather than another thing
+                              to scan down. A pasted link has no size and shows
+                              nothing at all. */}
+                          {material.bytes ? (
+                            <span className="mt-0.5 block text-[11px] tnum text-text-tertiary">
+                              {formatFileSize(material.bytes)}
+                            </span>
+                          ) : null}
                           {/* BLACK, NOT GREY (Anir, Aug 25: "can we keep the
                               descriptions in black font only? They need to be
                               visible and emphasized"). A description is the one
@@ -1387,6 +1400,7 @@ export function MaterialsSection({
                         {formatMeta.label}
                       </span>
                     </td>
+
                     <td className="px-4 py-4 align-middle">
                       {/* ONE FOLDER PER LINE (Anir, Aug 28: "I hate how this
                           looks, I need Product Demos on one line and then
@@ -1586,7 +1600,17 @@ export function MaterialsSection({
                               type="button"
                               aria-label={`Remove ${material.label}`}
                               onClick={() => setPendingRemoval(material)}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[color:#B02020] text-white hover:opacity-85"
+                              /* RED, NOT A RED BLOB (Anir, Sep 9: "the X is
+                                 still popping out"). A solid filled circle
+                                 beside four ghost icons is the loudest thing
+                                 in the row, and it is loudest on every row at
+                                 once, so the eye lands on Remove before the
+                                 file name. Delete stays red — that rule does
+                                 not move — but as the icon's own colour, in
+                                 the same shape and size as its neighbours,
+                                 filling in only on hover when you are
+                                 actually reaching for it. */
+                              className="flex h-7 w-7 items-center justify-center rounded-lg text-[color:var(--ink-red)] transition-colors hover:bg-[color:#B02020]/10"
                             ><X size={14} strokeWidth={2.2} /></button>
                           </Tooltip>
                         )}

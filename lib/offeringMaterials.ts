@@ -157,6 +157,16 @@ export interface OfferingMaterial {
    */
   docsPath?: string;
   /**
+   * HOW BIG THE FILE IS, in bytes (Anir, Sep 9, looking at the materials
+   * table after uploading a 496MB video: "need to see the actual size on here
+   * btw on this view").
+   *
+   * Recorded when the file is attached, from the file the browser handed us.
+   * Optional: a pasted link has no size at all, and every file uploaded
+   * before today has none until the backfill reads it out of storage.
+   */
+  bytes?: number;
+  /**
    * One free-text sentence about the file (backlog item 10). OPTIONAL in the
    * strict sense: nothing validates it, nothing blocks a save without it, and
    * a material without one shows no line at all — never an empty row or a
@@ -262,6 +272,12 @@ export function stampMaterialAttribution(
       label: material.label,
       url: material.url,
     };
+    /* THE FILE'S SIZE SURVIVES THE ROUND TRIP. This function rebuilds every
+       row from known fields only, so a field it does not name is dropped on
+       the next save — which is exactly what happened to `bytes` the first
+       time the table asked for it (Anir, Sep 9: "need to see the actual size
+       on here"). Copied when it is a real number, so a link keeps none. */
+    if (Number(material.bytes) > 0) next.bytes = Number(material.bytes);
     const journeyStages = materialJourneyStages(material);
     if (journeyStages.length) {
       next.journeyStages = journeyStages;
@@ -974,4 +990,15 @@ export function countUnder(
   return materials.filter(
     (m) => (m.folder || "") === folder || (m.folder || "").startsWith(prefix)
   ).length;
+}
+
+
+/** A file size a person reads at a glance: "496.3 MB", "8 KB". */
+export function formatFileSize(bytes?: number | null): string {
+  const n = Number(bytes) || 0;
+  if (n <= 0) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }

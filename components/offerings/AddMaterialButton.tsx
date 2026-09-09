@@ -1115,6 +1115,10 @@ export function AddMaterialButton({
                   item.file.name.replace(/\.[^.]+$/, ""),
               url: item.url,
               ...(item.docsPath ? { docsPath: item.docsPath } : {}),
+              /* SO THE TABLE CAN SHOW IT (Anir, Sep 9: "need to see the
+                 actual size on here"). Taken from the file the browser
+                 handed us, which is the only place it is known for free. */
+              ...(item.file.size ? { bytes: item.file.size } : {}),
               ...(item.transcriptFor
                 ? { description: `What was said in ${item.transcriptFor}.` }
                 : (override.description ?? description).trim()
