@@ -145,6 +145,10 @@ export function AllMaterialsBrowser({
     };
   }, [rows]);
   const bytesOf = (row: MaterialRow): number | null => {
+    /* The record's own size first (recorded at upload since Sep 9), then the
+       reader's note as a fallback for anything older. Without this the same
+       file showed a size on the offering's tab and none here. */
+    if (Number(row.material.bytes) > 0) return Number(row.material.bytes);
     const path = row.material.docsPath;
     if (!path) return null;
     const n = bytesByPath[path];
@@ -393,11 +397,46 @@ const TABLE_CLASS =
                           );
                         })()}
                         <span className="min-w-0 truncate">{row.material.label}</span>
-                        <ExternalLink
-                          size={12}
-                          strokeWidth={2.2}
-                          className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover/name:opacity-100"
-                        />
+                        {/* THE ARROW OPENS A NEW TAB (Anir, Sep 9: "that button
+                            with the arrow coming out of the box is supposed to
+                            open it in another tab"). It was decoration on the
+                            name button, so clicking it did what the name does,
+                            open the in-page viewer. Now it is its own control:
+                            the name still opens the viewer here, the arrow
+                            opens the file in a fresh tab. A span with a role,
+                            because a button cannot sit inside a button. */}
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Open ${row.material.label} in a new tab`}
+                          title="Open in a new tab"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(
+                              isUploadedMaterial(row.material)
+                                ? materialPreviewHref(row.offeringId, row.material)
+                                : row.material.url,
+                              "_blank",
+                              "noopener,noreferrer"
+                            );
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key !== "Enter" && e.key !== " ") return;
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(
+                              isUploadedMaterial(row.material)
+                                ? materialPreviewHref(row.offeringId, row.material)
+                                : row.material.url,
+                              "_blank",
+                              "noopener,noreferrer"
+                            );
+                          }}
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-text-tertiary opacity-60 transition-opacity hover:bg-blue-light hover:text-blue-primary hover:opacity-100 group-hover/name:opacity-100"
+                        >
+                          <ExternalLink size={12} strokeWidth={2.2} />
+                        </span>
                       </button>
                     </MaterialPeek>
                     {row.material.description && (
