@@ -34,6 +34,7 @@ import type {
   OpportunityActivity,
 } from "@/lib/opportunitiesShared";
 import { tint } from "@/lib/tint";
+import { todayISO } from "@/lib/utils";
 
 /**
  * ACTIVITIES ON THE DEAL (Suren, Aug 17 answers: "the activity on the
@@ -225,7 +226,7 @@ export function OpportunityActivities({
                             const nextAct = {
                               ...a,
                               status: v as OpportunityActivity["status"],
-                              date: new Date().toISOString().slice(0, 10),
+                              date: todayISO(),
                             };
                             void persist(
                               acts.map((x) => (x.id === a.id ? nextAct : x)),
@@ -474,7 +475,7 @@ export function OpportunityActivities({
               loading={busy}
               disabled={!draft.activity}
               onClick={() => {
-                const now = new Date().toISOString().slice(0, 10);
+                const now = todayISO();
                 const act: OpportunityActivity = {
                   id: `act-${Date.now().toString(36)}`,
                   activity: draft.activity,

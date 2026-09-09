@@ -30,6 +30,7 @@ import {
   recordDeleteRefusal,
   canOpenModule,} from "@/lib/moduleAccessServer";
 import { readOpportunities } from "@/lib/opportunities";
+import { todayISO } from "@/lib/utils";
 
 /** The only three the column accepts. */
 const SIZE_TIERS: SizeTier[] = ["small", "mid", "large"];
@@ -73,7 +74,7 @@ function sanitizeEngagementVersion(version: any, linked = false) {
   const status = CUSTOMER_OFFERING_STATUS_ORDER.includes(version?.status)
     ? version.status
     : normalizeStatus(version?.status ?? defaultStatusForActivity(activity));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const priorDates = (version?.status_dates || {}) as Record<string, unknown>;
   const day = (value: unknown) =>
     typeof value === "string" && ISO_DAY.test(value) ? value : undefined;

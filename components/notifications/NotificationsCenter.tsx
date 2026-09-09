@@ -70,7 +70,13 @@ const URGENCY_TILES: {
     label: "This week",
     icon: CalendarDays,
     color: "var(--ink-violet-soft)",
-    sub: "in the next few days",
+    /* WHEN YOU SHOULD GET TO IT, NOT WHEN IT HAPPENED. These four tiles are a
+       priority ladder, and this band holds two kinds of thing: work genuinely
+       due in a few days, and changes somebody already made that you ought to
+       know about — a roadmap version a rep may have quoted to a customer. So
+       "in the next few days" sat above four items stamped "5d ago" and
+       "13d ago", which reads as a broken filter rather than a priority. */
+    sub: "to get to this week",
     empty: "clear this week",
   },
   {

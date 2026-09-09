@@ -104,7 +104,11 @@ export default async function ActivityGoalFlowPage() {
               icon={Waypoints}
               label="Activities earning"
               value={String(cells.filter((c) => c.goals.some((g) => g.entries > 0)).length)}
-              sub="of the five kinds of activity"
+              /* COUNTED, NOT SPELLED OUT. There are five activities today, and
+                 the Activity Master is a screen an admin can add a sixth on —
+                 at which point a caption reading "of the five" is quietly
+                 wrong and nobody thinks to come back here. */
+              sub={`of the ${cells.length} kinds of activity`}
             />
             <StatTile
               icon={Waypoints}

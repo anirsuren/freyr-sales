@@ -31,6 +31,35 @@ export function plural(n: number, one: string, many = `${one}s`): string {
   return n === 1 ? one : many;
 }
 
+/**
+ * TODAY, WHERE THE PERSON IS — not today in Greenwich.
+ *
+ * Twenty-nine places wrote `new Date().toISOString().slice(0, 10)` and meant
+ * "today". toISOString converts to UTC first, so from early evening onward on
+ * the US east coast that expression returns TOMORROW, and every rule built on
+ * it moves a day early. Found at 8:04 PM on Sep 8 2026, when it was already
+ * Sep 9 in UTC:
+ *
+ *   · Solutioning refused a request needed TODAY: "That date has already
+ *     passed. Pick today or later."
+ *   · A meeting you could not schedule for this afternoon.
+ *   · Meetings and Solutioning both filed anything due today under "past their
+ *     date" for the rest of the evening.
+ *   · A contract created tonight was stamped as starting tomorrow, and an
+ *     activity logged tonight was dated tomorrow.
+ *
+ * The dates it compares against are plain calendar days with no timezone in
+ * them ("2026-09-08"), so the only correct thing to compare them to is the
+ * local calendar day. Both halves of a rule must use this: while the client
+ * said one day and the server said another, a form could offer a date the API
+ * would then refuse.
+ */
+export function todayISO(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "-";
   try {

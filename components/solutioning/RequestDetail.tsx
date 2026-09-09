@@ -53,7 +53,7 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { useToast } from "@/components/ui/Toast";
-import { cn, formatDate } from "@/lib/utils";
+import {cn, formatDate, todayISO} from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
 import type {
   DocCategory,
@@ -353,7 +353,7 @@ export function RequestDetail({
   const overdue =
     !!r.neededBy &&
     r.status !== "completed" &&
-    r.neededBy < new Date().toISOString().slice(0, 10);
+    r.neededBy < todayISO();
 
   async function post(body: Record<string, unknown>): Promise<boolean> {
     setBusy(true);

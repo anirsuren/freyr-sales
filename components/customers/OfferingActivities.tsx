@@ -47,7 +47,7 @@ import type {
   CustomerOfferingEngagementVersion,
   CustomerOfferingStatus,
 } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import {formatDate, todayISO} from "@/lib/utils";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { withCommas } from "@/lib/currency";
@@ -128,7 +128,7 @@ function uid() {
 function planned(version: CustomerOfferingEngagementVersion): boolean {
   const start = version.status_dates?.initiated || version.start_date;
   if (!start) return false;
-  return start > new Date().toISOString().slice(0, 10);
+  return start > todayISO();
 }
 
 export function ActivityChip({ activity }: { activity: CustomerOfferingActivity }) {
@@ -247,7 +247,7 @@ export function OfferingActivities({
     setStartDate(
       version?.status_dates?.initiated ||
         version?.start_date ||
-        new Date().toISOString().slice(0, 10)
+        todayISO()
     );
     setEndDate(version?.end_date ?? "");
     setCurrency(version?.currency ?? "USD");
@@ -265,7 +265,7 @@ export function OfferingActivities({
   }
 
   function save() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayISO();
     const chosen = startDate || today;
     const existing = versions.find((v) => v.id === editing);
     const prior = existing?.status_dates || {};

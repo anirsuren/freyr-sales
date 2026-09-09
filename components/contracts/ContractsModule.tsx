@@ -44,7 +44,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { formatMoney } from "@/lib/pipeline";
-import { cn, formatDate } from "@/lib/utils";
+import {cn, formatDate, todayISO} from "@/lib/utils";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
 import { monthKey, monthLabel, monthsFrom } from "@/lib/revenueAccrualsShared";
@@ -293,7 +293,7 @@ export function ContractsModule({
 
   function exportCsv() {
     downloadCSV(
-      `freyr-contracts-${new Date().toISOString().slice(0, 10)}.csv`,
+      `freyr-contracts-${todayISO()}.csv`,
       toCSV(
         ["Reference", "Contract", "Customer", "Offering", "Value", "Status",
          "Starts", "Ends", "Signed", "Owner", "Scheduled", "Months", "Deal"],
@@ -380,7 +380,7 @@ export function ContractsModule({
       offeringLabel: fromDeal?.offeringLabel ?? "",
       value: fromDeal ? String(fromDeal.value) : "",
       owner: fromDeal?.owner ?? "",
-      startDate: new Date().toISOString().slice(0, 10),
+      startDate: todayISO(),
     });
   }
 
@@ -464,6 +464,24 @@ export function ContractsModule({
    * press it (Anir, Sep 4). Same two conditions save() enforces, so the two
    * can never disagree about what is required.
    */
+  /**
+   * A SCHEDULE MAY NOT EXCEED THE CONTRACT IT BELONGS TO — the same rule the
+   * accrual planner has enforced since item 12 ("Revenue Accrual total should
+   * not exceed Total Contract Value"), and for the same reason: it is wrong in
+   * a way only the person typing can fix, and every total downstream carries
+   * the error silently. This dialog's own copy says the schedule "replaces the
+   * deal's accrual plan as the number anybody quotes" once the contract is
+   * Ready for delivery, so a $120K contract carrying $500K of months is a
+   * quarter of invented revenue in the delivery basket.
+   *
+   * It already SAID so — "that is $380K more than the contract value" — and
+   * then let the button be pressed anyway. Warning and permitting is the
+   * combination Anir ruled out on Sep 4. Equal is fine, under is fine (nobody
+   * has to schedule it all today); over is refused.
+   */
+  const scheduleOver =
+    !!editing && scheduleValue > 0 && scheduleTotalNow - scheduleValue > 1;
+
   const contractProblem: string | null = !editing
     ? null
     : !editing.name.trim() && !editing.customer.trim()
@@ -472,12 +490,23 @@ export function ContractsModule({
         ? "Give the contract a name."
         : !editing.customer.trim()
           ? "Say which customer this contract is with."
-          : null;
+          : scheduleOver
+            ? `The months add up to ${formatMoney(scheduleTotalNow)}, which is ${formatMoney(scheduleTotalNow - scheduleValue)} more than the contract is worth.`
+            : null;
 
   async function save() {
     if (!editing) return;
     if (!editing.name.trim() || !editing.customer.trim()) {
       toast("A contract needs a name and a customer.", "error");
+      return;
+    }
+    /* The same condition contractProblem shows, so the button and the save can
+       never disagree about what is allowed. */
+    if (scheduleOver) {
+      toast(
+        `The months add up to ${formatMoney(scheduleTotalNow)}, more than the contract value.`,
+        "error"
+      );
       return;
     }
     const ok = await post(

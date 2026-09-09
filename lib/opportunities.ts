@@ -19,6 +19,7 @@ import {
   type OpportunityLine,
   type OpportunitiesState,
 } from "./opportunitiesShared";
+import { todayISO } from "@/lib/utils";
 
 /**
  * OPPORTUNITIES — storage and operations.
@@ -184,7 +185,7 @@ function normalizeActivities(raw: unknown): OpportunityActivity[] | undefined {
       status,
       person: str(r.person, 120),
       note: str(r.note, 400) || undefined,
-      date: day(r.date) ?? new Date().toISOString().slice(0, 10),
+      date: day(r.date) ?? todayISO(),
       startDate: day(r.startDate),
       endDate: day(r.endDate),
     });

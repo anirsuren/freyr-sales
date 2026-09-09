@@ -25,7 +25,7 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
 import { useStoredView } from "@/lib/useStoredView";
 import { MEETING_ROOM_PATH, type MeetingRoom } from "@/lib/meetingRooms";
-import { cn, formatDate } from "@/lib/utils";
+import {cn, formatDate, todayISO} from "@/lib/utils";
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
 import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
 import { SolutioningTabs } from "@/components/solutioning/SolutioningTabs";
@@ -230,7 +230,7 @@ export function MeetingsModule({
      two meetings from last month read "2 still to happen" directly beside
      "Next one: None, nothing scheduled". The date test below already existed
      for `nextUp`; the tile simply was not using it. */
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const upcoming = planned.filter((m) => (m.meetingAt ?? "") >= today);
   const overdue = planned.filter((m) => (m.meetingAt ?? "") < today);
 
@@ -262,7 +262,7 @@ export function MeetingsModule({
   const nextUp = useMemo(
     () =>
       [...planned]
-        .filter((m) => m.meetingAt >= new Date().toISOString().slice(0, 10))
+        .filter((m) => m.meetingAt >= todayISO())
         .sort((a, b) => a.meetingAt.localeCompare(b.meetingAt))[0],
     [planned]
   );
@@ -311,7 +311,13 @@ export function MeetingsModule({
         <StatTile
           icon={Users}
           label="Accounts met"
-          value={String(new Set(all.map((m) => m.customer)).size)}
+          /* MET MEANS MET. This counted every meeting on the books, so three
+             meetings booked for next month with three different accounts read
+             "Accounts met 3" before anybody had been in a room. It is the same
+             mistake the Planned tile made in the other direction on Sep 4, when
+             a date that had passed still counted as "still to happen". Only
+             written-up meetings count somebody as met. */
+          value={String(new Set(completed.map((m) => m.customer)).size)}
           color="var(--ink-magenta)"
           sub="distinct customers"
         />

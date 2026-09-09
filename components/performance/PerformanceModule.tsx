@@ -62,7 +62,7 @@ import {
   type CurrencyCode,
 } from "@/lib/currency";
 import { EvidencePicker } from "./EvidencePicker";
-import { cn } from "@/lib/utils";
+import {cn, todayISO} from "@/lib/utils";
 import { type FilterGroup } from "@/components/ui/FilterMenu";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { useStickyValue } from "@/lib/useStickyValue";
@@ -329,7 +329,7 @@ export function PerformanceModule({
    * last day (Anir, Aug 23: "if I'm in August it should auto-set it to 08/").
    */
   const [defaultLogDate, setDefaultLogDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
+    todayISO()
   );
   useEffect(() => {
     if (!logOpen) return;

@@ -31,6 +31,7 @@ import {
   Briefcase,
   ScanLine,
   UserPen,
+  X,
   History as HistoryIcon,
 } from "lucide-react";
 import { FilterMenu } from "@/components/ui/FilterMenu";
@@ -52,7 +53,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Input } from "@/components/ui/Input";
 import { formatMoney } from "@/lib/pipeline";
-import { cn, formatDate } from "@/lib/utils";
+import {cn, formatDate, todayISO} from "@/lib/utils";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
 import {
@@ -367,47 +368,114 @@ function DeviationsTable({
       {/* THE ANSWER BEFORE THE ROWS. See the note above `byOwner`: the table
           says which records moved, this says who keeps moving them, which is
           the sentence Suren wants out of this screen. */}
+      {/* ONE ROW OF CHIPS, ALL THE SAME SHAPE, AND EVERY ONE OF THEM TOGGLES
+          (Anir, Sep 8, on the old version: "I thought it was like I click it
+          and then it shows it to me, which is what you have, but then when I
+          click on it again, it should untoggle... the problem is it's fucking
+          ugly").
+
+          It was two mismatched boxes sitting beside each other — an amber
+          rounded-lg button next to a bordered white panel holding pills of a
+          third shape — so the row read as two unrelated widgets rather than
+          one set of filters. And a press only ever turned a filter ON: to see
+          everything again you had to go into the Filter menu and clear it by
+          hand, which is why he thought the toggle was broken.
+
+          Now: one flowing row, every chip the same height and radius, filled
+          when it is on, and pressing an on chip clears it. `aria-pressed`
+          says the same thing to a screen reader that the fill says to an eye. */}
       {(byOwner.length > 0 || inactiveCount > 0) && (
-        <div className="mt-3 flex flex-wrap items-stretch gap-2">
-          {inactiveCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setStatusFilter(["Inactive"])}
-              title="Show only these"
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-[color:rgba(180,83,9,0.35)] bg-[rgba(180,83,9,0.07)] px-3 py-2 text-left transition-colors hover:border-[color:#B45309]"
-            >
-              <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[color:#B45309] px-1.5 text-[12px] font-bold text-white">
-                {inactiveCount}
-              </span>
-              <span className="text-[12.5px] font-semibold text-[color:var(--ink-amber)]">
-                {inactiveCount === 1 ? "record has" : "records have"} expired
-                unsigned
-              </span>
-            </button>
-          )}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {inactiveCount > 0 &&
+            (() => {
+              const on = statusFilter.includes("Inactive");
+              return (
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() =>
+                    setStatusFilter(on ? [] : ["Inactive"])
+                  }
+                  title={
+                    on
+                      ? "Showing only these. Click to show every record again."
+                      : "Show only these"
+                  }
+                  className={cn(
+                    "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors",
+                    on
+                      ? "border-transparent bg-[color:#B45309] text-white"
+                      : "border-[color:rgba(180,83,9,0.35)] bg-[rgba(180,83,9,0.07)] text-[color:var(--ink-amber)] hover:border-[color:#B45309]"
+                  )}
+                >
+                  <AlertTriangle size={13} strokeWidth={2.4} />
+                  <span className="tnum">{inactiveCount}</span>
+                  <span>expired unsigned</span>
+                  {on && <X size={13} strokeWidth={2.6} className="ml-0.5" />}
+                </button>
+              );
+            })()}
+
           {byOwner.length > 0 && (
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-2">
+            <>
+              {inactiveCount > 0 && (
+                <span
+                  aria-hidden
+                  className="h-5 w-px shrink-0 bg-border-light"
+                />
+              )}
               <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                 Deviating most
               </span>
-              {byOwner.map(([who, n]) => (
-                <button
-                  key={who}
-                  type="button"
-                  onClick={() => setOwnerFilter([who])}
-                  title={`Show only ${who}`}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light px-2 py-0.5 transition-colors hover:border-blue-primary"
-                >
-                  {who !== "Unassigned" && (
-                    <Avatar name={who} className="h-4 w-4 shrink-0 text-[7px]" />
-                  )}
-                  <span className="text-[12px] text-text-secondary">{who}</span>
-                  <span className="text-[12px] font-bold tnum text-[color:var(--ink-violet-soft)]">
-                    {n}
-                  </span>
-                </button>
-              ))}
-            </div>
+              {byOwner.map(([who, n]) => {
+                const on = ownerFilter.includes(who);
+                return (
+                  <button
+                    key={who}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() =>
+                      setOwnerFilter(on ? [] : [who])
+                    }
+                    title={
+                      on
+                        ? `Showing only ${who}. Click to show everybody again.`
+                        : `Show only ${who}`
+                    }
+                    className={cn(
+                      "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border pl-1.5 pr-3 text-[12.5px] transition-colors",
+                      on
+                        ? /* A LITERAL, NOT THE TOKEN, because this is a FILL
+                             under white text. --ink-violet-soft exists to be
+                             INK: it is #7C3AED on white and flips to #CDBFFE on
+                             dark so violet text stays readable there. Used as a
+                             background it flips the wrong way — in dark mode the
+                             pressed chip became pale violet with white text on
+                             it, which is nearly invisible. The amber chip beside
+                             this one already uses a literal for the same reason. */
+                          "border-transparent bg-[color:#7C3AED] text-white"
+                        : "border-border-light bg-white text-text-secondary hover:border-blue-primary"
+                    )}
+                  >
+                    {who !== "Unassigned" ? (
+                      <Avatar name={who} className="h-5 w-5 shrink-0 text-[8px]" />
+                    ) : (
+                      <span className="w-1" />
+                    )}
+                    <span className="font-medium">{who}</span>
+                    <span
+                      className={cn(
+                        "tnum font-bold",
+                        on ? "text-white" : "text-[color:var(--ink-violet-soft)]"
+                      )}
+                    >
+                      {n}
+                    </span>
+                    {on && <X size={13} strokeWidth={2.6} />}
+                  </button>
+                );
+              })}
+            </>
           )}
         </div>
       )}
@@ -1195,7 +1263,7 @@ export function RevenueAccrualsModule({
       }
     }
     downloadCSV(
-      `freyr-revenue-accruals-${new Date().toISOString().slice(0, 10)}.csv`,
+      `freyr-revenue-accruals-${todayISO()}.csv`,
       toCSV(
         ["Opportunity", "Customer", "Offering", "Contract value", "Month",
          "Month key", "Amount", "Flag", "Why", "Updated by", "Updated"],
@@ -2136,7 +2204,18 @@ export function RevenueAccrualsModule({
                   <p className="mt-2 text-[13px] text-text-secondary">
                     Nothing has moved since that sheet was frozen.
                   </p>
-                ) : (
+                ) : (() => {
+                  /* THE BIGGEST SINGLE MONTH ANYWHERE IN THIS SECTION, so
+                     every deal's bars are drawn to ONE scale and a tall bar
+                     means more money than a short bar wherever you look. A
+                     per-deal scale would have made a $2K month on one deal
+                     look the same size as a $20K month on the next. */
+                  const monthMax = deviation.byDeal.reduce(
+                    (n, d) =>
+                      d.months.reduce((m, x) => Math.max(m, Math.abs(x.delta)), n),
+                    0
+                  ) || 1;
+                  return (
                   <div className="mt-2 divide-y divide-border-light">
                     {deviation.byDeal.map((d) => (
                       <div key={d.opportunityId} className="py-3" data-deviation-deal={d.opportunityId}>
@@ -2173,28 +2252,85 @@ export function RevenueAccrualsModule({
                               : `${d.delta >= 0 ? "+" : "-"}${formatMoney(Math.abs(d.delta))}`}
                           </span>
                         </div>
+                        {/* THE MONTHS AS A CHART, NOT A SENTENCE (Anir, Sep 8:
+                            "think visual, meaning charts, graphs, visuals").
+
+                            They were a wrap of text chips — "Oct 2026 -$20K"
+                            beside "Nov 2026 +$20K" — which is the single most
+                            important fact on this screen written in the form
+                            least likely to be read. A slip is a shape: money
+                            leaves one month and lands in the next, and two
+                            bars of equal size on opposite sides of a line say
+                            that instantly where two chips never did.
+
+                            Every bar is anchored to the centre line by an
+                            explicit bottom/top of 50% inside a fixed-height
+                            box, so nothing floats. */}
                         {d.months.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5 pl-[38px]">
-                            {d.months.map((m) => (
-                              <span
-                                key={m.month}
-                                className="rounded-md border border-border-light bg-surface/60 px-2 py-1 text-[11.5px] tnum text-text-secondary"
-                              >
-                                {monthLabel(m.month)}{" "}
-                                <b
-                                  style={{ color: m.delta < 0 ? AMBER : "#16A34A" }}
-                                >
-                                  {m.delta > 0 ? "+" : "-"}
-                                  {formatMoney(Math.abs(m.delta))}
-                                </b>
-                              </span>
-                            ))}
+                          <div className="mt-2 overflow-x-auto pl-[38px]">
+                            <div className="flex items-end gap-1.5 pb-0.5">
+                              {d.months.map((m) => {
+                                const up = m.delta > 0;
+                                const tone = up ? "#16A34A" : AMBER;
+                                /* A floor of 5px so a month that moved a
+                                   little still draws something. Zero-height
+                                   bars read as "nothing happened here", which
+                                   is a different fact. */
+                                const h = Math.max(
+                                  5,
+                                  Math.round((24 * Math.abs(m.delta)) / monthMax)
+                                );
+                                return (
+                                  <div
+                                    key={m.month}
+                                    title={`${monthLabel(m.month)}: ${up ? "+" : "-"}${formatMoney(Math.abs(m.delta))}`}
+                                    className="flex w-[58px] shrink-0 flex-col items-center"
+                                  >
+                                    {/* THE FIGURE KEEPS ITS OWN ROW rather than
+                                        riding the tip of its bar. At the tip it
+                                        read better in principle and clipped in
+                                        practice: a tall bar plus a label needs
+                                        more than half the strip, so "+$17K" lost
+                                        its top edge and "-$20K" landed on the
+                                        month underneath it. In a fixed row every
+                                        figure sits on one line across the whole
+                                        strip, and the bar below still says which
+                                        way the money went. */}
+                                    <span
+                                      className="text-[10.5px] font-bold tnum"
+                                      style={{ color: tone }}
+                                    >
+                                      {up ? "+" : "-"}
+                                      {formatMoney(Math.abs(m.delta))}
+                                    </span>
+                                    <div className="relative mt-1 h-[54px] w-full">
+                                      <div
+                                        className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-text-tertiary"
+                                        style={{ opacity: 0.3 }}
+                                      />
+                                      <div
+                                        className="absolute left-1/2 w-[15px] -translate-x-1/2 rounded-[3px]"
+                                        style={
+                                          up
+                                            ? { bottom: "50%", height: h, background: tone }
+                                            : { top: "50%", height: h, background: tone }
+                                        }
+                                      />
+                                    </div>
+                                    <span className="mt-1.5 whitespace-nowrap text-[10.5px] text-text-tertiary">
+                                      {monthLabel(m.month)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
                     ))}
                   </div>
-                )}
+                  );
+                })()}
               </section>
             </>
           )}

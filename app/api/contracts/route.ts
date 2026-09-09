@@ -11,6 +11,7 @@ import {
   moduleDeleteRefusal,
   moduleWriteRefusal,
 } from "@/lib/moduleAccessServer";
+import { todayISO } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -115,7 +116,7 @@ async function settleGoal(
           goalLink: {
             ...link,
             actualId: entry.id,
-            postedAt: new Date().toISOString().slice(0, 10),
+            postedAt: todayISO(),
           },
         };
       } catch (error) {

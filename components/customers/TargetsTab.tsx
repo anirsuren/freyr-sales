@@ -257,7 +257,14 @@ export function TargetsTab({
           icon={Crosshair}
           label="Target accounts"
           value={String(shown.length)}
-          sub="Not customers yet, no deal yet"
+          /* SAY WHAT THE LIST IS, NOT WHAT NOBODY CHECKED. This claimed every
+             row was neither a customer nor carrying a deal, and this tab has
+             never once looked: five of the 122 already have a deal (Novartis,
+             Indivior, Sun Pharma, Lonza, Enovis) and Novartis is one of the
+             seventeen customer accounts. A caption that asserts a status the
+             code does not test is the kind of small lie that makes somebody
+             stop believing the rest of the page. */
+          sub="Accounts on the target sheet"
         />
         <StatTile
           icon={DollarSign}

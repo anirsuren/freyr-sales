@@ -16,6 +16,7 @@ import {
   type SubgoalPerson,
   canVerifyEntry,
 } from "./performanceShared";
+import { todayISO } from "@/lib/utils";
 
 /**
  * PERFORMANCE MANAGEMENT — storage and operations.
@@ -267,7 +268,7 @@ function normalize(value: unknown): PerformanceState {
             subgoalId: ra.subgoalId ? str(ra.subgoalId, 60) : null,
             person,
             amount,
-            date: str(ra.date, 40) || new Date().toISOString().slice(0, 10),
+            date: str(ra.date, 40) || todayISO(),
             // Same trap as every other field here: written on the way in and
             // silently dropped on the way out until it is named.
             currency: isCurrencyCode(ra.currency)
@@ -838,7 +839,7 @@ export async function logActual(input: {
   }
   const dateIso = /^\d{4}-\d{2}-\d{2}$/.test(input.date ?? "")
     ? (input.date as string)
-    : new Date().toISOString().slice(0, 10);
+    : todayISO();
   const evidence = (input.evidence ?? [])
     .map((e) => ({
       name: str(String(e?.name ?? ""), 120),

@@ -48,7 +48,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
-import { cn, formatDate } from "@/lib/utils";
+import {cn, formatDate, todayISO} from "@/lib/utils";
 import { useStoredView } from "@/lib/useStoredView";
 import { stampedAt } from "@/lib/performanceShared";
 import {
@@ -592,7 +592,7 @@ export function SolutioningModule({
               const meta = KIND_META[r.kind];
               const overdue =
                 r.neededBy && r.status !== "completed"
-                  ? r.neededBy < new Date().toISOString().slice(0, 10)
+                  ? r.neededBy < todayISO()
                   : false;
               return (
                 <button
@@ -903,7 +903,7 @@ function RequestRow({
 }) {
   const overdue =
     r.neededBy && r.status !== "completed"
-      ? r.neededBy < new Date().toISOString().slice(0, 10)
+      ? r.neededBy < todayISO()
       : false;
   const against =
     r.opportunityLabels.length + r.contactNames.length === 0
@@ -1735,15 +1735,14 @@ export function NewRequestDialog({
    * Same rule the input enforces, said in words: a request cannot be needed
    * before today.
    */
-  const todayISO = new Date().toISOString().slice(0, 10);
   /* EACH DATE OWNS ITS OWN COMPLAINT, so the words can sit under the field
      they are about rather than in the dialog's far corner (Anir, Sep 7). */
   const neededByProblem =
-    neededBy && neededBy < todayISO
+    neededBy && neededBy < todayISO()
       ? "That date has already passed. Pick today or later."
       : null;
   const meetingProblem =
-    meetingAt && meetingAt.slice(0, 10) < todayISO
+    meetingAt && meetingAt.slice(0, 10) < todayISO()
       ? "That meeting is in the past. Pick today or later."
       : null;
   const dateProblem = neededByProblem ?? meetingProblem;
@@ -2137,7 +2136,7 @@ export function NewRequestDialog({
                 <input
                   type="date"
                   value={meetingAt}
-                  min={todayISO}
+                  min={todayISO()}
                   onChange={(e) => setMeetingAt(e.target.value)}
                   className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
                 />
@@ -2214,7 +2213,7 @@ export function NewRequestDialog({
                    the needed date should always be in the future"). The
                    server refuses it too, for anything that bypasses the
                    picker. */
-                min={new Date().toISOString().slice(0, 10)}
+                min={todayISO()}
                 onChange={(e) => setNeededBy(e.target.value)}
                 className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
               />

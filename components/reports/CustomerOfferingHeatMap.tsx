@@ -601,9 +601,12 @@ export function CustomerOfferingHeatMap({
   ]);
 
   const summary = useMemo(() => {
+    /* ONE COUNTER, NOT TWO IDENTICAL ONES. `active` and `covered` were
+       incremented on the very same condition in the same loop, so Coverage was
+       always Active motions over the grid size. Two names for one fact invite
+       somebody to change the rule in one place and leave the other behind. */
     let active = 0;
     let value = 0;
-    let covered = 0;
     const counts = Object.fromEntries(
       CUSTOMER_OFFERING_ACTIVITY_ORDER.map((activity) => [activity, 0])
     ) as Record<CustomerOfferingActivity, number>;
@@ -614,14 +617,13 @@ export function CustomerOfferingHeatMap({
         if (resolved.activity && resolved.activity !== "lead") active += 1;
         if (resolved.engagement?.dollar_value)
           value += resolved.engagement.dollar_value;
-        if (resolved.activity && resolved.activity !== "lead") covered += 1;
       }
     }
     const total = customers.length * offerings.length;
     return {
       active,
       value,
-      coverage: total ? Math.round((covered / total) * 100) : 0,
+      coverage: total ? Math.round((active / total) * 100) : 0,
       counts,
     };
     /* heatMapDeals belongs here: the tiles read the same resolver the cells
@@ -1795,7 +1797,15 @@ export function CustomerOfferingHeatMap({
           {
             label: "Coverage",
             value: `${summary.coverage}%`,
-            sub: "offerings in motion",
+            /* IT COUNTS SQUARES, SO IT HAS TO SAY SQUARES. This read
+               "offerings in motion", which is a different and much larger
+               number: today 5% of the 493 customer x offering squares are in
+               motion, while 8 of the 29 offerings are — 28%. Somebody reading
+               "5% offerings in motion" concludes almost nothing is selling,
+               when thirteen of seventeen accounts have something live. The
+               figure is the honest one for a matrix; the words under it were
+               describing a metric this tile has never shown. */
+            sub: "of every customer × offering square",
             icon: Target,
           },
         ].map((item) => {

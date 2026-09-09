@@ -16,6 +16,7 @@ import type {
   CustomerOption,
   OpportunityOption,
 } from "@/components/meetings/MeetingsModule";
+import { todayISO } from "@/lib/utils";
 
 /**
  * PLANNING A MEETING (Suren, Aug 28): "when I click on the new meeting they
@@ -272,7 +273,26 @@ export function NewMeetingDialog({
     [opportunities, customerId]
   );
 
-  const ready = title.trim() && customerId && meetingAt;
+  /**
+   * A MEETING YOU ARE PLANNING CANNOT ALREADY HAVE HAPPENED.
+   *
+   * This dialog never sends a status, and the store defaults to "planned", so
+   * everything it creates is something still to come. Nothing stopped a date
+   * in the past, and the module's own rule from Sep 4 — "a day that has passed
+   * is not still to happen" — then filed the meeting under "past their date"
+   * the instant it was saved. Solutioning's meeting room has refused this since
+   * Sep 6 ("That meeting is in the past. Pick today or later."); this is the
+   * same rule, in the same words, on the dialog that creates most of them.
+   *
+   * ONLY WHEN THE DATE IS BEING SET. Opening a meeting from last month to fix
+   * its title must not become impossible because its date is old — the same
+   * trap the deal editor avoids by letting a field that was already wrong stay
+   * as it is. So an unchanged date on an existing meeting is left alone.
+   */
+  const dateIsNew = !meeting || meetingAt !== (meeting.meetingAt ?? "");
+  const pastDate = !!meetingAt && dateIsNew && meetingAt < todayISO();
+
+  const ready = title.trim() && customerId && meetingAt && !pastDate;
 
   /**
    * WHY THE BUTTON IS WAITING, said out loud (Anir, Sep 4: "don't make it like
@@ -291,7 +311,9 @@ export function NewMeetingDialog({
       ? "Pick which account it is with."
       : !meetingAt
         ? "Say when it is."
-        : null;
+        : pastDate
+          ? "That date has already passed. Pick today or later."
+          : null;
 
   const body = (
     /* Fills the frame it is given rather than floating at the top of it: as a
@@ -369,6 +391,10 @@ export function NewMeetingDialog({
               <Input
                 type="date"
                 value={meetingAt}
+                /* The picker greys out the past too, but the words above are
+                   what actually answers it: on its own, `min` makes the browser
+                   swallow the click and the dialog just sits there. */
+                min={meeting ? undefined : todayISO()}
                 onChange={(e) => setMeetingAt(e.target.value)}
               />
             </Field>

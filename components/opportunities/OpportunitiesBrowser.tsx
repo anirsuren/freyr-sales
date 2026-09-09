@@ -85,7 +85,7 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { cn, formatDate, plural } from "@/lib/utils";
+import {cn, formatDate, plural, todayISO} from "@/lib/utils";
 import { ConfidenceSlider, snapConfidence } from "./ConfidenceSlider";
 import { fiscalYearEnding } from "./OpportunitySummary";
 import { refreshOpportunities } from "@/lib/useOpportunities";
@@ -1136,7 +1136,7 @@ export function OpportunitiesBrowser({
        idea is only about booking"). Deals with no sign date are in the count
        of the first tile and in none of this, the same rule the period columns
        already use. */
-    const thisQuarter = periodKeyOf(new Date().toISOString().slice(0, 10), "quarterly");
+    const thisQuarter = periodKeyOf(todayISO(), "quarterly");
     const signingNow = thisQuarter
       ? shown.filter((o) => periodKeyOf(signDateOf(o), "quarterly") === thisQuarter)
       : [];
@@ -1343,7 +1343,7 @@ export function OpportunitiesBrowser({
                 status: a.status || "initiated",
                 person: prev?.person ?? meName,
                 note: prev?.note,
-                date: prev?.date ?? new Date().toISOString().slice(0, 10),
+                date: prev?.date ?? todayISO(),
                 startDate: a.startDate || undefined,
                 endDate: a.endDate || undefined,
               };

@@ -258,11 +258,35 @@ export const EMPTY_ACCRUALS: RevenueAccrualsState = { plans: [], snapshots: [] }
 
 /* ------------------------------------------------------------- month math */
 
-/** "2026-04" for a Date or an ISO day. */
+/**
+ * "2026-04" for a Date or an ISO day.
+ *
+ * TWO KINDS OF INPUT, TWO CORRECT ANSWERS, and reading both in UTC got one of
+ * them wrong. A dozen callers ask `monthKey(new Date())` for "this month" —
+ * whether the sheet is frozen, which snapshots count as earlier, the month a
+ * new plan starts in. getUTCMonth answers that in Greenwich, so from early
+ * evening on the last day of a month the whole money module rolled over a day
+ * early: "this month" became October while it was still September here, the
+ * Re-freeze and Unfreeze buttons swapped, and September's own frozen sheet
+ * would have been treated as the earlier month to measure September against.
+ * Same root as todayISO in lib/utils.
+ *
+ * A CALENDAR DAY IS NOT SHIFTED AT ALL. "2026-04-01" carries its own month in
+ * its first seven characters; putting it through a Date to read it back would
+ * park it on UTC midnight and hand back March to anybody west of Greenwich.
+ * So a bare day (or a month key) is read straight off the string, and only a
+ * real instant is resolved to the reader's calendar.
+ */
 export function monthKey(value: string | Date): string {
-  const d = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(d.getTime())) return "";
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  if (typeof value === "string") {
+    const plain = value.match(/^(\d{4})-(\d{2})(-\d{2})?$/);
+    if (plain) return `${plain[1]}-${plain[2]}`;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}`;
+  }
+  if (Number.isNaN(value.getTime())) return "";
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
 }
 
 /** "Apr 2026" — the way a month is written everywhere else in the app. */

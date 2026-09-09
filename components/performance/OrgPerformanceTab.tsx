@@ -868,11 +868,19 @@ export function OrgPerformanceTab({
                        a $0 on every goal nobody had signed off yet. What is
                        verified is already in the bar itself: solid signed off,
                        hatched still waiting. */
+                    /* AND SAY THERE IS NO TARGET, because the bar still prints
+                       a percentage. With no target the % met label is dropped,
+                       so the chart falls back to labelling the bar's own value
+                       — which is zero — and the row read "0% · 3,456 logged".
+                       Somebody did three and a half thousand of something and
+                       the headline above it says nought per cent. The tooltip
+                       on this very bar already carries the missing half of the
+                       sentence; the caption you can actually see did not. */
                     caption:
                       g.target > 0
                         ? `${fmtAmount(g.unit, a)} of ${fmtAmount(g.unit, g.target)}`
                         : a > 0
-                          ? `${fmtAmount(g.unit, a)} logged`
+                          ? `${fmtAmount(g.unit, a)} logged, no target set`
                           : "no target yet",
                     // The tip draws the same two-tone bar the page draws
                     // instead of repeating the figures as a sentence.

@@ -1,5 +1,6 @@
 import { getDataMode } from "./dataMode";
 import { mockFillSolutioning, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
+import { todayISO } from "@/lib/utils";
 
 /**
  * SOLUTIONING — presentations, submissions and meetings, requested by sales
@@ -1098,7 +1099,7 @@ async function buildRecord(
        when it was set. Compared as dates, so "today" still counts: due later
        today is a legitimate ask. */
     const neededByInput = str(input.neededBy, 10);
-    if (neededByInput && neededByInput < new Date().toISOString().slice(0, 10))
+    if (neededByInput && neededByInput < todayISO())
       throw new Error("The needed date has to be today or later.");
     if (!title) throw new Error("Give the request a title.");
     const customer = str(input.customer, 120);

@@ -33,7 +33,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { cn, formatDate } from "@/lib/utils";
+import {cn, formatDate, todayISO} from "@/lib/utils";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
@@ -177,7 +177,7 @@ export function LeadsModule({
 
   function exportCsv() {
     downloadCSV(
-      `freyr-leads-${new Date().toISOString().slice(0, 10)}.csv`,
+      `freyr-leads-${todayISO()}.csv`,
       toCSV(
         ["Ref", "Name", "Title", "Company", "Source", "Status", "Owner",
          "Email", "Phone", "Country", "Asked about", "Came in", "Last moved"],
@@ -906,7 +906,15 @@ export function LeadsModule({
                 ]}
               />
             </Field>
-            <Field label="Email" required hint="Email or phone — at least one way to reach them.">
+            {/* NEITHER OF THESE IS REQUIRED ON ITS OWN, so neither wears the
+                star. The rule the form actually enforces is "an email OR a
+                phone" — filling just one enables Add lead — but both fields
+                carried the same asterisk Person and Company do, which in this
+                app means mandatory. Somebody holding only a phone number reads
+                "Email *" and either gives up or invents an address. The hint
+                now sits on both, and the button still says what is missing
+                until one of them is filled. */}
+            <Field label="Email" hint="Email or phone — at least one way to reach them.">
               <Input
                 type="email"
                 value={editing.email}
@@ -915,7 +923,7 @@ export function LeadsModule({
                 placeholder="name@company.com"
               />
             </Field>
-            <Field label="Phone" required>
+            <Field label="Phone" hint="Email or phone — at least one way to reach them.">
               {/* A dialling code beside the number, not one free-text box
                   (Anir, Aug 26: "For phone, it's obviously gonna be different,
                   like countries and stuff"). Stored as one string, so nothing

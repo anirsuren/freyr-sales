@@ -20,6 +20,7 @@ import {
   moduleDeleteRefusal,
   moduleWriteRefusal,
 } from "@/lib/moduleAccessServer";
+import { todayISO } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -152,7 +153,7 @@ async function settleMetGoalsLocked(
         next[i] = {
           ...link,
           actualId: already,
-          metAt: link.metAt ?? new Date().toISOString().slice(0, 10),
+          metAt: link.metAt ?? todayISO(),
         };
         changed = true;
         continue;
@@ -176,7 +177,7 @@ async function settleMetGoalsLocked(
         next[i] = {
           ...link,
           actualId: entry.id,
-          metAt: new Date().toISOString().slice(0, 10),
+          metAt: todayISO(),
         };
         changed = true;
       } catch (error) {

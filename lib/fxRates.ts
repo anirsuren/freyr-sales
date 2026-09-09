@@ -6,6 +6,7 @@ import {
   type CurrencyCode,
   type FxDayRates,
 } from "./currency";
+import { todayISO } from "@/lib/utils";
 
 /**
  * WHAT A CURRENCY WAS WORTH ON A GIVEN DAY — FETCHED, NOT ASSUMED.
@@ -84,7 +85,7 @@ function emptyCache(): FxCache {
 const memory = new Map<string, CachedDay>();
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayISO();
 }
 
 /**
