@@ -604,15 +604,24 @@ export default async function OfferingDetailPage({
                 feature" everywhere else in this app. */}
             {o.created_by ? (
               <Tooltip
-                label={`Added by ${o.created_by}${
-                  o.created_at
-                    ? ` on ${new Date(o.created_at).toLocaleDateString("en-US", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}`
-                    : ""
-                }`}
+                /* THE FACE, LEFT OF THE NAME (Anir, Sep 9: "put pfp next to
+                   the name to the left"). Same Avatar every person wears
+                   elsewhere in the app, resolved by name. */
+                label={
+                  <span className="inline-flex items-center gap-2">
+                    <Avatar name={o.created_by} className="h-5 w-5 shrink-0 text-[8px]" />
+                    <span>
+                      Added by {o.created_by}
+                      {o.created_at
+                        ? ` on ${new Date(o.created_at).toLocaleDateString("en-US", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })}`
+                        : ""}
+                    </span>
+                  </span>
+                }
               >
                 <span className="inline-flex h-[26px] w-[26px] cursor-default items-center justify-center rounded-full border border-border-light bg-surface text-text-tertiary transition-colors hover:border-blue-subtle hover:text-blue-primary">
                   <Info size={13} strokeWidth={2.1} aria-hidden="true" />

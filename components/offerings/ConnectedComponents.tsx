@@ -231,12 +231,22 @@ export function ConnectedComponents({
             divider rows inside it. The table view now has the same bones as
             the cards view: a title bar per kind, then that kind's own table,
             and a gap before the next. One kind, no title bar, as before. */
-        <div className="mt-4 space-y-5">
+        /* ONE FRAME PER KIND (Anir, Sep 9: "this is ugly, let's make this
+           look better"). The kind's tinted bar used to float above a
+           separately bordered table, so every group wore two frames and the
+           page read as boxes inside boxes. The bar is the table's own header
+           now: same rounded frame, one border, and the tint runs edge to
+           edge under it. */
+        <div className="mt-4 space-y-4">
           {groups.map((group) => (
-            <div key={group.kind}>
+            <div
+              key={group.kind}
+              className="overflow-hidden rounded-xl border bg-white"
+              style={{ borderColor: groups.length > 1 ? FDL_TYPE_META[group.kind].border : undefined }}
+            >
               {groups.length > 1 && (
                 <p
-                  className="mb-2.5 flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-bold tracking-[0.01em]"
+                  className="flex items-center gap-2 border-b px-4 py-2 text-[12.5px] font-bold tracking-[0.01em]"
                   style={{
                     color: FDL_TYPE_META[group.kind].color,
                     background: FDL_TYPE_META[group.kind].bg,
@@ -245,25 +255,25 @@ export function ConnectedComponents({
                 >
                   {(() => {
                     const KindIcon = FDL_TYPE_META[group.kind].Icon;
-                    return <KindIcon size={15} strokeWidth={2.4} aria-hidden="true" />;
+                    return <KindIcon size={14} strokeWidth={2.4} aria-hidden="true" />;
                   })()}
                   {group.title}
                   <span className="tnum font-semibold opacity-70">
-                    ({group.items.length})
+                    {group.items.length}
                   </span>
                 </p>
               )}
-              <div className="overflow-x-auto rounded-xl border border-border-light bg-white">
+              <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-left">
             <thead>
               <tr className="border-b border-border-light text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap">
-                <th className="w-[26%] px-4 py-2.5">Component</th>
+                <th className="w-[30%] px-4 py-2.5">Component</th>
                 <th className="w-[11%] px-3 py-2.5">Type</th>
-                <th className="w-[14%] px-3 py-2.5">Current version</th>
+                <th className="w-[15%] px-3 py-2.5">Current version</th>
                 <th className="w-[9%] px-3 py-2.5">Versions</th>
                 <th className="w-[9%] px-3 py-2.5">Features</th>
-                <th className="w-[18%] px-3 py-2.5">Version covered</th>
-                <th className="w-[13%] px-3 py-2.5 text-left">Actions</th>
+                <th className="w-[17%] px-3 py-2.5">Version covered</th>
+                <th className="w-[9%] px-3 py-2.5 text-left">Actions</th>
               </tr>
             </thead>
                   <tbody className="divide-y divide-border-light stagger">
@@ -300,8 +310,8 @@ export function ConnectedComponents({
                       {current ? (
                         <VersionPill version={current} current />
                       ) : (
-                        <span className="text-[12.5px] text-text-tertiary">
-                          Not recorded
+                        <span className="inline-flex items-center rounded-md border border-dashed border-border px-2 py-0.5 text-[11.5px] font-medium text-text-secondary">
+                          No version yet
                         </span>
                       )}
                     </td>
@@ -329,7 +339,7 @@ export function ConnectedComponents({
                           collapsible={false}
                           dense
                           minWidth={0}
-                          className="w-full"
+                          className="w-full max-w-[190px]"
                         />
                       ) : (
                         <span className="text-[12.5px] text-text-secondary">
@@ -384,23 +394,16 @@ export function ConnectedComponents({
                                 // Red at rest: this one changes what the
                                 // package contains, so it should read as
                                 // consequential before you reach it.
-                                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-[color:#B02020] text-white hover:opacity-85"
                               >
                                 <Unlink size={14} strokeWidth={2} />
                               </button>
                             </Tooltip>
                           )}
-                        <Tooltip label={`Open ${component.name}`}>
-                          <Link
-                            href={`/components/${component.id}?from=${encodeURIComponent(
-                              `/offerings/${offeringId}?tab=components`
-                            )}`}
-                            aria-label={`Open ${component.name}`}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
-                          >
-                            <ChevronRight size={15} strokeWidth={2.2} />
-                          </Link>
-                        </Tooltip>
+                        {/* No chevron: the name is the link, and a third
+                            icon that did the same thing was one too many
+                            (Anir, Sep 9: "4 is too many in the actions
+                            column"). */}
                       </span>
                     </td>
                   </tr>
