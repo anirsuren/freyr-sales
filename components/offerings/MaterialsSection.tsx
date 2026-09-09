@@ -1376,11 +1376,45 @@ export function MaterialsSection({
                                 after its meeting ran to four lines and set the
                                 height of the whole row. The full name is on
                                 hover, and in the viewer. */}
-                            <span
-                              title={material.label}
-                              className="line-clamp-2 break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary"
-                            >
-                              {material.label}
+                            <span className="group/name flex min-w-0 items-start gap-1.5">
+                              <span
+                                title={material.label}
+                                className="line-clamp-2 min-w-0 break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary"
+                              >
+                                {material.label}
+                              </span>
+                              {/* OPEN IN A NEW TAB, on hover, right of the name
+                                  (Anir, Sep 9). Same control the all-materials
+                                  page has; it left the actions column to make
+                                  room. */}
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`Open ${material.label} in a new tab`}
+                                title="Open in a new tab"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.open(
+                                    uploaded ? materialPreviewUrl(material) : material.url,
+                                    "_blank",
+                                    "noopener,noreferrer"
+                                  );
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key !== "Enter" && e.key !== " ") return;
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.open(
+                                    uploaded ? materialPreviewUrl(material) : material.url,
+                                    "_blank",
+                                    "noopener,noreferrer"
+                                  );
+                                }}
+                                className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-text-tertiary opacity-0 transition-opacity hover:bg-blue-light hover:text-blue-primary group-hover/name:opacity-100 focus:opacity-100"
+                              >
+                                <ExternalLink size={12} strokeWidth={2.2} />
+                              </span>
                             </span>
                           </MaterialPeek>
                           {/* HOW BIG THE FILE IS (Anir, Sep 9, after putting a
@@ -1619,16 +1653,11 @@ export function MaterialsSection({
                             border. Smaller targets on a tighter pitch leave
                             the run clear of the edge without moving the
                             column, which stays left-aligned. */}
-                        <Tooltip label={uploaded ? "Open preview" : "Open link"} side="top">
-                          <button
-                            type="button"
-                            aria-label={`${uploaded ? "Open" : "Open link"} ${material.label}`}
-                            onClick={() => uploaded
-                              ? window.open(materialPreviewUrl(material), "_blank", "noopener,noreferrer")
-                              : window.open(material.url, "_blank", "noopener,noreferrer")}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
-                          ><ExternalLink size={14} strokeWidth={1.9} /></button>
-                        </Tooltip>
+                        {/* OPEN LIVES ON THE NAME NOW, not here (Anir, Sep 9:
+                            "the open button with the arrow should come when I
+                            hover over the name, to the right of the name,
+                            instead of here. Save space. 4 is too many in the
+                            actions column"). See the name cell. */}
                         <Tooltip
                           label={uploaded ? "Download original" : "Download link shortcut"}
                           side="top"
@@ -1653,17 +1682,11 @@ export function MaterialsSection({
                               type="button"
                               aria-label={`Remove ${material.label}`}
                               onClick={() => setPendingRemoval(material)}
-                              /* RED, NOT A RED BLOB (Anir, Sep 9: "the X is
-                                 still popping out"). A solid filled circle
-                                 beside four ghost icons is the loudest thing
-                                 in the row, and it is loudest on every row at
-                                 once, so the eye lands on Remove before the
-                                 file name. Delete stays red — that rule does
-                                 not move — but as the icon's own colour, in
-                                 the same shape and size as its neighbours,
-                                 filling in only on hover when you are
-                                 actually reaching for it. */
-                              className="flex h-7 w-7 items-center justify-center rounded-lg text-[color:var(--ink-red)] transition-colors hover:bg-[color:#B02020]/10"
+                              /* THE RED SQUARE STAYS (Anir, Sep 9, after I had
+                                 flattened it to a plain red icon: "why did u
+                                 make the x not a red square? i liked that").
+                                 Delete is red and filled, on every row. */
+                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[color:#B02020] text-white hover:opacity-85"
                             ><X size={14} strokeWidth={2.2} /></button>
                           </Tooltip>
                         )}
