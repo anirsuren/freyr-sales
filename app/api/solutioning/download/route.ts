@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
+import { getMaterialServeUrl, hasMaterialStorage } from "@/lib/materialStorage";
 import { streamStoredFile } from "@/lib/storedFileResponse";
 import { reachableSolutioningDoc } from "@/lib/solutioningDocAccess";
 import { archiveMemberResponse } from "@/lib/archiveMemberResponse";
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   if (!access.ok)
     return NextResponse.json({ error: access.error }, { status: access.status });
 
-  if (!(await hasDocsStorage()))
+  if (!(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }
@@ -42,7 +42,9 @@ export async function GET(req: NextRequest) {
     });
 
   const name = access.doc.fileName || access.doc.name;
-  const { presignUrl } = await docsStorage.getDownloadUrl(access.docsPath);
+  /* Supabase first, Docs as the fallback (Anir, Sep 9: files are opened
+     from Supabase; Docs is the side copy, written a moment after upload). */
+  const presignUrl = await getMaterialServeUrl(access.docsPath);
   /* Inline streams through us so the browser renders it in the tab; otherwise
      the presigned URL's own attachment disposition saves it to disk. */
   if (inline)

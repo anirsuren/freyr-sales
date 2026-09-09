@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { buildMaterialPreview, extensionOf } from "@/lib/materialPreview";
-import { hasDocsStorage } from "@/lib/docsStorage";
+import { hasMaterialStorage } from "@/lib/materialStorage";
 import { getRole } from "@/lib/role";
 import { readMeetings } from "@/lib/meetings";
 import { readPublicFile } from "@/lib/publicFile";
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
      of the point of mock. PDFs render from the inline URL; Word and Excel are
      converted here and get their bytes off disk. */
   const sample = sampleDocUrl(doc.docsPath);
-  if (!sample && !(await hasDocsStorage()))
+  if (!sample && !(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }

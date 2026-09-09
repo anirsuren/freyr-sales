@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { buildMaterialPreview, extensionOf } from "@/lib/materialPreview";
-import { hasDocsStorage } from "@/lib/docsStorage";
+import { hasMaterialStorage } from "@/lib/materialStorage";
 import { readContracts } from "@/lib/contracts";
 import { readPublicFile } from "@/lib/publicFile";
 import { sampleDocUrl } from "@/lib/sampleDocuments";
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
   /* A mock document is a file that ships with the app, so it previews with no
      storage configured at all. */
   const sample = sampleDocUrl(doc.docsPath);
-  if (!sample && !(await hasDocsStorage()))
+  if (!sample && !(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }

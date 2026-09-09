@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
+import { getMaterialServeUrl, hasMaterialStorage } from "@/lib/materialStorage";
 import { streamStoredFile } from "@/lib/storedFileResponse";
 import { getRole } from "@/lib/role";
 import { readMeetings } from "@/lib/meetings";
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   const sample = sampleDocUrl(doc.docsPath);
   if (sample) return NextResponse.redirect(new URL(sample, req.url), 302);
 
-  if (!(await hasDocsStorage()))
+  if (!(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }
@@ -73,7 +73,9 @@ export async function GET(req: NextRequest) {
       range: req.headers.get("range"),
     });
 
-  const { presignUrl } = await docsStorage.getDownloadUrl(doc.docsPath);
+  /* Supabase first, Docs as the fallback (Anir, Sep 9: files are opened
+     from Supabase; Docs is the side copy, written a moment after upload). */
+  const presignUrl = await getMaterialServeUrl(doc.docsPath);
   if (inline)
     return streamStoredFile(presignUrl, {
       filename: doc.label,

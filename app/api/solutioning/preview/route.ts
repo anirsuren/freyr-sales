@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { buildMaterialPreview, extensionOf } from "@/lib/materialPreview";
-import { hasDocsStorage } from "@/lib/docsStorage";
+import { hasMaterialStorage } from "@/lib/materialStorage";
 import { reachableSolutioningDoc } from "@/lib/solutioningDocAccess";
 
 /**
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       { status: 400 }
     );
 
-  if (!(await hasDocsStorage()))
+  if (!(await hasMaterialStorage()))
     return NextResponse.json(
       { error: "Document storage is not configured here" },
       { status: 503 }

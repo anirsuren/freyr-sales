@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getFdlComponent, initializeLiveOfferings } from "@/lib/offerings";
-import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
-import { getFallbackMaterialDownloadUrl } from "@/lib/materialStorage";
+import { getMaterialServeUrl } from "@/lib/materialStorage";
 
 export const dynamic = "force-dynamic";
 
@@ -67,9 +66,8 @@ export async function GET(
   // read, only WHEN, and the "when" was wrong.
 
   try {
-    const presignUrl = (await hasDocsStorage())
-      ? (await docsStorage.getDownloadUrl(path)).presignUrl
-      : await getFallbackMaterialDownloadUrl(path);
+    /* Supabase first, Docs as the fallback (Anir, Sep 9). */
+    const presignUrl = await getMaterialServeUrl(path);
 
     const range = req.headers.get("range");
     const upstream = await fetch(
