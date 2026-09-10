@@ -887,6 +887,13 @@ const SIGNAL_RULES: { kind: SignalKind; pattern: RegExp }[] = [
   },
 ];
 
+/** A stored line cut mid-word by an earlier version ends on a whole word. */
+function tidyLine(text: string, max: number): string {
+  if (text.length < max - 1 || /[.!?…]$/.test(text)) return text;
+  const at = text.lastIndexOf(" ");
+  return `${(at > max * 0.6 ? text.slice(0, at) : text).replace(/[,;:\s]+$/, "")}…`;
+}
+
 /** The keyword fallback's answer for one item: first rule wins, in an order
  *  that puts the specific kinds before the broad ones. */
 export function fallbackSignal(text: string): SignalKind {
@@ -918,7 +925,8 @@ export function deriveSignals(
     let why: string;
     if (isLabeled(item)) {
       kind = item.label!.signal;
-      why = item.label!.why?.trim() || SIGNAL_META[kind].why;
+      const own = item.label!.why?.trim() || "";
+      why = own ? tidyLine(own, 170) : SIGNAL_META[kind].why;
     } else {
       kind = fallbackSignal(text);
       why = SIGNAL_META[kind].why;

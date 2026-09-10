@@ -39,6 +39,14 @@ function parseModelJson(raw: string): any {
   }
 }
 
+/** A line that runs long is cut at the last whole word, never mid-word. */
+export function trimAtWord(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const at = cut.lastIndexOf(" ");
+  return `${(at > max * 0.6 ? cut.slice(0, at) : cut).replace(/[,;:\s]+$/, "")}…`;
+}
+
 function haiku(): Anthropic | null {
   if (!process.env.ANTHROPIC_API_KEY) return null;
   if (process.env.AGENT_FORCE_MOCK === "1") return null;
@@ -397,7 +405,7 @@ Rules: one entry per item, in order. Never invent facts. Read the whole text bef
         isItemIndustry
       );
       const tags = ((Array.isArray(entry?.tags) ? entry.tags : []) as unknown[]).filter(isItemTag);
-      const why = String(entry?.why ?? "").trim().slice(0, 170);
+      const why = trimAtWord(String(entry?.why ?? "").trim(), 170);
       out.set(index, {
         signal: entry.signal,
         relevant: entry?.relevant === true,

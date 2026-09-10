@@ -7,6 +7,7 @@ import {
 import {
   bustMarketIntelFeedCache,
   cleanSourceLabel,
+  fallbackSignal,
   readMarketIntelFeed,
   saveFeedCompany,
   saveFeedMeta,
@@ -23,7 +24,7 @@ import {
   digestCompany,
   type ClassifyInput,
 } from "./marketIntelSummarize";
-import { isLabeled } from "./marketIntelSignals";
+import { CLASSIFY_VERSION, isLabeled } from "./marketIntelSignals";
 import { THOUGHT_FIRMS, mergeThoughtBoard, scrapeFirmThoughtLeadership } from "./marketIntelThought";
 import { scrapeFreshNews } from "./perplexityNews";
 import { resolveOfficialDomain, scrapeSiteUpdates } from "./siteUpdates";
@@ -509,6 +510,33 @@ async function applyLabels(entry: FeedCompany, budget: LabelBudget): Promise<num
         labeled += 1;
       }
     });
+    /* THE MODEL SKIPS WHAT IT TAKES FOR A REPEAT (seven identical Veeva
+       posts came back unanswered on every run, Sep 10). Anything a call did
+       not answer is asked once more on its own; what is still unanswered
+       gets the keyword rules' answer, so nothing is re-sent forever. */
+    const missing = batch.filter((slot) => !isLabeled(slot.item));
+    if (missing.length > 0 && missing.length < batch.length) {
+      const again = await classifyItems(entry.name, group, missing.map((b) => b.input));
+      again.forEach((label, index) => {
+        const slot = missing[index];
+        if (slot) {
+          slot.item.label = label;
+          labeled += 1;
+        }
+      });
+    }
+    for (const slot of missing) {
+      if (isLabeled(slot.item)) continue;
+      const text = slot.input.kind === "post" ? slot.input.text : `${slot.input.title}. ${slot.input.text}`;
+      slot.item.label = {
+        signal: fallbackSignal(text),
+        relevant: true,
+        industries: [],
+        tags: [],
+        v: CLASSIFY_VERSION,
+      };
+      labeled += 1;
+    }
   });
   return labeled;
 }
