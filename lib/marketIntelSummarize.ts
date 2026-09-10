@@ -26,6 +26,19 @@ const MODEL = "claude-haiku-4-5-20251001";
 const FETCH_TIMEOUT_MS = 8000;
 const MAX_ARTICLE_CHARS = 1400;
 
+/** Haiku occasionally leaves a raw newline or tab inside a JSON string,
+ *  which JSON.parse refuses ("Bad control character", NSF, Sep 10) and a
+ *  whole batch went unlabelled. Control characters are only ever legal as
+ *  whitespace between tokens, so replacing them with spaces is safe. */
+function parseModelJson(raw: string): any {
+  const body = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
+  try {
+    return JSON.parse(body);
+  } catch {
+    return JSON.parse(body.replace(/[\u0000-\u001f]/g, " "));
+  }
+}
+
 function haiku(): Anthropic | null {
   if (!process.env.ANTHROPIC_API_KEY) return null;
   if (process.env.AGENT_FORCE_MOCK === "1") return null;
@@ -178,7 +191,7 @@ Rules:
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
-    const parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+    const parsed = parseModelJson(raw);
     const summaries = new Map<number, string>();
     if (Array.isArray(parsed.summaries)) {
       for (const entry of parsed.summaries) {
@@ -243,7 +256,7 @@ Rules:
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
-    const parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+    const parsed = parseModelJson(raw);
     const out: MnaItem[] = [];
     for (const deal of parsed.deals ?? []) {
       const src = articles[Number(deal?.i)];
@@ -375,7 +388,7 @@ Rules: one entry per item, in order. Never invent facts. Read the whole text bef
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
-    const parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+    const parsed = parseModelJson(raw);
     for (const entry of Array.isArray(parsed?.items) ? parsed.items : []) {
       const index = Number(entry?.i);
       if (!Number.isInteger(index) || index < 0 || index >= items.length) continue;

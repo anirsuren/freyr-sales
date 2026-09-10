@@ -336,28 +336,101 @@ async function upsertRow(id: string, catalog: unknown): Promise<void> {
  * carries no `companies` has nothing to migrate. Returns true when it moved
  * anything.
  */
+function hasLegacyCompanies(raw: any): boolean {
+  return !!raw?.companies && typeof raw.companies === "object" && Object.keys(raw.companies).length > 0;
+}
+
+/** Items from a legacy copy folded into the row's items: nothing already
+ *  stored is lost, labels stay, and a link or headline seen twice is kept
+ *  once. */
+function foldItems<T extends { url: string }>(stored: T[], legacy: T[], key: (t: T) => string): T[] {
+  const seen = new Set(stored.map(key));
+  const out = [...stored];
+  for (const item of legacy) {
+    const k = key(item);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(item);
+  }
+  return out;
+}
+
+/**
+ * The one-time split of the legacy document. Idempotent: a meta row that
+ * carries no companies has nothing to migrate. Returns true when it moved
+ * anything.
+ *
+ * MERGES, NEVER OVERWRITES (Sep 10, learned the hard way on dev). A process
+ * still running the OLD code, a dev server's boot-time timer or the outgoing
+ * task during a rolling deploy, reads the split meta row as an empty feed,
+ * re-scrapes ten items per company and writes the whole legacy document
+ * back. Splitting that copy OVER the rows threw away every company's
+ * history and labels. So a legacy company is folded into its row: the row's
+ * items stay, the legacy items it does not have are added, and the newer
+ * clock wins.
+ */
 export async function migrateLegacyFeedRow(): Promise<boolean> {
   if (!hasFeedDatabase()) return false;
   const raw = await readRowCatalog(FEED_META_ROW);
-  if (!raw || !raw.companies || typeof raw.companies !== "object") return false;
+  if (!hasLegacyCompanies(raw)) return false;
   const companies = raw.companies as Record<string, FeedCompany>;
   const people = (raw.people ?? {}) as Record<string, PersonFeed>;
-  for (const company of Object.values(companies)) {
+  for (const legacy of Object.values(companies)) {
+    const existing = (await readRowCatalog(`${FEED_COMPANY_PREFIX}${legacy.id}`))?.company as
+      | FeedCompany
+      | undefined;
+    const company: FeedCompany = existing
+      ? {
+          ...legacy,
+          ...existing,
+          posts: foldItems(existing.posts, legacy.posts ?? [], (p) => p.url),
+          news: foldItems(existing.news, legacy.news ?? [], (n) => n.title.toLowerCase()),
+          site: foldItems(existing.site ?? [], legacy.site ?? [], (n) => n.title.toLowerCase()),
+          author: existing.author ?? legacy.author,
+          tldr: existing.tldr ?? legacy.tldr ?? null,
+          fetchedAt: [existing.fetchedAt, legacy.fetchedAt].filter(Boolean).sort().pop() ?? existing.fetchedAt,
+          ...(existing.newsAt || legacy.newsAt
+            ? { newsAt: [existing.newsAt, legacy.newsAt].filter(Boolean).sort().pop() }
+            : {}),
+          ...(existing.siteAt || legacy.siteAt
+            ? { siteAt: [existing.siteAt, legacy.siteAt].filter(Boolean).sort().pop() }
+            : {}),
+        }
+      : legacy;
     await upsertRow(`${FEED_COMPANY_PREFIX}${company.id}`, {
       company,
       summary: summarizeCompany(company),
     });
   }
-  for (const [id, feed] of Object.entries(people)) {
+  for (const [id, legacy] of Object.entries(people)) {
+    const existing = (await readRowCatalog(`${FEED_PERSON_PREFIX}${id}`))?.feed as PersonFeed | undefined;
+    const feed: PersonFeed = existing
+      ? {
+          posts: foldItems(existing.posts, legacy.posts ?? [], (p) => p.url),
+          fetchedAt: [existing.fetchedAt, legacy.fetchedAt].filter(Boolean).sort().pop() ?? existing.fetchedAt,
+        }
+      : legacy;
     await upsertRow(`${FEED_PERSON_PREFIX}${id}`, { feed, summary: summarizePerson(feed) });
   }
-  const meta: FeedMeta = { ...metaFrom(raw), version: 2 };
-  await upsertRow(FEED_META_ROW, meta);
+  const meta = metaFrom(raw);
+  await upsertRow(FEED_META_ROW, metaRow({ ...meta, version: 2, spendUsd: Math.max(meta.spendUsd ?? 0, 0) }));
   bustMarketIntelFeedCache();
   console.log(
-    `[market-intel] split the legacy feed document into ${Object.keys(companies).length} company rows and ${Object.keys(people).length} person rows`
+    `[market-intel] folded a legacy feed document (${Object.keys(companies).length} companies, ${Object.keys(people).length} people) into the per-company rows`
   );
   return true;
+}
+
+/**
+ * THE META ROW KEEPS EMPTY `companies` AND `people` MAPS ON PURPOSE. Code
+ * from before the split treats a row without `companies` as no feed at all,
+ * and a process still running it (a boot-time timer, the outgoing task in a
+ * rolling deploy) then re-scrapes everything as new and writes the old
+ * document back. With the empty maps and a recent `updatedAt` it sees a
+ * fresh, empty feed and does nothing.
+ */
+function metaRow(meta: FeedMeta): Record<string, unknown> {
+  return { ...meta, companies: {}, people: {} };
 }
 
 /**
@@ -387,7 +460,7 @@ async function readMetaAndLegacy(): Promise<{
   if (!hasFeedDatabase()) return null;
   const raw = await readRowCatalog(FEED_META_ROW);
   if (!raw) return null;
-  if (raw.companies && typeof raw.companies === "object") {
+  if (hasLegacyCompanies(raw)) {
     splitInBackground();
     return {
       meta: metaFrom(raw),
@@ -421,27 +494,8 @@ export async function readMarketIntelFeed(options?: {
     return null;
   }
   const { meta, legacy } = read;
-  if (legacy) {
-    /* A run that starts before the split has finished must NOT write per
-       company on top of a half-split store: it works on the document it
-       was handed and its saves land as rows, which the split then overwrites
-       with older copies. So a writer waits for the split instead. */
-    if (options?.fresh && migrating) await migrating;
-    if (!options?.fresh) {
-      const feed: MarketIntelFeed = {
-        version: meta.version,
-        companies: legacy.companies,
-        people: legacy.people,
-        mna: meta.mna,
-        thought: meta.thought,
-        updatedAt: meta.updatedAt,
-        spendUsd: meta.spendUsd,
-        apifyDay: meta.apifyDay,
-      };
-      c.feed = { at: Date.now(), feed };
-      return feed;
-    }
-  }
+  /* A writer must not start on a half-folded store: it waits for the fold. */
+  if (legacy && options?.fresh && migrating) await migrating;
   const db = feedClient();
   const [companyRows, personRows] = await Promise.all([
     db.from("offering_catalog_state").select("id, catalog").like("id", `${FEED_COMPANY_PREFIX}%`),
@@ -459,6 +513,12 @@ export async function readMarketIntelFeed(options?: {
     const id = String(row.id).slice(FEED_PERSON_PREFIX.length);
     const feed = (row.catalog as any)?.feed as PersonFeed | undefined;
     if (id && feed) people[id] = feed;
+  }
+  /* ROWS FIRST, THE LEGACY DOCUMENT ONLY FOR WHAT HAS NO ROW YET: a row
+     carries the history, a legacy copy is at best a day's scrape. */
+  if (legacy) {
+    for (const [id, company] of Object.entries(legacy.companies)) if (!companies[id]) companies[id] = company;
+    for (const [id, feed] of Object.entries(legacy.people)) if (!people[id]) people[id] = feed;
   }
   const feed: MarketIntelFeed | null =
     Object.keys(companies).length === 0
@@ -491,13 +551,6 @@ export async function readMarketIntelSummaries(): Promise<{
     return null;
   }
   const { meta, legacy } = read;
-  if (legacy) {
-    const companies: Record<string, FeedCompanySummary> = {};
-    for (const company of Object.values(legacy.companies)) companies[company.id] = summarizeCompany(company);
-    const value = Object.keys(companies).length === 0 ? null : { meta, companies };
-    c.summaries = { at: Date.now(), value };
-    return value;
-  }
   const { data, error } = await feedClient()
     .from("offering_catalog_state")
     .select("id, summary:catalog->summary")
@@ -507,6 +560,11 @@ export async function readMarketIntelSummaries(): Promise<{
   for (const row of data ?? []) {
     const summary = (row as any).summary as FeedCompanySummary | null;
     if (summary?.id) companies[summary.id] = summary;
+  }
+  if (legacy) {
+    for (const company of Object.values(legacy.companies)) {
+      if (!companies[company.id]) companies[company.id] = summarizeCompany(company);
+    }
   }
   const value = Object.keys(companies).length === 0 ? null : { meta, companies };
   c.summaries = { at: Date.now(), value };
@@ -521,13 +579,9 @@ export async function readFeedCompany(id: string): Promise<FeedCompany | null> {
   const hit = c.companies[id];
   if (hit && Date.now() - hit.at < FEED_CACHE_MS) return hit.company;
   const read = await readMetaAndLegacy();
-  if (read?.legacy) {
-    const company = read.legacy.companies[id] ?? null;
-    c.companies[id] = { at: Date.now(), company };
-    return company;
-  }
   const raw = await readRowCatalog(`${FEED_COMPANY_PREFIX}${id}`);
-  const company = (raw?.company as FeedCompany | undefined) ?? null;
+  const company =
+    (raw?.company as FeedCompany | undefined) ?? read?.legacy?.companies[id] ?? null;
   c.companies[id] = { at: Date.now(), company };
   return company;
 }
@@ -537,10 +591,6 @@ export async function readFeedPeople(ids: string[]): Promise<Record<string, Pers
   const out: Record<string, PersonFeed> = {};
   if (!hasFeedDatabase() || ids.length === 0) return out;
   const read = await readMetaAndLegacy();
-  if (read?.legacy) {
-    for (const id of ids) if (read.legacy.people[id]) out[id] = read.legacy.people[id];
-    return out;
-  }
   const { data, error } = await feedClient()
     .from("offering_catalog_state")
     .select("id, catalog")
@@ -550,6 +600,9 @@ export async function readFeedPeople(ids: string[]): Promise<Record<string, Pers
     const id = String(row.id).slice(FEED_PERSON_PREFIX.length);
     const feed = (row.catalog as any)?.feed as PersonFeed | undefined;
     if (feed) out[id] = feed;
+  }
+  if (read?.legacy) {
+    for (const id of ids) if (!out[id] && read.legacy.people[id]) out[id] = read.legacy.people[id];
   }
   return out;
 }
@@ -565,7 +618,7 @@ export async function saveFeedMeta(feed: MarketIntelFeed | FeedMeta): Promise<vo
     ...(feed.mna ? { mna: feed.mna } : {}),
     ...(feed.thought ? { thought: feed.thought } : {}),
   };
-  await upsertRow(FEED_META_ROW, meta);
+  await upsertRow(FEED_META_ROW, metaRow(meta));
   bustMarketIntelFeedCache();
 }
 
@@ -600,10 +653,6 @@ export async function readFeedPeopleSummaries(): Promise<Record<string, PersonSu
   const out: Record<string, PersonSummary> = {};
   if (!hasFeedDatabase()) return out;
   const read = await readMetaAndLegacy();
-  if (read?.legacy) {
-    for (const [id, feed] of Object.entries(read.legacy.people)) out[id] = summarizePerson(feed);
-    return out;
-  }
   const { data, error } = await feedClient()
     .from("offering_catalog_state")
     .select("id, summary:catalog->summary")
@@ -613,6 +662,9 @@ export async function readFeedPeopleSummaries(): Promise<Record<string, PersonSu
     const id = String(row.id).slice(FEED_PERSON_PREFIX.length);
     const summary = (row as any).summary as PersonSummary | null;
     if (id && summary && typeof summary.posts === "number") out[id] = summary;
+  }
+  if (read?.legacy) {
+    for (const [id, feed] of Object.entries(read.legacy.people)) if (!out[id]) out[id] = summarizePerson(feed);
   }
   return out;
 }
