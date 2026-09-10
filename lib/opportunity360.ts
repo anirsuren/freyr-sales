@@ -303,10 +303,10 @@ export async function buildOpportunity360(
         { key: "share", label: "Share of plan" },
         { key: "running", label: "Landed by then" },
       ],
-      href: "/revenue-accruals",
-      hrefLabel: "Revenue accruals",
+      href: "/opportunities?tab=accrual",
+      hrefLabel: "Est. Accrual Revenue",
       empty:
-        "No accrual plan on this deal yet. Make one in Revenue accruals to say which months its money lands in.",
+        "No accrual plan on this deal yet. Make one in Est. Accrual Revenue, under Opportunities, to say which months its money lands in.",
       items: lines.map<Customer360Item>((line, i) => {
         const split = accrualSplit(line);
         running += line.amount || 0;

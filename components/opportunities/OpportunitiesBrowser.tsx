@@ -1,5 +1,8 @@
 "use client";
 
+import { SlotPortal } from "@/components/ui/SlotPortal";
+import { OPPORTUNITY_ACTIONS_SLOT } from "@/lib/opportunityTabs";
+
 import { useRouter } from "next/navigation";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { agentIn } from "@/components/ui/AgentAvatar";
@@ -516,6 +519,23 @@ export type AccrualBadge = {
   total?: number;
 };
 
+/** The page header, or, inside the Opportunities tabs, just its button on the
+ *  tab row, since the tab already names the room (Manoj, Sep 10). */
+function OppHeader({
+  embedded,
+  title,
+  subtitle,
+  action,
+}: {
+  embedded: boolean;
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}) {
+  if (!embedded) return <PageHeader title={title} subtitle={subtitle} action={action} />;
+  return action ? <SlotPortal target={OPPORTUNITY_ACTIONS_SLOT}>{action}</SlotPortal> : null;
+}
+
 export function OpportunitiesBrowser({
   opportunities,
   customerGroups = [],
@@ -534,6 +554,7 @@ export function OpportunitiesBrowser({
   canCreate,
   privileged = true,
   live,
+  inTabs = false,
 }: {
   opportunities: Opportunity[];
   /** The circles drawn on the Customers page. A deal knows its account; the
@@ -594,6 +615,9 @@ export function OpportunitiesBrowser({
    *  keeps enforcing the same rule; this stops offering buttons it refuses. */
   privileged?: boolean;
   live: boolean;
+  /** Drawn inside the Opportunities tabs: the tab row is the title, so the
+   *  page header goes and New opportunity moves onto that row (Sep 10). */
+  inTabs?: boolean;
 }) {
   const { toast } = useToast();
   const [list, setList] = useState<Opportunity[]>(opportunities);
@@ -1385,7 +1409,7 @@ export function OpportunitiesBrowser({
         });
         if (!planRes.ok) {
           toast(
-            "The deal saved, but its revenue schedule did not. Add it from Revenue accruals.",
+            "The deal saved, but its revenue schedule did not. Add it from the Est. Accrual Revenue tab.",
             "error"
           );
         }
@@ -2158,7 +2182,7 @@ export function OpportunitiesBrowser({
           move up to where the title was and carry the name themselves; the h1
           stays for screen readers and the document outline, and the one action
           keeps its place on the right. */}
-      <h1 className="sr-only">Current pipeline</h1>
+      {!inTabs && <h1 className="sr-only">Current pipeline</h1>}
       {/* Same pill idiom as the performance rooms, at the same size. NO
           entrance animation on these — the performance lesson holds here too. */}
       {/* THE PAGE GETS A HEADER AGAIN.
@@ -2177,8 +2201,9 @@ export function OpportunitiesBrowser({
           sits on the page he is copying. That still answers his earlier
           complaint, which was that the button sat ALONE on an empty row, not
           that it had to be inside the search bar. */}
-      {live && (
-        <PageHeader
+      {(live || inTabs) && (
+        <OppHeader
+          embedded={inTabs}
           title="Opportunities"
           subtitle="Every deal in the pipeline: what it is worth, how likely it is, and when it is expected to sign."
           action={
@@ -2205,7 +2230,7 @@ export function OpportunitiesBrowser({
           }
         />
       )}
-      <div className="tab-panel">
+      <div className={inTabs ? undefined : "tab-panel"}>
 
 
       {/* THE THREE VALUES OPEN THE PAGE (Anir, Sep 4, moving the toolbar down
@@ -3974,11 +3999,11 @@ function SingleOfferingEditor({
           </div>
         </div>
         <div className="min-w-0">
-          <label className={labelCls}>Offering type<InfoHint text="Services or a licence. It decides how the money is scheduled below: a licence is billed as a one-time setup (OTS) plus an annual fee (ARR), a services contract as a monthly figure." /></label>
+          <label className={labelCls}>Offering type<InfoHint text="Services or a software license. It decides how the money is scheduled below: a software license is billed as a one-time setup (OTS) plus an annual fee (ARR), a services contract as a monthly figure." /></label>
           <div className="mt-1">
             <ColorSelect
               value={line.offeringKind ?? ""}
-              ariaLabel="Offering type: services or license"
+              ariaLabel="Offering type: services or software license"
               collapsible={false}
               minWidth={160}
               className="w-full"
@@ -3992,8 +4017,8 @@ function SingleOfferingEditor({
                   icon: UserRound,
                 },
                 {
-                  value: "License",
-                  label: "License",
+                  value: "Software License",
+                  label: "Software License",
                   color: "var(--ink-violet-soft)",
                   icon: KeyRound,
                 },

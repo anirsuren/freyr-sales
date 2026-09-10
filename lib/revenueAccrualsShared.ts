@@ -921,7 +921,8 @@ export function splitFieldsFor(
   used: readonly SplitField[] = []
 ): SplitField[] {
   const k = String(kind ?? "").toLowerCase();
-  if (k === "license") return ["ots", "arr"];
+  /* "Software License" since Sep 10; "license" is how older deals say it. */
+  if (k === "software license" || k === "license") return ["ots", "arr"];
   if (k === "services") return ["mrr"];
   /* No type: one-time and recurring, plus any third part this plan is
      already using so a saved figure is never hidden. */

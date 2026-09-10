@@ -1,3 +1,5 @@
+import { readCustomerProfiles } from "@/lib/customerProfiles";
+import { EMPTY_CUSTOMER_PROFILES } from "@/lib/customerProfilesShared";
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { listOfferings, hydrateOffering } from "@/lib/offerings";
@@ -59,16 +61,22 @@ export async function GET(req: Request) {
     href: string;
   }[] = [];
 
+  /* A CUSTOMER ID FINDS ITS CUSTOMER (Manoj, Sep 10). */
+  const customerNos = customers.length
+    ? (await readCustomerProfiles().catch(() => EMPTY_CUSTOMER_PROFILES)).profiles
+    : {};
   for (const c of customers) {
+    const no = customerNos[c.id]?.customerNo ?? "";
     if (
       c.company_name.toLowerCase().includes(q) ||
       (c.industry || "").toLowerCase().includes(q) ||
-      (c.geography || "").toLowerCase().includes(q)
+      (c.geography || "").toLowerCase().includes(q) ||
+      (no && no.toLowerCase().includes(q))
     ) {
       results.push({
         type: "Customer",
         label: c.company_name,
-        sublabel: c.industry || "",
+        sublabel: [no, c.industry].filter(Boolean).join(" · "),
         href: `/customers/${c.id}`,
       });
     }

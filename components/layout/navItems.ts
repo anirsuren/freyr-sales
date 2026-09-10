@@ -1,6 +1,5 @@
 import {
   FileSignature,
-  CalendarRange,
   UserPlus,
   Radar,
   LayoutDashboard,
@@ -96,7 +95,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { href: "/voice", label: "Voice agents", icon: PhoneCall, section: "Sales" },
   { href: "/tasks", label: "Tasks", icon: ListChecks, section: "Sales" },
   { href: "/performance", label: "Goals", icon: Gauge, section: "Performance"  },
-  { href: "/revenue-accruals", label: "Revenue Accruals", icon: CalendarRange, section: "Performance"  },
+  /* Revenue Accruals moved under Opportunities as two tabs (Manoj, Sep 10). */
   { href: "/reports", label: "Reports", icon: FileBarChart, section: "Performance"  },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, section: "Performance" },
   { href: "/analytics", label: "Analytics", icon: ChartColumnBig, section: "Performance" },

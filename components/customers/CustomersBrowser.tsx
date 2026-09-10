@@ -1,5 +1,7 @@
 "use client";
 
+import { AddCustomerDialog } from "./AddCustomerDialog";
+
 import { StatTile } from "@/components/ui/StatTile";
 import { fmtMoney } from "@/lib/currency";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
@@ -45,7 +47,6 @@ import { userScopedStorageKey } from "@/lib/userIdentity";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
-import { Modal } from "@/components/ui/Modal";
 import type { Customer } from "@/lib/types";
 import type { TipItem } from "@/components/charts/Charts";
 import { geographyWithFlag } from "@/lib/countryFlags";
@@ -183,6 +184,9 @@ export function CustomersBrowser({
   customerGroups = [],
   offeringNames = {},
   canCreate = false,
+  profiles = {},
+  bdMembers = [],
+  viewer = { name: "", role: "" },
 }: {
   customers: EnrichedCustomer[];
   includeDemoTeam: boolean;
@@ -193,6 +197,12 @@ export function CustomersBrowser({
   deals?: Opportunity[];
   customerGroups?: { id: string; name: string; color: string; customerIds: string[] }[];
   offeringNames?: Record<string, string>;
+  /** CUS-0001 per customer id (Manoj, Sep 10). */
+  profiles?: Record<string, { customerNo: string }>;
+  /** The BD members who can own a new customer. */
+  bdMembers?: { id: string | null; name: string; role: string }[];
+  /** Who is looking, for the owner rule in Add customer. */
+  viewer?: { name: string; role: string };
 }) {
   const { toast } = useToast();
   const router = useRouter();
@@ -332,9 +342,7 @@ export function CustomersBrowser({
   // (/api/import/crm): the CSV picker sends the file as-is, "Add customer"
   // sends a one-row CSV. One pipeline, one dedupe/skip behaviour.
   const [addOpen, setAddOpen] = useState(false);
-  const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [addForm, setAddForm] = useState({ company: "", website: "", contactName: "", contactEmail: "" });
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function postCrmCsv(file: File | Blob, filename: string) {
@@ -358,40 +366,6 @@ export function CustomersBrowser({
       toast(e instanceof Error ? e.message : "Import failed", "error");
     } finally {
       setImporting(false);
-    }
-  }
-
-  async function addCustomer() {
-    const name = addForm.company.trim();
-    if (!name) {
-      toast("Give the company a name", "error");
-      return;
-    }
-    setAdding(true);
-    try {
-      const esc = (v: string) => `"${v.trim().replace(/"/g, '""')}"`;
-      const csv =
-        "company_name,website_url,contact_name,contact_email\n" +
-        [name, addForm.website, addForm.contactName, addForm.contactEmail].map(esc).join(",") +
-        "\n";
-      const r = await postCrmCsv(new Blob([csv], { type: "text/csv" }), "add-customer.csv");
-      if (r.customers === 0 && r.skipped > 0) {
-        toast("That account already exists", "error");
-      } else {
-        toast(`${name} added`);
-        setAddOpen(false);
-        setAddForm({ company: "", website: "", contactName: "", contactEmail: "" });
-        /* STRAIGHT TO THE ACCOUNT YOU JUST MADE, the same rule as a new deal
-           (Anir, Sep 7). Falls back to refreshing the list when the import
-           did not say which id it created. */
-        const madeId = Array.isArray(r.customerIds) ? r.customerIds[0] : undefined;
-        if (madeId) router.push(`/customers/${madeId}`);
-        else router.refresh();
-      }
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Couldn't add that", "error");
-    } finally {
-      setAdding(false);
     }
   }
 
@@ -829,6 +803,11 @@ export function CustomersBrowser({
             <Link href={`/customers/${c.id}`} className="flex items-center gap-3">
               <CompanyLogo name={c.company_name} className="w-8 h-8 text-[11px]" />
               <span className="text-[13px] font-semibold text-text-primary">{c.company_name}</span>
+              {profiles[c.id]?.customerNo && (
+                <span className="rounded-md bg-surface px-1.5 py-0.5 text-[10.5px] font-semibold tnum text-text-tertiary">
+                  {profiles[c.id].customerNo}
+                </span>
+              )}
             </Link>
           </HoverCard>
         </td>
@@ -1195,6 +1174,15 @@ export function CustomersBrowser({
                 );
                 return match ? `/customers/${match.id}` : null;
               }}
+              /* Each account's system ID beside its name (Manoj, Sep 10). */
+              rowTag={(dim, label) => {
+                if (dim !== "customer") return null;
+                const match = customers.find(
+                  (c) =>
+                    c.company_name.trim().toLowerCase() === label.trim().toLowerCase()
+                );
+                return match ? (profiles[match.id]?.customerNo ?? null) : null;
+              }}
               deals={summaryScope.scoped}
               /* Zero-deal accounts still get a row, so a just-added customer
                  is visible right here (Anir, Sep 6). */
@@ -1363,6 +1351,7 @@ filtered.length === 0 ? (
               selectMode={selectMode}
               selected={selected.has(c.id)}
               onToggleSelect={() => toggleSel(c.id)}
+              customerNo={profiles[c.id]?.customerNo}
             />
           ))}
         </div>
@@ -1510,74 +1499,19 @@ filtered.length === 0 ? (
         </div>
       )}
 
-      {/* Add ONE account by hand — a one-row CSV through the same importer
-          the file picker uses, so both doors share dedupe and validation. */}
-      <Modal open={canAddCustomers && addOpen} onClose={() => setAddOpen(false)} title="Add a customer">
-        <div className="space-y-3.5">
-          <div>
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              Company name
-            </label>
-            <input
-              autoFocus
-              value={addForm.company}
-              onChange={(e) => setAddForm((f) => ({ ...f, company: e.target.value }))}
-              placeholder="e.g. GSK"
-              className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              Website (optional)
-            </label>
-            <input
-              value={addForm.website}
-              onChange={(e) => setAddForm((f) => ({ ...f, website: e.target.value }))}
-              placeholder="https://…"
-              className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none"
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                Contact name (optional)
-              </label>
-              <input
-                value={addForm.contactName}
-                onChange={(e) => setAddForm((f) => ({ ...f, contactName: e.target.value }))}
-                placeholder="Who you talk to there"
-                className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                Contact email (optional)
-              </label>
-              <input
-                value={addForm.contactEmail}
-                onChange={(e) => setAddForm((f) => ({ ...f, contactEmail: e.target.value }))}
-                placeholder="name@company.com"
-                className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary focus:border-blue-primary focus:outline-none"
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <button
-              onClick={() => setAddOpen(false)}
-              className="rounded-md border border-border px-3.5 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={addCustomer}
-              disabled={adding}
-              className="rounded-md bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-blue-hover disabled:opacity-50"
-            >
-              {adding ? "Adding…" : "Add customer"}
-            </button>
-          </div>
-        </div>
-      </Modal>
+      {/* ADD A CUSTOMER WITH MANOJ'S FIELDS (Sep 10). Import CSV keeps its own
+          door; this one saves through /api/customers, which refuses a name
+          that already exists instead of quietly updating that account. */}
+      {canAddCustomers && (
+        <AddCustomerDialog
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
+          customers={customers.map((c) => ({ id: c.id, name: c.company_name }))}
+          owners={bdMembers}
+          groups={customerGroups.map((g) => ({ id: g.id, name: g.name, color: g.color }))}
+          viewer={viewer.name ? viewer : { name: currentUser.name, role: currentUser.role }}
+        />
+      )}
     </div>
   );
 }

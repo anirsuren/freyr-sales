@@ -1,3 +1,9 @@
+import { RevenueAccrualsModule } from "@/components/accruals/RevenueAccrualsModule";
+import { OpportunitiesTabs } from "@/components/opportunities/OpportunitiesTabs";
+import { parseOpportunityTab } from "@/lib/opportunityTabs";
+import { canOpenModule } from "@/lib/moduleAccessServer";
+import { requireServerMemberScope } from "@/lib/memberScope";
+import { initializeLiveOfferings } from "@/lib/offerings";
 import { getDb } from "@/lib/db";
 import { readOpportunities } from "@/lib/opportunities";
 import { meetingsForOpportunity, readMeetings } from "@/lib/meetings";
@@ -33,8 +39,72 @@ export const dynamic = "force-dynamic";
  * and then activity to offering — now all I want to do is that offering,
  * opportunity and then activity, you need to connect all three."
  */
-export default async function OpportunitiesPage() {
+export default async function OpportunitiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireModuleAccess("/opportunities");
+  /* THREE TABS (Manoj, Sep 10: "Move entire Revenue Accruals to Opportunities.
+     Under Opportunities, we need three tabs. 'Est. Booked Revenue', 'Est.
+     Accrual Revenue', 'Deviations'").
+
+     The two accrual rooms ask the Revenue accruals privilege row, exactly as
+     that module did before it moved, so nobody sees accrual data they could
+     not see yesterday. Somebody without it who follows an accrual link lands
+     on Est. Booked Revenue. */
+  const tab = parseOpportunityTab((await searchParams).tab);
+  const showAccruals = await canOpenModule("/revenue-accruals");
+  if (tab !== "booked" && showAccruals) {
+    await requireServerMemberScope();
+    await initializeLiveOfferings().catch(() => undefined);
+    const [accrualState, accrualDeals, groupState] = await Promise.all([
+      readRevenueAccruals(),
+      readOpportunities()
+        .then((st) => st.opportunities)
+        .catch(() => []),
+      readCustomerGroups().catch(() => ({ groups: [] })),
+    ]);
+    const offeringName = new Map(listOfferings().map((o) => [o.id, o.offering_name]));
+    return (
+      <OpportunitiesTabs active={tab} showAccruals>
+        <RevenueAccrualsModule
+          embeddedTab={tab === "deviations" ? "deviation" : "plans"}
+          state={accrualState}
+          canWrite={!(await moduleWriteRefusal("/revenue-accruals"))}
+          canCreate={!(await moduleCreateRefusal("/revenue-accruals"))}
+          live={getDataMode() === "live"}
+          opportunities={accrualDeals}
+          customerGroups={groupState.groups.map((g) => ({
+            id: g.id,
+            name: g.name,
+            color: g.color,
+            customerIds: g.customerIds,
+          }))}
+          offeringNames={Object.fromEntries(offeringName)}
+          deals={accrualDeals.map((o) => {
+            const line = (o.lines ?? [])[0];
+            const offeringId = line?.offeringId ?? o.offeringIds[0];
+            return {
+              id: o.id,
+              name: o.name || `${o.customer} deal`,
+              customer: o.customer,
+              customerId: o.customerId,
+              offeringId,
+              offeringLabel: offeringId
+                ? (offeringName.get(offeringId) ?? offeringId)
+                : (line?.offeringLabel ?? o.offeringLabels[0]),
+              value: o.value ?? 0,
+              status: o.status,
+              estSignDate: line?.estSignDate ?? o.estSignDate,
+              owner: o.owner,
+              currency: o.currency,
+            };
+          })}
+        />
+      </OpportunitiesTabs>
+    );
+  }
   const [{ opportunities }, accruals, offerings, perf, me, master, meetingState] =
     await Promise.all([
     readOpportunities(),
@@ -71,7 +141,9 @@ export default async function OpportunitiesPage() {
   );
 
   return (
+    <OpportunitiesTabs active="booked" showAccruals={showAccruals}>
     <OpportunitiesBrowser
+      inTabs
       customerGroups={customerGroups.map((g) => ({
         id: g.id,
         name: g.name,
@@ -176,5 +248,6 @@ export default async function OpportunitiesPage() {
       privileged={me.role !== "bd_member"}
       live={getDataMode() === "live"}
     />
+    </OpportunitiesTabs>
   );
 }

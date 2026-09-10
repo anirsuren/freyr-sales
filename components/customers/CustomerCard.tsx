@@ -114,8 +114,11 @@ export function CustomerCard({
   selectMode = false,
   selected = false,
   onToggleSelect,
+  customerNo,
 }: {
   customer: Customer;
+  /** CUS-0001, system generated (Manoj, Sep 10). */
+  customerNo?: string;
   contactCount: number;
   contacts?: { id: string; name: string }[];
   lastOutcome?: string | null;
@@ -219,13 +222,20 @@ export function CustomerCard({
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
-                <Link
-                  href={`/customers/${customer.id}`}
-                  aria-label={`Open ${customer.company_name}`}
-                  className="min-w-0 text-[16px] font-semibold text-text-primary truncate rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-2 focus-visible:ring-blue-primary group-hover:text-blue-primary transition-colors"
-                >
-                  {customer.company_name}
-                </Link>
+                <span className="flex min-w-0 items-center gap-2">
+                  <Link
+                    href={`/customers/${customer.id}`}
+                    aria-label={`Open ${customer.company_name}`}
+                    className="min-w-0 text-[16px] font-semibold text-text-primary truncate rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-2 focus-visible:ring-blue-primary group-hover:text-blue-primary transition-colors"
+                  >
+                    {customer.company_name}
+                  </Link>
+                  {customerNo && (
+                    <span className="shrink-0 rounded-md bg-surface px-1.5 py-0.5 text-[10.5px] font-semibold tnum text-text-tertiary">
+                      {customerNo}
+                    </span>
+                  )}
+                </span>
                 <span className="flex shrink-0 items-center gap-2">
                   {selectMode &&
                     (selected ? (

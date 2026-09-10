@@ -184,11 +184,16 @@ export type RevenueType = (typeof REVENUE_TYPES)[number];
  * knows the answer to, and it is the answer that tells the accrual plan which
  * columns to offer.
  */
-export const OFFERING_KINDS = ["Services", "License"] as const;
+/* "SOFTWARE LICENSE", NOT "LICENSE" (Manoj, Sep 10: "Change License in
+   Offering Type to 'Software License'"). Deals saved before the rename carry
+   "License"; the reader below maps that to the new name, so their split
+   columns keep working and the next save stores the new word. */
+export const OFFERING_KINDS = ["Services", "Software License"] as const;
 export type OfferingKind = (typeof OFFERING_KINDS)[number];
 
 export function normalizeOfferingKind(raw: unknown): OfferingKind | undefined {
   const s = String(raw ?? "").trim().toLowerCase();
+  if (s === "license" || s === "licence" || s === "software licence") return "Software License";
   return OFFERING_KINDS.find((k) => k.toLowerCase() === s);
 }
 

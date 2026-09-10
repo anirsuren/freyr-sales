@@ -1,5 +1,14 @@
 "use client";
 
+import { MapPin } from "lucide-react";
+import { countryOptions } from "@/lib/countries";
+import {
+  addressHasAny,
+  addressIsComplete,
+  blankAddress,
+  type CustomerAddress,
+} from "@/lib/customerProfilesShared";
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Building2, ChevronDown, Tags, Trash2 } from "lucide-react";
@@ -121,6 +130,8 @@ function Label({ text, required }: { text: string; required?: boolean }) {
 }
 
 export function CustomerEditForm({
+  profile,
+  customers = [],
   customer,
   customerTypes,
   mayDelete = false,
@@ -132,6 +143,10 @@ export function CustomerEditForm({
    *  (Suren, Aug 29: "owner can create, member can edit"). Absent, the
    *  control simply is not drawn — the API refuses either way. */
   mayDelete?: boolean;
+  /** The addresses and parent company (Manoj, Sep 10). */
+  profile?: { hq?: CustomerAddress; other?: CustomerAddress; parentId?: string };
+  /** Every other customer, for Parent company. */
+  customers?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -150,11 +165,28 @@ export function CustomerEditForm({
   });
   const set = (k: keyof typeof draft) => (v: string) =>
     setDraft((d) => ({ ...d, [k]: v }));
+  const startHq = { ...blankAddress(), ...(profile?.hq ?? {}) };
+  const startOther = { ...blankAddress(), ...(profile?.other ?? {}) };
+  const startParent = profile?.parentId ?? "NA";
+  const [hq, setHq] = useState<CustomerAddress>(startHq);
+  const [other, setOther] = useState<CustomerAddress>(startOther);
+  const [parentId, setParentId] = useState(startParent);
 
-  const dirty = Object.entries(draft).some(
+  const coreDirty = Object.entries(draft).some(
     ([k, v]) => v !== ((customer as unknown as Record<string, string | null>)[k] ?? "")
   );
-  const problem = !draft.company_name.trim() ? "The account needs a name." : null;
+  const profileDirty =
+    JSON.stringify(hq) !== JSON.stringify(startHq) ||
+    JSON.stringify(other) !== JSON.stringify(startOther) ||
+    parentId !== startParent;
+  const dirty = coreDirty || profileDirty;
+  const problem = !draft.company_name.trim()
+    ? "The account needs a name."
+    : addressHasAny(hq) && !addressIsComplete(hq)
+      ? "Finish the HQ address with line 1, a city and a country, or clear it."
+      : addressHasAny(other) && !addressIsComplete(other)
+        ? "Finish the other address with line 1, a city and a country, or clear it."
+        : null;
   const flag = flagForGeography(countryOnlyGeography(draft.geography));
 
   /**
@@ -194,15 +226,33 @@ export function CustomerEditForm({
   async function save() {
     setBusy(true);
     try {
-      const res = await fetch(`/api/customers/${customer.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast(data?.error || "Could not save: try again", "error");
-        return;
+      if (coreDirty) {
+        const res = await fetch(`/api/customers/${customer.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(draft),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          toast(data?.error || "Could not save: try again", "error");
+          return;
+        }
+      }
+      if (profileDirty) {
+        const res = await fetch(`/api/customers/${customer.id}/profile`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            hq: addressHasAny(hq) ? hq : null,
+            other: addressHasAny(other) ? other : null,
+            parentId: parentId === "NA" ? "" : parentId,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          toast(data?.error || "Could not save the addresses: try again", "error");
+          return;
+        }
       }
       toast("Account updated.");
       router.push(`/customers/${customer.id}`);
@@ -259,6 +309,59 @@ export function CustomerEditForm({
                 />
               </span>
             </div>
+          </div>
+        </Room>
+
+        <Room
+          icon={MapPin}
+          title="Addresses and parent company"
+          hint="Where they are headquartered, a second office if there is one, and the customer they belong to."
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {(
+              [
+                ["HQ address", hq, setHq],
+                ["Other address", other, setOther],
+              ] as const
+            ).map(([title, value, setValue]) => (
+              <fieldset key={title} className="rounded-xl border border-border-light p-3.5">
+                <legend className="px-1 text-[12.5px] font-semibold text-text-primary">{title}</legend>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <input className={cn(INPUT, "col-span-2")} placeholder="Line 1" aria-label={`${title} line 1`} value={value.line1} onChange={(e) => setValue({ ...value, line1: e.target.value })} />
+                  <input className={cn(INPUT, "col-span-2")} placeholder="Line 2" aria-label={`${title} line 2`} value={value.line2 ?? ""} onChange={(e) => setValue({ ...value, line2: e.target.value })} />
+                  <input className={INPUT} placeholder="City" aria-label={`${title} city`} value={value.city} onChange={(e) => setValue({ ...value, city: e.target.value })} />
+                  <input className={INPUT} placeholder="State" aria-label={`${title} state`} value={value.state ?? ""} onChange={(e) => setValue({ ...value, state: e.target.value })} />
+                  <ColorSelect
+                    value={value.country}
+                    ariaLabel={`${title} country`}
+                    className="w-full"
+                    collapsible={false}
+                    fill
+                    onChange={(v) => setValue({ ...value, country: v })}
+                    options={[{ value: "", label: "Country", color: "#C7CDD6" }, ...countryOptions()]}
+                  />
+                  <input className={INPUT} placeholder="ZIP" aria-label={`${title} ZIP`} value={value.zip ?? ""} onChange={(e) => setValue({ ...value, zip: e.target.value })} />
+                </div>
+              </fieldset>
+            ))}
+          </div>
+          <div className="mt-4 max-w-[420px]">
+            <Label text="Parent company" />
+            <ColorSelect
+              value={parentId}
+              ariaLabel="Parent company"
+              className="w-full"
+              collapsible={false}
+              fill
+              searchable
+              onChange={setParentId}
+              options={[
+                { value: "NA", label: "NA", color: "#C7CDD6" },
+                ...[...customers]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((c) => ({ value: c.id, label: c.name, logoName: c.name })),
+              ]}
+            />
           </div>
         </Room>
 

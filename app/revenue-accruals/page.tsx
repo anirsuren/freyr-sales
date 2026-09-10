@@ -1,104 +1,32 @@
-import { readCustomerGroups } from "@/lib/customerGroups";
-import { RevenueAccrualsModule } from "@/components/accruals/RevenueAccrualsModule";
-import { readRevenueAccruals } from "@/lib/revenueAccruals";
-import { readOpportunities } from "@/lib/opportunities";
-import { listOfferings, initializeLiveOfferings } from "@/lib/offerings";
-import { getCurrentUser } from "@/lib/currentUser";
-import { getDataMode } from "@/lib/dataMode";
-import { requireServerMemberScope } from "@/lib/memberScope";
-import {
-  requireModuleAccess,
-  moduleCreateRefusal,
-  moduleWriteRefusal,
-} from "@/lib/moduleAccessServer";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Revenue Accruals" };
 export const dynamic = "force-dynamic";
 
 /**
- * REVENUE ACCRUALS (Suren, Aug 25): "you need to create one more thing called
- * sales revenue accruals — that's one more module, created outside, because
- * you can see one report across it, because you cannot go from opportunity to
- * opportunity."
+ * REVENUE ACCRUALS LIVES UNDER OPPORTUNITIES NOW (Manoj, Sep 10: "Move entire
+ * Revenue Accruals to Opportunities. Under Opportunities, we need three tabs").
  *
- * Tied to customer, opportunity AND offering, all three, because "revenue
- * accruals can also be looked at from an offering point of view".
+ * Every old link lands on the matching tab with its search, its show filter
+ * and its deal carried over. The path stays in lib/release.ts, because the
+ * middleware sends an unreleased path to Offerings before this redirect could
+ * run.
  */
-export default async function RevenueAccrualsPage() {
-  await requireModuleAccess("/revenue-accruals");
-  await requireServerMemberScope();
-  await initializeLiveOfferings().catch(() => undefined);
-  const [state, me, opportunities, groupState] = await Promise.all([
-    readRevenueAccruals(),
-    getCurrentUser(),
-    readOpportunities()
-      .then((s) => s.opportunities)
-      .catch(() => []),
-      readCustomerGroups().catch(() => ({ groups: [] })),
-  ]);
-  const offeringName = new Map(
-    listOfferings().map((o) => [o.id, o.offering_name])
-  );
-
-  return (
-    <RevenueAccrualsModule
-      state={state}
-      /**
-       * THE TABLE DECIDES, NOT A HARDCODED ROLE.
-       *
-       * Found in the loop, Sep 1: as a BD Owner — who holds CREATE on Revenue
-       * accruals in the privilege table — the page showed no "Plan a deal", no
-       * "Freeze this month", and no per-plan controls. This line was why:
-       * `me.role === "admin"` is a role check, and every other module in the
-       * app asks the privilege table instead.
-       *
-       * So Revenue accruals appeared in the Admin privilege grid, could be
-       * granted to somebody, and granting it changed nothing — the same defect
-       * Submissions and Presentations had until Aug 31.
-       *
-       * Write is the right question for this prop: it gates editing and
-       * planning, and `moduleCreateRefusal` guards creation inside the module
-       * where the route already asks it.
-       */
-      canWrite={!(await moduleWriteRefusal("/revenue-accruals"))}
-      /* STARTING a plan is a create; changing the months on one that exists is
-         an edit. The route has always drawn that line (see its "owner can
-         create, member can edit" note); the page had not, so a BD Member was
-         shown "Plan a deal" and got a 403 when she used it. */
-      canCreate={!(await moduleCreateRefusal("/revenue-accruals"))}
-      live={getDataMode() === "live"}
-      /* THE PIPELINE ITSELF, so the accrual summary can group and total the
-         same way Opportunities does (Suren, Aug 30). The DealOption list below
-         stays as it is — it feeds the planner, which wants a flat picker. */
-      opportunities={opportunities}
-      customerGroups={groupState.groups.map((g) => ({
-        id: g.id,
-        name: g.name,
-        color: g.color,
-        customerIds: g.customerIds,
-      }))}
-      offeringNames={Object.fromEntries(offeringName)}
-      deals={opportunities.map((o) => {
-        const line = (o.lines ?? [])[0];
-        const offeringId = line?.offeringId ?? o.offeringIds[0];
-        return {
-          id: o.id,
-          name: o.name || `${o.customer} deal`,
-          customer: o.customer,
-          customerId: o.customerId,
-          offeringId,
-          offeringLabel: offeringId
-            ? (offeringName.get(offeringId) ?? offeringId)
-            : (line?.offeringLabel ?? o.offeringLabels[0]),
-          value: o.value ?? 0,
-          status: o.status,
-          estSignDate: line?.estSignDate ?? o.estSignDate,
-          owner: o.owner,
-          /* What this deal was agreed in, so the accrual can be READ in it
-             (item 10). Nothing is stored in it. */
-          currency: o.currency,
-        };
-      })}
-    />
-  );
+export default async function RevenueAccrualsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const one = (k: string) => {
+    const v = sp[k];
+    return Array.isArray(v) ? v[0] : v;
+  };
+  const next = new URLSearchParams();
+  const tab = one("tab");
+  next.set("tab", tab === "deviation" || tab === "deviations" ? "deviations" : "accrual");
+  for (const k of ["q", "show", "deal"]) {
+    const v = one(k);
+    if (v) next.set(k, v);
+  }
+  redirect(`/opportunities?${next.toString()}`);
 }

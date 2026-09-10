@@ -187,8 +187,12 @@ ADMIN ONLY for now, like every module that shipped on Aug 25.`,
       "spread evenly", "freeze", "frozen sheet", "snapshot", "deviation",
       "month on month", "slipped", "invalidate", "flagged", "gap",
     ],
-    title: "Revenue Accruals",
-    body: `Revenue Accruals is when the money on each deal is planned to land,
+    title: "Revenue Accruals (Opportunities tabs)",
+    body: `Revenue Accruals lives under Opportunities since Sep 10, as two tabs:
+Est. Accrual Revenue (the plans) and Deviations (what changed, with a view of
+the invalid entries). Old /revenue-accruals links open those tabs.
+
+Revenue Accruals is when the money on each deal is planned to land,
 month by month, and what moved since last month. It is its own module rather
 than a tab on the deal so that one report runs across every deal at once; going
 opportunity by opportunity cannot answer a question about the whole year.
@@ -215,7 +219,8 @@ are not closed in July and are now spilling into August."
 
 "No numbers yet" lists open deals carrying money nobody has planned, which is
 the other half of what he asked for. Freezing can be undone for the current
-month. ADMIN ONLY for now.`,
+month. Who can open it is decided by the Revenue accruals row of the privilege
+table.`,
   },
   {
     routes: ["/contracts"],

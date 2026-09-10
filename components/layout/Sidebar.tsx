@@ -21,6 +21,9 @@ import {
   Inbox,
   FileUp,
   Presentation,
+  Briefcase,
+  CalendarRange,
+  GitCompareArrows,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
@@ -530,6 +533,23 @@ export function Sidebar({
                   { href: "/market-intel", label: "Customer Intelligence", icon: Building2 },
                   { href: "/market-intel?tab=competitors", label: "Competitor Intelligence", icon: Swords },
                   { href: "/market-intel?tab=market", label: "Market Intelligence", icon: Globe2 },
+                ].map(subNavLink)}
+
+              {/* OPPORTUNITIES HAS THREE ROOMS (Manoj, Sep 10: "Move entire
+                  Revenue Accruals to Opportunities. Under Opportunities, we
+                  need three tabs"). The two accrual rooms show only to people
+                  who may open Revenue accruals, the same check the tabs ask. */}
+              {item.href === "/opportunities" &&
+                !collapsed &&
+                isActive(pathname, "/opportunities") &&
+                [
+                  { href: "/opportunities", label: "Est. Booked Revenue", icon: Briefcase },
+                  ...(canAccessModuleWith("/revenue-accruals", currentUser.role, moduleAccess)
+                    ? [
+                        { href: "/opportunities?tab=accrual", label: "Est. Accrual Revenue", icon: CalendarRange },
+                        { href: "/opportunities?tab=deviations", label: "Deviations", icon: GitCompareArrows },
+                      ]
+                    : []),
                 ].map(subNavLink)}
 
               {/* THE GOAL MASTER HANGS UNDER ADMIN NOW (Suren, Aug 29: "goal

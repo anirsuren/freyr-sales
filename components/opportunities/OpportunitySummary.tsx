@@ -399,6 +399,7 @@ export function OpportunitySummary({
   dimensions,
   hideDealRows = false,
   rowHref,
+  rowTag,
   storageKey,
   revealDealId,
   emptyGroupLabels,
@@ -510,6 +511,8 @@ export function OpportunitySummary({
   emptyGroupLabels?: { dimension: SummaryDimension; labels: readonly string[] };
   /** Where a row at this dimension should link instead of opening a deal. */
   rowHref?: (dimension: SummaryDimension, label: string) => string | null;
+  /** A quiet tag after a row's name, like a customer's CUS-0001 (Manoj, Sep 10). */
+  rowTag?: (dimension: SummaryDimension, label: string) => string | null;
   /**
    * HOW ONE DEAL'S MONEY LANDS ACROSS PERIODS, when it does not all land at
    * once. The pipeline puts a deal's whole figure in the period its closure
@@ -833,6 +836,7 @@ export function OpportunitySummary({
        decides whether to disable itself, and a disabled button would swallow
        the link's clicks. */
     const rowLink = rowHref?.(node.dimension, node.label) ?? null;
+    const rowTagText = rowTag?.(node.dimension, node.label) ?? null;
     const faded = !onOpenPath(node.key);
     /**
      * IS THERE ANYTHING UNDER THIS ROW TO OPEN?
@@ -986,6 +990,11 @@ export function OpportunitySummary({
                 </span>
               );
             })()}
+            {rowTagText && (
+              <span className="shrink-0 rounded-md bg-surface px-1.5 py-0.5 text-[10.5px] font-semibold tnum text-text-tertiary">
+                {rowTagText}
+              </span>
+            )}
             {/* SAY WHAT THE NUMBER IS (Anir, Sep 4: "what does this '4' mean?
                 Next to the people the numbers. This is in revenue accrual.
                 What does that mean?").

@@ -281,6 +281,25 @@ export async function toggleMember(input: {
   });
 }
 
+/** Put one account into a group, leaving it there if it already is. A new
+ *  customer joins its group this way, so a second press can never take it out
+ *  again the way toggleMember would. */
+export async function addMemberToGroup(input: {
+  id: string;
+  customerId: string;
+}): Promise<void> {
+  return withWrite(async () => {
+    const state = normalize(await readRowRaw());
+    const g = state.groups.find((x) => x.id === input.id);
+    if (!g) throw new Error("That group is gone. Refresh and retry.");
+    const cid = str(input.customerId, 80);
+    if (!cid || g.customerIds.includes(cid)) return;
+    g.customerIds = [...g.customerIds, cid];
+    g.updatedAt = new Date().toISOString();
+    await writeRow(state);
+  });
+}
+
 /* ------------------------------------------------------------------ reads */
 
 /** Which groups an account sits in — for the customer page's own header. */

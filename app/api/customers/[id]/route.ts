@@ -1,3 +1,4 @@
+import { removeCustomerProfile } from "@/lib/customerProfiles";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
@@ -704,6 +705,9 @@ export async function DELETE(
   if (!removed) {
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
   }
+  /* Its Customer ID retires with it, and any customer that named it as parent
+     goes back to NA (Manoj, Sep 10). */
+  await removeCustomerProfile(id).catch(() => undefined);
   return NextResponse.json({ ok: true });
 }
 

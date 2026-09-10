@@ -1,3 +1,5 @@
+import { readCustomerProfiles } from "@/lib/customerProfiles";
+import { EMPTY_CUSTOMER_PROFILES } from "@/lib/customerProfilesShared";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
@@ -63,6 +65,10 @@ export default async function EditCustomerPage({
       owner_user_id: customer.owner_user_id,
       created_by: customer.created_by,
     }));
+  const [profileState, allCustomers] = await Promise.all([
+    readCustomerProfiles().catch(() => EMPTY_CUSTOMER_PROFILES),
+    getDb().customers.list().catch(() => []),
+  ]);
   return (
     <div>
       <SmartBack
@@ -77,6 +83,10 @@ export default async function EditCustomerPage({
       />
       <CustomerEditForm
         customer={customer}
+        profile={profileState.profiles[customer.id]}
+        customers={allCustomers
+          .filter((c) => c.id !== customer.id)
+          .map((c) => ({ id: c.id, name: c.company_name }))}
         customerTypes={listCustomerTypes().map((t) => t.name)}
         mayDelete={mayDelete}
       />

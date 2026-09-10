@@ -1,3 +1,6 @@
+import { ensureCustomerNumbers } from "@/lib/customerProfiles";
+import { EMPTY_CUSTOMER_PROFILES, formatAddress } from "@/lib/customerProfilesShared";
+import { Building2 as ParentCompanyIcon, MapPin } from "lucide-react";
 import { orderBands } from "@/lib/connectionOrder";
 import { redirect } from "next/navigation";
 import { readRecordTeams, teamFor } from "@/lib/recordTeams";
@@ -203,6 +206,14 @@ export default async function CustomerDetailPage({
   const solutioningCustomers = solutioningCustomersRaw
     .map((c) => ({ id: c.id, name: c.company_name }))
     .sort((a, b) => a.name.localeCompare(b.name));
+  /* THE CUSTOMER ID, THE ADDRESSES AND THE PARENT (Manoj, Sep 10). */
+  const profileState = await ensureCustomerNumbers(solutioningCustomersRaw).catch(
+    () => EMPTY_CUSTOMER_PROFILES
+  );
+  const profile = profileState.profiles[customer.id];
+  const parentCompany = profile?.parentId
+    ? solutioningCustomersRaw.find((c) => c.id === profile.parentId)
+    : undefined;
   const solutioningDeals = solutioningDealsRaw.map((o) => ({
     id: o.id,
     label: o.name || `${o.customer} deal`,
@@ -304,6 +315,36 @@ export default async function CustomerDetailPage({
             <h1 className="truncate text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
               {customer.company_name}
             </h1>
+            {(profile?.customerNo || profile?.hq || profile?.other || parentCompany) && (
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-text-secondary">
+                {profile?.customerNo && (
+                  <span className="rounded-md bg-surface px-1.5 py-0.5 text-[11px] font-semibold tnum text-text-tertiary">
+                    {profile.customerNo}
+                  </span>
+                )}
+                {profile?.hq && (
+                  <span className="inline-flex min-w-0 items-center gap-1">
+                    <MapPin size={12} strokeWidth={2.2} className="shrink-0 text-[color:var(--ink-orange)]" aria-hidden="true" />
+                    <span className="truncate">HQ: {formatAddress(profile.hq)}</span>
+                  </span>
+                )}
+                {profile?.other && (
+                  <span className="inline-flex min-w-0 items-center gap-1">
+                    <MapPin size={12} strokeWidth={2.2} className="shrink-0 text-text-tertiary" aria-hidden="true" />
+                    <span className="truncate">Other: {formatAddress(profile.other)}</span>
+                  </span>
+                )}
+                {parentCompany && (
+                  <Link
+                    href={`/customers/${parentCompany.id}`}
+                    className="inline-flex items-center gap-1 hover:text-blue-primary"
+                  >
+                    <ParentCompanyIcon size={12} strokeWidth={2.2} className="text-[color:var(--ink-bright-blue)]" aria-hidden="true" />
+                    Part of {parentCompany.company_name}
+                  </Link>
+                )}
+              </div>
+            )}
             {/* Identity only, directly under the name: what this account IS —
                 its industry and its size, each a colour + icon chip. The health
                 bar used to sit here and read as clutter against the company name

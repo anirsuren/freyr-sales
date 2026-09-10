@@ -1,3 +1,7 @@
+import { ensureCustomerNumbers } from "@/lib/customerProfiles";
+import { EMPTY_CUSTOMER_PROFILES } from "@/lib/customerProfilesShared";
+import { listBdMembers } from "@/lib/bdMembers";
+import { getCurrentUser as currentUserForCustomers } from "@/lib/currentUser";
 /**
  * ONE CUSTOMERS SCREEN, THREE ADDRESSES.
  *
@@ -137,7 +141,13 @@ export async function CustomersScreen({ tab }: { tab: CustomerRouteTab }) {
     })
   );
 
-  const { targets } = await readTargets();
+  /* Targets is off the Customers page in real mode (Manoj, Sep 10), so its
+     row is only read where the tab still exists. */
+  const { targets } =
+    getDataMode() === "mock" ? await readTargets() : { targets: [] as Awaited<ReturnType<typeof readTargets>>["targets"] };
+  /* A CUSTOMER ID FOR EVERY CUSTOMER (Manoj, Sep 10). One that has none gets
+     it here, oldest first. */
+  const profileState = await ensureCustomerNumbers(customers).catch(() => EMPTY_CUSTOMER_PROFILES);
 
   /* CUSTOMER GROUPS — named sets over the same accounts, with their numbers
      computed here rather than stored (Suren, Aug 28: "for every group, you can
@@ -210,6 +220,13 @@ export async function CustomersScreen({ tab }: { tab: CustomerRouteTab }) {
           /* Add customer and Import CSV, from the same helper the Groups tab
              below uses. Was `role === "admin"` inside the component. */
           canCreate: !(await moduleCreateRefusal("/customers")),
+          profiles: Object.fromEntries(
+            Object.entries(profileState.profiles).map(([id, p]) => [id, { customerNo: p.customerNo }])
+          ),
+          bdMembers: await listBdMembers().catch(() => []),
+          viewer: await currentUserForCustomers()
+            .then((u) => ({ name: u.name, role: u.role }))
+            .catch(() => ({ name: "", role: "" })),
         }}
         targets={targets}
         groups={groups}

@@ -1,5 +1,8 @@
 "use client";
 
+import { SlotPortal } from "@/components/ui/SlotPortal";
+import { OPPORTUNITY_ACTIONS_SLOT } from "@/lib/opportunityTabs";
+
 import { useStickyValue } from "@/lib/useStickyValue";
 import {
   OpportunitySummary,
@@ -230,6 +233,7 @@ function DeviationsTable({
   const [dealStatusFilter, setDealStatusFilter] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [historyFor, setHistoryFor] = useState<AccrualPlan | null>(null);
+  const [validityFilter, setValidityFilter] = useState<("Valid" | "Invalid")[]>([]);
 
   const dealById = useMemo(() => {
     const m = new Map<string, DealOption>();
@@ -242,7 +246,7 @@ function DeviationsTable({
     return m;
   }, [opportunities]);
 
-  const rows = useMemo(() => {
+  const allRows = useMemo(() => {
     return plans
       .map((plan) => {
         const summary = buildPlanDeviation(plan);
@@ -265,13 +269,25 @@ function DeviationsTable({
           accrualStatus: tabAccrualStatus(summary),
         };
       })
-      /* ONLY DEVIATED RECORDS, which is the whole point of the tab. A record
-         running as first written has nothing to report here. */
-      .filter((r) => r.summary.deviated)
       .sort((a, b) =>
         (b.summary.lastDeviatedAt || "").localeCompare(a.summary.lastDeviatedAt || "")
       );
   }, [plans, dealById, oppById]);
+  /* INVALID ENTRIES (Manoj, Sep 10: "Under Deviations, provide an option to
+     view 'Invalid' entries. Provide this in Filter as well"). Invalid is the
+     verdict the dashboard already flags: the close date passed, the sign date
+     moved, money sits in past months, or the months do not add up. */
+  const invalidAll = useMemo(() => allRows.filter((r) => !!r.flag), [allRows]);
+  /* ONLY DEVIATED RECORDS, which is the whole point of the tab, until somebody
+     asks for the invalid ones: then every invalid record shows, deviated or
+     not, so none of them hides. */
+  const rows = useMemo(
+    () =>
+      allRows.filter(
+        (r) => r.summary.deviated || (validityFilter.includes("Invalid") && !!r.flag)
+      ),
+    [allRows, validityFilter]
+  );
 
   /* ITEM 15 — "Include all filters relevant filters in Deviations Tab." The
      relevant ones are the columns somebody would narrow by: who owns it, what
@@ -285,12 +301,14 @@ function DeviationsTable({
         (ownerFilter.length === 0 || ownerFilter.includes(r.owner || "Unassigned")) &&
         (dealStatusFilter.length === 0 ||
           dealStatusFilter.includes(r.dealStatus || "Not set")) &&
+        (validityFilter.length === 0 ||
+          validityFilter.includes(r.flag ? "Invalid" : "Valid")) &&
         (!q ||
           r.plan.opportunityName.toLowerCase().includes(q) ||
           r.plan.customer.toLowerCase().includes(q) ||
           r.externalId.toLowerCase().includes(q))
     );
-  }, [rows, statusFilter, ownerFilter, dealStatusFilter, query]);
+  }, [rows, statusFilter, ownerFilter, dealStatusFilter, validityFilter, query]);
 
   const owners = useMemo(
     () => [...new Set(rows.map((r) => r.owner || "Unassigned"))].sort(),
@@ -337,7 +355,7 @@ function DeviationsTable({
     [rows]
   );
 
-  if (!rows.length) {
+  if (!rows.length && invalidAll.length === 0) {
     return (
       <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
         <h2 className="text-[15px] font-semibold text-text-primary">
@@ -356,7 +374,9 @@ function DeviationsTable({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
           <UserPen size={15} strokeWidth={2} className="text-[var(--ink-violet-soft)]" />
-          Deviated records
+          {validityFilter.length === 1 && validityFilter[0] === "Invalid"
+            ? "Invalid records"
+            : "Deviated records"}
           <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] font-semibold text-text-secondary">
             {shown.length}
             {shown.length !== rows.length ? ` of ${rows.length}` : ""}
@@ -384,8 +404,37 @@ function DeviationsTable({
           Now: one flowing row, every chip the same height and radius, filled
           when it is on, and pressing an on chip clears it. `aria-pressed`
           says the same thing to a screen reader that the fill says to an eye. */}
-      {(byOwner.length > 0 || inactiveCount > 0) && (
+      {(byOwner.length > 0 || inactiveCount > 0 || invalidAll.length > 0) && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          {/* THE INVALID ENTRIES, one press away (Manoj, Sep 10). Same chip
+              shape as the others, and pressing it again shows everything. */}
+          {invalidAll.length > 0 &&
+            (() => {
+              const on = validityFilter.length === 1 && validityFilter[0] === "Invalid";
+              return (
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setValidityFilter(on ? [] : ["Invalid"])}
+                  title={
+                    on
+                      ? "Showing only invalid entries. Click to show every record again."
+                      : "Show only the invalid entries: close date passed, sign date moved, money in past months, or months that do not add up"
+                  }
+                  className={cn(
+                    "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors",
+                    on
+                      ? "border-transparent bg-[color:#DC2626] text-white"
+                      : "border-[color:rgba(220,38,38,0.35)] bg-[rgba(220,38,38,0.06)] text-[color:var(--status-red)] hover:border-[color:#DC2626]"
+                  )}
+                >
+                  <AlertTriangle size={13} strokeWidth={2.4} />
+                  <span className="tnum">{invalidAll.length}</span>
+                  <span>invalid</span>
+                  {on && <X size={13} strokeWidth={2.6} className="ml-0.5" />}
+                </button>
+              );
+            })()}
           {inactiveCount > 0 &&
             (() => {
               const on = statusFilter.includes("Inactive");
@@ -418,7 +467,7 @@ function DeviationsTable({
 
           {byOwner.length > 0 && (
             <>
-              {inactiveCount > 0 && (
+              {(inactiveCount > 0 || invalidAll.length > 0) && (
                 <span
                   aria-hidden
                   className="h-5 w-px shrink-0 bg-border-light"
@@ -501,6 +550,7 @@ function DeviationsTable({
           setStatusFilter([]);
           setOwnerFilter([]);
           setDealStatusFilter([]);
+          setValidityFilter([]);
         }}
         groups={[
             {
@@ -513,6 +563,16 @@ function DeviationsTable({
                 label: v,
                 color: STATUS_COLOR[v],
               })),
+            },
+            {
+              key: "validity",
+              label: "Validity",
+              values: validityFilter,
+              onChange: (v) => setValidityFilter(v as ("Valid" | "Invalid")[]),
+              options: [
+                { value: "Valid", label: "Valid", color: "var(--ink-teal-deep)" },
+                { value: "Invalid", label: "Invalid", color: "var(--status-red)" },
+              ],
             },
             {
               key: "owner",
@@ -551,18 +611,19 @@ function DeviationsTable({
           headings now refuse to wrap and the table is given the room they need;
           past that the wrapper scrolls sideways rather than the page. */}
       <div className="mt-4 overflow-x-auto rounded-xl border border-border-light">
-        <table className="w-full min-w-[1440px] table-fixed border-collapse text-left">
+        <table className="w-full min-w-[1560px] table-fixed border-collapse text-left">
           <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>tr>th]:whitespace-nowrap">
             <tr>
-              <th className="w-[14%] px-3 py-2.5">Customer</th>
-              <th className="w-[10%] px-3 py-2.5">Opportunity ID</th>
-              <th className="w-[16%] px-3 py-2.5">Opportunity</th>
-              <th className="w-[6%] px-3 py-2.5">Version</th>
-              <th className="w-[12%] px-3 py-2.5">Owner</th>
-              <th className="w-[8%] px-3 py-2.5">Deviations</th>
-              <th className="w-[10%] px-3 py-2.5">Opp status</th>
+              <th className="w-[12%] px-3 py-2.5">Customer</th>
+              <th className="w-[9%] px-3 py-2.5">Opportunity ID</th>
+              <th className="w-[15%] px-3 py-2.5">Opportunity</th>
+              <th className="w-[5%] px-3 py-2.5">Version</th>
+              <th className="w-[11%] px-3 py-2.5">Owner</th>
+              <th className="w-[7%] px-3 py-2.5">Deviations</th>
+              <th className="w-[9%] px-3 py-2.5">Opp status</th>
               <th className="w-[9%] px-3 py-2.5">Contract value</th>
               <th className="w-[9%] px-3 py-2.5">Accrual status</th>
+              <th className="w-[8%] px-3 py-2.5">Validity</th>
               <th className="w-[6%] px-3 py-2.5">History</th>
             </tr>
           </thead>
@@ -635,6 +696,26 @@ function DeviationsTable({
                   </span>
                 </td>
                 <td className="px-3 py-2.5">
+                  {r.flag ? (
+                    <Tooltip label={r.flag}>
+                      <span
+                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold"
+                        style={{ background: tint("#DC2626", 9), color: "var(--status-red)" }}
+                      >
+                        <AlertTriangle size={11} strokeWidth={2.4} aria-hidden="true" />
+                        Invalid
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <span
+                      className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold"
+                      style={{ background: tint("#0F766E", 9), color: "var(--ink-teal-deep)" }}
+                    >
+                      Valid
+                    </span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5">
                   {/* ITEM 16 — "Store all versions of Revenue Accrual as single
                       Deviation entry and show them in history." One row per
                       record on this table, however many versions it carries;
@@ -700,6 +781,23 @@ function DeviationsTable({
 }
 
 
+/** The module's header, or, inside the Opportunities tabs, just its buttons
+ *  on the tab row, since the tab already names the room (Manoj, Sep 10). */
+function EmbeddableHeader({
+  embedded,
+  title,
+  subtitle,
+  action,
+}: {
+  embedded: boolean;
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}) {
+  if (!embedded) return <PageHeader title={title} subtitle={subtitle} action={action} />;
+  return action ? <SlotPortal target={OPPORTUNITY_ACTIONS_SLOT}>{action}</SlotPortal> : null;
+}
+
 export function RevenueAccrualsModule({
   state: initial,
   deals,
@@ -709,6 +807,7 @@ export function RevenueAccrualsModule({
   opportunities = [],
   customerGroups = [],
   offeringNames = {},
+  embeddedTab,
 }: {
   state: RevenueAccrualsState;
   deals: DealOption[];
@@ -724,6 +823,9 @@ export function RevenueAccrualsModule({
   opportunities?: Opportunity[];
   customerGroups?: { id: string; name: string; color: string; customerIds: string[] }[];
   offeringNames?: Record<string, string>;
+  /** Shown inside the Opportunities tabs as one room: the outer tab picks
+   *  the dashboard or the deviations, so the inner strip and header go. */
+  embeddedTab?: "plans" | "deviation";
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -739,8 +841,12 @@ export function RevenueAccrualsModule({
     return show === "flagged" || show === "missing" ? show : "all";
   });
   const [tab, setTab] = useState<"plans" | "deviation">(() =>
-    params.get("tab") === "deviation" ? "deviation" : "plans"
+    embeddedTab ?? (params.get("tab") === "deviation" ? "deviation" : "plans")
   );
+  /* INSIDE OPPORTUNITIES THE OUTER TAB DECIDES (Manoj, Sep 10). */
+  useEffect(() => {
+    if (embeddedTab) setTab(embeddedTab);
+  }, [embeddedTab]);
   useEffect(() => {
     /* replaceState, not a navigation: nothing reloads, and Next folds it into
        the router so the back trail records the address with the search in
@@ -750,7 +856,8 @@ export function RevenueAccrualsModule({
       const put = (k: string, v: string) => (v ? next.set(k, v) : next.delete(k));
       put("q", query.trim());
       put("show", only === "all" ? "" : only);
-      put("tab", tab === "plans" ? "" : tab);
+      /* Inside Opportunities, ?tab= belongs to the outer tabs. */
+      if (!embeddedTab) put("tab", tab === "plans" ? "" : tab);
       const qs = next.toString();
       const url = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
       if (url !== `${window.location.pathname}${window.location.search}`) {
@@ -758,7 +865,7 @@ export function RevenueAccrualsModule({
       }
     }, 250);
     return () => clearTimeout(t);
-  }, [query, only, tab]);
+  }, [query, only, tab, embeddedTab]);
   /* THE SUMMARY'S OWN CONTROLS. No measure picker: this page is TCV and only
      TCV (Suren, Aug 30: "it's only TCV on the revenue page"). */
   const [accrDims, setAccrDims] = useStickyValue<SummaryDimension[]>(
@@ -1300,7 +1407,8 @@ export function RevenueAccrualsModule({
 
   return (
     <div>
-      <PageHeader
+      <EmbeddableHeader
+        embedded={!!embeddedTab}
         title="Revenue Accruals"
         subtitle="When the money on each deal is planned to land, month by month, and what moved since last month. Nothing here reschedules itself."
         action={
@@ -1420,6 +1528,7 @@ export function RevenueAccrualsModule({
           The keys are untouched — `plans` and `deviation` are what every
           link, test and remembered state in this app already says. This is
           what the tab is CALLED, not where it lives. */}
+      {!embeddedTab && (
       <div className="mt-4 flex items-center gap-1 border-b border-border-light">
         {(
           [
@@ -1458,6 +1567,7 @@ export function RevenueAccrualsModule({
           </button>
         ))}
       </div>
+      )}
 
       {tab === "plans" ? (
         <div key="plans" className="tab-panel">
