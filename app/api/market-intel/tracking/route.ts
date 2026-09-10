@@ -12,9 +12,7 @@ import {
 } from "@/lib/marketIntelRefresh";
 import { deleteFeedCompany } from "@/lib/marketIntelFeed";
 import {
-  MEMBER_TRACK_LIMIT,
   cleanDivisions,
-  countAddedBy,
   deleteCompanyForGood,
   readMarketIntelTracking,
   setCompanyDivisions,
@@ -58,11 +56,10 @@ async function acquireTrackingWrite(): Promise<() => void> {
 /**
  * WHO MAY CHANGE THE WATCH LIST — the privilege table, like every other module.
  *
- * Since Sep 10 the Market Intel row gives BD *create* beside Admin (Saras:
- * "give it to the BD members as well and maybe keep a limit"). The limit is
- * enforced here: a person may put MEMBER_TRACK_LIMIT NEW companies on the
- * watch; following a company that is already there is free and unlimited,
- * because it is scraped once for everybody. Admins have no limit.
+ * Since Sep 10 the Market Intel row gives BD *create* beside Admin (Saras).
+ * There is no limit on how many companies a person adds (Anir, Sep 10: "idk
+ * why ur putting a limit"); a company already in the list is never scraped
+ * twice, it is simply ticked.
  *
  * THE MODEL (Anir, Sep 10): the catalogue holds every company the team knows
  * about; each person ticks the ones they want on their page. A company is
@@ -94,15 +91,12 @@ export async function POST(req: NextRequest) {
     // Link-only flows: the LinkedIn page is the whole form; everything else
     // (name, logo, title, photo, first data pull) comes from the page itself.
     if (body?.kind === "company-link") {
-      const tracking = await readMarketIntelTracking();
-      const canCreate = isAdmin || countAddedBy(tracking, scope.userId) < MEMBER_TRACK_LIMIT;
       const result = await addCompanyByLink(
         { linkedinUrl: String(body.linkedinUrl ?? ""), website: String(body.website ?? "") },
         body?.group === "competitor" ? "competitor" : "customer",
         {
           addedBy,
           divisions: cleanDivisions(body.divisions),
-          canCreate,
         }
       );
       // Whoever added or chose it gets it ticked: it lands on their own page.
@@ -114,13 +108,6 @@ export async function POST(req: NextRequest) {
         company: { id: result.id, name: result.name, group: result.group },
         existing: result.existing,
         resumed: result.resumed,
-        addedLeft: isAdmin
-          ? null
-          : Math.max(
-              0,
-              MEMBER_TRACK_LIMIT -
-                countAddedBy(await readMarketIntelTracking(), scope.userId)
-            ),
       });
     }
     if (body?.kind === "person-link") {
@@ -131,16 +118,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, person });
     }
     if (body?.kind === "company") {
-      const tracking = await readMarketIntelTracking();
-      if (!isAdmin && countAddedBy(tracking, scope.userId) >= MEMBER_TRACK_LIMIT) {
-        return NextResponse.json(
-          {
-            error:
-              "You've added the most companies one person can. You can still follow any company already on the list.",
-          },
-          { status: 403 }
-        );
-      }
       const divisions = cleanDivisions(body.divisions);
       if (divisions.length === 0) {
         return NextResponse.json(

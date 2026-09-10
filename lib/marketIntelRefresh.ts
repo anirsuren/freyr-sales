@@ -9,6 +9,7 @@ import {
   saveFeedMeta,
   saveFeedPerson,
   withinRetention,
+  readMarketIntelSummaries,
 } from "./marketIntelFeed";
 import { mirrorPhoto } from "./miPhotos";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
@@ -1223,9 +1224,6 @@ export async function refreshTrackedPersonNow(person: TrackedPerson): Promise<vo
 export type AddCompanyMeta = {
   addedBy?: TrackedCompany["addedBy"];
   divisions?: Division[];
-  /** False when this person has used up their allowance of NEW companies.
-   *  Ticking one that is already in the catalogue is always allowed. */
-  canCreate?: boolean;
 };
 
 export type AddCompanyResult = {
@@ -1240,8 +1238,6 @@ export type AddCompanyResult = {
   company?: TrackedCompany;
 };
 
-export const TRACK_LIMIT_MESSAGE =
-  "You've added the most companies one person can. You can still tick any company already in the list.";
 
 export type AddCompanyInput = {
   /** A LinkedIn company page, or empty. */
@@ -1305,9 +1301,9 @@ export async function addCompanyByLink(
   const known = bySlug ?? bySite;
   if (known) return existingResult(known);
 
-  /* THE ALLOWANCE AND THE DIVISIONS ARE CHECKED BEFORE ANY MONEY MOVES: a
-     company nobody has needs both, and asking after a paid probe wasted it. */
-  if (meta.canCreate === false) throw new Error(TRACK_LIMIT_MESSAGE);
+  /* THE DIVISIONS ARE CHECKED BEFORE ANY MONEY MOVES: a company nobody has
+     needs one, and asking after a paid probe wasted it. There is no limit on
+     how many a person adds (Anir, Sep 10). */
   const divisions = (meta.divisions ?? []).filter((d) => ["MPR", "MDV", "CON"].includes(d));
   if (divisions.length === 0) {
     throw new Error("Pick at least one division (MPR, MDV or CON) for a company that isn't on the list yet.");
@@ -1829,15 +1825,32 @@ export async function refreshThoughtLeadershipNow(): Promise<{ items: number; to
  * but if what is stored is more than a day old the person is looking at a
  * stale page, so one targeted pull runs right away (the normal caps apply).
  */
-export async function resumeCompanyIfStale(companyId: string): Promise<void> {
-  if (!hasEnv()) return;
-  const feed = await readMarketIntelFeed().catch(() => null);
-  const stored = feed?.companies[companyId];
-  const age = stored?.fetchedAt ? Date.now() - Date.parse(stored.fetchedAt) : Infinity;
-  if (age < DAY_MS) return;
-  await runMarketIntelRefresh({ force: true, onlyCompanyIds: [companyId] }).catch((error) =>
-    console.error(`[market-intel] resume of ${companyId} failed:`, error)
+/**
+ * WAKE WHAT WAS JUST TICKED, IN ONE GO (Sep 10). Ticking a company nobody had
+ * pulls it now if its data is a day old. Select-all in Manage companies, or
+ * putting every company on one person's list, ticks dozens at once, and one
+ * task per company meant dozens of full reads of the feed and dozens of runs
+ * fighting over the lock. Now it is one read of the small summaries and at
+ * most one targeted run for everything stale, inside the usual money caps.
+ */
+export async function resumeCompaniesIfStale(companyIds: string[]): Promise<{ stale: string[] }> {
+  const ids = [...new Set(companyIds.filter(Boolean))];
+  if (!hasEnv() || ids.length === 0) return { stale: [] };
+  const summaries = await readMarketIntelSummaries({ fresh: true }).catch(() => null);
+  const stale = ids.filter((id) => {
+    const at = summaries?.companies?.[id]?.fetchedAt;
+    return !at || Date.now() - Date.parse(at) >= DAY_MS;
+  });
+  if (stale.length === 0) return { stale };
+  console.log(`[market-intel] ${stale.length} ticked companies had day-old data; pulling them now`);
+  await runMarketIntelRefresh({ force: true, onlyCompanyIds: stale }).catch((error) =>
+    console.error(`[market-intel] resume of ${stale.length} companies failed:`, error)
   );
+  return { stale };
+}
+
+export async function resumeCompanyIfStale(companyId: string): Promise<void> {
+  await resumeCompaniesIfStale([companyId]);
 }
 
 

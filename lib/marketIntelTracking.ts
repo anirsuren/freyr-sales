@@ -147,12 +147,6 @@ export function seedCompanies(tracking: MarketIntelTracking): number {
   return added;
 }
 
-/**
- * HOW MANY COMPANIES ONE PERSON MAY ADD (Saras, Sep 10: "for each BD member,
- * they can add up to, say, 20 companies"). Adding a company that is already
- * on the watch does not count: it costs nothing and simply follows it.
- */
-export const MEMBER_TRACK_LIMIT = 20;
 
 export const DIVISION_VALUES: Division[] = ["MPR", "MDV", "CON"];
 
@@ -177,12 +171,6 @@ export function companyDivisions(
   return cleanDivisions(fallback);
 }
 
-export function countAddedBy(
-  tracking: Pick<MarketIntelTracking, "companies">,
-  userId: string
-): number {
-  return tracking.companies.filter((c) => c.addedBy?.id === userId).length;
-}
 
 /** The tracked company whose LinkedIn page carries this slug, if any. */
 export function findTrackedByLinkedInSlug(

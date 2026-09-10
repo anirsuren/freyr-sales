@@ -559,13 +559,17 @@ export async function readMarketIntelFeed(options?: {
 }
 
 /** The list page's read: every company's summary, none of its items. */
-export async function readMarketIntelSummaries(): Promise<{
+export async function readMarketIntelSummaries(options?: {
+  /** Skip the minute-old copy: deciding whether a company is stale must not
+   *  mistake one added a moment ago for one that was never collected. */
+  fresh?: boolean;
+}): Promise<{
   meta: FeedMeta;
   companies: Record<string, FeedCompanySummary>;
 } | null> {
   if (!hasFeedDatabase()) return null;
   const c = caches();
-  if (c.summaries && Date.now() - c.summaries.at < FEED_CACHE_MS) return c.summaries.value;
+  if (!options?.fresh && c.summaries && Date.now() - c.summaries.at < FEED_CACHE_MS) return c.summaries.value;
   const read = await readMetaAndLegacy();
   if (!read) {
     c.summaries = { at: Date.now(), value: null };

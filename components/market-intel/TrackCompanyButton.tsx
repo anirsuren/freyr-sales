@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Globe2, Plus } from "lucide-react";
+import { AlertCircle, Check, Globe2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
@@ -20,10 +20,11 @@ import { cn } from "@/lib/utils";
  * from LinkedIn, press releases from the website, and news and the AI rundown
  * come with either.
  *
- * One column, explanations tucked into the ? hints ("left side is fine, I
- * don't think we need the right side, put that in an i or ?"). A company
- * somebody already has is not scraped again; it is simply ticked onto this
- * person's list.
+ * One column, explanations tucked into the ? hints. No limit on how many a
+ * person adds ("idk why ur putting a limit"), and the button stays off until
+ * the form can actually work ("I shouldn't be able to press the button till I
+ * add one of them, obviously"). A company somebody already has is not
+ * scraped again; it is simply ticked onto this person's list.
  */
 
 /** The domain someone typed, or null when it is not a website. */
@@ -48,15 +49,12 @@ function linkedInSlug(raw: string): string | null {
 export function TrackCompanyButton({
   group = "customer",
   canTrack = true,
-  addedLeft = null,
   stacked = false,
   compact = false,
 }: {
   group?: "customer" | "competitor";
   /** MAY THEY ADD ONE: the Market Intel row of the privilege table decides. */
   canTrack?: boolean;
-  /** How many NEW companies this person may still add; null means no limit. */
-  addedLeft?: number | null;
   /** Opened from inside another dialog (the Manage companies pop-up). */
   stacked?: boolean;
   /** A smaller button, for a dialog header. */
@@ -74,7 +72,21 @@ export function TrackCompanyButton({
   const noun = group === "competitor" ? "competitor" : "company";
   const domain = siteDomain(website);
   const slug = linkedInSlug(linkedinUrl);
-  const bothEmpty = !website.trim() && !linkedinUrl.trim();
+  const siteTyped = website.trim().length > 0;
+  const linkTyped = linkedinUrl.trim().length > 0;
+  const bothEmpty = !siteTyped && !linkTyped;
+  const siteIsLinkedIn = siteTyped && /linkedin\.com/i.test(website);
+  const siteProblem =
+    siteTyped && !domain
+      ? siteIsLinkedIn
+        ? "That's a LinkedIn link. Put it in the LinkedIn page box."
+        : "The website should look like gsk.com."
+      : "";
+  const linkProblem =
+    linkTyped && !slug ? "The LinkedIn link should be a company page, like linkedin.com/company/gsk." : "";
+  /* THE BUTTON WAKES UP ONLY WHEN THE FORM CAN WORK: at least one link, and
+     every link that was typed is a real one. Enter follows the same rule. */
+  const ready = (!!domain || !!slug) && !siteProblem && !linkProblem;
 
   function reset() {
     setWebsite("");
@@ -84,23 +96,7 @@ export function TrackCompanyButton({
   }
 
   async function save() {
-    /* AT LEAST ONE, AND EACH ONE RIGHT, before anything is sent. */
-    if (bothEmpty) {
-      setError("Enter their website or their LinkedIn page. At least one is needed.");
-      return;
-    }
-    if (website.trim() && !domain) {
-      setError(
-        /linkedin\.com/i.test(website)
-          ? "That's a LinkedIn link. Put it in the LinkedIn page box."
-          : "That website doesn't look right. It should look like gsk.com."
-      );
-      return;
-    }
-    if (linkedinUrl.trim() && !slug) {
-      setError("That LinkedIn link should be a company page, like linkedin.com/company/gsk.");
-      return;
-    }
+    if (!ready || busy) return;
     setBusy(true);
     setError("");
     try {
@@ -151,6 +147,9 @@ export function TrackCompanyButton({
     set: (v: string) => void;
     placeholder: string;
     ok: boolean;
+    /** A short flag inside the box when what was typed is wrong. */
+    flag: string;
+    flagTitle: string;
   }) => (
     <div>
       <label htmlFor={props.id} className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary">
@@ -159,8 +158,10 @@ export function TrackCompanyButton({
       </label>
       <div
         className={cn(
-          "mt-1.5 flex h-12 items-center gap-2.5 rounded-xl border bg-white px-3.5 transition-colors focus-within:border-blue-primary focus-within:ring-4 focus-within:ring-blue-primary/10",
-          "border-border-light"
+          "mt-1.5 flex h-12 items-center gap-2.5 rounded-xl border bg-white px-3.5 transition-colors focus-within:ring-4",
+          props.flag
+            ? "border-[rgba(220,38,38,0.45)] focus-within:border-[#DC2626] focus-within:ring-[rgba(220,38,38,0.10)]"
+            : "border-border-light focus-within:border-blue-primary focus-within:ring-blue-primary/10"
         )}
       >
         <span
@@ -178,18 +179,26 @@ export function TrackCompanyButton({
             if (error) setError("");
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !busy) void save();
+            if (e.key === "Enter") void save();
           }}
           placeholder={props.placeholder}
           disabled={busy}
           spellCheck={false}
           autoComplete="off"
+          aria-invalid={props.flag ? true : undefined}
         />
-        {props.ok && (
+        {props.ok ? (
           <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(26,122,53,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-green)]">
             <Check size={11} strokeWidth={2.8} /> Looks right
           </span>
-        )}
+        ) : props.flag ? (
+          <span
+            title={props.flagTitle}
+            className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(220,38,38,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[#B91C1C]"
+          >
+            <AlertCircle size={11} strokeWidth={2.6} /> {props.flag}
+          </span>
+        ) : null}
       </div>
     </div>
   );
@@ -229,6 +238,8 @@ export function TrackCompanyButton({
             set: setWebsite,
             placeholder: "their-website.com",
             ok: !!domain,
+            flag: siteProblem ? (siteIsLinkedIn ? "That's LinkedIn" : "Not a website") : "",
+            flagTitle: siteProblem,
           })}
           {field({
             id: "mi-company-link",
@@ -240,10 +251,16 @@ export function TrackCompanyButton({
             set: setLinkedinUrl,
             placeholder: "linkedin.com/company/their-name",
             ok: !!slug,
+            flag: linkProblem ? "Not a company page" : "",
+            flagTitle: linkProblem,
           })}
           <p className="-mt-2 min-h-[18px] text-[12px] leading-snug" aria-live="polite">
             {error ? (
               <span className="font-medium text-[#DC2626]">{error}</span>
+            ) : siteProblem ? (
+              <span className="text-text-secondary">{siteProblem}</span>
+            ) : linkProblem ? (
+              <span className="text-text-secondary">{linkProblem}</span>
             ) : bothEmpty ? (
               <span className="text-text-tertiary">Fill in at least one. Both is best.</span>
             ) : null}
@@ -301,28 +318,16 @@ export function TrackCompanyButton({
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-2">
-            {addedLeft !== null ? (
-              <span
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold tnum",
-                  addedLeft > 0
-                    ? "bg-[rgba(0,113,227,0.08)] text-[color:var(--ink-bright-blue)]"
-                    : "bg-[rgba(180,83,9,0.10)] text-[#B45309]"
-                )}
-              >
-                {addedLeft} new {addedLeft === 1 ? "company" : "companies"} left
-                <InfoHint
-                  text={
-                    addedLeft > 0
-                      ? "Adding one nobody is tracking yet uses one. Ticking companies already in the list is unlimited."
-                      : "You've added the most new companies one person can. You can still tick any company already in the list."
-                  }
-                />
-              </span>
-            ) : (
-              <span className="text-[11.5px] text-text-tertiary">{busy ? "Reading their pages. About half a minute." : ""}</span>
-            )}
-            <Button onClick={save} loading={busy} className="!px-5 !py-2.5 text-[13.5px]">
+            <span className="text-[11.5px] text-text-tertiary" aria-live="polite">
+              {busy ? "Reading their pages. About half a minute." : ""}
+            </span>
+            <Button
+              onClick={save}
+              loading={busy}
+              disabled={!ready}
+              title={ready ? undefined : "Enter their website or LinkedIn page first"}
+              className="!px-5 !py-2.5 text-[13.5px]"
+            >
               Start tracking
             </Button>
           </div>

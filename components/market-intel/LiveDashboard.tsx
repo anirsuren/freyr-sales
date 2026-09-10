@@ -49,7 +49,6 @@ export function LiveMarketIntelDashboard({
   tracking,
   group = "customer",
   canTrack = true,
-  addedLeft = null,
   people = {},
   followers = {},
   isAdmin = false,
@@ -69,8 +68,6 @@ export function LiveMarketIntelDashboard({
   group?: "customer" | "competitor";
   /** Passed straight to the button: the Market Intel row decides. */
   canTrack?: boolean;
-  /** How many NEW companies this person may still add; null for no limit. */
-  addedLeft?: number | null;
 }) {
   /* MY PAGE IS EXACTLY WHAT I TICKED (Anir, Sep 10: "they have to
      individually check off everything"). The catalogue is every company the
@@ -161,7 +158,7 @@ export function LiveMarketIntelDashboard({
           <span className="flex flex-wrap items-center gap-2.5">
             <RefreshChip updatedAt={meta.updatedAt} health={meta.health} isAdmin={isAdmin} />
             <ManageCompaniesButton group={group} />
-            <TrackCompanyButton group={group} canTrack={canTrack} addedLeft={addedLeft} />
+            <TrackCompanyButton group={group} canTrack={canTrack} />
           </span>
         }
       >
@@ -200,7 +197,7 @@ export function LiveMarketIntelDashboard({
             {/* One thing to do. The add button only earns its place when
                 there is nothing in the list to tick. */}
             {catalogue === 0 && (
-              <TrackCompanyButton group={group} canTrack={canTrack} addedLeft={addedLeft} />
+              <TrackCompanyButton group={group} canTrack={canTrack} />
             )}
           </span>
         </section>

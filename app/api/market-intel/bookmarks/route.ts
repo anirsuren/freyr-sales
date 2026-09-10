@@ -8,7 +8,7 @@ import {
   setMarketIntelBookmarks,
   setMarketIntelStar,
 } from "@/lib/marketIntelBookmarks";
-import { resumeCompanyIfStale } from "@/lib/marketIntelRefresh";
+import { resumeCompaniesIfStale, resumeCompanyIfStale } from "@/lib/marketIntelRefresh";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 
 export const dynamic = "force-dynamic";
@@ -87,7 +87,7 @@ export async function PUT(request: NextRequest) {
       const waking = on ? ids.filter(hadNobody) : [];
       const bookmarks = await setMarketIntelBookmarks(scope, ids, on);
       /* Whatever nobody had is pulled now if its data has gone stale. */
-      for (const id of waking) after(() => resumeCompanyIfStale(id));
+      if (waking.length > 0) after(() => resumeCompaniesIfStale(waking));
       return NextResponse.json({
         ok: true,
         companyIds: bookmarks.companyIds,

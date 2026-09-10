@@ -43,11 +43,7 @@ import {
   miFreshMinutes,
   miTotals,
 } from "@/lib/marketIntelMock";
-import {
-  MEMBER_TRACK_LIMIT,
-  countAddedBy,
-  readMarketIntelTracking,
-} from "@/lib/marketIntelTracking";
+import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 /**
@@ -117,16 +113,9 @@ export default async function MarketIntelPage({
         );
       }
       const group = tab === "competitors" ? "competitor" : "customer";
-      /* HOW MANY MORE THIS PERSON MAY ADD (Saras, Sep 10: a limit per BD
-         member). Admins have none; a company already on the watch never
-         counts, since following it costs nothing. */
-      let addedLeft: number | null = null;
       const user = await getCurrentUser();
       const isAdmin = user.role === "admin";
       const scope = await requireServerMemberScope().catch(() => null);
-      if (canTrack && !isAdmin && scope) {
-        addedLeft = Math.max(0, MEMBER_TRACK_LIMIT - countAddedBy(tracking, scope.userId));
-      }
       const [people, followers, mine] = await Promise.all([
         group === "competitor" ? Promise.resolve({}) : readFeedPeopleSummaries().catch(() => ({})),
         readMarketIntelFollowers().catch(() => ({}) as Record<string, string[]>),
@@ -141,7 +130,6 @@ export default async function MarketIntelPage({
           tracking={tracking}
           group={group}
           canTrack={canTrack}
-          addedLeft={addedLeft}
           people={people}
           followers={followers}
           isAdmin={isAdmin}
