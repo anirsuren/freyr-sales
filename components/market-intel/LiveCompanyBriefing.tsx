@@ -1,22 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import { SmartBack } from "@/components/ui/BackButton";
 import { useEffect, useRef, useState } from "react";
 import {
-  ChevronDown,
-  Check,
-  Building2,
   ArrowLeft,
+  Building2,
   CalendarDays,
   CalendarRange,
-  Crown,
+  ChevronDown,
   ExternalLink,
-  FileCheck2,
+  Filter,
   Globe2,
-  Handshake,
   History,
   LayoutGrid,
   List,
@@ -25,13 +21,13 @@ import {
   Radar,
   Repeat2,
   Sparkles,
+  Star,
   Sun,
   Swords,
   Table2,
   ThumbsUp,
   TrendingDown,
   TrendingUp,
-  UserPlus,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -44,14 +40,27 @@ import {
   SearchPriority,
 } from "@/components/ui/SearchPriority";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
+import { useToast } from "@/components/ui/Toast";
 import { Sparkline } from "@/components/charts/Charts";
 import { MiLogo } from "@/components/market-intel/MiLogo";
+import { DivisionEditor } from "@/components/market-intel/DivisionChips";
+import { SignalRow } from "@/components/market-intel/SignalRow";
+import { StopTrackingButton } from "@/components/market-intel/StopTrackingButton";
 import { TrackPersonButton } from "@/components/market-intel/TrackPersonControls";
 import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
 import { cn } from "@/lib/utils";
-import { SIGNAL_META, type MiSignalKind } from "@/lib/marketIntelMock";
-import type { FeedPost, LiveBriefing } from "@/lib/marketIntelFeed";
+import {
+  ITEM_TAG_META,
+  SIGNAL_ICON,
+  SIGNAL_META,
+  type ItemLabel,
+  type ItemTag,
+  type SignalKind,
+} from "@/lib/marketIntelSignals";
+import { groupStories, type StoryGroup, type StoryInput } from "@/lib/marketIntelStories";
+import type { BriefingPost, FeedNews, FeedPost, LiveBriefing, LiveSignal } from "@/lib/marketIntelFeed";
 import type { TrackedPerson } from "@/lib/marketIntelTracking";
+import type { Division } from "@/lib/offeringMaterials";
 import { useStoredView } from "@/lib/useStoredView";
 import { tint } from "@/lib/tint";
 
@@ -59,22 +68,17 @@ import { tint } from "@/lib/tint";
  * ONE COMPANY, REAL DATA ONLY. Every post links to the actual LinkedIn post,
  * every article to the actual story, every signal cites the item it was
  * detected in. Rendered in live mode; mock mode keeps the sample briefings.
+ *
+ * Sep 10 (Saras's meeting): the nine signals sit in a row at the top and
+ * each is a filter; the source dropdown is a visible bar; an item that
+ * carries a signal wears it on its own card instead of appearing twice; the
+ * same story from several sources is one card with the other sources named
+ * under it; a competitor's briefing shows only what concerns Freyr's
+ * industries unless you ask for everything; thought leadership and awards
+ * have chips of their own; and nobody is followed at a competitor.
  */
 
-const LinkedInGlyph = LinkedInIcon as unknown as LucideIcon;
-
-const SIGNAL_ICON: Record<MiSignalKind, LucideIcon> = {
-  hiring: UserPlus,
-  leadership: Crown,
-  competitor: Swords,
-  regulatory: FileCheck2,
-  expansion: Globe2,
-  deal: Handshake,
-};
-
-/** "site" is the company's OWN website — a source in its own right beside
- *  the news wire and LinkedIn (Anir, Aug 28). */
-type Kind = "company" | "people" | "news" | "signal" | "site";
+type Source = "all" | "company" | "people" | "news" | "site" | "signal" | "thought" | "award";
 
 const NEWS_VIEWS = ["rows", "tiles", "table"] as const;
 type NewsView = (typeof NEWS_VIEWS)[number];
@@ -88,23 +92,48 @@ function fmtFollowers(n: number): string {
   return String(n);
 }
 
+type Item = StoryInput & {
+  kind: "company" | "people" | "news" | "site";
+  url: string;
+  sourceLabel: string;
+  label?: ItemLabel;
+  signal?: LiveSignal;
+  post?: BriefingPost;
+  news?: FeedNews;
+};
+
 export function LiveCompanyBriefing({
   briefing,
   subtitle,
   extraPeople = [],
   personPosts = {},
+  divisions = [],
+  canWrite = false,
+  canRemove = false,
+  tracked = false,
 }: {
   briefing: LiveBriefing;
   subtitle?: string;
   extraPeople?: TrackedPerson[];
   /** Collected posts per tracked person id; a missing key means no sync yet. */
   personPosts?: Record<string, FeedPost[]>;
+  divisions?: Division[];
+  /** May this viewer change the watch (tags, people)? The module's write privilege. */
+  canWrite?: boolean;
+  /** May this viewer take the company off the watch: the adder, or an admin. */
+  canRemove?: boolean;
+  /** True when the company was added by the team (not the built-in list). */
+  tracked?: boolean;
 }) {
-  const ALL_KINDS: Kind[] = ["company", "people", "news", "signal", "site"];
-  const [kinds, setKinds] = useState<Set<Kind>>(new Set(ALL_KINDS));
-  const [kindsOpen, setKindsOpen] = useState(false);
+  const { toast } = useToast();
+  const isCompetitor = briefing.group === "competitor";
+  const [source, setSource] = useState<Source>("all");
+  const [signalPick, setSignalPick] = useState<SignalKind | null>(null);
+  /* A COMPETITOR SHOWS WHAT CONCERNS US BY DEFAULT (Saras, Sep 10: "only if
+     their posts are related to these industries should they show up here").
+     Nothing is thrown away: the switch shows everything, with a count. */
+  const [relevantOnly, setRelevantOnly] = useState(isCompetitor);
   const [viewOpen, setViewOpen] = useState(false);
-  const kindsRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<HTMLDivElement>(null);
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
     "freyr.mi.news.view",
@@ -116,19 +145,30 @@ export function LiveCompanyBriefing({
   // call): the feed keeps 90 days, the chips narrow the window.
   const [range, setRange] = useState<"1" | "7" | "30" | "90">("90");
   const [query, setQuery] = useState("");
+  const [bookmarked, setBookmarked] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!kindsOpen && !viewOpen) return;
+    let alive = true;
+    fetch("/api/market-intel/bookmarks")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (alive) setBookmarked(Array.isArray(data?.companyIds) && data.companyIds.includes(briefing.id));
+      })
+      .catch(() => {
+        if (alive) setBookmarked(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [briefing.id]);
+
+  useEffect(() => {
+    if (!viewOpen) return;
     const onDown = (event: MouseEvent) => {
-      const t = event.target as Node;
-      if (!kindsRef.current?.contains(t)) setKindsOpen(false);
-      if (!viewRef.current?.contains(t)) setViewOpen(false);
+      if (!viewRef.current?.contains(event.target as Node)) setViewOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setKindsOpen(false);
-        setViewOpen(false);
-      }
+      if (event.key === "Escape") setViewOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -136,7 +176,24 @@ export function LiveCompanyBriefing({
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [kindsOpen, viewOpen]);
+  }, [viewOpen]);
+
+  async function toggleBookmark() {
+    const next = !(bookmarked ?? false);
+    setBookmarked(next);
+    try {
+      const res = await fetch("/api/market-intel/bookmarks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: briefing.id, on: next }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || "Could not save.");
+      toast(next ? `${briefing.name} is on your list.` : `${briefing.name} is off your list.`);
+    } catch (caught) {
+      setBookmarked(!next);
+      toast(caught instanceof Error ? caught.message : "Could not save your list.", "error");
+    }
+  }
 
   const up = (briefing.momentumPct ?? 0) >= 0;
   const cutoff = Date.now() - Number(range) * 86_400_000;
@@ -144,66 +201,173 @@ export function LiveCompanyBriefing({
   const q = query.trim().toLowerCase();
   const hit = (...parts: (string | null | undefined)[]) =>
     !q || parts.some((part) => part?.toLowerCase().includes(q));
-  const posts = briefing.posts.filter(
-    (p) => inRange(p.date) && hit(p.text, p.by?.name, p.by?.role)
-  );
-  const news = briefing.news.filter(
-    (n) => inRange(n.published) && hit(n.title, n.summary, n.source)
-  );
-  const signals = briefing.signals.filter(
-    (s) => inRange(s.date) && hit(s.title, s.sourceLabel, s.why)
-  );
-  const site = (briefing.site ?? []).filter(
-    (n) => inRange(n.published) && hit(n.title, n.summary, n.source)
-  );
-  // Four content types, each its own toggle (Anir, Aug 11: "I can even filter
-  // to only see what people are posting").
-  const KIND_META: { key: Kind; label: string; icon: LucideIcon; color: string; count: number }[] = [
-    { key: "company", label: "Company posts", icon: Building2, color: "var(--ink-bright-blue)", count: posts.filter((p) => !p.by).length },
-    { key: "people", label: "People posts", icon: Users, color: "var(--ink-magenta)", count: posts.filter((p) => p.by).length },
-    { key: "news", label: "News", icon: Newspaper, color: "var(--ink-teal-deep)", count: news.length },
-    /* Their own words, from their own site: a different colour and a
-       different glyph from the news wire, because "the company said this"
-       and "a reporter wrote this" are different claims. */
-    { key: "site", label: "Their website", icon: Globe2, color: "var(--ink-orange)", count: site.length },
-    { key: "signal", label: "Signals", icon: Radar, color: "var(--ink-violet-soft)", count: signals.length },
-  ];
-  const activeCount = KIND_META.filter((k) => kinds.has(k.key)).reduce((a, k) => a + k.count, 0);
-  const allOn = kinds.size === ALL_KINDS.length;
-  const kindLabel = allOn
-    ? "Everything"
-    : kinds.size === 1
-      ? KIND_META.find((k) => kinds.has(k.key))?.label ?? "Filtered"
-      : `${kinds.size} of ${ALL_KINDS.length} types`;
-  const toggleKind = (kind: Kind) =>
-    setKinds((prev) => {
-      const next = new Set(prev);
-      if (next.has(kind)) {
-        if (next.size === 1) return prev;
-        next.delete(kind);
-      } else next.add(kind);
-      return next;
+
+  /* EVERY ITEM ONCE. A signal is a property of the post or article it was
+     found in, so it rides on that card instead of adding a second one. */
+  const signalByUrl = new Map(briefing.signals.map((s) => [s.url, s]));
+  const items: Item[] = [
+    ...briefing.posts.map<Item>((p) => ({
+      key: p.url,
+      kind: p.by ? "people" : "company",
+      title: p.text.split("\n")[0].slice(0, 160),
+      body: p.text,
+      date: p.date,
+      url: p.url,
+      sourceLabel: p.by ? p.by.name : briefing.name,
+      label: p.label,
+      signal: signalByUrl.get(p.url),
+      post: p,
+    })),
+    ...briefing.news.map<Item>((n) => ({
+      key: n.url,
+      kind: "news",
+      title: n.title,
+      body: n.summary ?? null,
+      date: n.published,
+      url: n.url,
+      sourceLabel: n.source,
+      label: n.label,
+      signal: signalByUrl.get(n.url),
+      news: n,
+    })),
+    ...(briefing.site ?? []).map<Item>((n) => ({
+      key: n.url,
+      kind: "site",
+      title: n.title,
+      body: n.summary ?? null,
+      date: n.published,
+      url: n.url,
+      sourceLabel: n.source,
+      label: n.label,
+      signal: signalByUrl.get(n.url),
+      news: n,
+    })),
+  ]
+    /* ONE PAGE, ONE ITEM. A press release on the company's own site is also
+       picked up by the news wire under the very same link; the site copy
+       wins because "published by them" is the truer label for their URL. */
+    .sort((a, b) => (a.kind === "site" ? -1 : 0) - (b.kind === "site" ? -1 : 0))
+    .filter((item, index, all) => all.findIndex((other) => other.url === item.url) === index)
+    .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0));
+
+  const concerns = (i: Item) => !relevantOnly || !i.label || i.label.relevant;
+  const matched = items.filter((i) => inRange(i.date) && hit(i.title, i.body, i.sourceLabel, i.signal?.why));
+  const base = matched.filter(concerns);
+  const hiddenByRelevance = matched.length - base.length;
+
+  const signalCounts: Partial<Record<SignalKind, number>> = {};
+  for (const i of base) if (i.signal) signalCounts[i.signal.kind] = (signalCounts[i.signal.kind] ?? 0) + 1;
+  const hasTag = (i: Item, tag: ItemTag) => !!i.label?.tags.includes(tag);
+
+  const SOURCES: { key: Source; label: string; icon: LucideIcon; color: string; count: number; always: boolean }[] = [
+    { key: "all" as Source, label: "Everything", icon: Radar, color: "var(--ink-bright-blue)", count: base.length, always: true },
+    { key: "company" as Source, label: "Company posts", icon: Building2, color: "var(--ink-bright-blue)", count: base.filter((i) => i.kind === "company").length, always: true },
+    ...(isCompetitor
+      ? []
+      : [{ key: "people" as Source, label: "People posts", icon: Users, color: "var(--ink-magenta)", count: base.filter((i) => i.kind === "people").length, always: true }]),
+    { key: "news" as Source, label: "News", icon: Newspaper, color: "var(--ink-teal-deep)", count: base.filter((i) => i.kind === "news").length, always: true },
+    { key: "site" as Source, label: "Their website", icon: Globe2, color: "var(--ink-orange)", count: base.filter((i) => i.kind === "site").length, always: true },
+    { key: "signal" as Source, label: "Signals", icon: Radar, color: "var(--ink-violet-soft)", count: base.filter((i) => !!i.signal).length, always: true },
+    { key: "thought" as Source, label: ITEM_TAG_META["thought-leadership"].label, icon: ITEM_TAG_META["thought-leadership"].icon, color: ITEM_TAG_META["thought-leadership"].color, count: base.filter((i) => hasTag(i, "thought-leadership")).length, always: isCompetitor },
+    { key: "award" as Source, label: ITEM_TAG_META.award.label, icon: ITEM_TAG_META.award.icon, color: ITEM_TAG_META.award.color, count: base.filter((i) => hasTag(i, "award")).length, always: isCompetitor },
+  ].filter((s) => s.always || s.count > 0);
+
+  const passesSource = (i: Item) =>
+    source === "all" ||
+    (source === "signal"
+      ? !!i.signal
+      : source === "thought"
+        ? hasTag(i, "thought-leadership")
+        : source === "award"
+          ? hasTag(i, "award")
+          : i.kind === source);
+  const filtered = base
+    .filter(passesSource)
+    .filter((i) => !signalPick || i.signal?.kind === signalPick);
+  const groups = groupStories(filtered);
+
+  // ---------------------------------------------------------------- cards
+  const tagChips = (item: Item) =>
+    (item.label?.tags ?? []).map((tag) => {
+      const meta = ITEM_TAG_META[tag];
+      const TIcon = meta.icon;
+      return (
+        <span
+          key={tag}
+          className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
+          style={{ color: meta.color, background: tint(meta.color, 8) }}
+        >
+          <TIcon size={10.5} strokeWidth={2.2} /> {meta.label}
+        </span>
+      );
     });
 
+  const signalChip = (signal: LiveSignal) => {
+    const meta = SIGNAL_META[signal.kind];
+    const SIcon = SIGNAL_ICON[signal.kind];
+    return (
+      <span
+        title={meta.label}
+        className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
+        style={{ color: meta.color, background: tint(meta.color, 8) }}
+      >
+        <SIcon size={10.5} strokeWidth={2.2} /> {meta.short}
+      </span>
+    );
+  };
 
-  const signalCounts = signals.reduce<Record<string, number>>(
-    (acc, s) => ({ ...acc, [s.kind]: (acc[s.kind] ?? 0) + 1 }),
-    {}
+  const whyLine = (signal: LiveSignal) => (
+    <p className="mt-2 rounded-lg bg-surface px-3 py-2 text-[12px] leading-relaxed text-text-secondary">
+      <span className="font-semibold text-text-primary">Why it matters: </span>
+      {signal.why}
+    </p>
   );
 
-  const postCard = (post: LiveBriefing["posts"][number], key: string) => {
+  /* ONE STORY, MANY SOURCES (Saras, Sep 10): the others are named under the
+     card rather than shown again as cards of their own. */
+  const othersLine = (group: StoryGroup<Item>) =>
+    group.others.length > 0 ? (
+      <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border-light pt-2 text-[11.5px] text-text-tertiary">
+        <span>
+          {group.lead.kind === "company" || group.lead.kind === "people"
+            ? "Also posted by:"
+            : "Other sources talking about this:"}
+        </span>
+        {group.others.map((o, i) => (
+          <a
+            key={`${o.key}-${i}`}
+            href={safeHref(o.url) as string}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-0.5 font-semibold text-text-secondary hover:text-blue-primary"
+          >
+            {o.sourceLabel} <ExternalLink size={10} strokeWidth={2.2} />
+          </a>
+        ))}
+      </p>
+    ) : null;
+
+  const cardStyle = (item: Item) =>
+    item.signal ? { borderLeftColor: SIGNAL_META[item.signal.kind].color } : undefined;
+  const cardClass = (item: Item) => cn("p-4", item.signal && "border-l-[3px]");
+
+  const postCard = (group: StoryGroup<Item>, key: string) => {
+    const item = group.lead;
+    const post = item.post!;
     // COUNT CHARACTERS, NOT UTF-16 UNITS. LinkedIn posts are full of styled
-    // unicode (𝘪𝘯𝘥𝘶𝘴𝘵𝘳𝘺, 🎉), where one visible character is two units, so
-    // post.text.slice(0, 420) could land in the middle of one and leave half a
-    // character behind. The server and the client then rendered that broken
-    // text differently and React threw a hydration error, tearing down the
-    // whole page and rebuilding it on the client — /market-intel/bayer and
-    // /market-intel/viatris both did it. Array.from splits on code points.
+    // unicode, where one visible character is two units, so slicing by
+    // index could split one and React would throw a hydration error.
     const chars = Array.from(post.text);
     const isLong = chars.length > 420;
     const open = expanded.has(post.url);
     return (
-      <Card key={key} className="p-4">
+      <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
+        {(item.signal || (item.label?.tags.length ?? 0) > 0) && (
+          <p className="mb-2 flex flex-wrap items-center gap-2">
+            {item.signal && signalChip(item.signal)}
+            {tagChips(item)}
+          </p>
+        )}
         <div className="flex items-start gap-3">
           {post.by ? (
             <Avatar
@@ -281,116 +445,66 @@ export function LiveCompanyBriefing({
                 </span>
               )}
             </p>
+            {item.signal && whyLine(item.signal)}
+            {othersLine(group)}
           </div>
         </div>
       </Card>
     );
   };
 
-  /* THE COMPANY'S OWN PAGE, said plainly. Same anatomy as a news card so
-     the timeline stays one rhythm, but a warm chip and "Published by them"
-     instead of a publication name, because the difference between a
-     reporter's account and the company's own statement is the whole reason
-     this source exists. */
-  const siteCard = (item: LiveBriefing["news"][number], key: string) => (
-    <Card key={key} className="p-4">
-      <p className="flex flex-wrap items-center gap-2">
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-orange)]">
-          <Globe2 size={10.5} strokeWidth={2.2} /> {item.source}
-        </span>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-          Published by them
-        </span>
-        <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
-          {fmtDate(item.published)}
-        </span>
-      </p>
-      <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
-        {item.title}
-      </h3>
-      {item.summary && (
-        <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
-          {item.summary}{" "}
-          <span className="inline-flex translate-y-[1px] items-center gap-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-            <Sparkles size={9} strokeWidth={2.2} /> AI summary
-          </span>
-        </p>
-      )}
-      <a
-        href={safeHref(item.url) as string}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
-      >
-        Read it on their site
-        <ExternalLink size={12} strokeWidth={2.2} />
-      </a>
-    </Card>
-  );
-
-  const newsCard = (item: LiveBriefing["news"][number], key: string) => (
-    <Card key={key} className="p-4">
-      <p className="flex flex-wrap items-center gap-2">
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-teal-deep)]">
-          <Newspaper size={10.5} strokeWidth={2.2} /> {item.source}
-        </span>
-        <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
-          {fmtDate(item.published)}
-        </span>
-      </p>
-      <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
-        {item.title}
-      </h3>
-      {item.summary && (
-        <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
-          {item.summary}{" "}
-          <span className="inline-flex translate-y-[1px] items-center gap-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-            <Sparkles size={9} strokeWidth={2.2} /> AI summary
-          </span>
-        </p>
-      )}
-      <a
-        href={safeHref(item.url) as string}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
-      >
-        Read the article <ExternalLink size={11} strokeWidth={2.2} />
-      </a>
-    </Card>
-  );
-
-  const signalCard = (signal: LiveBriefing["signals"][number], key: string) => {
-    const meta = SIGNAL_META[signal.kind];
-    const SIcon = SIGNAL_ICON[signal.kind];
+  const articleCard = (group: StoryGroup<Item>, key: string) => {
+    const item = group.lead;
+    const article = item.news!;
+    const own = item.kind === "site";
     return (
-      <Card key={key} className="border-l-[3px] p-4" style={{ borderLeftColor: meta.color }}>
+      <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
         <p className="flex flex-wrap items-center gap-2">
-          <span
-            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
-            style={{ color: meta.color, background: tint(meta.color, 8) }}
-          >
-            <SIcon size={10.5} strokeWidth={2.2} /> {meta.label}
-          </span>
+          {item.signal && signalChip(item.signal)}
+          {own ? (
+            /* THE COMPANY'S OWN PAGE, said plainly: a warm chip and
+               "Published by them", because a reporter's account and the
+               company's own statement are different claims. */
+            <>
+              <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-orange)]">
+                <Globe2 size={10.5} strokeWidth={2.2} /> {article.source}
+              </span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                Published by them
+              </span>
+            </>
+          ) : (
+            <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-teal-deep)]">
+              <Newspaper size={10.5} strokeWidth={2.2} /> {article.source}
+            </span>
+          )}
+          {tagChips(item)}
           <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
-            {fmtDate(signal.date)}
+            {fmtDate(article.published)}
           </span>
         </p>
         <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
-          {signal.title}
+          {article.title}
         </h3>
+        {article.summary && (
+          <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
+            {article.summary}{" "}
+            <span className="inline-flex translate-y-[1px] items-center gap-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+              <Sparkles size={9} strokeWidth={2.2} /> AI summary
+            </span>
+          </p>
+        )}
         <a
-          href={safeHref(signal.url) as string}
+          href={safeHref(article.url) as string}
           target="_blank"
           rel="noreferrer"
-          className="mt-1.5 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+          className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
         >
-          Spotted in {signal.sourceLabel} <ExternalLink size={11} strokeWidth={2.2} />
+          {own ? "Read it on their site" : "Read the article"}
+          <ExternalLink size={11} strokeWidth={2.2} />
         </a>
-        <p className="mt-2 rounded-lg bg-surface px-3 py-2 text-[12px] leading-relaxed text-text-secondary">
-          <span className="font-semibold text-text-primary">Why it matters: </span>
-          {signal.why}
-        </p>
+        {item.signal && whyLine(item.signal)}
+        {othersLine(group)}
       </Card>
     );
   };
@@ -399,84 +513,18 @@ export function LiveCompanyBriefing({
     post: { color: "var(--ink-bright-blue)" },
     news: { color: "var(--ink-teal-deep)" },
     site: { color: "var(--ink-orange)" },
-    signal: { color: "var(--ink-violet-soft)" },
   } as const;
-
-  type FeedItem =
-    | { kind: "company" | "people"; date: string | null; post: LiveBriefing["posts"][number] }
-    | { kind: "news"; date: string | null; news: LiveBriefing["news"][number] }
-    | { kind: "site"; date: string | null; news: LiveBriefing["news"][number] }
-    | { kind: "signal"; date: string | null; signal: LiveBriefing["signals"][number] };
-
-  const merged: FeedItem[] = [
-    ...posts.map((post) => ({
-      kind: (post.by ? "people" : "company") as "people" | "company",
-      date: post.date,
-      post,
-    })),
-    ...news.map((item) => ({ kind: "news" as const, date: item.published, news: item })),
-    ...site.map((item) => ({ kind: "site" as const, date: item.published, news: item })),
-    ...signals.map((signal) => ({ kind: "signal" as const, date: signal.date, signal })),
-  ].sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0));
-
-  const shown = merged.filter((i) => kinds.has(i.kind));
-
-  /** The table layout works on every lens: one row per item, whatever it is. */
-  type TableRow = {
-    kind: "post" | "news" | "site" | "signal";
-    tag: string;
-    what: string;
-    sub?: string | null;
-    when: string | null;
-    url: string;
-  };
-  const tableRows: TableRow[] = shown.map((item) =>
-    item.kind === "signal"
-      ? {
-          kind: "signal" as const,
-          tag: SIGNAL_META[item.signal.kind].label,
-          what: item.signal.title,
-          sub: item.signal.why,
-          when: item.signal.date,
-          url: item.signal.url,
-        }
-      : item.kind === "news" || item.kind === "site"
-        ? {
-            kind: item.kind,
-            tag: item.news.source,
-            what: item.news.title,
-            sub: item.news.summary,
-            when: item.news.published,
-            url: item.news.url,
-          }
-        : {
-            kind: "post" as const,
-            tag: item.post.by?.name ?? briefing.name,
-            what: item.post.text,
-            when: item.post.date,
-            url: item.post.url,
-          }
-  );
 
   return (
     <div>
-      {/* A briefing left open must keep pulling fresh server data; this was
-          only on the "tracking just set up" branch, so THIS page could sit
-          frozen for a day while the Past-day filter drained to nothing
-          (Anir, Aug 13: "It still says zero"). */}
+      {/* A briefing left open must keep pulling fresh server data. */}
       <AutoFresh />
       <SmartBack
-        fallback={
-          briefing.group === "competitor"
-            ? "/market-intel?tab=competitors"
-            : "/market-intel"
-        }
+        fallback={isCompetitor ? "/market-intel?tab=competitors" : "/market-intel"}
         className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
         <ArrowLeft size={14} strokeWidth={2} />{" "}
-        {briefing.group === "competitor"
-          ? "Competitor Intelligence"
-          : "Customer Intelligence"}
+        {isCompetitor ? "Competitor Intelligence" : "Customer Intelligence"}
       </SmartBack>
 
       <div className="rise-in flex flex-wrap items-center gap-4">
@@ -489,13 +537,11 @@ export function LiveCompanyBriefing({
           <h1 className="flex flex-wrap items-center gap-2.5 text-[24px] font-bold tracking-[-0.02em] text-text-primary">
             {briefing.name}
             {briefing.momentumPct === null ? (
-              /* A COUNT, NOT A TREND — no up-arrow (Anir, Aug 14, on the card
-                 beside this one: the arrow means "versus last month", and a
-                 plain count is not that). The card already dropped it; this
-                 one kept it, which mattered little while the count was rare
-                 and matters now that it is the usual case. */
+              /* A COUNT, NOT A TREND, and an exact one: nothing is capped any
+                 more (Anir, Sep 10: "if there are 1,000 items, there should be
+                 1,000 items"). */
               <span
-                title="New items picked up this month. Not enough history yet to compare it with last month."
+                title="Items picked up in the last 30 days: posts, articles and their own website. Not enough history yet to compare with the month before."
                 className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:var(--ink-bright-blue)] tnum"
               >
                 <Newspaper size={12} strokeWidth={2.4} />
@@ -519,16 +565,44 @@ export function LiveCompanyBriefing({
                 <LinkedInIcon size={11} /> {fmtFollowers(briefing.followerCount)} followers
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => void toggleBookmark()}
+              aria-pressed={bookmarked ?? false}
+              aria-label={bookmarked ? `Unfollow ${briefing.name}` : `Follow ${briefing.name}`}
+              title={bookmarked ? "On your list. Click to unfollow." : "Add to your list"}
+              className={cn(
+                "flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors",
+                bookmarked
+                  ? "bg-[rgba(180,83,9,0.12)] text-[#B45309]"
+                  : "text-text-tertiary hover:bg-surface hover:text-[#B45309]"
+              )}
+            >
+              <Star size={15} strokeWidth={2.2} fill={bookmarked ? "currentColor" : "none"} />
+            </button>
           </h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
             {subtitle || "Live briefing from LinkedIn, the news wire and their own website, past 3 months"}
           </p>
+          <div className="mt-1.5">
+            <DivisionEditor
+              companyId={briefing.id}
+              companyName={briefing.name}
+              divisions={divisions}
+              canEdit={canWrite}
+            />
+          </div>
         </div>
-        <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
-          <span className="relative flex h-2 w-2">
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
+            <span className="relative flex h-2 w-2">
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
+            </span>
+            Live data · updated {briefing.updatedLabel}
           </span>
-          Live data · updated {briefing.updatedLabel}
+          {tracked && canRemove && (
+            <StopTrackingButton companyId={briefing.id} companyName={briefing.name} />
+          )}
         </span>
       </div>
 
@@ -544,6 +618,9 @@ export function LiveCompanyBriefing({
           </p>
         </div>
       )}
+
+      {/* THE NINE SIGNALS, AT THE TOP (Saras, Sep 10). */}
+      <SignalRow className="mt-4" counts={signalCounts} active={signalPick} onPick={setSignalPick} />
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -563,87 +640,26 @@ export function LiveCompanyBriefing({
               inputClassName="h-[34px] w-full rounded-full border border-border-light bg-white pl-8 pr-3 text-[12px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-subtle"
             />
             <span className="ml-auto flex items-center gap-2">
-              <div ref={kindsRef} className="relative">
+              {isCompetitor && (
                 <button
                   type="button"
-                  onClick={() => setKindsOpen((v) => !v)}
-                  aria-haspopup="menu"
-                  aria-expanded={kindsOpen}
-                  className="flex h-[34px] cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white pl-1.5 pr-2.5 text-[12.5px] font-semibold text-text-primary transition-colors hover:border-blue-subtle"
+                  onClick={() => setRelevantOnly((v) => !v)}
+                  aria-pressed={relevantOnly}
+                  title="Only items about pharma, medical devices, consumer products or regulatory work"
+                  className={cn(
+                    "flex h-[34px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors",
+                    relevantOnly
+                      ? "border-transparent bg-[color:var(--ink-teal-deep)] text-white"
+                      : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+                  )}
                 >
-                  <span
-                    className="flex h-6 w-6 items-center justify-center rounded-full"
-                    style={{
-                      color: kinds.size === 1 ? KIND_META.find((k) => kinds.has(k.key))?.color : "var(--ink-bright-blue)",
-                      background: tint((kinds.size === 1 ? KIND_META.find((k) => kinds.has(k.key))?.color : "var(--ink-bright-blue)") ?? "var(--ink-bright-blue)", 8),
-                    }}
-                  >
-                    <Radar size={13} strokeWidth={2.2} />
-                  </span>
-                  {kindLabel}
-                  <span className="tnum text-text-tertiary">({activeCount})</span>
-                  <ChevronDown
-                    size={13}
-                    strokeWidth={2.2}
-                    className={cn("text-text-tertiary transition-transform", kindsOpen && "rotate-180 text-blue-primary")}
-                  />
+                  <Filter size={13} strokeWidth={2.2} />
+                  {relevantOnly ? "Freyr's industries only" : "Showing everything"}
+                  {relevantOnly && hiddenByRelevance > 0 && (
+                    <span className="tnum opacity-85">· {hiddenByRelevance} hidden</span>
+                  )}
                 </button>
-                {kindsOpen && (
-                  <div
-                    role="menu"
-                    className="menu-in absolute right-0 top-full z-50 mt-2 w-[236px] rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
-                  >
-                    <button
-                      type="button"
-                      role="menuitemcheckbox"
-                      aria-checked={allOn}
-                      onClick={() => setKinds(new Set(ALL_KINDS))}
-                      className={cn(
-                        "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold transition-colors",
-                        allOn ? "bg-blue-light text-text-primary" : "text-text-secondary hover:bg-surface hover:text-text-primary"
-                      )}
-                    >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[rgba(0,113,227,0.08)] text-[color:var(--ink-bright-blue)]">
-                        <Radar size={13} strokeWidth={2.2} />
-                      </span>
-                      <span className="flex-1">Everything</span>
-                      {allOn && <Check size={14} strokeWidth={2.4} className="text-blue-primary" />}
-                    </button>
-                    <div className="mx-2 my-1 border-t border-border-light" />
-                    {KIND_META.map((k) => {
-                      const KIcon = k.icon;
-                      const on = kinds.has(k.key);
-                      return (
-                        <button
-                          key={k.key}
-                          type="button"
-                          role="menuitemcheckbox"
-                          aria-checked={on}
-                          onClick={() => toggleKind(k.key)}
-                          className={cn(
-                            "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold transition-colors",
-                            on ? "text-text-primary" : "text-text-tertiary hover:bg-surface hover:text-text-secondary"
-                          )}
-                        >
-                          <span
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
-                            style={{ color: k.color, background: `${k.color}${on ? "1f" : "0f"}` }}
-                          >
-                            <KIcon size={13} strokeWidth={2.2} />
-                          </span>
-                          <span className="flex-1">
-                            {k.label}{" "}
-                            <span className="tnum font-normal text-[12px] text-text-tertiary">
-                              ({k.count})
-                            </span>
-                          </span>
-                          {on && <Check size={14} strokeWidth={2.4} className="text-blue-primary" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              )}
               <ColorSelect
                 value={range}
                 onChange={(v) => setRange(v as typeof range)}
@@ -719,11 +735,39 @@ export function LiveCompanyBriefing({
             </span>
           </SearchPriority>
 
+          {/* THE SOURCES, ALL VISIBLE (Saras, Sep 10: "instead of having this
+              as a dropdown... can we just have it show all the options"). */}
+          <div className="mb-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Sources">
+            {SOURCES.map((s) => {
+              const SIcon = s.icon;
+              const on = source === s.key;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => setSource(s.key)}
+                  aria-pressed={on}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
+                    on
+                      ? "border-transparent text-white"
+                      : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+                  )}
+                  style={on ? { background: s.color } : undefined}
+                >
+                  <SIcon size={13} strokeWidth={2.2} />
+                  {s.label}
+                  <span className={cn("tnum", on ? "opacity-80" : "text-text-tertiary")}>{s.count}</span>
+                </button>
+              );
+            })}
+          </div>
+
           <div
-            key={`${[...kinds].sort().join("+")}-${newsView}-${range}`}
+            key={`${source}-${signalPick ?? "any"}-${newsView}-${range}-${relevantOnly}`}
             className={cn(
               "tab-panel",
-              newsView === "tiles" && shown.length > 0
+              newsView === "tiles" && groups.length > 0
                 ? "grid grid-cols-1 gap-2.5 sm:grid-cols-2"
                 : "space-y-2.5"
             )}
@@ -742,145 +786,129 @@ export function LiveCompanyBriefing({
                       <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                         When
                       </th>
-                      <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                      <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                         Article
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light">
-                    {tableRows.map((row, index) => (
-                      <tr key={index} className="transition-colors hover:bg-surface">
-                        <td className="px-4 py-3 align-top">
-                          <span
-                            className="flex w-max max-w-[180px] items-center gap-1 truncate rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
-                            style={{
-                              color: TABLE_TAG[row.kind].color,
-                              background: tint(TABLE_TAG[row.kind].color, 8),
-                            }}
-                          >
-                            {row.kind === "post" ? (
-                              <LinkedInIcon size={10.5} />
-                            ) : row.kind === "news" ? (
-                              <Newspaper size={10.5} strokeWidth={2.2} />
-                            ) : (
-                              <Radar size={10.5} strokeWidth={2.2} />
+                    {groups.map((group, index) => {
+                      const item = group.lead;
+                      const rowKind = item.kind === "news" ? "news" : item.kind === "site" ? "site" : "post";
+                      const color = item.signal ? SIGNAL_META[item.signal.kind].color : TABLE_TAG[rowKind].color;
+                      const RowIcon = item.signal
+                        ? SIGNAL_ICON[item.signal.kind]
+                        : rowKind === "news"
+                          ? Newspaper
+                          : rowKind === "site"
+                            ? Globe2
+                            : (LinkedInIcon as unknown as LucideIcon);
+                      return (
+                        <tr key={index} className="transition-colors hover:bg-surface">
+                          <td className="px-4 py-3 align-top">
+                            <span
+                              className="flex w-max max-w-[200px] items-center gap-1 truncate rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
+                              style={{ color, background: tint(color, 8) }}
+                            >
+                              <RowIcon size={10.5} strokeWidth={2.2} />
+                              {item.signal ? SIGNAL_META[item.signal.kind].short : item.sourceLabel}
+                            </span>
+                            {item.signal && (
+                              <span className="mt-1 block max-w-[200px] truncate text-[11px] text-text-tertiary">
+                                {item.sourceLabel}
+                              </span>
                             )}
-                            {row.tag}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 align-top">
-                          <p className="overflow-hidden text-[13px] font-semibold leading-snug text-text-primary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                            {row.what}
-                          </p>
-                          {row.sub && (
-                            <p className="mt-0.5 overflow-hidden text-[12px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                              {row.sub}
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <p className="overflow-hidden text-[13px] font-semibold leading-snug text-text-primary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                              {item.title}
                             </p>
-                          )}
-                        </td>
-                        <td
-                          className="whitespace-nowrap px-4 py-3 align-top text-[12px] text-text-secondary"
-                          suppressHydrationWarning
-                        >
-                          {fmtDate(row.when)}
-                        </td>
-                        <td className="px-4 py-3 align-top">
-                          <a
-                            href={safeHref(row.url) as string}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+                            {(item.signal?.why || item.news?.summary) && (
+                              <p className="mt-0.5 overflow-hidden text-[12px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                                {item.signal?.why ?? item.news?.summary}
+                              </p>
+                            )}
+                            {group.others.length > 0 && (
+                              <p className="mt-0.5 text-[11px] text-text-tertiary tnum">
+                                +{group.others.length} more {group.others.length === 1 ? "source" : "sources"}
+                              </p>
+                            )}
+                          </td>
+                          <td
+                            className="whitespace-nowrap px-4 py-3 align-top text-[12px] text-text-secondary"
+                            suppressHydrationWarning
                           >
-                            {row.kind === "post" ? "Open" : "Read"}{" "}
-                            <ExternalLink size={11} strokeWidth={2.2} />
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
+                            {fmtDate(item.date)}
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <a
+                              href={safeHref(item.url) as string}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+                            >
+                              {rowKind === "post" ? "Open" : "Read"}{" "}
+                              <ExternalLink size={11} strokeWidth={2.2} />
+                            </a>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </Card>
-            ) : shown.length === 0 ? (
+            ) : groups.length === 0 ? (
               <Card className="p-6 text-[13px] leading-relaxed text-text-secondary">
-                Nothing matches the current filters. Widen the types, time
-                range or search to see more.
+                {relevantOnly && hiddenByRelevance > 0 && matched.length > 0
+                  ? `Nothing here concerns Freyr's industries. ${hiddenByRelevance} ${hiddenByRelevance === 1 ? "item is" : "items are"} hidden; switch to "Showing everything" to see them.`
+                  : "Nothing matches the current filters. Widen the source, signal, time range or search to see more."}
               </Card>
             ) : (
-              shown.map((item, index) =>
-                item.kind === "signal"
-                  ? signalCard(item.signal, `s-${index}`)
-                  : item.kind === "news"
-                    ? newsCard(item.news, `n-${index}`)
-                    : item.kind === "site"
-                      ? siteCard(item.news, `w-${index}`)
-                      : postCard(item.post, `p-${index}`)
+              groups.map((group, index) =>
+                group.lead.kind === "news" || group.lead.kind === "site"
+                  ? articleCard(group, `a-${index}`)
+                  : postCard(group, `p-${index}`)
               )
             )}
           </div>
         </div>
 
-        {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4: "on the
-            right side, I don't think that stuff is animating"). The briefing
-            table carried an entrance and this column carried none, so half the
-            page arrived and the other half was simply already there. */}
+        {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4). */}
         <div className="stagger space-y-4">
           <Card className="p-4">
             <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
               <TrendingUp size={14} strokeWidth={2} className="text-blue-primary" />
               Activity, last 12 weeks
             </h2>
+            <p className="mt-0.5 text-[11.5px] text-text-tertiary">
+              Posts, articles and website items per week.
+            </p>
             <div className="mt-2">
               <Sparkline
                 points={briefing.trend}
                 height={44}
                 xLabels={briefing.trendLabels}
                 unit="items"
-                label={`${briefing.name} market activity`}
+                label={`${briefing.name} posts, articles and website items per week`}
               />
             </div>
           </Card>
 
-          <Card className="p-4">
-            <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
-              <Users size={14} strokeWidth={2} className="text-blue-primary" />
-              People tracked
-              <TrackPersonButton companyId={briefing.id} companyName={briefing.name} />
-            </h2>
-            {extraPeople.length === 0 ? (
-              <p className="mt-2.5 text-[12px] leading-relaxed text-text-secondary">
-                Nobody yet. Add the senior people whose posts you want in this
-                feed, with the plus above.
-              </p>
-            ) : (
-              <TrackedPeopleList people={extraPeople} personPosts={personPosts} />
-            )}
-          </Card>
-
-          {signals.length > 0 && (
+          {/* NO PEOPLE ON A COMPETITOR (Saras, Sep 10). */}
+          {!isCompetitor && (
             <Card className="p-4">
               <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
-                <Radar size={14} strokeWidth={2} className="text-blue-primary" />
-                Signal mix
+                <Users size={14} strokeWidth={2} className="text-blue-primary" />
+                People tracked
+                {canWrite && <TrackPersonButton companyId={briefing.id} companyName={briefing.name} />}
               </h2>
-              <ul className="mt-2.5 space-y-1.5">
-                {(Object.keys(signalCounts) as MiSignalKind[]).map((kind) => {
-                  const meta = SIGNAL_META[kind];
-                  const SIcon = SIGNAL_ICON[kind];
-                  return (
-                    <li key={kind} className="flex items-center gap-2">
-                      <span
-                        className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        style={{ color: meta.color, background: tint(meta.color, 8) }}
-                      >
-                        <SIcon size={11} strokeWidth={2.2} /> {meta.label}
-                      </span>
-                      <span className="ml-auto text-[12px] font-semibold text-text-secondary tnum">
-                        {signalCounts[kind]}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+              {extraPeople.length === 0 ? (
+                <p className="mt-2.5 text-[12px] leading-relaxed text-text-secondary">
+                  Nobody yet.{canWrite ? " Add the senior people whose posts you want in this feed, with the plus above." : ""}
+                </p>
+              ) : (
+                <TrackedPeopleList people={extraPeople} personPosts={personPosts} />
+              )}
             </Card>
           )}
 

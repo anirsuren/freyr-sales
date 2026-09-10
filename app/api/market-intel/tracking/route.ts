@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { after } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
+import { getCurrentUser } from "@/lib/currentUser";
 import {
   addCompanyByLink,
   addPersonByLink,
@@ -9,11 +10,17 @@ import {
   refreshTrackedPersonNow,
 } from "@/lib/marketIntelRefresh";
 import {
+  MEMBER_TRACK_LIMIT,
+  cleanDivisions,
+  countAddedBy,
+  readMarketIntelTracking,
+  setCompanyDivisions,
   trackCompany,
   trackPerson,
   untrackCompany,
   untrackPerson,
 } from "@/lib/marketIntelTracking";
+import { setMarketIntelBookmark } from "@/lib/marketIntelBookmarks";
 
 export const dynamic = "force-dynamic";
 
@@ -44,16 +51,11 @@ async function acquireTrackingWrite(): Promise<() => void> {
 /**
  * WHO MAY CHANGE THE WATCH LIST — the privilege table, like every other module.
  *
- * This used to be open to anybody signed in ("tracking is every rep's tool,
- * not an admin surface"), which predates the map. The Market Intel row gives
- * everyone *view* and only Admin *create*, so a BD Member adding companies was
- * writing to a module they can only read (found Aug 31, walking every role in
- * the browser: "Track a company" was on a BD Member's screen and worked).
- *
- * It is not only a permission question. Each company added fires a paid scrape
- * within seconds of the response, so an open write endpoint here spends money.
- *
- * Reopening it to reps is one cell in Admin, not a deploy.
+ * Since Sep 10 the Market Intel row gives BD *create* beside Admin (Saras:
+ * "give it to the BD members as well and maybe keep a limit"). The limit is
+ * enforced here: a person may put MEMBER_TRACK_LIMIT NEW companies on the
+ * watch; following a company that is already there is free and unlimited,
+ * because it is scraped once for everybody. Admins have no limit.
  */
 async function readOnly(): Promise<NextResponse | null> {
   const refusal = await moduleWriteRefusal("/market-intel");
@@ -67,17 +69,40 @@ export async function POST(req: NextRequest) {
   }
   const shut = await readOnly();
   if (shut) return shut;
+  const user = await getCurrentUser();
+  const isAdmin = user.role === "admin";
+  const addedBy = {
+    id: scope.userId,
+    ...(user.name ? { name: user.name } : {}),
+    ...(user.email ? { email: user.email } : {}),
+  };
   const body = (await req.json().catch(() => ({}))) ?? {};
   const releaseWrite = await acquireTrackingWrite();
   try {
     // Link-only flows: the LinkedIn page is the whole form; everything else
     // (name, logo, title, photo, first data pull) comes from the page itself.
     if (body?.kind === "company-link") {
-      const company = await addCompanyByLink(
+      const tracking = await readMarketIntelTracking();
+      const canCreate = isAdmin || countAddedBy(tracking, scope.userId) < MEMBER_TRACK_LIMIT;
+      const result = await addCompanyByLink(
         String(body.linkedinUrl ?? ""),
-        body?.group === "competitor" ? "competitor" : "customer"
+        body?.group === "competitor" ? "competitor" : "customer",
+        { addedBy, divisions: cleanDivisions(body.divisions), canCreate }
       );
-      return NextResponse.json({ ok: true, company });
+      // Whoever added or chose it follows it: it lands on their own list.
+      await setMarketIntelBookmark(scope, result.id, true).catch(() => undefined);
+      return NextResponse.json({
+        ok: true,
+        company: { id: result.id, name: result.name, group: result.group },
+        existing: result.existing,
+        addedLeft: isAdmin
+          ? null
+          : Math.max(
+              0,
+              MEMBER_TRACK_LIMIT -
+                countAddedBy(await readMarketIntelTracking(), scope.userId)
+            ),
+      });
     }
     if (body?.kind === "person-link") {
       const person = await addPersonByLink(
@@ -87,7 +112,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, person });
     }
     if (body?.kind === "company") {
-      const result = await trackCompany(body);
+      const tracking = await readMarketIntelTracking();
+      if (!isAdmin && countAddedBy(tracking, scope.userId) >= MEMBER_TRACK_LIMIT) {
+        return NextResponse.json(
+          {
+            error:
+              "You've added the most companies one person can. You can still follow any company already on the list.",
+          },
+          { status: 403 }
+        );
+      }
+      const divisions = cleanDivisions(body.divisions);
+      if (divisions.length === 0) {
+        return NextResponse.json(
+          { error: "Pick at least one division (MPR, MDV or CON)." },
+          { status: 400 }
+        );
+      }
+      const result = await trackCompany(body, { addedBy, divisions });
+      await setMarketIntelBookmark(scope, result.company.id, true).catch(() => undefined);
       // The first briefing is collected right after this response goes out
       // (a few cents), so the page fills in minutes instead of a day.
       after(() =>
@@ -105,6 +148,18 @@ export async function POST(req: NextRequest) {
         )
       );
       return NextResponse.json({ ok: true, person });
+    }
+    /* THE DIVISION TAG on any company, built-in or added (Saras, Sep 10). */
+    if (body?.kind === "divisions") {
+      const divisions = cleanDivisions(body.divisions);
+      if (divisions.length === 0) {
+        return NextResponse.json(
+          { error: "Every company needs at least one division." },
+          { status: 400 }
+        );
+      }
+      const saved = await setCompanyDivisions(String(body.id ?? ""), divisions);
+      return NextResponse.json({ ok: true, divisions: saved });
     }
     return NextResponse.json({ error: "Unknown request." }, { status: 400 });
   } catch (error) {
@@ -124,13 +179,36 @@ export async function DELETE(req: NextRequest) {
   }
   const shut = await readOnly();
   if (shut) return shut;
+  const user = await getCurrentUser();
+  const isAdmin = user.role === "admin";
   const body = (await req.json().catch(() => ({}))) ?? {};
   const id = String(body?.id ?? "").trim();
   if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
   const releaseWrite = await acquireTrackingWrite();
   try {
     if (body?.kind === "company") {
+      /* YOURS TO REMOVE ONLY IF YOU ADDED IT (Anir, Sep 10: one shared list,
+         each person's own on top). The list is shared, so taking a company
+         off it takes it off everybody's; that stays with the person who put
+         it there, or an admin. */
+      if (!isAdmin) {
+        const tracking = await readMarketIntelTracking();
+        const mine = tracking.companies.find((c) => c.id === id);
+        if (!mine) {
+          return NextResponse.json(
+            { error: "Only an admin can stop tracking a company from the standard list. You can unfollow it from your own list instead." },
+            { status: 403 }
+          );
+        }
+        if (mine.addedBy?.id !== scope.userId) {
+          return NextResponse.json(
+            { error: "Only the person who added a company, or an admin, can stop tracking it. You can unfollow it from your own list instead." },
+            { status: 403 }
+          );
+        }
+      }
       await untrackCompany(id);
+      await setMarketIntelBookmark(scope, id, false).catch(() => undefined);
       return NextResponse.json({ ok: true });
     }
     if (body?.kind === "person") {

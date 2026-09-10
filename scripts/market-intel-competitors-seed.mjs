@@ -1,3 +1,8 @@
+/* RETIRED SEP 10. The feed is stored one row per company now
+   (lib/marketIntelFeed.ts); this script wrote the old single document and
+   would clobber current data. The app's own refresh does everything it did. */
+console.error("Retired: the market feed is stored per company now. Use the app's refresh (POST /api/market-intel/refresh).");
+process.exit(1);
 // COMPETITOR TAB SEED (Aug 11 call): first pull for the 10 seeded competitors
 // - posts (10), news (10) each, group-stamped "competitor". The app's
 // twice-daily refresh keeps them current afterwards.

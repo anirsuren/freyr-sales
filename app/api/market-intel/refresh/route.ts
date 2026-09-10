@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
-import { runMarketIntelRefresh } from "@/lib/marketIntelRefresh";
+import {
+  refreshThoughtLeadershipNow,
+  runMarketIntelLabeling,
+  runMarketIntelRefresh,
+} from "@/lib/marketIntelRefresh";
+import { migrateLegacyFeedRow } from "@/lib/marketIntelFeed";
 import { canManageOfferings } from "@/lib/role";
 
 export const dynamic = "force-dynamic";
+// A labelling pass over a whole backlog can take a few minutes.
+export const maxDuration = 300;
 
 /**
  * Ops hatch for the self-refreshing feed: admins can force a run or refresh a
@@ -18,6 +25,30 @@ export async function POST(req: NextRequest) {
     );
   }
   const body = (await req.json().catch(() => ({}))) ?? {};
+  /* THE CLASSIFIER'S OWN HATCH: read every unread item now, up to a call
+     budget, and report tokens so the cost is a number rather than a guess. */
+  /* The one-time split of the legacy feed document into per-company rows.
+     Idempotent; the readers also run it lazily, this just does it on purpose. */
+  if (body?.migrate === true) {
+    return NextResponse.json({ migrated: await migrateLegacyFeedRow() });
+  }
+  if (body?.classify === true) {
+    const summary = await runMarketIntelLabeling({
+      maxCalls: Number(body?.maxCalls) || 60,
+      only: Array.isArray(body?.only) ? body.only.map(String) : undefined,
+    });
+    return NextResponse.json(summary);
+  }
+  if (body?.thought === true) {
+    try {
+      return NextResponse.json(await refreshThoughtLeadershipNow());
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Could not refresh." },
+        { status: 500 }
+      );
+    }
+  }
   const options = {
     force: body?.force === true,
     onlyCompanyIds: Array.isArray(body?.only)

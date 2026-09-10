@@ -44,6 +44,8 @@ import {
 } from "@/lib/marketIntelMock";
 import type { TrackedPerson } from "@/lib/marketIntelTracking";
 import { useStoredView } from "@/lib/useStoredView";
+import { SIGNAL_ICON, type SignalKind } from "@/lib/marketIntelSignals";
+import { SignalRow } from "@/components/market-intel/SignalRow";
 import { tint } from "@/lib/tint";
 
 /**
@@ -54,14 +56,6 @@ import { tint } from "@/lib/tint";
  * the who-and-what rail on the right. All sample content.
  */
 
-const SIGNAL_ICON: Record<MiSignalKind, LucideIcon> = {
-  hiring: UserPlus,
-  leadership: Crown,
-  competitor: Swords,
-  regulatory: FileCheck2,
-  expansion: Globe2,
-  deal: Handshake,
-};
 
 const SOURCE_HOME: Record<string, string> = {
   Reuters: "https://www.reuters.com",
@@ -99,6 +93,7 @@ export function CompanyIntel({
   extraPeople?: TrackedPerson[];
 }) {
   const [lens, setLens] = useState<Lens>("all");
+  const [signalPick, setSignalPick] = useState<SignalKind | null>(null);
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
     "freyr.mi.news.view",
     "rows",
@@ -121,10 +116,11 @@ export function CompanyIntel({
 
   const shown = feed.filter(
     (item) =>
-      lens === "all" ||
-      (lens === "linkedin" && item.kind === "post") ||
-      (lens === "news" && item.kind === "news") ||
-      (lens === "signals" && item.kind === "signal")
+      (lens === "all" ||
+        (lens === "linkedin" && item.kind === "post") ||
+        (lens === "news" && item.kind === "news") ||
+        (lens === "signals" && item.kind === "signal")) &&
+      (!signalPick || (item.kind === "signal" && item.signal === signalPick))
   );
 
   const up = company.momentum >= 0;
@@ -182,6 +178,14 @@ export function CompanyIntel({
           Updated {miFreshMinutes(company.id)} min ago
         </span>
       </div>
+
+      {/* The nine signals at the top, same row as the live briefing. */}
+      <SignalRow
+        className="mt-4"
+        counts={signalCounts as Partial<Record<SignalKind, number>>}
+        active={signalPick}
+        onPick={setSignalPick}
+      />
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* ------------------------------------------------ the feed */}
@@ -482,32 +486,6 @@ export function CompanyIntel({
             {/* People the team added themselves: real names, honest state,
                 removable with a confirm. Their posts arrive with the refresh. */}
             {extraPeople.length > 0 && <TrackedPeopleList people={extraPeople} />}
-          </Card>
-
-          <Card className="p-4">
-            <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
-              <Radar size={14} strokeWidth={2} className="text-blue-primary" />
-              Signal mix
-            </h2>
-            <ul className="mt-2.5 space-y-1.5">
-              {(Object.keys(signalCounts) as MiSignalKind[]).map((kind) => {
-                const meta = SIGNAL_META[kind];
-                const SIcon = SIGNAL_ICON[kind];
-                return (
-                  <li key={kind} className="flex items-center gap-2">
-                    <span
-                      className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                      style={{ color: meta.color, background: tint(meta.color, 8) }}
-                    >
-                      <SIcon size={11} strokeWidth={2.2} /> {meta.label}
-                    </span>
-                    <span className="ml-auto text-[12px] font-semibold text-text-secondary tnum">
-                      {signalCounts[kind]}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
           </Card>
 
           <Card className="p-4">

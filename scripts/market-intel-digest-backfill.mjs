@@ -1,3 +1,8 @@
+/* RETIRED SEP 10. The feed is stored one row per company now
+   (lib/marketIntelFeed.ts); this script wrote the old single document and
+   would clobber current data. The app's own refresh does everything it did. */
+console.error("Retired: the market feed is stored per company now. Use the app's refresh (POST /api/market-intel/refresh).");
+process.exit(1);
 // AI DIGEST BACKFILL: writes the page-top TLDR and per-article summaries for
 // every company already in the feed (the refresh engine keeps them current
 // from now on). Anthropic Haiku on the app's key; article text is fetched

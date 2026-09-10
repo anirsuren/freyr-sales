@@ -1,5 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { FeedCompany, FeedNews, MnaItem } from "./marketIntelFeed";
+import {
+  CLASSIFY_VERSION,
+  SIGNAL_KINDS,
+  isItemIndustry,
+  isItemTag,
+  isSignalKind,
+  type ItemLabel,
+} from "./marketIntelSignals";
 
 /**
  * THE AI LAYER OF MARKET INTEL (Anir, Aug 11: "All this shit should have an
@@ -279,4 +287,117 @@ Rules:
   } catch {
     return [];
   }
+}
+
+
+/**
+ * READ EVERY ITEM ONCE (Saras, Sep 10, three asks with one answer): which of
+ * the nine signals it is, whether it is about Freyr's industries at all, and
+ * whether it is thought leadership or an award.
+ *
+ * The keyword rules this replaces tagged a GSK post about attending ERS
+ * Congress as "Deal or partnership" because the text contained the word
+ * "partnership". A model reading the whole item does not make that mistake,
+ * and it can answer the questions keywords never could: is this TCS story
+ * about pharma or about a state government's IT contract; is this a white
+ * paper or a job ad.
+ *
+ * Twenty items per call, Haiku, a few thousand tokens in, a few hundred out:
+ * a fraction of a cent per item, and each item is read exactly once (the
+ * label is stored beside it). Every field is validated on the way in; an
+ * answer that is not one of the allowed values is dropped, never guessed.
+ */
+export const CLASSIFY_BATCH = 20;
+
+/** Tokens spent by classifyItems since the process started, for the ops
+ *  hatch to report a cost rather than a guess. */
+export const classifyUsage = { calls: 0, inputTokens: 0, outputTokens: 0 };
+
+export type ClassifyInput = {
+  kind: "post" | "news" | "site";
+  title: string;
+  text: string;
+  source?: string;
+};
+
+export async function classifyItems(
+  companyName: string,
+  group: "customer" | "competitor",
+  items: ClassifyInput[]
+): Promise<Map<number, ItemLabel>> {
+  const out = new Map<number, ItemLabel>();
+  const client = haiku();
+  if (!client || items.length === 0) return out;
+
+  const prompt = `You label items in a sales-intelligence feed used by Freyr Solutions, a regulatory-affairs services company. Freyr serves three industries: medicinal products (pharma, biotech, drugs, vaccines, generics), medical devices (devices, diagnostics, medtech, IVD), and consumer products (consumer health, OTC, cosmetics, food and supplements). The items below are about ${companyName}, a ${group === "competitor" ? "competitor of Freyr's" : "customer or prospect of Freyr's"}.
+
+ITEMS (JSON): ${JSON.stringify(
+    items.map((item, i) => ({
+      i,
+      kind: item.kind,
+      title: item.title.slice(0, 200),
+      text: item.text.slice(0, 600),
+      source: item.source,
+    }))
+  )}
+
+For EACH item answer:
+- "signal": exactly one of ${JSON.stringify(SIGNAL_KINDS)}:
+  "product" = a new product approval, filing or submission announced (FDA, EMA, MHRA, CDSCO or any regulator; NDA, BLA, MAA, 510(k), CE mark, marketing authorisation, launch after approval).
+  "expansion" = expansion into a new market, country or region (entering a market, a new site, plant, office or hub abroad).
+  "mna" = a merger, acquisition, divestiture or sale of a business.
+  "leadership" = a leadership change SPECIFICALLY in regulatory affairs, quality, compliance, pharmacovigilance or medical affairs. A new CEO, CFO, president, country general manager or any leader outside those functions is "other", never "leadership".
+  "restructuring" = layoffs, redundancies or restructuring that touch regulatory or quality teams, or company-wide cuts.
+  "commentary" = the company or its people commenting publicly on regulation, regulators, guidance or policy.
+  "events" = organising, sponsoring, presenting at or attending a congress, conference, summit, webinar, trade show or similar event.
+  "competitor" = a collaboration, partnership or contract with one of Freyr's competitors (regulatory or clinical service providers or RIM, eCTD, labeling, submissions or quality software vendors such as Veeva, IQVIA, Parexel, Certara, ICON, Intertek, UL, Emergo, TCS, Accenture, Cognizant, Ennov, LORENZ, EXTEDO, ArisGlobal, Calyx, Rimsys, Generis, OpenText, Oracle Life Sciences).
+  "other" = anything else. When in doubt, "other".
+- "relevant": true only if the item is about the medicinal products, medical devices or consumer products industries, or about regulatory affairs, quality or compliance work. Share-price news, HR awards, sports sponsorships, government IT contracts, banking, telecom or unrelated lines of business are false.
+- "industries": zero or more of "MPR" (medicinal products), "MDV" (medical devices), "CON" (consumer products), only the ones the item is clearly about.
+- "tags": zero or more of "thought-leadership" (a report, white paper, study, survey, blog post, journal article, podcast or webinar the company published or authored, sharing insight rather than announcing news) and "award" (an award, recognition, ranking or certification the company or its people won, including workplace awards).
+- "why": ONLY when signal is not "other": one sentence, at most 150 characters, written TO a Freyr salesperson, naming the regulatory, quality or compliance work this item creates or changes for the company and therefore the opening for Freyr. It must add something the title does not say; never restate the item. Good: "A Japan approval means Japanese labeling, post-approval variations and PMDA reporting from now on; ask who handles them." Bad: "GSK received approval in Japan." Otherwise omit it.
+
+Reply with ONLY valid JSON, no markdown fence:
+{"items": [{"i": 0, "signal": "events", "relevant": true, "industries": ["MPR"], "tags": [], "why": "..."}]}
+
+Rules: one entry per item, in order. Never invent facts. Read the whole text before choosing; a word like "partnership" or "collaboration" in passing is not a deal.`;
+
+  try {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 2400,
+      messages: [{ role: "user", content: prompt }],
+    });
+    classifyUsage.calls += 1;
+    classifyUsage.inputTokens += response.usage?.input_tokens ?? 0;
+    classifyUsage.outputTokens += response.usage?.output_tokens ?? 0;
+    const raw = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+    for (const entry of Array.isArray(parsed?.items) ? parsed.items : []) {
+      const index = Number(entry?.i);
+      if (!Number.isInteger(index) || index < 0 || index >= items.length) continue;
+      if (!isSignalKind(entry?.signal)) continue;
+      const industries = ((Array.isArray(entry?.industries) ? entry.industries : []) as unknown[]).filter(
+        isItemIndustry
+      );
+      const tags = ((Array.isArray(entry?.tags) ? entry.tags : []) as unknown[]).filter(isItemTag);
+      const why = String(entry?.why ?? "").trim().slice(0, 170);
+      out.set(index, {
+        signal: entry.signal,
+        relevant: entry?.relevant === true,
+        industries: [...new Set(industries)],
+        tags: [...new Set(tags)],
+        ...(entry.signal !== "other" && why ? { why } : {}),
+        v: CLASSIFY_VERSION,
+      });
+    }
+  } catch (error) {
+    console.error(
+      `[market-intel] classify failed for ${companyName}: ${error instanceof Error ? error.message : error}`
+    );
+  }
+  return out;
 }

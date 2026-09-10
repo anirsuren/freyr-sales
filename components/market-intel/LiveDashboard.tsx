@@ -14,69 +14,82 @@ import { RefreshChip } from "@/components/market-intel/NextRefresh";
 import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton";
 import { WatchlistMarquee } from "@/components/market-intel/WatchlistMarquee";
 import {
-  allTrackedNames,
-  buildBriefing,
-  type LiveBriefing,
-  type MarketIntelFeed,
+  cardFromSummary,
+  type FeedCompanySummary,
+  type FeedMeta,
+  type PersonSummary,
 } from "@/lib/marketIntelFeed";
-import type { MarketIntelTracking } from "@/lib/marketIntelTracking";
+import { COMPANY_SOURCES, COMPETITOR_SOURCES } from "@/lib/marketIntelSources";
+import { companyDivisions, type MarketIntelTracking } from "@/lib/marketIntelTracking";
+import type { Division } from "@/lib/offeringMaterials";
 
 /**
  * THE LIVE DASHBOARD: real mode only, every number on it comes from scraped
- * posts and articles. Companies are ordered by how loud the market is about
- * them right now (items in the past 30 days), so the busiest accounts lead.
+ * posts and articles. Built from each company's SUMMARY (Sep 10), so a
+ * hundred companies cost a hundred small rows, not a hundred briefings.
+ * Companies are ordered by how loud the market is about them (items in the
+ * window), so the busiest accounts lead.
  */
 
 const LinkedInGlyph = LinkedInIcon as unknown as LucideIcon;
 
-const WEEK = 7 * 86_400_000;
-
 export function LiveMarketIntelDashboard({
-  feed,
+  summaries,
+  meta,
   tracking,
   group = "customer",
   canTrack = true,
+  addedLeft = null,
+  people = {},
 }: {
-  feed: MarketIntelFeed;
+  summaries: Record<string, FeedCompanySummary>;
+  meta: FeedMeta;
   tracking: MarketIntelTracking;
+  /** Post counts per followed person, for the facepiles. */
+  people?: Record<string, PersonSummary>;
   /** Which intelligence bucket this dashboard shows. */
   group?: "customer" | "competitor";
   /** Passed straight to the button: the Market Intel row decides. */
   canTrack?: boolean;
+  /** How many NEW companies this person may still add; null for no limit. */
+  addedLeft?: number | null;
 }) {
-  const names = allTrackedNames(feed, tracking.companies);
-  const briefings = Object.values(feed.companies)
-    .filter((company) => (company.group ?? "customer") === group)
-    .map((company) => buildBriefing(company, names))
-    .sort(
-      (a, b) =>
-        b.posts.length + b.news.length - (a.posts.length + a.news.length)
-    );
+  const cards = Object.values(summaries)
+    .filter((company) => company.group === group)
+    .map(cardFromSummary)
+    .sort((a, b) => b.itemsInWindow - a.itemsInWindow);
 
   const pending = tracking.companies.filter(
-    (c) => !feed.companies[c.id] && (c.group ?? "customer") === group
+    (c) => !summaries[c.id] && (c.group ?? "customer") === group
   );
-  const totalPosts = briefings.reduce((a, b) => a + b.posts.length, 0);
-  const totalNews = briefings.reduce((a, b) => a + b.news.length, 0);
-  const totalSignals = briefings.reduce((a, b) => a + b.signals.length, 0);
-  const weekCutoff = Date.now() - WEEK;
-  const newThisWeek = briefings.reduce(
-    (a, b) =>
-      a +
-      b.signals.filter((s) => s.date && Date.parse(s.date) > weekCutoff).length,
-    0
-  );
+  const totalPosts = cards.reduce((a, c) => a + c.counts.posts, 0);
+  const totalNews = cards.reduce((a, c) => a + c.counts.news, 0);
+  const totalSite = cards.reduce((a, c) => a + c.counts.site, 0);
+  const totalSignals = cards.reduce((a, c) => a + c.signalTotal, 0);
+  const busy = cards.filter((c) => c.itemsThisMonth >= 10).length;
 
-  // Followed people per company, worn as a facepile on each card.
+  // Followed people per company, worn as a facepile on each card. Nobody is
+  // followed at a competitor (Saras, Sep 10), so that bucket carries none.
   const peopleByCompany: Record<string, CardPerson[]> = {};
-  for (const person of tracking.people) {
-    (peopleByCompany[person.companyId] ??= []).push({
-      id: person.id,
-      name: person.name,
-      role: person.role,
-      photoUrl: person.photoUrl,
-      posts: feed.people[person.id]?.posts.length ?? 0,
-    });
+  if (group !== "competitor") {
+    for (const person of tracking.people) {
+      (peopleByCompany[person.companyId] ??= []).push({
+        id: person.id,
+        name: person.name,
+        role: person.role,
+        photoUrl: person.photoUrl,
+        posts: people[person.id]?.posts ?? 0,
+      });
+    }
+  }
+
+  // Division tags: the tracking row's map, then the company's own record,
+  // then the code's starting answer for the built-in list.
+  const sourceDefault = (id: string): Division[] =>
+    ([...COMPANY_SOURCES, ...COMPETITOR_SOURCES].find((s) => s.id === id)?.divisions ?? []) as Division[];
+  const divisions: Record<string, Division[]> = {};
+  for (const id of [...cards.map((c) => c.id), ...pending.map((c) => c.id)]) {
+    divisions[id] = companyDivisions(tracking, id, sourceDefault(id));
   }
 
   return (
@@ -85,8 +98,8 @@ export function LiveMarketIntelDashboard({
         active={group === "competitor" ? "competitors" : "customers"}
         action={
           <span className="flex flex-wrap items-center gap-2.5">
-            <RefreshChip updatedAt={feed.updatedAt} />
-            <TrackCompanyButton group={group} canTrack={canTrack} />
+            <RefreshChip updatedAt={meta.updatedAt} />
+            <TrackCompanyButton group={group} canTrack={canTrack} addedLeft={addedLeft} />
           </span>
         }
       >
@@ -99,8 +112,8 @@ export function LiveMarketIntelDashboard({
         <StatTile
           icon={group === "competitor" ? Swords : Building2}
           label={group === "competitor" ? "Competitors tracked" : "Customers tracked"}
-          value={String(briefings.length + pending.length)}
-          sub="across your market"
+          value={String(cards.length + pending.length)}
+          sub={`${busy} busy this month`}
         />
         <StatTile
           icon={LinkedInGlyph}
@@ -112,40 +125,38 @@ export function LiveMarketIntelDashboard({
           icon={Newspaper}
           label="News picked up"
           value={String(totalNews)}
-          sub="real articles, 90 days"
+          sub={`real articles, 90 days · ${totalSite} from their own sites`}
         />
-        {/* THE SHORTLIST, NAMED AS ONE (Anir, Sep 4). Each company contributes
-            at most eight signals, so summing them produced a figure that could
-            never exceed companies x 8 and barely moved whether the market was
-            busy or silent — it read as a measure of activity and was a
-            measure of the cap. Saying "top 8 per company" makes it honest
-            without throwing away a number people have got used to. */}
+        {/* THE COUNT IS THE COUNT (Sep 10). Signals used to be capped at eight
+            per company; now every item that carries one of the nine signals
+            is counted. */}
         <StatTile
           icon={Radar}
           label="Signals live"
           value={String(totalSignals)}
-          sub={`${newThisWeek} new this week · top 8 per company`}
+          sub="items carrying one of the nine signals"
         />
       </section>
 
       <LiveCompanyGrid
-        briefings={briefings}
+        cards={cards}
         pending={pending}
         people={peopleByCompany}
         group={group}
+        divisions={divisions}
       />
 
       <div className="mt-6">
         <WatchlistMarquee
-          watchlist={briefings.map((b) => b.name)}
+          watchlist={cards.map((c) => c.name)}
           tracked={[
-            ...briefings.map((b) => ({ id: b.id, name: b.name })),
+            ...cards.map((c) => ({ id: c.id, name: c.name })),
             ...tracking.companies.map((c) => ({ id: c.id, name: c.name })),
           ]}
           logos={Object.fromEntries(
-            briefings
-              .filter((b) => b.logoUrl)
-              .map((b) => [b.name.toLowerCase(), b.logoUrl as string])
+            cards
+              .filter((c) => c.logoUrl)
+              .map((c) => [c.name.toLowerCase(), c.logoUrl as string])
           )}
           title={
             group === "competitor"

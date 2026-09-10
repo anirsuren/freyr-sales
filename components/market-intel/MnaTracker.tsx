@@ -5,6 +5,7 @@ import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import {
   ArrowRight,
+  BookOpenText,
   CheckCircle2,
   ExternalLink,
   Handshake,
@@ -24,8 +25,11 @@ import {
   PrioritySearchInput,
   SearchPriority,
 } from "@/components/ui/SearchPriority";
-import type { MnaBoard, MnaItem } from "@/lib/marketIntelFeed";
+import type { MnaBoard, MnaItem, ThoughtBoard } from "@/lib/marketIntelFeed";
+import { ThoughtLeadershipTracker } from "@/components/market-intel/ThoughtLeadershipTracker";
+import { useStoredView } from "@/lib/useStoredView";
 import { tint } from "@/lib/tint";
+import { cn } from "@/lib/utils";
 
 /**
  * THE M&A TRACKER (Aug 11 call): mergers and acquisitions across the
@@ -57,7 +61,18 @@ function dealValueUsd(v: string | null): number | null {
   return parseFloat(m[1]) * (m[2].toUpperCase() === "B" ? 1e9 : 1e6);
 }
 
-export function MnaTracker({ board }: { board: MnaBoard | null }) {
+const TRACKERS = ["mna", "thought"] as const;
+type Tracker = (typeof TRACKERS)[number];
+
+export function MnaTracker({
+  board,
+  thought = null,
+}: {
+  board: MnaBoard | null;
+  /** The thought-leadership board (Anant via Saras, Sep 10). */
+  thought?: ThoughtBoard | null;
+}) {
+  const [tracker, pickTracker] = useStoredView<Tracker>("freyr.mi.tracker", "mna", TRACKERS);
   // MULTISELECT (Anir, Aug 18: "multiselect. wherever this applies") — pick
   // several statuses, divisions, sizes or sources at once; empty = all. Time
   // stays single: two overlapping windows are one window.
@@ -107,20 +122,49 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
           horizontally scroll left and right"). M&A is the first resident. */}
       <div className="mb-4 flex items-center gap-2">
         <div className="-mx-1 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-1 pb-0.5">
-          <button
-            type="button"
-            aria-pressed="true"
-            className="flex shrink-0 cursor-default items-center gap-1.5 rounded-full bg-blue-primary px-3.5 py-1.5 text-[12.5px] font-semibold text-white"
-          >
-            <Handshake size={13} strokeWidth={2.2} /> M&A Tracker
-          </button>
-          <span
-            title="More trackers join this bucket as they're built."
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-border-light px-3.5 py-1.5 text-[12px] font-medium text-text-tertiary"
-          >
-            More trackers coming
-          </span>
+          {(
+            [
+              { key: "mna", label: "M&A Tracker", icon: Handshake },
+              { key: "thought", label: "Thought Leadership", icon: BookOpenText },
+            ] as const
+          ).map((t) => {
+            const on = tracker === t.key;
+            const TIcon = t.icon;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => pickTracker(t.key)}
+                className={cn(
+                  "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors",
+                  on
+                    ? "bg-blue-primary text-white"
+                    : "border border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+                )}
+              >
+                <TIcon size={13} strokeWidth={2.2} /> {t.label}
+              </button>
+            );
+          })}
         </div>
+        {tracker === "thought" ? (
+          <span className="flex shrink-0 items-center gap-1.5">
+            <span className="flex items-center gap-1.5 rounded-full bg-[rgba(0,113,227,0.07)] px-2.5 py-1 text-[11.5px] font-semibold text-text-primary tnum">
+              <BookOpenText size={11} strokeWidth={2.4} className="text-blue-primary" />
+              {thought?.total && thought.total > (thought.items?.length ?? 0)
+                ? `${thought.items.length} of ${thought.total} publications`
+                : `${thought?.items?.length ?? 0} publications`}
+            </span>
+            <span
+              className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold tnum"
+              style={{ color: "var(--ink-violet)", background: "rgba(109,40,217,0.10)" }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-[#6D28D9]" />
+              {new Set((thought?.items ?? []).map((i) => i.firm)).size} firms
+            </span>
+          </span>
+        ) : (
         <span className="flex shrink-0 items-center gap-1.5">
           <span className="flex items-center gap-1.5 rounded-full bg-[rgba(0,113,227,0.07)] px-2.5 py-1 text-[11.5px] font-semibold text-text-primary tnum">
             <Handshake size={11} strokeWidth={2.4} className="text-blue-primary" />
@@ -147,8 +191,13 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
             {completed} completed
           </span>
         </span>
+        )}
       </div>
 
+      {tracker === "thought" ? (
+        <ThoughtLeadershipTracker board={thought} />
+      ) : (
+      <>
       <SearchPriority
         query={query}
         className="mb-4 flex flex-wrap items-center gap-2"
@@ -299,6 +348,8 @@ export function MnaTracker({ board }: { board: MnaBoard | null }) {
         acquirer, target, status and division. Every card links to its source.
         Refreshes once a day.
       </p>
+      </>
+      )}
     </div>
   );
 }

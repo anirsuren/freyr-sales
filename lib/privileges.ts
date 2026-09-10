@@ -403,7 +403,11 @@ function defaultMatrix(): Record<string, Partial<Record<ModuleKey, Access>>> {
     team:               ["view",   "view", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
     goals:              ["create", "view", "create", "view", "create", "view", "create", "view", "create", "view"],
     reports:            ["view",   "view", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
-    market_intel:       ["view",   "view", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
+    /* BD ADDS COMPANIES TO THE WATCH (Saras, Sep 10: "give it to the BD
+       members as well and maybe keep a limit... up to, say, 20 companies";
+       Anir, Sep 10: build it). The cap lives in the tracking API; the cell
+       here is what lets the button appear for them. */
+    market_intel:       ["create", "create", "view", "view", "view",   "view", "view",   "view", "create", "view"],
     admin:              ["none",   "none", "none",   "none", "none",   "none", "none",   "none", "create", "none"],
   };
 

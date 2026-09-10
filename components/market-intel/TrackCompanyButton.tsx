@@ -7,26 +7,29 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
+import { DivisionPicker } from "@/components/market-intel/DivisionChips";
+import type { Division } from "@/lib/offeringMaterials";
 
 /**
  * "It's just links, and you figure out everything else" (Anir, Aug 11). One
  * field: the company's LinkedIn page. The server reads the page for the name,
  * logo and followers, pulls the first posts and news, and writes the AI
  * rundown — the briefing exists by the time the toast shows.
+ *
+ * Sep 10: the divisions it belongs to (Saras), and ONE SHARED LIST (Anir): a
+ * company already on the watch is not scraped again, it is simply added to
+ * this person's own list, and the toast says which of the two happened.
  */
 export function TrackCompanyButton({
   group = "customer",
   canTrack = true,
+  addedLeft = null,
 }: {
   group?: "customer" | "competitor";
-  /**
-   * MAY THEY ADD ONE (Suren's map: Market Intel is *view* for everyone except
-   * Admin). This button used to render for anybody who could open the page,
-   * and the endpoint behind it had no module guard at all, so a BD Member
-   * could put companies on the watch list — each one firing a paid scrape
-   * (found Aug 31, walking every role in the browser).
-   */
+  /** MAY THEY ADD ONE: the Market Intel row of the privilege table decides. */
   canTrack?: boolean;
+  /** How many NEW companies this person may still add; null means no limit. */
+  addedLeft?: number | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -34,6 +37,7 @@ export function TrackCompanyButton({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [divisions, setDivisions] = useState<Division[]>([]);
 
   async function save() {
     if (!linkedinUrl.trim()) {
@@ -46,13 +50,19 @@ export function TrackCompanyButton({
       const res = await fetch("/api/market-intel/tracking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "company-link", linkedinUrl, group }),
+        body: JSON.stringify({ kind: "company-link", linkedinUrl, group, divisions }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Could not save.");
-      toast(`Now tracking ${data.company?.name ?? "them"}. Briefing is ready.`);
+      const name = data.company?.name ?? "them";
+      toast(
+        data.existing
+          ? `${name} was already on the watch, so nothing new was scraped. It's on your list now.`
+          : `Now tracking ${name}. Briefing is ready.`
+      );
       setOpen(false);
       setLinkedinUrl("");
+      setDivisions([]);
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save.");
@@ -76,7 +86,7 @@ export function TrackCompanyButton({
         onClose={() => {
           if (!busy) setOpen(false);
         }}
-        title="Track a company"
+        title={group === "competitor" ? "Track a competitor" : "Track a company"}
       >
         <div className="space-y-3">
           <div>
@@ -97,9 +107,27 @@ export function TrackCompanyButton({
             />
             <p className="mt-1 text-[11px] leading-snug text-text-tertiary">
               That&apos;s all. Name, logo, posts, news and the rundown are
-              pulled from the page itself.
+              pulled from the page itself. A company already on the watch is
+              simply added to your list, nothing is scraped twice.
             </p>
           </div>
+          <div>
+            <p className="mb-1.5 text-[12px] font-semibold text-text-primary">
+              Which of Freyr&apos;s divisions
+            </p>
+            <DivisionPicker value={divisions} onChange={setDivisions} disabled={busy} />
+            <p className="mt-1 text-[11px] leading-snug text-text-tertiary">
+              Needed for a company that isn&apos;t on the list yet. Pick every one
+              that applies.
+            </p>
+          </div>
+          {addedLeft !== null && (
+            <p className="text-[11.5px] text-text-secondary tnum">
+              {addedLeft > 0
+                ? `You can add ${addedLeft} more new ${addedLeft === 1 ? "company" : "companies"}. Following companies already on the list is unlimited.`
+                : "You've added the most new companies one person can. You can still follow any company already on the list."}
+            </p>
+          )}
           {error && (
             <p className="text-[12.5px] font-medium text-[#DC2626]">{error}</p>
           )}

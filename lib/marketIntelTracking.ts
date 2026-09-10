@@ -1,5 +1,6 @@
 import { getDataMode } from "./dataMode";
 import { MI_COMPANIES } from "./marketIntelMock";
+import type { Division } from "./offeringMaterials";
 
 /**
  * WHO THE TEAM TRACKS, DURABLY. The sample briefings in marketIntelMock.ts
@@ -48,14 +49,73 @@ export type TrackedCompany = {
   keywords: string[];
   note: string;
   addedAt: string;
+  /** Freyr divisions this company belongs to: MPR, MDV, CON (Saras, Sep 10). */
+  divisions?: Division[];
+  /** Who put it on the watch. Absent on rows from before Sep 10. */
+  addedBy?: { id: string; name?: string; email?: string };
 };
 
 export type MarketIntelTracking = {
   companies: TrackedCompany[];
   people: TrackedPerson[];
+  /**
+   * DIVISIONS BY COMPANY ID, for every company on the watch including the
+   * built-in list, which has no row of its own here. A tag set in the app
+   * lands in this map and wins over the code's starting answer.
+   */
+  divisions?: Record<string, Division[]>;
 };
 
-const EMPTY: MarketIntelTracking = { companies: [], people: [] };
+const EMPTY: MarketIntelTracking = { companies: [], people: [], divisions: {} };
+
+/**
+ * HOW MANY COMPANIES ONE PERSON MAY ADD (Saras, Sep 10: "for each BD member,
+ * they can add up to, say, 20 companies"). Adding a company that is already
+ * on the watch does not count: it costs nothing and simply follows it.
+ */
+export const MEMBER_TRACK_LIMIT = 20;
+
+export const DIVISION_VALUES: Division[] = ["MPR", "MDV", "CON"];
+
+/** Only the three real values, deduplicated, in the house order. */
+export function cleanDivisions(value: unknown): Division[] {
+  const raw = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+  const set = new Set(raw.map((v) => String(v).trim().toUpperCase()));
+  return DIVISION_VALUES.filter((d) => set.has(d));
+}
+
+/** The divisions the app should show for a company: the tracking row's map
+ *  first, then the company's own record, then whatever the caller knows. */
+export function companyDivisions(
+  tracking: Pick<MarketIntelTracking, "companies" | "divisions">,
+  id: string,
+  fallback: Division[] = []
+): Division[] {
+  const fromMap = tracking.divisions?.[id];
+  if (fromMap && fromMap.length > 0) return cleanDivisions(fromMap);
+  const own = tracking.companies.find((c) => c.id === id)?.divisions;
+  if (own && own.length > 0) return cleanDivisions(own);
+  return cleanDivisions(fallback);
+}
+
+export function countAddedBy(
+  tracking: Pick<MarketIntelTracking, "companies">,
+  userId: string
+): number {
+  return tracking.companies.filter((c) => c.addedBy?.id === userId).length;
+}
+
+/** The tracked company whose LinkedIn page carries this slug, if any. */
+export function findTrackedByLinkedInSlug(
+  tracking: Pick<MarketIntelTracking, "companies">,
+  slug: string
+): TrackedCompany | undefined {
+  const want = slug.toLowerCase();
+  return tracking.companies.find((c) => {
+    const got = c.linkedinUrl.match(/\/company\/([^/?#]+)/i)?.[1]?.toLowerCase();
+    return got === want;
+  });
+}
 
 export function miSlug(name: string): string {
   return (
@@ -136,9 +196,17 @@ function rowId(): string {
 function normalize(value: unknown): MarketIntelTracking {
   if (!value || typeof value !== "object") return structuredClone(EMPTY);
   const raw = value as Partial<MarketIntelTracking>;
+  const divisions: Record<string, Division[]> = {};
+  if (raw.divisions && typeof raw.divisions === "object") {
+    for (const [id, list] of Object.entries(raw.divisions)) {
+      const clean = cleanDivisions(list);
+      if (clean.length > 0) divisions[id] = clean;
+    }
+  }
   return {
     companies: Array.isArray(raw.companies) ? raw.companies : [],
     people: Array.isArray(raw.people) ? raw.people : [],
+    divisions,
   };
 }
 
@@ -395,8 +463,14 @@ export type TrackCompanyInput = {
   people?: { name?: string; role?: string; linkedinUrl?: string }[];
 };
 
+export type TrackMeta = {
+  addedBy?: TrackedCompany["addedBy"];
+  divisions?: Division[];
+};
+
 export async function trackCompany(
-  input: TrackCompanyInput
+  input: TrackCompanyInput,
+  meta: TrackMeta = {}
 ): Promise<{ company: TrackedCompany; people: TrackedPerson[] }> {
   const name = String(input.name ?? "").trim().replace(/\s+/g, " ").slice(0, 80);
   if (!name) throw new Error("The company needs a name.");
@@ -427,6 +501,10 @@ export async function trackCompany(
     keywords: splitList(String(input.keywords ?? "")),
     note: String(input.note ?? "").trim().slice(0, 400),
     addedAt: now,
+    ...(meta.divisions && meta.divisions.length > 0
+      ? { divisions: cleanDivisions(meta.divisions) }
+      : {}),
+    ...(meta.addedBy ? { addedBy: meta.addedBy } : {}),
   };
   const people: TrackedPerson[] = [];
   for (const row of input.people ?? []) {
@@ -444,8 +522,33 @@ export async function trackCompany(
   }
   tracking.companies.push(company);
   tracking.people.push(...people);
+  if (company.divisions) {
+    tracking.divisions = { ...(tracking.divisions ?? {}), [id]: company.divisions };
+  }
   await saveMarketIntelTracking(tracking);
   return { company, people };
+}
+
+/** Tag a company, on the watch or on the built-in list, with its divisions. */
+export async function setCompanyDivisions(
+  id: string,
+  divisions: Division[]
+): Promise<Division[]> {
+  const clean = cleanDivisions(divisions);
+  const key = String(id ?? "").trim();
+  if (!key) throw new Error("Which company?");
+  const tracking = await readMarketIntelTracking();
+  const next = { ...(tracking.divisions ?? {}) };
+  if (clean.length > 0) next[key] = clean;
+  else delete next[key];
+  tracking.divisions = next;
+  const own = tracking.companies.find((c) => c.id === key);
+  if (own) {
+    if (clean.length > 0) own.divisions = clean;
+    else delete own.divisions;
+  }
+  await saveMarketIntelTracking(tracking);
+  return clean;
 }
 
 export type TrackPersonInput = {
@@ -497,6 +600,12 @@ export async function untrackCompany(id: string): Promise<void> {
   tracking.companies = tracking.companies.filter((c) => c.id !== id);
   if (tracking.companies.length === before) return;
   tracking.people = tracking.people.filter((p) => p.companyId !== id);
+  // Its division tag goes with it; a company added again starts clean.
+  if (tracking.divisions?.[id]) {
+    const next = { ...tracking.divisions };
+    delete next[id];
+    tracking.divisions = next;
+  }
   await saveMarketIntelTracking(tracking);
 }
 

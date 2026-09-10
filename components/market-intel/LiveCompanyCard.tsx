@@ -8,6 +8,7 @@ import {
   Newspaper,
   Globe2,
   Radar,
+  Star,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
@@ -16,7 +17,10 @@ import { Avatar } from "@/components/ui/Avatar";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { MiLogo } from "@/components/market-intel/MiLogo";
-import type { LiveBriefing } from "@/lib/marketIntelFeed";
+import { DivisionChips } from "@/components/market-intel/DivisionChips";
+import type { CompanyCard } from "@/lib/marketIntelFeed";
+import type { Division } from "@/lib/offeringMaterials";
+import { cn } from "@/lib/utils";
 
 /**
  * One company on the live dashboard. The bottom line is a ticker (Anir,
@@ -24,6 +28,10 @@ import type { LiveBriefing } from "@/lib/marketIntelFeed";
  * freshest stories rotate one at a time, pause while hovered, and step with
  * the arrows. Hovering the card pops it out in place, offerings-style, and
  * the expansion spells out the top five stories.
+ *
+ * Built from the company's SUMMARY, never its items (Sep 10): the list page
+ * carries counts and dates for a hundred companies without downloading a
+ * hundred briefings.
  */
 
 const ROTATE_MS = 5000;
@@ -41,14 +49,21 @@ export type CardPerson = {
 const fmtDate = fmtWhen;
 
 export function LiveCompanyCard({
-  briefing,
+  card,
   people,
+  divisions = [],
+  bookmarked = false,
+  onBookmark,
 }: {
-  briefing: LiveBriefing;
+  card: CompanyCard;
   people?: CardPerson[];
+  divisions?: Division[];
+  bookmarked?: boolean;
+  /** Present when the viewer may keep a list; absent renders no star. */
+  onBookmark?: (on: boolean) => void;
 }) {
-  const up = (briefing.momentumPct ?? 0) >= 0;
-  const stories = briefing.news.slice(0, 5);
+  const up = (card.momentumPct ?? 0) >= 0;
+  const stories = card.stories.slice(0, 5);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -74,92 +89,110 @@ export function LiveCompanyCard({
       <div className="flex items-start justify-between gap-3">
         <span className="flex min-w-0 items-center gap-2.5">
           <MiLogo
-            name={briefing.name}
-            logoUrl={briefing.logoUrl}
+            name={card.name}
+            logoUrl={card.logoUrl}
             className="h-9 w-9 shrink-0"
           />
           <span className="min-w-0">
             <span className="block truncate text-[14.5px] font-semibold text-text-primary transition-colors group-hover:text-blue-primary">
-              {briefing.name}
+              {card.name}
             </span>
-            <span className="block truncate text-[11.5px] text-text-tertiary">
-              {briefing.posts.length + briefing.news.length} items, 90 days
+            <span className="block truncate text-[11.5px] text-text-tertiary tnum">
+              {card.itemsInWindow} {card.itemsInWindow === 1 ? "item" : "items"}, 90 days
             </span>
           </span>
         </span>
-        {briefing.momentumPct === null ? (
-          // A COUNT, not a trend. It used to wear the same up-arrow as the
-          // momentum badge beside it, so "72 this month" and "+914%" read as
-          // the same kind of number in the same slot (Anir, Aug 14). No arrow
-          // here: the arrow means "versus last month", and this one isn't.
-          <span
-            title="New items picked up this month. Not enough history yet to compare it with last month."
-            className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--ink-bright-blue)] tnum"
-          >
-            <Newspaper size={11} strokeWidth={2.4} />
-            {briefing.itemsThisMonth} this month
-          </span>
-        ) : (
-          <span
-            className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tnum"
-            style={{
-              color: up ? "var(--ink-green)" : "#DC2626",
-              background: up ? "rgba(26,122,53,0.10)" : "rgba(220,38,38,0.10)",
-            }}
-          >
-            {up ? (
-              <TrendingUp size={11} strokeWidth={2.4} />
-            ) : (
-              <TrendingDown size={11} strokeWidth={2.4} />
-            )}
-            {up ? "+" : ""}
-            {briefing.momentumPct}%
-          </span>
-        )}
+        <span className="flex shrink-0 items-center gap-1.5">
+          {card.momentumPct === null ? (
+            // A COUNT, not a trend: no arrow, because the arrow means "versus
+            // last month" and this one isn't (Anir, Aug 14). The number is
+            // exact; nothing is capped (Anir, Sep 10).
+            <span
+              title="Items picked up in the last 30 days. Not enough history yet to compare with the month before."
+              className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--ink-bright-blue)] tnum"
+            >
+              <Newspaper size={11} strokeWidth={2.4} />
+              {card.itemsThisMonth} this month
+            </span>
+          ) : (
+            <span
+              className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tnum"
+              style={{
+                color: up ? "var(--ink-green)" : "#DC2626",
+                background: up ? "rgba(26,122,53,0.10)" : "rgba(220,38,38,0.10)",
+              }}
+            >
+              {up ? (
+                <TrendingUp size={11} strokeWidth={2.4} />
+              ) : (
+                <TrendingDown size={11} strokeWidth={2.4} />
+              )}
+              {up ? "+" : ""}
+              {card.momentumPct}%
+            </span>
+          )}
+          {onBookmark && (
+            /* MY LIST (Sep 10): the star follows the company for this person
+               only. Inside a card that is itself a link, so the click stays
+               here. */
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onBookmark(!bookmarked);
+              }}
+              aria-pressed={bookmarked}
+              aria-label={bookmarked ? `Unfollow ${card.name}` : `Follow ${card.name}`}
+              title={bookmarked ? "On your list. Click to unfollow." : "Add to your list"}
+              className={cn(
+                "relative z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors",
+                bookmarked
+                  ? "bg-[rgba(180,83,9,0.12)] text-[#B45309]"
+                  : "text-text-tertiary hover:bg-surface hover:text-[#B45309]"
+              )}
+            >
+              <Star size={13} strokeWidth={2.2} fill={bookmarked ? "currentColor" : "none"} />
+            </button>
+          )}
+        </span>
       </div>
 
       <div className="mt-3">
         <Sparkline
-          points={briefing.trend}
+          points={card.trend}
           height={36}
-          xLabels={briefing.trendLabels}
+          xLabels={card.trendLabels}
           unit="items"
-          label={`${briefing.name} market activity`}
+          label={`${card.name} posts, news and website items per week`}
           interactive={false}
         />
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-bright-blue)]">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
           <LinkedInIcon size={10.5} />
-          {briefing.posts.length} {briefing.posts.length === 1 ? "post" : "posts"}
+          {card.counts.posts} {card.counts.posts === 1 ? "post" : "posts"}
         </span>
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-teal-deep)]">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-teal-deep)] tnum">
           <Newspaper size={10.5} strokeWidth={2.2} />
-          {briefing.news.length} news
+          {card.counts.news} news
         </span>
-        {(briefing.site?.length ?? 0) > 0 && (
-          /* The company's own website, counted beside the wire and LinkedIn
-             (Anir, Aug 28) — only when there is something, so a card never
-             advertises an empty source. */
-          <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-orange)]">
+        {card.counts.site > 0 && (
+          <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-orange)] tnum">
             <Globe2 size={10.5} strokeWidth={2.2} />
-            {briefing.site!.length} from them
+            {card.counts.site} from them
           </span>
         )}
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-violet-soft)]">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-violet-soft)] tnum">
           <Radar size={10.5} strokeWidth={2.2} />
-          {briefing.signals.length}{" "}
-          {briefing.signals.length === 1 ? "signal" : "signals"}
+          {card.signalTotal} {card.signalTotal === 1 ? "signal" : "signals"}
         </span>
+        {divisions.length > 0 && <DivisionChips divisions={divisions} className="ml-auto" />}
       </div>
 
       {story && (
         <div
-          // Fixed height so every card in the grid stays the same size while
-          // the ticker rotates. Two lines cut real headlines mid-word
-          // ("...royalty deal tied to rusfertid…", Anir Aug 14); three fits
-          // the long ones without letting any card grow taller than its row.
           className="relative z-10 mt-3 min-h-[70px] overflow-hidden border-t border-border-light pt-2.5"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
@@ -218,7 +251,7 @@ export function LiveCompanyCard({
 
       <div className="mt-2 flex items-center gap-1.5 text-[10.5px] font-medium text-text-tertiary">
         <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#1A7A35]" />
-        Updated {briefing.updatedLabel}
+        Updated {card.updatedLabel}
         {people && people.length > 0 && (
           <span className="hover-yield group/pile ml-auto flex items-center pl-1">
             {people.slice(0, 5).map((person) => (
@@ -301,7 +334,7 @@ export function LiveCompanyCard({
   return (
     <HoverExpandCard
       className="h-full"
-      href={`/market-intel/${briefing.id}`}
+      href={`/market-intel/${card.id}`}
       summary={summary}
       extra={extra}
     />

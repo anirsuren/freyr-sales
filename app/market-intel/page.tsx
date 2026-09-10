@@ -27,7 +27,9 @@ import { MiTabs } from "@/components/market-intel/MiTabs";
 import { MnaTracker } from "@/components/market-intel/MnaTracker";
 import { RefreshChip } from "@/components/market-intel/NextRefresh";
 import { getDataMode } from "@/lib/dataMode";
-import { readMarketIntelFeed } from "@/lib/marketIntelFeed";
+import { getCurrentUser } from "@/lib/currentUser";
+import { requireServerMemberScope } from "@/lib/memberScope";
+import { readFeedPeopleSummaries, readMarketIntelSummaries } from "@/lib/marketIntelFeed";
 import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
 import {
   MI_COMPANIES,
@@ -36,7 +38,11 @@ import {
   miFreshMinutes,
   miTotals,
 } from "@/lib/marketIntelMock";
-import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
+import {
+  MEMBER_TRACK_LIMIT,
+  countAddedBy,
+  readMarketIntelTracking,
+} from "@/lib/marketIntelTracking";
 import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 /**
@@ -77,12 +83,14 @@ export default async function MarketIntelPage({
   // REAL MODE SHOWS REAL DATA ONLY (Anir, Aug 11). The scraped feed powers
   // live mode; the sample briefings below remain the mock-mode showroom.
   if (getDataMode() === "live") {
-    const feed = await readMarketIntelFeed().catch(() => null);
+    /* SUMMARIES, NOT ITEMS (Sep 10): the list page reads one small summary
+       per company, never the briefings themselves. */
+    const intel = await readMarketIntelSummaries().catch(() => null);
     // Nobody clicks anything: a stale feed schedules ONE background refresh
     // after this response, and a database lock keeps a hundred simultaneous
     // visitors from becoming a hundred refreshes.
-    maybeScheduleMarketIntelRefresh(feed);
-    if (feed && Object.keys(feed.companies).length > 0) {
+    maybeScheduleMarketIntelRefresh(intel?.meta ?? null);
+    if (intel && Object.keys(intel.companies).length > 0) {
       // The three buckets from the Aug 11 call.
       if (tab === "market") {
         return (
@@ -91,21 +99,39 @@ export default async function MarketIntelPage({
             <MiTabs
               active="market"
               action={
-                <RefreshChip updatedAt={feed.updatedAt} />
+                <RefreshChip updatedAt={intel.meta.updatedAt} />
               }
             >
-              <MnaTracker board={feed.mna ?? null} />
+              <MnaTracker board={intel.meta.mna ?? null} thought={intel.meta.thought ?? null} />
             </MiTabs>
           </div>
         );
       }
       const group = tab === "competitors" ? "competitor" : "customer";
+      /* HOW MANY MORE THIS PERSON MAY ADD (Saras, Sep 10: a limit per BD
+         member). Admins have none; a company already on the watch never
+         counts, since following it costs nothing. */
+      let addedLeft: number | null = null;
+      if (canTrack) {
+        const user = await getCurrentUser();
+        if (user.role !== "admin") {
+          const scope = await requireServerMemberScope().catch(() => null);
+          if (scope) {
+            addedLeft = Math.max(0, MEMBER_TRACK_LIMIT - countAddedBy(tracking, scope.userId));
+          }
+        }
+      }
+      const people =
+        group === "competitor" ? {} : await readFeedPeopleSummaries().catch(() => ({}));
       return (
         <LiveMarketIntelDashboard
-          feed={feed}
+          summaries={intel.companies}
+          meta={intel.meta}
           tracking={tracking}
           group={group}
           canTrack={canTrack}
+          addedLeft={addedLeft}
+          people={people}
         />
       );
     }

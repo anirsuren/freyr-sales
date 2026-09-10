@@ -22,15 +22,22 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { getDataMode } from "@/lib/dataMode";
+import { getCurrentUser } from "@/lib/currentUser";
+import { requireServerMemberScope } from "@/lib/memberScope";
 import {
   allTrackedNames,
   buildBriefing,
-  readMarketIntelFeed,
+  readFeedCompany,
+  readFeedPeople,
+  readMarketIntelSummaries,
 } from "@/lib/marketIntelFeed";
 import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
 import { miCompany } from "@/lib/marketIntelMock";
-import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { COMPANY_SOURCES, COMPETITOR_SOURCES } from "@/lib/marketIntelSources";
+import { companyDivisions, readMarketIntelTracking } from "@/lib/marketIntelTracking";
+import { DivisionEditor } from "@/components/market-intel/DivisionChips";
+import type { Division } from "@/lib/offeringMaterials";
+import { moduleWriteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -55,8 +62,8 @@ export async function generateMetadata({
    */
   const fromFeed = tracked
     ? undefined
-    : await readMarketIntelFeed()
-        .then((f) => f?.companies?.[id]?.name)
+    : await readFeedCompany(id)
+        .then((c) => c?.name)
         .catch(() => undefined);
   return { title: tracked ?? fromFeed ?? miCompany(id)?.name ?? "Market Intel" };
 }
@@ -73,23 +80,43 @@ export default async function MarketIntelCompanyPage({
     people: [],
   }));
   const extraPeople = tracking.people.filter((p) => p.companyId === id);
+  const sourceDefault = (companyId: string): Division[] =>
+    ([...COMPANY_SOURCES, ...COMPETITOR_SOURCES].find((s) => s.id === companyId)?.divisions ??
+      []) as Division[];
+  /* Who may change this company's tags, and who may take it off the watch:
+     the module's write privilege for the tags; the person who added it, or
+     an admin, for the removal (Sep 10). */
+  const canEdit = !(await moduleWriteRefusal("/market-intel"));
+  const [user, scope] = await Promise.all([
+    getCurrentUser(),
+    requireServerMemberScope().catch(() => null),
+  ]);
+  const mayRemove = (addedById?: string) =>
+    user.role === "admin" || (!!scope && !!addedById && addedById === scope.userId);
 
   if (getDataMode() === "live") {
-    // Real mode renders scraped data only; the sample briefings stay in mock.
-    const feed = await readMarketIntelFeed().catch(() => null);
-    maybeScheduleMarketIntelRefresh(feed);
-    const feedCompany = feed?.companies[id];
+    /* ONE ROW (Sep 10): the briefing reads this company's row and, for a
+       customer, the rows of the people followed here. Never the whole feed. */
+    const [feedCompany, intel] = await Promise.all([
+      readFeedCompany(id).catch(() => null),
+      readMarketIntelSummaries().catch(() => null),
+    ]);
+    maybeScheduleMarketIntelRefresh(intel?.meta ?? null);
     if (feedCompany) {
       const trackedConfig = tracking.companies.find((c) => c.id === id);
-      const withFeed = extraPeople.filter((p) => feed?.people?.[p.id]);
+      const isCompetitor = feedCompany.group === "competitor";
+      const peopleFeeds = isCompetitor
+        ? {}
+        : await readFeedPeople(extraPeople.map((p) => p.id)).catch(() => ({}));
+      const withFeed = extraPeople.filter((p) => peopleFeeds[p.id]);
       const briefing = buildBriefing(
         feedCompany,
-        allTrackedNames(feed, tracking.companies),
+        allTrackedNames(intel ? { companies: intel.companies } : null, tracking.companies),
         withFeed.map((p) => ({
           name: p.name,
           role: p.role,
           photoUrl: p.photoUrl,
-          posts: feed?.people?.[p.id]?.posts ?? [],
+          posts: peopleFeeds[p.id]?.posts ?? [],
         }))
       );
       return (
@@ -100,10 +127,14 @@ export default async function MarketIntelCompanyPage({
               .filter(Boolean)
               .join(" · ") || undefined
           }
-          extraPeople={extraPeople}
+          extraPeople={isCompetitor ? [] : extraPeople}
           personPosts={Object.fromEntries(
-            withFeed.map((p) => [p.id, feed?.people?.[p.id]?.posts ?? []])
+            withFeed.map((p) => [p.id, peopleFeeds[p.id]?.posts ?? []])
           )}
+          divisions={companyDivisions(tracking, id, sourceDefault(id))}
+          canWrite={canEdit}
+          canRemove={!!trackedConfig && mayRemove(trackedConfig.addedBy?.id)}
+          tracked={!!trackedConfig}
         />
       );
     }
@@ -190,8 +221,18 @@ export default async function MarketIntelCompanyPage({
             {[mine.industry, mine.hq].filter(Boolean).join(" · ") ||
               `Tracked since ${addedOn}`}
           </p>
+          <div className="mt-1.5">
+            <DivisionEditor
+              companyId={mine.id}
+              companyName={mine.name}
+              divisions={companyDivisions(tracking, mine.id, sourceDefault(mine.id))}
+              canEdit={canEdit}
+            />
+          </div>
         </div>
-        <StopTrackingButton companyId={mine.id} companyName={mine.name} />
+        {mayRemove(mine.addedBy?.id) && (
+          <StopTrackingButton companyId={mine.id} companyName={mine.name} />
+        )}
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -283,11 +324,13 @@ export default async function MarketIntelCompanyPage({
         </div>
 
         <div className="space-y-4">
+          {/* NO PEOPLE ON A COMPETITOR (Saras, Sep 10). */}
+          {mine.group !== "competitor" && (
           <Card className="p-4">
             <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
               <Users size={14} strokeWidth={2} className="text-blue-primary" />
               People tracked
-              <TrackPersonButton companyId={mine.id} companyName={mine.name} />
+              {canEdit && <TrackPersonButton companyId={mine.id} companyName={mine.name} />}
             </h2>
             {people.length === 0 ? (
               <p className="mt-2.5 text-[12px] leading-relaxed text-text-secondary">
@@ -298,6 +341,7 @@ export default async function MarketIntelCompanyPage({
               <TrackedPeopleList people={people} />
             )}
           </Card>
+          )}
 
           {mine.competitors.length > 0 && (
             <Card className="p-4">

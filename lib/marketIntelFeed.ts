@@ -1,4 +1,5 @@
 import { MI_COMPANIES, MI_WATCHLIST, SIGNAL_META, type MiSignalKind } from "./marketIntelMock";
+import { isLabeled, type ItemLabel, type SignalKind } from "./marketIntelSignals";
 
 /**
  * THE REAL FEED (Anir, Aug 11: "Everything should be real... at least on real
@@ -19,6 +20,9 @@ export type FeedPost = {
   reactions: number | null;
   comments: number | null;
   reposts: number | null;
+  /** What the classifier read off this post: its signal, whether it is about
+   *  Freyr's industries, and any content tag. Absent until a run labels it. */
+  label?: ItemLabel;
 };
 
 export type FeedNews = {
@@ -29,7 +33,26 @@ export type FeedNews = {
   /** AI summary of the fetched article text; absent when the article could
    *  not be read (headline stands alone rather than faking a summary). */
   summary?: string;
+  /** See FeedPost.label. */
+  label?: ItemLabel;
 };
+
+/**
+ * NOTHING IS CAPPED BY COUNT (Anir, Sep 10: "if there are 1,000 items, there
+ * should be 1,000 items"). Items are kept for as long as the pages can show
+ * them, the "past 3 months" window plus slack, and then let go by AGE. A
+ * company that posts fifty times a day keeps fifty posts a day. What made a
+ * count cap necessary before was one document holding every company; since
+ * Sep 10 each company is its own row (see the store below), so a busy
+ * company costs only its own row.
+ */
+export const RETAIN_DAYS = 120;
+
+export function withinRetention(date: string | null | undefined): boolean {
+  if (!date) return true;
+  const t = Date.parse(date);
+  return !Number.isFinite(t) || Date.now() - t < RETAIN_DAYS * 86_400_000;
+}
 
 /** "MARKETSCREENER.COM" and "Fierce Pharma" were both wearing the source
  *  chip; every stored label is now a clean publication name. */
@@ -109,6 +132,32 @@ export type MnaBoard = {
 
 export type PersonFeed = { posts: FeedPost[]; fetchedAt: string };
 
+/** What the list page needs about a followed person: how many posts are
+ *  collected, without loading them. Written beside the person's row. */
+export type PersonSummary = { posts: number; fetchedAt: string };
+
+/**
+ * THE THOUGHT-LEADERSHIP TRACKER (Anant via Saras, Sep 10): reports, studies
+ * and outlooks the big consulting and analyst firms publish about pharma,
+ * devices, consumer health and regulation. Not competitors, industry
+ * readers; the point is to know what is being said about the industry.
+ */
+export type ThoughtItem = {
+  firm: string;
+  title: string;
+  url: string;
+  date: string | null;
+  summary: string;
+  topic: "Medicinal Products" | "Medical Devices" | "Consumer" | "Regulatory" | "Life sciences";
+  type: "report" | "study" | "survey" | "outlook" | "article" | "webinar" | "podcast";
+};
+
+export type ThoughtBoard = {
+  items: ThoughtItem[];
+  total?: number;
+  fetchedAt: string;
+};
+
 export type MarketIntelFeed = {
   version: number;
   companies: Record<string, FeedCompany>;
@@ -116,6 +165,8 @@ export type MarketIntelFeed = {
   people: Record<string, PersonFeed>;
   /** The M&A tracker board, refreshed with the feed. */
   mna?: MnaBoard;
+  /** The thought-leadership tracker board, refreshed with the feed. */
+  thought?: ThoughtBoard;
   updatedAt: string | null;
   spendUsd?: number;
   /** Apify dollars charged in the 24 hours from `since`, what the refresh's
@@ -130,7 +181,7 @@ export type BriefingPost = FeedPost & {
 };
 
 export type LiveSignal = {
-  kind: MiSignalKind;
+  kind: SignalKind;
   title: string;
   sourceLabel: string;
   url: string;
@@ -165,6 +216,60 @@ export type LiveBriefing = {
 
 const WINDOW_DAYS = 95; // "the past 3 months", with a little slack
 
+/**
+ * THE STORE: ONE ROW PER COMPANY (Sep 10).
+ *
+ * Until now the whole feed was one jsonb document, "market-intel-feed", and
+ * every page view parsed all of it while every refresh rewrote all of it
+ * after each company. That is what forced the 60-post, 40-article cap. Now:
+ *
+ *   market-intel-feed            the META row: version, updatedAt, spend,
+ *                                the M&A board and the thought-leadership
+ *                                board. Small.
+ *   market-intel-company:<id>    { company, summary } one row per company:
+ *                                every item it has, plus a SUMMARY the list
+ *                                page reads on its own (counts, item dates,
+ *                                signal counts, top stories), so the
+ *                                dashboard never downloads the items.
+ *   market-intel-person:<id>     { feed } a followed person's posts.
+ *
+ * A legacy single document is split into rows the first time it is read
+ * (migrateLegacyFeedRow), so a deploy needs no step.
+ */
+export const FEED_META_ROW = "market-intel-feed";
+export const FEED_COMPANY_PREFIX = "market-intel-company:";
+export const FEED_PERSON_PREFIX = "market-intel-person:";
+
+export type FeedMeta = {
+  version: number;
+  updatedAt: string | null;
+  spendUsd?: number;
+  apifyDay?: { since: string; usd: number };
+  mna?: MnaBoard;
+  thought?: ThoughtBoard;
+};
+
+/** What the list page needs about a company, without its items. */
+export type FeedCompanySummary = {
+  id: string;
+  name: string;
+  slug: string | null;
+  group: "customer" | "competitor";
+  logoUrl: string | null;
+  followerCount: number | null;
+  tldr: string | null;
+  fetchedAt: string;
+  newsAt?: string;
+  siteAt?: string;
+  counts: { posts: number; news: number; site: number };
+  /** Epoch ms of every stored post, article and website item, so month
+   *  counts and the 12-week line are computed against the real "now". */
+  itemDates: number[];
+  signalCounts: Partial<Record<SignalKind, number>>;
+  signalTotal: number;
+  stories: { title: string; source: string; url: string; published: string | null }[];
+};
+
 function hasFeedDatabase(): boolean {
   return !!(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -179,57 +284,438 @@ function feedClient() {
   );
 }
 
-// The feed row is multi-megabyte (76 companies of posts and news), and every
-// tab click was re-downloading and re-parsing it — the whole reason switching
-// tabs took seconds (Anir: "it takes 5 seconds for me to click between the
-// tabs"). One process-local copy serves all requests for a minute; writers
-// bust it so edits still show up immediately on the instance that wrote.
+// One process-local copy of each read serves requests for a minute; writers
+// bust it so an edit shows up immediately on the instance that wrote.
 const FEED_CACHE_MS = 60_000;
 
-export function bustMarketIntelFeedCache(): void {
-  (globalThis as any).__MI_FEED_CACHE__ = undefined;
+type Caches = {
+  feed?: { at: number; feed: MarketIntelFeed | null };
+  summaries?: { at: number; value: { meta: FeedMeta; companies: Record<string, FeedCompanySummary> } | null };
+  companies?: Record<string, { at: number; company: FeedCompany | null }>;
+};
+function caches(): Caches {
+  const g = globalThis as any;
+  if (!g.__MI_FEED_CACHES__) g.__MI_FEED_CACHES__ = {};
+  return g.__MI_FEED_CACHES__ as Caches;
 }
 
-export async function readMarketIntelFeed(): Promise<MarketIntelFeed | null> {
-  if (!hasFeedDatabase()) return null;
-  const cached = (globalThis as any).__MI_FEED_CACHE__ as
-    | { at: number; feed: MarketIntelFeed | null }
-    | undefined;
-  if (cached && Date.now() - cached.at < FEED_CACHE_MS) return cached.feed;
+export function bustMarketIntelFeedCache(): void {
+  (globalThis as any).__MI_FEED_CACHES__ = {};
+}
+
+function metaFrom(raw: any): FeedMeta {
+  return {
+    version: Number(raw?.version) || 1,
+    updatedAt: raw?.updatedAt ?? null,
+    spendUsd: raw?.spendUsd,
+    apifyDay: raw?.apifyDay,
+    mna: raw?.mna as MnaBoard | undefined,
+    thought: raw?.thought as ThoughtBoard | undefined,
+  };
+}
+
+async function readRowCatalog(id: string): Promise<any | null> {
   const { data, error } = await feedClient()
     .from("offering_catalog_state")
     .select("catalog")
-    .eq("id", "market-intel-feed")
+    .eq("id", id)
     .maybeSingle();
-  if (error) throw new Error(`Could not load the market feed: ${error.message}`);
-  const raw = data?.catalog;
+  if (error) throw new Error(`Could not load ${id}: ${error.message}`);
+  return data?.catalog ?? null;
+}
+
+async function upsertRow(id: string, catalog: unknown): Promise<void> {
+  const { error } = await feedClient()
+    .from("offering_catalog_state")
+    .upsert({ id, catalog, updated_at: new Date().toISOString() });
+  if (error) throw new Error(`Could not save ${id}: ${error.message}`);
+}
+
+/**
+ * The one-time split of the legacy document. Idempotent: a meta row that
+ * carries no `companies` has nothing to migrate. Returns true when it moved
+ * anything.
+ */
+export async function migrateLegacyFeedRow(): Promise<boolean> {
+  if (!hasFeedDatabase()) return false;
+  const raw = await readRowCatalog(FEED_META_ROW);
+  if (!raw || !raw.companies || typeof raw.companies !== "object") return false;
+  const companies = raw.companies as Record<string, FeedCompany>;
+  const people = (raw.people ?? {}) as Record<string, PersonFeed>;
+  for (const company of Object.values(companies)) {
+    await upsertRow(`${FEED_COMPANY_PREFIX}${company.id}`, {
+      company,
+      summary: summarizeCompany(company),
+    });
+  }
+  for (const [id, feed] of Object.entries(people)) {
+    await upsertRow(`${FEED_PERSON_PREFIX}${id}`, { feed, summary: summarizePerson(feed) });
+  }
+  const meta: FeedMeta = { ...metaFrom(raw), version: 2 };
+  await upsertRow(FEED_META_ROW, meta);
+  bustMarketIntelFeedCache();
+  console.log(
+    `[market-intel] split the legacy feed document into ${Object.keys(companies).length} company rows and ${Object.keys(people).length} person rows`
+  );
+  return true;
+}
+
+/**
+ * THE FIRST REQUEST AFTER THE DEPLOY THAT SHIPPED THE SPLIT must not wait for
+ * seventy-odd row writes: the legacy document is served as it is for that
+ * request and the split runs once in the background. Every later read finds
+ * the rows. `legacy` carries the document's companies and people so the
+ * readers below can answer from it in the meantime.
+ */
+let migrating: Promise<boolean> | null = null;
+function splitInBackground(): void {
+  if (migrating) return;
+  migrating = migrateLegacyFeedRow()
+    .catch((error) => {
+      console.error("[market-intel] legacy feed split failed:", error);
+      return false;
+    })
+    .finally(() => {
+      migrating = null;
+    });
+}
+
+async function readMetaAndLegacy(): Promise<{
+  meta: FeedMeta;
+  legacy: { companies: Record<string, FeedCompany>; people: Record<string, PersonFeed> } | null;
+} | null> {
+  if (!hasFeedDatabase()) return null;
+  const raw = await readRowCatalog(FEED_META_ROW);
+  if (!raw) return null;
+  if (raw.companies && typeof raw.companies === "object") {
+    splitInBackground();
+    return {
+      meta: metaFrom(raw),
+      legacy: {
+        companies: raw.companies as Record<string, FeedCompany>,
+        people: (raw.people ?? {}) as Record<string, PersonFeed>,
+      },
+    };
+  }
+  return { meta: metaFrom(raw), legacy: null };
+}
+
+export async function readFeedMeta(): Promise<FeedMeta | null> {
+  return (await readMetaAndLegacy())?.meta ?? null;
+}
+
+/**
+ * THE WHOLE FEED, every company with every item. This is what a refresh run
+ * works on; pages read summaries or one company instead. `fresh` skips the
+ * minute-long cache, which a run must, since it writes on top of what it read.
+ */
+export async function readMarketIntelFeed(options?: {
+  fresh?: boolean;
+}): Promise<MarketIntelFeed | null> {
+  if (!hasFeedDatabase()) return null;
+  const c = caches();
+  if (!options?.fresh && c.feed && Date.now() - c.feed.at < FEED_CACHE_MS) return c.feed.feed;
+  const read = await readMetaAndLegacy();
+  if (!read) {
+    c.feed = { at: Date.now(), feed: null };
+    return null;
+  }
+  const { meta, legacy } = read;
+  if (legacy) {
+    /* A run that starts before the split has finished must NOT write per
+       company on top of a half-split store: it works on the document it
+       was handed and its saves land as rows, which the split then overwrites
+       with older copies. So a writer waits for the split instead. */
+    if (options?.fresh && migrating) await migrating;
+    if (!options?.fresh) {
+      const feed: MarketIntelFeed = {
+        version: meta.version,
+        companies: legacy.companies,
+        people: legacy.people,
+        mna: meta.mna,
+        thought: meta.thought,
+        updatedAt: meta.updatedAt,
+        spendUsd: meta.spendUsd,
+        apifyDay: meta.apifyDay,
+      };
+      c.feed = { at: Date.now(), feed };
+      return feed;
+    }
+  }
+  const db = feedClient();
+  const [companyRows, personRows] = await Promise.all([
+    db.from("offering_catalog_state").select("id, catalog").like("id", `${FEED_COMPANY_PREFIX}%`),
+    db.from("offering_catalog_state").select("id, catalog").like("id", `${FEED_PERSON_PREFIX}%`),
+  ]);
+  if (companyRows.error) throw new Error(`Could not load the market feed: ${companyRows.error.message}`);
+  if (personRows.error) throw new Error(`Could not load the market feed: ${personRows.error.message}`);
+  const companies: Record<string, FeedCompany> = {};
+  for (const row of companyRows.data ?? []) {
+    const company = (row.catalog as any)?.company as FeedCompany | undefined;
+    if (company?.id) companies[company.id] = company;
+  }
+  const people: Record<string, PersonFeed> = {};
+  for (const row of personRows.data ?? []) {
+    const id = String(row.id).slice(FEED_PERSON_PREFIX.length);
+    const feed = (row.catalog as any)?.feed as PersonFeed | undefined;
+    if (id && feed) people[id] = feed;
+  }
   const feed: MarketIntelFeed | null =
-    !raw || typeof raw !== "object" || !raw.companies
+    Object.keys(companies).length === 0
       ? null
       : {
-          version: raw.version ?? 1,
-          companies: raw.companies as Record<string, FeedCompany>,
-          people: (raw.people ?? {}) as Record<string, PersonFeed>,
-          mna: raw.mna as MnaBoard | undefined,
-          updatedAt: raw.updatedAt ?? null,
-          spendUsd: raw.spendUsd,
+          version: meta.version,
+          companies,
+          people,
+          mna: meta.mna,
+          thought: meta.thought,
+          updatedAt: meta.updatedAt,
+          spendUsd: meta.spendUsd,
+          apifyDay: meta.apifyDay,
         };
-  (globalThis as any).__MI_FEED_CACHE__ = { at: Date.now(), feed };
+  c.feed = { at: Date.now(), feed };
   return feed;
 }
 
+/** The list page's read: every company's summary, none of its items. */
+export async function readMarketIntelSummaries(): Promise<{
+  meta: FeedMeta;
+  companies: Record<string, FeedCompanySummary>;
+} | null> {
+  if (!hasFeedDatabase()) return null;
+  const c = caches();
+  if (c.summaries && Date.now() - c.summaries.at < FEED_CACHE_MS) return c.summaries.value;
+  const read = await readMetaAndLegacy();
+  if (!read) {
+    c.summaries = { at: Date.now(), value: null };
+    return null;
+  }
+  const { meta, legacy } = read;
+  if (legacy) {
+    const companies: Record<string, FeedCompanySummary> = {};
+    for (const company of Object.values(legacy.companies)) companies[company.id] = summarizeCompany(company);
+    const value = Object.keys(companies).length === 0 ? null : { meta, companies };
+    c.summaries = { at: Date.now(), value };
+    return value;
+  }
+  const { data, error } = await feedClient()
+    .from("offering_catalog_state")
+    .select("id, summary:catalog->summary")
+    .like("id", `${FEED_COMPANY_PREFIX}%`);
+  if (error) throw new Error(`Could not load the market summaries: ${error.message}`);
+  const companies: Record<string, FeedCompanySummary> = {};
+  for (const row of data ?? []) {
+    const summary = (row as any).summary as FeedCompanySummary | null;
+    if (summary?.id) companies[summary.id] = summary;
+  }
+  const value = Object.keys(companies).length === 0 ? null : { meta, companies };
+  c.summaries = { at: Date.now(), value };
+  return value;
+}
+
+/** One company with all its items: what the briefing page reads. */
+export async function readFeedCompany(id: string): Promise<FeedCompany | null> {
+  if (!hasFeedDatabase() || !id) return null;
+  const c = caches();
+  c.companies ??= {};
+  const hit = c.companies[id];
+  if (hit && Date.now() - hit.at < FEED_CACHE_MS) return hit.company;
+  const read = await readMetaAndLegacy();
+  if (read?.legacy) {
+    const company = read.legacy.companies[id] ?? null;
+    c.companies[id] = { at: Date.now(), company };
+    return company;
+  }
+  const raw = await readRowCatalog(`${FEED_COMPANY_PREFIX}${id}`);
+  const company = (raw?.company as FeedCompany | undefined) ?? null;
+  c.companies[id] = { at: Date.now(), company };
+  return company;
+}
+
+/** Posts of the given followed people, keyed by person id. */
+export async function readFeedPeople(ids: string[]): Promise<Record<string, PersonFeed>> {
+  const out: Record<string, PersonFeed> = {};
+  if (!hasFeedDatabase() || ids.length === 0) return out;
+  const read = await readMetaAndLegacy();
+  if (read?.legacy) {
+    for (const id of ids) if (read.legacy.people[id]) out[id] = read.legacy.people[id];
+    return out;
+  }
+  const { data, error } = await feedClient()
+    .from("offering_catalog_state")
+    .select("id, catalog")
+    .in("id", ids.map((id) => `${FEED_PERSON_PREFIX}${id}`));
+  if (error) throw new Error(`Could not load followed people: ${error.message}`);
+  for (const row of data ?? []) {
+    const id = String(row.id).slice(FEED_PERSON_PREFIX.length);
+    const feed = (row.catalog as any)?.feed as PersonFeed | undefined;
+    if (feed) out[id] = feed;
+  }
+  return out;
+}
+
+// ------------------------------------------------------------------ writers
+/** The meta row: spend, clocks and the two boards. Tiny, written often. */
+export async function saveFeedMeta(feed: MarketIntelFeed | FeedMeta): Promise<void> {
+  const meta: FeedMeta = {
+    version: 2,
+    updatedAt: feed.updatedAt ?? null,
+    ...(feed.spendUsd !== undefined ? { spendUsd: feed.spendUsd } : {}),
+    ...(feed.apifyDay ? { apifyDay: feed.apifyDay } : {}),
+    ...(feed.mna ? { mna: feed.mna } : {}),
+    ...(feed.thought ? { thought: feed.thought } : {}),
+  };
+  await upsertRow(FEED_META_ROW, meta);
+  bustMarketIntelFeedCache();
+}
+
+/** One company's row, with a fresh summary, plus the meta row. */
+export async function saveFeedCompany(feed: MarketIntelFeed, id: string): Promise<void> {
+  const company = feed.companies[id];
+  if (!company) return;
+  await upsertRow(`${FEED_COMPANY_PREFIX}${id}`, {
+    company,
+    summary: summarizeCompany(company),
+  });
+  await saveFeedMeta(feed);
+}
+
+export async function saveFeedPerson(feed: MarketIntelFeed, personId: string): Promise<void> {
+  const person = feed.people[personId];
+  if (!person) return;
+  await upsertRow(`${FEED_PERSON_PREFIX}${personId}`, {
+    feed: person,
+    summary: summarizePerson(person),
+  });
+  await saveFeedMeta(feed);
+}
+
+export function summarizePerson(feed: PersonFeed): PersonSummary {
+  return { posts: feed.posts.length, fetchedAt: feed.fetchedAt };
+}
+
+/** Post counts for every followed person, keyed by person id: one small
+ *  read for the facepiles on the list page. */
+export async function readFeedPeopleSummaries(): Promise<Record<string, PersonSummary>> {
+  const out: Record<string, PersonSummary> = {};
+  if (!hasFeedDatabase()) return out;
+  const read = await readMetaAndLegacy();
+  if (read?.legacy) {
+    for (const [id, feed] of Object.entries(read.legacy.people)) out[id] = summarizePerson(feed);
+    return out;
+  }
+  const { data, error } = await feedClient()
+    .from("offering_catalog_state")
+    .select("id, summary:catalog->summary")
+    .like("id", `${FEED_PERSON_PREFIX}%`);
+  if (error) throw new Error(`Could not load followed people: ${error.message}`);
+  for (const row of data ?? []) {
+    const id = String(row.id).slice(FEED_PERSON_PREFIX.length);
+    const summary = (row as any).summary as PersonSummary | null;
+    if (id && summary && typeof summary.posts === "number") out[id] = summary;
+  }
+  return out;
+}
+
+// ------------------------------------------------------------------ summary
+/** Everything the list page shows about a company, computed when the
+ *  company is written so the page never has to read its items. */
+export function summarizeCompany(company: FeedCompany): FeedCompanySummary {
+  const dates = itemDates(company);
+  const { signals } = deriveSignals(company, []);
+  const signalCounts: Partial<Record<SignalKind, number>> = {};
+  for (const s of signals) signalCounts[s.kind] = (signalCounts[s.kind] ?? 0) + 1;
+  const stories = [...company.news]
+    .sort((a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0))
+    .slice(0, 5)
+    .map((n) => ({ title: n.title, source: n.source, url: n.url, published: n.published }));
+  return {
+    id: company.id,
+    name: company.name,
+    slug: company.slug,
+    group: company.group === "competitor" ? "competitor" : "customer",
+    logoUrl: company.author?.logoUrl ?? null,
+    followerCount: company.author?.followerCount ?? null,
+    tldr: company.tldr ?? null,
+    fetchedAt: company.fetchedAt,
+    ...(company.newsAt ? { newsAt: company.newsAt } : {}),
+    ...(company.siteAt ? { siteAt: company.siteAt } : {}),
+    counts: {
+      posts: company.posts.length,
+      news: company.news.length,
+      site: (company.site ?? []).length,
+    },
+    itemDates: dates,
+    signalCounts,
+    signalTotal: signals.length,
+    stories,
+  };
+}
+
+/**
+ * A COMPANY CARD, from its summary and today's date. Counts are over the
+ * display window, the 12-week line and "this month" are computed now, so
+ * they are as true as the last refresh.
+ */
+export type CompanyCard = {
+  id: string;
+  name: string;
+  group: "customer" | "competitor";
+  logoUrl: string | null;
+  followerCount: number | null;
+  fetchedAt: string;
+  updatedLabel: string;
+  momentumPct: number | null;
+  itemsThisMonth: number;
+  itemsInWindow: number;
+  trend: number[];
+  trendLabels: string[];
+  counts: { posts: number; news: number; site: number };
+  signalTotal: number;
+  signalCounts: Partial<Record<SignalKind, number>>;
+  stories: FeedCompanySummary["stories"];
+};
+
+export function cardFromSummary(summary: FeedCompanySummary): CompanyCard {
+  const now = Date.now();
+  const cutoff = now - WINDOW_DAYS * 86_400_000;
+  const dates = summary.itemDates.filter((t) => Number.isFinite(t) && t > cutoff);
+  const { points, labels } = trendFromDates(dates);
+  const mo = momentumFromDates(dates);
+  const freshest =
+    [summary.fetchedAt, summary.newsAt, summary.siteAt].filter(Boolean).sort().pop() ??
+    summary.fetchedAt;
+  return {
+    id: summary.id,
+    name: summary.name,
+    group: summary.group,
+    logoUrl: summary.logoUrl,
+    followerCount: summary.followerCount,
+    fetchedAt: freshest,
+    updatedLabel: updatedLabel(freshest),
+    momentumPct: mo.pct,
+    itemsThisMonth: mo.thisMonth,
+    itemsInWindow: dates.length,
+    trend: points,
+    trendLabels: labels,
+    counts: summary.counts,
+    signalTotal: summary.signalTotal,
+    signalCounts: summary.signalCounts,
+    stories: summary.stories,
+  };
+}
+
+/** Every dated item: posts, articles and the company's own website items.
+ *  The website is a source like the other two, so it counts like them. */
 function itemDates(company: FeedCompany): number[] {
   const out: number[] = [];
   for (const p of company.posts) if (p.date) out.push(Date.parse(p.date));
   for (const n of company.news) if (n.published) out.push(Date.parse(n.published));
+  for (const n of company.site ?? []) if (n.published) out.push(Date.parse(n.published));
   return out.filter((t) => Number.isFinite(t));
 }
 
-/** Items per week, oldest week first, for the 12-week activity line. */
-export function weeklyTrend(company: FeedCompany): {
-  points: number[];
-  labels: string[];
-} {
+export function trendFromDates(dates: number[]): { points: number[]; labels: string[] } {
   const now = Date.now();
   const week = 7 * 86_400_000;
   const points = new Array(12).fill(0);
@@ -242,36 +728,58 @@ export function weeklyTrend(company: FeedCompany): {
       })
     );
   }
-  for (const t of itemDates(company)) {
+  for (const t of dates) {
     const weeksAgo = Math.floor((now - t) / week);
     if (weeksAgo >= 0 && weeksAgo < 12) points[11 - weeksAgo] += 1;
   }
   return { points, labels };
 }
 
+/** Items per week, oldest week first, for the 12-week activity line. */
+export function weeklyTrend(company: FeedCompany): {
+  points: number[];
+  labels: string[];
+} {
+  return trendFromDates(itemDates(company));
+}
+
+export function momentumFromDates(dates: number[]): { pct: number | null; thisMonth: number } {
+  const now = Date.now();
+  const month = 30 * 86_400_000;
+  let current = 0;
+  let previous = 0;
+  let oldest = Infinity;
+  for (const t of dates) {
+    if (t > now - month) current += 1;
+    else if (t > now - 2 * month) previous += 1;
+    if (t < oldest) oldest = t;
+  }
+  /* A PERCENTAGE ONLY WHEN THE PREVIOUS MONTH IS FULLY THERE. Until Sep 10
+     the feed kept the latest hundred items, so "last month" was whatever was
+     left after this month had taken its share, and "+1617%" was that hole,
+     not a surge (Saras, Sep 10). If the oldest stored item is younger than
+     sixty days, the previous month is only partly covered, and the honest
+     figure is the count. */
+  const previousMonthCovered = Number.isFinite(oldest) && oldest <= now - 2 * month;
+  if (previous < 5 || !previousMonthCovered) return { pct: null, thisMonth: current };
+  return {
+    pct: Math.round(((current - previous) / previous) * 100),
+    thisMonth: current,
+  };
+}
+
 /**
  * Last 30 days of market noise vs the 30 before. When the earlier month has
  * fewer than 5 items the percentage would be honest arithmetic on a dishonest
- * sample (news feeds lean recent), producing "+1800%" nonsense — so `pct` is
- * null there and the UI shows the plain count instead.
+ * sample (news feeds lean recent), producing "+1800%" nonsense, so `pct` is
+ * null there and the UI shows the plain count instead. The count itself is
+ * exact: nothing is capped any more.
  */
 export function momentum(company: FeedCompany): {
   pct: number | null;
   thisMonth: number;
 } {
-  const now = Date.now();
-  const month = 30 * 86_400_000;
-  let current = 0;
-  let previous = 0;
-  for (const t of itemDates(company)) {
-    if (t > now - month) current += 1;
-    else if (t > now - 2 * month) previous += 1;
-  }
-  if (previous < 5) return { pct: null, thisMonth: current };
-  return {
-    pct: Math.round(((current - previous) / previous) * 100),
-    thisMonth: current,
-  };
+  return momentumFromDates(itemDates(company));
 }
 
 export function updatedLabel(iso: string | null): string {
@@ -284,41 +792,55 @@ export function updatedLabel(iso: string | null): string {
 }
 
 // ------------------------------------------------------------------ signals
-// Keyword rules over real items. Each signal cites the item it came from; the
-// "why" line explains why that KIND of event matters to a seller, and is the
-// same for every company — editorial framing, not a generated fact.
-const SIGNAL_RULES: { kind: MiSignalKind; pattern: RegExp; why: string }[] = [
+/**
+ * THE FALLBACK ONLY. Since Sep 10 every item is read by the classifier at
+ * refresh time and carries its signal in `label` (lib/marketIntelSignals);
+ * these keyword rules are what an item gets when it has not been labelled
+ * yet (a run has not reached it) or the app has no Anthropic key. Keyword
+ * matching is exactly what tagged a GSK post about attending ERS Congress as
+ * a deal because its text said "partnership" (Saras, Sep 10), which is why
+ * it is no longer the main path.
+ */
+const SIGNAL_RULES: { kind: SignalKind; pattern: RegExp }[] = [
+  {
+    kind: "mna",
+    pattern: /acquir|merger|divest|takeover|to buy\b|buys? (a |the )?\w+ (business|unit|company)/i,
+  },
+  {
+    kind: "restructuring",
+    pattern: /layoff|lay off|job cuts?|redundanc|restructur|downsiz|headcount reduction/i,
+  },
   {
     kind: "leadership",
     pattern:
-      /appoint|named (as )?(chief|ceo|cfo|coo|president|head)|new (ceo|cfo|coo|chief)|steps down|succeed(s|ing)? .{0,24}as |resign/i,
-    why: "New leaders revisit vendors and priorities in their first quarter. Reach out before the shortlist forms.",
+      /appoint|named (as )?(chief|ceo|cfo|coo|president|head|vp|vice president)|new (ceo|cfo|coo|chief|head of)|steps down|succeed(s|ing)? .{0,24}as |resign/i,
   },
   {
-    kind: "regulatory",
+    kind: "product",
     pattern:
-      /\bfda\b|\bema\b|\bchmp\b|approval|clearance|submission|\bfiling\b|\bnda\b|\bmaa\b|510\(k\)|regulatory|pharmacovigilance|label(ing)? change/i,
-    why: "Regulatory movement is exactly where Freyr helps. Timely outreach lands while the work is being scoped.",
+      /\bfda\b|\bema\b|\bchmp\b|approval|approves|approved|clearance|submission|\bfiling\b|\bnda\b|\bbla\b|\bmaa\b|510\(k\)|marketing authori[sz]ation|label(ing)? change/i,
   },
   {
-    kind: "deal",
-    pattern:
-      /acquir|merger|partnership|collaborat|agreement|licens(e|ing)|joint venture|to buy\b|takeover/i,
-    why: "Deals reshuffle platforms and partners. Integration windows open doors that are normally shut.",
+    kind: "events",
+    pattern: /congress|conference|summit|webinar|symposium|\bexpo\b|booth|keynote|panel discussion|#\w*(congress|summit|conference)/i,
+  },
+  {
+    kind: "commentary",
+    pattern: /regulatory (landscape|reform|policy|guidance|framework|environment)|regulator[sy]? (should|must|need)|our view on|position paper|calls? for/i,
   },
   {
     kind: "expansion",
     pattern:
-      /expand(s|ing|sion)?|new (facility|plant|site|campus|hub)|invest(s|ing|ment)|opens? (a|its|new)|capacity|enters? .{0,20}market/i,
-    why: "New markets and sites bring new registrations and compliance work from day one.",
-  },
-  {
-    kind: "hiring",
-    pattern:
-      /\bhiring\b|we're hiring|open roles?|join (our|the) team|now recruiting|careers at/i,
-    why: "Team growth signals budget and new initiatives. A good moment to be in the room.",
+      /expand(s|ing|sion)?|new (facility|plant|site|campus|hub)|invest(s|ing|ment) (of|in)|opens? (a|its|new)|enters? .{0,20}market|launch(es|ed)? in [A-Z]/i,
   },
 ];
+
+/** The keyword fallback's answer for one item: first rule wins, in an order
+ *  that puts the specific kinds before the broad ones. */
+export function fallbackSignal(text: string): SignalKind {
+  for (const rule of SIGNAL_RULES) if (rule.pattern.test(text)) return rule.kind;
+  return "other";
+}
 
 export function deriveSignals(
   company: FeedCompany,
@@ -330,48 +852,47 @@ export function deriveSignals(
     (n) => n.id !== company.id && n.name.length > 3
   );
 
-  const scan = (
+  const consider = (
+    item: { label?: ItemLabel },
     text: string,
     title: string,
     sourceLabel: string,
     url: string,
     date: string | null
   ) => {
-    for (const rule of SIGNAL_RULES) {
-      if (rule.pattern.test(text)) {
-        signals.push({ kind: rule.kind, title, sourceLabel, url, date, why: rule.why });
-        break; // one kind per item: the strongest match wins by rule order
-      }
+    /* THE LABEL IS THE ANSWER when the classifier has read the item; the
+       keyword rules only speak for items it has not reached yet. */
+    let kind: SignalKind;
+    let why: string;
+    if (isLabeled(item)) {
+      kind = item.label!.signal;
+      why = item.label!.why?.trim() || SIGNAL_META[kind].why;
+    } else {
+      kind = fallbackSignal(text);
+      why = SIGNAL_META[kind].why;
     }
+    if (kind !== "other") signals.push({ kind, title, sourceLabel, url, date, why });
     for (const other of others) {
       if (text.toLowerCase().includes(other.name.toLowerCase())) {
         mentionCounts.set(other.name, (mentionCounts.get(other.name) ?? 0) + 1);
-        if (
-          !signals.some((s) => s.url === url && s.kind === "competitor")
-        ) {
-          signals.push({
-            kind: "competitor",
-            title,
-            sourceLabel,
-            url,
-            date,
-            why: "A rival is in their conversation. Know the context before the next call.",
-          });
-        }
       }
     }
   };
 
   for (const n of company.news) {
-    scan(n.title, n.title, n.source, n.url, n.published);
+    consider(n, `${n.title}. ${n.summary ?? ""}`, n.title, n.source, n.url, n.published);
+  }
+  for (const n of company.site ?? []) {
+    consider(n, `${n.title}. ${n.summary ?? ""}`, n.title, n.source, n.url, n.published);
   }
   for (const p of company.posts) {
     const firstLine = p.text.split("\n")[0].slice(0, 110);
-    scan(p.text, firstLine, "LinkedIn post", p.url, p.date);
+    consider(p, p.text, firstLine, "LinkedIn post", p.url, p.date);
   }
 
-  // Newest first, one signal per source item, capped so the lens stays a
-  // shortlist rather than a second feed.
+  /* NEWEST FIRST, ONE PER ITEM, NO CAP. The old shortlist of eight was a
+     second feed nobody could see past; now a signal is a property of the
+     item it was found in, so the count is the count. */
   const seen = new Set<string>();
   const unique = signals
     .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0))
@@ -379,8 +900,7 @@ export function deriveSignals(
       if (seen.has(s.url)) return false;
       seen.add(s.url);
       return true;
-    })
-    .slice(0, 8);
+    });
 
   const competitorMentions = [...mentionCounts.entries()]
     .map(([name, count]) => ({ name, count }))
@@ -403,9 +923,14 @@ export function buildBriefing(
   }[] = []
 ): LiveBriefing {
   const cutoff = Date.now() - WINDOW_DAYS * 86_400_000;
+  /* NO PEOPLE ON COMPETITORS (Saras, Sep 10: "we don't really need to
+     follow specific people... you can remove the people tracked within
+     competitors"). Whatever the tracking row still holds, a competitor's
+     briefing is the company's own voice and the press. */
+  const followed = company.group === "competitor" ? [] : peoplePosts;
   const posts: BriefingPost[] = [
     ...company.posts,
-    ...peoplePosts.flatMap((person) =>
+    ...followed.flatMap((person) =>
       person.posts.map((p) => ({
         ...p,
         by: { name: person.name, role: person.role, photoUrl: person.photoUrl },
@@ -426,7 +951,7 @@ export function buildBriefing(
     .sort(
       (a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0)
     );
-  const windowed: FeedCompany = { ...company, posts, news };
+  const windowed: FeedCompany = { ...company, posts, news, site };
   const { points, labels } = weeklyTrend(windowed);
   const { signals, competitorMentions } = deriveSignals(windowed, allNames);
   const mo = momentum(windowed);
@@ -460,7 +985,7 @@ export function buildBriefing(
 
 /** Names for competitor detection: everything on the watch, real and sample. */
 export function allTrackedNames(
-  feed: MarketIntelFeed | null,
+  feed: { companies: Record<string, { id: string; name: string }> } | null,
   extra: { id: string; name: string }[] = []
 ): { id: string; name: string }[] {
   const out = new Map<string, { id: string; name: string }>();

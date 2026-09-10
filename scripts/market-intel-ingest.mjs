@@ -1,3 +1,8 @@
+/* RETIRED SEP 10. The feed is stored one row per company now
+   (lib/marketIntelFeed.ts); this script wrote the old single document and
+   would clobber current data. The app's own refresh does everything it did. */
+console.error("Retired: the market feed is stored per company now. Use the app's refresh (POST /api/market-intel/refresh).");
+process.exit(1);
 // MARKET INTEL SCRAPE (Anir, Aug 11: "$10 limit... everything should be real").
 // Pulls real LinkedIn company posts + real Google News for every tracked
 // company and stores them in offering_catalog_state row "market-intel-feed".

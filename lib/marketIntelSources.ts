@@ -25,6 +25,15 @@ export type CompanySource = {
    * Website field on the tracking form.
    */
   site?: string;
+  /**
+   * WHICH OF FREYR'S DIVISIONS THIS COMPANY BELONGS TO (Saras, Sep 10: "each
+   * company being tagged as an MPR company, an MDV company, or a CON
+   * company... each of them should be tagged to at least one"). A starting
+   * answer for the built-in list from what these companies publicly make;
+   * the tracking row's own map overrides it, so a correction made in the
+   * app sticks.
+   */
+  divisions?: ("MPR" | "MDV" | "CON")[];
 };
 
 /**
@@ -90,39 +99,39 @@ export const COMPETITOR_SOURCES: CompanySource[] = [
 ];
 
 export const COMPANY_SOURCES: CompanySource[] = [
-  { id: "takeda", name: "Takeda", li: ["takeda-pharmaceuticals"], expect: "takeda", site: "takeda.com" },
-  { id: "gsk", name: "GSK", li: ["gsk"], expect: "gsk", site: "gsk.com" },
-  { id: "novartis", name: "Novartis", li: ["novartis"], expect: "novartis", site: "novartis.com" },
-  { id: "incyte", name: "Incyte", li: ["incyte"], expect: "incyte", site: "incyte.com" },
-  { id: "gilead", name: "Gilead", li: ["gilead-sciences"], expect: "gilead", site: "gilead.com" },
-  { id: "jj-medtech", name: "J&J Medtech", li: ["johnson-johnson-medtech", "jnj-medtech"], expect: "johnson", newsQ: "Johnson & Johnson MedTech", site: "jnjmedtech.com" },
-  { id: "kenvue", name: "Kenvue", li: ["kenvue"], expect: "kenvue", site: "kenvue.com" },
-  { id: "otsuka", name: "Otsuka", li: ["otsuka-pharmaceutical-companies", "otsuka-america-pharmaceutical"], expect: "otsuka", newsQ: "Otsuka Pharmaceutical", site: "otsuka.co.jp" },
-  { id: "opella", name: "Opella", li: ["opella"], expect: "opella", newsQ: "Opella healthcare", site: "opella.com" },
-  { id: "zydus", name: "Zydus", li: ["zydus-group", "zyduslifesciences"], expect: "zydus", newsQ: "Zydus Lifesciences", site: "zyduslife.com" },
-  { id: "galderma", name: "Galderma", li: ["galderma"], expect: "galderma", site: "galderma.com" },
-  { id: "curateq", name: "CuraTeQ", li: ["curateq-biologics"], expect: "curateq", newsQ: "CuraTeQ Biologics", site: "curateq.com" },
-  { id: "pierre-fabre", name: "Pierre Fabre", li: ["pierre-fabre"], expect: "pierre fabre", site: "pierre-fabre.com" },
-  { id: "vertex", name: "Vertex", li: ["vertex-pharmaceuticals"], expect: "vertex", newsQ: "Vertex Pharmaceuticals", site: "vrtx.com" },
+  { id: "takeda", name: "Takeda", li: ["takeda-pharmaceuticals"], expect: "takeda", site: "takeda.com", divisions: ["MPR"] },
+  { id: "gsk", name: "GSK", li: ["gsk"], expect: "gsk", site: "gsk.com", divisions: ["MPR"] },
+  { id: "novartis", name: "Novartis", li: ["novartis"], expect: "novartis", site: "novartis.com", divisions: ["MPR"] },
+  { id: "incyte", name: "Incyte", li: ["incyte"], expect: "incyte", site: "incyte.com", divisions: ["MPR"] },
+  { id: "gilead", name: "Gilead", li: ["gilead-sciences"], expect: "gilead", site: "gilead.com", divisions: ["MPR"] },
+  { id: "jj-medtech", name: "J&J Medtech", li: ["johnson-johnson-medtech", "jnj-medtech"], expect: "johnson", newsQ: "Johnson & Johnson MedTech", site: "jnjmedtech.com", divisions: ["MDV"] },
+  { id: "kenvue", name: "Kenvue", li: ["kenvue"], expect: "kenvue", site: "kenvue.com", divisions: ["CON"] },
+  { id: "otsuka", name: "Otsuka", li: ["otsuka-pharmaceutical-companies", "otsuka-america-pharmaceutical"], expect: "otsuka", newsQ: "Otsuka Pharmaceutical", site: "otsuka.co.jp", divisions: ["MPR"] },
+  { id: "opella", name: "Opella", li: ["opella"], expect: "opella", newsQ: "Opella healthcare", site: "opella.com", divisions: ["CON"] },
+  { id: "zydus", name: "Zydus", li: ["zydus-group", "zyduslifesciences"], expect: "zydus", newsQ: "Zydus Lifesciences", site: "zyduslife.com", divisions: ["MPR", "CON"] },
+  { id: "galderma", name: "Galderma", li: ["galderma"], expect: "galderma", site: "galderma.com", divisions: ["MPR", "CON"] },
+  { id: "curateq", name: "CuraTeQ", li: ["curateq-biologics"], expect: "curateq", newsQ: "CuraTeQ Biologics", site: "curateq.com", divisions: ["MPR"] },
+  { id: "pierre-fabre", name: "Pierre Fabre", li: ["pierre-fabre"], expect: "pierre fabre", site: "pierre-fabre.com", divisions: ["MPR", "CON"] },
+  { id: "vertex", name: "Vertex", li: ["vertex-pharmaceuticals"], expect: "vertex", newsQ: "Vertex Pharmaceuticals", site: "vrtx.com", divisions: ["MPR"] },
   // "Gideon" reads as Gedeon Richter; the author check keeps it honest.
-  { id: "gideon", name: "Gideon", li: ["gedeonrichter", "gedeon-richter"], expect: "richter", newsQ: "Gedeon Richter", site: "gedeonrichter.com" },
-  { id: "novartis-cognizant", name: "Novartis + Cognizant", li: null, expect: "", newsQ: "Novartis Cognizant" },
-  { id: "roche", name: "Roche", li: ["roche"], expect: "roche", site: "roche.com" },
-  { id: "sanofi", name: "Sanofi", li: ["sanofi"], expect: "sanofi", site: "sanofi.com" },
-  { id: "astrazeneca", name: "AstraZeneca", li: ["astrazeneca"], expect: "astrazeneca", site: "astrazeneca.com" },
-  { id: "boehringer-ingelheim", name: "Boehringer Ingelheim", li: ["boehringer-ingelheim"], expect: "boehringer", site: "boehringer-ingelheim.com" },
-  { id: "teva", name: "Teva", li: ["teva-pharmaceuticals"], expect: "teva", newsQ: "Teva Pharmaceuticals", site: "tevapharm.com" },
-  { id: "viatris", name: "Viatris", li: ["viatris"], expect: "viatris", site: "viatris.com" },
-  { id: "lupin", name: "Lupin", li: ["lupin"], expect: "lupin", newsQ: "Lupin pharmaceutical", site: "lupin.com" },
-  { id: "cipla", name: "Cipla", li: ["cipla"], expect: "cipla", site: "cipla.com" },
-  { id: "dr-reddy-s", name: "Dr. Reddy's", li: ["dr--reddys-laboratories", "dr-reddys-laboratories"], expect: "redd", newsQ: "Dr Reddy's Laboratories", site: "drreddys.com" },
-  { id: "sun-pharma", name: "Sun Pharma", li: ["sun-pharmaceutical-industries-ltd", "sun-pharma"], expect: "sun pharma", site: "sunpharma.com" },
-  { id: "alkem", name: "Alkem", li: ["alkem-laboratories-ltd-", "alkem-laboratories"], expect: "alkem", newsQ: "Alkem Laboratories", site: "alkemlabs.com" },
-  { id: "biocon", name: "Biocon", li: ["biocon"], expect: "biocon", site: "biocon.com" },
-  { id: "moderna", name: "Moderna", li: ["modernatx"], expect: "moderna", site: "modernatx.com" },
-  { id: "amgen", name: "Amgen", li: ["amgen"], expect: "amgen", site: "amgen.com" },
-  { id: "bayer", name: "Bayer", li: ["bayer"], expect: "bayer", site: "bayer.com" },
-  { id: "merck-kgaa", name: "Merck KGaA", li: ["merck-group"], expect: "merck", newsQ: "Merck Group pharma", site: "merckgroup.com" },
-  { id: "eisai", name: "Eisai", li: ["eisai"], expect: "eisai", site: "eisai.com" },
-  { id: "daiichi-sankyo", name: "Daiichi Sankyo", li: ["daiichi-sankyo"], expect: "daiichi", site: "daiichisankyo.com" },
+  { id: "gideon", name: "Gideon", li: ["gedeonrichter", "gedeon-richter"], expect: "richter", newsQ: "Gedeon Richter", site: "gedeonrichter.com", divisions: ["MPR"] },
+  { id: "novartis-cognizant", name: "Novartis + Cognizant", li: null, expect: "", newsQ: "Novartis Cognizant", divisions: ["MPR"] },
+  { id: "roche", name: "Roche", li: ["roche"], expect: "roche", site: "roche.com", divisions: ["MPR"] },
+  { id: "sanofi", name: "Sanofi", li: ["sanofi"], expect: "sanofi", site: "sanofi.com", divisions: ["MPR"] },
+  { id: "astrazeneca", name: "AstraZeneca", li: ["astrazeneca"], expect: "astrazeneca", site: "astrazeneca.com", divisions: ["MPR"] },
+  { id: "boehringer-ingelheim", name: "Boehringer Ingelheim", li: ["boehringer-ingelheim"], expect: "boehringer", site: "boehringer-ingelheim.com", divisions: ["MPR"] },
+  { id: "teva", name: "Teva", li: ["teva-pharmaceuticals"], expect: "teva", newsQ: "Teva Pharmaceuticals", site: "tevapharm.com", divisions: ["MPR"] },
+  { id: "viatris", name: "Viatris", li: ["viatris"], expect: "viatris", site: "viatris.com", divisions: ["MPR"] },
+  { id: "lupin", name: "Lupin", li: ["lupin"], expect: "lupin", newsQ: "Lupin pharmaceutical", site: "lupin.com", divisions: ["MPR"] },
+  { id: "cipla", name: "Cipla", li: ["cipla"], expect: "cipla", site: "cipla.com", divisions: ["MPR", "CON"] },
+  { id: "dr-reddy-s", name: "Dr. Reddy's", li: ["dr--reddys-laboratories", "dr-reddys-laboratories"], expect: "redd", newsQ: "Dr Reddy's Laboratories", site: "drreddys.com", divisions: ["MPR"] },
+  { id: "sun-pharma", name: "Sun Pharma", li: ["sun-pharmaceutical-industries-ltd", "sun-pharma"], expect: "sun pharma", site: "sunpharma.com", divisions: ["MPR"] },
+  { id: "alkem", name: "Alkem", li: ["alkem-laboratories-ltd-", "alkem-laboratories"], expect: "alkem", newsQ: "Alkem Laboratories", site: "alkemlabs.com", divisions: ["MPR"] },
+  { id: "biocon", name: "Biocon", li: ["biocon"], expect: "biocon", site: "biocon.com", divisions: ["MPR"] },
+  { id: "moderna", name: "Moderna", li: ["modernatx"], expect: "moderna", site: "modernatx.com", divisions: ["MPR"] },
+  { id: "amgen", name: "Amgen", li: ["amgen"], expect: "amgen", site: "amgen.com", divisions: ["MPR"] },
+  { id: "bayer", name: "Bayer", li: ["bayer"], expect: "bayer", site: "bayer.com", divisions: ["MPR", "CON"] },
+  { id: "merck-kgaa", name: "Merck KGaA", li: ["merck-group"], expect: "merck", newsQ: "Merck Group pharma", site: "merckgroup.com", divisions: ["MPR"] },
+  { id: "eisai", name: "Eisai", li: ["eisai"], expect: "eisai", site: "eisai.com", divisions: ["MPR"] },
+  { id: "daiichi-sankyo", name: "Daiichi Sankyo", li: ["daiichi-sankyo"], expect: "daiichi", site: "daiichisankyo.com", divisions: ["MPR"] },
 ];

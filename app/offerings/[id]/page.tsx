@@ -50,7 +50,7 @@ import { ConnectedComponents } from "@/components/offerings/ConnectedComponents"
 import { OfferingCompetition } from "@/components/offerings/OfferingCompetition";
 import { readCompetition } from "@/lib/offeringCompetition";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
-import { readMarketIntelFeed } from "@/lib/marketIntelFeed";
+import { readMarketIntelSummaries } from "@/lib/marketIntelFeed";
 import { OfferingAgentButton } from "@/components/offerings/OfferingAgentButton";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
@@ -181,9 +181,9 @@ export default async function OfferingDetailPage({
   // competition views show the actual company mark, not generated initials.
   const competitionLogos: Record<string, string> = {};
   if (getDataMode() === "live") {
-    const feed = await readMarketIntelFeed().catch(() => null);
-    for (const c of Object.values(feed?.companies ?? {})) {
-      if (c.author?.logoUrl) competitionLogos[c.id] = c.author.logoUrl;
+    const intel = await readMarketIntelSummaries().catch(() => null);
+    for (const c of Object.values(intel?.companies ?? {})) {
+      if (c.logoUrl) competitionLogos[c.id] = c.logoUrl;
     }
   }
 

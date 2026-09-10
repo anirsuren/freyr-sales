@@ -4,18 +4,37 @@ import {
   COMPETITOR_SOURCES,
   type CompanySource,
 } from "./marketIntelSources";
-import { bustMarketIntelFeedCache, cleanSourceLabel } from "./marketIntelFeed";
+import {
+  bustMarketIntelFeedCache,
+  cleanSourceLabel,
+  readMarketIntelFeed,
+  saveFeedCompany,
+  saveFeedMeta,
+  saveFeedPerson,
+  withinRetention,
+} from "./marketIntelFeed";
 import { mirrorPhoto } from "./miPhotos";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
-import { classifyMna, digestCompany } from "./marketIntelSummarize";
+import {
+  CLASSIFY_BATCH,
+  classifyItems,
+  classifyMna,
+  classifyUsage,
+  digestCompany,
+  type ClassifyInput,
+} from "./marketIntelSummarize";
+import { isLabeled } from "./marketIntelSignals";
+import { THOUGHT_FIRMS, mergeThoughtBoard, scrapeFirmThoughtLeadership } from "./marketIntelThought";
 import { scrapeFreshNews } from "./perplexityNews";
 import { resolveOfficialDomain, scrapeSiteUpdates } from "./siteUpdates";
 import {
   bustMarketIntelTrackingCache,
+  findTrackedByLinkedInSlug,
   miSlug,
   type TrackedCompany,
   type TrackedPerson,
 } from "./marketIntelTracking";
+import type { Division } from "./offeringMaterials";
 
 /**
  * THE FEED REFRESHES ITSELF (Anir, Aug 11: "It has to do it by itself...
@@ -84,12 +103,18 @@ const NEWS_LIMIT = 8;
 // Each pull re-bills the latest N posts whether or not they are new, so the
 // person limit stays small: 133 tracked people at 5 posts is ~$3.30 a run.
 const PERSON_POST_LIMIT = 5;
-const KEEP_POSTS = 60;
-const KEEP_NEWS = 40;
+/**
+ * READING ITEMS COSTS TOKENS, SO A RUN READS A BOUNDED NUMBER. Sixty calls of
+ * twenty items covers a normal day's new items several times over; the first
+ * run after this shipped works through the backlog across a few runs (or
+ * the ops hatch does it in one go). Only items inside the three-month
+ * display window are read: older ones are never shown.
+ */
+const LABEL_CALLS_PER_RUN = 60;
+const LABEL_WINDOW_MS = 95 * 24 * 60 * 60 * 1000;
 /** How many M&A rows the tracker keeps. The screen reports the total too. */
 const MNA_ROWS_KEPT = 40;
 
-const FEED_ROW = "market-intel-feed";
 const LOCK_ROW = "market-intel:refresh-lock";
 // The refresh serves real mode by definition, so it reads the real tracking
 // row directly — a background task has no request to infer a data mode from.
@@ -161,10 +186,17 @@ async function writeRow(id: string, catalog: unknown): Promise<void> {
     .from("offering_catalog_state")
     .upsert({ id, catalog, updated_at: new Date().toISOString() });
   if (error) throw new Error(error.message);
-  // The read side memoizes these rows for a minute (see marketIntelFeed.ts);
-  // a write on this instance must show up on its next render.
-  if (id === FEED_ROW) bustMarketIntelFeedCache();
+  // The read side memoizes these rows for a minute; a write on this instance
+  // must show up on its next render.
   if (id === TRACKING_ROW) bustMarketIntelTrackingCache();
+}
+
+/** The feed as a run must see it: the store, uncached, or an empty one. */
+async function loadFeedForWrite(): Promise<any> {
+  const feed = await readMarketIntelFeed({ fresh: true });
+  const out: any = feed ?? emptyFeed();
+  if (!out.people) out.people = {};
+  return out;
 }
 
 // ------------------------------------------------------------------ scraping
@@ -377,21 +409,160 @@ async function refreshMna(feed: any): Promise<number> {
 }
 
 /** TLDR + article summaries, regenerated whenever the news set changed.
- *  Anthropic Haiku, fractions of a cent; failures leave the feed untouched. */
+ *  Anthropic Haiku, fractions of a cent; failures leave the feed untouched.
+ *
+ *  A COMPETITOR'S RUNDOWN IS WRITTEN FROM WHAT CONCERNS US (Saras, Sep 10:
+ *  "even that TCS won a government bid, it's not relevant to us"). Items the
+ *  classifier marked as outside Freyr's industries are left out of the
+ *  rundown; an item it has not read yet still counts, so nothing is hidden
+ *  on a guess. */
 async function applyDigest(entry: FeedCompany): Promise<void> {
   const needs = entry.news.some((n) => !n.summary) || !entry.tldr;
   if (!needs) return;
+  const concerns = (item: { label?: { relevant: boolean } }) =>
+    entry.group !== "competitor" || !item.label || item.label.relevant;
+  const picked = entry.news.map((n, i) => ({ n, i })).filter(({ n }) => concerns(n));
   try {
-    const digest = await digestCompany(entry);
+    const digest = await digestCompany({
+      name: entry.name,
+      news: picked.map(({ n }) => n),
+      posts: entry.posts.filter(concerns),
+    });
     if (digest.tldr) entry.tldr = digest.tldr;
     digest.summaries.forEach((summary, index) => {
-      if (entry.news[index] && !entry.news[index].summary) {
-        entry.news[index].summary = summary;
-      }
+      const target = picked[index] ? entry.news[picked[index].i] : undefined;
+      if (target && !target.summary) target.summary = summary;
     });
   } catch {
     /* the briefing works without summaries */
   }
+}
+
+type LabelBudget = { calls: number };
+
+/** A few classifier calls in flight at once: the backlog on a new watch is
+ *  hundreds of calls, and one at a time would take an hour. */
+const LABEL_CONCURRENCY = 4;
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+function inLabelWindow(date: string | null | undefined): boolean {
+  if (!date) return true;
+  const t = Date.parse(date);
+  return !Number.isFinite(t) || Date.now() - t < LABEL_WINDOW_MS;
+}
+
+/**
+ * READ EVERY UNREAD ITEM ON A COMPANY (Saras, Sep 10): the nine signals,
+ * whether it concerns Freyr's industries, thought leadership and awards.
+ * Twenty items a call, within the run's call budget; whatever is left is
+ * read on the next run. Labels are stored beside the item, so nothing is
+ * read twice.
+ */
+async function applyLabels(entry: FeedCompany, budget: LabelBudget): Promise<number> {
+  type Slot = { item: FeedPost | FeedNews; input: ClassifyInput };
+  const slots: Slot[] = [];
+  for (const p of entry.posts) {
+    if (isLabeled(p) || !inLabelWindow(p.date)) continue;
+    slots.push({
+      item: p,
+      input: { kind: "post", title: p.text.split("\n")[0].slice(0, 200), text: p.text },
+    });
+  }
+  for (const n of entry.news) {
+    if (isLabeled(n) || !inLabelWindow(n.published)) continue;
+    slots.push({
+      item: n,
+      input: { kind: "news", title: n.title, text: n.summary ?? "", source: n.source },
+    });
+  }
+  for (const n of entry.site ?? []) {
+    if (isLabeled(n) || !inLabelWindow(n.published)) continue;
+    slots.push({
+      item: n,
+      input: { kind: "site", title: n.title, text: n.summary ?? "", source: n.source },
+    });
+  }
+  let labeled = 0;
+  const group = entry.group === "competitor" ? "competitor" : "customer";
+  const batches: Slot[][] = [];
+  for (let at = 0; at < slots.length && budget.calls > 0; at += CLASSIFY_BATCH) {
+    batches.push(slots.slice(at, at + CLASSIFY_BATCH));
+    budget.calls -= 1;
+  }
+  await mapLimit(batches, LABEL_CONCURRENCY, async (batch) => {
+    const labels = await classifyItems(entry.name, group, batch.map((b) => b.input));
+    labels.forEach((label, index) => {
+      const slot = batch[index];
+      if (slot) {
+        slot.item.label = label;
+        labeled += 1;
+      }
+    });
+  });
+  return labeled;
+}
+
+/** A followed person's posts read the same way, under the company they
+ *  belong to. */
+async function labelPersonPosts(
+  companyName: string,
+  posts: FeedPost[],
+  budget: LabelBudget
+): Promise<number> {
+  const pending = posts.filter((p) => !isLabeled(p) && inLabelWindow(p.date));
+  let labeled = 0;
+  const batches: FeedPost[][] = [];
+  for (let at = 0; at < pending.length && budget.calls > 0; at += CLASSIFY_BATCH) {
+    batches.push(pending.slice(at, at + CLASSIFY_BATCH));
+    budget.calls -= 1;
+  }
+  await mapLimit(batches, LABEL_CONCURRENCY, async (batch) => {
+    const labels = await classifyItems(
+      companyName,
+      "customer",
+      batch.map((p) => ({
+        kind: "post" as const,
+        title: p.text.split("\n")[0].slice(0, 200),
+        text: p.text,
+      }))
+    );
+    labels.forEach((label, index) => {
+      if (batch[index]) {
+        batch[index].label = label;
+        labeled += 1;
+      }
+    });
+  });
+  return labeled;
+}
+
+/**
+ * THE THOUGHT-LEADERSHIP BOARD: one Perplexity search per firm, pinned to
+ * the firm's own site, merged into the stored board. Its own daily clock,
+ * about six cents a run, never touching the Apify budget.
+ */
+async function refreshThought(feed: any, key: string | undefined): Promise<number> {
+  if (!key) return 0;
+  let cost = 0;
+  const incoming = [];
+  for (const firm of THOUGHT_FIRMS) {
+    const result = await scrapeFirmThoughtLeadership(firm, key);
+    cost += result.cost;
+    incoming.push(...result.items);
+  }
+  feed.thought = mergeThoughtBoard(feed.thought, incoming);
+  return cost;
 }
 
 async function scrapePersonPosts(
@@ -448,30 +619,36 @@ async function updateTrackedPersonProfile(
 }
 
 // ------------------------------------------------------------------ merging
+/* KEPT BY AGE, NEVER BY COUNT (Anir, Sep 10: "if there are 1,000 items,
+   there should be 1,000 items"). An item stays as long as the pages can show
+   it; the stored copy wins over a re-scrape of the same link so a label
+   already written is never lost. */
 function mergePosts(existing: FeedPost[], incoming: FeedPost[]): FeedPost[] {
   const byUrl = new Map<string, FeedPost>();
-  for (const p of [...incoming, ...existing]) {
-    if (!byUrl.has(p.url)) byUrl.set(p.url, p);
+  for (const p of [...existing, ...incoming]) {
+    if (!withinRetention(p.date)) continue;
+    const prior = byUrl.get(p.url);
+    if (!prior) byUrl.set(p.url, p);
+    else byUrl.set(p.url, { ...p, ...prior, reactions: p.reactions ?? prior.reactions, comments: p.comments ?? prior.comments, reposts: p.reposts ?? prior.reposts });
   }
-  return [...byUrl.values()]
-    .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0))
-    .slice(0, KEEP_POSTS);
+  return [...byUrl.values()].sort(
+    (a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0)
+  );
 }
 
 function mergeNews(existing: FeedNews[], incoming: FeedNews[]): FeedNews[] {
   const seen = new Set<string>();
   const out: FeedNews[] = [];
-  for (const n of [...incoming, ...existing]) {
+  for (const n of [...existing, ...incoming]) {
+    if (!withinRetention(n.published)) continue;
     const key = n.title.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(n);
   }
-  return out
-    .sort(
-      (a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0)
-    )
-    .slice(0, KEEP_NEWS);
+  return out.sort(
+    (a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0)
+  );
 }
 
 function trackedToSource(company: TrackedCompany): CompanySource {
@@ -492,7 +669,7 @@ function trackedToSource(company: TrackedCompany): CompanySource {
 }
 
 function emptyFeed(): MarketIntelFeed & { spendUsd: number } {
-  return { version: 1, companies: {}, people: {}, updatedAt: null, spendUsd: 0 };
+  return { version: 2, companies: {}, people: {}, updatedAt: null, spendUsd: 0 };
 }
 
 // ------------------------------------------------------------------ the lock
@@ -536,9 +713,7 @@ export async function runMarketIntelRefresh(options?: {
   if (!activeApifyToken) {
     return { ran: false, reason: "no APIFY token in config row or env" };
   }
-  const raw = await readRow(FEED_ROW);
-  const feed: any = raw && raw.companies ? raw : emptyFeed();
-  if (!feed.people) feed.people = {};
+  const feed: any = await loadFeedForWrite();
 
   if (
     !options?.force &&
@@ -560,6 +735,7 @@ export async function runMarketIntelRefresh(options?: {
   let refreshed = 0;
   let skippedFresh = 0;
   let peopleRefreshed = 0;
+  const budget: LabelBudget = { calls: LABEL_CALLS_PER_RUN };
   try {
     const tracking = (await readRow(TRACKING_ROW)) ?? { companies: [], people: [] };
     const trackedCompanies: TrackedCompany[] = Array.isArray(tracking.companies)
@@ -600,7 +776,6 @@ export async function runMarketIntelRefresh(options?: {
     // so "nothing from the past day" stops being a budget artifact. Failures
     // cost nothing but that company's freshness until the next tick.
     if (activePerplexityKey) {
-      let sinceWrite = 0;
       for (const source of sources) {
         const existing: FeedCompany | undefined = feed.companies[source.id];
         const newsAt = existing?.newsAt ?? existing?.fetchedAt;
@@ -630,6 +805,7 @@ export async function runMarketIntelRefresh(options?: {
         if (fresh.news.length > 0) {
           entry.news = mergeNews(entry.news ?? [], fresh.news);
           entry.tldr = null; // the rundown must mention today's stories
+          await applyLabels(entry, budget);
           await applyDigest(entry);
         }
         entry.newsAt = new Date().toISOString();
@@ -637,14 +813,9 @@ export async function runMarketIntelRefresh(options?: {
         feed.updatedAt = new Date().toISOString();
         feed.spendUsd =
           Math.round(((feed.spendUsd ?? 0) + fresh.cost) * 1000) / 1000;
-        // Batched writes: cheap pass, so a crash re-buys at most ten calls.
-        sinceWrite += 1;
-        if (sinceWrite >= 10) {
-          await writeRow(FEED_ROW, feed);
-          sinceWrite = 0;
-        }
+        // One row per company: a crash keeps everything already learned.
+        await saveFeedCompany(feed, source.id);
       }
-      if (sinceWrite > 0) await writeRow(FEED_ROW, feed);
     }
 
     // ---- Pass 1b: THE COMPANY'S OWN WEBSITE. A newsroom moves in weeks,
@@ -653,7 +824,6 @@ export async function runMarketIntelRefresh(options?: {
     // frequency. A company with no domain on file costs nothing and simply
     // has no website column.
     if (activePerplexityKey) {
-      let sinceWrite = 0;
       for (const source of sources) {
         if (!source.site) continue;
         const existing: FeedCompany | undefined = feed.companies[source.id];
@@ -681,19 +851,15 @@ export async function runMarketIntelRefresh(options?: {
         };
         if (result.updates.length > 0) {
           entry.site = mergeNews(entry.site ?? [], result.updates);
+          await applyLabels(entry, budget);
         }
         entry.siteAt = new Date().toISOString();
         feed.companies[source.id] = entry;
         feed.updatedAt = new Date().toISOString();
         feed.spendUsd =
           Math.round(((feed.spendUsd ?? 0) + result.cost) * 1000) / 1000;
-        sinceWrite += 1;
-        if (sinceWrite >= 10) {
-          await writeRow(FEED_ROW, feed);
-          sinceWrite = 0;
-        }
+        await saveFeedCompany(feed, source.id);
       }
-      if (sinceWrite > 0) await writeRow(FEED_ROW, feed);
     }
 
     // THE M&A BOARD GOES FIRST WHEN STALE (Anir, Aug 17: "is this thing even
@@ -716,11 +882,30 @@ export async function runMarketIntelRefresh(options?: {
         spent += mnaCost;
         chargeApify(feed, mnaCost);
         feed.updatedAt = new Date().toISOString();
-        await writeRow(FEED_ROW, feed);
+        await saveFeedMeta(feed);
       } catch (error) {
         // Logged, never fatal: the tracker keeps its last board, but a
         // repeating failure must be visible instead of reading as "stale".
         console.error("[market-intel] M&A refresh failed:", error);
+      }
+    }
+
+    // The thought-leadership board rides the same daily clock, on the
+    // Perplexity bill, never the Apify budget.
+    if (
+      activePerplexityKey &&
+      (options?.force ||
+        !feed.thought?.fetchedAt ||
+        Date.now() - Date.parse(feed.thought.fetchedAt) > APIFY_FRESH_MS)
+    ) {
+      try {
+        const cost = await refreshThought(feed, activePerplexityKey);
+        spentFresh += cost;
+        feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + cost) * 1000) / 1000;
+        feed.updatedAt = new Date().toISOString();
+        await saveFeedMeta(feed);
+      } catch (error) {
+        console.error("[market-intel] thought-leadership refresh failed:", error);
       }
     }
 
@@ -776,19 +961,23 @@ export async function runMarketIntelRefresh(options?: {
         ...(existing?.siteAt ? { siteAt: existing.siteAt } : {}),
       };
       if (newsResult.news.length > 0) entry.tldr = null; // fresh rundown
+      await applyLabels(entry, budget);
       await applyDigest(entry);
       feed.companies[source.id] = entry;
       feed.updatedAt = new Date().toISOString();
       refreshed += 1;
-      await writeRow(FEED_ROW, feed);
+      await saveFeedCompany(feed, source.id);
     }
 
     // `only` scopes this pass too. It used to run for every followed person
     // whenever an admin refreshed one company, up to the whole run cap.
+    /* NOBODY IS FOLLOWED AT A COMPETITOR (Saras, Sep 10): their people are
+       not scraped, so the money goes to the companies' own pages. */
     const peopleQueue = trackedPeople
       .filter(
         (p) => !options?.onlyCompanyIds || options.onlyCompanyIds.includes(p.companyId)
       )
+      .filter((p) => !competitorIds.has(p.companyId))
       .sort(
       (a, b) =>
         (Date.parse(feed.people[a.id]?.fetchedAt ?? "") || 0) -
@@ -823,9 +1012,15 @@ export async function runMarketIntelRefresh(options?: {
         posts: mergePosts(existing?.posts ?? [], result.posts),
         fetchedAt: new Date().toISOString(),
       };
+      const home = trackedCompanies.find((c) => c.id === person.companyId);
+      await labelPersonPosts(
+        home?.name ?? feed.companies[person.companyId]?.name ?? person.companyId,
+        feed.people[person.id].posts,
+        budget
+      );
       feed.updatedAt = new Date().toISOString();
       peopleRefreshed += 1;
-      await writeRow(FEED_ROW, feed);
+      await saveFeedPerson(feed, person.id);
     }
   } finally {
     await releaseLock(token).catch(() => undefined);
@@ -844,9 +1039,7 @@ export async function runMarketIntelRefresh(options?: {
 /** New company just tracked: collect its first briefing right now. */
 export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise<void> {
   if (!hasEnv()) return;
-  const raw = await readRow(FEED_ROW);
-  const feed: any = raw && raw.companies ? raw : emptyFeed();
-  if (!feed.people) feed.people = {};
+  const feed: any = await loadFeedForWrite();
   const source = trackedToSource(company);
   const postsResult = await scrapeCompanyPosts(source);
   const newsResult = await scrapeNews(source);
@@ -871,7 +1064,9 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
     fetchedAt: new Date().toISOString(),
     newsAt: new Date().toISOString(),
     siteAt: new Date().toISOString(),
+    group: company.group === "competitor" ? "competitor" : "customer",
   };
+  await applyLabels(entry, { calls: 8 });
   await applyDigest(entry);
   feed.companies[source.id] = entry;
   feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
@@ -880,15 +1075,13 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
     Math.round(
       ((feed.spendUsd ?? 0) + freshResult.cost + siteResult.cost) * 1000
     ) / 1000;
-  await writeRow(FEED_ROW, feed);
+  await saveFeedCompany(feed, source.id);
 }
 
 /** New person just followed: pull their recent posts right now. */
 export async function refreshTrackedPersonNow(person: TrackedPerson): Promise<void> {
   if (!hasEnv() || !person.linkedinUrl) return;
-  const raw = await readRow(FEED_ROW);
-  const feed: any = raw && raw.companies ? raw : emptyFeed();
-  if (!feed.people) feed.people = {};
+  const feed: any = await loadFeedForWrite();
   const result = await scrapePersonPosts(person);
   if (result.headline && result.headline !== person.headline) {
     await updateTrackedPersonProfile(person.id, {
@@ -900,7 +1093,7 @@ export async function refreshTrackedPersonNow(person: TrackedPerson): Promise<vo
     fetchedAt: new Date().toISOString(),
   };
   chargeApify(feed, result.cost);
-  await writeRow(FEED_ROW, feed);
+  await saveFeedPerson(feed, person.id);
 }
 
 // ---------------------------------------------------------- add by link
@@ -908,10 +1101,32 @@ export async function refreshTrackedPersonNow(person: TrackedPerson): Promise<vo
 // Aug 11). The link is the input; name, logo, title, photo and the first
 // data pull all come from the page itself.
 
+export type AddCompanyMeta = {
+  addedBy?: TrackedCompany["addedBy"];
+  divisions?: Division[];
+  /** False when this person has used up their allowance of NEW companies.
+   *  Following one already on the watch is always allowed. */
+  canCreate?: boolean;
+};
+
+export type AddCompanyResult = {
+  id: string;
+  name: string;
+  group: "customer" | "competitor";
+  /** True when the company was already on the watch: nothing was scraped,
+   *  the person simply follows it now. */
+  existing: boolean;
+  company?: TrackedCompany;
+};
+
+export const TRACK_LIMIT_MESSAGE =
+  "You've added the most companies one person can. You can still follow any company already on the list.";
+
 export async function addCompanyByLink(
   linkedinUrl: string,
-  group: "customer" | "competitor" = "customer"
-): Promise<TrackedCompany> {
+  group: "customer" | "competitor" = "customer",
+  meta: AddCompanyMeta = {}
+): Promise<AddCompanyResult> {
   if (!hasEnv()) throw new Error("Tracking needs the configured services.");
   const slug = linkedinUrl.match(/linkedin\.com\/company\/([^/?#]+)/i)?.[1];
   if (!slug) {
@@ -919,6 +1134,46 @@ export async function addCompanyByLink(
       "That doesn't look like a LinkedIn company page. It should look like linkedin.com/company/their-name"
     );
   }
+  const tracking = (await readRow(TRACKING_ROW)) ?? { companies: [], people: [] };
+  tracking.companies = Array.isArray(tracking.companies) ? tracking.companies : [];
+  tracking.people = Array.isArray(tracking.people) ? tracking.people : [];
+  const feed: any = await loadFeedForWrite();
+
+  /* KNOWN BEFORE PAID (Anir, Sep 10: "if someone chooses that same company
+     it won't scrape twice. It'll just show the one thing to two people").
+     The slug is matched against the built-in list and the tracked list
+     before any scrape: a company already on the watch is simply followed,
+     and nothing is read from LinkedIn again. */
+  const wanted = slug.toLowerCase();
+  const builtIn = [...COMPANY_SOURCES, ...COMPETITOR_SOURCES].find((s) =>
+    (s.li ?? []).some((l) => l.toLowerCase() === wanted)
+  );
+  const tracked = findTrackedByLinkedInSlug(tracking, slug);
+  const known = builtIn
+    ? { id: builtIn.id, name: builtIn.name }
+    : tracked
+      ? { id: tracked.id, name: tracked.name }
+      : null;
+  if (known) {
+    const stored: FeedCompany | undefined = feed.companies[known.id];
+    return {
+      id: known.id,
+      name: known.name,
+      group:
+        stored?.group === "competitor" || tracked?.group === "competitor"
+          ? "competitor"
+          : COMPETITOR_SOURCES.some((c) => c.id === known.id)
+            ? "competitor"
+            : "customer",
+      existing: true,
+      company: tracked,
+    };
+  }
+
+  /* THE ALLOWANCE IS CHECKED BEFORE ANY MONEY MOVES: an unknown page from a
+     person who has used up their new-company allowance is refused here,
+     not after a paid probe. */
+  if (meta.canCreate === false) throw new Error(TRACK_LIMIT_MESSAGE);
   const probe = await scrapeCompanyPosts({
     id: slug,
     name: slug,
@@ -932,17 +1187,26 @@ export async function addCompanyByLink(
     );
   }
   const id = miSlug(name);
-  const tracking = (await readRow(TRACKING_ROW)) ?? { companies: [], people: [] };
-  tracking.companies = Array.isArray(tracking.companies) ? tracking.companies : [];
-  tracking.people = Array.isArray(tracking.people) ? tracking.people : [];
-  const raw = await readRow(FEED_ROW);
-  const feed: any = raw && raw.companies ? raw : emptyFeed();
-  if (!feed.people) feed.people = {};
-  if (
-    feed.companies[id] ||
-    tracking.companies.some((c: TrackedCompany) => c.id === id)
-  ) {
-    throw new Error(`${name} is already being tracked.`);
+  chargeApify(feed, probe.cost);
+  const already =
+    feed.companies[id] || tracking.companies.find((c: TrackedCompany) => c.id === id);
+  if (already) {
+    /* A different slug for a page already on the watch: the probe was the
+       only cost, and the answer is the same as a known slug. */
+    await saveFeedMeta(feed);
+    const storedGroup = feed.companies[id]?.group ?? already?.group;
+    return {
+      id,
+      name: feed.companies[id]?.name ?? already.name ?? name,
+      group: storedGroup === "competitor" ? "competitor" : "customer",
+      existing: true,
+      company: tracking.companies.find((c: TrackedCompany) => c.id === id),
+    };
+  }
+  const divisions = (meta.divisions ?? []).filter((d) => ["MPR", "MDV", "CON"].includes(d));
+  if (divisions.length === 0) {
+    await saveFeedMeta(feed);
+    throw new Error("Pick at least one division (MPR, MDV or CON) for a company that isn't on the list yet.");
   }
   const company: TrackedCompany = {
     id,
@@ -956,8 +1220,11 @@ export async function addCompanyByLink(
     keywords: [],
     note: "",
     addedAt: new Date().toISOString(),
+    divisions,
+    ...(meta.addedBy ? { addedBy: meta.addedBy } : {}),
   };
   tracking.companies.push(company);
+  tracking.divisions = { ...(tracking.divisions ?? {}), [id]: divisions };
   await writeRow(TRACKING_ROW, tracking);
 
   const newsResult = await scrapeNews({ name });
@@ -991,17 +1258,18 @@ export async function addCompanyByLink(
     newsAt: new Date().toISOString(),
     siteAt: new Date().toISOString(),
   };
+  await applyLabels(entry, { calls: 8 });
   await applyDigest(entry);
   feed.companies[id] = entry;
   feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
-  chargeApify(feed, probe.cost + newsResult.cost);
+  chargeApify(feed, newsResult.cost);
   feed.spendUsd =
     Math.round(
       ((feed.spendUsd ?? 0) + freshResult.cost + resolved.cost + siteResult.cost) *
         1000
     ) / 1000;
-  await writeRow(FEED_ROW, feed);
-  return company;
+  await saveFeedCompany(feed, id);
+  return { id, name, group, existing: false, company };
 }
 
 export async function addPersonByLink(
@@ -1153,7 +1421,7 @@ export async function runSiteUpdatesRefresh(options?: {
   const key = config?.perplexityKey || process.env.PERPLEXITY_API_KEY;
   if (!key) return nothing("no PERPLEXITY key in config row or env");
 
-  const feed = await readRow(FEED_ROW).catch(() => null);
+  const feed: any = await readMarketIntelFeed({ fresh: true }).catch(() => null);
   if (!feed || !feed.companies) return nothing("no feed row yet");
 
   const tracking = (await readRow(TRACKING_ROW).catch(() => null)) ?? {};
@@ -1249,7 +1517,7 @@ export async function runSiteUpdatesRefresh(options?: {
 
     /* Written after every company: this job is designed to be interrupted, and
        an interrupted run must keep everything it actually learned. */
-    await writeRow(FEED_ROW, feed);
+    await saveFeedCompany(feed, source.id);
   }
 
   return {
@@ -1263,4 +1531,131 @@ export async function runSiteUpdatesRefresh(options?: {
     spendUsd: Math.round(spend * 1000) / 1000,
     seconds: Math.round((Date.now() - started) / 1000),
   };
+}
+
+
+export type LabelRunSummary = {
+  ran: boolean;
+  reason?: string;
+  companies: number;
+  people: number;
+  itemsLabeled: number;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  /** Items inside the window still unread when the call budget ran out. */
+  remaining: number;
+  seconds: number;
+};
+
+/**
+ * THE OPS HATCH FOR THE CLASSIFIER: read everything unread, up to a call
+ * budget, and say what it cost. The daily runs do the same work a little at
+ * a time; this is for the day it ships and for a prompt change.
+ */
+export async function runMarketIntelLabeling(options?: {
+  maxCalls?: number;
+  /** Company ids to read first and only; the rest wait for the daily runs. */
+  only?: string[];
+}): Promise<LabelRunSummary> {
+  const started = Date.now();
+  const nothing = (reason: string): LabelRunSummary => ({
+    ran: false,
+    reason,
+    companies: 0,
+    people: 0,
+    itemsLabeled: 0,
+    calls: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    remaining: 0,
+    seconds: 0,
+  });
+  if (!hasEnv()) return nothing("missing env (database)");
+  const feed: any = await readMarketIntelFeed({ fresh: true }).catch(() => null);
+  if (!feed || !feed.companies) return nothing("no feed row yet");
+  const tracking = (await readRow(TRACKING_ROW).catch(() => null)) ?? {};
+  const trackedCompanies: TrackedCompany[] = Array.isArray(tracking.companies)
+    ? tracking.companies
+    : [];
+  const trackedPeople: TrackedPerson[] = Array.isArray(tracking.people) ? tracking.people : [];
+  const competitorIds = new Set(COMPETITOR_SOURCES.map((s) => s.id));
+  for (const c of trackedCompanies) if (c.group === "competitor") competitorIds.add(c.id);
+
+  const budget: LabelBudget = { calls: Math.max(1, Math.min(400, options?.maxCalls ?? 60)) };
+  const before = { ...classifyUsage };
+  let companies = 0;
+  let people = 0;
+  let itemsLabeled = 0;
+  const onlyIds = options?.only && options.only.length > 0 ? new Set(options.only) : null;
+  const companiesList: FeedCompany[] = (Object.values(feed.companies) as FeedCompany[]).filter(
+    (c) => !onlyIds || onlyIds.has(c.id)
+  );
+  // Customers first: theirs is the page people open most.
+  companiesList.sort((a, b) => Number(competitorIds.has(a.id)) - Number(competitorIds.has(b.id)));
+  for (const entry of companiesList) {
+    if (budget.calls <= 0) break;
+    if (!entry.group) entry.group = competitorIds.has(entry.id) ? "competitor" : "customer";
+    const got = await applyLabels(entry, budget);
+    if (got > 0) {
+      itemsLabeled += got;
+      companies += 1;
+      await saveFeedCompany(feed, entry.id);
+    }
+  }
+  for (const person of trackedPeople) {
+    if (budget.calls <= 0) break;
+    if (competitorIds.has(person.companyId)) continue;
+    if (onlyIds && !onlyIds.has(person.companyId)) continue;
+    const posts: FeedPost[] = feed.people?.[person.id]?.posts ?? [];
+    if (posts.length === 0) continue;
+    const home = trackedCompanies.find((c) => c.id === person.companyId);
+    const got = await labelPersonPosts(
+      home?.name ?? feed.companies[person.companyId]?.name ?? person.companyId,
+      posts,
+      budget
+    );
+    if (got > 0) {
+      itemsLabeled += got;
+      people += 1;
+      await saveFeedPerson(feed, person.id);
+    }
+  }
+
+  let remaining = 0;
+  for (const entry of companiesList) {
+    for (const p of entry.posts) if (!isLabeled(p) && inLabelWindow(p.date)) remaining += 1;
+    for (const n of entry.news) if (!isLabeled(n) && inLabelWindow(n.published)) remaining += 1;
+    for (const n of entry.site ?? []) if (!isLabeled(n) && inLabelWindow(n.published)) remaining += 1;
+  }
+  for (const person of trackedPeople) {
+    if (competitorIds.has(person.companyId)) continue;
+    for (const p of feed.people?.[person.id]?.posts ?? [])
+      if (!isLabeled(p) && inLabelWindow(p.date)) remaining += 1;
+  }
+  return {
+    ran: itemsLabeled > 0,
+    companies,
+    people,
+    itemsLabeled,
+    calls: classifyUsage.calls - before.calls,
+    inputTokens: classifyUsage.inputTokens - before.inputTokens,
+    outputTokens: classifyUsage.outputTokens - before.outputTokens,
+    remaining,
+    seconds: Math.round((Date.now() - started) / 1000),
+  };
+}
+
+/** The ops hatch for the thought-leadership board: pull it now. */
+export async function refreshThoughtLeadershipNow(): Promise<{ items: number; total: number; cost: number }> {
+  if (!hasEnv()) throw new Error("missing env (database)");
+  const config = await readRow(CONFIG_ROW).catch(() => null);
+  const key = config?.perplexityKey || process.env.PERPLEXITY_API_KEY;
+  if (!key) throw new Error("no PERPLEXITY key in config row or env");
+  const feed: any = await readMarketIntelFeed({ fresh: true }).catch(() => null);
+  if (!feed || !feed.companies) throw new Error("no feed row yet");
+  const cost = await refreshThought(feed, key);
+  feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + cost) * 1000) / 1000;
+  await saveFeedMeta(feed);
+  return { items: feed.thought?.items?.length ?? 0, total: feed.thought?.total ?? 0, cost };
 }

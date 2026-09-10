@@ -9,7 +9,7 @@ import {
   Pencil, ClipboardList,
   FileText, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
-import { readMarketIntelFeed } from "@/lib/marketIntelFeed";
+import { readMarketIntelSummaries } from "@/lib/marketIntelFeed";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
 import { IndustryTag } from "@/components/ui/IndustryTag";
@@ -88,7 +88,7 @@ export default async function CustomerDetailPage({
    * spelling of a company and the customer row carries ours ("Opella" against
    * "Opella Healthcare", "BMS" against "Bristol Myers Squibb").
    */
-  const miFeed = await readMarketIntelFeed().catch(() => null);
+  const miFeed = await readMarketIntelSummaries().catch(() => null);
   const miKey = (v: string) =>
     v.toLowerCase().replace(/[^a-z0-9]/g, "");
   const miCompany = miFeed
@@ -103,8 +103,8 @@ export default async function CustomerDetailPage({
         name: miCompany.name,
         href: `/market-intel/${miCompany.id}`,
         tldr: miCompany.tldr ?? null,
-        posts: miCompany.posts.length,
-        news: miCompany.news.length,
+        posts: miCompany.counts.posts,
+        news: miCompany.counts.news,
         updatedAt: miCompany.fetchedAt ?? null,
       }
     : null;
