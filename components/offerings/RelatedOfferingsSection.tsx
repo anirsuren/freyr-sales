@@ -13,8 +13,9 @@ import { cn } from "@/lib/utils";
  * separate edit thing. When they press Edit at the top, that's where it
  * should be — a separate section under Sales Materials"). This renders what
  * the curated list produced; the curation itself is the Related offerings
- * section of the offering's edit form. The per-pair note keeps its inline
- * pencil, which he liked where it was.
+ * section of the offering's edit form. The per-pair note followed it there
+ * (Anir, Sep 10: "can that be shifted from here to inside the edit mode"),
+ * so nothing in this section saves on its own any more.
  */
 export type RelatedPill = {
   id: string;
@@ -130,9 +131,7 @@ export function RelatedOfferingsSection({
               {/* How the two actually relate, written by someone who knows
                   (Anir, Aug 25). */}
               <RelatedOfferingNote
-                offeringId={offeringId}
                 relatedId={relatedOffering.id}
-                relatedName={relatedOffering.name}
                 notes={notes}
                 canEdit={canEdit}
               />
@@ -236,9 +235,7 @@ export function RelatedOfferingsSection({
                           another line"). */}
                       <span className="block [&_p]:line-clamp-2 [&_[data-note-text]]:line-clamp-2">
                         <RelatedOfferingNote
-                          offeringId={offeringId}
                           relatedId={relatedOffering.id}
-                          relatedName={relatedOffering.name}
                           notes={notes}
                           canEdit={canEdit}
                         />

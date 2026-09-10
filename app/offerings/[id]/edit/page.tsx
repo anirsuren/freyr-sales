@@ -120,6 +120,7 @@ export default async function EditOfferingPage({
             materialFolders: o.materialFolders ?? [],
             related_add: o.related_add ?? [],
             related_hide: o.related_hide ?? [],
+            related_notes: o.related_notes ?? {},
           }}
           relatedPool={listOfferings()
             .filter((x) => x.id !== o.id)

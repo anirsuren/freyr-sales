@@ -2,48 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  GripVertical,
-  Pin,
-  Search,
-  Plus,
-  Trash2,
-  Package,
-  Layers,
-  ListChecks,
-  List,
-  Bold,
-  Italic,
-  Underline,
-  Strikethrough,
-  Bot,
-  Boxes,
-  Briefcase,
-  PlusCircle,
-  Heading2,
-  Heading3,
-  Link2,
-  RemoveFormatting,
-  Undo2,
-  Redo2,
-  PencilLine,
-  ListOrdered,
-  IndentIncrease,
-  IndentDecrease,
-  Building2,
-  FolderOpen,
-  Folder,
-  Route,
-  CalendarClock,
-  ChevronDown,
-  Check,
-  CircleCheck,
-  CircleHelp,
-  AlertCircle,
-  X,
-  Clock,
-  type LucideIcon,
-} from "lucide-react";
+import { GripVertical, Pin, Search, Plus, Trash2, Package, Layers, ListChecks, List, Bold, Italic, Underline, Strikethrough, Bot, Boxes, Briefcase, PlusCircle, Heading2, Heading3, Link2, RemoveFormatting, Undo2, Redo2, PencilLine, ListOrdered, IndentIncrease, IndentDecrease, Building2, FolderOpen, Folder, Route, CalendarClock, ChevronDown, Check, CircleCheck, CircleHelp, AlertCircle, X, Clock, type LucideIcon, PenLine } from "lucide-react";
 import { hasOfferingEditChanges } from "@/lib/offeringEditDirty";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -824,6 +783,7 @@ export function OfferingForm({
     materialFolders?: string[];
     related_add?: string[];
     related_hide?: string[];
+    related_notes?: Record<string, string>;
   };
 }) {
   const router = useRouter();
@@ -1141,6 +1101,17 @@ export function OfferingForm({
   const [relatedHide, setRelatedHide] = useState<string[]>(initial?.related_hide ?? []);
   const [addingRelated, setAddingRelated] = useState(false);
   const [relatedQuery, setRelatedQuery] = useState("");
+  /* HOW EACH PAIR RELATES, EDITED HERE TOO (Anir, Sep 10: "the edit option
+     for how two offerings are related to each other, can that be shifted
+     from here to inside the edit mode, related offering section?"). The note
+     used to save on its own from the offering's page, the one thing in that
+     section still carrying its own pencil after the list moved here on
+     Aug 27. Now it is staged like the list and rides the page's one Save. */
+  const [relatedNotes, setRelatedNotes] = useState<Record<string, string>>(
+    () => ({ ...(initial?.related_notes ?? {}) })
+  );
+  const [noteTarget, setNoteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
 
   const currentEditSnapshot: Record<string, unknown> = {
     offeringType,
@@ -1156,6 +1127,7 @@ export function OfferingForm({
     materials,
     relatedAdd,
     relatedHide,
+    relatedNotes,
     ...(isEdit && roadmapEditable ? { roadmapDraft } : {}),
   };
   const initialEditSnapshot: Record<string, unknown> = {
@@ -1176,6 +1148,7 @@ export function OfferingForm({
     materials: initialMaterials,
     relatedAdd: initial?.related_add ?? [],
     relatedHide: initial?.related_hide ?? [],
+    relatedNotes: initial?.related_notes ?? {},
     ...(isEdit && roadmapEditable
       ? { roadmapDraft: roadmapDetails ?? blankRoadmapDetails() }
       : {}),
@@ -1294,7 +1267,11 @@ export function OfferingForm({
             customer_type_ids: ctIds,
             market_ids: mktIds,
             ...(isEdit
-              ? { related_add: relatedAdd, related_hide: relatedHide }
+              ? {
+                  related_add: relatedAdd,
+                  related_hide: relatedHide,
+                  related_notes: relatedNotes,
+                }
               : {}),
             // The roadmap edits ride the same save as everything else on
             // this page. Never sent from Mock: the sample overlay must not
@@ -2576,6 +2553,17 @@ export function OfferingForm({
                         <span className="block text-[11.5px] text-text-tertiary">
                           {x.category || "No category"}
                         </span>
+                        {/* How the two relate, in the owner's words. Read on
+                            the offering's page; written here. */}
+                        {relatedNotes[x.id]?.trim() ? (
+                          <span className="mt-1 line-clamp-2 text-[12px] leading-snug text-text-secondary">
+                            {relatedNotes[x.id]}
+                          </span>
+                        ) : (
+                          <span className="mt-1 block text-[12px] italic leading-snug text-text-tertiary">
+                            No note on how these two work together yet.
+                          </span>
+                        )}
                       </span>
                       {/* WHY it is on the list, so removing is informed: a
                           sibling comes back if the category ever matches
@@ -2596,6 +2584,22 @@ export function OfferingForm({
                           "Same category"
                         )}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNoteDraft(relatedNotes[x.id] ?? "");
+                          setNoteTarget({ id: x.id, name: x.name });
+                        }}
+                        title={
+                          relatedNotes[x.id]?.trim()
+                            ? "Edit how these work together"
+                            : "Say how these work together"
+                        }
+                        aria-label={`${relatedNotes[x.id]?.trim() ? "Edit" : "Say"} how ${x.name} relates`}
+                        className="shrink-0 cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                      >
+                        <PenLine size={14} strokeWidth={2} />
+                      </button>
                       <button
                         type="button"
                         onClick={() =>
@@ -2914,6 +2918,67 @@ export function OfferingForm({
           search on top, and the offerings themselves as rows — icon, name,
           category — one click to add. The same browsing grammar as the rest
           of the app, sized like a decision rather than an afterthought. */}
+      {/* HOW A PAIR RELATES, IN A POP-UP (Anir, Sep 6: "when I press that
+          thing, it should be a pop-up instead of just there"; moved here from
+          the offering's page Sep 10). Done stages the text; the page's Save
+          writes it with everything else. */}
+      <Modal
+        open={noteTarget !== null}
+        onClose={() => setNoteTarget(null)}
+        title={noteTarget ? `How ${noteTarget.name} relates` : ""}
+      >
+        <p className="text-[12.5px] leading-relaxed text-text-secondary">
+          One or two sentences a rep can use on a call: when these two are sold
+          together, and what the other one adds.
+        </p>
+        <textarea
+          autoFocus
+          value={noteDraft}
+          onChange={(e) => setNoteDraft(e.target.value)}
+          rows={5}
+          placeholder={
+            noteTarget ? `How does ${noteTarget.name} relate to this offering?` : ""
+          }
+          aria-label={noteTarget ? `How ${noteTarget.name} relates` : "How this pair relates"}
+          className="mt-3 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-[13px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary focus:border-blue-primary focus:bg-white"
+        />
+        {/* Clearing the box removes the note; say so, rather than letting an
+            empty Done look like nothing happened. */}
+        {noteTarget &&
+          (relatedNotes[noteTarget.id] ?? "").trim() &&
+          !noteDraft.trim() && (
+            <p className="mt-2 text-[11.5px] font-medium text-[color:var(--ink-orange)]">
+              Leaving the box empty removes this note when you save the page.
+            </p>
+          )}
+        <div className="mt-4 flex items-center justify-end gap-2 border-t border-border-light pt-4">
+          <button
+            type="button"
+            onClick={() => setNoteTarget(null)}
+            className="rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!noteTarget) return;
+              const text = noteDraft.trim();
+              setRelatedNotes((cur) => {
+                const next = { ...cur };
+                if (text) next[noteTarget.id] = text;
+                else delete next[noteTarget.id];
+                return next;
+              });
+              setNoteTarget(null);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            <Check size={14} strokeWidth={2.6} /> Done
+          </button>
+        </div>
+      </Modal>
+
       <Modal
         open={addingRelated}
         onClose={() => {
