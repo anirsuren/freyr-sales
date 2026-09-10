@@ -1534,6 +1534,8 @@ export async function runSiteUpdatesRefresh(options?: {
       entry.site = mergeNews(entry.site ?? [], result.updates);
       withUpdates += 1;
       items += result.updates.length;
+      // New website items are read like everything else, here and now.
+      await applyLabels(entry, { calls: 4 });
     }
     /* Stamped even on a failure, so one site that refuses to be read cannot
        hold the front of the queue and starve everybody behind it. */
