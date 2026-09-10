@@ -16,6 +16,7 @@ export function Modal({
   size = "default",
   tall = false,
   actions,
+  titleAfter,
   dialogClassName,
   stacked = false,
   dock = false,
@@ -36,6 +37,8 @@ export function Modal({
    *  the close button. Document controls (download, open elsewhere) live here
    *  rather than floating above the content they act on. */
   actions?: React.ReactNode;
+  /** Sits immediately after the title, for a hint that explains the dialog. */
+  titleAfter?: React.ReactNode;
   /** Optional sizing for a specific workflow that should not resize as its
    *  internal panels open and close. */
   dialogClassName?: string;
@@ -198,7 +201,10 @@ export function Modal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border-light shrink-0">
-          <h2 className="min-w-0 truncate text-[16px] font-semibold text-text-primary">{title}</h2>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <h2 className="min-w-0 truncate text-[16px] font-semibold text-text-primary">{title}</h2>
+            {titleAfter}
+          </span>
           <div className="flex shrink-0 items-center gap-2">
           {actions}
           <button

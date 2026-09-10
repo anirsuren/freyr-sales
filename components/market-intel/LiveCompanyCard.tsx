@@ -18,7 +18,7 @@ import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { MiLogo } from "@/components/market-intel/MiLogo";
 import { DivisionChips } from "@/components/market-intel/DivisionChips";
-import { WatchStatus, isPaused, type WatchState } from "@/components/market-intel/WatchStatus";
+import { WatchStatus, isInactive, type WatchState } from "@/components/market-intel/WatchStatus";
 import type { CompanyCard } from "@/lib/marketIntelFeed";
 import type { Division } from "@/lib/offeringMaterials";
 import { cn } from "@/lib/utils";
@@ -53,18 +53,19 @@ export function LiveCompanyCard({
   card,
   people,
   divisions = [],
-  bookmarked = false,
-  onBookmark,
+  starred = false,
+  onStar,
   watch,
 }: {
   card: CompanyCard;
   people?: CardPerson[];
   divisions?: Division[];
-  bookmarked?: boolean;
-  /** Standing watch, followed, or paused. */
+  /** A favourite inside this person's list, which is not the list itself. */
+  starred?: boolean;
+  /** How many people have it: Active with a count, or Inactive. */
   watch?: WatchState;
-  /** Present when the viewer may keep a list; absent renders no star. */
-  onBookmark?: (on: boolean) => void;
+  /** Present when the viewer may star; absent renders no star. */
+  onStar?: (on: boolean) => void;
 }) {
   const up = (card.momentumPct ?? 0) >= 0;
   const stories = card.stories.slice(0, 5);
@@ -141,28 +142,29 @@ export function LiveCompanyCard({
               {card.momentumPct}%
             </span>
           )}
-          {onBookmark && (
-            /* MY LIST (Sep 10): the star follows the company for this person
-               only. Inside a card that is itself a link, so the click stays
+          {onStar && (
+            /* A FAVOURITE, NOT THE LIST (Anir, Sep 10). The card is here
+               because it is ticked in Manage companies; the star just marks
+               it. Inside a card that is itself a link, so the click stays
                here. */
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onBookmark(!bookmarked);
+                onStar(!starred);
               }}
-              aria-pressed={bookmarked}
-              aria-label={bookmarked ? `Remove ${card.name} from my list` : `Add ${card.name} to my list`}
-              title={bookmarked ? "On your list. Click to remove it." : "Add to my list"}
+              aria-pressed={starred}
+              aria-label={starred ? `Unstar ${card.name}` : `Star ${card.name}`}
+              title={starred ? "Starred. Click to unstar; it stays on your page." : "Star it as a favourite"}
               className={cn(
                 "relative z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors",
-                bookmarked
+                starred
                   ? "bg-[rgba(180,83,9,0.12)] text-[#B45309]"
                   : "text-text-tertiary hover:bg-surface hover:text-[#B45309]"
               )}
             >
-              <Star size={13} strokeWidth={2.2} fill={bookmarked ? "currentColor" : "none"} />
+              <Star size={13} strokeWidth={2.2} fill={starred ? "currentColor" : "none"} />
             </button>
           )}
         </span>
@@ -345,7 +347,7 @@ export function LiveCompanyCard({
 
   return (
     <HoverExpandCard
-      className={watch && isPaused(watch) ? "h-full opacity-75" : "h-full"}
+      className={watch && isInactive(watch) ? "h-full opacity-75" : "h-full"}
       href={`/market-intel/${card.id}`}
       summary={summary}
       extra={extra}

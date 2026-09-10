@@ -19,7 +19,6 @@ import {
   readMarketIntelTracking,
   setCompanyDivisions,
   setCompanyGroup,
-  setCompanyStanding,
   trackCompany,
   trackPerson,
   untrackPerson,
@@ -65,10 +64,10 @@ async function acquireTrackingWrite(): Promise<() => void> {
  * watch; following a company that is already there is free and unlimited,
  * because it is scraped once for everybody. Admins have no limit.
  *
- * THE MODEL (Anir, Sep 10): a company is on the watch because somebody has
- * it, the workspace's standing watch (admins add and remove) or a person's
- * own list (anybody follows and unfollows). It is refreshed while somebody
- * has it and pauses when nobody does. Only an admin deletes it for good.
+ * THE MODEL (Anir, Sep 10): the catalogue holds every company the team knows
+ * about; each person ticks the ones they want on their page. A company is
+ * collected while at least one person has it ticked, and stops when the last
+ * person unticks it. Only an admin deletes it for good.
  */
 async function readOnly(): Promise<NextResponse | null> {
   const refusal = await moduleWriteRefusal("/market-intel");
@@ -104,13 +103,11 @@ export async function POST(req: NextRequest) {
           addedBy,
           divisions: cleanDivisions(body.divisions),
           canCreate,
-          // Only an admin puts a new company on the workspace's standing watch.
-          standing: isAdmin && body?.standing === true,
         }
       );
-      // Whoever added or chose it follows it: it lands on their own list.
+      // Whoever added or chose it gets it ticked: it lands on their own page.
       await setMarketIntelBookmark(scope, result.id, true).catch(() => undefined);
-      // A paused company somebody wants again is pulled now if its data is old.
+      // A company nobody had is pulled now if its data is old.
       if (result.resumed) after(() => resumeCompanyIfStale(result.id));
       return NextResponse.json({
         ok: true,
@@ -171,19 +168,15 @@ export async function POST(req: NextRequest) {
       );
       return NextResponse.json({ ok: true, person });
     }
-    /* THE STANDING WATCH and the tab a company lives on: admins only. */
-    if (body?.kind === "standing" || body?.kind === "group") {
+    /* WHICH TAB A COMPANY LIVES ON: admins only. */
+    if (body?.kind === "group") {
       if (!isAdmin) {
         return NextResponse.json(
-          { error: "Only an admin changes what is tracked for everyone." },
+          { error: "Only an admin moves a company between customers and competitors." },
           { status: 403 }
         );
       }
       const id = String(body?.id ?? "").trim();
-      if (body.kind === "standing") {
-        const company = await setCompanyStanding(id, body?.on === true);
-        return NextResponse.json({ ok: true, standing: company.standing === true });
-      }
       const group = body?.group === "competitor" ? "competitor" : "customer";
       const company = await setCompanyGroup(id, group);
       return NextResponse.json({ ok: true, group: company.group });

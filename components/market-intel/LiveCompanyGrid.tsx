@@ -11,7 +11,6 @@ import {
   Hourglass,
   Layers,
   Moon,
-  PauseCircle,
   Star,
   Swords,
   Tag,
@@ -29,7 +28,7 @@ import {
   type CardPerson,
 } from "@/components/market-intel/LiveCompanyCard";
 import { DivisionChips } from "@/components/market-intel/DivisionChips";
-import { WatchStatus, isPaused, type WatchState } from "@/components/market-intel/WatchStatus";
+import { WatchStatus, type WatchState } from "@/components/market-intel/WatchStatus";
 import type { CompanyCard } from "@/lib/marketIntelFeed";
 import type { TrackedCompany } from "@/lib/marketIntelTracking";
 import { DIVISIONS, DIVISION_META, type Division } from "@/lib/offeringMaterials";
@@ -41,9 +40,11 @@ import { cn } from "@/lib/utils";
  * companies AND the people followed inside them, so typing a person's name
  * surfaces their company's card.
  *
- * Sep 10 (Saras): a DIVISION filter (MPR, MDV, CON, or untagged), and MY
- * COMPANIES, the star on each card and the toggle here, so a person can see
- * only the companies they added or chose to follow.
+ * Sep 10 (Saras): a DIVISION filter (MPR, MDV, CON, or untagged). Every card
+ * here is on this person's own list, so the star is not "add it to my page"
+ * any more: it is a FAVOURITE inside the list (Anir, Sep 10: "My list does
+ * not mean that it is starred. Starred is completely different from my
+ * list"), with its own filter.
  */
 
 type Activity = "all" | "busy" | "quiet";
@@ -57,8 +58,7 @@ export function LiveCompanyGrid({
   group,
   divisions,
   watch,
-  isAdmin = false,
-  showAll = false,
+  starred = [],
 }: {
   cards: CompanyCard[];
   pending: TrackedCompany[];
@@ -66,12 +66,10 @@ export function LiveCompanyGrid({
   group: "customer" | "competitor";
   /** Division tags by company id, for every company on the page. */
   divisions: Record<string, Division[]>;
-  /** Standing watch / followers / paused, by company id. */
+  /** How many people have each company, for the Active chip. */
   watch: Record<string, WatchState>;
-  /** Admins can see paused companies and bring them back. */
-  isAdmin?: boolean;
-  /** Whether the page shows every company the team tracks, or only mine. */
-  showAll?: boolean;
+  /** This person's favourites, from the server. */
+  starred?: string[];
 }) {
   const { toast } = useToast();
   const router = useRouter();
@@ -79,51 +77,33 @@ export function LiveCompanyGrid({
   const [activity, setActivity] = useState<Activity>("all");
   const [sort, setSort] = useState<Sort>("active");
   const [divisionFilter, setDivisionFilter] = useState<string[]>([]);
-  const [mineOnly, setMineOnly] = useState(false);
-  const [pausedOnly, setPausedOnly] = useState(false);
-  const [mine, setMine] = useState<Set<string> | null>(null);
-  const stateOf = (id: string): WatchState => watch[id] ?? { standing: false, followers: 0 };
-  /* PAUSED COMPANIES ARE OUT OF THE WAY: nobody has them, so they are not
-     refreshed and not shown, except to an admin who asks for them. */
-  const passesPaused = (id: string) => (pausedOnly ? isPaused(stateOf(id)) : !isPaused(stateOf(id)));
+  const [starredOnly, setStarredOnly] = useState(false);
+  const [stars, setStars] = useState<Set<string>>(new Set(starred));
+  const stateOf = (id: string): WatchState => watch[id] ?? { followers: 0 };
 
-  // My list, read after mount so the server never guesses who is looking.
-  useEffect(() => {
-    let alive = true;
-    fetch("/api/market-intel/bookmarks")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (alive) setMine(new Set<string>(Array.isArray(data?.companyIds) ? data.companyIds : []));
-      })
-      .catch(() => {
-        if (alive) setMine(new Set());
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
+  useEffect(() => setStars(new Set(starred)), [starred]);
 
-  const setBookmark = async (id: string, on: boolean) => {
-    const before = mine ?? new Set<string>();
-    const next = new Set(before);
+  /* THE STAR IS A FAVOURITE, not the list itself: every card here is already
+     on this person's list. Unstarring leaves the card where it is. */
+  const setStar = async (id: string, on: boolean) => {
+    const before = new Set(stars);
+    const next = new Set(stars);
     if (on) next.add(id);
     else next.delete(id);
-    setMine(next);
+    setStars(next);
     try {
       const res = await fetch("/api/market-intel/bookmarks", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, on }),
+        body: JSON.stringify({ id, star: on }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Could not save.");
       const name = cards.find((c) => c.id === id)?.name ?? pending.find((c) => c.id === id)?.name ?? "It";
-      if (data?.paused) toast(`${name} is off your list. Nobody has it now, so it's paused.`);
-      else if (data?.resumed) toast(`${name} is back on the watch.`);
-      // The page is my list: a star added or removed changes what is on it.
+      toast(on ? `${name} is starred.` : `${name} is no longer starred. It stays on your page.`);
       router.refresh();
     } catch (caught) {
-      setMine(before);
+      setStars(before);
       toast(caught instanceof Error ? caught.message : "Could not save your list.", "error");
     }
   };
@@ -149,10 +129,10 @@ export function LiveCompanyGrid({
     return tags.some((d) => divisionFilter.includes(d));
   };
 
-  const passesMine = (id: string) => !mineOnly || (mine?.has(id) ?? false);
+  const passesStar = (id: string) => !starredOnly || stars.has(id);
 
   const shown = cards
-    .filter((c) => matches(c.id, c.name) && passesActivity(c) && passesDivision(c.id) && passesMine(c.id) && passesPaused(c.id))
+    .filter((c) => matches(c.id, c.name) && passesActivity(c) && passesDivision(c.id) && passesStar(c.id))
     .sort((a, b) =>
       sort === "az"
         ? a.name.localeCompare(b.name)
@@ -166,15 +146,13 @@ export function LiveCompanyGrid({
     activity === "busy"
       ? []
       : pending.filter(
-          (c) => matches(c.id, c.name, c.industry) && passesDivision(c.id) && passesMine(c.id) && passesPaused(c.id)
+          (c) => matches(c.id, c.name, c.industry) && passesDivision(c.id) && passesStar(c.id)
         );
 
-  const pausedCount = [...cards.map((c) => c.id), ...pending.map((c) => c.id)].filter((id) => isPaused(stateOf(id))).length;
-  const total = cards.length + pending.length - (pausedOnly ? 0 : pausedCount);
+  const total = cards.length + pending.length;
   const visible = shown.length + shownPending.length;
-  const mineCount = mine
-    ? cards.filter((c) => mine.has(c.id)).length + pending.filter((c) => mine.has(c.id)).length
-    : 0;
+  const starCount =
+    cards.filter((c) => stars.has(c.id)).length + pending.filter((c) => stars.has(c.id)).length;
   const untaggedCount = [...cards.map((c) => c.id), ...pending.map((c) => c.id)].filter(
     (id) => (divisions[id] ?? []).length === 0
   ).length;
@@ -204,43 +182,23 @@ export function LiveCompanyGrid({
         <span className="px-1 text-[12px] font-medium text-text-secondary tnum">
           {visible} of {total}
         </span>
-        {/* MY LIST: only worth a toggle when the page is showing everyone's. */}
-        {showAll && (
+        {/* STARRED: a favourite inside my own list, not the list itself. */}
         <button
           type="button"
-          onClick={() => setMineOnly((v) => !v)}
-          aria-pressed={mineOnly}
-          title="Only the companies on your list"
+          onClick={() => setStarredOnly((v) => !v)}
+          aria-pressed={starredOnly}
+          title="Only the companies you starred"
           className={cn(
             "flex h-[34px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors",
-            mineOnly
+            starredOnly
               ? "border-transparent bg-[#B45309] text-white"
               : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
           )}
         >
-          <Star size={13} strokeWidth={2.2} fill={mineOnly ? "currentColor" : "none"} />
-          My list
-          <span className={cn("tnum", mineOnly ? "opacity-85" : "text-text-tertiary")}>{mineCount}</span>
+          <Star size={13} strokeWidth={2.2} fill={starredOnly ? "currentColor" : "none"} />
+          Starred
+          <span className={cn("tnum", starredOnly ? "opacity-85" : "text-text-tertiary")}>{starCount}</span>
         </button>
-        )}
-        {isAdmin && pausedCount > 0 && (
-          <button
-            type="button"
-            onClick={() => setPausedOnly((v) => !v)}
-            aria-pressed={pausedOnly}
-            title="Companies nobody has on their list, so nothing new is collected. Add one to your list to bring it back, or delete it for good."
-            className={cn(
-              "flex h-[34px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors",
-              pausedOnly
-                ? "border-transparent bg-[#5B6B8C] text-white"
-                : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
-            )}
-          >
-            <PauseCircle size={13} strokeWidth={2.2} />
-            Paused
-            <span className={cn("tnum", pausedOnly ? "opacity-85" : "text-text-tertiary")}>{pausedCount}</span>
-          </button>
-        )}
         <MultiColorSelect
           values={divisionFilter}
           onChange={setDivisionFilter}
@@ -284,13 +242,9 @@ export function LiveCompanyGrid({
 
       {visible === 0 ? (
         <div className="rounded-xl border border-dashed border-border-light bg-white p-10 text-center text-[13px] text-text-secondary">
-          {pausedOnly
-            ? "Nothing is paused. Every company on the watch has somebody who wants it."
-            : !showAll && total === 0
-            ? "Nothing on your page yet. Open Manage companies to star the companies you want here, or tick Show all companies to see everything the team tracks."
-            : mineOnly && mineCount === 0
-            ? "Nothing on your list yet. Press the star on any company to add it, or track a new one with the button above."
-            : `Nothing matches${q ? ` “${query.trim()}”` : " those filters"}. Clear the ${q ? "search" : "filters"} to see all ${total} ${group === "competitor" ? "competitors" : "customers"}.`}
+          {starredOnly && starCount === 0
+            ? "Nothing starred yet. Press the star on any card to mark a favourite."
+            : `Nothing matches${q ? ` “${query.trim()}”` : " those filters"}. Clear the ${q ? "search" : "filters"} to see all ${total} ${group === "competitor" ? "competitors" : "customers"} on your page.`}
         </div>
       ) : (
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 stagger">
@@ -300,15 +254,15 @@ export function LiveCompanyGrid({
               card={card}
               people={people[card.id]}
               divisions={divisions[card.id] ?? []}
-              bookmarked={mine?.has(card.id) ?? false}
-              onBookmark={(on) => void setBookmark(card.id, on)}
+              starred={stars.has(card.id)}
+              onStar={(on) => void setStar(card.id, on)}
               watch={stateOf(card.id)}
             />
           ))}
 
           {shownPending.map((company) => {
             const peopleCount = (people[company.id] ?? []).length;
-            const on = mine?.has(company.id) ?? false;
+            const on = stars.has(company.id);
             return (
               <Link
                 key={company.id}
@@ -339,10 +293,10 @@ export function LiveCompanyGrid({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        void setBookmark(company.id, !on);
+                        void setStar(company.id, !on);
                       }}
                       aria-pressed={on}
-                      aria-label={on ? `Remove ${company.name} from my list` : `Add ${company.name} to my list`}
+                      aria-label={on ? `Unstar ${company.name}` : `Star ${company.name}`}
                       className={cn(
                         "flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors",
                         on ? "bg-[rgba(180,83,9,0.12)] text-[#B45309]" : "text-text-tertiary hover:bg-surface hover:text-[#B45309]"

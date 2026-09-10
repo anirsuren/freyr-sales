@@ -33,10 +33,16 @@ import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
 import { miCompany } from "@/lib/marketIntelMock";
 import { COMPANY_SOURCES, COMPETITOR_SOURCES } from "@/lib/marketIntelSources";
 import { companyDivisions, readMarketIntelTracking } from "@/lib/marketIntelTracking";
-import { readMarketIntelFollowers } from "@/lib/marketIntelBookmarks";
+import { requireServerMemberScope } from "@/lib/memberScope";
+import {
+  emptyBookmarks,
+  readMarketIntelBookmarks,
+  readMarketIntelFollowers,
+} from "@/lib/marketIntelBookmarks";
 import { DivisionEditor } from "@/components/market-intel/DivisionChips";
 import { CompanyAdminControls } from "@/components/market-intel/CompanyAdminControls";
 import { WatchStatus } from "@/components/market-intel/WatchStatus";
+import { MyListToggle } from "@/components/market-intel/MyListToggle";
 import type { Division } from "@/lib/offeringMaterials";
 import { moduleWriteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
 
@@ -88,15 +94,20 @@ export default async function MarketIntelCompanyPage({
      the module's write privilege for the tags; the person who added it, or
      an admin, for the removal (Sep 10). */
   const canEdit = !(await moduleWriteRefusal("/market-intel"));
-  const [user, followers] = await Promise.all([
+  const [user, followers, myScope] = await Promise.all([
     getCurrentUser(),
     readMarketIntelFollowers().catch(() => ({}) as Record<string, string[]>),
+    requireServerMemberScope().catch(() => null),
   ]);
   const isAdmin = user.role === "admin";
-  const watchOf = (companyId: string) => {
-    const entry = tracking.companies.find((c) => c.id === companyId);
-    return { standing: entry?.standing === true, followers: followers[companyId]?.length ?? 0 };
-  };
+  /* WHAT THIS PERSON HAS: the tick that puts the company on their page, and
+     the star, which is a favourite inside that list (Anir, Sep 10). */
+  const myLists = myScope
+    ? await readMarketIntelBookmarks(myScope).catch(() => emptyBookmarks())
+    : emptyBookmarks();
+  const onMyPage = myLists.companyIds.includes(id);
+  const starred = myLists.starredIds.includes(id);
+  const watchOf = (companyId: string) => ({ followers: followers[companyId]?.length ?? 0 });
 
   if (getDataMode() === "live") {
     /* ONE ROW (Sep 10): the briefing reads this company's row and, for a
@@ -139,6 +150,8 @@ export default async function MarketIntelCompanyPage({
           canWrite={canEdit}
           isAdmin={isAdmin}
           watch={watchOf(id)}
+          onMyPage={onMyPage}
+          starred={starred}
         />
       );
     }
@@ -227,6 +240,12 @@ export default async function MarketIntelCompanyPage({
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <WatchStatus state={watchOf(mine.id)} size="md" />
+            <MyListToggle
+              companyId={mine.id}
+              companyName={mine.name}
+              onMyPage={onMyPage}
+              starred={starred}
+            />
             <DivisionEditor
               companyId={mine.id}
               companyName={mine.name}
@@ -242,7 +261,6 @@ export default async function MarketIntelCompanyPage({
             companyId={mine.id}
             companyName={mine.name}
             group={mine.group === "competitor" ? "competitor" : "customer"}
-            standing={mine.standing === true}
             followers={followers[mine.id]?.length ?? 0}
           />
         </div>

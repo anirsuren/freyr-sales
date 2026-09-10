@@ -1,28 +1,29 @@
 "use client";
 
-import { PauseCircle, ShieldCheck, Star } from "lucide-react";
+import { CircleSlash, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * WHY A COMPANY IS ON THE WATCH, said on its card and its briefing (Anir,
- * Sep 10, and "speak normally"): tracked for everyone (the team's list,
- * admins control it), on somebody's own list (the star), or neither, in
- * which case it is paused: nothing new is collected until somebody adds it
- * to their list again.
+ * ACTIVE OR INACTIVE, AND NOTHING ELSE (Anir, Sep 10: "I should clearly be
+ * able to distinguish which ones are active, which means someone has it in
+ * their list, and which ones are inactive, which means no one has it in their
+ * list").
+ *
+ * Active: at least one person has this company on their list, so it is
+ * collected every day. Inactive: nobody has it, so nothing new is collected.
+ * Everything already collected stays, and the first person to tick it starts
+ * it again. There is no "for everyone" any more.
  */
-export type WatchState = { standing: boolean; followers: number };
+export type WatchState = { followers: number };
 
 export function watchLabel(state: WatchState): string {
-  if (state.standing && state.followers > 0)
-    return `For everyone · on ${state.followers} ${state.followers === 1 ? "list" : "lists"}`;
-  if (state.standing) return "For everyone";
-  if (state.followers > 0)
-    return `On ${state.followers} ${state.followers === 1 ? "person's list" : "people's lists"}`;
-  return "Paused";
+  if (state.followers <= 0) return "Inactive";
+  return `Active · ${state.followers} ${state.followers === 1 ? "person" : "people"}`;
 }
 
-export function isPaused(state: WatchState): boolean {
-  return !state.standing && state.followers === 0;
+/** Nobody has it, so nothing new is being collected. */
+export function isInactive(state: WatchState): boolean {
+  return state.followers <= 0;
 }
 
 export function WatchStatus({
@@ -34,26 +35,25 @@ export function WatchStatus({
   size?: "sm" | "md";
   className?: string;
 }) {
-  const paused = isPaused(state);
-  const Icon = paused ? PauseCircle : state.standing ? ShieldCheck : Star;
-  const color = paused ? "#5B6B8C" : state.standing ? "var(--ink-bright-blue)" : "#B45309";
+  const off = isInactive(state);
+  const Icon = off ? CircleSlash : Radio;
+  /* Status colours, used for a real status: collecting or not. */
+  const color = off ? "#5B6B8C" : "var(--ink-green)";
   return (
     <span
       title={
-        paused
-          ? "Nobody has this company on their list, so nothing new is collected. Add it to your list to bring it back."
-          : state.standing
-            ? "Tracked for the whole team. Keeps updating no matter who has it on their list."
-            : "On somebody's own list. Keeps updating as long as someone has it on their list."
+        off
+          ? "Nobody has this company on their list, so nothing new is being collected. Everything collected so far is kept. Tick it in Manage companies to start it again."
+          : `${state.followers} ${state.followers === 1 ? "person has" : "people have"} this on their list, so it is collected every day.`
       }
       className={cn(
         "inline-flex items-center gap-1 rounded-full font-semibold",
         size === "md" ? "px-2.5 py-1 text-[12px]" : "px-2 py-0.5 text-[11px]",
         className
       )}
-      style={{ color, background: `color-mix(in srgb, ${color} 10%, transparent)` }}
+      style={{ color, background: `color-mix(in srgb, ${color} 12%, transparent)` }}
     >
-      <Icon size={size === "md" ? 13 : 11} strokeWidth={2.2} fill={!paused && !state.standing ? "currentColor" : "none"} />
+      <Icon size={size === "md" ? 13 : 11} strokeWidth={2.2} />
       {watchLabel(state)}
     </span>
   );

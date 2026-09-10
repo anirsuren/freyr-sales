@@ -16,23 +16,27 @@ import type { Division } from "@/lib/offeringMaterials";
  * logo and followers, pulls the first posts and news, and writes the AI
  * rundown — the briefing exists by the time the toast shows.
  *
- * Sep 10: the divisions it belongs to (Saras), and ONE SHARED LIST (Anir): a
- * company already on the watch is not scraped again, it is simply added to
- * this person's own list, and the toast says which of the two happened.
+ * Sep 10: the divisions it belongs to (Saras), and ONE SHARED CATALOGUE
+ * (Anir): a company somebody already has is not scraped again, it is simply
+ * ticked onto this person's list, and the toast says which of the two
+ * happened. Whatever you add lands on your own page straight away.
  */
 export function TrackCompanyButton({
   group = "customer",
   canTrack = true,
   addedLeft = null,
-  isAdmin = false,
+  stacked = false,
+  compact = false,
 }: {
   group?: "customer" | "competitor";
   /** MAY THEY ADD ONE: the Market Intel row of the privilege table decides. */
   canTrack?: boolean;
   /** How many NEW companies this person may still add; null means no limit. */
   addedLeft?: number | null;
-  /** Admins choose: the workspace's standing watch, or just their own list. */
-  isAdmin?: boolean;
+  /** Opened from inside another dialog (the Manage companies pop-up). */
+  stacked?: boolean;
+  /** A smaller button, for a dialog header. */
+  compact?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -41,7 +45,6 @@ export function TrackCompanyButton({
   const [error, setError] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
   const [divisions, setDivisions] = useState<Division[]>([]);
-  const [standing, setStanding] = useState(true);
 
   async function save() {
     if (!linkedinUrl.trim()) {
@@ -59,7 +62,6 @@ export function TrackCompanyButton({
           linkedinUrl,
           group,
           divisions,
-          standing: isAdmin && standing,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -68,12 +70,10 @@ export function TrackCompanyButton({
       const where = data.company?.group === "competitor" ? "Competitor" : "Customer";
       toast(
         data.resumed
-          ? `${name} was paused and is back on the watch. It's on your list now.`
+          ? `Nobody had ${name}, so it starts collecting again. It's on your page now.`
           : data.existing
-            ? `${name} was already on the watch (${where} Intelligence), so nothing new was scraped. It's on your list now.`
-            : isAdmin && standing
-              ? `Now tracking ${name} for everyone. Briefing is ready.`
-              : `Now tracking ${name} on your list. Briefing is ready.`
+            ? `${name} was already in the list (${where} Intelligence), so nothing new was scraped. It's on your page now.`
+            : `Now tracking ${name}. It's on your page and the briefing is ready.`
       );
       setOpen(false);
       setLinkedinUrl("");
@@ -91,8 +91,11 @@ export function TrackCompanyButton({
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} className="!px-4 !py-2 text-[13px]">
-        <Plus size={15} strokeWidth={2.4} />
+      <Button
+        onClick={() => setOpen(true)}
+        className={compact ? "!px-3 !py-1.5 text-[12.5px]" : "!px-4 !py-2 text-[13px]"}
+      >
+        <Plus size={compact ? 14 : 15} strokeWidth={2.4} />
         {group === "competitor" ? "Track a competitor" : "Track a company"}
       </Button>
 
@@ -101,6 +104,7 @@ export function TrackCompanyButton({
         onClose={() => {
           if (!busy) setOpen(false);
         }}
+        stacked={stacked}
         title={group === "competitor" ? "Track a competitor" : "Track a company"}
       >
         <div className="space-y-3">
@@ -122,8 +126,8 @@ export function TrackCompanyButton({
             />
             <p className="mt-1 text-[11px] leading-snug text-text-tertiary">
               That&apos;s all. Name, logo, posts, news and the rundown are
-              pulled from the page itself. A company already being tracked is
-              simply added to your list; nothing is collected twice.
+              pulled from the page itself. A company somebody already has is
+              simply ticked onto your list; nothing is collected twice.
             </p>
           </div>
           <div>
@@ -136,42 +140,11 @@ export function TrackCompanyButton({
               that applies.
             </p>
           </div>
-          {isAdmin && (
-            <div>
-              <p className="mb-1.5 text-[12px] font-semibold text-text-primary">Who it&apos;s for</p>
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Who it's for">
-                {[
-                  { on: true, label: "For everyone" },
-                  { on: false, label: "Just for me" },
-                ].map((choice) => (
-                  <button
-                    key={String(choice.on)}
-                    type="button"
-                    aria-pressed={standing === choice.on}
-                    disabled={busy}
-                    onClick={() => setStanding(choice.on)}
-                    className={
-                      standing === choice.on
-                        ? "flex cursor-pointer items-center gap-1.5 rounded-full border border-transparent bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white"
-                        : "flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary hover:border-blue-subtle hover:text-text-primary"
-                    }
-                  >
-                    {choice.label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-1 text-[11px] leading-snug text-text-tertiary">
-                For everyone: the whole team sees it and it keeps updating no
-                matter what. Just for me: it goes on your list and keeps updating
-                as long as someone has it on theirs.
-              </p>
-            </div>
-          )}
           {addedLeft !== null && (
             <p className="text-[11.5px] text-text-secondary tnum">
               {addedLeft > 0
-                ? `You can add ${addedLeft} more new ${addedLeft === 1 ? "company" : "companies"}. Following companies already on the list is unlimited.`
-                : "You've added the most new companies one person can. You can still follow any company already on the list."}
+                ? `You can add ${addedLeft} more new ${addedLeft === 1 ? "company" : "companies"}. Ticking companies already in the list is unlimited.`
+                : "You've added the most new companies one person can. You can still tick any company already in the list."}
             </p>
           )}
           {error && (

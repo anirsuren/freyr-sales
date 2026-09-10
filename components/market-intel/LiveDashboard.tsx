@@ -1,5 +1,6 @@
 import {
   Building2,
+  ListChecks,
   type LucideIcon,
   Newspaper,
   Radar,
@@ -12,7 +13,11 @@ import { LiveCompanyGrid } from "@/components/market-intel/LiveCompanyGrid";
 import { MiTabs } from "@/components/market-intel/MiTabs";
 import { RefreshChip } from "@/components/market-intel/NextRefresh";
 import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton";
-import { ManageCompaniesButton, type ManagedCompany } from "@/components/market-intel/ManageCompaniesButton";
+import {
+  ManageCompaniesButton,
+  ManageCompaniesProvider,
+  type ManagedCompany,
+} from "@/components/market-intel/ManageCompaniesButton";
 import {
   cardFromSummary,
   type FeedCompanySummary,
@@ -22,7 +27,6 @@ import {
 import { COMPANY_SOURCES, COMPETITOR_SOURCES } from "@/lib/marketIntelSources";
 import {
   companyDivisions,
-  isActiveCompany,
   type Followers,
   type MarketIntelTracking,
 } from "@/lib/marketIntelTracking";
@@ -49,18 +53,18 @@ export function LiveMarketIntelDashboard({
   people = {},
   followers = {},
   isAdmin = false,
-  viewer = { userId: "", myIds: [], showAll: false },
+  viewer = { userId: "", myIds: [], starredIds: [] },
 }: {
   summaries: Record<string, FeedCompanySummary>;
   meta: FeedMeta;
   tracking: MarketIntelTracking;
   /** Post counts per followed person, for the facepiles. */
   people?: Record<string, PersonSummary>;
-  /** Who follows what, across everybody's lists. */
+  /** Who has what, across everybody's lists. */
   followers?: Followers;
   isAdmin?: boolean;
-  /** The person looking: their list, and whether they asked to see everything. */
-  viewer?: { userId: string; myIds: string[]; showAll: boolean };
+  /** The person looking: what they ticked, and what they starred. */
+  viewer?: { userId: string; myIds: string[]; starredIds: string[] };
   /** Which intelligence bucket this dashboard shows. */
   group?: "customer" | "competitor";
   /** Passed straight to the button: the Market Intel row decides. */
@@ -68,46 +72,34 @@ export function LiveMarketIntelDashboard({
   /** How many NEW companies this person may still add; null for no limit. */
   addedLeft?: number | null;
 }) {
-  /* THE REGISTRY DECIDES WHAT IS ON THE PAGE (Anir, Sep 10). A company is
-     here because somebody has it: the standing watch or a person's list.
-     Data with no registry entry (deleted for good) is not shown; a registry
-     entry nobody has is paused, shown only to an admin who asks. The tab a
-     company is on comes from the registry too, so moving it moves it. */
+  /* MY PAGE IS EXACTLY WHAT I TICKED (Anir, Sep 10: "they have to
+     individually check off everything"). The catalogue is every company the
+     team knows about; this page carries the ones this person ticked in
+     Manage companies, and nothing else. Ticking one is also what keeps it
+     collected, so everything here is active by definition. */
   const registry = new Map(tracking.companies.map((c) => [c.id, c]));
   const watch: Record<string, WatchState> = {};
   for (const c of tracking.companies) {
-    watch[c.id] = { standing: c.standing === true, followers: followers[c.id]?.length ?? 0 };
+    watch[c.id] = { followers: followers[c.id]?.length ?? 0 };
   }
   const inGroup = (id: string) => (registry.get(id)?.group ?? "customer") === group;
-  const active = (id: string) => isActiveCompany(registry.get(id)!, followers);
-  /* PAUSED COMPANIES TRAVEL ONLY TO AN ADMIN, who has the filter that shows
-     them. Everybody else's page carries nothing about a company nobody has. */
-  /* MY PAGE IS MY LIST (Anir, Sep 10): what I added and what I starred.
-     Everything else the team tracks stays out of the way until I tick "Show
-     all companies" in Manage companies. */
   const myIds = new Set(viewer.myIds);
-  const mine = (id: string) =>
-    myIds.has(id) || (!!viewer.userId && registry.get(id)?.addedBy?.id === viewer.userId);
-  const onMyPage = (id: string) => viewer.showAll || mine(id);
   const cards = Object.values(summaries)
-    .filter((company) => registry.has(company.id) && inGroup(company.id))
-    .filter((company) => isAdmin || active(company.id))
-    .filter((company) => onMyPage(company.id))
+    .filter((company) => registry.has(company.id) && inGroup(company.id) && myIds.has(company.id))
     .map(cardFromSummary)
     .sort((a, b) => b.itemsInWindow - a.itemsInWindow);
 
   const pending = tracking.companies.filter(
-    (c) => !summaries[c.id] && inGroup(c.id) && (isAdmin || active(c.id)) && onMyPage(c.id)
+    (c) => !summaries[c.id] && inGroup(c.id) && myIds.has(c.id)
   );
-  const live = cards.filter((c) => active(c.id));
-  const totalPosts = live.reduce((a, c) => a + c.counts.posts, 0);
-  const totalNews = live.reduce((a, c) => a + c.counts.news, 0);
-  const totalSite = live.reduce((a, c) => a + c.counts.site, 0);
-  const totalSignals = live.reduce((a, c) => a + c.signalTotal, 0);
-  const busy = live.filter((c) => c.itemsThisMonth >= 10).length;
-  const standing = tracking.companies.filter((c) => inGroup(c.id) && c.standing).length;
-  const paused = tracking.companies.filter((c) => inGroup(c.id) && !active(c.id)).length;
-  const activeTotal = live.length + pending.filter((c) => active(c.id)).length;
+  const totalPosts = cards.reduce((a, c) => a + c.counts.posts, 0);
+  const totalNews = cards.reduce((a, c) => a + c.counts.news, 0);
+  const totalSite = cards.reduce((a, c) => a + c.counts.site, 0);
+  const totalSignals = cards.reduce((a, c) => a + c.signalTotal, 0);
+  const busy = cards.filter((c) => c.itemsThisMonth >= 10).length;
+  const onMyPage = cards.length + pending.length;
+  /* What is waiting in Manage companies: the rest of this tab's catalogue. */
+  const catalogue = tracking.companies.filter((c) => inGroup(c.id)).length;
 
   // Followed people per company, worn as a facepile on each card. Nobody is
   // followed at a competitor (Saras, Sep 10), so that bucket carries none.
@@ -133,8 +125,8 @@ export function LiveMarketIntelDashboard({
     divisions[c.id] = companyDivisions(tracking, c.id, sourceDefault(c.id));
   }
 
-  /* EVERY COMPANY, FOR THE MANAGE POP-UP: customers and competitors, on the
-     watch or paused, with what a person needs to decide about it. */
+  /* EVERY COMPANY THE TEAM KNOWS, FOR THE POP-UP: customers and competitors,
+     ticked or not, with what a person needs to decide about each one. */
   const managed: ManagedCompany[] = tracking.companies
     .map((c) => {
       const summary = summaries[c.id];
@@ -142,10 +134,8 @@ export function LiveMarketIntelDashboard({
         id: c.id,
         name: c.name,
         group: c.group === "competitor" ? ("competitor" as const) : ("customer" as const),
-        standing: c.standing === true,
         followers: followers[c.id]?.length ?? 0,
         divisions: divisions[c.id] ?? [],
-        itemsThisMonth: summary ? cardFromSummary(summary).itemsThisMonth : 0,
         logoUrl: summary?.logoUrl ?? null,
         sources: {
           linkedin: c.scrape ? (c.scrape.li?.length ?? 0) > 0 : /linkedin\.com\/company\//i.test(c.linkedinUrl),
@@ -157,18 +147,64 @@ export function LiveMarketIntelDashboard({
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div>
+    <ManageCompaniesProvider
+      companies={managed}
+      group={group}
+      isAdmin={isAdmin}
+      canWrite={canTrack}
+      myIds={viewer.myIds}
+      starredIds={viewer.starredIds}
+    >
       <MiTabs
         active={group === "competitor" ? "competitors" : "customers"}
         action={
           <span className="flex flex-wrap items-center gap-2.5">
             <RefreshChip updatedAt={meta.updatedAt} health={meta.health} isAdmin={isAdmin} />
-            <ManageCompaniesButton companies={managed} isAdmin={isAdmin} canWrite={canTrack} showAll={viewer.showAll} />
-            <TrackCompanyButton group={group} canTrack={canTrack} addedLeft={addedLeft} isAdmin={isAdmin} />
+            <ManageCompaniesButton group={group} />
+            <TrackCompanyButton group={group} canTrack={canTrack} addedLeft={addedLeft} />
           </span>
         }
       >
 
+        <>
+      {onMyPage === 0 ? (
+        /* NOTHING UNTIL YOU PICK (Anir, Sep 10: "if they haven't set it up...
+           nothing should show up here. They have to individually check off
+           everything, so it should prompt them to click on Manage
+           Companies"). */
+        <section className="rise-in flex min-h-[min(560px,calc(100vh-15rem))] flex-col items-center justify-center rounded-2xl border border-dashed border-border-light bg-white px-6 py-14 text-center">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(0,113,227,0.08)] text-[color:var(--ink-bright-blue)]">
+            <ListChecks size={22} strokeWidth={2} />
+          </span>
+          <h2 className="mt-4 text-[17px] font-semibold text-text-primary">
+            {group === "competitor"
+              ? "Pick the competitors you want to watch"
+              : "Pick the customers you want to watch"}
+          </h2>
+          <p className="mx-auto mt-1.5 max-w-[520px] text-[13px] leading-relaxed text-text-secondary">
+            This page is your own. {catalogue > 0 ? (
+              <>
+                There {catalogue === 1 ? "is" : "are"} {catalogue}{" "}
+                {group === "competitor"
+                  ? catalogue === 1 ? "competitor" : "competitors"
+                  : catalogue === 1 ? "company" : "companies"}{" "}
+                to choose from. Tick the ones you care about and their news,
+                posts and signals show up here.
+              </>
+            ) : (
+              <>Nothing is in the list yet. Add a {group === "competitor" ? "competitor" : "company"} with its LinkedIn page and it lands here.</>
+            )}
+          </p>
+          <span className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+            <ManageCompaniesButton group={group} variant="cta" />
+            {/* One thing to do. The add button only earns its place when
+                there is nothing in the list to tick. */}
+            {catalogue === 0 && (
+              <TrackCompanyButton group={group} canTrack={canTrack} addedLeft={addedLeft} />
+            )}
+          </span>
+        </section>
+      ) : (
         <>
       {/* The stagger entrance every other page's cards got in the Aug
           sweep — Market Intel shipped after it and was missed (Anir, Aug 17:
@@ -176,16 +212,12 @@ export function LiveMarketIntelDashboard({
       <section className="stagger mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
           icon={group === "competitor" ? Swords : Building2}
-          label={
-            viewer.showAll
-              ? group === "competitor" ? "Competitors on the watch" : "Customers on the watch"
-              : group === "competitor" ? "Competitors on my page" : "Customers on my page"
-          }
-          value={String(activeTotal)}
+          label={group === "competitor" ? "Competitors on my page" : "Customers on my page"}
+          value={String(onMyPage)}
           sub={
-            viewer.showAll
-              ? `${standing} for everyone · ${busy} busy this month${paused > 0 ? ` · ${paused} paused` : ""}`
-              : `${busy} busy this month · the team tracks ${tracking.companies.filter((c) => inGroup(c.id) && active(c.id)).length}; tick Show all in Manage companies to see them`
+            catalogue > onMyPage
+              ? `${busy} busy this month · ${catalogue - onMyPage} more to pick from in Manage ${group === "competitor" ? "competitors" : "companies"}`
+              : `${busy} busy this month`
           }
         />
         <StatTile
@@ -218,11 +250,12 @@ export function LiveMarketIntelDashboard({
         group={group}
         divisions={divisions}
         watch={watch}
-        isAdmin={isAdmin}
-        showAll={viewer.showAll}
+        starred={viewer.starredIds}
       />
         </>
+      )}
+        </>
       </MiTabs>
-    </div>
+    </ManageCompaniesProvider>
   );
 }

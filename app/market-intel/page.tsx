@@ -30,7 +30,11 @@ import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { readFeedPeopleSummaries, readMarketIntelSummaries } from "@/lib/marketIntelFeed";
-import { readMarketIntelBookmarks, readMarketIntelFollowers } from "@/lib/marketIntelBookmarks";
+import {
+  emptyBookmarks,
+  readMarketIntelBookmarks,
+  readMarketIntelFollowers,
+} from "@/lib/marketIntelBookmarks";
 import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
 import {
   MI_COMPANIES,
@@ -127,8 +131,8 @@ export default async function MarketIntelPage({
         group === "competitor" ? Promise.resolve({}) : readFeedPeopleSummaries().catch(() => ({})),
         readMarketIntelFollowers().catch(() => ({}) as Record<string, string[]>),
         scope
-          ? readMarketIntelBookmarks(scope).catch(() => ({ companyIds: [], showAll: false, updatedAt: "" }))
-          : Promise.resolve({ companyIds: [] as string[], showAll: false, updatedAt: "" }),
+          ? readMarketIntelBookmarks(scope).catch(() => emptyBookmarks())
+          : Promise.resolve(emptyBookmarks()),
       ]);
       return (
         <LiveMarketIntelDashboard
@@ -141,7 +145,11 @@ export default async function MarketIntelPage({
           people={people}
           followers={followers}
           isAdmin={isAdmin}
-          viewer={{ userId: scope?.userId ?? "", myIds: mine.companyIds, showAll: mine.showAll }}
+          viewer={{
+            userId: scope?.userId ?? "",
+            myIds: mine.companyIds,
+            starredIds: mine.starredIds,
+          }}
         />
       );
     }

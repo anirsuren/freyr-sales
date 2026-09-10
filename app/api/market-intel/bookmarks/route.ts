@@ -5,19 +5,24 @@ import {
   readMarketIntelBookmarks,
   readMarketIntelFollowers,
   setMarketIntelBookmark,
-  setMarketIntelShowAll,
+  setMarketIntelBookmarks,
+  setMarketIntelStar,
 } from "@/lib/marketIntelBookmarks";
 import { resumeCompanyIfStale } from "@/lib/marketIntelRefresh";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
-import { isActiveCompany, readMarketIntelTracking } from "@/lib/marketIntelTracking";
+import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 
 export const dynamic = "force-dynamic";
 
 /**
- * MY OWN COMPANY LIST, AND NOBODY ELSE'S. The scope comes from the verified
- * session, never from the body. Following a company is free (it is scraped
- * once for the whole workspace), so this needs no module write privilege:
- * anyone who can open Market Intel can keep a list of what they watch.
+ * MY OWN LIST, AND NOBODY ELSE'S. The scope comes from the verified session,
+ * never from the body.
+ *
+ * Ticking a company is how a person builds their Market Intel page (Anir,
+ * Sep 10), so anyone who can open the module may tick, untick and star. It is
+ * also what keeps a company collected: the first tick on a company nobody had
+ * starts it again, and taking off the last tick stops it. Adding a company
+ * that is NOT in the catalogue yet is a different thing, costs a scrape, and
+ * still goes through the tracking route with its own privilege and limit.
  */
 function denied() {
   return NextResponse.json(
@@ -31,7 +36,10 @@ export async function GET(request: NextRequest) {
   if (!scope) return denied();
   try {
     const bookmarks = await readMarketIntelBookmarks(scope);
-    return NextResponse.json({ companyIds: bookmarks.companyIds, showAll: bookmarks.showAll });
+    return NextResponse.json({
+      companyIds: bookmarks.companyIds,
+      starredIds: bookmarks.starredIds,
+    });
   } catch {
     return NextResponse.json(
       { error: "Your list is temporarily unavailable." },
@@ -46,53 +54,78 @@ export async function PUT(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as {
     id?: unknown;
     on?: unknown;
-    showAll?: unknown;
+    star?: unknown;
+    ids?: unknown;
   } | null;
-  /* THE BOX: show every company the team tracks on my page, or only mine. */
-  if (body && typeof body.showAll === "boolean") {
-    try {
-      const bookmarks = await setMarketIntelShowAll(scope, body.showAll);
-      return NextResponse.json({ ok: true, companyIds: bookmarks.companyIds, showAll: bookmarks.showAll });
-    } catch (error) {
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Could not save." },
-        { status: 503 }
-      );
-    }
-  }
-  if (!body || typeof body.id !== "string" || !body.id.trim()) {
+  if (!body) return NextResponse.json({ error: "Say which company." }, { status: 400 });
+
+  const batch = Array.isArray(body.ids)
+    ? body.ids.filter((v): v is string => typeof v === "string" && !!v.trim())
+    : null;
+  const single = typeof body.id === "string" && body.id.trim() ? body.id.trim() : null;
+  if (!batch?.length && !single) {
     return NextResponse.json({ error: "Say which company." }, { status: 400 });
   }
+
   try {
     const [tracking, followers] = await Promise.all([
-      readMarketIntelTracking().catch(() => null),
+      /* Fresh, not the minute-old copy: a company added a moment ago (on this
+         server or another) must count as known, or its first tick would not
+         start it collecting. One small row read per click. */
+      readMarketIntelTracking({ fresh: true }).catch(() => null),
       readMarketIntelFollowers().catch(() => ({}) as Record<string, string[]>),
     ]);
-    const company = tracking?.companies.find((c) => c.id === body.id);
-    const id = body.id as string;
-    /* Following a PAUSED company wakes it: it rejoins the rotation, and if
-       its data is a day old it is pulled now. That costs money, so waking
-       takes the module's write privilege (admin, BD); anyone may keep a list
-       of companies that are already being collected. Read before the write
-       so the follow being made is not what makes it look active. */
-    let wake = false;
-    if (body.on === true && company && !isActiveCompany(company, followers)) {
-      if (await moduleWriteRefusal("/market-intel")) {
-        return NextResponse.json(
-          { error: `${company.name} is paused. An admin or a BD member can bring it back; ask them to track it.` },
-          { status: 403 }
-        );
-      }
-      wake = true;
+    const known = new Set((tracking?.companies ?? []).map((c) => c.id));
+    /* Read who has what BEFORE the write, so the tick being made is not what
+       makes the company look active. */
+    const hadNobody = (id: string) => (followers[id] ?? []).length === 0;
+    const othersHaveIt = (id: string) => (followers[id] ?? []).some((u) => u !== scope.userId);
+
+    if (batch?.length) {
+      const ids = batch.filter((id) => known.has(id));
+      const on = body.on !== false;
+      const waking = on ? ids.filter(hadNobody) : [];
+      const bookmarks = await setMarketIntelBookmarks(scope, ids, on);
+      /* Whatever nobody had is pulled now if its data has gone stale. */
+      for (const id of waking) after(() => resumeCompanyIfStale(id));
+      return NextResponse.json({
+        ok: true,
+        companyIds: bookmarks.companyIds,
+        starredIds: bookmarks.starredIds,
+        resumed: waking.length,
+      });
     }
-    /* Removing the LAST list it was on pauses it (Anir, Sep 10: "if I remove
-       something and no one has it, it just stops doing it"); the answer says
-       so, so the screen can too. */
-    const othersHaveIt = (followers[id] ?? []).some((u) => u !== scope.userId);
-    const paused = body.on !== true && !!company && !company.standing && !othersHaveIt;
-    const bookmarks = await setMarketIntelBookmark(scope, id, body.on === true);
+
+    const id = single as string;
+    /* A STAR IS NOT THE LIST, but starring puts it on the list too, because a
+       favourite you cannot see would be pointless. */
+    if (typeof body.star === "boolean") {
+      const wake = body.star && hadNobody(id) && known.has(id);
+      const bookmarks = await setMarketIntelStar(scope, id, body.star);
+      if (wake) after(() => resumeCompanyIfStale(id));
+      return NextResponse.json({
+        ok: true,
+        companyIds: bookmarks.companyIds,
+        starredIds: bookmarks.starredIds,
+        resumed: wake,
+      });
+    }
+
+    const on = body.on === true;
+    const wake = on && hadNobody(id) && known.has(id);
+    /* Taking off the LAST tick stops the collection (Anir, Sep 10: "if I
+       remove something and no one has it, it just stops doing it"); the
+       answer says so, so the screen can too. */
+    const stopped = !on && known.has(id) && !othersHaveIt(id);
+    const bookmarks = await setMarketIntelBookmark(scope, id, on);
     if (wake) after(() => resumeCompanyIfStale(id));
-    return NextResponse.json({ ok: true, companyIds: bookmarks.companyIds, resumed: wake, paused });
+    return NextResponse.json({
+      ok: true,
+      companyIds: bookmarks.companyIds,
+      starredIds: bookmarks.starredIds,
+      resumed: wake,
+      stopped,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Could not save your list." },

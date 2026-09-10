@@ -54,12 +54,6 @@ export type TrackedCompany = {
   divisions?: Division[];
   /** Who put it on the watch. Absent on rows from before Sep 10. */
   addedBy?: { id: string; name?: string; email?: string };
-  /**
-   * THE STANDING WATCH (Anir, Sep 10): the workspace's own list, which
-   * admins add to and remove from. A company is refreshed while it is on the
-   * standing watch OR somebody follows it; when neither is true it pauses.
-   */
-  standing?: boolean;
   /** Came from the code's seed list; keeps the scraper's own settings. */
   seed?: boolean;
   scrape?: {
@@ -92,17 +86,28 @@ const EMPTY: MarketIntelTracking = { companies: [], people: [], divisions: {}, r
  */
 export type Followers = Record<string, string[]>;
 
-/** Refreshed while somebody has it: the standing watch or any follower. */
+/**
+ * ACTIVE MEANS SOMEBODY HAS IT (Anir, Sep 10: "I should clearly be able to
+ * distinguish which ones are active, which means someone has it in their
+ * list, and which ones are inactive, which means no one has it"). That is the
+ * whole rule: one person ticking it keeps it collected, the last person
+ * unticking it stops the collection. Nothing is tracked "for everyone".
+ */
 export function isActiveCompany(company: TrackedCompany, followers: Followers): boolean {
-  return company.standing === true || (followers[company.id]?.length ?? 0) > 0;
+  return (followers[company.id]?.length ?? 0) > 0;
+}
+
+/** How many people have this company on their list. */
+export function followerCount(companyId: string, followers: Followers): number {
+  return followers[companyId]?.length ?? 0;
 }
 
 /**
  * THE SEED LIST BECOMES ORDINARY ENTRIES (Anir, Sep 10: "I should be able
- * to add and remove stuff"). Every built-in customer and competitor is put on
- * the standing watch once, with the scraper settings it always had, and from
- * then on it is a row like any other: an admin can take it off the watch or
- * delete it, and a deleted seed stays deleted.
+ * to add and remove stuff"). Every built-in customer and competitor joins the
+ * catalogue once, with the scraper settings it always had, and from then on
+ * it is a row like any other: it waits in Manage companies until somebody
+ * ticks it, an admin can delete it, and a deleted seed stays deleted.
  */
 export function seedCompanies(tracking: MarketIntelTracking): number {
   const removed = new Set(tracking.removedSeeds ?? []);
@@ -122,8 +127,7 @@ export function seedCompanies(tracking: MarketIntelTracking): number {
       keywords: [],
       note: "",
       addedAt: "2026-08-11T00:00:00.000Z",
-      addedBy: { id: "workspace", name: "Standing watch" },
-      standing: true,
+      addedBy: { id: "workspace", name: "Built in" },
       seed: true,
       scrape: {
         li: source.li,
@@ -508,8 +512,9 @@ export async function readMarketIntelTracking(options?: {
         () => undefined
       );
   }
-  /* REAL MODE: the code's seed list joins the registry once, as standing-watch
-     entries. Idempotent, and a seed an admin deleted never comes back. */
+  /* REAL MODE: the code's seed list joins the catalogue once, unticked, so
+     nobody's page fills up by itself. Idempotent, and a seed an admin
+     deleted never comes back. */
   if (getDataMode() === "live" && seedCompanies(tracking) > 0) {
     await trackingClient()
       .from("offering_catalog_state")
@@ -685,16 +690,6 @@ export async function trackPerson(
   tracking.people.push(person);
   await saveMarketIntelTracking(tracking);
   return person;
-}
-
-/** On or off the workspace's standing watch (admins). */
-export async function setCompanyStanding(id: string, on: boolean): Promise<TrackedCompany> {
-  const tracking = await readMarketIntelTracking({ fresh: true });
-  const company = tracking.companies.find((c) => c.id === id);
-  if (!company) throw new Error("That company isn't on the watch.");
-  company.standing = on;
-  await saveMarketIntelTracking(tracking);
-  return company;
 }
 
 /** Customer or competitor: which tab it lives on (admins). */

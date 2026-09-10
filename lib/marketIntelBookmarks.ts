@@ -4,27 +4,39 @@ import { createClient } from "@supabase/supabase-js";
 import type { WorkspaceMemberScope } from "@/lib/types";
 
 /**
- * MY COMPANIES (Saras and Anir, Sep 10). One shared watch list, and on top of
- * it each person's own: the companies they added and the ones they chose to
- * follow. A company is scraped once for everybody; following it costs
- * nothing, and two people following the same company see the same briefing.
+ * MY LIST, AND MY STARS, WHICH ARE NOT THE SAME THING (Anir, Sep 10:
+ * "checkboxes are what let me see it. If GSK is not checked off, I won't be
+ * able to see it on the page... My list does not mean that it is starred.
+ * Starred is completely different from my list").
+ *
+ * - `companyIds` is MY LIST: the companies I ticked in Manage companies.
+ *   My Market Intel pages show exactly these, and nothing else. Empty for a
+ *   new person, so the page starts empty and asks them to pick.
+ * - `starredIds` is a FAVOURITE inside my list: a highlight, filterable,
+ *   sorted first. Starring something also ticks it, because a favourite you
+ *   cannot see would be pointless. Unticking drops the star with it.
+ *
+ * A company is collected while at least one person has it on their list, and
+ * stops when the last person drops it. Nothing is tracked "for everyone" any
+ * more (Anir, Sep 10: "I don't understand the point of the section that says
+ * for everyone... you can remove it").
  *
  * Same one-row-per-person shape as roadmap subscriptions, under its own row
  * id, so the two never read each other's list.
  */
 export type MarketIntelBookmarks = {
+  /** My list: what my pages show. */
   companyIds: string[];
-  /**
-   * MY PAGE IS MY LIST (Anir, Sep 10: "it shouldn't even show me the other
-   * companies unless I go into Manage Companies and check that box"). Off by
-   * default: the page shows what I added and what I starred. On: every
-   * company the team tracks.
-   */
-  showAll: boolean;
+  /** Favourites, always a subset of the list above. */
+  starredIds: string[];
   updatedAt: string;
 };
 
-const EMPTY: MarketIntelBookmarks = { companyIds: [], showAll: false, updatedAt: "" };
+const EMPTY: MarketIntelBookmarks = { companyIds: [], starredIds: [], updatedAt: "" };
+
+export function emptyBookmarks(): MarketIntelBookmarks {
+  return { ...EMPTY };
+}
 
 function client() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -54,23 +66,28 @@ export async function readMarketIntelBookmarks(
   scope: WorkspaceMemberScope
 ): Promise<MarketIntelBookmarks> {
   const db = client();
-  if (!db) return EMPTY;
+  if (!db) return emptyBookmarks();
   const { data, error } = await db
     .from("offering_catalog_state")
     .select("catalog")
     .eq("id", rowId(scope))
     .maybeSingle();
   if (error) throw new Error(error.message);
-  const catalog = data?.catalog as { companyIds?: unknown; showAll?: unknown; updatedAt?: unknown } | null;
+  const catalog = data?.catalog as
+    | { companyIds?: unknown; starredIds?: unknown; updatedAt?: unknown }
+    | null;
+  const list = ids(catalog?.companyIds);
+  const listSet = new Set(list);
   return {
-    companyIds: ids(catalog?.companyIds),
-    showAll: catalog?.showAll === true,
+    companyIds: list,
+    /* A star only counts while the company is still on the list. */
+    starredIds: ids(catalog?.starredIds).filter((id) => listSet.has(id)),
     updatedAt: typeof catalog?.updatedAt === "string" ? catalog.updatedAt : "",
   };
 }
 
-/** Everyone's list in the workspace, keyed by userId: what "2 other people
- *  follow this" reads. The workspace is re-checked from inside the row. */
+/** Everyone's list in the workspace, keyed by userId: what "3 people have
+ *  this" reads. The workspace is re-checked from inside the row. */
 export async function readWorkspaceMarketIntelBookmarks(
   workspaceId: string
 ): Promise<Map<string, string[]>> {
@@ -94,42 +111,80 @@ export async function readWorkspaceMarketIntelBookmarks(
   return out;
 }
 
+/** Tick or untick one company. Unticking drops the star with it. */
 export async function setMarketIntelBookmark(
   scope: WorkspaceMemberScope,
   companyId: string,
   on: boolean
 ): Promise<MarketIntelBookmarks> {
-  const db = client();
-  if (!db) throw new Error("Bookmarks storage is not configured.");
-  const current = await readMarketIntelBookmarks(scope);
-  const set = new Set(current.companyIds);
   const id = companyId.trim().slice(0, 80);
   if (!id) throw new Error("Which company?");
-  if (on) set.add(id);
-  else set.delete(id);
+  const current = await readMarketIntelBookmarks(scope);
+  const list = new Set(current.companyIds);
+  const stars = new Set(current.starredIds);
+  if (on) list.add(id);
+  else {
+    list.delete(id);
+    stars.delete(id);
+  }
+  return writeBookmarks(scope, Array.from(list), Array.from(stars));
+}
+
+/** Star or unstar. Starring puts it on the list too: a favourite you cannot
+ *  see would be pointless. Unstarring leaves it on the list. */
+export async function setMarketIntelStar(
+  scope: WorkspaceMemberScope,
+  companyId: string,
+  on: boolean
+): Promise<MarketIntelBookmarks> {
+  const id = companyId.trim().slice(0, 80);
+  if (!id) throw new Error("Which company?");
+  const current = await readMarketIntelBookmarks(scope);
+  const list = new Set(current.companyIds);
+  const stars = new Set(current.starredIds);
+  if (on) {
+    stars.add(id);
+    list.add(id);
+  } else {
+    stars.delete(id);
+  }
+  return writeBookmarks(scope, Array.from(list), Array.from(stars));
+}
+
+/** Tick or untick a whole batch at once: the "select all" box in the pop-up. */
+export async function setMarketIntelBookmarks(
+  scope: WorkspaceMemberScope,
+  companyIds: string[],
+  on: boolean
+): Promise<MarketIntelBookmarks> {
+  const batch = ids(companyIds);
+  if (batch.length === 0) return readMarketIntelBookmarks(scope);
+  const current = await readMarketIntelBookmarks(scope);
+  const list = new Set(current.companyIds);
+  const stars = new Set(current.starredIds);
+  for (const id of batch) {
+    if (on) list.add(id);
+    else {
+      list.delete(id);
+      stars.delete(id);
+    }
+  }
+  return writeBookmarks(scope, Array.from(list), Array.from(stars));
+}
+
+async function writeBookmarks(
+  scope: WorkspaceMemberScope,
+  companyIds: string[],
+  starredIds: string[]
+): Promise<MarketIntelBookmarks> {
+  const db = client();
+  if (!db) throw new Error("Your list is not configured.");
+  const listSet = new Set(companyIds);
   const next: MarketIntelBookmarks = {
-    companyIds: Array.from(set),
-    showAll: current.showAll,
+    companyIds,
+    starredIds: starredIds.filter((id) => listSet.has(id)),
     updatedAt: new Date().toISOString(),
   };
-  await writeBookmarks(scope, next);
-  return next;
-}
-
-/** The "show all companies on my page" box in Manage companies. */
-export async function setMarketIntelShowAll(
-  scope: WorkspaceMemberScope,
-  showAll: boolean
-): Promise<MarketIntelBookmarks> {
-  const current = await readMarketIntelBookmarks(scope);
-  const next: MarketIntelBookmarks = { ...current, showAll, updatedAt: new Date().toISOString() };
-  await writeBookmarks(scope, next);
-  return next;
-}
-
-async function writeBookmarks(scope: WorkspaceMemberScope, next: MarketIntelBookmarks): Promise<void> {
-  const db = client();
-  if (!db) throw new Error("Bookmarks storage is not configured.");
   const { error } = await db.from("offering_catalog_state").upsert(
     {
       id: rowId(scope),
@@ -137,7 +192,7 @@ async function writeBookmarks(scope: WorkspaceMemberScope, next: MarketIntelBook
         workspaceId: scope.workspaceId,
         userId: scope.userId,
         companyIds: next.companyIds,
-        showAll: next.showAll,
+        starredIds: next.starredIds,
         updatedAt: next.updatedAt,
       },
       updated_at: next.updatedAt,
@@ -145,13 +200,13 @@ async function writeBookmarks(scope: WorkspaceMemberScope, next: MarketIntelBook
     { onConflict: "id" }
   );
   if (error) throw new Error(error.message);
+  return next;
 }
 
 /**
- * FOLLOWERS BY COMPANY, across everybody's lists: what decides whether a
- * company is still refreshed once it is off the standing watch. One read of
- * every list row; the app has one workspace, and each row still names its
- * own.
+ * WHO HAS WHAT, across everybody's lists: the only thing that decides whether
+ * a company is still collected. One read of every list row; the app has one
+ * workspace, and each row still names its own.
  */
 export async function readMarketIntelFollowers(): Promise<Record<string, string[]>> {
   const db = client();
@@ -170,7 +225,7 @@ export async function readMarketIntelFollowers(): Promise<Record<string, string[
   return out;
 }
 
-/** Take a company off every person's list (an admin deleted it for good). */
+/** Take a company off every person's list and stars (an admin deleted it). */
 export async function forgetMarketIntelCompany(companyId: string): Promise<number> {
   const db = client();
   if (!db) return 0;
@@ -181,16 +236,21 @@ export async function forgetMarketIntelCompany(companyId: string): Promise<numbe
   if (error) throw new Error(error.message);
   let touched = 0;
   for (const row of data || []) {
-    const catalog = row.catalog as { companyIds?: unknown } | null;
+    const catalog = row.catalog as { companyIds?: unknown; starredIds?: unknown } | null;
     const before = ids(catalog?.companyIds);
-    if (!before.includes(companyId)) continue;
-    const next = before.filter((id) => id !== companyId);
+    const stars = ids(catalog?.starredIds);
+    if (!before.includes(companyId) && !stars.includes(companyId)) continue;
     const { error: writeError } = await db
       .from("offering_catalog_state")
       .upsert(
         {
           id: row.id,
-          catalog: { ...(catalog ?? {}), companyIds: next, updatedAt: new Date().toISOString() },
+          catalog: {
+            ...(catalog ?? {}),
+            companyIds: before.filter((id) => id !== companyId),
+            starredIds: stars.filter((id) => id !== companyId),
+            updatedAt: new Date().toISOString(),
+          },
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }

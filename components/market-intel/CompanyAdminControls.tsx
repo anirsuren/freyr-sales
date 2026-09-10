@@ -2,37 +2,33 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { cn } from "@/lib/utils";
 
 /**
- * WHAT AN ADMIN CAN DO TO A COMPANY (Anir, Sep 10: "I should be able to add
- * and remove stuff"): put it on or take it off the workspace's standing
- * watch, move it between the customer and competitor tabs, or delete it for
- * everyone. Taking it off the watch does not stop anything by itself: it
- * keeps refreshing while anybody follows it, and pauses when nobody does.
- * Everybody else uses the star for their own list.
+ * WHAT AN ADMIN CAN DO TO A COMPANY (Anir, Sep 10): move it between the
+ * customer and competitor tabs, or delete it for everyone. Nothing is
+ * "tracked for everyone" any more: a company is collected while at least one
+ * person has it ticked on their own list, and stops when the last person
+ * unticks it.
  */
 export function CompanyAdminControls({
   companyId,
   companyName,
   group,
-  standing,
   followers,
 }: {
   companyId: string;
   companyName: string;
   group: "customer" | "competitor";
-  standing: boolean;
+  /** How many people have it on their list, for the delete warning. */
   followers: number;
 }) {
   const router = useRouter();
   const { toast } = useToast();
-  const [busy, setBusy] = useState<"standing" | "group" | "delete" | null>(null);
+  const [busy, setBusy] = useState<"group" | "delete" | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const [confirmingStop, setConfirmingStop] = useState(false);
 
   async function post(body: Record<string, unknown>) {
     const res = await fetch("/api/market-intel/tracking", {
@@ -43,26 +39,6 @@ export function CompanyAdminControls({
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data?.error || "Could not save.");
     return data;
-  }
-
-  async function toggleStanding() {
-    setConfirmingStop(false);
-    setBusy("standing");
-    try {
-      await post({ kind: "standing", id: companyId, on: !standing });
-      toast(
-        !standing
-          ? `${companyName} is now tracked for everyone.`
-          : followers > 0
-            ? `${companyName} is no longer tracked for everyone. It keeps updating while it's on ${followers} ${followers === 1 ? "person's list" : "people's lists"}.`
-            : `${companyName} is paused. Nobody has it on their list, so nothing new is collected until someone adds it back.`
-      );
-      router.refresh();
-    } catch (caught) {
-      toast(caught instanceof Error ? caught.message : "Could not save.", "error");
-    } finally {
-      setBusy(null);
-    }
   }
 
   async function move() {
@@ -104,22 +80,6 @@ export function CompanyAdminControls({
     <span className="flex flex-wrap items-center gap-1.5">
       <button
         type="button"
-        onClick={() => (standing && followers === 0 ? setConfirmingStop(true) : void toggleStanding())}
-        disabled={busy !== null}
-        aria-pressed={standing}
-        title={standing ? "Stop tracking it for the whole team. It keeps updating only while someone has it on their list." : "Track it for the whole team."}
-        className={cn(
-          "flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors disabled:opacity-60",
-          standing
-            ? "border-transparent bg-[rgba(0,113,227,0.10)] text-[color:var(--ink-bright-blue)] hover:bg-[rgba(0,113,227,0.16)]"
-            : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-blue-primary"
-        )}
-      >
-        {standing ? <ShieldOff size={13} strokeWidth={2} /> : <ShieldCheck size={13} strokeWidth={2} />}
-        {standing ? "Stop tracking for everyone" : "Track for everyone"}
-      </button>
-      <button
-        type="button"
         onClick={() => void move()}
         disabled={busy !== null}
         title={group === "competitor" ? "Move to Customer Intelligence" : "Move to Competitor Intelligence"}
@@ -140,22 +100,6 @@ export function CompanyAdminControls({
         <Trash2 size={14} strokeWidth={2.2} />
       </button>
 
-      {/* STOPPING WHEN NOBODY ELSE HAS IT PAUSES IT: say so before it happens. */}
-      <ConfirmDialog
-        open={confirmingStop}
-        onClose={() => setConfirmingStop(false)}
-        onConfirm={() => void toggleStanding()}
-        busy={busy === "standing"}
-        title={`Stop tracking ${companyName} for everyone?`}
-        body={
-          <>
-            Nobody has <b>{companyName}</b> on their list, so it will pause: nothing
-            new is collected until someone adds it back. Everything collected so far stays.
-          </>
-        }
-        detail="It disappears from the team's page. An admin can still find it under Paused."
-        confirmLabel="Stop tracking"
-      />
       <ConfirmDialog
         open={confirming}
         onClose={() => setConfirming(false)}
@@ -175,7 +119,7 @@ export function CompanyAdminControls({
             )}
           </>
         }
-        detail="To stop collecting without deleting anything, use Stop tracking for everyone instead. It pauses by itself once nobody has it on their list."
+        detail="To stop collecting without deleting anything, untick it in Manage companies instead. It stops by itself once nobody has it."
         confirmLabel="Delete for everyone"
       />
     </span>

@@ -722,10 +722,10 @@ function emptyFeed(): MarketIntelFeed & { spendUsd: number } {
 }
 
 /**
- * THE REGISTRY AS A RUN SEES IT: the tracking row with the seed list folded
- * in once, plus who follows what. Only ACTIVE companies are visited, on the
- * standing watch or followed by somebody (Anir, Sep 10: "if I remove
- * something and no one has it, it just stops doing it").
+ * THE CATALOGUE AS A RUN SEES IT: the tracking row with the seed list folded
+ * in once, plus who has what. Only ACTIVE companies are visited, meaning the
+ * ones on at least one person's list (Anir, Sep 10: "if I remove something
+ * and no one has it, it just stops doing it").
  */
 async function loadRegistry(): Promise<{
   tracking: any;
@@ -1206,26 +1206,24 @@ export type AddCompanyMeta = {
   addedBy?: TrackedCompany["addedBy"];
   divisions?: Division[];
   /** False when this person has used up their allowance of NEW companies.
-   *  Following one already on the watch is always allowed. */
+   *  Ticking one that is already in the catalogue is always allowed. */
   canCreate?: boolean;
-  /** Put a NEW company on the workspace's standing watch (admins). */
-  standing?: boolean;
 };
 
 export type AddCompanyResult = {
   id: string;
   name: string;
   group: "customer" | "competitor";
-  /** True when the company was already on the watch: nothing was scraped,
-   *  the person simply follows it now. */
+  /** True when the company was already in the catalogue: nothing was
+   *  scraped, it is simply ticked onto this person's list now. */
   existing: boolean;
-  /** True when it was there but paused (nobody had it) and is now back. */
+  /** True when nobody had it, so this tick starts it collecting again. */
   resumed: boolean;
   company?: TrackedCompany;
 };
 
 export const TRACK_LIMIT_MESSAGE =
-  "You've added the most companies one person can. You can still follow any company already on the list.";
+  "You've added the most companies one person can. You can still tick any company already in the list.";
 
 export async function addCompanyByLink(
   linkedinUrl: string,
@@ -1317,7 +1315,6 @@ export async function addCompanyByLink(
     addedAt: new Date().toISOString(),
     divisions,
     ...(meta.addedBy ? { addedBy: meta.addedBy } : {}),
-    ...(meta.standing ? { standing: true } : {}),
   };
   tracking.companies.push(company);
   tracking.divisions = { ...(tracking.divisions ?? {}), [id]: divisions };

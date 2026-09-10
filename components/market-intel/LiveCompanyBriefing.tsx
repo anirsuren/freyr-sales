@@ -21,7 +21,6 @@ import {
   Radar,
   Repeat2,
   Sparkles,
-  Star,
   Sun,
   Swords,
   Table2,
@@ -40,13 +39,13 @@ import {
   SearchPriority,
 } from "@/components/ui/SearchPriority";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
-import { useToast } from "@/components/ui/Toast";
 import { Sparkline } from "@/components/charts/Charts";
 import { MiLogo } from "@/components/market-intel/MiLogo";
 import { DivisionEditor } from "@/components/market-intel/DivisionChips";
 import { SignalRow } from "@/components/market-intel/SignalRow";
 import { CompanyAdminControls } from "@/components/market-intel/CompanyAdminControls";
 import { WatchStatus, type WatchState } from "@/components/market-intel/WatchStatus";
+import { MyListToggle } from "@/components/market-intel/MyListToggle";
 import { TrackPersonButton } from "@/components/market-intel/TrackPersonControls";
 import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
 import { cn } from "@/lib/utils";
@@ -111,7 +110,9 @@ export function LiveCompanyBriefing({
   divisions = [],
   canWrite = false,
   isAdmin = false,
-  watch = { standing: false, followers: 0 },
+  watch = { followers: 0 },
+  onMyPage = false,
+  starred = false,
 }: {
   briefing: LiveBriefing;
   subtitle?: string;
@@ -121,12 +122,14 @@ export function LiveCompanyBriefing({
   divisions?: Division[];
   /** May this viewer change the watch (tags, people)? The module's write privilege. */
   canWrite?: boolean;
-  /** Admins: standing watch, tab, delete for everyone. */
+  /** Admins: move between tabs, delete for everyone. */
   isAdmin?: boolean;
-  /** Standing watch, followers, or paused. */
+  /** Is this company on the viewer's own page, and starred there? */
+  onMyPage?: boolean;
+  starred?: boolean;
+  /** How many people have it: Active with a count, or Inactive. */
   watch?: WatchState;
 }) {
-  const { toast } = useToast();
   const isCompetitor = briefing.group === "competitor";
   const [source, setSource] = useState<Source>("all");
   const [signalPick, setSignalPick] = useState<SignalKind | null>(null);
@@ -146,23 +149,6 @@ export function LiveCompanyBriefing({
   // call): the feed keeps 90 days, the chips narrow the window.
   const [range, setRange] = useState<"1" | "7" | "30" | "90">("90");
   const [query, setQuery] = useState("");
-  const [bookmarked, setBookmarked] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    fetch("/api/market-intel/bookmarks")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (alive) setBookmarked(Array.isArray(data?.companyIds) && data.companyIds.includes(briefing.id));
-      })
-      .catch(() => {
-        if (alive) setBookmarked(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [briefing.id]);
-
   useEffect(() => {
     if (!viewOpen) return;
     const onDown = (event: MouseEvent) => {
@@ -178,32 +164,6 @@ export function LiveCompanyBriefing({
       document.removeEventListener("keydown", onKey);
     };
   }, [viewOpen]);
-
-  async function toggleBookmark() {
-    const next = !(bookmarked ?? false);
-    setBookmarked(next);
-    try {
-      const res = await fetch("/api/market-intel/bookmarks", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: briefing.id, on: next }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Could not save.");
-      toast(
-        data?.paused
-          ? `${briefing.name} is off your list. Nobody has it now, so it's paused.`
-          : data?.resumed
-            ? `${briefing.name} is on your list and back on the watch.`
-            : next
-              ? `${briefing.name} is on your list.`
-              : `${briefing.name} is off your list.`
-      );
-    } catch (caught) {
-      setBookmarked(!next);
-      toast(caught instanceof Error ? caught.message : "Could not save your list.", "error");
-    }
-  }
 
   const up = (briefing.momentumPct ?? 0) >= 0;
   const cutoff = Date.now() - Number(range) * 86_400_000;
@@ -575,21 +535,6 @@ export function LiveCompanyBriefing({
                 <LinkedInIcon size={11} /> {fmtFollowers(briefing.followerCount)} followers
               </span>
             )}
-            <button
-              type="button"
-              onClick={() => void toggleBookmark()}
-              aria-pressed={bookmarked ?? false}
-              aria-label={bookmarked ? `Remove ${briefing.name} from my list` : `Add ${briefing.name} to my list`}
-              title={bookmarked ? "On your list. Click to remove it." : "Add to my list"}
-              className={cn(
-                "flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors",
-                bookmarked
-                  ? "bg-[rgba(180,83,9,0.12)] text-[#B45309]"
-                  : "text-text-tertiary hover:bg-surface hover:text-[#B45309]"
-              )}
-            >
-              <Star size={15} strokeWidth={2.2} fill={bookmarked ? "currentColor" : "none"} />
-            </button>
           </h1>
           <p className="mt-0.5 text-[13px] text-text-secondary">
             {subtitle || "Live briefing from LinkedIn, the news wire and their own website, past 3 months"}
@@ -605,12 +550,18 @@ export function LiveCompanyBriefing({
           </div>
         </div>
         <span className="flex flex-wrap items-center gap-2">
+          <MyListToggle
+            companyId={briefing.id}
+            companyName={briefing.name}
+            onMyPage={onMyPage}
+            starred={starred}
+          />
           <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
             <span className="relative flex h-2 w-2">
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
             </span>
-            {!watch.standing && watch.followers === 0
-              ? `Paused · nothing new since ${briefing.updatedLabel}`
+            {watch.followers === 0
+              ? `Inactive · nothing new since ${briefing.updatedLabel}`
               : `Live data · updated ${briefing.updatedLabel}`}
           </span>
         </span>
@@ -621,7 +572,6 @@ export function LiveCompanyBriefing({
             companyId={briefing.id}
             companyName={briefing.name}
             group={briefing.group}
-            standing={watch.standing}
             followers={watch.followers}
           />
         </div>
