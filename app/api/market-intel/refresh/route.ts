@@ -4,6 +4,7 @@ import {
   checkMarketIntelConnections,
   refreshThoughtLeadershipNow,
   runMarketIntelLabeling,
+  runMissingRundowns,
   runMarketIntelRefresh,
 } from "@/lib/marketIntelRefresh";
 import { migrateLegacyFeedRow } from "@/lib/marketIntelFeed";
@@ -43,6 +44,15 @@ export async function POST(req: NextRequest) {
       only: Array.isArray(body?.only) ? body.only.map(String) : undefined,
     });
     return NextResponse.json(summary);
+  }
+  /* RUNDOWNS THAT ARE MISSING, written from what is already stored. */
+  if (body?.digest === true) {
+    return NextResponse.json(
+      await runMissingRundowns({
+        only: Array.isArray(body?.only) ? body.only.map(String) : undefined,
+        maxCalls: Number(body?.maxCalls) || 10,
+      })
+    );
   }
   if (body?.thought === true) {
     try {

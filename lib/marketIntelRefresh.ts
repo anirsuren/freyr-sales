@@ -934,6 +934,24 @@ export async function runMarketIntelRefresh(options?: {
       }
     }
 
+    // ---- Pass 1c: A RUNDOWN FOR EVERY ACTIVE COMPANY THAT HAS NONE. The
+    // rundown is only rewritten when new items arrive, so a company whose
+    // items came in some other way (a hand re-pull, an old copy) kept an
+    // empty rundown until fresh news landed, and forever once nobody had it
+    // ticked. GSK, Bayer and Novartis sat like that on Sep 10. One Haiku call
+    // each, only while it is missing; nothing is scraped.
+    for (const source of sources) {
+      const existing: FeedCompany | undefined = feed.companies[source.id];
+      if (!existing || existing.tldr) continue;
+      if ((existing.news?.length ?? 0) + (existing.posts?.length ?? 0) === 0) continue;
+      await applyDigest(existing);
+      if (existing.tldr) {
+        feed.companies[source.id] = existing;
+        feed.updatedAt = new Date().toISOString();
+        await saveFeedCompany(feed, source.id);
+      }
+    }
+
     // THE M&A BOARD GOES FIRST WHEN STALE (Anir, Aug 17: "is this thing even
     // working?" — it was 101 hours behind while companies were 3 hours
     // fresh). The company queue drained the run's budget every time, so the
@@ -1725,6 +1743,53 @@ export async function runMarketIntelLabeling(options?: {
 }
 
 /** The ops hatch for the thought-leadership board: pull it now. */
+export type RundownRunSummary = {
+  ran: boolean;
+  reason?: string;
+  checked: number;
+  written: number;
+  ids: string[];
+  seconds: number;
+};
+
+/**
+ * WRITE THE MISSING RUNDOWNS, AND NOTHING ELSE (Sep 10). GSK, Bayer and
+ * Novartis had their items re-pulled by hand and never got a rundown, and a
+ * company nobody has ticked is never refreshed, so nothing else would write
+ * one. This reads what is already stored and asks Haiku for the rundown of
+ * each company that has none: no scraping, capped at a handful of calls so a
+ * missing `only` can never turn into a bill.
+ */
+export async function runMissingRundowns(options?: {
+  only?: string[];
+  maxCalls?: number;
+}): Promise<RundownRunSummary> {
+  const started = Date.now();
+  const none = (reason: string): RundownRunSummary => ({ ran: false, reason, checked: 0, written: 0, ids: [], seconds: 0 });
+  if (!hasEnv()) return none("missing env (database)");
+  const feed: any = await readMarketIntelFeed({ fresh: true }).catch(() => null);
+  if (!feed || !feed.companies) return none("no feed row yet");
+  const registry = await loadRegistry();
+  const onlyIds = options?.only && options.only.length > 0 ? new Set(options.only) : null;
+  const cap = Math.max(1, Math.min(40, options?.maxCalls ?? 10));
+  const ids: string[] = [];
+  let checked = 0;
+  for (const entry of Object.values(feed.companies) as FeedCompany[]) {
+    if (checked >= cap) break;
+    if (onlyIds && !onlyIds.has(entry.id)) continue;
+    if (entry.tldr) continue;
+    if ((entry.news?.length ?? 0) + (entry.posts?.length ?? 0) === 0) continue;
+    checked += 1;
+    if (!entry.group) entry.group = registry.competitorIds.has(entry.id) ? "competitor" : "customer";
+    await applyDigest(entry);
+    if (entry.tldr) {
+      ids.push(entry.id);
+      await saveFeedCompany(feed, entry.id);
+    }
+  }
+  return { ran: true, checked, written: ids.length, ids, seconds: Math.round((Date.now() - started) / 1000) };
+}
+
 export async function refreshThoughtLeadershipNow(): Promise<{ items: number; total: number; cost: number }> {
   if (!hasEnv()) throw new Error("missing env (database)");
   const config = await readRow(CONFIG_ROW).catch(() => null);
