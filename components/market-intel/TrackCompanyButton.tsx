@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Globe2, Loader2, Newspaper, Plus, Sparkles } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Check, Globe2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
@@ -14,49 +13,37 @@ import { tint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
 
 /**
- * "It's just links, and you figure out everything else" (Anir, Aug 11). One
- * field: the company's LinkedIn page. The server reads the page for the name,
- * logo and posts, finds the news and the company's own website, and writes
- * the AI rundown, so the briefing exists by the time the toast shows.
+ * ADD A COMPANY BY ITS OWN SOURCES (Anir, Sep 10: "the user enters the
+ * official site and the official LinkedIn. At least one is mandatory").
+ * Nothing is guessed: the website someone types is the website that is
+ * searched, the LinkedIn page they paste is the page that is read. Posts come
+ * from LinkedIn, press releases from the website, and news and the AI rundown
+ * come with either.
  *
- * Sep 10 (Anir: "bigger popup, more aesthetic and visual, too much text that
- * can be tucked into a ? or an i"): a wide dialog with the form on the left
- * and what gets collected drawn on the right; every explanation lives in a
- * hint. A company somebody already has is not scraped again, it is simply
- * ticked onto this person's list.
+ * One column, explanations tucked into the ? hints ("left side is fine, I
+ * don't think we need the right side, put that in an i or ?"). A company
+ * somebody already has is not scraped again; it is simply ticked onto this
+ * person's list.
  */
-const LinkedInGlyph = LinkedInIcon as unknown as LucideIcon;
 
-const WHAT_YOU_GET: { Icon: LucideIcon; color: string; label: string; sub: string; hint: string }[] = [
-  {
-    Icon: LinkedInGlyph,
-    color: "var(--ink-bright-blue)",
-    label: "LinkedIn posts",
-    sub: "From their company page",
-    hint: "Read straight from the LinkedIn page you paste: the name, logo, follower count and the latest posts.",
-  },
-  {
-    Icon: Newspaper,
-    color: "var(--ink-teal-deep)",
-    label: "News",
-    sub: "Google News and today's headlines",
-    hint: "Articles about them from Google News, plus a same-day search for stories Google has not picked up yet. Repeats of the same story are grouped.",
-  },
-  {
-    Icon: Globe2,
-    color: "var(--ink-orange)",
-    label: "Their website",
-    sub: "Press releases and updates",
-    hint: "Their official website is found from the company name, then its recent press releases and news pages are collected.",
-  },
-  {
-    Icon: Sparkles,
-    color: "var(--ink-violet-soft)",
-    label: "AI rundown",
-    sub: "Nine signals and why they matter",
-    hint: "Every item is read and tagged with one of the nine signals and a line on why it matters to Freyr, and a short rundown sums up the month.",
-  },
-];
+/** The domain someone typed, or null when it is not a website. */
+function siteDomain(raw: string): string | null {
+  const text = raw.trim();
+  if (!text) return null;
+  let host = "";
+  try {
+    host = new URL(text.includes("://") ? text : `https://${text}`).hostname;
+  } catch {
+    return null;
+  }
+  host = host.replace(/^www\./i, "").toLowerCase();
+  if (/(^|\.)linkedin\.com$/.test(host)) return null;
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(host) ? host : null;
+}
+
+function linkedInSlug(raw: string): string | null {
+  return raw.match(/linkedin\.com\/company\/([^/?#\s]+)/i)?.[1] ?? null;
+}
 
 export function TrackCompanyButton({
   group = "customer",
@@ -80,16 +67,38 @@ export function TrackCompanyButton({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [website, setWebsite] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
   const [divisions, setDivisions] = useState<Division[]>([]);
 
   const noun = group === "competitor" ? "competitor" : "company";
-  const slug = linkedinUrl.match(/linkedin\.com\/company\/([^/?#\s]+)/i)?.[1] ?? null;
-  const typedSomething = linkedinUrl.trim().length > 0;
+  const domain = siteDomain(website);
+  const slug = linkedInSlug(linkedinUrl);
+  const bothEmpty = !website.trim() && !linkedinUrl.trim();
+
+  function reset() {
+    setWebsite("");
+    setLinkedinUrl("");
+    setDivisions([]);
+    setError("");
+  }
 
   async function save() {
-    if (!linkedinUrl.trim()) {
-      setError(`Paste the ${noun}'s LinkedIn page link.`);
+    /* AT LEAST ONE, AND EACH ONE RIGHT, before anything is sent. */
+    if (bothEmpty) {
+      setError("Enter their website or their LinkedIn page. At least one is needed.");
+      return;
+    }
+    if (website.trim() && !domain) {
+      setError(
+        /linkedin\.com/i.test(website)
+          ? "That's a LinkedIn link. Put it in the LinkedIn page box."
+          : "That website doesn't look right. It should look like gsk.com."
+      );
+      return;
+    }
+    if (linkedinUrl.trim() && !slug) {
+      setError("That LinkedIn link should be a company page, like linkedin.com/company/gsk.");
       return;
     }
     setBusy(true);
@@ -100,7 +109,8 @@ export function TrackCompanyButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           kind: "company-link",
-          linkedinUrl,
+          website: domain ?? "",
+          linkedinUrl: slug ? linkedinUrl.trim() : "",
           group,
           divisions,
         }),
@@ -117,8 +127,7 @@ export function TrackCompanyButton({
             : `Now tracking ${name}. It's on your page and the briefing is ready.`
       );
       setOpen(false);
-      setLinkedinUrl("");
-      setDivisions([]);
+      reset();
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save.");
@@ -131,6 +140,59 @@ export function TrackCompanyButton({
   if (!canTrack) return null;
 
   const title = group === "competitor" ? "Track a competitor" : "Track a company";
+
+  const field = (props: {
+    id: string;
+    label: string;
+    hint: string;
+    icon: React.ReactNode;
+    color: string;
+    value: string;
+    set: (v: string) => void;
+    placeholder: string;
+    ok: boolean;
+  }) => (
+    <div>
+      <label htmlFor={props.id} className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary">
+        {props.label}
+        <InfoHint text={props.hint} />
+      </label>
+      <div
+        className={cn(
+          "mt-1.5 flex h-12 items-center gap-2.5 rounded-xl border bg-white px-3.5 transition-colors focus-within:border-blue-primary focus-within:ring-4 focus-within:ring-blue-primary/10",
+          "border-border-light"
+        )}
+      >
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+          style={{ color: props.color, background: tint(props.color, 12) }}
+        >
+          {props.icon}
+        </span>
+        <input
+          id={props.id}
+          className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-text-primary outline-none placeholder:text-text-tertiary"
+          value={props.value}
+          onChange={(e) => {
+            props.set(e.target.value);
+            if (error) setError("");
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !busy) void save();
+          }}
+          placeholder={props.placeholder}
+          disabled={busy}
+          spellCheck={false}
+          autoComplete="off"
+        />
+        {props.ok && (
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(26,122,53,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-green)]">
+            <Check size={11} strokeWidth={2.8} /> Looks right
+          </span>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -148,70 +210,51 @@ export function TrackCompanyButton({
           if (!busy) setOpen(false);
         }}
         stacked={stacked}
-        size="workflow"
-        dialogClassName="!max-w-[880px]"
+        size="wide"
         title={title}
         titleAfter={
           <InfoHint
-            text={`Paste their LinkedIn page and everything else is found for you. A ${noun} somebody already has is simply ticked onto your list, so nothing is collected twice.`}
+            text={`Enter their official website, their LinkedIn page, or both. The website gives press releases and updates, LinkedIn gives their posts, and news from Google plus an AI rundown come with either. A ${noun} somebody already has is just ticked onto your list, so nothing is collected twice.`}
           />
         }
       >
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[1.35fr_1fr]">
-          {/* ---------------------------------------------------- the form */}
-          <div className="flex min-w-0 flex-col">
-            <label
-              htmlFor="mi-company-link"
-              className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary"
-            >
-              LinkedIn page
-              <InfoHint text="The company page, not a person's profile. It looks like linkedin.com/company/their-name." />
-            </label>
-            <div
-              className={cn(
-                "mt-2 flex h-12 items-center gap-2.5 rounded-xl border bg-white px-3.5 transition-colors focus-within:border-blue-primary focus-within:ring-4 focus-within:ring-blue-primary/10",
-                error ? "border-[#DC2626]" : "border-border-light"
-              )}
-            >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[rgba(0,113,227,0.10)] text-[color:var(--ink-bright-blue)]">
-                <LinkedInIcon size={14} />
-              </span>
-              <input
-                id="mi-company-link"
-                className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-text-primary outline-none placeholder:text-text-tertiary"
-                value={linkedinUrl}
-                onChange={(e) => {
-                  setLinkedinUrl(e.target.value);
-                  if (error) setError("");
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !busy) void save();
-                }}
-                placeholder="linkedin.com/company/their-name"
-                autoFocus
-                disabled={busy}
-                spellCheck={false}
-                autoComplete="off"
-              />
-              {slug && (
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(26,122,53,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-green)]">
-                  <Check size={11} strokeWidth={2.8} /> Looks right
-                </span>
-              )}
-            </div>
-            <p className="mt-1.5 min-h-[18px] text-[12px] leading-snug">
-              {error ? (
-                <span className="font-medium text-[#DC2626]">{error}</span>
-              ) : typedSomething && !slug ? (
-                <span className="text-text-tertiary">It should look like linkedin.com/company/their-name</span>
-              ) : null}
-            </p>
+        <div className="flex flex-col gap-4">
+          {field({
+            id: "mi-company-site",
+            label: "Official website",
+            hint: "Their own website, like gsk.com. Press releases and updates are collected from it and nowhere else.",
+            icon: <Globe2 size={14} strokeWidth={2.2} />,
+            color: "var(--ink-orange)",
+            value: website,
+            set: setWebsite,
+            placeholder: "their-website.com",
+            ok: !!domain,
+          })}
+          {field({
+            id: "mi-company-link",
+            label: "LinkedIn page",
+            hint: "Their company page, not a person's profile, like linkedin.com/company/gsk. Their posts are collected from it.",
+            icon: <LinkedInIcon size={14} />,
+            color: "var(--ink-bright-blue)",
+            value: linkedinUrl,
+            set: setLinkedinUrl,
+            placeholder: "linkedin.com/company/their-name",
+            ok: !!slug,
+          })}
+          <p className="-mt-2 min-h-[18px] text-[12px] leading-snug" aria-live="polite">
+            {error ? (
+              <span className="font-medium text-[#DC2626]">{error}</span>
+            ) : bothEmpty ? (
+              <span className="text-text-tertiary">Fill in at least one. Both is best.</span>
+            ) : null}
+          </p>
 
-            <p className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold text-text-primary">
+          <div>
+            <p className="flex items-center gap-1.5 text-[13px] font-semibold text-text-primary">
               Divisions
               <InfoHint text={`Which of Freyr's divisions this ${noun} matters to. Needed for one nobody is tracking yet; pick every one that applies.`} />
             </p>
-            <div className="mt-2 grid grid-cols-3 gap-2" role="group" aria-label="Divisions">
+            <div className="mt-1.5 grid grid-cols-3 gap-2" role="group" aria-label="Divisions">
               {DIVISIONS.map((d) => {
                 const meta = DIVISION_META[d];
                 const Icon = meta.icon;
@@ -255,66 +298,34 @@ export function TrackCompanyButton({
                 );
               })}
             </div>
-
-            <div className="mt-auto flex items-center justify-between gap-3 pt-6">
-              {addedLeft !== null ? (
-                <span
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold tnum",
-                    addedLeft > 0
-                      ? "bg-[rgba(0,113,227,0.08)] text-[color:var(--ink-bright-blue)]"
-                      : "bg-[rgba(180,83,9,0.10)] text-[#B45309]"
-                  )}
-                >
-                  {addedLeft} new {addedLeft === 1 ? "company" : "companies"} left
-                  <InfoHint
-                    text={
-                      addedLeft > 0
-                        ? "Adding one nobody is tracking yet uses one. Ticking companies already in the list is unlimited."
-                        : "You've added the most new companies one person can. You can still tick any company already in the list."
-                    }
-                  />
-                </span>
-              ) : (
-                <span />
-              )}
-              <Button onClick={save} loading={busy} className="!px-5 !py-2.5 text-[13.5px]">
-                Start tracking
-              </Button>
-            </div>
           </div>
 
-          {/* ------------------------------------ what gets collected, drawn */}
-          <aside className="rounded-2xl border border-border-light bg-surface p-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">What you&apos;ll get</p>
-            <ul className="mt-3 space-y-2.5">
-              {WHAT_YOU_GET.map((item) => (
-                <li key={item.label} className="flex items-center gap-3 rounded-xl bg-white p-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
-                  <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                    style={{ color: item.color, background: tint(item.color, 12) }}
-                  >
-                    <item.Icon size={16} strokeWidth={2.1} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-semibold text-text-primary">{item.label}</span>
-                    <span className="block truncate text-[11.5px] text-text-tertiary">{item.sub}</span>
-                  </span>
-                  <InfoHint text={item.hint} />
-                </li>
-              ))}
-            </ul>
-            <p
-              className={cn(
-                "mt-3 flex items-center gap-1.5 text-[11.5px] font-medium transition-opacity",
-                busy ? "text-blue-primary opacity-100" : "opacity-0"
-              )}
-              aria-live="polite"
-            >
-              <Loader2 size={12} strokeWidth={2.4} className={busy ? "animate-spin" : ""} />
-              {busy ? "Reading the page and pulling everything. About half a minute." : " "}
-            </p>
-          </aside>
+          <div className="flex items-center justify-between gap-3 pt-2">
+            {addedLeft !== null ? (
+              <span
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold tnum",
+                  addedLeft > 0
+                    ? "bg-[rgba(0,113,227,0.08)] text-[color:var(--ink-bright-blue)]"
+                    : "bg-[rgba(180,83,9,0.10)] text-[#B45309]"
+                )}
+              >
+                {addedLeft} new {addedLeft === 1 ? "company" : "companies"} left
+                <InfoHint
+                  text={
+                    addedLeft > 0
+                      ? "Adding one nobody is tracking yet uses one. Ticking companies already in the list is unlimited."
+                      : "You've added the most new companies one person can. You can still tick any company already in the list."
+                  }
+                />
+              </span>
+            ) : (
+              <span className="text-[11.5px] text-text-tertiary">{busy ? "Reading their pages. About half a minute." : ""}</span>
+            )}
+            <Button onClick={save} loading={busy} className="!px-5 !py-2.5 text-[13.5px]">
+              Start tracking
+            </Button>
+          </div>
         </div>
       </Modal>
     </>

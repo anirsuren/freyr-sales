@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       const tracking = await readMarketIntelTracking();
       const canCreate = isAdmin || countAddedBy(tracking, scope.userId) < MEMBER_TRACK_LIMIT;
       const result = await addCompanyByLink(
-        String(body.linkedinUrl ?? ""),
+        { linkedinUrl: String(body.linkedinUrl ?? ""), website: String(body.website ?? "") },
         body?.group === "competitor" ? "competitor" : "customer",
         {
           addedBy,

@@ -24,7 +24,7 @@ import {
 import { CLASSIFY_VERSION, isLabeled } from "./marketIntelSignals";
 import { THOUGHT_FIRMS, mergeThoughtBoard, scrapeFirmThoughtLeadership } from "./marketIntelThought";
 import { scrapeFreshNews } from "./perplexityNews";
-import { resolveOfficialDomain, scrapeSiteUpdates } from "./siteUpdates";
+import { normalizeSiteDomain, readCompanyNameFromSite, scrapeSiteUpdates } from "./siteUpdates";
 import {
   bustMarketIntelTrackingCache,
   findTrackedByLinkedInSlug,
@@ -1243,94 +1243,128 @@ export type AddCompanyResult = {
 export const TRACK_LIMIT_MESSAGE =
   "You've added the most companies one person can. You can still tick any company already in the list.";
 
+export type AddCompanyInput = {
+  /** A LinkedIn company page, or empty. */
+  linkedinUrl?: string;
+  /** Their official website, or empty. */
+  website?: string;
+};
+
 export async function addCompanyByLink(
-  linkedinUrl: string,
+  input: AddCompanyInput,
   group: "customer" | "competitor" = "customer",
   meta: AddCompanyMeta = {}
 ): Promise<AddCompanyResult> {
   if (!hasEnv()) throw new Error("Tracking needs the configured services.");
-  const slug = linkedinUrl.match(/linkedin\.com\/company\/([^/?#]+)/i)?.[1];
-  if (!slug) {
-    throw new Error(
-      "That doesn't look like a LinkedIn company page. It should look like linkedin.com/company/their-name"
-    );
+  const liRaw = String(input.linkedinUrl ?? "").trim();
+  const siteRaw = String(input.website ?? "").trim();
+  /* AT LEAST ONE, AND EACH ONE RIGHT (Anir, Sep 10: "the user enters the
+     official site and the official LinkedIn. At least one is mandatory").
+     Nothing is guessed any more: no website is looked up for a LinkedIn
+     page, and no LinkedIn page for a website. */
+  if (!liRaw && !siteRaw) {
+    throw new Error("Enter their website or their LinkedIn page. At least one is needed.");
+  }
+  const slug = liRaw ? (liRaw.match(/linkedin\.com\/company\/([^/?#\s]+)/i)?.[1] ?? null) : null;
+  if (liRaw && !slug) {
+    throw new Error("That LinkedIn link should be a company page, like linkedin.com/company/gsk.");
+  }
+  const domain = siteRaw ? normalizeSiteDomain(siteRaw) : null;
+  if (siteRaw && (!domain || /(^|\.)linkedin\.com$/.test(domain))) {
+    throw new Error("That website doesn't look right. It should look like gsk.com.");
   }
   const registry = await loadRegistry();
   const tracking = registry.tracking;
-  const feed: any = await loadFeedForWrite();
 
-  /* KNOWN BEFORE PAID (Anir, Sep 10: "if someone chooses that same company
-     it won't scrape twice. It'll just show the one thing to two people").
-     The slug is matched against the registry, seed settings included, before
-     any scrape: a company already on the watch is simply followed, and one
-     that was paused is back the moment somebody wants it. */
-  const wanted = slug.toLowerCase();
-  const tracked =
-    registry.companies.find((c) => (c.scrape?.li ?? []).some((l) => l.toLowerCase() === wanted)) ??
-    findTrackedByLinkedInSlug(tracking, slug);
-  if (tracked) {
-    return {
-      id: tracked.id,
-      name: tracked.name,
-      group: tracked.group === "competitor" ? "competitor" : "customer",
-      existing: true,
-      resumed: !isActiveCompany(tracked, registry.followers),
-      company: tracked,
-    };
+  /* KNOWN BEFORE PAID, BY EITHER LINK (Anir, Sep 10: "if someone chooses that
+     same company it won't scrape twice"). The LinkedIn slug and the website
+     are both matched against the list before any call is made; a company
+     already there is simply ticked, and two links naming two different
+     companies are refused rather than guessed between. */
+  const bySlug = slug
+    ? (registry.companies.find((c) => (c.scrape?.li ?? []).some((l) => l.toLowerCase() === slug.toLowerCase())) ??
+      findTrackedByLinkedInSlug(tracking, slug))
+    : undefined;
+  const bySite = domain
+    ? registry.companies.find((c) => {
+        const known = normalizeSiteDomain(c.scrape?.site || c.website);
+        return !!known && (known === domain || domain.endsWith(`.${known}`) || known.endsWith(`.${domain}`));
+      })
+    : undefined;
+  if (bySlug && bySite && bySlug.id !== bySite.id) {
+    throw new Error(`That LinkedIn page is ${bySlug.name}, but the website is ${bySite.name}. Check both links.`);
   }
-
-  /* THE ALLOWANCE IS CHECKED BEFORE ANY MONEY MOVES: an unknown page from a
-     person who has used up their new-company allowance is refused here,
-     not after a paid probe. */
-  if (meta.canCreate === false) throw new Error(TRACK_LIMIT_MESSAGE);
-  const probe = await scrapeCompanyPosts({
-    id: slug,
-    name: slug,
-    li: [slug],
-    expect: "",
+  const existingResult = (c: TrackedCompany): AddCompanyResult => ({
+    id: c.id,
+    name: c.name,
+    group: c.group === "competitor" ? "competitor" : "customer",
+    existing: true,
+    resumed: !isActiveCompany(c, registry.followers),
+    company: c,
   });
-  const name = probe.author?.name?.trim();
-  if (!name) {
-    throw new Error(
-      "Couldn't read that LinkedIn page. Check the link, or try again in a minute."
-    );
-  }
-  const id = miSlug(name);
-  chargeApify(feed, probe.cost);
-  const already: TrackedCompany | undefined = tracking.companies.find(
-    (c: TrackedCompany) => c.id === id
-  );
-  if (already || feed.companies[id]) {
-    /* A different slug for a page already on the watch: the probe was the
-       only cost, and the answer is the same as a known slug. */
-    await saveFeedMeta(feed);
-    const storedGroup = feed.companies[id]?.group ?? already?.group;
-    return {
-      id,
-      name: feed.companies[id]?.name ?? already?.name ?? name,
-      group: storedGroup === "competitor" ? "competitor" : "customer",
-      existing: true,
-      resumed: already ? !isActiveCompany(already, registry.followers) : false,
-      company: already,
-    };
-  }
+  const known = bySlug ?? bySite;
+  if (known) return existingResult(known);
+
+  /* THE ALLOWANCE AND THE DIVISIONS ARE CHECKED BEFORE ANY MONEY MOVES: a
+     company nobody has needs both, and asking after a paid probe wasted it. */
+  if (meta.canCreate === false) throw new Error(TRACK_LIMIT_MESSAGE);
   const divisions = (meta.divisions ?? []).filter((d) => ["MPR", "MDV", "CON"].includes(d));
   if (divisions.length === 0) {
-    await saveFeedMeta(feed);
     throw new Error("Pick at least one division (MPR, MDV or CON) for a company that isn't on the list yet.");
   }
+
+  const feed: any = await loadFeedForWrite();
+  let name = "";
+  let nameCost = 0;
+  let probe: Awaited<ReturnType<typeof scrapeCompanyPosts>> | null = null;
+  if (slug) {
+    probe = await scrapeCompanyPosts({ id: slug, name: slug, li: [slug], expect: "" });
+    chargeApify(feed, probe.cost);
+    name = probe.author?.name?.trim() ?? "";
+    if (!name) {
+      await saveFeedMeta(feed);
+      throw new Error("Couldn't read that LinkedIn page. Check the link, or try again in a minute.");
+    }
+  } else if (domain) {
+    const read = await readCompanyNameFromSite(domain, activePerplexityKey);
+    nameCost = read.cost;
+    name = read.name ?? "";
+    if (!name) {
+      feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + nameCost) * 1000) / 1000;
+      await saveFeedMeta(feed);
+      throw new Error("Couldn't read the company's name from that website. Add their LinkedIn page too.");
+    }
+  }
+  const id = miSlug(name);
+  const already: TrackedCompany | undefined = tracking.companies.find((c: TrackedCompany) => c.id === id);
+  if (already || feed.companies[id]) {
+    /* A different link to a company already in the list: reading the name
+       was the only cost, and the answer is the same as a known link. */
+    feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + nameCost) * 1000) / 1000;
+    await saveFeedMeta(feed);
+    if (already) return existingResult(already);
+    const storedGroup = feed.companies[id]?.group;
+    return {
+      id,
+      name: feed.companies[id]?.name ?? name,
+      group: storedGroup === "competitor" ? "competitor" : "customer",
+      existing: true,
+      resumed: false,
+    };
+  }
+  const now = new Date().toISOString();
   const company: TrackedCompany = {
     id,
     name,
     group,
     industry: "",
     hq: "",
-    website: "",
-    linkedinUrl: `https://www.linkedin.com/company/${slug}`,
+    website: domain ? `https://${domain}` : "",
+    linkedinUrl: slug ? `https://www.linkedin.com/company/${slug}` : "",
     competitors: [],
     keywords: [],
     note: "",
-    addedAt: new Date().toISOString(),
+    addedAt: now,
     divisions,
     ...(meta.addedBy ? { addedBy: meta.addedBy } : {}),
   };
@@ -1340,45 +1374,31 @@ export async function addCompanyByLink(
 
   const newsResult = await scrapeNews({ name });
   const freshResult = await scrapeFreshNews({ name }, activePerplexityKey);
-  /* THE FORM ASKS FOR ONE LINK, so the domain has to be found rather than
-     typed (Anir, Aug 28: "if someone enters a new company it has to work
-     too"). Resolved once here and written onto the tracked company, so
-     every later refresh reads it straight off the record. */
-  const resolved = await resolveOfficialDomain(name, activePerplexityKey);
-  if (resolved.domain) {
-    company.website = `https://${resolved.domain}`;
-    const stored = tracking.companies.find((c: TrackedCompany) => c.id === id);
-    if (stored) stored.website = company.website;
-    await writeRow(TRACKING_ROW, tracking);
-  }
-  const siteResult = await scrapeSiteUpdates(
-    { name, site: resolved.domain ?? undefined },
-    activePerplexityKey
-  );
+  /* THE WEBSITE THEY TYPED, AND ONLY THAT ONE. No website, no website column. */
+  const siteResult = domain
+    ? await scrapeSiteUpdates({ name, site: domain }, activePerplexityKey)
+    : { updates: [], cost: 0, failed: false };
   const entry: FeedCompany = {
     id,
     name,
-    slug: probe.slug,
-    author: probe.author,
-    posts: probe.posts,
+    slug: probe?.slug ?? null,
+    author: probe?.author ?? null,
+    posts: probe?.posts ?? [],
     news: mergeNews(newsResult.news, freshResult.news),
     site: siteResult.updates,
     tldr: null,
     group,
-    fetchedAt: new Date().toISOString(),
-    newsAt: new Date().toISOString(),
-    siteAt: new Date().toISOString(),
+    fetchedAt: now,
+    newsAt: now,
+    ...(domain ? { siteAt: now } : {}),
   };
   await applyLabels(entry, { calls: 8 });
   await applyDigest(entry);
   feed.companies[id] = entry;
-  feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
+  feed.updatedAt = feed.updatedAt ?? now;
   chargeApify(feed, newsResult.cost);
   feed.spendUsd =
-    Math.round(
-      ((feed.spendUsd ?? 0) + freshResult.cost + resolved.cost + siteResult.cost) *
-        1000
-    ) / 1000;
+    Math.round(((feed.spendUsd ?? 0) + freshResult.cost + nameCost + siteResult.cost) * 1000) / 1000;
   await saveFeedCompany(feed, id);
   return { id, name, group, existing: false, resumed: false, company };
 }

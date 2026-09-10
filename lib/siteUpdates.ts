@@ -368,3 +368,116 @@ export async function resolveOfficialDomain(
     return { domain: null, cost: 0 };
   }
 }
+
+/**
+ * THE COMPANY'S NAME, READ FROM THE WEBSITE SOMEONE TYPED (Sep 10). A company
+ * added by its website alone still needs a name, because the news search runs
+ * on it. The homepage is read first, which is free: its og:site_name, or the
+ * part of its title that matches the domain ("Home | GSK" gives GSK). Some
+ * sites turn servers away (bayer.com answers 403), some send an empty shell
+ * (cipla.com), and some titles never say the name, so Perplexity is asked
+ * next, pinned to that one domain. Every answer must match the domain; a
+ * name that does not is treated as no name.
+ */
+const NOT_A_NAME =
+  /^(home|homepage|home page|welcome|official site|official website|site maintenance|access denied|forbidden|just a moment\.*|attention required!?|page not found|403|404|index)$/i;
+
+/**
+ * STRICTER THAN domainMatchesName, FOR NAMES ONLY. That check lets any long
+ * word of a name sit anywhere in the domain, which is right for spotting a
+ * company's own site but wrong for reading a name: freyrsolutions.com's title
+ * "Global Regulatory Solutions and Services Company" passed on "solutions".
+ * A name must line up with the START of the domain: the whole name, or its
+ * first word ("Teva Pharmaceuticals" and tevapharm.com, "GSK" and gsk.com).
+ */
+function nameLinesUpWithDomain(domain: string, name: string): boolean {
+  const label = squash(domain.split(".")[0]);
+  const whole = squash(name);
+  const first = squash(name.split(/[\s&,]+/)[0] ?? "");
+  if (!label || !whole) return false;
+  return whole.startsWith(label) || label.startsWith(whole) || (first.length >= 3 && label.startsWith(first));
+}
+
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&#0?39;|&apos;|&#x27;/gi, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;|&#160;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function nameFromHomepage(html: string, domain: string): string | null {
+  const og =
+    html.match(/<meta[^>]+property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i)?.[1] ??
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:site_name["']/i)?.[1];
+  const app = html.match(/<meta[^>]+name=["']application-name["'][^>]*content=["']([^"']+)["']/i)?.[1];
+  const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+  const fits = (c: string) =>
+    c.length >= 2 && c.length <= 60 && !NOT_A_NAME.test(c) && nameLinesUpWithDomain(domain, c);
+  const named = [og, app].filter((v): v is string => !!v).map(decodeEntities).find(fits);
+  if (named) return named;
+  const segments = title ? decodeEntities(title).split(/\s+[-:|·•]\s+|\s*[|–—·•]\s*/) : [];
+  return segments.map((s) => s.trim()).filter(fits).sort((a, b) => a.length - b.length)[0] ?? null;
+}
+
+export async function readCompanyNameFromSite(
+  domain: string,
+  key: string | undefined
+): Promise<{ name: string | null; cost: number; via: "page" | "search" | null }> {
+  try {
+    const res = await fetch(`https://${domain}`, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
+        "Accept-Language": "en",
+        Accept: "text/html",
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (res.ok) {
+      const name = nameFromHomepage((await res.text()).slice(0, 400_000), domain);
+      if (name) return { name, cost: 0, via: "page" };
+    }
+  } catch {
+    /* a site that turns servers away is asked about below */
+  }
+  if (!key) return { name: null, cost: 0, via: null };
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "sonar",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You name the company that owns a website. Reply with only the company's short common name, nothing else. If you cannot tell, reply with nothing.",
+          },
+          { role: "user", content: `Which company owns the website ${domain}?` },
+        ],
+        search_domain_filter: [domain],
+        web_search_options: { search_context_size: "low" },
+        max_tokens: 20,
+      }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!res.ok) throw new Error(`perplexity HTTP ${res.status}`);
+    const data = await res.json();
+    const cost =
+      typeof data?.usage?.cost?.total_cost === "number" ? data.usage.cost.total_cost : FALLBACK_COST_USD;
+    const name = decodeEntities(String(data?.choices?.[0]?.message?.content ?? ""))
+      .replace(/^["'“”]+|["'“”.]+$/g, "")
+      .trim();
+    if (name && name.length <= 60 && nameLinesUpWithDomain(domain, name)) return { name, cost, via: "search" };
+    return { name: null, cost, via: null };
+  } catch (error) {
+    notePerplexityError(error instanceof Error ? error.message : String(error));
+    return { name: null, cost: 0, via: null };
+  }
+}
