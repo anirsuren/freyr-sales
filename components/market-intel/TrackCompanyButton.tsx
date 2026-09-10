@@ -24,12 +24,15 @@ export function TrackCompanyButton({
   group = "customer",
   canTrack = true,
   addedLeft = null,
+  isAdmin = false,
 }: {
   group?: "customer" | "competitor";
   /** MAY THEY ADD ONE: the Market Intel row of the privilege table decides. */
   canTrack?: boolean;
   /** How many NEW companies this person may still add; null means no limit. */
   addedLeft?: number | null;
+  /** Admins choose: the workspace's standing watch, or just their own list. */
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -38,6 +41,7 @@ export function TrackCompanyButton({
   const [error, setError] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
   const [divisions, setDivisions] = useState<Division[]>([]);
+  const [standing, setStanding] = useState(true);
 
   async function save() {
     if (!linkedinUrl.trim()) {
@@ -50,15 +54,26 @@ export function TrackCompanyButton({
       const res = await fetch("/api/market-intel/tracking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "company-link", linkedinUrl, group, divisions }),
+        body: JSON.stringify({
+          kind: "company-link",
+          linkedinUrl,
+          group,
+          divisions,
+          standing: isAdmin && standing,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Could not save.");
       const name = data.company?.name ?? "them";
+      const where = data.company?.group === "competitor" ? "Competitor" : "Customer";
       toast(
-        data.existing
-          ? `${name} was already on the watch, so nothing new was scraped. It's on your list now.`
-          : `Now tracking ${name}. Briefing is ready.`
+        data.resumed
+          ? `${name} was paused and is back on the watch. It's on your list now.`
+          : data.existing
+            ? `${name} was already on the watch (${where} Intelligence), so nothing new was scraped. It's on your list now.`
+            : isAdmin && standing
+              ? `Now tracking ${name} for everyone. Briefing is ready.`
+              : `Now tracking ${name} on your list. Briefing is ready.`
       );
       setOpen(false);
       setLinkedinUrl("");
@@ -107,8 +122,8 @@ export function TrackCompanyButton({
             />
             <p className="mt-1 text-[11px] leading-snug text-text-tertiary">
               That&apos;s all. Name, logo, posts, news and the rundown are
-              pulled from the page itself. A company already on the watch is
-              simply added to your list, nothing is scraped twice.
+              pulled from the page itself. A company already being tracked is
+              simply added to your list; nothing is collected twice.
             </p>
           </div>
           <div>
@@ -121,6 +136,37 @@ export function TrackCompanyButton({
               that applies.
             </p>
           </div>
+          {isAdmin && (
+            <div>
+              <p className="mb-1.5 text-[12px] font-semibold text-text-primary">Who it&apos;s for</p>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Who it's for">
+                {[
+                  { on: true, label: "For everyone" },
+                  { on: false, label: "Just for me" },
+                ].map((choice) => (
+                  <button
+                    key={String(choice.on)}
+                    type="button"
+                    aria-pressed={standing === choice.on}
+                    disabled={busy}
+                    onClick={() => setStanding(choice.on)}
+                    className={
+                      standing === choice.on
+                        ? "flex cursor-pointer items-center gap-1.5 rounded-full border border-transparent bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white"
+                        : "flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+                    }
+                  >
+                    {choice.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-[11px] leading-snug text-text-tertiary">
+                For everyone: the whole team sees it and it keeps updating no
+                matter what. Just for me: it goes on your list and keeps updating
+                as long as someone has it on theirs.
+              </p>
+            </div>
+          )}
           {addedLeft !== null && (
             <p className="text-[11.5px] text-text-secondary tnum">
               {addedLeft > 0

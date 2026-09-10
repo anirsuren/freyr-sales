@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import {
+  checkMarketIntelConnections,
   refreshThoughtLeadershipNow,
   runMarketIntelLabeling,
   runMarketIntelRefresh,
@@ -29,6 +30,10 @@ export async function POST(req: NextRequest) {
      budget, and report tokens so the cost is a number rather than a guess. */
   /* The one-time split of the legacy feed document into per-company rows.
      Idempotent; the readers also run it lazily, this just does it on purpose. */
+  /* DO THE KEYS WORK, IS THE STORE HEALTHY: one cheap call per service. */
+  if (body?.check === true) {
+    return NextResponse.json({ health: await checkMarketIntelConnections() });
+  }
   if (body?.migrate === true) {
     return NextResponse.json({ migrated: await migrateLegacyFeedRow() });
   }

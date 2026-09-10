@@ -18,6 +18,7 @@ import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { MiLogo } from "@/components/market-intel/MiLogo";
 import { DivisionChips } from "@/components/market-intel/DivisionChips";
+import { WatchStatus, isPaused, type WatchState } from "@/components/market-intel/WatchStatus";
 import type { CompanyCard } from "@/lib/marketIntelFeed";
 import type { Division } from "@/lib/offeringMaterials";
 import { cn } from "@/lib/utils";
@@ -54,11 +55,14 @@ export function LiveCompanyCard({
   divisions = [],
   bookmarked = false,
   onBookmark,
+  watch,
 }: {
   card: CompanyCard;
   people?: CardPerson[];
   divisions?: Division[];
   bookmarked?: boolean;
+  /** Standing watch, followed, or paused. */
+  watch?: WatchState;
   /** Present when the viewer may keep a list; absent renders no star. */
   onBookmark?: (on: boolean) => void;
 }) {
@@ -97,8 +101,14 @@ export function LiveCompanyCard({
             <span className="block truncate text-[14.5px] font-semibold text-text-primary transition-colors group-hover:text-blue-primary">
               {card.name}
             </span>
-            <span className="block truncate text-[11.5px] text-text-tertiary tnum">
-              {card.itemsInWindow} {card.itemsInWindow === 1 ? "item" : "items"}, 90 days
+            <span className="mt-0.5 block">
+              {watch ? (
+                <WatchStatus state={watch} />
+              ) : (
+                <span className="text-[11.5px] text-text-tertiary tnum">
+                  {card.itemsInWindow} {card.itemsInWindow === 1 ? "item" : "items"}, 90 days
+                </span>
+              )}
             </span>
           </span>
         </span>
@@ -143,8 +153,8 @@ export function LiveCompanyCard({
                 onBookmark(!bookmarked);
               }}
               aria-pressed={bookmarked}
-              aria-label={bookmarked ? `Unfollow ${card.name}` : `Follow ${card.name}`}
-              title={bookmarked ? "On your list. Click to unfollow." : "Add to your list"}
+              aria-label={bookmarked ? `Remove ${card.name} from my list` : `Add ${card.name} to my list`}
+              title={bookmarked ? "On your list. Click to remove it." : "Add to my list"}
               className={cn(
                 "relative z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors",
                 bookmarked
@@ -159,13 +169,15 @@ export function LiveCompanyCard({
       </div>
 
       <div className="mt-3">
+        {/* HOVER TELLS YOU THE DAY AND THE COUNT (Anir, Sep 10: "this graph
+            doesn't even make any sense if I'm not able to put my cursor on
+            top and see where these things are changing"). */}
         <Sparkline
           points={card.trend}
           height={36}
           xLabels={card.trendLabels}
           unit="items"
-          label={`${card.name} posts, news and website items per week`}
-          interactive={false}
+          label={card.name}
         />
       </div>
 
@@ -333,7 +345,7 @@ export function LiveCompanyCard({
 
   return (
     <HoverExpandCard
-      className="h-full"
+      className={watch && isPaused(watch) ? "h-full opacity-75" : "h-full"}
       href={`/market-intel/${card.id}`}
       summary={summary}
       extra={extra}

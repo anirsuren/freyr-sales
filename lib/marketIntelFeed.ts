@@ -167,6 +167,7 @@ export type MarketIntelFeed = {
   mna?: MnaBoard;
   /** The thought-leadership tracker board, refreshed with the feed. */
   thought?: ThoughtBoard;
+  health?: FeedHealth;
   updatedAt: string | null;
   spendUsd?: number;
   /** Apify dollars charged in the 24 hours from `since`, what the refresh's
@@ -240,6 +241,23 @@ export const FEED_META_ROW = "market-intel-feed";
 export const FEED_COMPANY_PREFIX = "market-intel-company:";
 export const FEED_PERSON_PREFIX = "market-intel-person:";
 
+/**
+ * WHETHER THE OUTSIDE SERVICES ANSWER (Anir, Sep 10: "do the API keys work?
+ * Is the storage good?"). Written by every refresh run from what actually
+ * happened, and by the admin's Check connections button.
+ */
+export type ConnectionHealth = {
+  ok: boolean;
+  at: string;
+  note?: string;
+};
+export type FeedHealth = {
+  apify?: ConnectionHealth;
+  perplexity?: ConnectionHealth;
+  anthropic?: ConnectionHealth;
+  storage?: ConnectionHealth & { companies?: number; people?: number; largestKb?: number };
+};
+
 export type FeedMeta = {
   version: number;
   updatedAt: string | null;
@@ -247,6 +265,7 @@ export type FeedMeta = {
   apifyDay?: { since: string; usd: number };
   mna?: MnaBoard;
   thought?: ThoughtBoard;
+  health?: FeedHealth;
 };
 
 /** What the list page needs about a company, without its items. */
@@ -311,6 +330,7 @@ function metaFrom(raw: any): FeedMeta {
     apifyDay: raw?.apifyDay,
     mna: raw?.mna as MnaBoard | undefined,
     thought: raw?.thought as ThoughtBoard | undefined,
+    health: raw?.health as FeedHealth | undefined,
   };
 }
 
@@ -529,6 +549,7 @@ export async function readMarketIntelFeed(options?: {
           people,
           mna: meta.mna,
           thought: meta.thought,
+          health: meta.health,
           updatedAt: meta.updatedAt,
           spendUsd: meta.spendUsd,
           apifyDay: meta.apifyDay,
@@ -617,6 +638,7 @@ export async function saveFeedMeta(feed: MarketIntelFeed | FeedMeta): Promise<vo
     ...(feed.apifyDay ? { apifyDay: feed.apifyDay } : {}),
     ...(feed.mna ? { mna: feed.mna } : {}),
     ...(feed.thought ? { thought: feed.thought } : {}),
+    ...(feed.health ? { health: feed.health } : {}),
   };
   await upsertRow(FEED_META_ROW, metaRow(meta));
   bustMarketIntelFeedCache();
@@ -667,6 +689,16 @@ export async function readFeedPeopleSummaries(): Promise<Record<string, PersonSu
     for (const [id, feed] of Object.entries(read.legacy.people)) if (!out[id]) out[id] = summarizePerson(feed);
   }
   return out;
+}
+
+/** An admin deleted the company for good: its row and its people's rows go. */
+export async function deleteFeedCompany(id: string, personIds: string[] = []): Promise<void> {
+  if (!hasFeedDatabase() || !id) return;
+  const db = feedClient();
+  const rows = [`${FEED_COMPANY_PREFIX}${id}`, ...personIds.map((p) => `${FEED_PERSON_PREFIX}${p}`)];
+  const { error } = await db.from("offering_catalog_state").delete().in("id", rows);
+  if (error) throw new Error(`Could not delete ${id}: ${error.message}`);
+  bustMarketIntelFeedCache();
 }
 
 // ------------------------------------------------------------------ summary
@@ -767,27 +799,32 @@ function itemDates(company: FeedCompany): number[] {
   return out.filter((t) => Number.isFinite(t));
 }
 
+/** THIRTY DAYS, ONE POINT A DAY (Anir, Sep 10: "I don't know why you're
+ *  showing 90 days for this graph... just show 30"). The same window as
+ *  "this month" beside it, so the line and the number describe one thing. */
+export const TREND_DAYS = 30;
+
 export function trendFromDates(dates: number[]): { points: number[]; labels: string[] } {
   const now = Date.now();
-  const week = 7 * 86_400_000;
-  const points = new Array(12).fill(0);
+  const day = 86_400_000;
+  const points = new Array(TREND_DAYS).fill(0);
   const labels: string[] = [];
-  for (let i = 11; i >= 0; i -= 1) {
+  for (let i = TREND_DAYS - 1; i >= 0; i -= 1) {
     labels.push(
-      new Date(now - i * week).toLocaleDateString("en-US", {
+      new Date(now - i * day).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
       })
     );
   }
   for (const t of dates) {
-    const weeksAgo = Math.floor((now - t) / week);
-    if (weeksAgo >= 0 && weeksAgo < 12) points[11 - weeksAgo] += 1;
+    const daysAgo = Math.floor((now - t) / day);
+    if (daysAgo >= 0 && daysAgo < TREND_DAYS) points[TREND_DAYS - 1 - daysAgo] += 1;
   }
   return { points, labels };
 }
 
-/** Items per week, oldest week first, for the 12-week activity line. */
+/** Items per day, oldest first, for the 30-day activity line. */
 export function weeklyTrend(company: FeedCompany): {
   points: number[];
   labels: string[];

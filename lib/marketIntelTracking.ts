@@ -1,5 +1,6 @@
 import { getDataMode } from "./dataMode";
 import { MI_COMPANIES } from "./marketIntelMock";
+import { COMPANY_SOURCES, COMPETITOR_SOURCES, type CompanySource } from "./marketIntelSources";
 import type { Division } from "./offeringMaterials";
 
 /**
@@ -53,6 +54,20 @@ export type TrackedCompany = {
   divisions?: Division[];
   /** Who put it on the watch. Absent on rows from before Sep 10. */
   addedBy?: { id: string; name?: string; email?: string };
+  /**
+   * THE STANDING WATCH (Anir, Sep 10): the workspace's own list, which
+   * admins add to and remove from. A company is refreshed while it is on the
+   * standing watch OR somebody follows it; when neither is true it pauses.
+   */
+  standing?: boolean;
+  /** Came from the code's seed list; keeps the scraper's own settings. */
+  seed?: boolean;
+  scrape?: {
+    li: string[] | null;
+    expect: string;
+    newsQ?: string;
+    site?: string;
+  };
 };
 
 export type MarketIntelTracking = {
@@ -64,9 +79,69 @@ export type MarketIntelTracking = {
    * lands in this map and wins over the code's starting answer.
    */
   divisions?: Record<string, Division[]>;
+  /** Seed companies an admin deleted for good, so the seed never returns. */
+  removedSeeds?: string[];
 };
 
-const EMPTY: MarketIntelTracking = { companies: [], people: [], divisions: {} };
+const EMPTY: MarketIntelTracking = { companies: [], people: [], divisions: {}, removedSeeds: [] };
+
+/**
+ * WHO HAS A COMPANY: followers by company id, read from every person's own
+ * list. The registry says what a company is; this says whether anybody
+ * wants it.
+ */
+export type Followers = Record<string, string[]>;
+
+/** Refreshed while somebody has it: the standing watch or any follower. */
+export function isActiveCompany(company: TrackedCompany, followers: Followers): boolean {
+  return company.standing === true || (followers[company.id]?.length ?? 0) > 0;
+}
+
+/**
+ * THE SEED LIST BECOMES ORDINARY ENTRIES (Anir, Sep 10: "I should be able
+ * to add and remove stuff"). Every built-in customer and competitor is put on
+ * the standing watch once, with the scraper settings it always had, and from
+ * then on it is a row like any other: an admin can take it off the watch or
+ * delete it, and a deleted seed stays deleted.
+ */
+export function seedCompanies(tracking: MarketIntelTracking): number {
+  const removed = new Set(tracking.removedSeeds ?? []);
+  const have = new Set(tracking.companies.map((c) => c.id));
+  let added = 0;
+  const add = (source: CompanySource, group: "customer" | "competitor") => {
+    if (have.has(source.id) || removed.has(source.id)) return;
+    tracking.companies.push({
+      id: source.id,
+      name: source.name,
+      group,
+      industry: "",
+      hq: "",
+      website: source.site ? `https://${source.site}` : "",
+      linkedinUrl: source.li?.[0] ? `https://www.linkedin.com/company/${source.li[0]}` : "",
+      competitors: [],
+      keywords: [],
+      note: "",
+      addedAt: "2026-08-11T00:00:00.000Z",
+      addedBy: { id: "workspace", name: "Standing watch" },
+      standing: true,
+      seed: true,
+      scrape: {
+        li: source.li,
+        expect: source.expect,
+        ...(source.newsQ ? { newsQ: source.newsQ } : {}),
+        ...(source.site ? { site: source.site } : {}),
+      },
+      ...(source.divisions && source.divisions.length > 0
+        ? { divisions: cleanDivisions(source.divisions) }
+        : {}),
+    });
+    have.add(source.id);
+    added += 1;
+  };
+  for (const source of COMPANY_SOURCES) add(source, "customer");
+  for (const source of COMPETITOR_SOURCES) add(source, "competitor");
+  return added;
+}
 
 /**
  * HOW MANY COMPANIES ONE PERSON MAY ADD (Saras, Sep 10: "for each BD member,
@@ -207,6 +282,9 @@ function normalize(value: unknown): MarketIntelTracking {
     companies: Array.isArray(raw.companies) ? raw.companies : [],
     people: Array.isArray(raw.people) ? raw.people : [],
     divisions,
+    removedSeeds: Array.isArray(raw.removedSeeds)
+      ? raw.removedSeeds.filter((v): v is string => typeof v === "string")
+      : [],
   };
 }
 
@@ -394,13 +472,17 @@ function showroomTracking(): MarketIntelTracking {
   return { companies, people };
 }
 
-export async function readMarketIntelTracking(): Promise<MarketIntelTracking> {
+export async function readMarketIntelTracking(options?: {
+  /** Skip the minute-long cache: every write starts from this, so a change
+   *  made a moment ago by anyone is never written over. */
+  fresh?: boolean;
+}): Promise<MarketIntelTracking> {
   if (!hasTrackingDatabase()) return structuredClone(EMPTY);
   const row = rowId();
   const cached = (globalThis as any).__MI_TRACKING_CACHE__ as
     | { at: number; row: string; tracking: MarketIntelTracking }
     | undefined;
-  if (cached && cached.row === row && Date.now() - cached.at < TRACKING_CACHE_MS) {
+  if (!options?.fresh && cached && cached.row === row && Date.now() - cached.at < TRACKING_CACHE_MS) {
     return cached.tracking;
   }
   const { data, error } = await trackingClient()
@@ -415,9 +497,20 @@ export async function readMarketIntelTracking(): Promise<MarketIntelTracking> {
   /* SEED THE SHOWROOM ONCE, AND ONLY WHEN THE ROW HAS NEVER EXISTED. Same
      contract lib/contracts.ts uses: the samples become an ordinary row that
      can then be added to, edited and emptied, and a demo somebody has
-     deliberately cleared out stays cleared. Real mode is never seeded. */
+     deliberately cleared out stays cleared. */
   if (getDataMode() === "mock" && !data) {
     tracking = showroomTracking();
+    await trackingClient()
+      .from("offering_catalog_state")
+      .upsert({ id: row, catalog: tracking, updated_at: new Date().toISOString() })
+      .then(
+        () => undefined,
+        () => undefined
+      );
+  }
+  /* REAL MODE: the code's seed list joins the registry once, as standing-watch
+     entries. Idempotent, and a seed an admin deleted never comes back. */
+  if (getDataMode() === "live" && seedCompanies(tracking) > 0) {
     await trackingClient()
       .from("offering_catalog_state")
       .upsert({ id: row, catalog: tracking, updated_at: new Date().toISOString() })
@@ -475,7 +568,7 @@ export async function trackCompany(
   const name = String(input.name ?? "").trim().replace(/\s+/g, " ").slice(0, 80);
   if (!name) throw new Error("The company needs a name.");
   const id = miSlug(name);
-  const tracking = await readMarketIntelTracking();
+  const tracking = await readMarketIntelTracking({ fresh: true });
   if (SAMPLE_IDS.has(id) || tracking.companies.some((c) => c.id === id)) {
     throw new Error(`${name} is already being tracked.`);
   }
@@ -537,7 +630,7 @@ export async function setCompanyDivisions(
   const clean = cleanDivisions(divisions);
   const key = String(id ?? "").trim();
   if (!key) throw new Error("Which company?");
-  const tracking = await readMarketIntelTracking();
+  const tracking = await readMarketIntelTracking({ fresh: true });
   const next = { ...(tracking.divisions ?? {}) };
   if (clean.length > 0) next[key] = clean;
   else delete next[key];
@@ -564,7 +657,7 @@ export async function trackPerson(
   const companyId = String(input.companyId ?? "").trim();
   const name = String(input.name ?? "").trim().replace(/\s+/g, " ").slice(0, 80);
   if (!name) throw new Error("The person needs a name.");
-  const tracking = await readMarketIntelTracking();
+  const tracking = await readMarketIntelTracking({ fresh: true });
   const knownCompany =
     SAMPLE_IDS.has(companyId) ||
     tracking.companies.some((c) => c.id === companyId);
@@ -594,8 +687,54 @@ export async function trackPerson(
   return person;
 }
 
+/** On or off the workspace's standing watch (admins). */
+export async function setCompanyStanding(id: string, on: boolean): Promise<TrackedCompany> {
+  const tracking = await readMarketIntelTracking({ fresh: true });
+  const company = tracking.companies.find((c) => c.id === id);
+  if (!company) throw new Error("That company isn't on the watch.");
+  company.standing = on;
+  await saveMarketIntelTracking(tracking);
+  return company;
+}
+
+/** Customer or competitor: which tab it lives on (admins). */
+export async function setCompanyGroup(
+  id: string,
+  group: "customer" | "competitor"
+): Promise<TrackedCompany> {
+  const tracking = await readMarketIntelTracking({ fresh: true });
+  const company = tracking.companies.find((c) => c.id === id);
+  if (!company) throw new Error("That company isn't on the watch.");
+  company.group = group;
+  await saveMarketIntelTracking(tracking);
+  return company;
+}
+
+/**
+ * GONE FOR GOOD (admins): the registry entry, its people and its division
+ * tag. A seed stays gone. The company's feed rows and everybody's follows are
+ * removed by the caller, which has the store and the lists in hand.
+ */
+export async function deleteCompanyForGood(id: string): Promise<{ wasSeed: boolean; found: boolean }> {
+  const tracking = await readMarketIntelTracking({ fresh: true });
+  const company = tracking.companies.find((c) => c.id === id);
+  if (!company) return { wasSeed: false, found: false };
+  tracking.companies = tracking.companies.filter((c) => c.id !== id);
+  tracking.people = tracking.people.filter((p) => p.companyId !== id);
+  if (tracking.divisions?.[id]) {
+    const next = { ...tracking.divisions };
+    delete next[id];
+    tracking.divisions = next;
+  }
+  if (company.seed) {
+    tracking.removedSeeds = [...new Set([...(tracking.removedSeeds ?? []), id])];
+  }
+  await saveMarketIntelTracking(tracking);
+  return { wasSeed: !!company.seed, found: true };
+}
+
 export async function untrackCompany(id: string): Promise<void> {
-  const tracking = await readMarketIntelTracking();
+  const tracking = await readMarketIntelTracking({ fresh: true });
   const before = tracking.companies.length;
   tracking.companies = tracking.companies.filter((c) => c.id !== id);
   if (tracking.companies.length === before) return;
@@ -610,7 +749,7 @@ export async function untrackCompany(id: string): Promise<void> {
 }
 
 export async function untrackPerson(id: string): Promise<void> {
-  const tracking = await readMarketIntelTracking();
+  const tracking = await readMarketIntelTracking({ fresh: true });
   const before = tracking.people.length;
   tracking.people = tracking.people.filter((p) => p.id !== id);
   if (tracking.people.length === before) return;

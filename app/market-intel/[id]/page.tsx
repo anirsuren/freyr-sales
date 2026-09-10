@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { CompanyIntel } from "@/components/market-intel/CompanyIntel";
 import { LiveCompanyBriefing } from "@/components/market-intel/LiveCompanyBriefing";
-import { StopTrackingButton } from "@/components/market-intel/StopTrackingButton";
 import { TrackPersonButton } from "@/components/market-intel/TrackPersonControls";
 import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
 import { Avatar } from "@/components/ui/Avatar";
@@ -23,7 +22,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
-import { requireServerMemberScope } from "@/lib/memberScope";
 import {
   allTrackedNames,
   buildBriefing,
@@ -35,7 +33,10 @@ import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
 import { miCompany } from "@/lib/marketIntelMock";
 import { COMPANY_SOURCES, COMPETITOR_SOURCES } from "@/lib/marketIntelSources";
 import { companyDivisions, readMarketIntelTracking } from "@/lib/marketIntelTracking";
+import { readMarketIntelFollowers } from "@/lib/marketIntelBookmarks";
 import { DivisionEditor } from "@/components/market-intel/DivisionChips";
+import { CompanyAdminControls } from "@/components/market-intel/CompanyAdminControls";
+import { WatchStatus } from "@/components/market-intel/WatchStatus";
 import type { Division } from "@/lib/offeringMaterials";
 import { moduleWriteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
 
@@ -87,12 +88,15 @@ export default async function MarketIntelCompanyPage({
      the module's write privilege for the tags; the person who added it, or
      an admin, for the removal (Sep 10). */
   const canEdit = !(await moduleWriteRefusal("/market-intel"));
-  const [user, scope] = await Promise.all([
+  const [user, followers] = await Promise.all([
     getCurrentUser(),
-    requireServerMemberScope().catch(() => null),
+    readMarketIntelFollowers().catch(() => ({}) as Record<string, string[]>),
   ]);
-  const mayRemove = (addedById?: string) =>
-    user.role === "admin" || (!!scope && !!addedById && addedById === scope.userId);
+  const isAdmin = user.role === "admin";
+  const watchOf = (companyId: string) => {
+    const entry = tracking.companies.find((c) => c.id === companyId);
+    return { standing: entry?.standing === true, followers: followers[companyId]?.length ?? 0 };
+  };
 
   if (getDataMode() === "live") {
     /* ONE ROW (Sep 10): the briefing reads this company's row and, for a
@@ -133,8 +137,8 @@ export default async function MarketIntelCompanyPage({
           )}
           divisions={companyDivisions(tracking, id, sourceDefault(id))}
           canWrite={canEdit}
-          canRemove={!!trackedConfig && mayRemove(trackedConfig.addedBy?.id)}
-          tracked={!!trackedConfig}
+          isAdmin={isAdmin}
+          watch={watchOf(id)}
         />
       );
     }
@@ -221,7 +225,8 @@ export default async function MarketIntelCompanyPage({
             {[mine.industry, mine.hq].filter(Boolean).join(" · ") ||
               `Tracked since ${addedOn}`}
           </p>
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <WatchStatus state={watchOf(mine.id)} size="md" />
             <DivisionEditor
               companyId={mine.id}
               companyName={mine.name}
@@ -230,10 +235,18 @@ export default async function MarketIntelCompanyPage({
             />
           </div>
         </div>
-        {mayRemove(mine.addedBy?.id) && (
-          <StopTrackingButton companyId={mine.id} companyName={mine.name} />
-        )}
       </div>
+      {isAdmin && (
+        <div className="mt-3">
+          <CompanyAdminControls
+            companyId={mine.id}
+            companyName={mine.name}
+            group={mine.group === "competitor" ? "competitor" : "customer"}
+            standing={mine.standing === true}
+            followers={followers[mine.id]?.length ?? 0}
+          />
+        </div>
+      )}
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">

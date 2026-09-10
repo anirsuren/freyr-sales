@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import {
   CalendarClock,
+  CheckCircle2,
   ChevronDown,
   History,
   Loader2,
   Users,
+  XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { FeedHealth } from "@/lib/marketIntelFeed";
 
 /**
  * The live-data chip (Anir, Aug 11): at rest it only says when the feed last
@@ -48,11 +51,41 @@ function agoLabel(ms: number, now: number): string {
   return dayClock(ms, now);
 }
 
-export function RefreshChip({ updatedAt }: { updatedAt: string | null }) {
+export function RefreshChip({
+  updatedAt,
+  health,
+  isAdmin = false,
+}: {
+  updatedAt: string | null;
+  /** Whether the outside services answered on the last run (Anir, Sep 10:
+   *  "do the API keys work? Is the storage good?"). */
+  health?: FeedHealth;
+  /** Admins get a button that checks every connection right now. */
+  isAdmin?: boolean;
+}) {
   // Stamped after mount so the server and browser never disagree on the time.
   const [now, setNow] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [live, setLive] = useState<FeedHealth | undefined>(health);
   const anchorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setLive(health), [health]);
+
+  async function checkNow() {
+    setChecking(true);
+    try {
+      const res = await fetch("/api/market-intel/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ check: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.health) setLive(data.health);
+    } finally {
+      setChecking(false);
+    }
+  }
 
   useEffect(() => {
     setNow(Date.now());
@@ -194,6 +227,59 @@ export function RefreshChip({ updatedAt }: { updatedAt: string | null }) {
             a day; LinkedIn posts, the wider news search and the M&amp;A board
             once a day.
           </p>
+
+          {/* DO THE CONNECTIONS WORK: what the last run saw, and a button to
+              ask right now. */}
+          {(live || isAdmin) && (
+            <div className="mt-2.5 border-t border-border-light pt-2.5">
+              <p className="flex items-center justify-between text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                Connections
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => void checkNow()}
+                    disabled={checking}
+                    className="cursor-pointer rounded-full border border-border-light bg-white px-2 py-0.5 text-[10.5px] font-semibold normal-case tracking-normal text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:opacity-60"
+                  >
+                    {checking ? "Checking…" : "Check now"}
+                  </button>
+                )}
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {(
+                  [
+                    { key: "apify", label: "LinkedIn and news search (Apify)" },
+                    { key: "perplexity", label: "Same-day news, websites, reports (Perplexity)" },
+                    { key: "anthropic", label: "Summaries and signals (AI)" },
+                    { key: "storage", label: "Storage" },
+                  ] as const
+                ).map((row) => {
+                  const h = live?.[row.key];
+                  const Icon = !h ? CalendarClock : h.ok ? CheckCircle2 : XCircle;
+                  const color = !h ? "#5B6B8C" : h.ok ? "var(--ink-green)" : "#DC2626";
+                  const extra =
+                    row.key === "storage" && h && "companies" in h && h.companies !== undefined
+                      ? ` · ${h.companies} companies, ${h.people ?? 0} people, largest ${h.largestKb ?? 0} KB`
+                      : "";
+                  return (
+                    <li key={row.key} className="flex items-start gap-1.5 text-[11px] leading-snug text-text-secondary">
+                      <Icon size={12} strokeWidth={2.2} className="mt-0.5 shrink-0" style={{ color }} />
+                      <span>
+                        <span className="font-semibold text-text-primary">{row.label}</span>
+                        {!h ? (
+                          <span className="text-text-tertiary"> · not checked yet</span>
+                        ) : h.ok ? (
+                          <span className="text-text-tertiary"> · OK{extra}{now ? `, ${agoLabel(Date.parse(h.at), now)}` : ""}</span>
+                        ) : (
+                          <span className="font-medium" style={{ color }}> · failing{h.note ? `: ${h.note}` : ""}</span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

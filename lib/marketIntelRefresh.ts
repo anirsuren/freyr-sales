@@ -1,9 +1,5 @@
 import { after } from "next/server";
-import {
-  COMPANY_SOURCES,
-  COMPETITOR_SOURCES,
-  type CompanySource,
-} from "./marketIntelSources";
+import type { CompanySource } from "./marketIntelSources";
 import {
   bustMarketIntelFeedCache,
   cleanSourceLabel,
@@ -18,6 +14,7 @@ import { mirrorPhoto } from "./miPhotos";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
 import {
   CLASSIFY_BATCH,
+  classifyFailures,
   classifyItems,
   classifyMna,
   classifyUsage,
@@ -31,10 +28,14 @@ import { resolveOfficialDomain, scrapeSiteUpdates } from "./siteUpdates";
 import {
   bustMarketIntelTrackingCache,
   findTrackedByLinkedInSlug,
+  isActiveCompany,
   miSlug,
+  seedCompanies,
+  type Followers,
   type TrackedCompany,
   type TrackedPerson,
 } from "./marketIntelTracking";
+import { readMarketIntelFollowers } from "./marketIntelBookmarks";
 import type { Division } from "./offeringMaterials";
 
 /**
@@ -201,6 +202,15 @@ async function loadFeedForWrite(): Promise<any> {
 }
 
 // ------------------------------------------------------------------ scraping
+let lastApifyError = "";
+let lastPerplexityError = "";
+export function noteApifyError(message: string): void {
+  lastApifyError = message.slice(0, 160);
+}
+export function notePerplexityError(message: string): void {
+  lastPerplexityError = message.slice(0, 160);
+}
+
 async function runActor(actor: string, input: unknown): Promise<any> {
   // One retry: the actors flake intermittently (timeouts, transient 5xx), and
   // before Aug 12 a single hiccup silently cost a company its whole refresh
@@ -223,6 +233,7 @@ async function runActor(actor: string, input: unknown): Promise<any> {
       return res.json();
     } catch (error) {
       lastError = error;
+      lastApifyError = String(error instanceof Error ? error.message : error).slice(0, 160);
       await new Promise((resolve) => setTimeout(resolve, 2_000));
     }
   }
@@ -680,6 +691,16 @@ function mergeNews(existing: FeedNews[], incoming: FeedNews[]): FeedNews[] {
 }
 
 function trackedToSource(company: TrackedCompany): CompanySource {
+  if (company.scrape) {
+    return {
+      id: company.id,
+      name: company.name,
+      li: company.scrape.li,
+      expect: company.scrape.expect,
+      ...(company.scrape.newsQ ? { newsQ: company.scrape.newsQ } : {}),
+      ...(company.scrape.site ? { site: company.scrape.site } : {}),
+    };
+  }
   const slug = company.linkedinUrl.match(/\/company\/([^/]+)/)?.[1];
   const expectToken =
     company.name.toLowerCase().split(/\s+/).find((w) => w.length > 3) ?? "";
@@ -698,6 +719,31 @@ function trackedToSource(company: TrackedCompany): CompanySource {
 
 function emptyFeed(): MarketIntelFeed & { spendUsd: number } {
   return { version: 2, companies: {}, people: {}, updatedAt: null, spendUsd: 0 };
+}
+
+/**
+ * THE REGISTRY AS A RUN SEES IT: the tracking row with the seed list folded
+ * in once, plus who follows what. Only ACTIVE companies are visited, on the
+ * standing watch or followed by somebody (Anir, Sep 10: "if I remove
+ * something and no one has it, it just stops doing it").
+ */
+async function loadRegistry(): Promise<{
+  tracking: any;
+  companies: TrackedCompany[];
+  active: TrackedCompany[];
+  people: TrackedPerson[];
+  followers: Followers;
+  competitorIds: Set<string>;
+}> {
+  const tracking = (await readRow(TRACKING_ROW)) ?? { companies: [], people: [] };
+  tracking.companies = Array.isArray(tracking.companies) ? tracking.companies : [];
+  tracking.people = Array.isArray(tracking.people) ? tracking.people : [];
+  if (seedCompanies(tracking) > 0) await writeRow(TRACKING_ROW, tracking);
+  const companies: TrackedCompany[] = tracking.companies;
+  const followers = await readMarketIntelFollowers().catch(() => ({}) as Followers);
+  const active = companies.filter((c) => isActiveCompany(c, followers));
+  const competitorIds = new Set(companies.filter((c) => c.group === "competitor").map((c) => c.id));
+  return { tracking, companies, active, people: tracking.people, followers, competitorIds };
 }
 
 // ------------------------------------------------------------------ the lock
@@ -764,35 +810,28 @@ export async function runMarketIntelRefresh(options?: {
   let skippedFresh = 0;
   let peopleRefreshed = 0;
   const budget: LabelBudget = { calls: LABEL_CALLS_PER_RUN };
+  /* WHAT ANSWERED AND WHAT DID NOT, written to the meta row at the end so
+     the page can say "News (Perplexity): failing since 2pm" instead of
+     quietly showing nothing new. */
+  const tally = {
+    perplexity: { tries: 0, fails: 0, note: "" },
+    apify: { tries: 0, fails: 0, note: "" },
+    anthropic: { calls: classifyUsage.calls, failsBefore: classifyFailures.count },
+  };
   try {
-    const tracking = (await readRow(TRACKING_ROW)) ?? { companies: [], people: [] };
-    const trackedCompanies: TrackedCompany[] = Array.isArray(tracking.companies)
-      ? tracking.companies
-      : [];
-    const trackedPeople: TrackedPerson[] = Array.isArray(tracking.people)
-      ? tracking.people
-      : [];
+    const registry = await loadRegistry();
+    const trackedCompanies: TrackedCompany[] = registry.companies;
+    const trackedPeople: TrackedPerson[] = registry.people;
+    const competitorIds = registry.competitorIds;
+    const activeIds = new Set(registry.active.map((c) => c.id));
 
     // Least-recently-synced first: when the dollar cap cuts a run short, the
     // tail that missed out goes to the FRONT of tomorrow's run instead of
     // being the same starved tail forever.
     const lastSync = (id: string, map: Record<string, { fetchedAt?: string }>) =>
       Date.parse(map[id]?.fetchedAt ?? "") || 0;
-    const competitorIds = new Set(COMPETITOR_SOURCES.map((s) => s.id));
-    for (const c of trackedCompanies) {
-      if (c.group === "competitor") competitorIds.add(c.id);
-    }
-    const sources: CompanySource[] = [
-      ...COMPANY_SOURCES,
-      ...COMPETITOR_SOURCES,
-      ...trackedCompanies
-        .filter(
-          (c) =>
-            !COMPANY_SOURCES.some((s) => s.id === c.id) &&
-            !COMPETITOR_SOURCES.some((s) => s.id === c.id)
-        )
-        .map(trackedToSource),
-    ]
+    const sources: CompanySource[] = registry.active
+      .map(trackedToSource)
       .filter(
         (s) => !options?.onlyCompanyIds || options.onlyCompanyIds.includes(s.id)
       )
@@ -816,7 +855,12 @@ export async function runMarketIntelRefresh(options?: {
         }
         const fresh = await scrapeFreshNews(source, activePerplexityKey);
         spentFresh += fresh.cost;
-        if (fresh.failed) continue;
+        tally.perplexity.tries += 1;
+        if (fresh.failed) {
+          tally.perplexity.fails += 1;
+          tally.perplexity.note = lastPerplexityError;
+          continue;
+        }
         const entry: FeedCompany = existing ?? {
           id: source.id,
           name: source.name,
@@ -953,6 +997,11 @@ export async function runMarketIntelRefresh(options?: {
       const newsResult = await scrapeNews(source);
       spent += newsResult.cost;
       chargeApify(feed, postsResult.cost + newsResult.cost);
+      tally.apify.tries += 1;
+      if (postsResult.failed && newsResult.failed) {
+        tally.apify.fails += 1;
+        tally.apify.note = lastApifyError;
+      }
       if (postsResult.failed && newsResult.failed) {
         // Nothing came back at all. Before Aug 12 this still stamped the
         // company "fresh", so the UI said Refreshed over day-old data and the
@@ -1006,6 +1055,8 @@ export async function runMarketIntelRefresh(options?: {
         (p) => !options?.onlyCompanyIds || options.onlyCompanyIds.includes(p.companyId)
       )
       .filter((p) => !competitorIds.has(p.companyId))
+      // A paused company's people pause with it.
+      .filter((p) => activeIds.has(p.companyId))
       .sort(
       (a, b) =>
         (Date.parse(feed.people[a.id]?.fetchedAt ?? "") || 0) -
@@ -1051,6 +1102,28 @@ export async function runMarketIntelRefresh(options?: {
       await saveFeedPerson(feed, person.id);
     }
   } finally {
+    try {
+      const at = new Date().toISOString();
+      const health = { ...(feed.health ?? {}) };
+      if (tally.perplexity.tries > 0) {
+        const ok = tally.perplexity.fails < tally.perplexity.tries;
+        health.perplexity = { ok, at, ...(ok ? {} : { note: tally.perplexity.note || "every call failed" }) };
+      }
+      if (tally.apify.tries > 0) {
+        const ok = tally.apify.fails < tally.apify.tries;
+        health.apify = { ok, at, ...(ok ? {} : { note: tally.apify.note || "every scrape failed" }) };
+      }
+      const anthropicCalls = classifyUsage.calls - tally.anthropic.calls;
+      const anthropicFails = classifyFailures.count - tally.anthropic.failsBefore;
+      if (anthropicCalls > 0 || anthropicFails > 0) {
+        const ok = anthropicFails < anthropicCalls + anthropicFails;
+        health.anthropic = { ok, at, ...(ok ? {} : { note: classifyFailures.note }) };
+      }
+      feed.health = health;
+      await saveFeedMeta(feed);
+    } catch {
+      /* health is a courtesy; never the reason a run fails */
+    }
     await releaseLock(token).catch(() => undefined);
   }
 
@@ -1135,6 +1208,8 @@ export type AddCompanyMeta = {
   /** False when this person has used up their allowance of NEW companies.
    *  Following one already on the watch is always allowed. */
   canCreate?: boolean;
+  /** Put a NEW company on the workspace's standing watch (admins). */
+  standing?: boolean;
 };
 
 export type AddCompanyResult = {
@@ -1144,6 +1219,8 @@ export type AddCompanyResult = {
   /** True when the company was already on the watch: nothing was scraped,
    *  the person simply follows it now. */
   existing: boolean;
+  /** True when it was there but paused (nobody had it) and is now back. */
+  resumed: boolean;
   company?: TrackedCompany;
 };
 
@@ -1162,38 +1239,26 @@ export async function addCompanyByLink(
       "That doesn't look like a LinkedIn company page. It should look like linkedin.com/company/their-name"
     );
   }
-  const tracking = (await readRow(TRACKING_ROW)) ?? { companies: [], people: [] };
-  tracking.companies = Array.isArray(tracking.companies) ? tracking.companies : [];
-  tracking.people = Array.isArray(tracking.people) ? tracking.people : [];
+  const registry = await loadRegistry();
+  const tracking = registry.tracking;
   const feed: any = await loadFeedForWrite();
 
   /* KNOWN BEFORE PAID (Anir, Sep 10: "if someone chooses that same company
      it won't scrape twice. It'll just show the one thing to two people").
-     The slug is matched against the built-in list and the tracked list
-     before any scrape: a company already on the watch is simply followed,
-     and nothing is read from LinkedIn again. */
+     The slug is matched against the registry, seed settings included, before
+     any scrape: a company already on the watch is simply followed, and one
+     that was paused is back the moment somebody wants it. */
   const wanted = slug.toLowerCase();
-  const builtIn = [...COMPANY_SOURCES, ...COMPETITOR_SOURCES].find((s) =>
-    (s.li ?? []).some((l) => l.toLowerCase() === wanted)
-  );
-  const tracked = findTrackedByLinkedInSlug(tracking, slug);
-  const known = builtIn
-    ? { id: builtIn.id, name: builtIn.name }
-    : tracked
-      ? { id: tracked.id, name: tracked.name }
-      : null;
-  if (known) {
-    const stored: FeedCompany | undefined = feed.companies[known.id];
+  const tracked =
+    registry.companies.find((c) => (c.scrape?.li ?? []).some((l) => l.toLowerCase() === wanted)) ??
+    findTrackedByLinkedInSlug(tracking, slug);
+  if (tracked) {
     return {
-      id: known.id,
-      name: known.name,
-      group:
-        stored?.group === "competitor" || tracked?.group === "competitor"
-          ? "competitor"
-          : COMPETITOR_SOURCES.some((c) => c.id === known.id)
-            ? "competitor"
-            : "customer",
+      id: tracked.id,
+      name: tracked.name,
+      group: tracked.group === "competitor" ? "competitor" : "customer",
       existing: true,
+      resumed: !isActiveCompany(tracked, registry.followers),
       company: tracked,
     };
   }
@@ -1216,19 +1281,21 @@ export async function addCompanyByLink(
   }
   const id = miSlug(name);
   chargeApify(feed, probe.cost);
-  const already =
-    feed.companies[id] || tracking.companies.find((c: TrackedCompany) => c.id === id);
-  if (already) {
+  const already: TrackedCompany | undefined = tracking.companies.find(
+    (c: TrackedCompany) => c.id === id
+  );
+  if (already || feed.companies[id]) {
     /* A different slug for a page already on the watch: the probe was the
        only cost, and the answer is the same as a known slug. */
     await saveFeedMeta(feed);
     const storedGroup = feed.companies[id]?.group ?? already?.group;
     return {
       id,
-      name: feed.companies[id]?.name ?? already.name ?? name,
+      name: feed.companies[id]?.name ?? already?.name ?? name,
       group: storedGroup === "competitor" ? "competitor" : "customer",
       existing: true,
-      company: tracking.companies.find((c: TrackedCompany) => c.id === id),
+      resumed: already ? !isActiveCompany(already, registry.followers) : false,
+      company: already,
     };
   }
   const divisions = (meta.divisions ?? []).filter((d) => ["MPR", "MDV", "CON"].includes(d));
@@ -1250,6 +1317,7 @@ export async function addCompanyByLink(
     addedAt: new Date().toISOString(),
     divisions,
     ...(meta.addedBy ? { addedBy: meta.addedBy } : {}),
+    ...(meta.standing ? { standing: true } : {}),
   };
   tracking.companies.push(company);
   tracking.divisions = { ...(tracking.divisions ?? {}), [id]: divisions };
@@ -1297,7 +1365,7 @@ export async function addCompanyByLink(
         1000
     ) / 1000;
   await saveFeedCompany(feed, id);
-  return { id, name, group, existing: false, company };
+  return { id, name, group, existing: false, resumed: false, company };
 }
 
 export async function addPersonByLink(
@@ -1452,25 +1520,13 @@ export async function runSiteUpdatesRefresh(options?: {
   const feed: any = await readMarketIntelFeed({ fresh: true }).catch(() => null);
   if (!feed || !feed.companies) return nothing("no feed row yet");
 
-  const tracking = (await readRow(TRACKING_ROW).catch(() => null)) ?? {};
-  const tracked: TrackedCompany[] = Array.isArray(tracking.companies)
-    ? tracking.companies
-    : [];
+  const registry = await loadRegistry();
 
-  /* Every company on the watch that has a domain to read. One with no domain
-     costs nothing and simply has no website column — that is a data gap, not a
-     failure, and it is visible as such. */
-  const sources: CompanySource[] = [
-    ...COMPANY_SOURCES,
-    ...COMPETITOR_SOURCES,
-    ...tracked
-      .filter(
-        (c) =>
-          !COMPANY_SOURCES.some((s) => s.id === c.id) &&
-          !COMPETITOR_SOURCES.some((s) => s.id === c.id)
-      )
-      .map(trackedToSource),
-  ]
+  /* Every ACTIVE company on the watch that has a domain to read. One with no
+     domain costs nothing and simply has no website column; a paused one is
+     not visited at all. */
+  const sources: CompanySource[] = registry.active
+    .map(trackedToSource)
     .filter((s) => !!s.site)
     .filter(
       (s) => !options?.onlyCompanyIds || options.onlyCompanyIds.includes(s.id)
@@ -1524,9 +1580,7 @@ export async function runSiteUpdatesRefresh(options?: {
       posts: [],
       news: [],
       tldr: null,
-      group: COMPETITOR_SOURCES.some((c) => c.id === source.id)
-        ? "competitor"
-        : "customer",
+      group: registry.competitorIds.has(source.id) ? "competitor" : "customer",
       fetchedAt: new Date(0).toISOString(),
     };
     if (result.failed) failed += 1;
@@ -1604,13 +1658,10 @@ export async function runMarketIntelLabeling(options?: {
   if (!hasEnv()) return nothing("missing env (database)");
   const feed: any = await readMarketIntelFeed({ fresh: true }).catch(() => null);
   if (!feed || !feed.companies) return nothing("no feed row yet");
-  const tracking = (await readRow(TRACKING_ROW).catch(() => null)) ?? {};
-  const trackedCompanies: TrackedCompany[] = Array.isArray(tracking.companies)
-    ? tracking.companies
-    : [];
-  const trackedPeople: TrackedPerson[] = Array.isArray(tracking.people) ? tracking.people : [];
-  const competitorIds = new Set(COMPETITOR_SOURCES.map((s) => s.id));
-  for (const c of trackedCompanies) if (c.group === "competitor") competitorIds.add(c.id);
+  const registry = await loadRegistry();
+  const trackedCompanies: TrackedCompany[] = registry.companies;
+  const trackedPeople: TrackedPerson[] = registry.people;
+  const competitorIds = registry.competitorIds;
 
   const budget: LabelBudget = { calls: Math.max(1, Math.min(400, options?.maxCalls ?? 60)) };
   const before = { ...classifyUsage };
@@ -1688,4 +1739,111 @@ export async function refreshThoughtLeadershipNow(): Promise<{ items: number; to
   feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + cost) * 1000) / 1000;
   await saveFeedMeta(feed);
   return { items: feed.thought?.items?.length ?? 0, total: feed.thought?.total ?? 0, cost };
+}
+
+
+/**
+ * SOMEBODY WANTS A PAUSED COMPANY AGAIN. It rejoins the rotation on its own,
+ * but if what is stored is more than a day old the person is looking at a
+ * stale page, so one targeted pull runs right away (the normal caps apply).
+ */
+export async function resumeCompanyIfStale(companyId: string): Promise<void> {
+  if (!hasEnv()) return;
+  const feed = await readMarketIntelFeed().catch(() => null);
+  const stored = feed?.companies[companyId];
+  const age = stored?.fetchedAt ? Date.now() - Date.parse(stored.fetchedAt) : Infinity;
+  if (age < DAY_MS) return;
+  await runMarketIntelRefresh({ force: true, onlyCompanyIds: [companyId] }).catch((error) =>
+    console.error(`[market-intel] resume of ${companyId} failed:`, error)
+  );
+}
+
+
+/**
+ * CHECK CONNECTIONS, ON DEMAND (Anir, Sep 10: "Do the API keys work? Is the
+ * storage good?"). One cheap call to each service with the keys the runs
+ * use, plus a look at the store, written to the meta row so the page shows
+ * it. Costs a fraction of a cent.
+ */
+export async function checkMarketIntelConnections(): Promise<NonNullable<MarketIntelFeed["health"]>> {
+  const at = new Date().toISOString();
+  const health: NonNullable<MarketIntelFeed["health"]> = {};
+  const config = hasEnv() ? await readRow(CONFIG_ROW).catch(() => null) : null;
+  const apifyToken = config?.apifyToken || process.env.APIFY_API_TOKEN;
+  const perplexityKey = config?.perplexityKey || process.env.PERPLEXITY_API_KEY;
+
+  if (!apifyToken) health.apify = { ok: false, at, note: "no Apify token in the config row or env" };
+  else {
+    try {
+      const res = await fetch(`https://api.apify.com/v2/users/me?token=${apifyToken}`, {
+        signal: AbortSignal.timeout(20_000),
+      });
+      health.apify = res.ok
+        ? { ok: true, at }
+        : { ok: false, at, note: `Apify HTTP ${res.status}${res.status === 401 ? " (bad token)" : ""}` };
+    } catch (error) {
+      health.apify = { ok: false, at, note: String(error instanceof Error ? error.message : error).slice(0, 120) };
+    }
+  }
+
+  if (!perplexityKey) health.perplexity = { ok: false, at, note: "no Perplexity key in the config row or env" };
+  else {
+    try {
+      const res = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${perplexityKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: "Say ok" }], max_tokens: 20 }),
+        signal: AbortSignal.timeout(30_000),
+      });
+      health.perplexity = res.ok
+        ? { ok: true, at }
+        : {
+            ok: false,
+            at,
+            note: `Perplexity HTTP ${res.status}${res.status === 401 ? " (out of credits or bad key)" : ""}`,
+          };
+    } catch (error) {
+      health.perplexity = { ok: false, at, note: String(error instanceof Error ? error.message : error).slice(0, 120) };
+    }
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) health.anthropic = { ok: false, at, note: "no Anthropic key" };
+  else {
+    try {
+      const Anthropic = (await import("@anthropic-ai/sdk")).default;
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      await client.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 3,
+        messages: [{ role: "user", content: "ok" }],
+      });
+      health.anthropic = { ok: true, at };
+    } catch (error) {
+      health.anthropic = { ok: false, at, note: String(error instanceof Error ? error.message : error).slice(0, 120) };
+    }
+  }
+
+  try {
+    const db = client();
+    const [companies, people] = await Promise.all([
+      db.from("offering_catalog_state").select("id, catalog").like("id", "market-intel-company:%"),
+      db.from("offering_catalog_state").select("id").like("id", "market-intel-person:%"),
+    ]);
+    if (companies.error) throw new Error(companies.error.message);
+    const largest = Math.max(0, ...(companies.data ?? []).map((r: any) => JSON.stringify(r.catalog).length));
+    health.storage = {
+      ok: true,
+      at,
+      companies: (companies.data ?? []).length,
+      people: (people.data ?? []).length,
+      largestKb: Math.round(largest / 1024),
+    };
+  } catch (error) {
+    health.storage = { ok: false, at, note: String(error instanceof Error ? error.message : error).slice(0, 120) };
+  }
+
+  const feed: any = (await readMarketIntelFeed({ fresh: true }).catch(() => null)) ?? emptyFeed();
+  feed.health = { ...(feed.health ?? {}), ...health };
+  await saveFeedMeta(feed).catch(() => undefined);
+  return health;
 }

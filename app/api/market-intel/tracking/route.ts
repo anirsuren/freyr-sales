@@ -8,19 +8,27 @@ import {
   addPersonByLink,
   refreshTrackedCompanyNow,
   refreshTrackedPersonNow,
+  resumeCompanyIfStale,
 } from "@/lib/marketIntelRefresh";
+import { deleteFeedCompany } from "@/lib/marketIntelFeed";
 import {
   MEMBER_TRACK_LIMIT,
   cleanDivisions,
   countAddedBy,
+  deleteCompanyForGood,
   readMarketIntelTracking,
   setCompanyDivisions,
+  setCompanyGroup,
+  setCompanyStanding,
   trackCompany,
   trackPerson,
-  untrackCompany,
   untrackPerson,
 } from "@/lib/marketIntelTracking";
-import { setMarketIntelBookmark } from "@/lib/marketIntelBookmarks";
+import {
+  forgetMarketIntelCompany,
+  readMarketIntelFollowers,
+  setMarketIntelBookmark,
+} from "@/lib/marketIntelBookmarks";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +64,11 @@ async function acquireTrackingWrite(): Promise<() => void> {
  * enforced here: a person may put MEMBER_TRACK_LIMIT NEW companies on the
  * watch; following a company that is already there is free and unlimited,
  * because it is scraped once for everybody. Admins have no limit.
+ *
+ * THE MODEL (Anir, Sep 10): a company is on the watch because somebody has
+ * it, the workspace's standing watch (admins add and remove) or a person's
+ * own list (anybody follows and unfollows). It is refreshed while somebody
+ * has it and pauses when nobody does. Only an admin deletes it for good.
  */
 async function readOnly(): Promise<NextResponse | null> {
   const refusal = await moduleWriteRefusal("/market-intel");
@@ -87,14 +100,23 @@ export async function POST(req: NextRequest) {
       const result = await addCompanyByLink(
         String(body.linkedinUrl ?? ""),
         body?.group === "competitor" ? "competitor" : "customer",
-        { addedBy, divisions: cleanDivisions(body.divisions), canCreate }
+        {
+          addedBy,
+          divisions: cleanDivisions(body.divisions),
+          canCreate,
+          // Only an admin puts a new company on the workspace's standing watch.
+          standing: isAdmin && body?.standing === true,
+        }
       );
       // Whoever added or chose it follows it: it lands on their own list.
       await setMarketIntelBookmark(scope, result.id, true).catch(() => undefined);
+      // A paused company somebody wants again is pulled now if its data is old.
+      if (result.resumed) after(() => resumeCompanyIfStale(result.id));
       return NextResponse.json({
         ok: true,
         company: { id: result.id, name: result.name, group: result.group },
         existing: result.existing,
+        resumed: result.resumed,
         addedLeft: isAdmin
           ? null
           : Math.max(
@@ -149,6 +171,23 @@ export async function POST(req: NextRequest) {
       );
       return NextResponse.json({ ok: true, person });
     }
+    /* THE STANDING WATCH and the tab a company lives on: admins only. */
+    if (body?.kind === "standing" || body?.kind === "group") {
+      if (!isAdmin) {
+        return NextResponse.json(
+          { error: "Only an admin changes what is tracked for everyone." },
+          { status: 403 }
+        );
+      }
+      const id = String(body?.id ?? "").trim();
+      if (body.kind === "standing") {
+        const company = await setCompanyStanding(id, body?.on === true);
+        return NextResponse.json({ ok: true, standing: company.standing === true });
+      }
+      const group = body?.group === "competitor" ? "competitor" : "customer";
+      const company = await setCompanyGroup(id, group);
+      return NextResponse.json({ ok: true, group: company.group });
+    }
     /* THE DIVISION TAG on any company, built-in or added (Saras, Sep 10). */
     if (body?.kind === "divisions") {
       const divisions = cleanDivisions(body.divisions);
@@ -187,29 +226,26 @@ export async function DELETE(req: NextRequest) {
   const releaseWrite = await acquireTrackingWrite();
   try {
     if (body?.kind === "company") {
-      /* YOURS TO REMOVE ONLY IF YOU ADDED IT (Anir, Sep 10: one shared list,
-         each person's own on top). The list is shared, so taking a company
-         off it takes it off everybody's; that stays with the person who put
-         it there, or an admin. */
+      /* GONE FOR GOOD, ADMINS ONLY (Anir, Sep 10). Everybody else takes a
+         company off their OWN list with the star; when nobody has it left it
+         pauses by itself. Deleting removes the registry entry, its people,
+         its data rows and every follow, and a seed stays deleted. */
       if (!isAdmin) {
-        const tracking = await readMarketIntelTracking();
-        const mine = tracking.companies.find((c) => c.id === id);
-        if (!mine) {
-          return NextResponse.json(
-            { error: "Only an admin can stop tracking a company from the standard list. You can unfollow it from your own list instead." },
-            { status: 403 }
-          );
-        }
-        if (mine.addedBy?.id !== scope.userId) {
-          return NextResponse.json(
-            { error: "Only the person who added a company, or an admin, can stop tracking it. You can unfollow it from your own list instead." },
-            { status: 403 }
-          );
-        }
+        return NextResponse.json(
+          { error: "Only an admin can delete a company for everyone. Remove it from your list with the star instead." },
+          { status: 403 }
+        );
       }
-      await untrackCompany(id);
-      await setMarketIntelBookmark(scope, id, false).catch(() => undefined);
-      return NextResponse.json({ ok: true });
+      const tracking = await readMarketIntelTracking();
+      const personIds = tracking.people.filter((p) => p.companyId === id).map((p) => p.id);
+      const followers =
+        (await readMarketIntelFollowers().catch(() => ({}) as Record<string, string[]>))[id]?.length ?? 0;
+      const gone = await deleteCompanyForGood(id);
+      await deleteFeedCompany(id, personIds).catch((error) =>
+        console.error("[market-intel] delete of feed rows failed:", error)
+      );
+      const lists = await forgetMarketIntelCompany(id).catch(() => 0);
+      return NextResponse.json({ ok: true, found: gone.found, followersRemoved: followers, listsTouched: lists });
     }
     if (body?.kind === "person") {
       await untrackPerson(id);

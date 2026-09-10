@@ -1,4 +1,5 @@
 import { cleanSourceLabel, type FeedNews } from "./marketIntelFeed";
+import { notePerplexityError } from "./marketIntelRefresh";
 import type { CompanySource } from "./marketIntelSources";
 
 /**
@@ -163,5 +164,6 @@ export async function scrapeFreshNews(
   console.error(
     `[market-intel] fresh news failed for "${source.name}": ${lastError instanceof Error ? lastError.message : lastError}`
   );
+  notePerplexityError(String(lastError instanceof Error ? lastError.message : lastError));
   return { news: [], cost: 0, failed: true };
 }

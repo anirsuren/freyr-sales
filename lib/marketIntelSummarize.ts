@@ -333,6 +333,8 @@ export const CLASSIFY_BATCH = 20;
 /** Tokens spent by classifyItems since the process started, for the ops
  *  hatch to report a cost rather than a guess. */
 export const classifyUsage = { calls: 0, inputTokens: 0, outputTokens: 0 };
+/** Calls that threw, and the last reason, for the health line. */
+export const classifyFailures = { count: 0, note: "" };
 
 export type ClassifyInput = {
   kind: "post" | "news" | "site";
@@ -416,6 +418,8 @@ Rules: one entry per item, in order. Never invent facts. Read the whole text bef
       });
     }
   } catch (error) {
+    classifyFailures.count += 1;
+    classifyFailures.note = String(error instanceof Error ? error.message : error).slice(0, 160);
     console.error(
       `[market-intel] classify failed for ${companyName}: ${error instanceof Error ? error.message : error}`
     );

@@ -45,7 +45,8 @@ import { Sparkline } from "@/components/charts/Charts";
 import { MiLogo } from "@/components/market-intel/MiLogo";
 import { DivisionEditor } from "@/components/market-intel/DivisionChips";
 import { SignalRow } from "@/components/market-intel/SignalRow";
-import { StopTrackingButton } from "@/components/market-intel/StopTrackingButton";
+import { CompanyAdminControls } from "@/components/market-intel/CompanyAdminControls";
+import { WatchStatus, type WatchState } from "@/components/market-intel/WatchStatus";
 import { TrackPersonButton } from "@/components/market-intel/TrackPersonControls";
 import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
 import { cn } from "@/lib/utils";
@@ -109,8 +110,8 @@ export function LiveCompanyBriefing({
   personPosts = {},
   divisions = [],
   canWrite = false,
-  canRemove = false,
-  tracked = false,
+  isAdmin = false,
+  watch = { standing: false, followers: 0 },
 }: {
   briefing: LiveBriefing;
   subtitle?: string;
@@ -120,10 +121,10 @@ export function LiveCompanyBriefing({
   divisions?: Division[];
   /** May this viewer change the watch (tags, people)? The module's write privilege. */
   canWrite?: boolean;
-  /** May this viewer take the company off the watch: the adder, or an admin. */
-  canRemove?: boolean;
-  /** True when the company was added by the team (not the built-in list). */
-  tracked?: boolean;
+  /** Admins: standing watch, tab, delete for everyone. */
+  isAdmin?: boolean;
+  /** Standing watch, followers, or paused. */
+  watch?: WatchState;
 }) {
   const { toast } = useToast();
   const isCompetitor = briefing.group === "competitor";
@@ -187,8 +188,17 @@ export function LiveCompanyBriefing({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: briefing.id, on: next }),
       });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || "Could not save.");
-      toast(next ? `${briefing.name} is on your list.` : `${briefing.name} is off your list.`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Could not save.");
+      toast(
+        data?.paused
+          ? `${briefing.name} is off your list. Nobody has it now, so it's paused.`
+          : data?.resumed
+            ? `${briefing.name} is on your list and back on the watch.`
+            : next
+              ? `${briefing.name} is on your list.`
+              : `${briefing.name} is off your list.`
+      );
     } catch (caught) {
       setBookmarked(!next);
       toast(caught instanceof Error ? caught.message : "Could not save your list.", "error");
@@ -569,8 +579,8 @@ export function LiveCompanyBriefing({
               type="button"
               onClick={() => void toggleBookmark()}
               aria-pressed={bookmarked ?? false}
-              aria-label={bookmarked ? `Unfollow ${briefing.name}` : `Follow ${briefing.name}`}
-              title={bookmarked ? "On your list. Click to unfollow." : "Add to your list"}
+              aria-label={bookmarked ? `Remove ${briefing.name} from my list` : `Add ${briefing.name} to my list`}
+              title={bookmarked ? "On your list. Click to remove it." : "Add to my list"}
               className={cn(
                 "flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors",
                 bookmarked
@@ -584,7 +594,8 @@ export function LiveCompanyBriefing({
           <p className="mt-0.5 text-[13px] text-text-secondary">
             {subtitle || "Live briefing from LinkedIn, the news wire and their own website, past 3 months"}
           </p>
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <WatchStatus state={watch} size="md" />
             <DivisionEditor
               companyId={briefing.id}
               companyName={briefing.name}
@@ -598,13 +609,23 @@ export function LiveCompanyBriefing({
             <span className="relative flex h-2 w-2">
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
             </span>
-            Live data · updated {briefing.updatedLabel}
+            {!watch.standing && watch.followers === 0
+              ? `Paused · nothing new since ${briefing.updatedLabel}`
+              : `Live data · updated ${briefing.updatedLabel}`}
           </span>
-          {tracked && canRemove && (
-            <StopTrackingButton companyId={briefing.id} companyName={briefing.name} />
-          )}
         </span>
       </div>
+      {isAdmin && (
+        <div className="rise-in mt-3">
+          <CompanyAdminControls
+            companyId={briefing.id}
+            companyName={briefing.name}
+            group={briefing.group}
+            standing={watch.standing}
+            followers={watch.followers}
+          />
+        </div>
+      )}
 
       {/* The rundown before any scrolling: everything that happened, in one
           breath, regenerated by AI with each refresh. */}
@@ -878,10 +899,10 @@ export function LiveCompanyBriefing({
           <Card className="p-4">
             <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
               <TrendingUp size={14} strokeWidth={2} className="text-blue-primary" />
-              Activity, last 12 weeks
+              Activity, last 30 days
             </h2>
             <p className="mt-0.5 text-[11.5px] text-text-tertiary">
-              Posts, articles and website items per week.
+              Posts, articles and website items per day.
             </p>
             <div className="mt-2">
               <Sparkline
@@ -889,7 +910,7 @@ export function LiveCompanyBriefing({
                 height={44}
                 xLabels={briefing.trendLabels}
                 unit="items"
-                label={`${briefing.name} posts, articles and website items per week`}
+                label={briefing.name}
               />
             </div>
           </Card>

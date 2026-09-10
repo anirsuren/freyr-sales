@@ -30,6 +30,7 @@ import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { readFeedPeopleSummaries, readMarketIntelSummaries } from "@/lib/marketIntelFeed";
+import { readMarketIntelBookmarks, readMarketIntelFollowers } from "@/lib/marketIntelBookmarks";
 import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
 import {
   MI_COMPANIES,
@@ -99,7 +100,11 @@ export default async function MarketIntelPage({
             <MiTabs
               active="market"
               action={
-                <RefreshChip updatedAt={intel.meta.updatedAt} />
+                <RefreshChip
+                  updatedAt={intel.meta.updatedAt}
+                  health={intel.meta.health}
+                  isAdmin={(await getCurrentUser()).role === "admin"}
+                />
               }
             >
               <MnaTracker board={intel.meta.mna ?? null} thought={intel.meta.thought ?? null} />
@@ -112,17 +117,19 @@ export default async function MarketIntelPage({
          member). Admins have none; a company already on the watch never
          counts, since following it costs nothing. */
       let addedLeft: number | null = null;
-      if (canTrack) {
-        const user = await getCurrentUser();
-        if (user.role !== "admin") {
-          const scope = await requireServerMemberScope().catch(() => null);
-          if (scope) {
-            addedLeft = Math.max(0, MEMBER_TRACK_LIMIT - countAddedBy(tracking, scope.userId));
-          }
-        }
+      const user = await getCurrentUser();
+      const isAdmin = user.role === "admin";
+      const scope = await requireServerMemberScope().catch(() => null);
+      if (canTrack && !isAdmin && scope) {
+        addedLeft = Math.max(0, MEMBER_TRACK_LIMIT - countAddedBy(tracking, scope.userId));
       }
-      const people =
-        group === "competitor" ? {} : await readFeedPeopleSummaries().catch(() => ({}));
+      const [people, followers, mine] = await Promise.all([
+        group === "competitor" ? Promise.resolve({}) : readFeedPeopleSummaries().catch(() => ({})),
+        readMarketIntelFollowers().catch(() => ({}) as Record<string, string[]>),
+        scope
+          ? readMarketIntelBookmarks(scope).catch(() => ({ companyIds: [], showAll: false, updatedAt: "" }))
+          : Promise.resolve({ companyIds: [] as string[], showAll: false, updatedAt: "" }),
+      ]);
       return (
         <LiveMarketIntelDashboard
           summaries={intel.companies}
@@ -132,6 +139,9 @@ export default async function MarketIntelPage({
           canTrack={canTrack}
           addedLeft={addedLeft}
           people={people}
+          followers={followers}
+          isAdmin={isAdmin}
+          viewer={{ userId: scope?.userId ?? "", myIds: mine.companyIds, showAll: mine.showAll }}
         />
       );
     }

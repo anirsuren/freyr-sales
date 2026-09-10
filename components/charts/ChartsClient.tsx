@@ -2895,7 +2895,9 @@ export function Sparkline({
         className="w-full block"
         style={{ height }}
         aria-hidden
-      >
+      
+              role="img"
+              aria-label={label}>
         <path
           d={d}
           fill="none"
