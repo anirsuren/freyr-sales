@@ -520,7 +520,7 @@ export function SolutioningModule({
               ariaLabel="Sort requests"
               minWidth={150}
               options={[
-                { value: "newest", label: "Newest first", color: "var(--ink-bright-blue)", icon: Sparkles },
+                { value: "newest", label: "By newest", color: "var(--ink-bright-blue)", icon: Sparkles },
                 { value: "needed", label: "By needed-by date", color: "var(--ink-orange)", icon: CalendarClock },
               ]}
             />

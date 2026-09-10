@@ -2501,7 +2501,7 @@ export function OpportunitiesBrowser({
                        stays on the deal, where he wants it kept for reporting;
                        it is no longer something this page totals by. */
                     options={[
-                      { value: "tcv", label: "Estimated TCV", color: "var(--ink-bright-blue)" },
+                      { value: "tcv", label: "By estimated TCV", color: "var(--ink-bright-blue)" },
                     ]}
                   />
                   {/* SORT BY CONFIDENCE (Manoj, Sep 3). Three states rather
@@ -2511,7 +2511,7 @@ export function OpportunitiesBrowser({
                       not silently get one. */}
                   <ColorSelect
                     value={confidenceSort}
-                    ariaLabel="Sort deals by confidence"
+                    ariaLabel="Sort deals"
                     onChange={(v) => setConfidenceSort(v as DealSort)}
                     minWidth={150}
                     dense
@@ -2528,19 +2528,19 @@ export function OpportunitiesBrowser({
                     options={[
                       {
                         value: "none",
-                        label: "Default order",
+                        label: "By default order",
                         color: "#8E98A8",
                         icon: ArrowUpDown,
                       },
                       {
                         value: "desc",
-                        label: "Confidence, high",
+                        label: "By confidence (high first)",
                         color: "var(--ink-teal-deep)",
                         icon: ArrowDownWideNarrow,
                       },
                       {
                         value: "asc",
-                        label: "Confidence, low",
+                        label: "By confidence (low first)",
                         color: "var(--ink-amber)",
                         icon: ArrowUpNarrowWide,
                       },
@@ -2551,13 +2551,13 @@ export function OpportunitiesBrowser({
                          holding that deal floats to the top with it. */
                       {
                         value: "changed",
-                        label: "Recently changed",
+                        label: "By recently changed",
                         color: "var(--ink-violet-soft)",
                         icon: History,
                       },
                       {
                         value: "added",
-                        label: "Recently added",
+                        label: "By recently added",
                         color: "var(--ink-teal-deep)",
                         icon: Clock,
                       },
@@ -2581,7 +2581,7 @@ export function OpportunitiesBrowser({
               ) : (
               <ColorSelect
                 value={groupBy}
-                ariaLabel="Group rows"
+                ariaLabel="Group deals"
                 onChange={(v) => setGroupBy(v as "none" | "customer" | "offering")}
                 minWidth={180}
                 dense

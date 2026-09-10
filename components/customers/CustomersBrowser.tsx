@@ -989,12 +989,12 @@ export function CustomersBrowser({
               // colour (standing rule: chips and dropdowns are never gray).
               // Dark teal, not amber: this label is drawn in its own colour, and
               // it must not echo the caution orange in the health filter beside it.
-              { value: "recent", label: "Newest", icon: CalendarClock, color: "var(--ink-teal-deep)" },
+              { value: "recent", label: "By newest", icon: CalendarClock, color: "var(--ink-teal-deep)" },
               // What moved lately, not what arrived lately (Anir, Sep 6).
-              { value: "updated", label: "Recently changed", icon: History, color: "var(--ink-amber)" },
-              { value: "company", label: "Company A, Z", icon: ArrowDownAZ, color: "var(--ink-bright-blue)" },
-              { value: "size", label: "Opportunity", icon: Target, color: "var(--ink-violet-soft)" },
-              { value: "health", label: "Health (at-risk first)", icon: HeartPulse, color: "#E11D48" },
+              { value: "updated", label: "By recently changed", icon: History, color: "var(--ink-amber)" },
+              { value: "company", label: "By company (A to Z)", icon: ArrowDownAZ, color: "var(--ink-bright-blue)" },
+              { value: "size", label: "By opportunity", icon: Target, color: "var(--ink-violet-soft)" },
+              { value: "health", label: "By health (at risk first)", icon: HeartPulse, color: "#E11D48" },
             ] satisfies ColorOption[]}
           />
           )
@@ -1025,7 +1025,7 @@ export function CustomersBrowser({
                   },
                   {
                     value: "owner",
-                    label: "Group by owner",
+                    label: "By owner",
                     short: "By owner",
                     icon: UserRound,
                     color: "var(--ink-bright-blue)",

@@ -1160,7 +1160,7 @@ export function OrgPerformanceTab({
           <ColorSelect
             value={sortBy}
             onChange={(v) => setSortBy(v as SortKey)}
-            ariaLabel="Sort the goals"
+            ariaLabel="Sort goals"
             dense
             minWidth={150}
             options={[

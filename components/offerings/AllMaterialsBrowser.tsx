@@ -864,15 +864,15 @@ const TABLE_CLASS =
             className="w-[150px] shrink-0"
             options={[
               { value: "offering", label: "By offering", color: "var(--ink-bright-blue)", icon: SortLayers },
-              { value: "name", label: "Name (A, Z)", color: "var(--ink-violet-soft)", icon: ArrowDownAZ },
+              { value: "name", label: "By name (A to Z)", color: "var(--ink-violet-soft)", icon: ArrowDownAZ },
               { value: "folder", label: "By folder", color: "#0F6E56", icon: FolderOpen },
-              { value: "recent", label: "Newest first", color: "var(--ink-orange)", icon: Clock3 },
+              { value: "recent", label: "By newest", color: "var(--ink-orange)", icon: Clock3 },
               /* Sorting by the column that was just added (Anir, Aug 26: "when
                  that is done, you can also add a sorting by that, so sort by
                  upload date"). Oldest-first is the useful half of the pair:
                  newest already exists above, and the question this page gets
                  asked is which material has gone stale. */
-              { value: "oldest", label: "Oldest upload", color: "var(--ink-amber)", icon: Clock3 },
+              { value: "oldest", label: "By oldest", color: "var(--ink-amber)", icon: Clock3 },
             ]}
           />
         </div>

@@ -763,14 +763,14 @@ export function ContractsModule({
           <ColorSelect
             value={groupBy}
             onChange={(v) => setGroupBy(v as typeof groupBy)}
-            ariaLabel="Group rows"
+            ariaLabel="Group contracts"
             minWidth={180}
             dense
             collapsible={false}
             options={[
               { value: "none", label: "No grouping", color: "#8E98A8" },
-              { value: "customer", label: "Group by customer", color: "var(--ink-bright-blue)" },
-              { value: "status", label: "Group by status", color: "#4338CA" },
+              { value: "customer", label: "By customer", color: "var(--ink-bright-blue)" },
+              { value: "status", label: "By status", color: "#4338CA" },
             ]}
           />
         }
@@ -783,9 +783,9 @@ export function ContractsModule({
             dense
             collapsible={false}
             options={[
-              { value: "value", label: "Biggest first", color: "var(--ink-bright-blue)" },
-              { value: "customer", label: "Customer A–Z", color: "#8E98A8" },
-              { value: "starting", label: "Starting soonest", color: "var(--ink-teal-deep)" },
+              { value: "value", label: "By value (biggest first)", color: "var(--ink-bright-blue)" },
+              { value: "customer", label: "By customer (A to Z)", color: "#8E98A8" },
+              { value: "starting", label: "By start date (soonest)", color: "var(--ink-teal-deep)" },
               { value: "status", label: "By status", color: "#4338CA" },
             ]}
           />

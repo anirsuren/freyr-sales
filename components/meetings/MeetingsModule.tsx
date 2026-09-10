@@ -209,6 +209,7 @@ export function MeetingsModule({
     "month",
     ["week", "month"] as const
   );
+  const [sort, setSort] = useState<"date" | "customer" | "title" | "owner">("date");
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   /* THE SAME TWO WAYS TO READ A LIST AS EVERY OTHER MODULE (Anir, Aug 30:
@@ -244,8 +245,24 @@ export function MeetingsModule({
             .toLowerCase()
             .includes(q)
     );
-    return rows;
-  }, [room, planned, completed, query]);
+    /* SORTED, LIKE EVERY OTHER LIST (Anir, Sep 9: "I need it consistent").
+       This page grouped by month or week and offered no sort at all, so
+       inside a month the meetings sat in whatever order the store held.
+       "By date" keeps the reading order each room already implies: what is
+       coming up next when planning, what happened most recently when
+       looking back. */
+    const byDate = (a: typeof rows[number], b: typeof rows[number]) =>
+      (a.meetingAt ?? "").localeCompare(b.meetingAt ?? "");
+    return [...rows].sort((a, b) => {
+      if (sort === "customer")
+        return (a.customer ?? "").localeCompare(b.customer ?? "") || byDate(a, b);
+      if (sort === "title")
+        return (a.title ?? "").localeCompare(b.title ?? "") || byDate(a, b);
+      if (sort === "owner")
+        return (a.owner ?? "").localeCompare(b.owner ?? "") || byDate(a, b);
+      return room === "planned" ? byDate(a, b) : -byDate(a, b);
+    });
+  }, [room, planned, completed, query, sort]);
 
   /* Soonest first while planning, most recent first when looking back. */
   const groups = useMemo(() => {
@@ -356,7 +373,7 @@ export function MeetingsModule({
         onQuery={setQuery}
         placeholder="Search meetings, customers, people…"
         searchAriaLabel="Search meetings"
-        sortLabel="Group"
+
         view={
           <ViewSwitch
             ariaLabel="How to show meetings"
@@ -371,15 +388,33 @@ export function MeetingsModule({
             }
           />
         }
-        sort={
+        filtersAfter={
           <ColorSelect
             value={period}
-            ariaLabel="Group meetings by"
+            ariaLabel="Group meetings"
             minWidth={150}
+            dense
+            collapsible={false}
             onChange={(v) => setPeriod(v as "week" | "month")}
             options={[
               { value: "month", label: "By month", color: "var(--ink-bright-blue)", icon: CalendarDays },
               { value: "week", label: "By week", color: "var(--ink-violet-soft)", icon: CalendarClock },
+            ]}
+          />
+        }
+        sort={
+          <ColorSelect
+            value={sort}
+            ariaLabel="Sort meetings"
+            minWidth={165}
+            dense
+            collapsible={false}
+            onChange={(v) => setSort(v as typeof sort)}
+            options={[
+              { value: "date", label: "By date", color: "var(--ink-bright-blue)" },
+              { value: "customer", label: "By customer (A to Z)", color: "var(--ink-violet-soft)" },
+              { value: "title", label: "By title (A to Z)", color: "#0F6E56" },
+              { value: "owner", label: "By owner (A to Z)", color: "var(--ink-amber)" },
             ]}
           />
         }

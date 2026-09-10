@@ -131,6 +131,7 @@ export function LeadsModule({
   const [sources, setSources] = useState<string[]>([]);
   const [owners, setOwners] = useState<string[]>([]);
   const [sort, setSort] = useState<"newest" | "oldest" | "stalest">("newest");
+  const [groupBy, setGroupBy] = useState<"none" | "status" | "owner" | "source">("none");
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Lead | null>(null);
@@ -165,6 +166,30 @@ export function LeadsModule({
       return sort === "oldest" ? at - bt : bt - at;
     });
   }, [leads, query, statuses, sources, owners, sort]);
+
+  /* GROUPING, like the other directories (Anir, Sep 9: "I need it
+     consistent"). Sections follow whatever the sort put the rows in, so
+     changing one never fights the other, and a lead with nothing in the
+     grouped field lands in a named section rather than vanishing. */
+  const sections = useMemo(() => {
+    if (groupBy === "none") return null;
+    const order: string[] = [];
+    const buckets = new Map<string, typeof shown>();
+    for (const lead of shown) {
+      const key =
+        groupBy === "status"
+          ? lead.status
+          : groupBy === "owner"
+            ? lead.owner || "No owner"
+            : lead.source || "No source";
+      if (!buckets.has(key)) {
+        buckets.set(key, []);
+        order.push(key);
+      }
+      buckets.get(key)!.push(lead);
+    }
+    return order.map((key) => ({ key, items: buckets.get(key)! }));
+  }, [shown, groupBy]);
 
   /** The list as it is filtered and sorted right now, not the whole store —
    *  exporting something other than what is on screen is a lie. */
@@ -441,6 +466,22 @@ export function LeadsModule({
             </button>
           </PriorityTooltip>
         }
+        filtersAfter={
+          <ColorSelect
+            value={groupBy}
+            onChange={(v) => setGroupBy(v as typeof groupBy)}
+            ariaLabel="Group leads"
+            minWidth={160}
+            dense
+            collapsible={false}
+            options={[
+              { value: "none", label: "No grouping", color: "#8E98A8" },
+              { value: "status", label: "By status", color: "var(--ink-bright-blue)" },
+              { value: "owner", label: "By owner", color: "var(--ink-violet-soft)" },
+              { value: "source", label: "By source", color: "#0F6E56" },
+            ]}
+          />
+        }
         sort={
           <ColorSelect
             value={sort}
@@ -450,11 +491,11 @@ export function LeadsModule({
             dense
             collapsible={false}
             options={[
-              { value: "newest", label: "Newest first", color: "var(--ink-bright-blue)" },
-              { value: "oldest", label: "Oldest first", color: "#8E98A8" },
+              { value: "newest", label: "By newest", color: "var(--ink-bright-blue)" },
+              { value: "oldest", label: "By oldest", color: "#8E98A8" },
               /* The stale list is the reason to open this page in the
                  morning, so it is one click away, not a mental sort. */
-              { value: "stalest", label: "Stalest first", color: "var(--ink-amber)" },
+              { value: "stalest", label: "By stalest", color: "var(--ink-amber)" },
             ]}
           />
         }
@@ -492,7 +533,20 @@ export function LeadsModule({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
-              {shown.map((lead) => {
+              {(sections ?? [{ key: "__all", items: shown }]).flatMap((sec) => [
+                ...(sections
+                  ? [
+                      <tr key={`group-${sec.key}`} className="bg-surface">
+                        <td colSpan={9} className="px-4 py-2 text-[12px] font-bold text-text-secondary">
+                          {sec.key}
+                          <span className="ml-1.5 tnum font-semibold opacity-70">
+                            {sec.items.length}
+                          </span>
+                        </td>
+                      </tr>,
+                    ]
+                  : []),
+                ...sec.items.map((lead) => {
                 const age = leadAgeDays(lead);
                 const isStale = isOpenLead(lead) && age >= 21;
                 const open = openRow === lead.id;
@@ -729,7 +783,8 @@ export function LeadsModule({
                     )}
                   </Fragment>
                 );
-              })}
+                }),
+              ])}
             </tbody>
           </table>
           </PinnableTable>

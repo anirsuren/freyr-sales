@@ -604,7 +604,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
             <ColorSelect
               value={sortBy}
               onChange={setSortBy}
-              ariaLabel="Sort the floor"
+              ariaLabel="Sort the team"
               minWidth={150}
               dense
               collapsible={false}

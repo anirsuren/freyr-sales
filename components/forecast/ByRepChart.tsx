@@ -195,7 +195,7 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
             onChange={setSort}
             minWidth={238}
             options={SORTS}
-            ariaLabel="Sort reps by"
+            ariaLabel="Sort reps"
           />
         </div>
       </div>
