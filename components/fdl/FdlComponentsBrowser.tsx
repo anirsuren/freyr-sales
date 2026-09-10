@@ -31,6 +31,7 @@ import { withV } from "@/lib/version";
 import { useToast } from "@/components/ui/Toast";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ViewSelect } from "@/components/ui/ViewSelect";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import type { FdlComponent, FdlComponentType } from "@/lib/offerings";
 
 /** One chip style per component type — color AND icon, never gray. */
@@ -276,6 +277,14 @@ export function FdlComponentsBrowser({
   // by column. The choice is remembered per browser, exactly as the offerings
   // page remembers it, so the page opens the way you left it.
   const [view, setView] = useState<"tile" | "table">("tile");
+  /* SORT AND GROUP, like every other directory in the app (Anir, Sep 9:
+     "shouldn't we be able to do like sort alphabetical or separate modules").
+     This page had search, three filters and a view toggle but no way to
+     order or section the list, which every comparable page already offers.
+     Option labels read "By ..." so the word SORT beside them completes the
+     instruction, the rule Saras set for the Offerings sort on Aug 24. */
+  const [sort, setSort] = useState<"name" | "type" | "versions" | "features" | "newest">("name");
+  const [groupBy, setGroupBy] = useState<"none" | "type" | "state">("none");
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem("freyr.components.view");
@@ -355,6 +364,49 @@ export function FdlComponentsBrowser({
         component.releases.some((r) => r.version.toLowerCase().includes(q)) ||
         component.features.some((f) => f.name.toLowerCase().includes(q)))
   );
+
+  /* A to Z by default: the list arrived in the order the catalogue happened
+     to hold, which is no order at all once there are sixty-four of them. */
+  const sorted = [...shown].sort((a, b) => {
+    if (sort === "type")
+      return a.type.localeCompare(b.type) || a.name.localeCompare(b.name);
+    if (sort === "versions")
+      return b.releases.length - a.releases.length || a.name.localeCompare(b.name);
+    if (sort === "features")
+      return b.features.length - a.features.length || a.name.localeCompare(b.name);
+    if (sort === "newest")
+      return (b.created_at || "").localeCompare(a.created_at || "") || a.name.localeCompare(b.name);
+    return a.name.localeCompare(b.name);
+  });
+
+  /* One section per group, in a fixed order so the page does not reshuffle
+     its own headings as the data changes. `null` means one flat list. */
+  const sections: { key: string; title: string; color: string; items: typeof sorted }[] | null =
+    groupBy === "none"
+      ? null
+      : groupBy === "type"
+        ? (["Module", "Agent", "Platform"] as FdlComponentType[])
+            .map((kind) => ({
+              key: kind,
+              title: kind === "Module" ? "Modules" : kind === "Agent" ? "Agents" : "Platforms",
+              color: FDL_TYPE_META[kind].color,
+              items: sorted.filter((c) => c.type === kind),
+            }))
+            .filter((group) => group.items.length > 0)
+        : [
+            {
+              key: "shipping",
+              title: "Has a current version",
+              color: "var(--ink-green)",
+              items: sorted.filter((c) => Boolean(fdlCurrentVersion(c))),
+            },
+            {
+              key: "unreleased",
+              title: "No current version yet",
+              color: "var(--ink-violet)",
+              items: sorted.filter((c) => !fdlCurrentVersion(c)),
+            },
+          ].filter((group) => group.items.length > 0);
 
   return (
     <section>
@@ -436,6 +488,38 @@ export function FdlComponentsBrowser({
               ],
             },
           ]}
+          filtersAfter={
+            <ColorSelect
+              value={groupBy}
+              onChange={(v) => setGroupBy(v as typeof groupBy)}
+              ariaLabel="Group components"
+              minWidth={170}
+              dense
+              collapsible={false}
+              options={[
+                { value: "none", label: "No grouping", color: "#8E98A8" },
+                { value: "type", label: "By type", color: "var(--ink-bright-blue)" },
+                { value: "state", label: "By release state", color: "var(--ink-green)" },
+              ]}
+            />
+          }
+          sort={
+            <ColorSelect
+              value={sort}
+              onChange={(v) => setSort(v as typeof sort)}
+              ariaLabel="Sort components"
+              minWidth={175}
+              dense
+              collapsible={false}
+              options={[
+                { value: "name", label: "By name (A to Z)", color: "var(--ink-violet-soft)" },
+                { value: "type", label: "By type", color: "var(--ink-bright-blue)" },
+                { value: "versions", label: "By versions (most first)", color: "var(--ink-teal-deep)" },
+                { value: "features", label: "By features (most first)", color: "#0F6E56" },
+                { value: "newest", label: "By newest", color: "#F97316" },
+              ]}
+            />
+          }
           display={
             <span className="shrink-0 text-[12.5px] text-text-secondary tnum">
               {shown.length === components.length
@@ -475,8 +559,20 @@ export function FdlComponentsBrowser({
         // the team roster and the customer tabs use.
         <div key={view} className="tab-panel">
           {view === "tile" ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 stagger">
-            {shown.map((component) => {
+          <div className="space-y-5">
+            {(sections ?? [{ key: "all", title: "", color: "", items: sorted }]).map((sec) => (
+            <div key={sec.key}>
+              {sec.title && (
+                <p
+                  className="mb-2.5 flex items-center gap-2 rounded-lg border border-border-light bg-surface px-3 py-2 text-[12.5px] font-bold tracking-[0.01em]"
+                  style={{ color: sec.color }}
+                >
+                  {sec.title}
+                  <span className="tnum font-semibold opacity-70">{sec.items.length}</span>
+                </p>
+              )}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 stagger">
+            {sec.items.map((component) => {
               const current = fdlCurrentVersion(component);
               const homes = usedIn[component.id] ?? [];
               return (
@@ -577,6 +673,9 @@ export function FdlComponentsBrowser({
                 </Link>
               );
             })}
+              </div>
+            </div>
+            ))}
           </div>
           ) : (
             /* THE TABLE. Every column is a fact already on the tile, but laid
@@ -608,7 +707,28 @@ export function FdlComponentsBrowser({
                   </tr>
                 </thead>
                 <tbody className="stagger">
-                  {shown.map((component) => {
+                  {/* GROUPS ARE HEADER ROWS, not separate tables: the table is
+                      pinnable and carries one id, so a table per section would
+                      collide with itself. A full-width row names each group and
+                      the rows under it follow. */}
+                  {(sections ?? [{ key: "all", title: "", color: "", items: sorted }]).flatMap((sec) => [
+                    ...(sec.title
+                      ? [
+                          <tr key={`group-${sec.key}`} className="bg-surface">
+                            <td
+                              colSpan={7}
+                              className="px-4 py-2 text-[12px] font-bold tracking-[0.01em]"
+                              style={{ color: sec.color }}
+                            >
+                              {sec.title}
+                              <span className="ml-1.5 tnum font-semibold opacity-70">
+                                {sec.items.length}
+                              </span>
+                            </td>
+                          </tr>,
+                        ]
+                      : []),
+                    ...sec.items.map((component) => {
                     const current = fdlCurrentVersion(component);
                     const homes = usedIn[component.id] ?? [];
                     const meta = FDL_TYPE_META[component.type];
@@ -806,7 +926,8 @@ export function FdlComponentsBrowser({
                         </td>
                       </tr>
                     );
-                  })}
+                    }),
+                  ])}
                 </tbody>
               </table>
             </PinnableTable>
