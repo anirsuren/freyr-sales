@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 import {
   ArrowDownAZ,
   Building2,
+  Check,
   CheckSquare,
   CircleSlash,
   ExternalLink,
   Globe2,
   Layers,
   ListChecks,
+  Minus,
   Newspaper,
   Radio,
   Star,
@@ -162,7 +164,6 @@ function ManageCompaniesDialog({
   const [busy, setBusy] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<ManagedCompany | null>(null);
   const [confirmBulk, setConfirmBulk] = useState<{ ids: string[]; waking: number } | null>(null);
-  const allBox = useRef<HTMLInputElement>(null);
 
   useEffect(() => setRows(companies), [companies]);
   useEffect(() => setMine(new Set(myIds ?? [])), [myIds]);
@@ -369,9 +370,6 @@ function ManageCompaniesDialog({
 
   const shownTicked = shown.filter((c) => mine.has(c.id)).length;
   const allShownOn = shown.length > 0 && shownTicked === shown.length;
-  useEffect(() => {
-    if (allBox.current) allBox.current.indeterminate = shownTicked > 0 && !allShownOn;
-  }, [shownTicked, allShownOn]);
 
   function toggleAllShown() {
     const ids = shown.map((c) => c.id);
@@ -480,27 +478,28 @@ function ManageCompaniesDialog({
           <table className="w-full min-w-[820px] border-collapse text-left">
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                <th className="w-[11%] px-3 py-2.5">
-                  <span className="flex items-center gap-2">
-                    <input
-                      ref={allBox}
-                      type="checkbox"
+                <th className="w-[36%] py-2.5 pl-4 pr-3">
+                  <span className="flex items-center gap-3">
+                    <TickBox
                       checked={allShownOn}
+                      indeterminate={shownTicked > 0 && !allShownOn}
                       onChange={toggleAllShown}
                       disabled={shown.length === 0}
-                      aria-label={allShownOn ? "Take all of these off my page" : "Put all of these on my page"}
-                      title={allShownOn ? "Take all of these off my page" : "Put all of these on my page"}
-                      className="h-4 w-4 cursor-pointer accent-[#0071E3]"
+                      label={allShownOn ? "Take all of these off my page" : "Put all of these on my page"}
                     />
-                    My list
+                    Company
                   </span>
                 </th>
-                <th className="w-[31%] px-3 py-2.5">Company</th>
-                <th className="w-[11%] px-3 py-2.5">Type</th>
-                <th className="w-[16%] px-3 py-2.5">Status</th>
-                <th className="w-[12%] px-3 py-2.5">Sources</th>
-                <th className="w-[8%] px-3 py-2.5">Starred</th>
-                <th className="w-[11%] px-3 py-2.5">Actions</th>
+                <th className="w-[12%] px-3 py-2.5">Type</th>
+                <th className="w-[18%] px-3 py-2.5">Status</th>
+                <th className="w-[14%] px-3 py-2.5">Sources</th>
+                <th className="w-[10%] px-3 py-2.5">Starred</th>
+                {/* Only an admin has anything to do here, and it is one bin. */}
+                {isAdmin && (
+                  <th className="w-[56px] px-3 py-2.5">
+                    <span className="sr-only">Delete</span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -508,27 +507,30 @@ function ManageCompaniesDialog({
                 const on = mine.has(c.id);
                 const starred = stars.has(c.id);
                 return (
-                  <tr key={c.id} className={cn("transition-colors hover:bg-surface", !on && "opacity-[0.92]")}>
-                    <td className="px-3 py-2.5">
-                      {/* THE TICK IS THE WHOLE POINT: what is ticked is what
-                          shows on my page (Anir, Sep 10). */}
-                      <input
-                        type="checkbox"
-                        checked={on}
-                        onChange={() => void toggleMine(c)}
-                        aria-label={on ? `Take ${c.name} off my page` : `Put ${c.name} on my page`}
-                        title={
-                          on
-                            ? "On your page. Untick to take it off."
-                            : c.followers === 0
-                              ? "Not on your page. Ticking it starts collecting again."
-                              : "Not on your page. Tick it to add it."
-                        }
-                        className="h-4 w-4 cursor-pointer accent-[#0071E3]"
-                      />
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className="flex items-center gap-2.5">
+                  <tr
+                    key={c.id}
+                    className={cn(
+                      "transition-colors",
+                      on ? "bg-[rgba(0,113,227,0.035)] hover:bg-[rgba(0,113,227,0.06)]" : "hover:bg-surface"
+                    )}
+                  >
+                    <td className="py-2.5 pl-4 pr-3">
+                      <span className="flex items-center gap-3">
+                        {/* THE TICK IS THE WHOLE POINT: what is ticked is what
+                            shows on my page (Anir, Sep 10). It sits right
+                            beside the name it belongs to. */}
+                        <TickBox
+                          checked={on}
+                          onChange={() => void toggleMine(c)}
+                          label={on ? `Take ${c.name} off my page` : `Put ${c.name} on my page`}
+                          title={
+                            on
+                              ? "On your page. Untick to take it off."
+                              : c.followers === 0
+                                ? "Not on your page. Ticking it starts collecting again."
+                                : "Not on your page. Tick it to add it."
+                          }
+                        />
                         <MiLogo name={c.name} logoUrl={c.logoUrl} className="h-8 w-8 shrink-0" />
                         <span className="min-w-0">
                           <Link
@@ -605,28 +607,28 @@ function ManageCompaniesDialog({
                         <Star size={14} strokeWidth={2.2} fill={starred ? "currentColor" : "none"} />
                       </button>
                     </td>
-                    <td className="px-3 py-2.5">
-                      {isAdmin ? (
+                    {isAdmin && (
+                      <td className="px-3 py-2.5">
+                        {/* Red, and it asks first, like every delete; a bin
+                            rather than a column of red squares. */}
                         <button
                           type="button"
                           onClick={() => setConfirming(c)}
                           disabled={busy === c.id}
                           aria-label={`Delete ${c.name} for everyone`}
                           title="Delete for everyone"
-                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-[color:#B02020] text-white transition-opacity hover:opacity-85 disabled:opacity-50"
+                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[#B02020] opacity-60 transition-[opacity,background-color] hover:bg-[rgba(176,32,32,0.10)] hover:opacity-100 focus-visible:opacity-100 disabled:opacity-30"
                         >
-                          <Trash2 size={13} strokeWidth={2.2} />
+                          <Trash2 size={14} strokeWidth={2.2} />
                         </button>
-                      ) : (
-                        <span className="text-[11.5px] text-text-tertiary">Use the tick box</span>
-                      )}
-                    </td>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
               {shown.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-[12.5px] text-text-tertiary">
+                  <td colSpan={isAdmin ? 6 : 5} className="px-3 py-8 text-center text-[12.5px] text-text-tertiary">
                     {show === "mine"
                       ? "Nothing on your list yet. Tick a company to put it on your page."
                       : show === "starred"
@@ -678,5 +680,55 @@ function ManageCompaniesDialog({
         confirmLabel="Delete for everyone"
       />
     </>
+  );
+}
+
+/**
+ * A TICK BOX THAT LOOKS LIKE PART OF THE APP. Still a real checkbox underneath
+ * (keyboard, screen readers, label), drawn as a rounded square that fills
+ * blue with a white tick, or a dash when only some rows are ticked.
+ */
+function TickBox({
+  checked,
+  indeterminate = false,
+  onChange,
+  label,
+  title,
+  disabled = false,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: () => void;
+  label: string;
+  title?: string;
+  disabled?: boolean;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <span className="relative inline-flex h-[18px] w-[18px] shrink-0">
+      <input
+        ref={ref}
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        disabled={disabled}
+        aria-label={label}
+        title={title ?? label}
+        className="peer h-[18px] w-[18px] cursor-pointer appearance-none rounded-[5px] border-[1.5px] border-[#C5CEDB] bg-white transition-colors hover:border-blue-primary checked:border-blue-primary checked:bg-blue-primary indeterminate:border-blue-primary indeterminate:bg-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30 disabled:cursor-not-allowed disabled:opacity-40"
+      />
+      <Check
+        size={12}
+        strokeWidth={3.4}
+        className="pointer-events-none absolute inset-0 m-auto hidden text-white peer-checked:block"
+      />
+      <Minus
+        size={12}
+        strokeWidth={3.4}
+        className="pointer-events-none absolute inset-0 m-auto hidden text-white peer-indeterminate:block"
+      />
+    </span>
   );
 }
