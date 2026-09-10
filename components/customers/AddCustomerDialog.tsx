@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
-import { Layers, MapPin, Plus } from "lucide-react";
+import { Layers, Loader2, MapPin, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
+import { AddressLineLookup, CompanyNameLookup, LookupCredit } from "./CustomerLookups";
 import { countryOptions } from "@/lib/countries";
 import {
   addressHasAny,
@@ -14,6 +15,7 @@ import {
   blankAddress,
   type CustomerAddress,
 } from "@/lib/customerProfilesShared";
+import type { LookupSource } from "@/lib/placeLookupShared";
 import { cn } from "@/lib/utils";
 
 /**
@@ -28,11 +30,22 @@ import { cn } from "@/lib/utils";
  * said under it. The HQ address needs line 1, a city and a country; state and
  * ZIP do not exist everywhere, so they are optional. The other address is
  * optional, but once started it has to be finished or cleared.
+ *
+ * Nothing has to be typed from memory (Anir, Sep 10: "when i search it up it
+ * looks it up"). The name box offers real companies and picking one fills in
+ * the website and HQ address; each address's first line offers real
+ * addresses. Undo puts back what was there before a company was picked.
  */
 export type AddCustomerOwner = { id: string | null; name: string; role: string };
 export type AddCustomerGroup = { id: string; name: string; color: string };
 
 const NEW_GROUP = "__new_group__";
+
+type LookupState =
+  | { status: "working"; name: string }
+  | { status: "filled"; source: LookupSource }
+  | { status: "failed" }
+  | null;
 
 const INPUT =
   "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-shadow placeholder:text-text-tertiary focus:border-blue-subtle focus:shadow-input-focus";
@@ -100,6 +113,8 @@ export function AddCustomerDialog({
   const [newGroup, setNewGroup] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [lookup, setLookup] = useState<LookupState>(null);
+  const beforeLookup = useRef<{ name: string; website: string; hq: CustomerAddress } | null>(null);
 
   const host = websiteHost(website);
   const websiteWrong = website.trim().length > 0 && !host;
@@ -129,6 +144,18 @@ export function AddCustomerDialog({
     setGroupId("");
     setNewGroup("");
     setError("");
+    setLookup(null);
+    beforeLookup.current = null;
+  }
+
+  function undoLookup() {
+    const before = beforeLookup.current;
+    if (!before) return;
+    setName(before.name);
+    setWebsite(before.website);
+    setHq(before.hq);
+    setLookup(null);
+    beforeLookup.current = null;
   }
 
   async function save() {
@@ -178,7 +205,7 @@ export function AddCustomerDialog({
     title: string,
     required: boolean,
     value: CustomerAddress,
-    set: (a: CustomerAddress) => void,
+    set: Dispatch<SetStateAction<CustomerAddress>>,
     hint: string
   ) => {
     const put = (k: keyof CustomerAddress) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,7 +225,18 @@ export function AddCustomerDialog({
           <InfoHint text={hint} />
         </legend>
         <div className="grid grid-cols-2 gap-2.5">
-          <input className={cn(INPUT, "col-span-2")} placeholder="Line 1" aria-label={`${title} line 1`} value={value.line1} onChange={put("line1")} onKeyDown={onEnter} disabled={busy} />
+          <AddressLineLookup
+            title={title}
+            value={value}
+            onChange={(next) => {
+              set(next);
+              if (error) setError("");
+            }}
+            inputClassName={INPUT}
+            className="col-span-2"
+            onEnter={onEnter}
+            disabled={busy}
+          />
           <input className={cn(INPUT, "col-span-2")} placeholder="Line 2" aria-label={`${title} line 2`} value={value.line2 ?? ""} onChange={put("line2")} onKeyDown={onEnter} disabled={busy} />
           <input className={INPUT} placeholder="City" aria-label={`${title} city`} value={value.city} onChange={put("city")} onKeyDown={onEnter} disabled={busy} />
           <input className={INPUT} placeholder="State" aria-label={`${title} state`} value={value.state ?? ""} onChange={put("state")} onKeyDown={onEnter} disabled={busy} />
@@ -232,28 +270,70 @@ export function AddCustomerDialog({
     >
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <div className="flex flex-col gap-3.5">
-          <label className="block">
-            <Label text="Customer name" required />
-            <input
-              autoFocus
-              className={cn(INPUT, duplicate && "border-[rgba(220,38,38,0.45)]")}
+          <div>
+            <Label
+              text="Customer name"
+              required
+              hint="Type a name and pick the company: its website and HQ address fill in for you. Every field can still be changed."
+            />
+            <CompanyNameLookup
               value={name}
-              onChange={(e) => {
-                setName(e.target.value);
+              onChange={(next) => {
+                setName(next);
                 if (error) setError("");
               }}
-              onKeyDown={onEnter}
-              placeholder="e.g. GSK"
-              aria-label="Customer name"
-              aria-invalid={duplicate ? true : undefined}
+              customers={customers}
+              onOpenExisting={(id) => {
+                reset();
+                onClose();
+                router.push(`/customers/${id}`);
+              }}
+              onLookupStart={(picked) => {
+                beforeLookup.current = { name, website, hq };
+                setLookup({ status: "working", name: picked });
+              }}
+              onFilled={({ details, source }) => {
+                if (details.name) setName(details.name);
+                if (details.website) setWebsite(details.website);
+                if (details.hq) setHq({ ...blankAddress(), ...details.hq });
+                setLookup({ status: "filled", source });
+              }}
+              onLookupFailed={() => setLookup({ status: "failed" })}
+              inputClassName={cn(INPUT, duplicate && "border-[rgba(220,38,38,0.45)]")}
+              invalid={!!duplicate}
               disabled={busy}
+              autoFocus
+              onEnter={onEnter}
             />
-            {duplicate && (
+            {duplicate ? (
               <span className="mt-1 block text-[11.5px] font-medium text-[#B91C1C]">
                 {duplicate.name} is already a customer.
               </span>
-            )}
-          </label>
+            ) : lookup?.status === "working" ? (
+              <span className="mt-1 flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
+                <Loader2 size={12} strokeWidth={2.2} className="animate-spin" aria-hidden="true" />
+                Looking up {lookup.name}…
+              </span>
+            ) : lookup?.status === "filled" ? (
+              <span className="mt-1 flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
+                <span>
+                  Filled in from <LookupCredit source={lookup.source} kind="company" />
+                </span>
+                <InfoHint text="The website and HQ address were looked up for you. Check them before adding." />
+                <button
+                  type="button"
+                  onClick={undoLookup}
+                  className="font-semibold text-blue-primary hover:underline"
+                >
+                  Undo
+                </button>
+              </span>
+            ) : lookup?.status === "failed" ? (
+              <span className="mt-1 block text-[11.5px] text-text-tertiary">
+                Could not look that company up. Type the rest in.
+              </span>
+            ) : null}
+          </div>
           <label className="block">
             <Label text="Website" required hint="Their own website, like gsk.com." />
             <input

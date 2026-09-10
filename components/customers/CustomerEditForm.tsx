@@ -2,6 +2,7 @@
 
 import { MapPin } from "lucide-react";
 import { countryOptions } from "@/lib/countries";
+import { AddressLineLookup } from "./CustomerLookups";
 import {
   addressHasAny,
   addressIsComplete,
@@ -327,7 +328,7 @@ export function CustomerEditForm({
               <fieldset key={title} className="rounded-xl border border-border-light p-3.5">
                 <legend className="px-1 text-[12.5px] font-semibold text-text-primary">{title}</legend>
                 <div className="grid grid-cols-2 gap-2.5">
-                  <input className={cn(INPUT, "col-span-2")} placeholder="Line 1" aria-label={`${title} line 1`} value={value.line1} onChange={(e) => setValue({ ...value, line1: e.target.value })} />
+                  <AddressLineLookup title={title} value={value} onChange={setValue} inputClassName={INPUT} className="col-span-2" />
                   <input className={cn(INPUT, "col-span-2")} placeholder="Line 2" aria-label={`${title} line 2`} value={value.line2 ?? ""} onChange={(e) => setValue({ ...value, line2: e.target.value })} />
                   <input className={INPUT} placeholder="City" aria-label={`${title} city`} value={value.city} onChange={(e) => setValue({ ...value, city: e.target.value })} />
                   <input className={INPUT} placeholder="State" aria-label={`${title} state`} value={value.state ?? ""} onChange={(e) => setValue({ ...value, state: e.target.value })} />
