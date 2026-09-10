@@ -1151,15 +1151,26 @@ select:focus-visible {
   animation: menuIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* NOTHING MOVES UNDER THE CURSOR (Anir, Sep 9: "i cant change the version
+   covered"). Each row used to slide 4px into place behind a stagger, so for
+   up to ~380ms after the menu opened the options were still travelling. A
+   click in that window landed on a row that had shifted, or between two of
+   them, and the pick was simply lost: measured at 2 of 6 clicks registering
+   on the Version covered select. The rows fade now and never move, so an
+   option is where it looks from the first frame. The menu itself still
+   scales in; that is one element and it is not the click target. */
 @keyframes menuRowIn {
-  from { opacity: 0; transform: translateY(calc(var(--menu-dir, 1) * -4px)); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .menu-row-in {
   /* Capped at row 8: past that the stagger stops being a flourish and starts
-     being a wait, and a long list scrolls anyway. */
-  animation: menuRowIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(min(var(--row, 0), 8) * 18ms + 40ms);
+     being a wait, and a long list scrolls anyway.
+     `backwards`, not `both`: a filled animation keeps its end state forever,
+     and a row that is only fading needs its normal styling back the moment
+     it lands. The row stays clickable throughout because it never moves. */
+  animation: menuRowIn 0.16s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(min(var(--row, 0), 8) * 14ms + 20ms);
 }
 
 /* A REVEALED TREE ROW FADES IN (Anir, Sep 1: "I need animations on these
