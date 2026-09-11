@@ -33,6 +33,7 @@ import {
 import { AutoFresh } from "@/components/market-intel/AutoFresh";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import {
   PrioritySearchInput,
@@ -461,91 +462,91 @@ export function LiveCompanyBriefing({
       <AutoFresh />
       <SmartBack
         fallback={isCompetitor ? "/market-intel?tab=competitors" : "/market-intel"}
-        className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
+        className="mb-2 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
         <ArrowLeft size={14} strokeWidth={2} />{" "}
         {isCompetitor ? "Competitor Intelligence" : "Customer Intelligence"}
       </SmartBack>
 
-      <div className="rise-in flex flex-wrap items-center gap-4">
+      {/* ONE LINE FOR WHO THIS IS AND WHAT YOU CAN DO (Anir, Sep 11: "confusing
+          ui and clean it up. minimal space"). Where the data comes from is a
+          hint beside the name, the update time is quiet text, and an admin's
+          move and delete sit behind the "more" button instead of a row. */}
+      <div className="rise-in flex flex-wrap items-center gap-x-2.5 gap-y-2">
         <MiLogo
           name={briefing.name}
           logoUrl={briefing.logoUrl}
-          className="h-12 w-12 shrink-0"
+          className="h-9 w-9 shrink-0"
         />
-        <div className="min-w-0 flex-1">
-          <h1 className="flex flex-wrap items-center gap-2.5 text-[24px] font-bold tracking-[-0.02em] text-text-primary">
-            {briefing.name}
-            {briefing.momentumPct === null ? (
-              /* A COUNT, NOT A TREND, and an exact one: nothing is capped any
-                 more (Anir, Sep 10: "if there are 1,000 items, there should be
-                 1,000 items"). */
-              <span
-                title="Items picked up in the last 30 days: posts, articles and their own website. Not enough history yet to compare with the month before."
-                className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:var(--ink-bright-blue)] tnum"
-              >
-                <Newspaper size={12} strokeWidth={2.4} />
-                {briefing.itemsThisMonth} items this month
-              </span>
-            ) : (
-              <span
-                className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold tnum"
-                style={{
-                  color: up ? "var(--ink-green)" : "#DC2626",
-                  background: up ? "rgba(26,122,53,0.10)" : "rgba(220,38,38,0.10)",
-                }}
-              >
-                {up ? <TrendingUp size={12} strokeWidth={2.4} /> : <TrendingDown size={12} strokeWidth={2.4} />}
-                {up ? "+" : ""}
-                {briefing.momentumPct}% vs last month
-              </span>
-            )}
-            {briefing.followerCount != null && (
-              <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
-                <LinkedInIcon size={11} /> {fmtFollowers(briefing.followerCount)} followers
-              </span>
-            )}
-          </h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">
-            {subtitle || "Live briefing from LinkedIn, the news wire and their own website, past 3 months"}
-          </p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <WatchStatus state={watch} size="md" />
-            <DivisionEditor
-              companyId={briefing.id}
-              companyName={briefing.name}
-              divisions={divisions}
-              canEdit={canWrite}
+        <h1 className="flex items-center gap-1.5 text-[22px] font-bold tracking-[-0.02em] text-text-primary">
+          {briefing.name}
+          <InfoHint text={subtitle || "Live briefing from LinkedIn, the news wire and their own website, past 3 months."} />
+        </h1>
+        {briefing.momentumPct === null ? (
+          /* A COUNT, NOT A TREND, and an exact one: nothing is capped any
+             more (Anir, Sep 10: "if there are 1,000 items, there should be
+             1,000 items"). */
+          <span
+            title="Items picked up in the last 30 days: posts, articles and their own website. Not enough history yet to compare with the month before."
+            className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:var(--ink-bright-blue)] tnum"
+          >
+            <Newspaper size={12} strokeWidth={2.4} />
+            {briefing.itemsThisMonth} items this month
+          </span>
+        ) : (
+          <span
+            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold tnum"
+            style={{
+              color: up ? "var(--ink-green)" : "#DC2626",
+              background: up ? "rgba(26,122,53,0.10)" : "rgba(220,38,38,0.10)",
+            }}
+          >
+            {up ? <TrendingUp size={12} strokeWidth={2.4} /> : <TrendingDown size={12} strokeWidth={2.4} />}
+            {up ? "+" : ""}
+            {briefing.momentumPct}% vs last month
+          </span>
+        )}
+        <WatchStatus state={watch} />
+        <DivisionEditor
+          companyId={briefing.id}
+          companyName={briefing.name}
+          divisions={divisions}
+          canEdit={canWrite}
+        />
+        {briefing.followerCount != null && (
+          <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
+            <LinkedInIcon size={11} /> {fmtFollowers(briefing.followerCount)} followers
+          </span>
+        )}
+        <span className="ml-auto flex items-center gap-2">
+          <span className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
+            <span
+              className={cn(
+                "inline-flex h-1.5 w-1.5 rounded-full",
+                watch.followers === 0 ? "bg-[#9AA5B8]" : "bg-[#1A7A35]"
+              )}
             />
-          </div>
-        </div>
-        <span className="flex flex-wrap items-center gap-2">
+            {watch.followers === 0
+              ? `Nothing new since ${briefing.updatedLabel}`
+              : `Updated ${briefing.updatedLabel}`}
+          </span>
           <MyListToggle
             companyId={briefing.id}
             companyName={briefing.name}
             onMyPage={onMyPage}
             starred={starred}
           />
-          <span className="flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary">
-            <span className="relative flex h-2 w-2">
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1A7A35]" />
-            </span>
-            {watch.followers === 0
-              ? `Inactive · nothing new since ${briefing.updatedLabel}`
-              : `Live data · updated ${briefing.updatedLabel}`}
-          </span>
+          {isAdmin && (
+            <CompanyAdminControls
+              companyId={briefing.id}
+              companyName={briefing.name}
+              group={briefing.group}
+              followers={watch.followers}
+              compact
+            />
+          )}
         </span>
       </div>
-      {isAdmin && (
-        <div className="rise-in mt-3">
-          <CompanyAdminControls
-            companyId={briefing.id}
-            companyName={briefing.name}
-            group={briefing.group}
-            followers={watch.followers}
-          />
-        </div>
-      )}
 
       {/* The rundown before any scrolling: everything that happened, in one
           breath, regenerated by AI with each refresh. */}

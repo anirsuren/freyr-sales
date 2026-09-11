@@ -220,51 +220,47 @@ export default async function MarketIntelCompanyPage({
     <div>
       <SmartBack
         fallback={backHref}
-        className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
+        className="mb-2 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
         <ArrowLeft size={14} strokeWidth={2} /> {backLabel}
       </SmartBack>
 
-      <div className="rise-in flex flex-wrap items-center gap-4">
-        <CompanyLogo name={mine.name} className="h-12 w-12 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <h1 className="flex flex-wrap items-center gap-2.5 text-[24px] font-bold tracking-[-0.02em] text-text-primary">
-            {mine.name}
-            <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:var(--ink-bright-blue)]">
-              New
-            </span>
-          </h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">
-            {[mine.industry, mine.hq].filter(Boolean).join(" · ") ||
-              `Tracked since ${addedOn}`}
-          </p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <WatchStatus state={watchOf(mine.id)} size="md" />
-            <MyListToggle
-              companyId={mine.id}
-              companyName={mine.name}
-              onMyPage={onMyPage}
-              starred={starred}
-            />
-            <DivisionEditor
-              companyId={mine.id}
-              companyName={mine.name}
-              divisions={companyDivisions(tracking, mine.id, sourceDefault(mine.id))}
-              canEdit={canEdit}
-            />
-          </div>
-        </div>
-      </div>
-      {isAdmin && (
-        <div className="mt-3">
-          <CompanyAdminControls
+      {/* ONE LINE, THE SAME AS A LIVE BRIEFING (Anir, Sep 11: "confusing ui and
+          clean it up. minimal space"). */}
+      <div className="rise-in flex flex-wrap items-center gap-x-2.5 gap-y-2">
+        <CompanyLogo name={mine.name} className="h-9 w-9 shrink-0" />
+        <h1 className="text-[22px] font-bold tracking-[-0.02em] text-text-primary">{mine.name}</h1>
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:var(--ink-bright-blue)]">
+          New
+        </span>
+        <WatchStatus state={watchOf(mine.id)} />
+        <DivisionEditor
+          companyId={mine.id}
+          companyName={mine.name}
+          divisions={companyDivisions(tracking, mine.id, sourceDefault(mine.id))}
+          canEdit={canEdit}
+        />
+        <span className="text-[12px] text-text-tertiary">
+          {[mine.industry, mine.hq].filter(Boolean).join(" · ") || `Tracked since ${addedOn}`}
+        </span>
+        <span className="ml-auto flex items-center gap-2">
+          <MyListToggle
             companyId={mine.id}
             companyName={mine.name}
-            group={mine.group === "competitor" ? "competitor" : "customer"}
-            followers={followers[mine.id]?.length ?? 0}
+            onMyPage={onMyPage}
+            starred={starred}
           />
-        </div>
-      )}
+          {isAdmin && (
+            <CompanyAdminControls
+              companyId={mine.id}
+              companyName={mine.name}
+              group={mine.group === "competitor" ? "competitor" : "customer"}
+              followers={followers[mine.id]?.length ?? 0}
+              compact
+            />
+          )}
+        </span>
+      </div>
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
