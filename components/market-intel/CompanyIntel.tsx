@@ -44,7 +44,7 @@ import {
 } from "@/lib/marketIntelMock";
 import type { TrackedPerson } from "@/lib/marketIntelTracking";
 import { useStoredView } from "@/lib/useStoredView";
-import { SIGNAL_ICON, type SignalKind } from "@/lib/marketIntelSignals";
+import { fallbackSignals, type SignalId } from "@/lib/marketIntelSignals";
 import { SignalRow } from "@/components/market-intel/SignalRow";
 import { tint } from "@/lib/tint";
 
@@ -67,7 +67,7 @@ const SOURCE_HOME: Record<string, string> = {
   "Regulatory Focus": "https://www.raps.org",
 };
 
-type Lens = "all" | "linkedin" | "news" | "signals";
+type Lens = "all" | "linkedin" | "news";
 
 type FeedItem =
   | { kind: "post"; daysAgo: number; personId: string; text: string; reactions: number; comments: number }
@@ -93,7 +93,7 @@ export function CompanyIntel({
   extraPeople?: TrackedPerson[];
 }) {
   const [lens, setLens] = useState<Lens>("all");
-  const [signalPick, setSignalPick] = useState<SignalKind | null>(null);
+  const [signalPick, setSignalPick] = useState<SignalId | null>(null);
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
     "freyr.mi.news.view",
     "rows",
@@ -114,26 +114,29 @@ export function CompanyIntel({
     })),
   ].sort((a, b) => a.daysAgo - b.daysAgo);
 
+  /* EVERY ITEM WEARS A SIGNAL (Saras, Sep 11), in the sample briefing too:
+     a sample signal says which one it is; a sample post or article is read
+     by the same keyword rules the live feed falls back on. */
+  const kindsOf = (item: FeedItem): SignalId[] =>
+    item.kind === "signal"
+      ? [item.signal]
+      : fallbackSignals(item.kind === "post" ? item.text : `${item.headline}. ${item.summary}`, "customer");
   const shown = feed.filter(
     (item) =>
       (lens === "all" ||
         (lens === "linkedin" && item.kind === "post") ||
-        (lens === "news" && item.kind === "news") ||
-        (lens === "signals" && item.kind === "signal")) &&
-      (!signalPick || (item.kind === "signal" && item.signal === signalPick))
+        (lens === "news" && item.kind === "news")) &&
+      (!signalPick || kindsOf(item).includes(signalPick))
   );
 
   const up = company.momentum >= 0;
-  const signalCounts = company.signals.reduce<Record<string, number>>(
-    (acc, s) => ({ ...acc, [s.kind]: (acc[s.kind] ?? 0) + 1 }),
-    {}
-  );
+  const signalCounts: Partial<Record<SignalId, number>> = {};
+  for (const item of feed) for (const kind of kindsOf(item)) signalCounts[kind] = (signalCounts[kind] ?? 0) + 1;
 
   const lenses: { key: Lens; label: string; icon: LucideIcon; color: string; count: number }[] = [
     { key: "all", label: "Everything", icon: Radar, color: "var(--ink-bright-blue)", count: feed.length },
     { key: "linkedin", label: "LinkedIn", icon: LinkedInGlyph, color: "var(--ink-bright-blue)", count: company.posts.length },
     { key: "news", label: "News", icon: Newspaper, color: "var(--ink-teal-deep)", count: company.news.length },
-    { key: "signals", label: "Signals", icon: Radar, color: "var(--ink-violet-soft)", count: company.signals.length },
   ];
 
   return (
@@ -179,10 +182,12 @@ export function CompanyIntel({
         </span>
       </div>
 
-      {/* The nine signals at the top, same row as the live briefing. */}
+      {/* Signals, the main bar, the same as the live briefing (Saras, Sep 11). */}
       <SignalRow
         className="mt-4"
-        counts={signalCounts as Partial<Record<SignalKind, number>>}
+        group="customer"
+        counts={signalCounts}
+        total={feed.length}
         active={signalPick}
         onPick={setSignalPick}
       />
@@ -400,7 +405,7 @@ export function CompanyIntel({
                 );
               }
               const meta = SIGNAL_META[item.signal];
-              const SIcon = SIGNAL_ICON[item.signal];
+              const SIcon = meta.icon;
               return (
                 <Card
                   key={`s-${index}`}

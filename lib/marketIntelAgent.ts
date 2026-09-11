@@ -1,3 +1,4 @@
+import { SIGNAL_META } from "./marketIntelSignals";
 import {
   buildBriefing,
   readMarketIntelFeed,
@@ -64,10 +65,12 @@ function companyBlock(
         `- [${fmtDate(n.published)}] ${n.source}: ${n.title}${n.summary ? ` — ${trim(n.summary, 200)}` : ""}`
     ),
     "",
-    signals.length &&
+    /* Every item carries a signal since Sep 11; "Others" is not worth naming here. */
+    signals.some((s) => s.kinds[0] !== "others") &&
       `Signals detected: ${signals
+        .filter((s) => s.kinds[0] !== "others")
         .slice(0, 8)
-        .map((s) => `${s.title} (${s.kind}, ${fmtDate(s.date)})`)
+        .map((s) => `${s.title} (${s.kinds.map((kind) => SIGNAL_META[kind].label).join(", ")}, ${fmtDate(s.date)})`)
         .join("; ")}`,
     peopleLines.length && `People followed here:\n${peopleLines.join("\n")}`,
   ]
@@ -156,11 +159,11 @@ export async function searchMarketIntel(query: string): Promise<string> {
           line: `- [${fmtDate(p.date)}] ${company.name} LinkedIn post: ${trim(p.text, 200)}`,
         });
     }
-    for (const s of companySignals) {
+    for (const s of companySignals.filter((signal) => signal.kinds[0] !== "others")) {
       if (words.some((w) => s.title.toLowerCase().includes(w)))
         hits.push({
           when: Date.parse(s.date ?? "") || 0,
-          line: `- [${fmtDate(s.date)}] ${company.name} signal (${s.kind}): ${s.title}`,
+          line: `- [${fmtDate(s.date)}] ${company.name} signal (${s.kinds.map((kind) => SIGNAL_META[kind].label).join(", ")}): ${s.title}`,
         });
     }
   }

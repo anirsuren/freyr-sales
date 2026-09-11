@@ -3,7 +3,6 @@ import type { CompanySource } from "./marketIntelSources";
 import {
   bustMarketIntelFeedCache,
   cleanSourceLabel,
-  fallbackSignal,
   readMarketIntelFeed,
   saveFeedCompany,
   saveFeedMeta,
@@ -22,7 +21,7 @@ import {
   digestCompany,
   type ClassifyInput,
 } from "./marketIntelSummarize";
-import { CLASSIFY_VERSION, isLabeled } from "./marketIntelSignals";
+import { CLASSIFY_VERSION, fallbackSignals, hasCurrentLabel, isLabeled } from "./marketIntelSignals";
 import { THOUGHT_FIRMS, mergeThoughtBoard, scrapeFirmThoughtLeadership } from "./marketIntelThought";
 import { scrapeFreshNews } from "./perplexityNews";
 import { normalizeSiteDomain, readCompanyNameFromSite, scrapeSiteUpdates } from "./siteUpdates";
@@ -451,7 +450,11 @@ async function applyDigest(entry: FeedCompany): Promise<void> {
   }
 }
 
-type LabelBudget = { calls: number };
+type LabelBudget = {
+  calls: number;
+  /** Read again what the Sep 10 list labelled (the relabel hatch, on request only). */
+  relabel?: boolean;
+};
 
 /** A few classifier calls in flight at once: the backlog on a new watch is
  *  hundreds of calls, and one at a time would take an hour. */
@@ -485,22 +488,23 @@ function inLabelWindow(date: string | null | undefined): boolean {
 async function applyLabels(entry: FeedCompany, budget: LabelBudget): Promise<number> {
   type Slot = { item: FeedPost | FeedNews; input: ClassifyInput };
   const slots: Slot[] = [];
+  const done = (item: Parameters<typeof isLabeled>[0]) => (budget.relabel ? hasCurrentLabel(item) : isLabeled(item));
   for (const p of entry.posts) {
-    if (isLabeled(p) || !inLabelWindow(p.date)) continue;
+    if (done(p) || !inLabelWindow(p.date)) continue;
     slots.push({
       item: p,
       input: { kind: "post", title: p.text.split("\n")[0].slice(0, 200), text: p.text },
     });
   }
   for (const n of entry.news) {
-    if (isLabeled(n) || !inLabelWindow(n.published)) continue;
+    if (done(n) || !inLabelWindow(n.published)) continue;
     slots.push({
       item: n,
       input: { kind: "news", title: n.title, text: n.summary ?? "", source: n.source },
     });
   }
   for (const n of entry.site ?? []) {
-    if (isLabeled(n) || !inLabelWindow(n.published)) continue;
+    if (done(n) || !inLabelWindow(n.published)) continue;
     slots.push({
       item: n,
       input: { kind: "site", title: n.title, text: n.summary ?? "", source: n.source },
@@ -526,7 +530,7 @@ async function applyLabels(entry: FeedCompany, budget: LabelBudget): Promise<num
        posts came back unanswered on every run, Sep 10). Anything a call did
        not answer is asked once more on its own; what is still unanswered
        gets the keyword rules' answer, so nothing is re-sent forever. */
-    const missing = batch.filter((slot) => !isLabeled(slot.item));
+    const missing = batch.filter((slot) => !hasCurrentLabel(slot.item));
     if (missing.length > 0 && missing.length < batch.length) {
       const again = await classifyItems(entry.name, group, missing.map((b) => b.input));
       again.forEach((label, index) => {
@@ -538,13 +542,13 @@ async function applyLabels(entry: FeedCompany, budget: LabelBudget): Promise<num
       });
     }
     for (const slot of missing) {
-      if (isLabeled(slot.item)) continue;
+      /* A relabel keeps the model's earlier answer rather than trade it for a keyword guess. */
+      if (hasCurrentLabel(slot.item) || (budget.relabel && isLabeled(slot.item))) continue;
       const text = slot.input.kind === "post" ? slot.input.text : `${slot.input.title}. ${slot.input.text}`;
       slot.item.label = {
-        signal: fallbackSignal(text),
+        signals: fallbackSignals(text, group),
         relevant: true,
         industries: [],
-        tags: [],
         v: CLASSIFY_VERSION,
       };
       labeled += 1;
@@ -560,7 +564,7 @@ async function labelPersonPosts(
   posts: FeedPost[],
   budget: LabelBudget
 ): Promise<number> {
-  const pending = posts.filter((p) => !isLabeled(p) && inLabelWindow(p.date));
+  const pending = posts.filter((p) => !(budget.relabel ? hasCurrentLabel(p) : isLabeled(p)) && inLabelWindow(p.date));
   let labeled = 0;
   const batches: FeedPost[][] = [];
   for (let at = 0; at < pending.length && budget.calls > 0; at += CLASSIFY_BATCH) {
@@ -1672,6 +1676,8 @@ export async function runMarketIntelLabeling(options?: {
   maxCalls?: number;
   /** Company ids to read first and only; the rest wait for the daily runs. */
   only?: string[];
+  /** Read again items labelled under the Sep 10 signals. Spends; on request only. */
+  relabel?: boolean;
 }): Promise<LabelRunSummary> {
   const started = Date.now();
   const nothing = (reason: string): LabelRunSummary => ({
@@ -1694,7 +1700,10 @@ export async function runMarketIntelLabeling(options?: {
   const trackedPeople: TrackedPerson[] = registry.people;
   const competitorIds = registry.competitorIds;
 
-  const budget: LabelBudget = { calls: Math.max(1, Math.min(400, options?.maxCalls ?? 60)) };
+  const budget: LabelBudget = {
+    calls: Math.max(1, Math.min(400, options?.maxCalls ?? 60)),
+    relabel: options?.relabel === true,
+  };
   const before = { ...classifyUsage };
   let companies = 0;
   let people = 0;
@@ -1734,16 +1743,17 @@ export async function runMarketIntelLabeling(options?: {
     }
   }
 
+  const unread = (item: Parameters<typeof isLabeled>[0]) => (budget.relabel ? !hasCurrentLabel(item) : !isLabeled(item));
   let remaining = 0;
   for (const entry of companiesList) {
-    for (const p of entry.posts) if (!isLabeled(p) && inLabelWindow(p.date)) remaining += 1;
-    for (const n of entry.news) if (!isLabeled(n) && inLabelWindow(n.published)) remaining += 1;
-    for (const n of entry.site ?? []) if (!isLabeled(n) && inLabelWindow(n.published)) remaining += 1;
+    for (const p of entry.posts) if (unread(p) && inLabelWindow(p.date)) remaining += 1;
+    for (const n of entry.news) if (unread(n) && inLabelWindow(n.published)) remaining += 1;
+    for (const n of entry.site ?? []) if (unread(n) && inLabelWindow(n.published)) remaining += 1;
   }
   for (const person of trackedPeople) {
     if (competitorIds.has(person.companyId)) continue;
     for (const p of feed.people?.[person.id]?.posts ?? [])
-      if (!isLabeled(p) && inLabelWindow(p.date)) remaining += 1;
+      if (unread(p) && inLabelWindow(p.date)) remaining += 1;
   }
   return {
     ran: itemsLabeled > 0,

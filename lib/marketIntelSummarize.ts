@@ -2,11 +2,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { FeedCompany, FeedNews, MnaItem } from "./marketIntelFeed";
 import {
   CLASSIFY_VERSION,
-  SIGNAL_KINDS,
   isItemIndustry,
-  isItemTag,
-  isSignalKind,
   type ItemLabel,
+  SIGNAL_GUIDE,
+  SIGNAL_META,
+  isSignalId,
+  signalsFor,
+  tidySignals,
+  type SignalId,
 } from "./marketIntelSignals";
 
 /**
@@ -313,7 +316,7 @@ Rules:
 
 /**
  * READ EVERY ITEM ONCE (Saras, Sep 10, three asks with one answer): which of
- * the nine signals it is, whether it is about Freyr's industries at all, and
+ * Saras's signals it carries (Sep 11 doc: ten for a customer, nine for a competitor), whether it is about Freyr's industries at all, and
  * whether it is thought leadership or an award.
  *
  * The keyword rules this replaces tagged a GSK post about attending ERS
@@ -352,6 +355,16 @@ export async function classifyItems(
   const client = haiku();
   if (!client || items.length === 0) return out;
 
+  const allowed = signalsFor(group);
+  const signalLines = allowed
+    .map((id) => {
+      const guide = SIGNAL_GUIDE[group][id] ?? [];
+      return `  "${id}" = ${SIGNAL_META[id].label}${guide.length > 0 ? `: ${guide.join("; ")}` : ""}.`;
+    })
+    .join("\n");
+  const example = group === "competitor"
+    ? { good: "Their AI labeling module will show up in every Veeva-shop demo; put Freyr's reviewed output beside it.", bad: "Veeva launched an AI labeling module." }
+    : { good: "A Japan approval means Japanese labeling, post-approval variations and PMDA reporting from now on; ask who handles them.", bad: "GSK received approval in Japan." };
   const prompt = `You label items in a sales-intelligence feed used by Freyr Solutions, a regulatory-affairs services company. Freyr serves three industries: medicinal products (pharma, biotech, drugs, vaccines, generics), medical devices (devices, diagnostics, medtech, IVD), and consumer products (consumer health, OTC, cosmetics, food and supplements). The items below are about ${companyName}, a ${group === "competitor" ? "competitor of Freyr's" : "customer or prospect of Freyr's"}.
 
 ITEMS (JSON): ${JSON.stringify(
@@ -365,23 +378,15 @@ ITEMS (JSON): ${JSON.stringify(
   )}
 
 For EACH item answer:
-- "signal": exactly one of ${JSON.stringify(SIGNAL_KINDS)}:
-  "product" = a new product approval, filing or submission announced (FDA, EMA, MHRA, CDSCO or any regulator; NDA, BLA, MAA, 510(k), CE mark, marketing authorisation, launch after approval).
-  "expansion" = expansion into a new market, country or region (entering a market, a new site, plant, office or hub abroad).
-  "mna" = a merger, acquisition, divestiture or sale of a business.
-  "leadership" = a leadership change SPECIFICALLY in regulatory affairs, quality, compliance, pharmacovigilance or medical affairs. A new CEO, CFO, president, country general manager or any leader outside those functions is "other", never "leadership".
-  "restructuring" = layoffs, redundancies or restructuring that touch regulatory or quality teams, or company-wide cuts.
-  "commentary" = the company or its people commenting publicly on regulation, regulators, guidance or policy.
-  "events" = organising, sponsoring, presenting at or attending a congress, conference, summit, webinar, trade show or similar event.
-  "competitor" = a collaboration, partnership or contract with one of Freyr's competitors (regulatory or clinical service providers or RIM, eCTD, labeling, submissions or quality software vendors such as Veeva, IQVIA, Parexel, Certara, ICON, Intertek, UL, Emergo, TCS, Accenture, Cognizant, Ennov, LORENZ, EXTEDO, ArisGlobal, Calyx, Rimsys, Generis, OpenText, Oracle Life Sciences).
-  "other" = anything else. When in doubt, "other".
+- "signals": one to three of these ids, the most telling first. Every item gets at least one:
+${signalLines}
+  Use "others" only when none of the other signals fits, and then on its own.
 - "relevant": true only if the item is about the medicinal products, medical devices or consumer products industries, or about regulatory affairs, quality or compliance work. Share-price news, HR awards, sports sponsorships, government IT contracts, banking, telecom or unrelated lines of business are false.
 - "industries": zero or more of "MPR" (medicinal products), "MDV" (medical devices), "CON" (consumer products), only the ones the item is clearly about.
-- "tags": zero or more of "thought-leadership" (a report, white paper, study, survey, blog post, journal article, podcast or webinar the company published or authored, sharing insight rather than announcing news) and "award" (an award, recognition, ranking or certification the company or its people won, including workplace awards).
-- "why": ONLY when signal is not "other": one sentence, at most 150 characters, written TO a Freyr salesperson, naming the regulatory, quality or compliance work this item creates or changes for the company and therefore the opening for Freyr. It must add something the title does not say; never restate the item. Good: "A Japan approval means Japanese labeling, post-approval variations and PMDA reporting from now on; ask who handles them." Bad: "GSK received approval in Japan." Otherwise omit it.
+- "why": ONLY when the first signal is not "others": one sentence, at most 150 characters, written TO a Freyr salesperson, ${group === "competitor" ? "naming what this means for Freyr when competing with them: an account now in play, a claim to answer, or a gap to point at" : "naming the regulatory, quality or compliance work this item creates or changes for the company and therefore the opening for Freyr"}. It must add something the title does not say; never restate the item. Good: "${example.good}" Bad: "${example.bad}" Otherwise omit it.
 
 Reply with ONLY valid JSON, no markdown fence:
-{"items": [{"i": 0, "signal": "events", "relevant": true, "industries": ["MPR"], "tags": [], "why": "..."}]}
+{"items": [{"i": 0, "signals": ["${allowed[0]}"], "relevant": true, "industries": ["MPR"], "why": "..."}]}
 
 Rules: one entry per item, in order. Never invent facts. Read the whole text before choosing; a word like "partnership" or "collaboration" in passing is not a deal.`;
 
@@ -402,18 +407,21 @@ Rules: one entry per item, in order. Never invent facts. Read the whole text bef
     for (const entry of Array.isArray(parsed?.items) ? parsed.items : []) {
       const index = Number(entry?.i);
       if (!Number.isInteger(index) || index < 0 || index >= items.length) continue;
-      if (!isSignalKind(entry?.signal)) continue;
+      const allowedIds = new Set<string>(allowed);
+      const picked = ((Array.isArray(entry?.signals) ? entry.signals : [entry?.signal]) as unknown[]).filter(
+        (id): id is SignalId => isSignalId(id) && allowedIds.has(id)
+      );
+      if (picked.length === 0) continue;
+      const signals = tidySignals(picked);
       const industries = ((Array.isArray(entry?.industries) ? entry.industries : []) as unknown[]).filter(
         isItemIndustry
       );
-      const tags = ((Array.isArray(entry?.tags) ? entry.tags : []) as unknown[]).filter(isItemTag);
       const why = trimAtWord(String(entry?.why ?? "").trim(), 170);
       out.set(index, {
-        signal: entry.signal,
+        signals,
         relevant: entry?.relevant === true,
         industries: [...new Set(industries)],
-        tags: [...new Set(tags)],
-        ...(entry.signal !== "other" && why ? { why } : {}),
+        ...(signals[0] !== "others" && why ? { why } : {}),
         v: CLASSIFY_VERSION,
       });
     }

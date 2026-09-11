@@ -49,14 +49,7 @@ import { MyListToggle } from "@/components/market-intel/MyListToggle";
 import { TrackPersonButton } from "@/components/market-intel/TrackPersonControls";
 import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
 import { cn } from "@/lib/utils";
-import {
-  ITEM_TAG_META,
-  SIGNAL_ICON,
-  SIGNAL_META,
-  type ItemLabel,
-  type ItemTag,
-  type SignalKind,
-} from "@/lib/marketIntelSignals";
+import { SIGNAL_META, type ItemLabel, type SignalId } from "@/lib/marketIntelSignals";
 import { groupStories, type StoryGroup, type StoryInput } from "@/lib/marketIntelStories";
 import type { BriefingPost, FeedNews, FeedPost, LiveBriefing, LiveSignal } from "@/lib/marketIntelFeed";
 import type { TrackedPerson } from "@/lib/marketIntelTracking";
@@ -74,11 +67,16 @@ import { tint } from "@/lib/tint";
  * carries a signal wears it on its own card instead of appearing twice; the
  * same story from several sources is one card with the other sources named
  * under it; a competitor's briefing shows only what concerns Freyr's
- * industries unless you ask for everything; thought leadership and awards
- * have chips of their own; and nobody is followed at a competitor.
+ * industries unless you ask for everything; and nobody is followed at a
+ * competitor.
+ *
+ * Sep 11 (Saras's Word doc): Signals is the main bar, with her ten customer or
+ * nine competitor titles, and Sources is the secondary bar under it. Every
+ * item wears at least one signal, so thought leadership and awards became
+ * signals and left the Sources bar.
  */
 
-type Source = "all" | "company" | "people" | "news" | "site" | "signal" | "thought" | "award";
+type Source = "all" | "company" | "people" | "news" | "site";
 
 const NEWS_VIEWS = ["rows", "tiles", "table"] as const;
 type NewsView = (typeof NEWS_VIEWS)[number];
@@ -132,7 +130,7 @@ export function LiveCompanyBriefing({
 }) {
   const isCompetitor = briefing.group === "competitor";
   const [source, setSource] = useState<Source>("all");
-  const [signalPick, setSignalPick] = useState<SignalKind | null>(null);
+  const [signalPick, setSignalPick] = useState<SignalId | null>(null);
   /* A COMPETITOR SHOWS WHAT CONCERNS US BY DEFAULT (Saras, Sep 10: "only if
      their posts are related to these industries should they show up here").
      Nothing is thrown away: the switch shows everything, with a count. */
@@ -225,9 +223,10 @@ export function LiveCompanyBriefing({
   const base = matched.filter(concerns);
   const hiddenByRelevance = matched.length - base.length;
 
-  const signalCounts: Partial<Record<SignalKind, number>> = {};
-  for (const i of base) if (i.signal) signalCounts[i.signal.kind] = (signalCounts[i.signal.kind] ?? 0) + 1;
-  const hasTag = (i: Item, tag: ItemTag) => !!i.label?.tags.includes(tag);
+  /* An item with several signals counts under each of them. */
+  const kindsOf = (i: Item): SignalId[] => i.signal?.kinds ?? ["others"];
+  const signalCounts: Partial<Record<SignalId, number>> = {};
+  for (const i of base) for (const kind of kindsOf(i)) signalCounts[kind] = (signalCounts[kind] ?? 0) + 1;
 
   const SOURCES: { key: Source; label: string; icon: LucideIcon; color: string; count: number; always: boolean }[] = [
     { key: "all" as Source, label: "Everything", icon: Radar, color: "var(--ink-bright-blue)", count: base.length, always: true },
@@ -237,54 +236,30 @@ export function LiveCompanyBriefing({
       : [{ key: "people" as Source, label: "People posts", icon: Users, color: "var(--ink-magenta)", count: base.filter((i) => i.kind === "people").length, always: true }]),
     { key: "news" as Source, label: "News", icon: Newspaper, color: "var(--ink-teal-deep)", count: base.filter((i) => i.kind === "news").length, always: true },
     { key: "site" as Source, label: "Their website", icon: Globe2, color: "var(--ink-orange)", count: base.filter((i) => i.kind === "site").length, always: true },
-    { key: "signal" as Source, label: "Signals", icon: Radar, color: "var(--ink-violet-soft)", count: base.filter((i) => !!i.signal).length, always: true },
-    { key: "thought" as Source, label: ITEM_TAG_META["thought-leadership"].label, icon: ITEM_TAG_META["thought-leadership"].icon, color: ITEM_TAG_META["thought-leadership"].color, count: base.filter((i) => hasTag(i, "thought-leadership")).length, always: isCompetitor },
-    { key: "award" as Source, label: ITEM_TAG_META.award.label, icon: ITEM_TAG_META.award.icon, color: ITEM_TAG_META.award.color, count: base.filter((i) => hasTag(i, "award")).length, always: isCompetitor },
   ].filter((s) => s.always || s.count > 0);
 
-  const passesSource = (i: Item) =>
-    source === "all" ||
-    (source === "signal"
-      ? !!i.signal
-      : source === "thought"
-        ? hasTag(i, "thought-leadership")
-        : source === "award"
-          ? hasTag(i, "award")
-          : i.kind === source);
+  const passesSource = (i: Item) => source === "all" || i.kind === source;
   const filtered = base
     .filter(passesSource)
-    .filter((i) => !signalPick || i.signal?.kind === signalPick);
+    .filter((i) => !signalPick || kindsOf(i).includes(signalPick));
   const groups = groupStories(filtered);
 
   // ---------------------------------------------------------------- cards
-  const tagChips = (item: Item) =>
-    (item.label?.tags ?? []).map((tag) => {
-      const meta = ITEM_TAG_META[tag];
-      const TIcon = meta.icon;
+  const signalChips = (item: Item) =>
+    kindsOf(item).map((kind) => {
+      const meta = SIGNAL_META[kind];
+      const SIcon = meta.icon;
       return (
         <span
-          key={tag}
+          key={kind}
+          title={meta.label}
           className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
           style={{ color: meta.color, background: tint(meta.color, 8) }}
         >
-          <TIcon size={10.5} strokeWidth={2.2} /> {meta.label}
+          <SIcon size={10.5} strokeWidth={2.2} /> {meta.label}
         </span>
       );
     });
-
-  const signalChip = (signal: LiveSignal) => {
-    const meta = SIGNAL_META[signal.kind];
-    const SIcon = SIGNAL_ICON[signal.kind];
-    return (
-      <span
-        title={meta.label}
-        className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
-        style={{ color: meta.color, background: tint(meta.color, 8) }}
-      >
-        <SIcon size={10.5} strokeWidth={2.2} /> {meta.short}
-      </span>
-    );
-  };
 
   const whyLine = (signal: LiveSignal) => (
     <p className="mt-2 rounded-lg bg-surface px-3 py-2 text-[12px] leading-relaxed text-text-secondary">
@@ -317,9 +292,10 @@ export function LiveCompanyBriefing({
       </p>
     ) : null;
 
+  const leadKind = (item: Item) => kindsOf(item)[0];
   const cardStyle = (item: Item) =>
-    item.signal ? { borderLeftColor: SIGNAL_META[item.signal.kind].color } : undefined;
-  const cardClass = (item: Item) => cn("p-4", item.signal && "border-l-[3px]");
+    leadKind(item) !== "others" ? { borderLeftColor: SIGNAL_META[leadKind(item)].color } : undefined;
+  const cardClass = (item: Item) => cn("p-4", leadKind(item) !== "others" && "border-l-[3px]");
 
   const postCard = (group: StoryGroup<Item>, key: string) => {
     const item = group.lead;
@@ -332,12 +308,7 @@ export function LiveCompanyBriefing({
     const open = expanded.has(post.url);
     return (
       <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
-        {(item.signal || (item.label?.tags.length ?? 0) > 0) && (
-          <p className="mb-2 flex flex-wrap items-center gap-2">
-            {item.signal && signalChip(item.signal)}
-            {tagChips(item)}
-          </p>
-        )}
+        <p className="mb-2 flex flex-wrap items-center gap-2">{signalChips(item)}</p>
         <div className="flex items-start gap-3">
           {post.by ? (
             <Avatar
@@ -415,7 +386,7 @@ export function LiveCompanyBriefing({
                 </span>
               )}
             </p>
-            {item.signal && whyLine(item.signal)}
+            {item.signal?.why && whyLine(item.signal)}
             {othersLine(group)}
           </div>
         </div>
@@ -430,7 +401,7 @@ export function LiveCompanyBriefing({
     return (
       <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
         <p className="flex flex-wrap items-center gap-2">
-          {item.signal && signalChip(item.signal)}
+          {signalChips(item)}
           {own ? (
             /* THE COMPANY'S OWN PAGE, said plainly: a warm chip and
                "Published by them", because a reporter's account and the
@@ -448,7 +419,6 @@ export function LiveCompanyBriefing({
               <Newspaper size={10.5} strokeWidth={2.2} /> {article.source}
             </span>
           )}
-          {tagChips(item)}
           <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
             {fmtDate(article.published)}
           </span>
@@ -473,7 +443,7 @@ export function LiveCompanyBriefing({
           {own ? "Read it on their site" : "Read the article"}
           <ExternalLink size={11} strokeWidth={2.2} />
         </a>
-        {item.signal && whyLine(item.signal)}
+        {item.signal?.why && whyLine(item.signal)}
         {othersLine(group)}
       </Card>
     );
@@ -590,11 +560,48 @@ export function LiveCompanyBriefing({
         </div>
       )}
 
-      {/* THE NINE SIGNALS, AT THE TOP (Saras, Sep 10). */}
-      <SignalRow className="mt-4" counts={signalCounts} active={signalPick} onPick={setSignalPick} />
+      {/* THE MAIN BAR: SIGNALS (Saras, Sep 11). */}
+      <SignalRow
+        className="mt-4"
+        group={briefing.group}
+        counts={signalCounts}
+        total={base.length}
+        active={signalPick}
+        onPick={setSignalPick}
+      />
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
+          {/* THE SECONDARY BAR: SOURCES (Saras, Sep 11), under the Signals
+              bar: where an item came from. Thought leadership and awards are
+              signals now, so they are not sources any more. */}
+          <div className="mb-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Sources">
+            <span className="mr-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Sources</span>
+            {SOURCES.map((s) => {
+              const SIcon = s.icon;
+              const on = source === s.key;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => setSource(s.key)}
+                  aria-pressed={on}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors",
+                    on
+                      ? "border-transparent text-white"
+                      : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+                  )}
+                  style={on ? { background: s.color } : undefined}
+                >
+                  <SIcon size={12} strokeWidth={2.2} />
+                  {s.label}
+                  <span className={cn("tnum", on ? "opacity-80" : "text-text-tertiary")}>{s.count}</span>
+                </button>
+              );
+            })}
+          </div>
+
           <SearchPriority
             query={query}
             className="mb-3 flex flex-wrap items-center gap-1.5"
@@ -706,34 +713,6 @@ export function LiveCompanyBriefing({
             </span>
           </SearchPriority>
 
-          {/* THE SOURCES, ALL VISIBLE (Saras, Sep 10: "instead of having this
-              as a dropdown... can we just have it show all the options"). */}
-          <div className="mb-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Sources">
-            {SOURCES.map((s) => {
-              const SIcon = s.icon;
-              const on = source === s.key;
-              return (
-                <button
-                  key={s.key}
-                  type="button"
-                  onClick={() => setSource(s.key)}
-                  aria-pressed={on}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
-                    on
-                      ? "border-transparent text-white"
-                      : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
-                  )}
-                  style={on ? { background: s.color } : undefined}
-                >
-                  <SIcon size={13} strokeWidth={2.2} />
-                  {s.label}
-                  <span className={cn("tnum", on ? "opacity-80" : "text-text-tertiary")}>{s.count}</span>
-                </button>
-              );
-            })}
-          </div>
-
           <div
             key={`${source}-${signalPick ?? "any"}-${newsView}-${range}-${relevantOnly}`}
             className={cn(
@@ -766,9 +745,11 @@ export function LiveCompanyBriefing({
                     {groups.map((group, index) => {
                       const item = group.lead;
                       const rowKind = item.kind === "news" ? "news" : item.kind === "site" ? "site" : "post";
-                      const color = item.signal ? SIGNAL_META[item.signal.kind].color : TABLE_TAG[rowKind].color;
-                      const RowIcon = item.signal
-                        ? SIGNAL_ICON[item.signal.kind]
+                      const lead = leadKind(item);
+                      const tagged = lead !== "others";
+                      const color = tagged ? SIGNAL_META[lead].color : TABLE_TAG[rowKind].color;
+                      const RowIcon = tagged
+                        ? SIGNAL_META[lead].icon
                         : rowKind === "news"
                           ? Newspaper
                           : rowKind === "site"
@@ -782,9 +763,9 @@ export function LiveCompanyBriefing({
                               style={{ color, background: tint(color, 8) }}
                             >
                               <RowIcon size={10.5} strokeWidth={2.2} />
-                              {item.signal ? SIGNAL_META[item.signal.kind].short : item.sourceLabel}
+                              {tagged ? SIGNAL_META[lead].label : item.sourceLabel}
                             </span>
-                            {item.signal && (
+                            {tagged && (
                               <span className="mt-1 block max-w-[200px] truncate text-[11px] text-text-tertiary">
                                 {item.sourceLabel}
                               </span>

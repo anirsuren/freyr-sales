@@ -41,6 +41,8 @@ export async function POST(req: NextRequest) {
   if (body?.classify === true) {
     const summary = await runMarketIntelLabeling({
       maxCalls: Number(body?.maxCalls) || 60,
+      /* Read again what the Sep 10 signals labelled (Saras's Sep 11 list). Spends. */
+      relabel: body?.relabel === true,
       only: Array.isArray(body?.only) ? body.only.map(String) : undefined,
     });
     return NextResponse.json(summary);

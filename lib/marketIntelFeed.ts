@@ -1,5 +1,13 @@
 import { MI_COMPANIES, MI_WATCHLIST, SIGNAL_META, type MiSignalKind } from "./marketIntelMock";
-import { isLabeled, type ItemLabel, type SignalKind } from "./marketIntelSignals";
+import {
+  fallbackSignals,
+  isLabeled,
+  labelSignals,
+  signalWhy,
+  type ItemLabel,
+  type SignalGroup,
+  type SignalId,
+} from "./marketIntelSignals";
 
 /**
  * THE REAL FEED (Anir, Aug 11: "Everything should be real... at least on real
@@ -182,7 +190,8 @@ export type BriefingPost = FeedPost & {
 };
 
 export type LiveSignal = {
-  kind: SignalKind;
+  /** Every signal the item carries, Saras's titles, most telling first; never empty. */
+  kinds: SignalId[];
   title: string;
   sourceLabel: string;
   url: string;
@@ -284,7 +293,7 @@ export type FeedCompanySummary = {
   /** Epoch ms of every stored post, article and website item, so month
    *  counts and the 12-week line are computed against the real "now". */
   itemDates: number[];
-  signalCounts: Partial<Record<SignalKind, number>>;
+  signalCounts: Partial<Record<SignalId, number>>;
   signalTotal: number;
   stories: { title: string; source: string; url: string; published: string | null }[];
 };
@@ -711,8 +720,8 @@ export async function deleteFeedCompany(id: string, personIds: string[] = []): P
 export function summarizeCompany(company: FeedCompany): FeedCompanySummary {
   const dates = itemDates(company);
   const { signals } = deriveSignals(company, []);
-  const signalCounts: Partial<Record<SignalKind, number>> = {};
-  for (const s of signals) signalCounts[s.kind] = (signalCounts[s.kind] ?? 0) + 1;
+  const signalCounts: Partial<Record<SignalId, number>> = {};
+  for (const s of signals) for (const kind of s.kinds) signalCounts[kind] = (signalCounts[kind] ?? 0) + 1;
   const stories = [...company.news]
     .sort((a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0))
     .slice(0, 5)
@@ -735,7 +744,8 @@ export function summarizeCompany(company: FeedCompany): FeedCompanySummary {
     },
     itemDates: dates,
     signalCounts,
-    signalTotal: signals.length,
+    /* Items that hit a named signal; "Others" is not one worth counting on a card. */
+    signalTotal: signals.filter((signal) => signal.kinds[0] !== "others").length,
     stories,
   };
 }
@@ -760,7 +770,7 @@ export type CompanyCard = {
   trendLabels: string[];
   counts: { posts: number; news: number; site: number };
   signalTotal: number;
-  signalCounts: Partial<Record<SignalKind, number>>;
+  signalCounts: Partial<Record<SignalId, number>>;
   stories: FeedCompanySummary["stories"];
 };
 
@@ -885,49 +895,6 @@ export function updatedLabel(iso: string | null): string {
 }
 
 // ------------------------------------------------------------------ signals
-/**
- * THE FALLBACK ONLY. Since Sep 10 every item is read by the classifier at
- * refresh time and carries its signal in `label` (lib/marketIntelSignals);
- * these keyword rules are what an item gets when it has not been labelled
- * yet (a run has not reached it) or the app has no Anthropic key. Keyword
- * matching is exactly what tagged a GSK post about attending ERS Congress as
- * a deal because its text said "partnership" (Saras, Sep 10), which is why
- * it is no longer the main path.
- */
-const SIGNAL_RULES: { kind: SignalKind; pattern: RegExp }[] = [
-  {
-    kind: "mna",
-    pattern: /acquir|merger|divest|takeover|to buy\b|buys? (a |the )?\w+ (business|unit|company)/i,
-  },
-  {
-    kind: "restructuring",
-    pattern: /layoff|lay off|job cuts?|redundanc|restructur|downsiz|headcount reduction/i,
-  },
-  {
-    kind: "leadership",
-    pattern:
-      /appoint|named (as )?(chief|ceo|cfo|coo|president|head|vp|vice president)|new (ceo|cfo|coo|chief|head of)|steps down|succeed(s|ing)? .{0,24}as |resign/i,
-  },
-  {
-    kind: "product",
-    pattern:
-      /\bfda\b|\bema\b|\bchmp\b|approval|approves|approved|clearance|submission|\bfiling\b|\bnda\b|\bbla\b|\bmaa\b|510\(k\)|marketing authori[sz]ation|label(ing)? change/i,
-  },
-  {
-    kind: "events",
-    pattern: /congress|conference|summit|webinar|symposium|\bexpo\b|booth|keynote|panel discussion|#\w*(congress|summit|conference)/i,
-  },
-  {
-    kind: "commentary",
-    pattern: /regulatory (landscape|reform|policy|guidance|framework|environment)|regulator[sy]? (should|must|need)|our view on|position paper|calls? for/i,
-  },
-  {
-    kind: "expansion",
-    pattern:
-      /expand(s|ing|sion)?|new (facility|plant|site|campus|hub)|invest(s|ing|ment) (of|in)|opens? (a|its|new)|enters? .{0,20}market|launch(es|ed)? in [A-Z]/i,
-  },
-];
-
 /** A stored line cut mid-word by an earlier version ends on a whole word. */
 function tidyLine(text: string, max: number): string {
   if (text.length < max - 1 || /[.!?…]$/.test(text)) return text;
@@ -935,18 +902,13 @@ function tidyLine(text: string, max: number): string {
   return `${(at > max * 0.6 ? text.slice(0, at) : text).replace(/[,;:\s]+$/, "")}…`;
 }
 
-/** The keyword fallback's answer for one item: first rule wins, in an order
- *  that puts the specific kinds before the broad ones. */
-export function fallbackSignal(text: string): SignalKind {
-  for (const rule of SIGNAL_RULES) if (rule.pattern.test(text)) return rule.kind;
-  return "other";
-}
 
 export function deriveSignals(
   company: FeedCompany,
   allNames: { id: string; name: string }[]
 ): { signals: LiveSignal[]; competitorMentions: { name: string; count: number }[] } {
   const signals: LiveSignal[] = [];
+  const group: SignalGroup = company.group === "competitor" ? "competitor" : "customer";
   const mentionCounts = new Map<string, number>();
   const others = allNames.filter(
     (n) => n.id !== company.id && n.name.length > 3
@@ -961,18 +923,20 @@ export function deriveSignals(
     date: string | null
   ) => {
     /* THE LABEL IS THE ANSWER when the classifier has read the item; the
-       keyword rules only speak for items it has not reached yet. */
-    let kind: SignalKind;
-    let why: string;
-    if (isLabeled(item)) {
-      kind = item.label!.signal;
-      const own = item.label!.why?.trim() || "";
-      why = own ? tidyLine(own, 170) : SIGNAL_META[kind].why;
+       keyword rules only speak for items it has not reached yet. Every item
+       carries at least one of Saras's signals (Sep 11), "Others" included,
+       so every item counts under the Signals bar. */
+    let kinds: SignalId[];
+    let why = "";
+    if (item.label && isLabeled(item)) {
+      kinds = labelSignals(item.label, group);
+      const own = item.label.why?.trim() || "";
+      if (kinds[0] !== "others") why = own ? tidyLine(own, 170) : signalWhy(group, kinds[0]);
     } else {
-      kind = fallbackSignal(text);
-      why = SIGNAL_META[kind].why;
+      kinds = fallbackSignals(text, group);
+      if (kinds[0] !== "others") why = signalWhy(group, kinds[0]);
     }
-    if (kind !== "other") signals.push({ kind, title, sourceLabel, url, date, why });
+    signals.push({ kinds, title, sourceLabel, url, date, why });
     for (const other of others) {
       if (text.toLowerCase().includes(other.name.toLowerCase())) {
         mentionCounts.set(other.name, (mentionCounts.get(other.name) ?? 0) + 1);

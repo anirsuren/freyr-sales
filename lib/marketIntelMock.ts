@@ -12,11 +12,11 @@
  *   always claims "the past 3 months" no matter when it is opened.
  */
 
-import { SIGNAL_META as SHARED_SIGNAL_META, type SignalKind } from "./marketIntelSignals";
+import { SIGNAL_META as SHARED_SIGNAL_META, type SignalId } from "./marketIntelSignals";
 
-/** The nine signals live in lib/marketIntelSignals.ts (Saras's list, Sep 10);
+/** The signals live in lib/marketIntelSignals.ts (Saras's Word doc, Sep 11);
  *  the showroom uses the same vocabulary so mock and live read alike. */
-export type MiSignalKind = SignalKind;
+export type MiSignalKind = SignalId;
 
 export const SIGNAL_META = SHARED_SIGNAL_META;
 
@@ -122,9 +122,9 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 71, source: "PharmaTimes", headline: "Takeda signs multi-year data partnership for safety analytics", summary: "The agreement covers post-market surveillance data across four regions, with an option to extend into regulatory intelligence." },
     ],
     signals: [
-      { daysAgo: 6, kind: "other", title: "Regulatory hiring up sharply", detail: "31 open regulatory roles this month against a 12-month average of 11.", why: "Teams staff up ahead of platform decisions. This is the window to be in the room." },
-      { daysAgo: 17, kind: "expansion", title: "Boston regulatory hub expansion", detail: "New hub consolidates submissions work from three sites into one.", why: "Consolidation usually triggers a tooling review across everything the sites used separately." },
-      { daysAgo: 52, kind: "competitor", title: "Competitor pilot reported", detail: "Industry chatter places a rival intelligence vendor in a limited pilot with one Takeda division.", why: "A pilot is not a rollout. A strong counter-demo now keeps the decision open." },
+      { daysAgo: 6, kind: "ra_qa_team", title: "Regulatory hiring up sharply", detail: "31 open regulatory roles this month against a 12-month average of 11.", why: "Teams staff up ahead of platform decisions. This is the window to be in the room." },
+      { daysAgo: 17, kind: "market_expansion", title: "Boston regulatory hub expansion", detail: "New hub consolidates submissions work from three sites into one.", why: "Consolidation usually triggers a tooling review across everything the sites used separately." },
+      { daysAgo: 52, kind: "competitor_mentions", title: "Competitor pilot reported", detail: "Industry chatter places a rival intelligence vendor in a limited pilot with one Takeda division.", why: "A pilot is not a rollout. A strong counter-demo now keeps the decision open." },
     ],
   },
   {
@@ -150,8 +150,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 80, source: "Fierce Pharma", headline: "GSK reorganizes R&D operations, regulatory moves under new leadership", summary: "The reorganization places regulatory affairs alongside development operations, reporting into the chief development office." },
     ],
     signals: [
-      { daysAgo: 11, kind: "other", title: "Platform consolidation program confirmed", detail: "Public commitment to reduce the regulatory software estate, selection within two quarters.", why: "An open selection window is the single best time to be evaluated. This one has a clock on it." },
-      { daysAgo: 80, kind: "leadership", title: "Regulatory moved under new leadership", detail: "Regulatory affairs now reports into the chief development office.", why: "New owner, new budget review. Prior vendor loyalties reset." },
+      { daysAgo: 11, kind: "technology", title: "Platform consolidation program confirmed", detail: "Public commitment to reduce the regulatory software estate, selection within two quarters.", why: "An open selection window is the single best time to be evaluated. This one has a clock on it." },
+      { daysAgo: 80, kind: "ra_qa_team", title: "Regulatory moved under new leadership", detail: "Regulatory affairs now reports into the chief development office.", why: "New owner, new budget review. Prior vendor loyalties reset." },
     ],
   },
   {
@@ -175,8 +175,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 47, source: "PharmaTimes", headline: "Novartis reports automation gains in submission assembly", summary: "An internal pilot cut document assembly time by roughly a third, with review cycles unchanged so far." },
     ],
     signals: [
-      { daysAgo: 14, kind: "competitor", title: "Vendor contracts under review", detail: "Cost program puts existing agreements, including a rival platform, under review.", why: "Reviews cut both ways. An incumbent under cost pressure is an opening." },
-      { daysAgo: 47, kind: "product", title: "Automation pilot readout published", detail: "Assembly 30 percent faster, review cycles unchanged.", why: "They have proven appetite and found the gap. The gap is exactly what Freya.Submit addresses." },
+      { daysAgo: 14, kind: "competitor_mentions", title: "Vendor contracts under review", detail: "Cost program puts existing agreements, including a rival platform, under review.", why: "Reviews cut both ways. An incumbent under cost pressure is an opening." },
+      { daysAgo: 47, kind: "technology", title: "Automation pilot readout published", detail: "Assembly 30 percent faster, review cycles unchanged.", why: "They have proven appetite and found the gap. The gap is exactly what Freya.Submit addresses." },
     ],
   },
   {
@@ -200,8 +200,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 55, source: "Fierce Pharma", headline: "Incyte pipeline expansion drives operations hiring", summary: "Late-stage readouts expected next year are pulling forward investment in regulatory and quality operations." },
     ],
     signals: [
-      { daysAgo: 9, kind: "expansion", title: "European regulatory build-out", detail: "Hiring across three EU markets, labeling and submissions named as needs.", why: "New teams pick new tools. Nobody defends a legacy system they never used." },
-      { daysAgo: 55, kind: "other", title: "Operations hiring ahead of readouts", detail: "Regulatory and quality roles pulled forward of next year's late-stage readouts.", why: "Budget exists now. After the readouts, everyone will be too busy to switch anything." },
+      { daysAgo: 9, kind: "ra_qa_team", title: "European regulatory build-out", detail: "Hiring across three EU markets, labeling and submissions named as needs.", why: "New teams pick new tools. Nobody defends a legacy system they never used." },
+      { daysAgo: 55, kind: "ra_qa_team", title: "Operations hiring ahead of readouts", detail: "Regulatory and quality roles pulled forward of next year's late-stage readouts.", why: "Budget exists now. After the readouts, everyone will be too busy to switch anything." },
     ],
   },
   {
@@ -223,7 +223,7 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 22, source: "Regulatory Focus", headline: "Gilead pilots structured labeling content", summary: "A structured authoring pilot targets core datasheets first, with reuse across markets as the headline metric." },
     ],
     signals: [
-      { daysAgo: 22, kind: "product", title: "Structured labeling pilot", detail: "Structured authoring piloted on core datasheets, reuse as the metric.", why: "Directly adjacent to Freya.Label. They are already sold on the problem." },
+      { daysAgo: 22, kind: "technology", title: "Structured labeling pilot", detail: "Structured authoring piloted on core datasheets, reuse as the metric.", why: "Directly adjacent to Freya.Label. They are already sold on the problem." },
     ],
   },
   {
@@ -248,8 +248,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 49, source: "Fierce Biotech", headline: "J&J Medtech consolidating regulatory information systems", summary: "A program to unify regulatory data across 14 franchises is underway, with vendor conversations reported in early stages." },
     ],
     signals: [
-      { daysAgo: 7, kind: "product", title: "Registration modernization named a priority", detail: "Audit findings flagged fragmented records, consolidation now has executive sponsorship.", why: "An audit finding is a budget line. This one maps directly onto Freya.Register." },
-      { daysAgo: 49, kind: "other", title: "Vendor conversations under way", detail: "Early-stage vendor conversations reported for the consolidation program.", why: "Early stage means the shortlist is still open. Late means it is not. Move now." },
+      { daysAgo: 7, kind: "technology", title: "Registration modernization named a priority", detail: "Audit findings flagged fragmented records, consolidation now has executive sponsorship.", why: "An audit finding is a budget line. This one maps directly onto Freya.Register." },
+      { daysAgo: 49, kind: "technology", title: "Vendor conversations under way", detail: "Early-stage vendor conversations reported for the consolidation program.", why: "Early stage means the shortlist is still open. Late means it is not. Move now." },
     ],
   },
 
@@ -290,9 +290,9 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 76, source: "Regulatory Focus", headline: "Northvale selects submissions partner for EU entry", summary: "The company said it will use an external partner for its first European filing while building an internal capability in parallel." },
     ],
     signals: [
-      { daysAgo: 3, kind: "other", title: "Series C closed", detail: "New funding explicitly names regulatory and quality build-out.", why: "Funded, unencumbered and buying their first platform. There is no incumbent to displace." },
-      { daysAgo: 15, kind: "leadership", title: "First Chief Regulatory Officer appointed", detail: "Regulatory, intelligence and labeling consolidated under one new leader.", why: "A brand-new function writes its own tool list in the first ninety days." },
-      { daysAgo: 58, kind: "competitor", title: "Tooling review completed", detail: "Four vendors evaluated, decision framed around scale rather than price.", why: "They have told the market exactly what they will be judged on. Answer that." },
+      { daysAgo: 3, kind: "others", title: "Series C closed", detail: "New funding explicitly names regulatory and quality build-out.", why: "Funded, unencumbered and buying their first platform. There is no incumbent to displace." },
+      { daysAgo: 15, kind: "ra_qa_team", title: "First Chief Regulatory Officer appointed", detail: "Regulatory, intelligence and labeling consolidated under one new leader.", why: "A brand-new function writes its own tool list in the first ninety days." },
+      { daysAgo: 58, kind: "competitor_mentions", title: "Tooling review completed", detail: "Four vendors evaluated, decision framed around scale rather than price.", why: "They have told the market exactly what they will be judged on. Answer that." },
     ],
   },
   {
@@ -319,8 +319,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 63, source: "Reuters", headline: "Kestrel expands Dublin operations centre", summary: "The expansion adds regulatory operations and pharmacovigilance roles to the existing site." },
     ],
     signals: [
-      { daysAgo: 8, kind: "expansion", title: "40 authorisations acquired", detail: "Legacy brands must be migrated onto Kestrel's own regulatory systems.", why: "Migration projects are budget events. They also expose whether the current system can take the load." },
-      { daysAgo: 29, kind: "product", title: "Variation volume named a priority", detail: "Post-approval change is the biggest stated driver of regulatory workload.", why: "That is the exact problem Freya.LCM was built for, and they have said it in public." },
+      { daysAgo: 8, kind: "technology", title: "40 authorisations acquired", detail: "Legacy brands must be migrated onto Kestrel's own regulatory systems.", why: "Migration projects are budget events. They also expose whether the current system can take the load." },
+      { daysAgo: 29, kind: "product_lcm", title: "Variation volume named a priority", detail: "Post-approval change is the biggest stated driver of regulatory workload.", why: "That is the exact problem Freya.LCM was built for, and they have said it in public." },
     ],
   },
   {
@@ -344,8 +344,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 44, source: "Fierce Pharma", headline: "Halcyon restructures regulatory services unit", summary: "Delivery is being consolidated into two hubs, with a stated aim of automating routine publishing work." },
     ],
     signals: [
-      { daysAgo: 12, kind: "competitor", title: "Bookings under pressure", detail: "Client insourcing named as the cause; delivery technology under review.", why: "A services business that must automate to defend margin is a buyer, not just a competitor." },
-      { daysAgo: 44, kind: "expansion", title: "Delivery consolidated into two hubs", detail: "Restructure explicitly targets automation of routine publishing.", why: "Consolidation plus automation is a platform decision with a deadline attached." },
+      { daysAgo: 12, kind: "competitor_mentions", title: "Bookings under pressure", detail: "Client insourcing named as the cause; delivery technology under review.", why: "A services business that must automate to defend margin is a buyer, not just a competitor." },
+      { daysAgo: 44, kind: "technology", title: "Delivery consolidated into two hubs", detail: "Restructure explicitly targets automation of routine publishing.", why: "Consolidation plus automation is a platform decision with a deadline attached." },
     ],
   },
   {
@@ -373,9 +373,9 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 68, source: "Reuters", headline: "Verdant Medical reports record device registrations", summary: "The company registered products in 14 new markets over the year, more than double the prior period." },
     ],
     signals: [
-      { daysAgo: 5, kind: "product", title: "MDR cycle cut by two thirds", detail: "Improvement attributed to consolidated technical documentation.", why: "They already believe the tooling caused the outcome. That belief is the hardest part of the sale." },
-      { daysAgo: 27, kind: "expansion", title: "APAC hub opening in Singapore", detail: "Eight new markets, regulatory and quality hiring under way.", why: "A greenfield team choosing its own stack, in markets the current system was never configured for." },
-      { daysAgo: 68, kind: "other", title: "Registration volume doubled", detail: "14 new markets registered in a single year.", why: "Volume growth is the point at which a spreadsheet-based registration book stops being viable." },
+      { daysAgo: 5, kind: "product_lcm", title: "MDR cycle cut by two thirds", detail: "Improvement attributed to consolidated technical documentation.", why: "They already believe the tooling caused the outcome. That belief is the hardest part of the sale." },
+      { daysAgo: 27, kind: "ra_qa_team", title: "APAC hub opening in Singapore", detail: "Eight new markets, regulatory and quality hiring under way.", why: "A greenfield team choosing its own stack, in markets the current system was never configured for." },
+      { daysAgo: 68, kind: "others", title: "Registration volume doubled", detail: "14 new markets registered in a single year.", why: "Volume growth is the point at which a spreadsheet-based registration book stops being viable." },
     ],
   },
   {
@@ -400,8 +400,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 50, source: "Regulatory Focus", headline: "Arclight invests in regulatory intelligence capability", summary: "The investment follows an internal review that found guidance changes were reaching product teams too late to act on." },
     ],
     signals: [
-      { daysAgo: 10, kind: "product", title: "IVDR transition nearly complete", detail: "Impact assessment named as the remaining bottleneck.", why: "They have named the gap themselves, and RIA.Product Impact is the thing that closes it." },
-      { daysAgo: 50, kind: "other", title: "Intelligence capability funded", detail: "Internal review found changes reached product teams too late.", why: "Budget approved, problem defined, no incumbent named. This is the cleanest opening on the board." },
+      { daysAgo: 10, kind: "product_lcm", title: "IVDR transition nearly complete", detail: "Impact assessment named as the remaining bottleneck.", why: "They have named the gap themselves, and RIA.Product Impact is the thing that closes it." },
+      { daysAgo: 50, kind: "others", title: "Intelligence capability funded", detail: "Internal review found changes reached product teams too late.", why: "Budget approved, problem defined, no incumbent named. This is the cleanest opening on the board." },
     ],
   },
   {
@@ -429,9 +429,9 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 58, source: "Endpoints News", headline: "Solenne reports improved first-cycle approval rate", summary: "A root-cause programme on deficiency letters was credited with an eleven-point improvement." },
     ],
     signals: [
-      { daysAgo: 6, kind: "other", title: "Filing volume at a record", detail: "Growth attributed to submission automation and an operations restructure.", why: "They are proving the thesis themselves. The next constraint after volume is always intelligence." },
-      { daysAgo: 24, kind: "expansion", title: "Latin American filings planned", detail: "Five new markets, a second regional dossier capability required.", why: "New markets mean new requirement sets. GRR-PAC answers that on day one." },
-      { daysAgo: 36, kind: "product", title: "Intelligence triage named as a time sink", detail: "Regulatory intelligence lead describes half a week spent on applicability checks.", why: "A named person, a named problem, and a product that removes it. Lead with that post." },
+      { daysAgo: 6, kind: "technology", title: "Filing volume at a record", detail: "Growth attributed to submission automation and an operations restructure.", why: "They are proving the thesis themselves. The next constraint after volume is always intelligence." },
+      { daysAgo: 24, kind: "market_expansion", title: "Latin American filings planned", detail: "Five new markets, a second regional dossier capability required.", why: "New markets mean new requirement sets. GRR-PAC answers that on day one." },
+      { daysAgo: 36, kind: "product_lcm", title: "Intelligence triage named as a time sink", detail: "Regulatory intelligence lead describes half a week spent on applicability checks.", why: "A named person, a named problem, and a product that removes it. Lead with that post." },
     ],
   },
   {
@@ -456,8 +456,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 46, source: "PharmaTimes", headline: "Ridgeway reports artwork error costs", summary: "The company disclosed a packaging recall attributed to an artwork version control failure." },
     ],
     signals: [
-      { daysAgo: 13, kind: "product", title: "Twelve-product reformulation under way", detail: "Coordinated label and artwork changes across six markets.", why: "A label and artwork programme with a live deadline. Freya.Label and Freya.Artwork sell themselves here." },
-      { daysAgo: 46, kind: "competitor", title: "Artwork version control failure disclosed", detail: "A packaging recall traced to artwork version control.", why: "A public, costly failure in exactly the workflow we replace. Timing matters more than pitch." },
+      { daysAgo: 13, kind: "product_lcm", title: "Twelve-product reformulation under way", detail: "Coordinated label and artwork changes across six markets.", why: "A label and artwork programme with a live deadline. Freya.Label and Freya.Artwork sell themselves here." },
+      { daysAgo: 46, kind: "competitor_mentions", title: "Artwork version control failure disclosed", detail: "A packaging recall traced to artwork version control.", why: "A public, costly failure in exactly the workflow we replace. Timing matters more than pitch." },
     ],
   },
   {
@@ -484,9 +484,9 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 59, source: "Regulatory Focus", headline: "Tessellate calls for harmonised ATMP comparability guidance", summary: "Leadership described divergent regional expectations as the biggest cost in advanced therapy development." },
     ],
     signals: [
-      { daysAgo: 2, kind: "product", title: "Conditional approval with commitments", detail: "Post-authorisation commitments across three regions to track and evidence.", why: "A commitment register is a legal obligation with a deadline. There is no version of this they can do on a spreadsheet." },
-      { daysAgo: 26, kind: "other", title: "Regulatory team expanding", detail: "CMC regulatory and lifecycle management hiring ahead of a second filing.", why: "They are staffing the exact functions Freya.LCM supports, before they have chosen a system." },
-      { daysAgo: 59, kind: "leadership", title: "Public position on divergent guidance", detail: "Regional divergence named as the biggest cost in development.", why: "RIA.Compare answers the complaint their own VP made in public." },
+      { daysAgo: 2, kind: "product_lcm", title: "Conditional approval with commitments", detail: "Post-authorisation commitments across three regions to track and evidence.", why: "A commitment register is a legal obligation with a deadline. There is no version of this they can do on a spreadsheet." },
+      { daysAgo: 26, kind: "ra_qa_team", title: "Regulatory team expanding", detail: "CMC regulatory and lifecycle management hiring ahead of a second filing.", why: "They are staffing the exact functions Freya.LCM supports, before they have chosen a system." },
+      { daysAgo: 59, kind: "ra_qa_team", title: "Public position on divergent guidance", detail: "Regional divergence named as the biggest cost in development.", why: "RIA.Compare answers the complaint their own VP made in public." },
     ],
   },
   {
@@ -512,8 +512,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 72, source: "PharmaTimes", headline: "Orchid Peak expands biosimilar pipeline", summary: "Three additional programmes were added, each targeting simultaneous filing across Korea, the EU and the US." },
     ],
     signals: [
-      { daysAgo: 9, kind: "expansion", title: "First EU centralised filing", detail: "Domestic approval now followed by a first European submission.", why: "A first EU filing is where a domestic-only regulatory system finally breaks." },
-      { daysAgo: 37, kind: "other", title: "US partnership signed, dossier retained", detail: "Orchid Peak keeps regulatory ownership under the commercialisation deal.", why: "They own the dossier and now have a partner reading it. Shared, controlled access becomes a requirement." },
+      { daysAgo: 9, kind: "market_expansion", title: "First EU centralised filing", detail: "Domestic approval now followed by a first European submission.", why: "A first EU filing is where a domestic-only regulatory system finally breaks." },
+      { daysAgo: 37, kind: "others", title: "US partnership signed, dossier retained", detail: "Orchid Peak keeps regulatory ownership under the commercialisation deal.", why: "They own the dossier and now have a partner reading it. Shared, controlled access becomes a requirement." },
     ],
   },
   {
@@ -537,8 +537,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 55, source: "MassDevice", headline: "Ironvale consolidates regulatory records after fourth acquisition", summary: "The programme aims to bring registrations from four acquired businesses onto a single system." },
     ],
     signals: [
-      { daysAgo: 18, kind: "product", title: "FDA observations on documentation traceability", detail: "Remediation plan confirmed following site inspection.", why: "Remediation has a regulator-imposed deadline and a budget that does not need arguing for." },
-      { daysAgo: 55, kind: "mna", title: "Post-acquisition records consolidation", detail: "Registrations from four acquired businesses moving onto one system.", why: "Somebody is choosing that one system this year. It should be ours." },
+      { daysAgo: 18, kind: "product_lcm", title: "FDA observations on documentation traceability", detail: "Remediation plan confirmed following site inspection.", why: "Remediation has a regulator-imposed deadline and a budget that does not need arguing for." },
+      { daysAgo: 55, kind: "corporate_structure", title: "Post-acquisition records consolidation", detail: "Registrations from four acquired businesses moving onto one system.", why: "Somebody is choosing that one system this year. It should be ours." },
     ],
   },
   {
@@ -566,8 +566,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 70, source: "Endpoints News", headline: "Lumaris completes IDMP readiness assessment", summary: "The assessment identified master data ownership as the largest remaining gap." },
     ],
     signals: [
-      { daysAgo: 16, kind: "other", title: "Data governance programme launched", detail: "Product data found duplicated across eleven systems.", why: "Data Hub is the answer to the question they have just funded somebody to ask." },
-      { daysAgo: 70, kind: "product", title: "IDMP readiness gap identified", detail: "Master data ownership named as the largest remaining gap.", why: "A named gap with a regulatory deadline behind it. Bring the IDMP data model to the first meeting." },
+      { daysAgo: 16, kind: "technology", title: "Data governance programme launched", detail: "Product data found duplicated across eleven systems.", why: "Data Hub is the answer to the question they have just funded somebody to ask." },
+      { daysAgo: 70, kind: "product_lcm", title: "IDMP readiness gap identified", detail: "Master data ownership named as the largest remaining gap.", why: "A named gap with a regulatory deadline behind it. Bring the IDMP data model to the first meeting." },
     ],
   },
   {
@@ -593,8 +593,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 64, source: "Endpoints News", headline: "Anvarra expands into European development", summary: "The company confirmed parallel European development, adding a second regulatory jurisdiction to its plan." },
     ],
     signals: [
-      { daysAgo: 7, kind: "product", title: "Registrational pathway confirmed", detail: "Pre-submission meeting completed, first filing timeline set.", why: "The clock has started and they have no submission system. This is the earliest useful moment." },
-      { daysAgo: 32, kind: "other", title: "Intelligence function being built in-house", detail: "Impact assessment named as the primary requirement.", why: "They have written our product requirement into their own job description." },
+      { daysAgo: 7, kind: "product_lcm", title: "Registrational pathway confirmed", detail: "Pre-submission meeting completed, first filing timeline set.", why: "The clock has started and they have no submission system. This is the earliest useful moment." },
+      { daysAgo: 32, kind: "others", title: "Intelligence function being built in-house", detail: "Impact assessment named as the primary requirement.", why: "They have written our product requirement into their own job description." },
     ],
   },
   {
@@ -618,8 +618,8 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 62, source: "Regulatory Focus", headline: "Brightwater expands into Nordic markets", summary: "The expansion adds four markets and roughly 30 additional authorisations." },
     ],
     signals: [
-      { daysAgo: 21, kind: "expansion", title: "Registration book migrated", detail: "Two hundred authorisations moved off a spreadsheet-based calendar.", why: "They have proved the value of a system of record. The next conversation is variations and intelligence." },
-      { daysAgo: 62, kind: "product", title: "Nordic expansion under way", detail: "Four new markets and about 30 further authorisations.", why: "More markets, same team. Automation is the only way that arithmetic works." },
+      { daysAgo: 21, kind: "market_expansion", title: "Registration book migrated", detail: "Two hundred authorisations moved off a spreadsheet-based calendar.", why: "They have proved the value of a system of record. The next conversation is variations and intelligence." },
+      { daysAgo: 62, kind: "product_lcm", title: "Nordic expansion under way", detail: "Four new markets and about 30 further authorisations.", why: "More markets, same team. Automation is the only way that arithmetic works." },
     ],
   },
   {
@@ -646,9 +646,9 @@ const MI_HAND_WRITTEN: MiCompany[] = [
       { daysAgo: 74, source: "PharmaTimes", headline: "Caldera Biopharm to file across Andean markets", summary: "Filings are planned across five additional Andean markets over the next eighteen months." },
     ],
     signals: [
-      { daysAgo: 11, kind: "expansion", title: "Regional operations consolidating", detail: "Eleven markets moving under one São Paulo function.", why: "Consolidation is a tooling decision. Regional coverage is where most global platforms are weakest, and we are not." },
-      { daysAgo: 43, kind: "product", title: "Bottleneck moved in-house", detail: "Faster agency timelines have exposed internal dossier preparation.", why: "The constraint is now something they control, which means they can buy their way out of it." },
-      { daysAgo: 74, kind: "other", title: "Andean filings planned", detail: "Five further markets over eighteen months.", why: "New requirement sets on a fixed timeline. GRR-PAC and RIA.Compare are the whole pitch." },
+      { daysAgo: 11, kind: "market_expansion", title: "Regional operations consolidating", detail: "Eleven markets moving under one São Paulo function.", why: "Consolidation is a tooling decision. Regional coverage is where most global platforms are weakest, and we are not." },
+      { daysAgo: 43, kind: "product_lcm", title: "Bottleneck moved in-house", detail: "Faster agency timelines have exposed internal dossier preparation.", why: "The constraint is now something they control, which means they can buy their way out of it." },
+      { daysAgo: 74, kind: "others", title: "Andean filings planned", detail: "Five further markets over eighteen months.", why: "New requirement sets on a fixed timeline. GRR-PAC and RIA.Compare are the whole pitch." },
     ],
   },
 ];
@@ -860,73 +860,73 @@ const INTEL_SIGNALS: {
   why: string;
 }[] = [
   {
-    kind: "other",
+    kind: "ra_qa_team",
     title: "Regulatory hiring well above trend",
     detail: "{n} open regulatory roles this month against a twelve-month average of {avg}.",
     why: "Teams staff up ahead of platform decisions. This is the window to be in the room.",
   },
   {
-    kind: "leadership",
+    kind: "ra_qa_team",
     title: "New owner for regulatory",
     detail: "Regulatory affairs now reports into a different function than it did last quarter.",
     why: "New owner, new budget review. Prior vendor loyalties reset.",
   },
   {
-    kind: "competitor",
+    kind: "competitor_mentions",
     title: "Rival platform reported in a pilot",
     detail: "Industry chatter places a competing vendor in a limited pilot with one division.",
     why: "A pilot is not a rollout. A strong counter-demo now keeps the decision open.",
   },
   {
-    kind: "product",
+    kind: "product_lcm",
     title: "Filing volume up sharply",
     detail: "{n} filings last quarter against {avg} in the same quarter a year earlier.",
     why: "Volume is what breaks a manual process. They will feel it before we call.",
   },
   {
-    kind: "expansion",
+    kind: "market_expansion",
     title: "Regional operations consolidating",
     detail: "Markets moving under one regional function in {city}.",
     why: "Consolidation is a tooling decision, and regional coverage is where most global platforms are weakest.",
   },
   {
-    kind: "other",
+    kind: "technology",
     title: "Selection window open",
     detail: "A public commitment to reduce the software estate, with selection inside two quarters.",
     why: "An open selection window is the best time to be evaluated, and this one has a clock on it.",
   },
   {
-    kind: "other",
+    kind: "others",
     title: "First regulatory operations lead hired",
     detail: "A role that did not exist here a year ago has been filled from outside.",
     why: "A new function buys its own tools. Being early is worth more than being cheap.",
   },
   {
-    kind: "product",
+    kind: "product_lcm",
     title: "Electronic-only commitment published",
     detail: "Paper filings to be retired in every market that accepts an electronic equivalent.",
     why: "A stated deadline they have to hit, with a gap they cannot close by hiring.",
   },
   {
-    kind: "expansion",
+    kind: "market_expansion",
     title: "New market entries planned",
     detail: "{n} further markets over the next eighteen months.",
     why: "New requirement sets on a fixed timeline. Intelligence and comparison are the whole pitch.",
   },
   {
-    kind: "competitor",
+    kind: "competitor_mentions",
     title: "Incumbent contract under cost review",
     detail: "A cost programme has put existing vendor agreements under review through the year.",
     why: "Reviews cut both ways. An incumbent under cost pressure is an opening.",
   },
   {
-    kind: "other",
+    kind: "others",
     title: "Data partnership signed",
     detail: "A multi-year agreement covering safety and post-market data across several regions.",
     why: "They are already buying data infrastructure. The regulatory layer is the adjacent sale.",
   },
   {
-    kind: "leadership",
+    kind: "ra_qa_team",
     title: "Digital transformation lead appointed",
     detail: "A newly created role covering systems across development and regulatory.",
     why: "Somebody has been hired to change things and has to show something inside a year.",
