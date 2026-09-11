@@ -20,6 +20,8 @@ export type CompanySuggestion = {
   name: string;
   /** Where it is, and its website when that is already known. */
   detail: string;
+  /** Who offered it, so the list can group and credit it. */
+  source: LookupSource;
 };
 
 export type AddressSuggestion = {
@@ -38,7 +40,12 @@ export type CompanyDetails = {
   hq?: CustomerAddress;
 };
 
-export type LookupResponse<T> = { source: LookupSource; results: T[] };
+export type LookupResponse<T> = {
+  source: LookupSource;
+  /** Everyone whose answers are in the list, for the credit line under it. */
+  credits: LookupSource[];
+  results: T[];
+};
 
 export const COMPANY_REF_RE = /^(g:[A-Za-z0-9_-]{10,300}|wd:Q\d{1,12}|lei:[A-Z0-9]{20})$/;
 export const ADDRESS_REF_RE = /^g:[A-Za-z0-9_-]{10,300}$/;

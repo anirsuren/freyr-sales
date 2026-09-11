@@ -31,6 +31,24 @@ export function LookupCredit({ source, kind }: { source: LookupSource; kind: "co
   );
 }
 
+/** Every source whose answers are in the list. */
+export function LookupCredits({ credits, kind }: { credits: LookupSource[]; kind: "company" | "address" }) {
+  return (
+    <span className="flex items-center gap-2.5">
+      {Array.from(new Set(credits)).map((source) => (
+        <LookupCredit key={source} source={source} kind={kind} />
+      ))}
+    </span>
+  );
+}
+
+function creditsOf(data: Record<string, unknown>): LookupSource[] {
+  const listed = Array.isArray(data.credits)
+    ? data.credits.filter((credit): credit is LookupSource => credit === "google" || credit === "open")
+    : [];
+  return listed.length > 0 ? listed : [data.source === "google" ? "google" : "open"];
+}
+
 function Mark({ color, children }: { color: string; children: ReactNode }) {
   return (
     <span
@@ -109,12 +127,14 @@ export function CompanyNameLookup({
     }
     const results = Array.isArray(data.results) ? (data.results as CompanySuggestion[]) : [];
     results.forEach((result) => offered.current.set(result.ref, result));
+    const registered = results.filter((result) => result.source !== "google");
+    const onMaps = results.filter((result) => result.source === "google");
     return {
       groups: [
         existingGroup,
         {
-          title: existing.length > 0 && results.length > 0 ? "Companies" : undefined,
-          options: results.map((result) => ({
+          title: existing.length > 0 && registered.length > 0 ? "Companies" : undefined,
+          options: registered.map((result) => ({
             key: result.ref,
             main: result.name,
             detail: result.detail,
@@ -125,8 +145,22 @@ export function CompanyNameLookup({
             ),
           })),
         },
+        {
+          /* Google's rows are places, usually one office of a company, and say so. */
+          title: onMaps.length > 0 ? "Offices on Google Maps" : undefined,
+          options: onMaps.map((result) => ({
+            key: result.ref,
+            main: result.name,
+            detail: result.detail,
+            icon: (
+              <Mark color="var(--ink-orange)">
+                <MapPin size={14} strokeWidth={2.2} />
+              </Mark>
+            ),
+          })),
+        },
       ],
-      footer: results.length > 0 ? <LookupCredit source={sourceOf(data)} kind="company" /> : undefined,
+      footer: results.length > 0 ? <LookupCredits credits={creditsOf(data)} kind="company" /> : undefined,
     };
   };
 

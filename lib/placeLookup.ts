@@ -272,6 +272,19 @@ function addressFromGoogle(place: GooglePlace): CustomerAddress | undefined {
     const folded = fold(line);
     return folded !== fold(city) && folded !== fold(countryLong) && folded !== fold(zip);
   });
+  /* A two- or three-letter scrap Google split off ("dist") belongs to the line before it. */
+  lines = lines.reduce<string[]>((kept, line) => {
+    if (kept.length > 0 && /^[a-z.]{1,4}$/i.test(line)) kept[kept.length - 1] = `${kept[kept.length - 1]} ${line}`;
+    else kept.push(line);
+    return kept;
+  }, []);
+  /* The street goes on line 1 and a building name after it: Google lists
+     "CASTLEWOOD HOUSE" before "79 New Oxford Street", and someone who typed
+     the street should not see it pushed down a line. */
+  const route = fold(part("route"));
+  const streetAt = route ? lines.findIndex((line) => fold(line).includes(route)) : -1;
+  if (streetAt > 0) lines = [lines[streetAt], ...lines.filter((_, index) => index !== streetAt)];
+  lines = lines.map((line) => tidyCase(line));
   const subpremise = part("subpremise");
   if (subpremise && !fold(lines.join(" ")).includes(fold(subpremise))) lines.push(subpremise);
   return makeAddress({
@@ -604,6 +617,7 @@ async function openCompanies(query: string): Promise<CompanySuggestion[]> {
   const results: CompanySuggestion[] = known.map((company) => ({
     ref: `wd:${company.id}`,
     name: company.name,
+    source: "open",
     detail:
       [company.website, [company.city, company.country].filter(Boolean).join(", ")].filter(Boolean).join(" · ") ||
       company.description,
@@ -625,6 +639,7 @@ async function openCompanies(query: string): Promise<CompanySuggestion[]> {
     results.push({
       ref: `lei:${company.lei}`,
       name: company.name,
+      source: "open",
       detail: [[company.city, company.country].filter(Boolean).join(", "), "company register"]
         .filter(Boolean)
         .join(" · "),
@@ -745,27 +760,51 @@ function noteFallback(what: string, error: unknown) {
   );
 }
 
+/**
+ * COMPANIES: THE REGISTERS FIRST, GOOGLE FOR WHAT THEY MISS.
+ *
+ * Tried on Sep 10 with the key in: Google's answers to "GSK" were the sites
+ * nearest the server (a heliport and three offices in Pennsylvania), and
+ * picking the first named the customer "Smithkline Beecham Heliport".
+ * Wikidata and GLEIF answer with the company itself, its website and its
+ * registered headquarters, which is what a customer record wants. Google is
+ * asked only when they find fewer than two, where a small company's office on
+ * the map earns its row.
+ */
 export async function searchCompanies(
   query: string,
   session: string | null
 ): Promise<LookupResponse<CompanySuggestion>> {
+  const open = await openCompanies(query).catch((error: unknown) => {
+    console.warn(`[lookup] open company search failed: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  });
+  const results: CompanySuggestion[] = open ?? [];
+  const credits: LookupSource[] = open && open.length > 0 ? ["open"] : [];
   const key = googleKey();
-  if (key) {
+  if (!open && !key) throw new Error("The open sources did not answer.");
+  if (key && results.length < 2) {
     try {
+      const listed = new Set(results.map((result) => fold(result.name)));
       const predictions = await googlePredictions(query, session, key);
-      return {
-        source: "google",
-        results: predictions.map((prediction) => ({
+      const offices = predictions
+        .filter((prediction) => !listed.has(fold(prediction.main)))
+        .map((prediction) => ({
           ref: `g:${prediction.placeId}`,
           name: prediction.main,
           detail: prediction.detail,
-        })),
-      };
+          source: "google" as const,
+        }));
+      if (offices.length > 0) {
+        results.push(...offices);
+        credits.push("google");
+      }
     } catch (error) {
+      if (!open) throw error;
       noteFallback("company search", error);
     }
   }
-  return { source: "open", results: await openCompanies(query) };
+  return { source: credits.includes("google") && !credits.includes("open") ? "google" : "open", credits, results };
 }
 
 export async function companyDetails(ref: string, session: string | null): Promise<CompanyDetails | null> {
@@ -795,6 +834,7 @@ export async function searchAddresses(
       const predictions = await googlePredictions(query, session, key);
       return {
         source: "google",
+        credits: ["google"],
         results: predictions.map((prediction) => ({
           ref: `g:${prediction.placeId}`,
           main: prediction.main,
@@ -805,7 +845,7 @@ export async function searchAddresses(
       noteFallback("address search", error);
     }
   }
-  return { source: "open", results: await openAddresses(query) };
+  return { source: "open", credits: ["open"], results: await openAddresses(query) };
 }
 
 export async function addressDetails(ref: string, session: string | null): Promise<CustomerAddress | null> {
