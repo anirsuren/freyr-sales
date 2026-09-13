@@ -77,6 +77,12 @@ RUN groupadd --system --gid 1001 nodejs && \
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Next's standalone tracer includes `sharp` but can omit its platform-specific
+# optional packages. Image optimization then fails at request time because the
+# Linux libvips shared library is absent. Copy the packages installed for the
+# image's target platform into the runtime explicitly.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/sharp ./node_modules/sharp
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@img ./node_modules/@img
 USER nextjs
 EXPOSE 8080
 CMD ["node", "server.js"]
