@@ -315,6 +315,16 @@ export type FeedCompanySummary = {
   stories: { title: string; source: string; url: string; published: string | null }[];
 };
 
+/** Competitor intelligence defaults to items that the classifier marked as
+ * relevant to Freyr's industries. Unlabelled items stay visible until the
+ * classifier has made a decision, so collection never hides data on a guess. */
+export function isRelevantCompanyItem(
+  group: FeedCompany["group"],
+  item: { label?: ItemLabel }
+): boolean {
+  return group !== "competitor" || !item.label || item.label.relevant;
+}
+
 function hasFeedDatabase(): boolean {
   return !!(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -736,11 +746,17 @@ export async function deleteFeedCompany(id: string, personIds: string[] = []): P
 /** Everything the list page shows about a company, computed when the
  *  company is written so the page never has to read its items. */
 export function summarizeCompany(company: FeedCompany): FeedCompanySummary {
-  const dates = itemDates(company);
-  const { signals } = deriveSignals(company, []);
+  const visibleCompany: FeedCompany = {
+    ...company,
+    posts: company.posts.filter((item) => isRelevantCompanyItem(company.group, item)),
+    news: company.news.filter((item) => isRelevantCompanyItem(company.group, item)),
+    site: (company.site ?? []).filter((item) => isRelevantCompanyItem(company.group, item)),
+  };
+  const dates = itemDates(visibleCompany);
+  const { signals } = deriveSignals(visibleCompany, []);
   const signalCounts: Partial<Record<SignalId, number>> = {};
   for (const s of signals) for (const kind of s.kinds) signalCounts[kind] = (signalCounts[kind] ?? 0) + 1;
-  const stories = [...company.news]
+  const stories = [...visibleCompany.news]
     .sort((a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0))
     .slice(0, 5)
     .map((n) => ({ title: n.title, source: n.source, url: n.url, published: n.published }));
@@ -756,9 +772,9 @@ export function summarizeCompany(company: FeedCompany): FeedCompanySummary {
     ...(company.newsAt ? { newsAt: company.newsAt } : {}),
     ...(company.siteAt ? { siteAt: company.siteAt } : {}),
     counts: {
-      posts: company.posts.length,
-      news: company.news.length,
-      site: (company.site ?? []).length,
+      posts: visibleCompany.posts.length,
+      news: visibleCompany.news.length,
+      site: (visibleCompany.site ?? []).length,
     },
     itemDates: dates,
     signalCounts,

@@ -55,7 +55,14 @@ import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
 import { cn } from "@/lib/utils";
 import { SIGNAL_META, type ItemLabel, type SignalId } from "@/lib/marketIntelSignals";
 import { groupStories, type StoryGroup, type StoryInput } from "@/lib/marketIntelStories";
-import type { BriefingPost, FeedNews, FeedPost, LiveBriefing, LiveSignal } from "@/lib/marketIntelFeed";
+import {
+  isRelevantCompanyItem,
+  type BriefingPost,
+  type FeedNews,
+  type FeedPost,
+  type LiveBriefing,
+  type LiveSignal,
+} from "@/lib/marketIntelFeed";
 import type { TrackedPerson, TrackedCompany } from "@/lib/marketIntelTracking";
 import type { Division } from "@/lib/offeringMaterials";
 import { useStoredView } from "@/lib/useStoredView";
@@ -226,7 +233,8 @@ export function LiveCompanyBriefing({
     .filter((item, index, all) => all.findIndex((other) => other.url === item.url) === index)
     .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0));
 
-  const concerns = (i: Item) => !relevantOnly || !i.label || i.label.relevant;
+  const concerns = (i: Item) =>
+    !relevantOnly || isRelevantCompanyItem(briefing.group, i);
   const matched = items.filter((i) => inRange(i.date) && hit(i.title, i.body, i.sourceLabel, i.signal?.why));
   const base = matched.filter(concerns);
   const hiddenByRelevance = matched.length - base.length;
