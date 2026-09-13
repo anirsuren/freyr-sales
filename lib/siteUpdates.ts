@@ -165,7 +165,7 @@ export type SiteUpdatesResult = { updates: FeedNews[]; cost: number; failed: boo
 export async function scrapeSiteUpdates(
   source: Pick<CompanySource, "name" | "site">,
   key: string | undefined,
-  options: { fastInitial?: boolean } = {},
+  options: { fastInitial?: boolean; incremental?: boolean } = {},
 ): Promise<SiteUpdatesResult> {
   const inputDomain = normalizeSiteDomain(source.site);
   if (!inputDomain) return { updates: [], cost: 0, failed: false };

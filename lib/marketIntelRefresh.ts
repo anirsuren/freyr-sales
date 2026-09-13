@@ -936,7 +936,7 @@ export async function runMarketIntelRefresh(options?: {
         ) {
           continue;
         }
-        const result = await scrapeSiteUpdates(source, activePerplexityKey);
+        const result = await scrapeSiteUpdates(source, activePerplexityKey, {incremental:true});
         spentFresh += result.cost;
         if (result.failed) continue;
         const entry: FeedCompany = existing ?? {
@@ -1817,7 +1817,7 @@ async function runSiteUpdatesRefreshLocked(options?: {force?:boolean;budgetMs?:n
 
     let result: Awaited<ReturnType<typeof scrapeSiteUpdates>>;
     try {
-      result = await scrapeSiteUpdates(source, key);
+      result = await scrapeSiteUpdates(source, key, {incremental:true});
     } catch {
       failed += 1;
       continue;

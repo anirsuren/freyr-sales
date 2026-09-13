@@ -57,6 +57,18 @@ test('newsroom links are visited before the map archive backlog',async()=>{
  assert.ok(scrapes.indexOf(fresh)<scrapes.indexOf(old));
 });
 
+test('incremental daily collection reads the newsroom and bounds old map pages',async()=>{
+ rows.clear();scrapes.length=0;
+ const index='https://example.test/news',fresh='https://example.test/news/latest-announcement';
+ const archive=Array.from({length:30},(_,i)=>`https://example.test/news/archive-${i}`);
+ rows.set(websiteMapKey('example.test'),{at:recent,links:[{url:index},...archive.map(url=>({url}))]});
+ htmlByUrl={[index]:`<h1>News</h1><a href="${fresh}">Latest company research announcement</a>`,[fresh]:article('Latest company research announcement')};
+ for(const url of archive)htmlByUrl[url]=article('Archived company announcement');
+ await collectFirecrawlWebsite('example.test','test',{incremental:true});
+ assert.ok(scrapes.includes(index));assert.ok(scrapes.includes(fresh));
+ assert.ok(scrapes.length<=12,`incremental pass used ${scrapes.length} page reads`);
+});
+
 test('blog listings discover article links outside named news URL sections',async()=>{
  rows.clear();scrapes.length=0;
  const index='https://example.test/blog',articleUrl='https://example.test/knowledge/designing-research-around-patient-needs';

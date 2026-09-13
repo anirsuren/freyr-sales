@@ -9,6 +9,10 @@ import type { FeedNews } from './marketIntelFeed';
 
 const SECTION = /news|press|media|blog|insights|perspectives|resources|education[-/]hub|publications|announcements|releases/i;
 const AGE = 90 * 86400_000;
+// A sitemap changes far less often than a newsroom. Refreshing every map every
+// day paid Firecrawl to rediscover the same archive before we read the current
+// listing pages. Listings stay daily; the broad discovery map is weekly.
+const MAP_REFRESH_MS = 7 * 86400_000;
 export function isWebsiteListing(url:string) {
   const path=new URL(url).pathname.replace(/\/$/,'');
   return /\/(?:news|newsroom|press|press-releases|media|blog|insights|perspectives|resources|education-hub|publications|announcements|releases)$|\/page\/\d+$/i.test(path) || !path;
@@ -60,14 +64,14 @@ export async function resolveWebsiteDomain(domain:string):Promise<string> {
 
 /** Firecrawl discovers public URLs; headlines and dates come from the actual
  * page, never generated search prose. Called by the existing daily site job. */
-export async function collectFirecrawlWebsite(domain:string,key:string,options:{fastInitial?:boolean}={}):Promise<DirectSiteResult> {
+export async function collectFirecrawlWebsite(domain:string,key:string,options:{fastInitial?:boolean;incremental?:boolean}={}):Promise<DirectSiteResult> {
   domain=await resolveWebsiteDomain(domain);
   const errors:string[]=[];
   const publishedLinks=await discoverPublishedWebsiteLinks(domain);
 
   const mapId=websiteMapKey(domain);
   let map=(await readCollectionRow(mapId))?.catalog;
-  if(!map?.links || !collectedInCurrentCycle(map.at)) {
+  if(!map?.links || Date.now()-Date.parse(map.at)>MAP_REFRESH_MS) {
     const response=await fetch('https://api.firecrawl.dev/v2/map',{
       method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},
       body:JSON.stringify({url:`https://${domain}`,sitemap:'include',includeSubdomains:true,ignoreQueryParameters:true,limit:5000,timeout:60000}),
@@ -123,16 +127,17 @@ export async function collectFirecrawlWebsite(domain:string,key:string,options:{
       while(next<urls.length && Date.now()<deadline)await scan(urls[next++]);
     }));
   };
-  const initialDeadline=options.fastInitial ? Date.now()+35_000 : Infinity;
+  const bounded=options.fastInitial||options.incremental;
+  const initialDeadline=bounded ? Date.now()+(options.fastInitial?35_000:45_000) : Infinity;
   // Onboarding needs a useful first briefing, not a complete reread of a
   // company's historical resource library. Recent publication-feed URLs and
   // current landing pages are enough for that first pass; the daily refresh
   // resumes from the saved page cache and walks the remaining archive.
-  const firstPublished=(options.fastInitial ? [...publishedLinks]
-    .sort((a,b)=>Date.parse(b.published)-Date.parse(a.published)).slice(0,12) : publishedLinks)
+  const firstPublished=(bounded ? [...publishedLinks]
+    .sort((a,b)=>Date.parse(b.published)-Date.parse(a.published)).slice(0,options.fastInitial?12:4) : publishedLinks)
     .map(link=>normalize(link.url));
   await runWorkers(firstPublished,initialDeadline);
-  await runWorkers(options.fastInitial ? primaryEntries.slice(0,4) : primaryEntries,initialDeadline);
+  await runWorkers(bounded ? primaryEntries.slice(0,options.fastInitial?4:3) : primaryEntries,initialDeadline);
   // The newsroom orders current stories ahead of archives. Read those links
   // before the map backlog, which may contain years of older pages.
   // Interleave each current listing so one large archive cannot starve another.
@@ -147,14 +152,22 @@ export async function collectFirecrawlWebsite(domain:string,key:string,options:{
   // A public CMS publication feed is authoritative for its recent dated
   // content. Once available, supplement it with current listing links instead
   // of rereading every AI-selected URL from years of mapped archives.
-  const candidateArticles=publishedLinks.length ? articleLinks : [...articleLinks,...queue];
+  const mapCandidates=[...queue]
+    .filter(url=>!isWebsiteListing(url))
+    .sort((a,b)=>websiteArticlePriority(b)-websiteArticlePriority(a));
+  const candidateArticles=publishedLinks.length
+    ? articleLinks
+    : options.incremental
+      ? [...articleLinks,...mapCandidates.slice(0,8)]
+      : [...articleLinks,...queue];
   const newlyLinked=[...new Set(candidateArticles)].filter(url=>!visited.has(url))
     .sort((a,b)=>(publishedDates.get(b)??websiteArticlePriority(b))-(publishedDates.get(a)??websiteArticlePriority(a)));
   // Give actual article reads their own pass after discovery/AI selection.
   // Slow archive discovery previously exhausted this allowance with no news read.
-  await runWorkers(options.fastInitial ? newlyLinked.slice(0,18) : newlyLinked,
-    options.fastInitial ? initialDeadline : Date.now()+120_000);
+  const articleLimit=options.fastInitial?18:options.incremental?8:Infinity;
+  await runWorkers(Number.isFinite(articleLimit)?newlyLinked.slice(0,articleLimit):newlyLinked,
+    bounded ? initialDeadline : Date.now()+120_000);
   const remaining=newlyLinked.filter(url=>!visited.has(url)).length;
-  if(remaining && !options.fastInitial)errors.push(`${remaining} website pages remain to be checked in a later refresh; saved pages will be reused.`);
+  if(remaining && !bounded)errors.push(`${remaining} website pages remain to be checked in a later refresh; saved pages will be reused.`);
   return {updates:[...updates.values()].sort((a,b)=>Date.parse(b.published!)-Date.parse(a.published!)),failed:pagesRead===0,pagesRead,errors,entryPoints:entries.sort((a,b)=>a.length-b.length).slice(0,5)};
 }
