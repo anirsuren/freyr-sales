@@ -221,7 +221,7 @@ export function LiveCompanyCard({
             <span className="font-semibold text-text-primary">
               {story.source}:
             </span>{" "}
-            {safeHref(story.url) ? <a href={safeHref(story.url) as string} target="_blank" rel="noreferrer" className="text-blue-primary underline decoration-blue-primary/30 underline-offset-2 hover:decoration-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+            {safeHref(story.url) ? <a href={safeHref(story.url) as string} target="_blank" rel="noreferrer" className="text-inherit no-underline transition-colors hover:text-blue-primary hover:underline hover:decoration-blue-primary/30 hover:underline-offset-2 focus-visible:text-blue-primary focus-visible:underline focus-visible:underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
               {story.title}
             </a> : story.title}
           </p>
@@ -330,7 +330,7 @@ export function LiveCompanyCard({
               <span className="font-semibold text-text-primary">
                 {item.source}:
               </span>{" "}
-              {safeHref(item.url) ? <a href={safeHref(item.url) as string} target="_blank" rel="noreferrer" className="text-blue-primary underline decoration-blue-primary/30 underline-offset-2 hover:decoration-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+              {safeHref(item.url) ? <a href={safeHref(item.url) as string} target="_blank" rel="noreferrer" className="text-text-secondary no-underline transition-colors hover:text-blue-primary hover:underline hover:decoration-blue-primary/30 hover:underline-offset-2 focus-visible:text-blue-primary focus-visible:underline focus-visible:underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
                 {item.title}
               </a> : <span className="text-text-secondary">{item.title}</span>}
               <span className="text-text-tertiary" suppressHydrationWarning>
