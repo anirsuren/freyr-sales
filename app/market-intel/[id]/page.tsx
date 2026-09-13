@@ -133,6 +133,7 @@ export default async function MarketIntelCompanyPage({
         feedCompany,
         allTrackedNames(intel ? { companies: intel.companies } : null, tracking.companies),
         withFeed.map((p) => ({
+          id: p.id,
           name: p.name,
           role: p.role,
           photoUrl: p.photoUrl,

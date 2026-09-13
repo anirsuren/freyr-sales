@@ -4,6 +4,7 @@ import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import { SmartBack } from "@/components/ui/BackButton";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Building2,
@@ -30,12 +31,15 @@ import {
   ThumbsUp,
   TrendingDown,
   TrendingUp,
+  Trash2,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import { AutoFresh } from "@/components/market-intel/AutoFresh";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { RefreshChip } from "@/components/market-intel/NextRefresh";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import {
@@ -109,6 +113,12 @@ type Item = StoryInput & {
   signal?: LiveSignal;
   post?: BriefingPost;
   news?: FeedNews;
+  personId?: string;
+};
+
+type StoryRemoval = {
+  title: string;
+  items: { url: string; personId?: string }[];
 };
 
 export function LiveCompanyBriefing({
@@ -141,6 +151,8 @@ export function LiveCompanyBriefing({
   /** How many people have it: Active with a count, or Inactive. */
   watch?: WatchState;
 }) {
+  const router = useRouter();
+  const { toast } = useToast();
   const isCompetitor = briefing.group === "competitor";
   const [source, setSource] = useState<Source>("all");
   const [signalPick, setSignalPick] = useState<SignalId | null>(null);
@@ -162,6 +174,9 @@ export function LiveCompanyBriefing({
   // call): the feed keeps 90 days, the chips narrow the window.
   const [range, setRange] = useState<"1" | "7" | "30" | "90">("90");
   const [query, setQuery] = useState("");
+  const [removedUrls, setRemovedUrls] = useState<Set<string>>(new Set());
+  const [storyRemoval, setStoryRemoval] = useState<StoryRemoval | null>(null);
+  const [removingStory, setRemovingStory] = useState(false);
   useEffect(() => {
     if (!viewOpen) return;
     const onDown = (event: MouseEvent) => {
@@ -200,6 +215,7 @@ export function LiveCompanyBriefing({
       label: p.label,
       signal: signalByUrl.get(p.url),
       post: p,
+      personId: p.by?.id,
     })),
     ...briefing.news.map<Item>((n) => ({
       key: n.url,
@@ -258,7 +274,57 @@ export function LiveCompanyBriefing({
   const filtered = base
     .filter(passesSource)
     .filter((i) => !signalPick || kindsOf(i).includes(signalPick));
-  const groups = groupStories(filtered);
+  const groups = groupStories(filtered).filter((group) =>
+    [group.lead, ...group.others].every((item) => !removedUrls.has(item.url))
+  );
+
+  const askToRemove = (group: StoryGroup<Item>) => {
+    setStoryRemoval({
+      title: group.lead.title,
+      items: [group.lead, ...group.others].map((item) => ({
+        url: item.url,
+        ...(item.personId ? { personId: item.personId } : {}),
+      })),
+    });
+  };
+
+  const removeStory = async () => {
+    if (!storyRemoval) return;
+    setRemovingStory(true);
+    try {
+      const response = await fetch("/api/market-intel/items", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: briefing.id, items: storyRemoval.items }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || "Could not remove the story.");
+      setRemovedUrls((previous) => new Set([...previous, ...storyRemoval.items.map((item) => item.url)]));
+      toast("Story removed. Future collections will keep it hidden.");
+      setStoryRemoval(null);
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not remove the story.", "error");
+    } finally {
+      setRemovingStory(false);
+    }
+  };
+
+  const removeStoryButton = (group: StoryGroup<Item>, className = "") =>
+    isAdmin ? (
+      <button
+        type="button"
+        onClick={() => askToRemove(group)}
+        aria-label={`Remove story: ${group.lead.title}`}
+        title="Remove this story"
+        className={cn(
+          "inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[rgba(176,32,32,0.08)] hover:text-[color:#B02020] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:#B02020]",
+          className
+        )}
+      >
+        <Trash2 size={13} strokeWidth={2.1} />
+      </button>
+    ) : null;
 
   // ---------------------------------------------------------------- cards
   const signalChips = (item: Item) =>
@@ -377,17 +443,20 @@ export function LiveCompanyBriefing({
                   ? `${post.by.role || "Tracked person"} · ${fmtDate(post.date)}`
                   : `Company page · ${fmtDate(post.date)}`}
               </span>
-              <a
-                href={safeHref(post.url) as string}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Open on LinkedIn"
-                title="Open on LinkedIn"
-                className="ml-auto flex items-center gap-1 text-[color:var(--ink-bright-blue)] transition-opacity hover:opacity-70"
-              >
-                <LinkedInIcon size={13} />
-                <ExternalLink size={12} strokeWidth={2.2} />
-              </a>
+              <span className="ml-auto flex items-center gap-1">
+                {removeStoryButton(group)}
+                <a
+                  href={safeHref(post.url) as string}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Open on LinkedIn"
+                  title="Open on LinkedIn"
+                  className="flex items-center gap-1 text-[color:var(--ink-bright-blue)] transition-opacity hover:opacity-70"
+                >
+                  <LinkedInIcon size={13} />
+                  <ExternalLink size={12} strokeWidth={2.2} />
+                </a>
+              </span>
             </p>
             <p className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-text-primary">
               {isLong && !open
@@ -463,6 +532,7 @@ export function LiveCompanyBriefing({
           <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
             {fmtDate(article.published)}
           </span>
+          {removeStoryButton(group, "ml-auto")}
         </p>
         <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
           <a
@@ -493,6 +563,16 @@ export function LiveCompanyBriefing({
     <div>
       {/* A briefing left open must keep pulling fresh server data. */}
       <AutoFresh />
+      <ConfirmDialog
+        open={storyRemoval !== null}
+        onClose={() => !removingStory && setStoryRemoval(null)}
+        onConfirm={() => void removeStory()}
+        busy={removingStory}
+        title="Remove this story?"
+        body={<>This removes <b>{storyRemoval?.title}</b> from the shared intelligence feed.</>}
+        detail="All grouped source copies are removed, and future collections will keep them hidden."
+        confirmLabel="Remove story"
+      />
       <SmartBack
         fallback={isCompetitor ? "/market-intel?tab=competitors" : "/market-intel"}
         className="mb-2 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
@@ -834,7 +914,10 @@ export function LiveCompanyBriefing({
                             className="px-4 py-3 align-top text-[12px] leading-relaxed text-text-secondary"
                             suppressHydrationWarning
                           >
-                            {fmtDate(item.date)}
+                            <span className="flex items-start justify-between gap-2">
+                              <span>{fmtDate(item.date)}</span>
+                              {removeStoryButton(group)}
+                            </span>
                           </td>
                         </tr>
                       );

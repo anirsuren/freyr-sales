@@ -96,6 +96,9 @@ export function cleanSourceLabel(raw: string): string {
 export type FeedCompany = {
   /** Source failures are independent; successful source data stays usable. */
   collectionWarnings?: string[];
+  /** Admin-hidden source URLs. Refreshes may rediscover them, but they stay
+   * out of the feed until an admin explicitly restores them. */
+  removedItemUrls?: string[];
   logoUrl?: string | null;
   logoCheckedAt?: string;
   id: string;
@@ -155,7 +158,7 @@ export type MnaBoard = {
   fetchedAt: string;
 };
 
-export type PersonFeed = { posts: FeedPost[]; fetchedAt: string };
+export type PersonFeed = { posts: FeedPost[]; fetchedAt: string; removedItemUrls?: string[] };
 
 /** What the list page needs about a followed person: how many posts are
  *  collected, without loading them. Written beside the person's row. */
@@ -203,7 +206,7 @@ export type MarketIntelFeed = {
 /** A briefing post; `by` is set when a followed person wrote it rather than
  *  the company page. */
 export type BriefingPost = FeedPost & {
-  by?: { name: string; role: string; photoUrl?: string };
+  by?: { id: string; name: string; role: string; photoUrl?: string };
 };
 
 export type LiveSignal = {
@@ -687,8 +690,21 @@ export async function saveFeedMeta(feed: MarketIntelFeed | FeedMeta): Promise<vo
 
 /** One company's row, with a fresh summary, plus the meta row. */
 export async function saveFeedCompany(feed: MarketIntelFeed, id: string): Promise<void> {
-  const company = feed.companies[id];
+  let company = feed.companies[id];
   if (!company) return;
+  const prior = (await readRowCatalog(`${FEED_COMPANY_PREFIX}${id}`))?.company as FeedCompany | undefined;
+  const removedItemUrls = [...new Set([...(prior?.removedItemUrls ?? []), ...(company.removedItemUrls ?? [])])];
+  if (removedItemUrls.length) {
+    const removed = new Set(removedItemUrls.map((url) => url.replace(/\/$/, "")));
+    company = {
+      ...company,
+      removedItemUrls,
+      posts: company.posts.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
+      news: company.news.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
+      site: (company.site ?? []).filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
+    };
+    feed.companies[id] = company;
+  }
   await upsertRow(`${FEED_COMPANY_PREFIX}${id}`, {
     company,
     summary: summarizeCompany(company),
@@ -697,13 +713,80 @@ export async function saveFeedCompany(feed: MarketIntelFeed, id: string): Promis
 }
 
 export async function saveFeedPerson(feed: MarketIntelFeed, personId: string): Promise<void> {
-  const person = feed.people[personId];
+  let person = feed.people[personId];
   if (!person) return;
+  const prior = (await readRowCatalog(`${FEED_PERSON_PREFIX}${personId}`))?.feed as PersonFeed | undefined;
+  const removedItemUrls = [...new Set([...(prior?.removedItemUrls ?? []), ...(person.removedItemUrls ?? [])])];
+  if (removedItemUrls.length) {
+    const removed = new Set(removedItemUrls.map((url) => url.replace(/\/$/, "")));
+    person = {
+      ...person,
+      removedItemUrls,
+      posts: person.posts.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
+    };
+    feed.people[personId] = person;
+  }
   await upsertRow(`${FEED_PERSON_PREFIX}${personId}`, {
     feed: person,
     summary: summarizePerson(person),
   });
   await saveFeedMeta(feed);
+}
+
+/** Permanently suppress one displayed story group. Every source URL in the
+ * group is tombstoned so a later collection cannot add the bad story back. */
+export async function removeFeedStoryItems(
+  companyId: string,
+  items: { url: string; personId?: string }[]
+): Promise<number> {
+  const valid = items
+    .map((item) => ({ url: item.url.trim(), personId: item.personId?.trim() || undefined }))
+    .filter((item) => /^https?:\/\//i.test(item.url))
+    .slice(0, 25);
+  if (!companyId || valid.length === 0) return 0;
+  let removedCount = 0;
+  const companyUrls = valid.filter((item) => !item.personId).map((item) => item.url);
+  if (companyUrls.length) {
+    const row = await readRowCatalog(`${FEED_COMPANY_PREFIX}${companyId}`);
+    const company = row?.company as FeedCompany | undefined;
+    if (company) {
+      const removedItemUrls = [...new Set([...(company.removedItemUrls ?? []), ...companyUrls])];
+      const removed = new Set(companyUrls.map((url) => url.replace(/\/$/, "")));
+      const next: FeedCompany = {
+        ...company,
+        removedItemUrls,
+        tldr: null,
+        posts: company.posts.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
+        news: company.news.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
+        site: (company.site ?? []).filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
+      };
+      removedCount += company.posts.length - next.posts.length;
+      removedCount += company.news.length - next.news.length;
+      removedCount += (company.site ?? []).length - (next.site ?? []).length;
+      await upsertRow(`${FEED_COMPANY_PREFIX}${companyId}`, { company: next, summary: summarizeCompany(next) });
+    }
+  }
+  const byPerson = new Map<string, string[]>();
+  for (const item of valid) {
+    if (!item.personId) continue;
+    byPerson.set(item.personId, [...(byPerson.get(item.personId) ?? []), item.url]);
+  }
+  for (const [personId, urls] of byPerson) {
+    const row = await readRowCatalog(`${FEED_PERSON_PREFIX}${personId}`);
+    const person = row?.feed as PersonFeed | undefined;
+    if (!person) continue;
+    const removedItemUrls = [...new Set([...(person.removedItemUrls ?? []), ...urls])];
+    const removed = new Set(urls.map((url) => url.replace(/\/$/, "")));
+    const next: PersonFeed = {
+      ...person,
+      removedItemUrls,
+      posts: person.posts.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
+    };
+    removedCount += person.posts.length - next.posts.length;
+    await upsertRow(`${FEED_PERSON_PREFIX}${personId}`, { feed: next, summary: summarizePerson(next) });
+  }
+  bustMarketIntelFeedCache();
+  return removedCount;
 }
 
 export function summarizePerson(feed: PersonFeed): PersonSummary {
@@ -1015,6 +1098,7 @@ export function buildBriefing(
   company: FeedCompany,
   allNames: { id: string; name: string }[],
   peoplePosts: {
+    id: string;
     name: string;
     role: string;
     photoUrl?: string;
@@ -1032,7 +1116,7 @@ export function buildBriefing(
     ...followed.flatMap((person) =>
       person.posts.map((p) => ({
         ...p,
-        by: { name: person.name, role: person.role, photoUrl: person.photoUrl },
+        by: { id: person.id, name: person.name, role: person.role, photoUrl: person.photoUrl },
       }))
     ),
   ]
