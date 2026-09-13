@@ -46,7 +46,7 @@ export function visiblePublicationDate(html: string): string | null {
       const parsed = publishedDate(iso);
       if (parsed && new Date(parsed).toISOString().slice(0,10) === iso) return iso;
     }
-    const namedDate = line.length < 180 && line.match(/^(?:Written by .{1,100}\s+)?(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)(?:day)?,?\s+)?((?:\d{1,2}\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)|(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2},?)\s+20\d{2})$/i);
+    const namedDate = line.length < 180 && line.match(/^(?:Written by .{1,100}\s+)?(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)(?:day)?,?\s+)?((?:\d{1,2}\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)|(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2},?)\s+20\d{2})(?=$|\s|\d+\s*(?:mins?|minutes?)\s*read)/i);
     if (namedDate && publishedDate(namedDate[1])) return publishedDate(namedDate[1])!.slice(0,10);
   }
   // Prefer the article's own semantic dateline over unrelated dated cards.

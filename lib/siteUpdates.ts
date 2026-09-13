@@ -171,9 +171,27 @@ export async function scrapeSiteUpdates(
   if (!inputDomain) return { updates: [], cost: 0, failed: false };
   const domain = await import('./marketIntelWebsiteCrawl').then(m => m.resolveWebsiteDomain(inputDomain));
   source = {...source, site: domain};
-  const direct = process.env.FIRECRAWL_API_KEY
+  let direct = process.env.FIRECRAWL_API_KEY
     ? await import('./marketIntelWebsiteCrawl').then(m => m.collectFirecrawlWebsite(domain, process.env.FIRECRAWL_API_KEY!, options)).catch(error => ({updates: [], failed: true, pagesRead: 0, errors: [String(error)], entryPoints: []}))
     : await collectCompanyWebsite(domain);
+  /* Firecrawl is the wide discovery pass, but some otherwise public sites
+     reject its page reader intermittently. The direct reader is free and
+     succeeds on many of those sites, so a sparse Firecrawl result gets one
+     deterministic fallback before we conclude that the website is empty. */
+  if (process.env.FIRECRAWL_API_KEY && direct.updates.length < 3) {
+    const fallback = await collectCompanyWebsite(domain);
+    const merged = new Map(direct.updates.map((item) => [item.url.replace(/\/$/, ""), item]));
+    for (const item of fallback.updates) merged.set(item.url.replace(/\/$/, ""), item);
+    const updates = [...merged.values()];
+    direct = {
+      updates,
+      failed: direct.failed && fallback.failed,
+      pagesRead: direct.pagesRead + fallback.pagesRead,
+      // A successful fallback is recovery, not a user-facing collection warning.
+      errors: updates.length ? [] : [...direct.errors, ...fallback.errors],
+      entryPoints: [...new Set([...direct.entryPoints, ...fallback.entryPoints])],
+    };
+  }
   const search = direct.updates.length >= 3 ? {updates: [], cost: 0, failed: false} : await searchSiteUpdates(source, key);
   const items = new Map<string, FeedNews>();
   for (const item of direct.updates) items.set(item.url, item);

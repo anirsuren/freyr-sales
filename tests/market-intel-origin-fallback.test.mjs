@@ -19,6 +19,7 @@ test('headline numeric publication date overrides a later CMS timestamp without 
  assert.equal(visiblePublicationDate('<h1>Example</h1><p>The deal happened on 22.4.2026.</p><aside><p>12.9.2026</p></aside>'),null);
  assert.equal(visiblePublicationDate('<h1>Example</h1><p>31.2.2026 14:00</p>'),null);
  assert.equal(visiblePublicationDate('<h1>Example</h1><div>Written by Editorial Team Tue, 18 Aug 2026</div>'),'2026-08-18');
+ assert.equal(visiblePublicationDate('<main><h1>Example</h1><div class="post_meta">Sep 8, 20262mins read</div><div>Body</div></main>'),'2026-09-08');
  assert.equal(visiblePublicationDate('<h1>Example</h1><p>The conference begins 18 Aug 2026</p>'),null);
 });
 test('website discovery follows education resources and retains only dated recent articles',async()=>{
