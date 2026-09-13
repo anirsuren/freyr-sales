@@ -1,5 +1,4 @@
 "use client";
-import { ConversationRecovery } from "@/components/agent/ConversationRecovery";
 import { normalizeAgentLinks, readableLinkLabel } from "@/lib/agentAnswerPresentation";
 
 import { useEffect, useId, useRef, useState, useCallback, useMemo, type ReactNode } from "react";
@@ -1095,7 +1094,6 @@ export function AgentChat({
               Saved on this device. Account sync will retry with your next change.
             </p>
           )}
-          <ConversationRecovery storageKey={storageKey} failed={historySyncFailed} ready={historyReadyForSync} />
           {/* What the assistant knows, and what THIS chat is allowed to use. */}
           <KnowledgeRailButton onClick={() => setKnowledgeOpen(true)} />
           <Link href="/agent/settings" className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-text-secondary hover:bg-surface transition-colors">

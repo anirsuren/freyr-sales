@@ -1,5 +1,4 @@
 "use client";
-import { ConversationRecovery } from "@/components/agent/ConversationRecovery";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -955,7 +954,6 @@ export function AgentDock({
               <X size={17} strokeWidth={2} />
             </button>
           </div>
-          <ConversationRecovery storageKey={conversationStorageKey} failed={historySyncFailed} ready={historyReady} />
           {historySyncFailed && <p role="status" className="mx-4 mt-2 rounded-md bg-warning/10 px-3 py-2 text-xs text-text-primary">Your changes are saved on this device. Account history could not sync; another tab may have changed this chat.</p>}
 
           {/* Messages: greeting is always the first bubble so it never vanishes */}

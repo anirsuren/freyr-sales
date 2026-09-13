@@ -318,7 +318,7 @@ export function LiveCompanyBriefing({
         aria-label={`Remove story: ${group.lead.title}`}
         title="Remove this story"
         className={cn(
-          "inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[rgba(176,32,32,0.08)] hover:text-[color:#B02020] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:#B02020]",
+          "pointer-events-none inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary opacity-0 transition-[color,background-color,opacity] group-hover/story:pointer-events-auto group-hover/story:opacity-100 group-focus-within/story:pointer-events-auto group-focus-within/story:opacity-100 hover:bg-[rgba(176,32,32,0.08)] hover:text-[color:#B02020] focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:#B02020]",
           className
         )}
       >
@@ -402,7 +402,7 @@ export function LiveCompanyBriefing({
   const leadKind = (item: Item) => kindsOf(item)[0];
   const cardStyle = (item: Item) =>
     leadKind(item) !== "others" ? { borderLeftColor: SIGNAL_META[leadKind(item)].color } : undefined;
-  const cardClass = (item: Item) => cn("p-4", leadKind(item) !== "others" && "border-l-[3px]");
+  const cardClass = (item: Item) => cn("group/story p-4", leadKind(item) !== "others" && "border-l-[3px]");
 
   const postCard = (group: StoryGroup<Item>, key: string) => {
     const item = group.lead;
@@ -873,7 +873,7 @@ export function LiveCompanyBriefing({
                       try { domain = new URL(item.url).hostname.replace(/^www\./, ""); } catch {}
                       const sourceName = rowKind === "post" ? "LinkedIn" : rowKind === "site" ? domain || item.sourceLabel : item.sourceLabel || domain;
                       return (
-                        <tr key={index} className="transition-colors hover:bg-surface">
+                        <tr key={index} className="group/story transition-colors hover:bg-surface">
                           <td className="px-4 py-3 align-top">
                             <a
                               href={safeHref(item.url) as string}
