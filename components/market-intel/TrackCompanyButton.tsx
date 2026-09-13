@@ -78,7 +78,8 @@ export function TrackCompanyButton({
     duplicate?: { name: string; group: string };
   }>({ key: "" });
 
-  const noun = group === "competitor" ? "competitor" : "company";
+  const noun = group === "competitor" ? "competitor" : "customer";
+  const pluralNoun = group === "competitor" ? "competitors" : "customers";
   const domain = siteDomain(website);
   const slug = linkedInSlug(linkedinUrl);
   const siteTyped = website.trim().length > 0;
@@ -183,7 +184,7 @@ export function TrackCompanyButton({
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not add company.");
+      if (!res.ok) throw new Error(data.error || `Could not add ${noun}.`);
       if (!data.company?.id)
         throw new Error(
           "Tracking could not be confirmed. Check Manage companies before retrying.",
@@ -210,8 +211,7 @@ export function TrackCompanyButton({
   /* Every hook above has already run, so bailing here is safe. */
   if (!canTrack) return null;
 
-  const title =
-    group === "competitor" ? "Track a competitor" : "Track a company";
+  const title = `Track a ${noun}`;
 
   const field = (props: {
     id: string;
@@ -307,7 +307,7 @@ export function TrackCompanyButton({
         title={title}
         titleAfter={
           <InfoHint
-            text={`Enter their official website, their LinkedIn page, or both. The website gives press releases and updates, LinkedIn gives their posts, and news searches use the company's identity. Companies already listed must be selected in Manage ${group === "competitor" ? "competitors" : "customers"}.`}
+            text={`Enter their official website, their LinkedIn page, or both. The website gives press releases and updates, LinkedIn gives their posts, and news searches use the ${noun}'s identity. ${pluralNoun[0].toUpperCase() + pluralNoun.slice(1)} already listed must be selected in Manage ${pluralNoun}.`}
           />
         }
       >
@@ -317,7 +317,7 @@ export function TrackCompanyButton({
               htmlFor="mi-company-name"
               className="text-[13px] font-semibold text-text-primary"
             >
-              Company name{" "}
+              {group === "competitor" ? "Competitor" : "Customer"} name{" "}
               <span className="font-normal text-text-tertiary">(optional)</span>
             </label>
             <div className="mt-1.5 flex h-12 items-center gap-2.5 rounded-xl border border-border-light bg-white px-3.5 focus-within:border-blue-primary focus-within:ring-4 focus-within:ring-blue-primary/10">
@@ -327,7 +327,7 @@ export function TrackCompanyButton({
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 maxLength={120}
-                placeholder="Company name"
+                placeholder={`${group === "competitor" ? "Competitor" : "Customer"} name`}
                 className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-text-primary outline-none"
               />
             </div>
@@ -494,11 +494,11 @@ export function TrackCompanyButton({
               title={
                 ready
                   ? undefined
-                  : "Enter a new company, wait for the duplicate check, and choose a division"
+                  : `Enter a new ${noun}, wait for the duplicate check, and choose a division`
               }
               className="!px-5 !py-2.5 text-[13.5px]"
             >
-              Add company
+              Add {noun}
             </Button>
           </div>
         </div>
