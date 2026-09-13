@@ -74,7 +74,11 @@ export async function collectFirecrawlWebsite(domain:string,key:string,options:{
   if(!map?.links || Date.now()-Date.parse(map.at)>MAP_REFRESH_MS) {
     const response=await fetch('https://api.firecrawl.dev/v2/map',{
       method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},
-      body:JSON.stringify({url:`https://${domain}`,sitemap:'include',includeSubdomains:true,ignoreQueryParameters:true,limit:5000,timeout:60000}),
+      // Firecrawl bills map results as discovered pages. A 5,000-URL map used
+      // thousands of credits before two production companies completed. The
+      // free sitemap/RSS crawler runs first; this fallback only needs a small
+      // candidate inventory for AI selection.
+      body:JSON.stringify({url:`https://${domain}`,sitemap:'include',includeSubdomains:true,ignoreQueryParameters:true,limit:100,timeout:60000}),
       signal:AbortSignal.timeout(65000),
     });
     const data=await response.json();

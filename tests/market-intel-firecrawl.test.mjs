@@ -69,6 +69,15 @@ test('incremental daily collection reads the newsroom and bounds old map pages',
  assert.ok(scrapes.length<=12,`incremental pass used ${scrapes.length} page reads`);
 });
 
+test('a new fallback map cannot request an unbounded website inventory',async()=>{
+ rows.clear();scrapes.length=0;htmlByUrl={};
+ const originalFetch=global.fetch;let requestedLimit=0;
+ global.fetch=async(_url,init)=>{requestedLimit=JSON.parse(init.body).limit;return new Response(JSON.stringify({success:true,links:[]}),{status:200,headers:{'content-type':'application/json'}});};
+ try {await collectFirecrawlWebsite('example.test','test',{incremental:true});}
+ finally {global.fetch=originalFetch;}
+ assert.equal(requestedLimit,100);
+});
+
 test('blog listings discover article links outside named news URL sections',async()=>{
  rows.clear();scrapes.length=0;
  const index='https://example.test/blog',articleUrl='https://example.test/knowledge/designing-research-around-patient-needs';
