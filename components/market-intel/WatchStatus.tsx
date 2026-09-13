@@ -2,6 +2,7 @@
 
 import { CircleSlash, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isInactive, watchLabel, type WatchState } from "@/lib/marketIntelWatchState";
 
 /**
  * ACTIVE OR INACTIVE, AND NOTHING ELSE (Anir, Sep 10: "I should clearly be
@@ -9,22 +10,14 @@ import { cn } from "@/lib/utils";
  * their list, and which ones are inactive, which means no one has it in their
  * list").
  *
- * Active: at least one person has this company on their list, so it is
- * collected every day. Inactive: nobody has it, so nothing new is collected.
- * Everything already collected stays, and the first person to tick it starts
- * it again. There is no "for everyone" any more.
+ * Active: collected every day, because the company is on the standing list
+ * (Anir, Sep 11: "all of these current ones are active by default") or
+ * because at least one person has it on their list. Inactive: a company added
+ * later that nobody has, so nothing new is collected. Everything already
+ * collected stays, and the first person to tick it starts it again.
  */
-export type WatchState = { followers: number };
-
-export function watchLabel(state: WatchState): string {
-  if (state.followers <= 0) return "Inactive";
-  return `Active · ${state.followers} ${state.followers === 1 ? "person" : "people"}`;
-}
-
-/** Nobody has it, so nothing new is being collected. */
-export function isInactive(state: WatchState): boolean {
-  return state.followers <= 0;
-}
+export { isInactive, watchLabel };
+export type { WatchState };
 
 export function WatchStatus({
   state,
@@ -44,7 +37,9 @@ export function WatchStatus({
       title={
         off
           ? "Nobody has this company on their list, so nothing new is being collected. Everything collected so far is kept. Tick it in Manage companies to start it again."
-          : `${state.followers} ${state.followers === 1 ? "person has" : "people have"} this on their list, so it is collected every day.`
+          : state.followers > 0
+            ? `${state.followers} ${state.followers === 1 ? "person has" : "people have"} this on their list, so it is collected every day.`
+            : "Active by default, so it is collected every day even when nobody has it on their list."
       }
       className={cn(
         "inline-flex items-center gap-1 rounded-full font-semibold",

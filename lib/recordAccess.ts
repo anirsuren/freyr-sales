@@ -1,4 +1,8 @@
-import { teamFor, type RecordTeamsState, type TeamedRecord } from "./recordTeams";
+import {
+  teamFor,
+  type RecordTeamsState,
+  type TeamedRecord,
+} from "./recordTeams";
 import {
   accessForPrivileges,
   canCreate,
@@ -48,7 +52,7 @@ function onTeam(
   teams: RecordTeamsState,
   type: TeamedRecord,
   id: string | undefined,
-  person: string
+  person: string,
 ): boolean {
   if (!id) return false;
   const team = teamFor(teams, type, id);
@@ -74,6 +78,7 @@ export function mayTouchOpportunity(input: {
   person: string;
   role: string;
   opportunityId: string;
+  heldPrivileges?: string[];
   customerId?: string;
 }): RecordVerdict {
   const { privileges, teams, person, role, opportunityId, customerId } = input;
@@ -89,8 +94,12 @@ export function mayTouchOpportunity(input: {
       why: "You are a workspace admin, so this is editable regardless of who is on the deal or the account.",
     };
 
-  const held = privilegesForPerson(privileges, person);
-  const moduleAccess = accessForPrivileges(privileges, held, "opportunities" as ModuleKey);
+  const held = input.heldPrivileges ?? privilegesForPerson(privileges, person);
+  const moduleAccess = accessForPrivileges(
+    privileges,
+    held,
+    "opportunities" as ModuleKey,
+  );
   if (moduleAccess === "none")
     return {
       mayView: false,
@@ -99,7 +108,9 @@ export function mayTouchOpportunity(input: {
       why: "Your privileges do not open the Opportunities module.",
     };
 
-  const customerTeam = customerId ? teamFor(teams, "customer", customerId) : null;
+  const customerTeam = customerId
+    ? teamFor(teams, "customer", customerId)
+    : null;
   const dealTeam = teamFor(teams, "opportunity", opportunityId);
 
   /* THE ACCOUNT DECIDES FIRST. */

@@ -42,9 +42,12 @@ the top bar, not the rail. FDL Components lives at /components.
 
 WHO CAN OPEN WHAT. The PRIVILEGE TABLE decides, per person, not the job title
 (Suren, Aug 29: "these are the roles from now on, I need this executed"). Each
-person's row gives every module one of none / view / edit / create, an admin
-sets it in Admin > Privileges, and a person can hold more than one privilege at
-once — the most generous cell wins.
+person holds privileges assigned on Team members (/admin/members), using Split
+or Matrix. A person can hold several privileges. Privileges (/admin/privileges)
+defines each privilege's per-module none / view / edit / create settings;
+changing a definition affects everyone holding it. The most generous applicable
+cell wins. To adjust one person's access, change their assignments on Team
+members; do not describe Privileges as a table of people.
 
 So there is no fixed list of modules a "rep" cannot open, and saying there is
 misleads people about their own app. What holds for everyone:
@@ -56,11 +59,14 @@ misleads people about their own app. What holds for everyone:
     better. A BD Member with a normal row opens all of them.
   - Opening is not editing. Writing needs edit on the row, MAKING a new record
     needs create, and deleting sits with whoever could have created it
-    ("owner can create, member can edit"). On top of that, a record you did
-    not create, own or get put on is view-only however generous your row is
-    (Suren, Sep 1).
+    ("owner can create, member can edit"). Record ownership can further restrict non-admin writes. For Customers
+    and Opportunities, workspace admins can edit regardless of account/deal
+    membership; non-admins follow the module privileges and recorded teams.
+    Unassigned customer/deal records fall back to module privileges. Other
+    workflows have their own owner/manager/admin checks. Never claim that
+    admins are universally view-only on records they do not own.
 If somebody cannot open something, the answer is their privilege row, not
-their title — check Admin > Privileges rather than guessing from the role.
+their title — check assignments in /admin/members and definitions in /admin/privileges rather than guessing from the role.
 
 READY NOW vs IN PROGRESS. Everyone can flip their own browser session between
 the finished app and the one still being built. Account menu, top right, under
@@ -146,8 +152,7 @@ date has already passed, rather than a straight line. A logged result can also
 name the opportunity it came out of, which is what makes a goal's line items
 able to say which deals produced the number.
 
-Adding, editing and removing all happen here, for managers and admins or the
-deal's own owner. Mock mode shows Freyr's real pipeline as sample data and
+Adding, editing and removing follow the current module privileges and record-team permissions; workspace admins can edit regardless of ownership. Mock mode shows Freyr's real pipeline as sample data and
 refuses writes.`,
   },
   {
@@ -173,12 +178,12 @@ because contact is just a contact database"). The arrow on a lead row hands it
 to Solutioning with the lead already named.
 
 STATUSES: New, Contacted, Qualifying, Nurturing, Converted, Disqualified. A
-converted lead points at the opportunity it became and is never deleted.
+converted lead is retained. The current Leads UI lets you change its status, but it does not expose an opportunity-linking conversion control. Creating an opportunity and manually choosing Converted does not automatically establish a linked opportunity. Be explicit about this current limitation; do not promise that changing the status creates or links a deal.
 
 The page leads with the two numbers a lead list exists for: how many nobody has
 touched, and how many are going stale (open and untouched 21 days or more).
 
-ADMIN ONLY for now, like every module that shipped on Aug 25.`,
+Access follows the current privilege settings.`,
   },
   {
     routes: ["/revenue-accruals"],
@@ -223,6 +228,12 @@ month. Who can open it is decided by the Revenue accruals row of the privilege
 table.`,
   },
   {
+    routes: ["/solutioning"],
+    keywords: ["solutioning", "solution request", "submission", "presentation", "rfp", "proposal"],
+    title: "Solutioning",
+    body: `Solutioning at /solutioning holds three distinct record types: Solution requests (the ask), Submissions at /solutioning?tab=submissions (RFI, RFP or Proposal deliverables), and Presentations at /solutioning?tab=presentations (the presentation work and materials). Submissions and presentations can be created independently with no parent request, or linked to a request; each has its own deliverable status. Meetings at /meetings are scheduled meeting records with participants and outcomes, accessible as the fourth tab in the same Solutioning tab strip. Access and creation follow the current privilege matrix. Each tab has its own creation button: New solution request, New submission, New presentation, or New meeting. New solution request creates only a request: choosing submission, presentation or meeting there describes the requested work and does not create that deliverable or scheduled meeting. To create the actual deliverable or meeting, use its own tab and New button. Give it a title, select the customer, and link the relevant opportunities and contacts. Add the details and deadline if needed, then submit the form. A customer page can open Request solutioning with that customer preselected. Requests have status, requester, assigned owner, priority and linked opportunities. Open an existing request to see its details and documents; the recorded owner is the person assigned to it. The agent can read permitted requests and explain the process but does not create or submit them for you.`,
+  },
+  {
     routes: ["/contracts"],
     keywords: [
       "contract", "contracts", "signed", "schedule revenue", "delivery basket",
@@ -231,7 +242,7 @@ table.`,
     ],
     title: "Contracts",
     body: `Contracts is where sales logically closes. A deal reaches "Create
-contract" and the contract is drafted here.
+contract" and the contract is drafted here. Access follows the current privilege matrix. Open a contract row to inspect its details and documents. A linked opportunity opens at /opportunities?deal= followed by its recorded opportunity ID; never guess an ID. Drafts appear in the contract list too.
 
 WHAT IT HOLDS, deliberately only this: contract id, contract name, the
 customer, the value, the dates, the owner, and schedule revenue. That is the
@@ -252,7 +263,7 @@ the contract started." A Draft supersedes nothing; sales is still typing.
 
 STATUSES: Draft, Ready for delivery (the completed package sitting in the
 delivery team's basket), Signed, Cancelled. A draft lists what it still needs
-before it can be handed over. ADMIN ONLY for now.`,
+before it can be handed over. Access follows the current privilege settings.`,
   },
   {
     routes: ["/performance"],
@@ -263,9 +274,7 @@ before it can be handed over. ADMIN ONLY for now.`,
       "evidence", "claim", "sign off", "tracked", "tracking",
     ],
     title: "Goals",
-    body: `Goals (the page still lives at /performance) is open to Managers and
-Admins only; a Rep who opens it
-is redirected to Offerings. It has four tabs, each its own URL:
+    body: `Goals lives at /performance. Access and edit permissions follow the current privilege matrix; personal and group figures are scoped to the viewer. It has four tabs, each its own URL:
   /performance/org          "Org performance" — the whole company
   /performance/groups       "Group performance" — one department at a time
   /performance/people       "People performance" — one person at a time
@@ -340,10 +349,7 @@ headed "Organization → group → person" with three boxes, "1 · Organization"
 Months, Quarters, Halves and Years. It counts verified results only; claims
 still waiting are shown separately as "+{amount} waiting".
 
-PACE. "Target met", "Ahead", "On track", "Lagging" and "No target yet" compare
-what is achieved against how much of the FINANCIAL year has passed. Freyr's
-financial year runs April to March. A goal can read Lagging while results sit
-unverified, because only verified numbers count.
+PACE. Only an explicitly scheduled, due milestone supports an Ahead/On track/Lagging verdict; elapsed financial-year time never creates a target. Freyr's financial year runs April to March. Personal and group shares do not inherit the organization goal's milestone schedule. Unverified results are shown separately and never counted as achieved.
 
 EXPORTING. "Export", beside "How this works", offers "Goals as a spreadsheet",
 "Every logged entry" and "Print / Save as PDF".
@@ -446,7 +452,7 @@ an owner of that offering.`,
     ],
     title: "Customers",
     body: `Customers is the account list: every company Freyr sells to. It is
-open to Managers and Admins only.
+available according to the current privilege matrix.
 
 The toolbar has "Search customers…", a health filter, a sort, a page size, a
 "Select accounts" toggle and an "Export CSV" button that downloads whatever the
@@ -496,7 +502,7 @@ The header also has "New session", "Report" (a printable account report) and
     title: "FDL Components",
     body: `FDL Components is at /components and is called "FDL Components" in
 the left rail: the Freya Digital components, the software pieces an offering is
-made of. Managers and Admins only. Each component keeps its own versions and
+made of. Access follows the current privilege matrix. Each component keeps its own versions and
 features.
 
 THE LIST. "Search components…", a type filter (Module, Agent, Platform), an
@@ -546,7 +552,7 @@ person opens their own analytics page.
 
 INVITING SOMEONE. There IS an invite here: the "Invite" button in the top right
 of the page, which admins see. It opens "Invite a teammate" and asks for a
-"Starting role" (Rep, Manager or Admin), "Full name", "Work email" and an
+"Starting role" (BD Member, Owner, Solutioning Member or Admin), "Full name", "Work email" and an
 optional "Note" that goes into the email, then "Send invitation". They get an
 email with a link that signs them in; it expires after 14 days and an admin can
 change their role later from the Admin page. Separately, anyone with a
@@ -559,11 +565,11 @@ yet. In progress mode shows a populated sample floor instead.`,
   },
   {
     routes: ["/reports"],
-    keywords: ["report", "heat map", "heatmap", "matrix", "analytics",
+    keywords: ["customer offering heat map", "offering heat map", "report", "heat map", "heatmap", "matrix", "analytics",
       "dashboard", "export", "csv", "download", "spreadsheet", "excel",
       "renewal", "revenue", "board"],
     title: "Reports and the Customer Offering Heat Map",
-    body: `Reports is Managers and Admins only. It reads across accounts rather
+    body: `Reports access follows the current privilege matrix. It reads across accounts rather
 than down one: stat tiles for revenue, licensed users, customers, offerings,
 contracts and work in progress, charts for "Revenue by category", "Revenue by
 type" and "Top offerings", then two tables, "Every offering, by revenue" and
@@ -583,8 +589,7 @@ date"), an activity filter (Lead, Opportunity, Pilot, Contract, Delivery), a
 status filter (Initiated, Under progress, Completed), a full-screen button, and
 pins to freeze the customer column or the offering row while you scroll.
 
-A cell reading "None" means nothing has been logged for that customer and that
-offering — it is an empty pairing, not a zero.
+Cells use the selected Report row from recorded customer offering activities. When no activity history exists, a cell may be derived from an opportunity, deal or usage record. FDL component connections do not supply these values. A cell reading "None" is an empty pairing, not a numerical zero.
 
 Clicking a cell opens an editor titled "{Customer} × {Offering}". If it is
 empty you get "Add the first activity"; otherwise "Add activity" or "Continue
@@ -633,43 +638,15 @@ anyone — so it will show you a draft and stop there.`,
     routes: ["/market-intel"],
     keywords: ["market intel", "news", "briefing", "competitor", "signal",
       "tracking", "track", "what does this page track", "watchlist", "linkedin",
-      "follow", "m&a", "acquisition", "refresh"],
+      "follow", "m&a", "acquisition", "refresh", "star", "unstar", "remove a company", "my page", "my list"],
     title: "Market Intel",
-    body: `Market Intel is the outside-the-company view and is open to Managers
-and Admins only. Three views from the selector at the top:
-  "Customer Intelligence"   — what the market is saying about customers you track
-  "Competitor Intelligence" — what your competitors are doing
-  "Market Intelligence"     — mergers and acquisitions across the industry
-Each covers roughly the past three months of LinkedIn activity, news and
-signals, and each company has a written rundown pulling it together.
-
-TRACKING A COMPANY OR A COMPETITOR. The button reads "Track a company", or
-"Track a competitor" on the competitor view. It asks for one thing, "Their
-LinkedIn page" (like linkedin.com/company/their-name), then "Start tracking".
-The name, logo, posts, news and briefing are all pulled from that page, and it
-takes about half a minute. Note the modal is titled "Track a company" even when
-you started from the competitor button.
-
-FOLLOWING ONE PERSON AT A COMPANY. There is a control for this. Open the
-company, find the people section, and press the + ("Follow someone here"). Give
-it "Their LinkedIn profile" (linkedin.com/in/their-name) and press "Follow
-their posts". To stop, use the person's own control and confirm "Stop".
-
-STOPPING TRACKING. On the company's page, "Stop tracking", then confirm "Yes,
-stop" — it always asks first.
-
-REFRESHING. There is no refresh button, by design. The chip near the top reads
-"Updated {how long ago}"; clicking it opens the refresh schedule, which says
-"Live data · twice a day" and when the next refresh is due. Everyone sees the
-same feed.
-
-READING A BRIEFING. Search inside it, filter to company posts, people posts,
-news or signals, choose a time range from the past day to the past three
-months, and switch between rows, tiles and a table.
-
-REAL OR SAMPLE. In progress mode labels itself: a chip reading "Sample data
-preview" and a footer saying the companies are real but every person, post,
-article and signal is illustrative. In Ready now mode it is the live feed.`,
+    body: `Market Intel access follows the user's assigned module privileges. Three views: Customer Intelligence, Competitor Intelligence, and Market Intelligence (industry M&A).
+Track a company opens a form for company name, official website and LinkedIn company page. Supply at least a website or LinkedIn page and choose divisions. Existing companies cannot be added twice. Add company saves it and closes the form. A named skeleton card stays on the dashboard while its first collection runs in the background, including across reloads or closed tabs. A failed collection offers Retry; no fixed completion time is promised.
+Manage customers and Manage competitors are separate pages. Select companies and press Save changes; unsaved ticks are drafts. To remove one company, open its briefing from Market Intel, click Tracking in the header, then confirm removal in the popup. This changes only your personal list, never another user's list. Alternatively open Manage customers or Manage competitors, untick it and press Save changes. A star is a favourite within My list. Starring a company also adds it to My list if it was absent. Unstarring keeps it on your page and asks for confirmation. Removing a company from My list also removes its star. Do not describe these actions as completely independent. There is no move-between-customer-and-competitor action.
+All companies join the shared once-daily refresh cycle at 06:00 UTC after initial collection. The refresh chip explains the schedule. No twice-daily collection.
+Company briefings have single-line signal/source filters, including clickable zero-count filters with an empty state, search, date range and rows/tiles/table layouts. Company details is a collapsible right-edge drawer containing activity, tracked people and competitors mentioned; its vertical tab reopens it and the browser remembers the preference.
+Follow people from the plus beside People tracked using their LinkedIn profile. Stop following asks for confirmation. Company/person images are stored when available; missing images are not evidence that a source was collected.
+No source can guarantee every article or LinkedIn post. The displayed counts reflect collected items, not total internet coverage. The agent answers questions and drafts text; it cannot perform live business changes.`,
   },
   {
     routes: ["/admin"],
@@ -680,19 +657,20 @@ article and signal is illustrative. In Ready now mode it is the live feed.`,
     title: "Admin",
     body: `Admin is for workspace ADMINS only — managers cannot open it, and a
 non-admin who lands there is told "Admin tools are open to workspace admins."
-It has two tabs, both at /admin: "Team members" and "User groups".
+Its tabs have their own routes: Team members /admin/members, User groups
+/admin/groups, Privileges /admin/privileges, Activity master /admin/activity,
+and Email /admin/email. Team members assigns roles and held privileges to
+people. Privileges configures what each privilege permits in each module;
+it is not the person-assignment screen.
 
-TEAM MEMBERS is a card headed "Member roles": everyone in the workspace with a
-role picker offering Rep, Manager and Admin. Changing a role opens a
-confirmation, "Give them more access?" or "Reduce their access?", which spells
-out what that role can do before you press "Make {name} a {role}". Nothing is
-sent until you confirm, and the server refuses a role change from anyone who is
-not an admin. The role picker is the ONLY control here: there is no button to
-remove, delete or suspend a member anywhere in the app, so taking someone out
-of the workspace is not something this app does — a suspended person shows a
-"Suspended" badge, but nothing here sets it. There is no invite button here
-either; inviting is done from the Team page. Anyone with a @freyrsolutions.com
-email joins automatically with no invite.
+TEAM MEMBERS has Split, Table and Matrix views. It is where admins manage
+people's roles and held privileges. The Invite button opens the same invitation
+dialog as Team, with BD Member, Owner, Solutioning Member and Admin starting
+roles. Users with a @freyrsolutions.com address can join without an invitation.
+Role/privilege changes require the UI confirmation and verified admin access.
+To change access for one person, use Team members; to change what a privilege
+allows for everyone holding it, use Privileges. Never claim the agent has
+changed either: it can explain the steps, not execute these actions.
 
 USER GROUPS is where departments are created. "New group" opens "New user
 group" and asks for a "Group name", a "Group owner" (the person who runs that
@@ -765,6 +743,8 @@ export function manualFor(path: string, question: string): string {
   const byWord = SECTIONS.filter(
     (s) => !onPage.includes(s) && s.keywords.some((k) => q.includes(k))
   );
+  const specificity = (section: (typeof SECTIONS)[number]) => Math.max(0, ...section.keywords.filter(k => q.includes(k)).map(k => k.length));
+  byWord.sort((a, b) => specificity(b) - specificity(a));
   const picked = [GLOBAL, ...onPage, ...byWord.slice(0, 2)];
   return picked
     .map((s) => `## ${s.title}\n${s.body.trim()}`)

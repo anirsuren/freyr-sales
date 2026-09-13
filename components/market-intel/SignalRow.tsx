@@ -120,23 +120,19 @@ export function SignalRow({
           const Icon = meta.icon;
           const count = counts[id] ?? 0;
           const on = active === id;
-          const empty = count === 0;
           return (
             <button
               key={id}
               type="button"
               aria-pressed={on}
               onClick={() => onPick(on ? null : id)}
-              disabled={empty && !on}
               className={cn(
                 chip,
                 on
                   ? "border-transparent text-white"
-                  : empty
-                    ? "cursor-default border-border-light bg-white text-text-tertiary opacity-60"
-                    : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+                  : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
               )}
-              style={on ? { background: meta.color } : empty ? undefined : { color: meta.color, background: tint(meta.color, 6) }}
+              style={on ? { background: meta.color } : { color: meta.color, background: tint(meta.color, 6) }}
             >
               <Icon size={13} strokeWidth={2.2} />
               {meta.label}

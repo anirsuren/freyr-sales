@@ -1,3 +1,4 @@
+import { requestMarketIntelSearch } from "./marketIntelSearch";
 import type { ThoughtBoard, ThoughtItem } from "./marketIntelFeed";
 
 /**
@@ -16,22 +17,9 @@ import type { ThoughtBoard, ThoughtItem } from "./marketIntelFeed";
  *
  * Ten firms, once a day, about six cents a run.
  */
-export type ThoughtFirm = { name: string; domain: string };
+export { THOUGHT_FIRMS } from "./marketIntelThoughtSources";
+import type { ThoughtFirm } from "./marketIntelThoughtSources";
 
-export const THOUGHT_FIRMS: ThoughtFirm[] = [
-  { name: "Gartner", domain: "gartner.com" },
-  { name: "Deloitte", domain: "deloitte.com" },
-  { name: "McKinsey", domain: "mckinsey.com" },
-  { name: "BCG", domain: "bcg.com" },
-  { name: "Bain", domain: "bain.com" },
-  { name: "EY", domain: "ey.com" },
-  { name: "PwC", domain: "pwc.com" },
-  { name: "KPMG", domain: "kpmg.com" },
-  { name: "Accenture", domain: "accenture.com" },
-  { name: "IQVIA Institute", domain: "iqvia.com" },
-];
-
-const ENDPOINT = "https://api.perplexity.ai/chat/completions";
 const FALLBACK_COST_USD = 0.006;
 /** Reports live for months; a quarter-wide window keeps the board full. */
 const MAX_AGE_MS = 120 * 24 * 60 * 60 * 1000;
@@ -115,14 +103,7 @@ export async function scrapeFirmThoughtLeadership(
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const res = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(90_000),
-      });
-      if (!res.ok) throw new Error(`perplexity HTTP ${res.status}`);
-      const data = await res.json();
+      const data = await requestMarketIntelSearch(body, key, "research-firm", firm.name);
       const cost =
         typeof data?.usage?.cost?.total_cost === "number"
           ? data.usage.cost.total_cost

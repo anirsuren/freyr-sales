@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {agentPipelineSummary} from '../lib/agentPipelineSummary.ts';
+test('closed deals never count as open and currencies never get summed together',()=>{const x=agentPipelineSummary([{status:'Won',value:500000,currency:'USD'},{status:'Lost',value:200000,currency:'USD'},{status:'Under review',value:10,currency:'EUR'},{status:'Qualify',value:20}]);assert.equal(x.openCount,2);assert.deepEqual(x.byCurrency,{EUR:10,USD:20});assert.equal(x.openValue,null);assert.equal(x.openValueLabel,'EUR 10 + USD 20')});

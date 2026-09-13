@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {mergeConversationChanges as merge}from '../lib/conversationChanges.ts';
+const a={id:'a',text:'old'},b={id:'b',text:'new'},c={id:'c',text:'other'};
+test('independent additions survive stale snapshots',()=>assert.deepEqual(merge([a],[a,b],[a,c]),[a,c,b]));
+test('unchanged deleted chats are not resurrected',()=>assert.deepEqual(merge([a],[a,b],[]),[b]));
+test('explicit deletion preserves unseen chats',()=>assert.deepEqual(merge([a],[],[a,c]),[c]));
+test('same chat edits conflict and leave inputs untouched',()=>{const remote=[{...a,text:'remote'}];assert.equal(merge([a],[{...a,text:'local'}],remote),null);assert.equal(remote[0].text,'remote')});
+test('deleting a concurrently edited chat conflicts',()=>assert.equal(merge([a],[],[{...a,text:'remote'}]),null));
+test('replayed identical writes are idempotent',()=>assert.deepEqual(merge([], [a], [a]),[a]));
+test('browser cache with acknowledged baseline cannot revive remote deletion',()=>assert.deepEqual(merge([a],[a],[]),[]));

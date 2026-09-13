@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/Tooltip";
 import {
@@ -227,7 +227,12 @@ export function Avatar({
      list re-renders, so a face that failed once must not blank out the next
      person to occupy that slot. */
   const [broken, setBroken] = useState(false);
-  useEffect(() => setBroken(false), [photo]);
+  const imageRef = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    // Cached failures can happen before hydration attaches onError.
+    const image = imageRef.current;
+    setBroken(!!image && image.complete && image.naturalWidth === 0);
+  }, [photo]);
   const words = name.split(/\s+/).filter(Boolean);
   const nameWords = words.filter((w) => NAME_WORD.test(w));
   const initials =
@@ -243,6 +248,7 @@ export function Avatar({
   const badge = photo && !broken ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img
+      ref={imageRef}
       src={photo}
       alt={name}
       onError={() => setBroken(true)}

@@ -64,6 +64,9 @@ const nextConfig = {
     return [{ source: "/mock-mode/:path*", destination: "/:path*" }];
   },
   experimental: {
+    // Scraped responses have durable caches; duplicating them in the dev HMR
+    // cache exhausted the server's memory and interrupted collection jobs.
+    serverComponentsHmrCache: false,
     staleTimes: { dynamic: 0 },
     // Belt and braces for the Aug 20 upload outage: even when middleware has
     // reason to buffer a request body, the cap must clear the biggest file

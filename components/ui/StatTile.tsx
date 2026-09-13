@@ -12,6 +12,7 @@ export function StatTile({
   sub,
   color,
   warn = false,
+  singleLine = false,
 }: {
   icon: LucideIcon;
   label: string;
@@ -19,6 +20,7 @@ export function StatTile({
   sub?: string;
   color?: string; // accent for the icon badge (defaults to brand blue)
   warn?: boolean;
+  singleLine?: boolean;
 }) {
   return (
     /* EVERY TILE THE SAME HEIGHT, WHATEVER ITS WORDS (Anir, Aug 23: "your
@@ -34,7 +36,7 @@ export function StatTile({
     /* data-stat-tile marks the row for the symmetry check that enforces the
        rule above — at most four tiles, every label on the same number of
        lines, every tile the same height. */
-    <Card className="flex h-full flex-col p-4" data-stat-tile={label}>
+    <Card className="flex h-full min-w-0 flex-col p-4" data-stat-tile={label}>
       <div className="flex items-center gap-2.5 mb-3">
         <span
           className={cn(
@@ -47,7 +49,7 @@ export function StatTile({
         </span>
         <span
           data-stat-label
-          className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary leading-tight"
+          className={cn("text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary leading-tight", singleLine && "min-w-0 truncate")}
         >
           {label}
         </span>
@@ -79,7 +81,7 @@ export function StatTile({
         >
           {value}
         </p>
-        <p className="mt-1.5 text-[12px] leading-tight text-text-tertiary">
+        <p title={singleLine ? sub : undefined} className={cn("mt-1.5 text-[12px] leading-tight text-text-tertiary", singleLine && "truncate")}>
           {sub || "\u00A0"}
         </p>
       </div>

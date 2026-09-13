@@ -24,7 +24,7 @@ export type VerifiedWorkflowActor = {
  * workspace grant. Browser-supplied names and ids are deliberately ignored.
  */
 export async function verifiedWorkflowActor(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<VerifiedWorkflowActor | null> {
   if (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE) {
     const scope = await verifiedRequestMemberScope(request);
@@ -60,13 +60,11 @@ export async function verifiedWorkflowActor(
     userId: scope.userId,
     workspaceId: scope.workspaceId,
     name:
-      grant.displayName?.trim() ||
-      principal.name.trim() ||
-      "Workspace member",
+      grant.displayName?.trim() || principal.name.trim() || "Workspace member",
     /* The admin PRIVILEGE counts, not only the cookie's role string
        (lib/effectiveRole): the materials, solutioning and performance routes
        all ask this actor who is an admin. */
-    role: await liftToAdmin(grant.role, grant.displayName),
+    role: await liftToAdmin(grant.role, grant.userId),
   };
 }
 
@@ -83,7 +81,7 @@ export function isWorkflowManager(actor: VerifiedWorkflowActor): boolean {
 export function isWorkflowOwner(
   actor: VerifiedWorkflowActor,
   ownerUserId: string | null | undefined,
-  legacyOwnerName: string | null | undefined
+  legacyOwnerName: string | null | undefined,
 ): boolean {
   void legacyOwnerName;
   return !!ownerUserId && ownerUserId === actor.userId;
@@ -92,7 +90,7 @@ export function isWorkflowOwner(
 export function isWorkflowOwnerOrAdmin(
   actor: VerifiedWorkflowActor,
   ownerUserId: string | null | undefined,
-  legacyOwnerName: string | null | undefined
+  legacyOwnerName: string | null | undefined,
 ): boolean {
   return (
     actor.role === "admin" ||
@@ -103,7 +101,7 @@ export function isWorkflowOwnerOrAdmin(
 export function isWorkflowOwnerOrManager(
   actor: VerifiedWorkflowActor,
   ownerUserId: string | null | undefined,
-  legacyOwnerName: string | null | undefined
+  legacyOwnerName: string | null | undefined,
 ): boolean {
   return (
     isWorkflowManager(actor) ||

@@ -7,6 +7,7 @@ import {
   setMarketIntelBookmark,
   setMarketIntelBookmarks,
   setMarketIntelStar,
+  saveMarketIntelBookmarkChanges,
 } from "@/lib/marketIntelBookmarks";
 import { resumeCompaniesIfStale, resumeCompanyIfStale } from "@/lib/marketIntelRefresh";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
@@ -56,6 +57,7 @@ export async function PUT(request: NextRequest) {
     on?: unknown;
     star?: unknown;
     ids?: unknown;
+    changes?: unknown;
   } | null;
   if (!body) return NextResponse.json({ error: "Say which company." }, { status: 400 });
 
@@ -63,7 +65,12 @@ export async function PUT(request: NextRequest) {
     ? body.ids.filter((v): v is string => typeof v === "string" && !!v.trim())
     : null;
   const single = typeof body.id === "string" && body.id.trim() ? body.id.trim() : null;
-  if (!batch?.length && !single) {
+  const changes = Array.isArray(body.changes) ? body.changes : null;
+  if (changes && (changes.length === 0 || changes.length > 500 || changes.some((c) =>
+    !c || typeof c.id !== "string" || !c.id.trim() || typeof c.on !== "boolean" || typeof c.star !== "boolean" || (!c.on && c.star)))) {
+    return NextResponse.json({ error: "Invalid tracking changes." }, { status: 400 });
+  }
+  if (!changes && !batch?.length && !single) {
     return NextResponse.json({ error: "Say which company." }, { status: 400 });
   }
 
@@ -76,10 +83,25 @@ export async function PUT(request: NextRequest) {
       readMarketIntelFollowers().catch(() => ({}) as Record<string, string[]>),
     ]);
     const known = new Set((tracking?.companies ?? []).map((c) => c.id));
+    /* The standing list is collected whether or not anybody ticks it (Anir,
+       Sep 11), so ticking one never "starts" it and the last untick never stops it. */
+    const collectedAnyway = new Set(
+      (tracking?.companies ?? []).filter((c) => c.activeByDefault).map((c) => c.id)
+    );
     /* Read who has what BEFORE the write, so the tick being made is not what
        makes the company look active. */
-    const hadNobody = (id: string) => (followers[id] ?? []).length === 0;
+    const hadNobody = (id: string) => !collectedAnyway.has(id) && (followers[id] ?? []).length === 0;
     const othersHaveIt = (id: string) => (followers[id] ?? []).some((u) => u !== scope.userId);
+
+    if (changes) {
+      if (changes.some((c) => !known.has(c.id))) {
+        return NextResponse.json({ error: "A company in your draft is no longer available. Reload the list and try again." }, { status: 409 });
+      }
+      const bookmarks = await saveMarketIntelBookmarkChanges(scope, changes);
+      const waking = changes.filter((c) => c.on && hadNobody(c.id)).map((c) => c.id);
+      if (waking.length > 0) after(() => resumeCompaniesIfStale(waking));
+      return NextResponse.json({ ok: true, companyIds: bookmarks.companyIds, starredIds: bookmarks.starredIds });
+    }
 
     if (batch?.length) {
       const ids = batch.filter((id) => known.has(id));
@@ -116,7 +138,7 @@ export async function PUT(request: NextRequest) {
     /* Taking off the LAST tick stops the collection (Anir, Sep 10: "if I
        remove something and no one has it, it just stops doing it"); the
        answer says so, so the screen can too. */
-    const stopped = !on && known.has(id) && !othersHaveIt(id);
+    const stopped = !on && known.has(id) && !collectedAnyway.has(id) && !othersHaveIt(id);
     const bookmarks = await setMarketIntelBookmark(scope, id, on);
     if (wake) after(() => resumeCompanyIfStale(id));
     return NextResponse.json({

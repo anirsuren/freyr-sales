@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,7 @@ export function MiLogo({
   className?: string;
 }) {
   const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [logoUrl]);
   if (!logoUrl || broken) {
     return <CompanyLogo name={name} className={className} />;
   }

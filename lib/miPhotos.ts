@@ -79,14 +79,14 @@ export async function mirrorPhoto(url: string | null | undefined): Promise<strin
   if (found?.some((f) => f.name === name)) return publicUrl;
 
   try {
-    const res = await fetch(src);
+    const res = await fetch(src, { signal: AbortSignal.timeout(20_000) });
     /* An expired link 403s. Nothing to mirror and nothing to be done about it
        here — the refresh that fetched a fresh URL is what fixes those. */
     if (!res.ok) return src;
     const type = res.headers.get("content-type") ?? "image/jpeg";
     if (!type.startsWith("image/")) return src;
     const bytes = Buffer.from(await res.arrayBuffer());
-    if (!bytes.length) return src;
+    if (!bytes.length || bytes.length > 5_000_000) return src;
     const { error } = await store.upload(key, bytes, {
       contentType: type,
       upsert: true,

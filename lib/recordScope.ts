@@ -1,3 +1,4 @@
+import { verifiedMemberPrivileges } from "./memberPrivilegeIdentity";
 import "server-only";
 
 import { cache } from "react";
@@ -176,16 +177,21 @@ export const resolveScope = cache(async (): Promise<Scope | null> => {
         .filter(
           (g) =>
             g.head?.trim().toLowerCase() === mine ||
-            g.members.some((m) => m.trim().toLowerCase() === mine)
+            g.members.some((m) => m.trim().toLowerCase() === mine),
         )
-        .map((g) => g.id)
+        .map((g) => g.id),
     );
 
     return {
       me: me.name,
       myUserId: me.memberId ?? null,
       manager: role === "admin" || role === "bd_owner",
-      viewAll: hasViewAll(privileges, me.name, role),
+      viewAll: hasViewAll(
+        privileges,
+        me.name,
+        role,
+        await verifiedMemberPrivileges(privileges, me.memberId),
+      ),
       myGroupIds,
       teams,
       access: viewer.access,
@@ -210,9 +216,7 @@ function sameName(value: unknown, mine: string): boolean {
 const NOBODY = new Set(["", "unassigned", "none", "nobody", "-"]);
 
 function isSomebody(value: unknown): boolean {
-  return (
-    typeof value === "string" && !NOBODY.has(value.trim().toLowerCase())
-  );
+  return typeof value === "string" && !NOBODY.has(value.trim().toLowerCase());
 }
 
 /** The team recorded against this record, if its module keeps one. */
@@ -234,7 +238,7 @@ export function isConnected(
   record: ScopedRecord,
   scope: Scope,
   assigned?: Assignment | null,
-  module?: ModuleKey
+  module?: ModuleKey,
 ): boolean {
   const mine = scope.me.trim().toLowerCase();
   const same = (v: unknown) => sameName(v, mine);
@@ -274,7 +278,7 @@ export function isClaimed(
   record: ScopedRecord,
   scope: Scope,
   assigned?: Assignment | null,
-  module?: ModuleKey
+  module?: ModuleKey,
 ): boolean {
   if (isSomebody(record.owner)) return true;
   if (record.owner_user_id || record.ownerUserId) return true;
@@ -284,10 +288,12 @@ export function isClaimed(
 
   if (module) {
     const team = teamOf(record, module, scope);
-    if (team && (isSomebody(team.owner) || team.members.length > 0)) return true;
+    if (team && (isSomebody(team.owner) || team.members.length > 0))
+      return true;
   }
 
-  if (assigned && (assigned.groupId || assigned.members.length > 0)) return true;
+  if (assigned && (assigned.groupId || assigned.members.length > 0))
+    return true;
   return false;
 }
 
@@ -302,7 +308,7 @@ export function accessToRecord(
   record: ScopedRecord,
   module: ModuleKey,
   scope: Scope | null,
-  assigned?: Assignment | null
+  assigned?: Assignment | null,
 ): Access {
   /* Not scoping: the module answer applies to everything, which is how the
      app behaved before Aug 29. */
@@ -334,7 +340,7 @@ export function whyRecordAccess(
   record: ScopedRecord,
   module: ModuleKey,
   scope: Scope | null,
-  assigned?: Assignment | null
+  assigned?: Assignment | null,
 ): string | null {
   if (!scope) return null;
   if (accessToRecord(record, module, scope, assigned) !== "view") return null;
@@ -356,7 +362,7 @@ export function visibleRecords<T extends ScopedRecord>(
   module: ModuleKey,
   scope: Scope | null,
   assignments?: AssignmentMap,
-  idOf?: (r: T) => string
+  idOf?: (r: T) => string,
 ): T[] {
   if (!scope) return records;
   return records.filter(
@@ -365,8 +371,8 @@ export function visibleRecords<T extends ScopedRecord>(
         r,
         module,
         scope,
-        assignments && idOf ? assignments[idOf(r)] : null
-      ) !== "none"
+        assignments && idOf ? assignments[idOf(r)] : null,
+      ) !== "none",
   );
 }
 
@@ -374,7 +380,7 @@ export function canEditRecord(
   record: ScopedRecord,
   module: ModuleKey,
   scope: Scope | null,
-  assigned?: Assignment | null
+  assigned?: Assignment | null,
 ): boolean {
   return levelCanEdit(accessToRecord(record, module, scope, assigned));
 }
@@ -383,7 +389,7 @@ export function canDeleteRecord(
   record: ScopedRecord,
   module: ModuleKey,
   scope: Scope | null,
-  assigned?: Assignment | null
+  assigned?: Assignment | null,
 ): boolean {
   return levelCanDelete(accessToRecord(record, module, scope, assigned));
 }
@@ -396,7 +402,7 @@ export function canDeleteRecord(
  * picker cannot offer a group the module has no business with.
  */
 export async function groupsForModule(
-  module: ModuleKey
+  module: ModuleKey,
 ): Promise<{ id: string; name: string }[]> {
   const wanted = MODULE_GROUPING[module];
   if (!wanted) return [];

@@ -1,15 +1,29 @@
+import { collectionPhase } from "./marketIntelCollectionStore";
+import { runDurableMarketIntelActor } from "./marketIntelActor";
+import { armCompanyOnboarding, editQueuedCompany } from "./marketIntelOnboarding";
+import { isDeepStrictEqual } from "node:util";
+import { collectLinkedInPostPages, toPost, linkedInActivityId } from "./linkedinPostCollection";
+import { compatibleCompanyNames } from "./companyIdentity";
+import type { TrackProgress } from "./marketIntelTrackProgress";
+import { requestMarketIntelSearch } from "./marketIntelSearch";
+import { linkedInIdentifier, companyFeedAuthor } from "./marketIntelLinks";
+import { DuplicateCompanyError, findCompanyDuplicate, companyDomain } from "./marketIntelDuplicates";
+import { dedupeCompanyNews, isNewsIndex, companyNewsQuery, filterCompanyNews, publishedDate, readCompanyNewsSearch, readGoogleNews, websiteConfirmsLinkedIn } from "./companyWebsiteNews";
 import { after } from "next/server";
 import type { CompanySource } from "./marketIntelSources";
 import {
-  bustMarketIntelFeedCache,
   cleanSourceLabel,
+  readFeedMeta,
+  readFeedCompany,
   readMarketIntelFeed,
-  saveFeedCompany,
+  saveFeedCompany as persistFeedCompany,
   saveFeedMeta,
   saveFeedPerson,
   withinRetention,
   readMarketIntelSummaries,
 } from "./marketIntelFeed";
+import { MARKET_INTEL_REFRESH_MS, collectedInCurrentCycle } from "./marketIntelCadence";
+import { findSiteLogo, storeCompanyLogo } from "./companyLogos";
 import { mirrorPhoto } from "./miPhotos";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
 import {
@@ -43,7 +57,7 @@ import type { Division } from "./offeringMaterials";
  * imagine all 100 people clicking it at the same time"). Nobody clicks
  * anything:
  *
- * - Any live-mode visit to Market Intel checks the feed's age; past 11 hours,
+ * - Any live-mode visit to Market Intel checks the feed's age; past 24 hours,
  *   the request schedules ONE background refresh via after(). A lock row in
  *   the database makes sure a hundred simultaneous visitors produce exactly
  *   one run — everyone else just reads.
@@ -57,24 +71,16 @@ import type { Division } from "./offeringMaterials";
  * and pages keep showing the last data with an honest "updated" stamp.
  */
 
-// Twice a day at whatever hour traffic lands (Aug 11 call: "twice a day
-// works... since we have folks across the globe") — one shared refresh, never
-// per-user. These two clocks now govern only the same-day news pass
-// (Perplexity, its own bill); the Apify passes have their own, below.
-const STALE_AFTER_MS = 11 * 60 * 60 * 1000;
-const COMPANY_FRESH_MS = 10 * 60 * 60 * 1000;
+// ONCE A DAY, EVERYTHING (Anir, Sep 7: "let's do it once per day"; Sep 11:
+// "it's supposed to be once a day, and you're still saying that it's twice a
+// day"). One shared daily clock, never per-user. Each source is due after 24 hours.
 /** THE APIFY CLOCK: ONCE A DAY (Anir, Sep 7, after seeing the app was 72% of
  *  the Apify bill at ~$6 a day: "let's do it once per day"). LinkedIn company
  *  posts, the wider Google News search, the M&A board and followed people
- *  are each visited in every OTHER twice-daily run: the runs are ~11.5 hours
- *  apart, so a 20-hour stamp skips the next run and lands on the one after,
- *  about 23 hours later. Same-day news still arrives twice a day through the
- *  Perplexity pass, which costs a tenth as much. */
-const APIFY_FRESH_MS = 20 * 60 * 60 * 1000;
+ *  are visited in each daily run, with a 24-hour freshness stamp. */
 /** The website pass's own clock: a company posts to its newsroom a handful
  *  of times a month, so checking it twice a day would buy the same answer
- *  twice. Once a day keeps the column fresh at a third of the spend. */
-const SITE_FRESH_MS = 22 * 60 * 60 * 1000;
+ *  twice. Once a day keeps the column fresh without repeated checks during the day. */
 const LOCK_MS = 30 * 60 * 1000;
 // Two Apify caps. RUN_CAP_USD bounds one run so it finishes inside the lock;
 // the rotation spreads whatever it cuts across later runs. DAY_CAP_USD is the
@@ -90,7 +96,7 @@ const RUN_CAP_USD = 3.2;
 const DAY_CAP_USD = 6;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TARGETED_CAP_USD = 0.6;
-const POST_LIMIT = 5;
+
 /**
  * BACK TO A SHALLOW PAGE, ON PURPOSE. The actor returns Google News ranked by
  * RELEVANCE, not date, and ignores its own `sort: newest` (verified live:
@@ -140,10 +146,17 @@ let activeApifyToken: string | undefined = process.env.APIFY_API_TOKEN;
  *  so prod picks up a key (or a rotation) without an AWS change. */
 let activePerplexityKey: string | undefined = process.env.PERPLEXITY_API_KEY;
 
+export async function loadProviderConfig(): Promise<void> {
+  const config = await readRow(CONFIG_ROW).catch(() => null);
+  activeApifyToken = config?.apifyToken || process.env.APIFY_API_TOKEN;
+  activePerplexityKey = config?.perplexityKey || process.env.PERPLEXITY_API_KEY;
+}
+
 function client() {
   return require("@supabase/supabase-js").createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { global: { fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, cache: "no-store" }) } }
   );
 }
 
@@ -212,63 +225,31 @@ export function notePerplexityError(message: string): void {
 }
 
 async function runActor(actor: string, input: unknown): Promise<any> {
-  // One retry: the actors flake intermittently (timeouts, transient 5xx), and
-  // before Aug 12 a single hiccup silently cost a company its whole refresh
-  // window while the UI still said "Refreshed".
-  let lastError: unknown = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await fetch(
-        `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${activeApifyToken}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-          signal: AbortSignal.timeout(180_000),
-        }
-      );
-      if (!res.ok) {
-        throw new Error(`${actor} HTTP ${res.status}`);
-      }
-      return res.json();
-    } catch (error) {
-      lastError = error;
-      lastApifyError = String(error instanceof Error ? error.message : error).slice(0, 160);
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
-    }
+  if (!activeApifyToken) throw new Error("LinkedIn collection is not configured.");
+  try { return await runDurableMarketIntelActor(actor, input, activeApifyToken); }
+  catch (error) {
+    lastApifyError = error instanceof Error ? error.message : String(error);
+    throw error;
   }
-  throw lastError;
-}
-
-function toPost(i: any): FeedPost | null {
-  if (!i?.text || !i?.post_url && !i?.url) return null;
-  return {
-    url: i.post_url || i.url,
-    text: String(i.text).slice(0, 2000),
-    date: i.posted_at?.timestamp
-      ? new Date(i.posted_at.timestamp).toISOString()
-      : null,
-    reactions: i.stats?.total_reactions ?? null,
-    comments: i.stats?.comments ?? null,
-    reposts: i.stats?.reposts ?? null,
-  };
 }
 
 /** Returns billed cost alongside results so every caller keeps the ledger. */
 async function scrapeCompanyPosts(
-  source: CompanySource
-): Promise<{ posts: FeedPost[]; author: FeedCompany["author"]; slug: string | null; cost: number; failed: boolean }> {
+  source: CompanySource, knownUrls: string[] = []
+): Promise<{ posts: FeedPost[]; author: FeedCompany["author"]; slug: string | null; cost: number; failed: boolean; truncated?: boolean }> {
   let cost = 0;
   let failures = 0;
   let attempts = 0;
   for (const slug of source.li ?? []) {
     attempts += 1;
     let items: any;
+    let truncated = false;
     try {
-      items = await runActor("apimaestro~linkedin-company-posts", {
-        company_name: `linkedin.com/company/${slug}`,
-        limit: POST_LIMIT,
-      });
+      const result = await collectLinkedInPostPages(input=>runActor("apimaestro~linkedin-company-posts",input),slug,{knownUrls,pageSize:knownUrls.length?5:100});
+      items = result.items;
+      cost += result.cost;
+      truncated = result.truncated;
+      if (result.error) { lastApifyError = result.error; if (!items.length) failures += 1; }
     } catch (error) {
       failures += 1;
       console.error(
@@ -282,8 +263,7 @@ async function scrapeCompanyPosts(
       failures += 1;
       continue;
     }
-    cost += items.length * 0.005;
-    const author = items.find((i: any) => i?.author?.name)?.author ?? null;
+    const author = companyFeedAuthor(items, slug);
     if (
       source.expect &&
       author?.name &&
@@ -302,6 +282,7 @@ async function scrapeCompanyPosts(
         : null,
       slug,
       cost,
+      truncated,
       failed: false,
     };
   }
@@ -314,20 +295,25 @@ async function scrapeCompanyPosts(
   };
 }
 
-async function scrapeNews(
-  source: Pick<CompanySource, "name" | "newsQ">
+export async function scrapeNews(
+  source: Pick<CompanySource, "name" | "newsQ" | "site">
 ): Promise<{ news: FeedNews[]; cost: number; failed: boolean }> {
+  const domain = source.site ? companyDomain(source.site) : null;
+  const query = (source.newsQ || (domain ? companyNewsQuery(source.name) : source.name)) + (domain ? ` -site:${domain}` : "");
+  const direct = domain ? await readCompanyNewsSearch(source.name,domain,source.newsQ) : await readGoogleNews(query);
+  if (domain) direct.news = filterCompanyNews(direct.news,source.name,domain);
+  if (!direct.failed && direct.news.length) return { ...direct, cost: 0 };
   let items: any;
   try {
     items = await runActor("s-r~google-news", {
-      q: source.newsQ || source.name,
+      q: query,
       maxItems: NEWS_LIMIT,
     });
   } catch (error) {
     console.error(
       `[market-intel] news scrape failed for "${source.name}": ${error instanceof Error ? error.message : error}`
     );
-    return { news: [], cost: 0, failed: true };
+    return { news: [], cost: 0, failed: direct.failed };
   }
   if (!Array.isArray(items)) return { news: [], cost: 0, failed: true };
   const cost = 0.01 + items.length * 0.004;
@@ -335,8 +321,10 @@ async function scrapeNews(
   const news: FeedNews[] = [];
   for (const i of items) {
     if (!i?.title || !i?.url) continue;
-    const title = String(i.title).replace(/\s+-\s+[^-]+$/, "").trim();
-    const key = title.toLowerCase();
+    const publisher = typeof i.source === "string" ? i.source : i.source?.title || "News";
+    const rawTitle = String(i.title).trim();
+    const title = rawTitle.endsWith(` - ${publisher}`) ? rawTitle.slice(0, -publisher.length - 3) : rawTitle;
+    const key = `${i.url}|${publisher.toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);
     news.push({
@@ -345,10 +333,10 @@ async function scrapeNews(
         typeof i.source === "string" ? i.source : i.source?.title || "News"
       ),
       url: i.url,
-      published: i.published ? new Date(i.published).toISOString() : null,
+      published: publishedDate(i.published),
     });
   }
-  return { news, cost, failed: false };
+  return { news: domain ? filterCompanyNews(news,source.name,domain) : news, cost, failed: false };
 }
 
 /** The M&A tracker: three division-flavored news pulls, AI-classified into
@@ -486,39 +474,46 @@ function inLabelWindow(date: string | null | undefined): boolean {
  * read twice.
  */
 async function applyLabels(entry: FeedCompany, budget: LabelBudget): Promise<number> {
+  const officialDomain = entry.site?.[0]?.url ? companyDomain(entry.site[0].url) : null;
+  entry.news = mergeNews(entry.news, filterCompanyNews(entry.pendingNews ?? [], entry.name, officialDomain));
+  entry.pendingNews = [];
   type Slot = { item: FeedPost | FeedNews; input: ClassifyInput };
   const slots: Slot[] = [];
   const done = (item: Parameters<typeof isLabeled>[0]) => (budget.relabel ? hasCurrentLabel(item) : isLabeled(item));
   for (const p of entry.posts) {
     if (done(p) || !inLabelWindow(p.date)) continue;
+    if (!p.text.trim()) { p.label={signals:["others"],relevant:true,industries:[],isCompanyNews:true,v:CLASSIFY_VERSION}; continue; }
     slots.push({
       item: p,
       input: { kind: "post", title: p.text.split("\n")[0].slice(0, 200), text: p.text },
     });
   }
   for (const n of entry.news) {
-    if (done(n) || !inLabelWindow(n.published)) continue;
+    if ((done(n) && typeof n.label?.isCompanyNews === "boolean") || !inLabelWindow(n.published)) continue;
     slots.push({
       item: n,
-      input: { kind: "news", title: n.title, text: n.summary ?? "", source: n.source },
+      // RSS publisherUrl may name the publisher's homepage. Verify the item,
+      // whose URL hydration already resolves to the actual article.
+      input: { kind: "news", title: n.title, text: n.articleText || n.excerpt || n.summary || "", source: n.source, url: n.url, published:n.published },
     });
   }
   for (const n of entry.site ?? []) {
     if (done(n) || !inLabelWindow(n.published)) continue;
     slots.push({
       item: n,
-      input: { kind: "site", title: n.title, text: n.summary ?? "", source: n.source },
+      input: { kind: "site", title: n.title, text: n.excerpt || n.summary || "", source: n.source, url: n.url },
     });
   }
   let labeled = 0;
   const group = entry.group === "competitor" ? "competitor" : "customer";
+  slots.sort((a,b)=>Number(b.input.kind === "news")-Number(a.input.kind === "news"));
   const batches: Slot[][] = [];
   for (let at = 0; at < slots.length && budget.calls > 0; at += CLASSIFY_BATCH) {
     batches.push(slots.slice(at, at + CLASSIFY_BATCH));
     budget.calls -= 1;
   }
   await mapLimit(batches, LABEL_CONCURRENCY, async (batch) => {
-    const labels = await classifyItems(entry.name, group, batch.map((b) => b.input));
+    const labels = await classifyItems(entry.name, group, batch.map((b) => b.input), entry.site?.[0]?.url);
     labels.forEach((label, index) => {
       const slot = batch[index];
       if (slot) {
@@ -532,7 +527,7 @@ async function applyLabels(entry: FeedCompany, budget: LabelBudget): Promise<num
        gets the keyword rules' answer, so nothing is re-sent forever. */
     const missing = batch.filter((slot) => !hasCurrentLabel(slot.item));
     if (missing.length > 0 && missing.length < batch.length) {
-      const again = await classifyItems(entry.name, group, missing.map((b) => b.input));
+      const again = await classifyItems(entry.name, group, missing.map((b) => b.input), entry.site?.[0]?.url);
       again.forEach((label, index) => {
         const slot = missing[index];
         if (slot) {
@@ -544,6 +539,7 @@ async function applyLabels(entry: FeedCompany, budget: LabelBudget): Promise<num
     for (const slot of missing) {
       /* A relabel keeps the model's earlier answer rather than trade it for a keyword guess. */
       if (hasCurrentLabel(slot.item) || (budget.relabel && isLabeled(slot.item))) continue;
+      if (slot.input.kind === "news") continue; // Retry later; a keyword match cannot verify company identity.
       const text = slot.input.kind === "post" ? slot.input.text : `${slot.input.title}. ${slot.input.text}`;
       slot.item.label = {
         signals: fallbackSignals(text, group),
@@ -554,6 +550,12 @@ async function applyLabels(entry: FeedCompany, budget: LabelBudget): Promise<num
       labeled += 1;
     }
   });
+  entry.pendingNews = entry.news.filter(item => typeof item.label?.isCompanyNews !== "boolean");
+  const acceptedNews = entry.news.filter(item => item.label?.isCompanyNews === true);
+  if (acceptedNews.length !== entry.news.length) {
+    entry.news = acceptedNews;
+    entry.tldr = null; // Rebuild the briefing without rejected search matches.
+  }
   return labeled;
 }
 
@@ -611,7 +613,7 @@ async function refreshThought(feed: any, key: string | undefined): Promise<numbe
 
 async function scrapePersonPosts(
   person: TrackedPerson
-): Promise<{ posts: FeedPost[]; cost: number; headline: string | null; failed: boolean }> {
+): Promise<{ posts: FeedPost[]; cost: number; headline: string | null; photoUrl?: string; failed: boolean }> {
   const username = person.linkedinUrl.match(/\/in\/([^/]+)/)?.[1];
   if (!username) return { posts: [], cost: 0, headline: null, failed: false };
   let items: any;
@@ -640,9 +642,34 @@ async function scrapePersonPosts(
   return {
     posts: items.map(toPost).filter(Boolean) as FeedPost[],
     cost: items.length * 0.005,
+    photoUrl: await mirrorPhoto(String(items.find((i: any) => i?.author?.profile_picture_url)?.author?.profile_picture_url ?? "")),
     headline,
     failed: false,
   };
+}
+
+/** Missing or expiring faces get a profile lookup, including people with no posts. */
+async function refreshPersonPicture(person: TrackedPerson, freshPhoto?: string, force = false): Promise<number> {
+  const patch: Partial<TrackedPerson> = {};
+  const mirrored = await mirrorPhoto(freshPhoto || person.photoUrl);
+  if (mirrored) patch.photoUrl = mirrored;
+  const stored = mirrored && !/licdn\.com/i.test(mirrored);
+  let cost = 0;
+  if (!stored && (force || Date.now() - Date.parse(person.photoCheckedAt || "1970-01-01") >= MARKET_INTEL_REFRESH_MS)) {
+    patch.photoCheckedAt = new Date().toISOString();
+    const username = person.linkedinUrl.match(/\/in\/([^/?#]+)/)?.[1];
+    if (username) {
+      try {
+        const items = await runActor("apimaestro~linkedin-profile-detail", { username });
+        cost = 0.01;
+        const info = Array.isArray(items) ? items[0]?.basic_info : null;
+        const photo = await mirrorPhoto(String(info?.profile_picture_url ?? ""));
+        if (photo) patch.photoUrl = photo;
+      } catch { /* Keep the previous face and retry on the next daily run. */ }
+    }
+  }
+  await updateTrackedPersonProfile(person.id, patch);
+  return cost;
 }
 
 /** Persist profile facts a sync brought back onto the tracked person. */
@@ -654,12 +681,21 @@ async function updateTrackedPersonProfile(
     Object.entries(patch).filter(([, v]) => v != null && v !== "")
   );
   if (Object.keys(clean).length === 0) return;
-  const tracking = await readRow(TRACKING_ROW);
-  if (!tracking || !Array.isArray(tracking.people)) return;
-  const person = tracking.people.find((p: TrackedPerson) => p.id === personId);
-  if (!person) return;
-  Object.assign(person, clean);
-  await writeRow(TRACKING_ROW, tracking);
+  const db = client();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await db.from("offering_catalog_state").select("catalog,updated_at").eq("id", TRACKING_ROW).maybeSingle();
+    if (error) throw new Error(error.message);
+    const tracking = data?.catalog;
+    const person = tracking?.people?.find((p: TrackedPerson) => p.id === personId);
+    if (!person) return;
+    Object.assign(person, clean);
+    const { data: saved, error: saveError } = await db.from("offering_catalog_state")
+      .update({ catalog: tracking, updated_at: new Date().toISOString() })
+      .eq("id", TRACKING_ROW).eq("updated_at", data.updated_at).select("id");
+    if (saveError) throw new Error(saveError.message);
+    if (saved?.length) { bustMarketIntelTrackingCache(); return; }
+  }
+  throw new Error("The tracking list changed during the photo update; try again.");
 }
 
 // ------------------------------------------------------------------ merging
@@ -671,9 +707,10 @@ function mergePosts(existing: FeedPost[], incoming: FeedPost[]): FeedPost[] {
   const byUrl = new Map<string, FeedPost>();
   for (const p of [...existing, ...incoming]) {
     if (!withinRetention(p.date)) continue;
-    const prior = byUrl.get(p.url);
-    if (!prior) byUrl.set(p.url, p);
-    else byUrl.set(p.url, { ...p, ...prior, reactions: p.reactions ?? prior.reactions, comments: p.comments ?? prior.comments, reposts: p.reposts ?? prior.reposts });
+    const key = linkedInActivityId({ post_url: p.url }) || p.url;
+    const prior = byUrl.get(key);
+    if (!prior) byUrl.set(key, p);
+    else byUrl.set(key, { ...prior, ...p, label: p.label ?? prior.label, reactions: p.reactions ?? prior.reactions, comments: p.comments ?? prior.comments, reposts: p.reposts ?? prior.reposts });
   }
   return [...byUrl.values()].sort(
     (a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0)
@@ -681,17 +718,8 @@ function mergePosts(existing: FeedPost[], incoming: FeedPost[]): FeedPost[] {
 }
 
 function mergeNews(existing: FeedNews[], incoming: FeedNews[]): FeedNews[] {
-  const seen = new Set<string>();
-  const out: FeedNews[] = [];
-  for (const n of [...existing, ...incoming]) {
-    if (!withinRetention(n.published)) continue;
-    const key = n.title.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(n);
-  }
-  return out.sort(
-    (a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0)
+  return dedupeCompanyNews([...existing, ...incoming].filter(n=>withinRetention(n.published))).sort(
+    (a,b)=>(Date.parse(b.published ?? "")||0)-(Date.parse(a.published ?? "")||0)
   );
 }
 
@@ -713,6 +741,7 @@ function trackedToSource(company: TrackedCompany): CompanySource {
     id: company.id,
     name: company.name,
     li: slug ? [slug] : null,
+    ...(company.newsQuery ? { newsQ: company.newsQuery } : {}),
     expect: expectToken,
     /* The Website field on the tracking form IS the third source (Anir,
        Aug 28: "if someone enters a new company it has to work too"). A
@@ -746,7 +775,7 @@ async function loadRegistry(): Promise<{
   if (seedCompanies(tracking) > 0) await writeRow(TRACKING_ROW, tracking);
   const companies: TrackedCompany[] = tracking.companies;
   const followers = await readMarketIntelFollowers().catch(() => ({}) as Followers);
-  const active = companies.filter((c) => isActiveCompany(c, followers));
+  const active = companies.filter((c) => !c.onboarding && isActiveCompany(c, followers));
   const competitorIds = new Set(companies.filter((c) => c.group === "competitor").map((c) => c.id));
   return { tracking, companies, active, people: tracking.people, followers, competitorIds };
 }
@@ -755,17 +784,21 @@ async function loadRegistry(): Promise<{
 async function claimLock(): Promise<string | null> {
   const token = Math.random().toString(36).slice(2);
   const now = Date.now();
-  const existing = await readRow(LOCK_ROW);
-  if (existing?.until && existing.until > now) return null;
-  await writeRow(LOCK_ROW, { token, until: now + LOCK_MS });
-  // Settle the race: whoever's token survived the last write owns the run.
-  const confirmed = await readRow(LOCK_ROW);
-  return confirmed?.token === token ? token : null;
+  const db = client();
+  const {data,error} = await db.from("offering_catalog_state").select("catalog,updated_at").eq("id",LOCK_ROW).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (data?.catalog?.until > now) return null;
+  const row = {catalog:{token,until:now+LOCK_MS},updated_at:new Date().toISOString()};
+  const saved = data
+    ? await db.from("offering_catalog_state").update(row).eq("id",LOCK_ROW).eq("updated_at",data.updated_at).select("id")
+    : await db.from("offering_catalog_state").insert({id:LOCK_ROW,...row}).select("id");
+  if (saved.error?.code === "23505") return null;
+  if (saved.error) throw new Error(saved.error.message);
+  return saved.data?.length ? token : null;
 }
 
 async function releaseLock(token: string): Promise<void> {
-  const current = await readRow(LOCK_ROW);
-  if (current?.token === token) await writeRow(LOCK_ROW, { token, until: 0 });
+  await client().from("offering_catalog_state").update({catalog:{token,until:0},updated_at:new Date().toISOString()}).eq("id",LOCK_ROW).eq("catalog->>token",token);
 }
 
 // ------------------------------------------------------------------ the runs
@@ -785,30 +818,19 @@ export async function runMarketIntelRefresh(options?: {
   onlyCompanyIds?: string[];
 }): Promise<RefreshSummary> {
   if (!hasEnv()) return { ran: false, reason: "missing env (database)" };
-  const config = await readRow(CONFIG_ROW).catch(() => null);
-  activeApifyToken = config?.apifyToken || process.env.APIFY_API_TOKEN;
-  activePerplexityKey =
-    config?.perplexityKey || process.env.PERPLEXITY_API_KEY;
-  if (!activeApifyToken) {
-    return { ran: false, reason: "no APIFY token in config row or env" };
-  }
-  const feed: any = await loadFeedForWrite();
-
-  if (
-    !options?.force &&
-    !options?.onlyCompanyIds &&
-    feed.updatedAt &&
-    Date.now() - Date.parse(feed.updatedAt) < STALE_AFTER_MS
-  ) {
-    return { ran: false, reason: "fresh" };
-  }
-
+  await loadProviderConfig();
+  // Reject duplicate refresh checks before loading the entire feed into memory.
   const token = await claimLock();
   if (!token) return { ran: false, reason: "another refresh is running" };
+  let feed: any;
+  try { feed = await loadFeedForWrite(); }
+  catch (error) { await releaseLock(token); throw error; }
 
   // Two ledgers on purpose: `spent` is Apify dollars and is what RUN_CAP_USD
   // meters (the $200/month plan); `spentFresh` is Perplexity's separate bill
   // and must never eat the Apify rotation's budget.
+  const startedAt = Date.now();
+  const runExpired = () => Date.now() - startedAt > 18 * 60_000;
   let spent = 0;
   let spentFresh = 0;
   let refreshed = 0;
@@ -843,28 +865,30 @@ export async function runMarketIntelRefresh(options?: {
       .sort((a, b) => lastSync(a.id, feed.companies) - lastSync(b.id, feed.companies));
 
     // ---- Pass 1: same-day news for EVERYONE, before any Apify money moves.
-    // The dollar-capped rotation below cannot visit ~75 companies twice a
-    // day; this pass can, at ~$0.006 a company (Perplexity, its own billing),
-    // so "nothing from the past day" stops being a budget artifact. Failures
-    // cost nothing but that company's freshness until the next tick.
-    if (activePerplexityKey) {
-      for (const source of sources) {
+    // It reads every company once a day at ~$0.006 a company (Perplexity, its
+    // own billing), ahead of the dollar-capped rotation below, so "nothing from
+    // the past day" is never a budget artifact. Failures cost nothing but that
+    // company's freshness until the next tick.
+    {
+      const newsDeadline = Date.now() + 4 * 60_000;
+      for (const source of [...sources].sort((a,b) => (Date.parse(feed.companies[a.id]?.newsAt || "") || 0) - (Date.parse(feed.companies[b.id]?.newsAt || "") || 0))) {
+        if (Date.now() >= newsDeadline) break;
         const existing: FeedCompany | undefined = feed.companies[source.id];
-        const newsAt = existing?.newsAt ?? existing?.fetchedAt;
+        const newsAt = existing?.newsAt;
         if (
           !options?.force &&
           newsAt &&
-          Date.now() - Date.parse(newsAt) < COMPANY_FRESH_MS
+          collectedInCurrentCycle(newsAt)
         ) {
           continue;
         }
-        const fresh = await scrapeFreshNews(source, activePerplexityKey);
+        const fresh = await scrapeFreshNews(source, activePerplexityKey, {webSearchToken:activeApifyToken});
         spentFresh += fresh.cost;
         tally.perplexity.tries += 1;
         if (fresh.failed) {
           tally.perplexity.fails += 1;
           tally.perplexity.note = lastPerplexityError;
-          continue;
+          if (!fresh.news.length) continue;
         }
         const entry: FeedCompany = existing ?? {
           id: source.id,
@@ -885,7 +909,7 @@ export async function runMarketIntelRefresh(options?: {
           await applyLabels(entry, budget);
           await applyDigest(entry);
         }
-        entry.newsAt = new Date().toISOString();
+        if (!fresh.failed) entry.newsAt = new Date().toISOString();
         feed.companies[source.id] = entry;
         feed.updatedAt = new Date().toISOString();
         feed.spendUsd =
@@ -896,19 +920,19 @@ export async function runMarketIntelRefresh(options?: {
     }
 
     // ---- Pass 1b: THE COMPANY'S OWN WEBSITE. A newsroom moves in weeks,
-    // not hours, so this runs on its own daily clock rather than the news
-    // pass's twice-daily one — same ~$0.006 a company, a third of the
-    // frequency. A company with no domain on file costs nothing and simply
-    // has no website column.
-    if (activePerplexityKey) {
-      for (const source of sources) {
+    // not hours, so once a day is plenty, at ~$0.006 a company. A company
+    // with no domain on file costs nothing and simply has no website column.
+    {
+      const siteDeadline = Date.now() + 2 * 60_000;
+      for (const source of [...sources].sort((a,b) => (Date.parse(feed.companies[a.id]?.siteAt || "") || 0) - (Date.parse(feed.companies[b.id]?.siteAt || "") || 0))) {
+        if (Date.now() >= siteDeadline) break;
         if (!source.site) continue;
         const existing: FeedCompany | undefined = feed.companies[source.id];
         const siteAt = existing?.siteAt;
         if (
           !options?.force &&
           siteAt &&
-          Date.now() - Date.parse(siteAt) < SITE_FRESH_MS
+          collectedInCurrentCycle(siteAt)
         ) {
           continue;
         }
@@ -927,7 +951,7 @@ export async function runMarketIntelRefresh(options?: {
           fetchedAt: new Date(0).toISOString(),
         };
         if (result.updates.length > 0) {
-          entry.site = mergeNews(entry.site ?? [], result.updates);
+          entry.site = mergeNews((entry.site ?? []).filter(item => !isNewsIndex(item.url)), result.updates);
           await applyLabels(entry, budget);
         }
         entry.siteAt = new Date().toISOString();
@@ -945,7 +969,9 @@ export async function runMarketIntelRefresh(options?: {
     // empty rundown until fresh news landed, and forever once nobody had it
     // ticked. GSK, Bayer and Novartis sat like that on Sep 10. One Haiku call
     // each, only while it is missing; nothing is scraped.
+    const digestDeadline = Date.now() + 60_000;
     for (const source of sources) {
+      if (Date.now() >= digestDeadline) break;
       const existing: FeedCompany | undefined = feed.companies[source.id];
       if (!existing || existing.tldr) continue;
       if ((existing.news?.length ?? 0) + (existing.posts?.length ?? 0) === 0) continue;
@@ -960,16 +986,16 @@ export async function runMarketIntelRefresh(options?: {
     // THE M&A BOARD GOES FIRST WHEN STALE (Anir, Aug 17: "is this thing even
     // working?" — it was 101 hours behind while companies were 3 hours
     // fresh). The company queue drained the run's budget every time, so the
-    // ~$0.15 M&A pull never got a turn. Same twice-daily rhythm, same cap —
-    // just no longer last in line.
+    // ~$0.15 M&A pull never got a turn. Same daily rhythm, same cap, just no
+    // longer last in line.
     // Both caps, checked before every Apify call from here down. `force`
     // skips the freshness stamps, never the money.
     const overBudget = () =>
-      spent > RUN_CAP_USD || apifySpentToday(feed) >= DAY_CAP_USD;
+      !activeApifyToken || runExpired() || spent >= RUN_CAP_USD || apifySpentToday(feed) >= DAY_CAP_USD;
     if (
       (options?.force ||
         !feed.mna?.fetchedAt ||
-        Date.now() - Date.parse(feed.mna.fetchedAt) > APIFY_FRESH_MS) &&
+        !collectedInCurrentCycle(feed.mna.fetchedAt)) &&
       !overBudget()
     ) {
       try {
@@ -991,7 +1017,7 @@ export async function runMarketIntelRefresh(options?: {
       activePerplexityKey &&
       (options?.force ||
         !feed.thought?.fetchedAt ||
-        Date.now() - Date.parse(feed.thought.fetchedAt) > APIFY_FRESH_MS)
+        !collectedInCurrentCycle(feed.thought.fetchedAt))
     ) {
       try {
         const cost = await refreshThought(feed, activePerplexityKey);
@@ -1010,12 +1036,12 @@ export async function runMarketIntelRefresh(options?: {
       if (
         !options?.force &&
         existing?.fetchedAt &&
-        Date.now() - Date.parse(existing.fetchedAt) < APIFY_FRESH_MS
+        collectedInCurrentCycle(existing.fetchedAt)
       ) {
         skippedFresh += 1;
         continue;
       }
-      const postsResult = await scrapeCompanyPosts(source);
+      const postsResult = await scrapeCompanyPosts(source,existing?.posts.map(p=>p.url) || []);
       spent += postsResult.cost;
       const newsResult = await scrapeNews(source);
       spent += newsResult.cost;
@@ -1049,7 +1075,7 @@ export async function runMarketIntelRefresh(options?: {
         news: mergeNews(existing?.news ?? [], newsResult.news),
         tldr: existing?.tldr ?? null,
         group: competitorIds.has(source.id) ? "competitor" : "customer",
-        fetchedAt: new Date().toISOString(),
+        fetchedAt: postsResult.failed ? (existing?.fetchedAt || new Date(0).toISOString()) : new Date().toISOString(),
         newsAt: existing?.newsAt,
         /* THE WEBSITE COLUMN SURVIVES THIS PASS. This rotation rebuilds the
            entry from scratch rather than mutating it, so anything it does
@@ -1057,6 +1083,8 @@ export async function runMarketIntelRefresh(options?: {
            collected minutes earlier by Pass 1b (caught by hand: gsk.com
            returned four press releases to a direct probe while the stored
            entry had none). Carried forward exactly like newsAt. */
+        ...(existing?.logoUrl ? { logoUrl: existing.logoUrl } : {}),
+        ...(existing?.logoCheckedAt ? { logoCheckedAt: existing.logoCheckedAt } : {}),
         ...(existing?.site ? { site: existing.site } : {}),
         ...(existing?.siteAt ? { siteAt: existing.siteAt } : {}),
       };
@@ -1092,13 +1120,14 @@ export async function runMarketIntelRefresh(options?: {
       if (
         !options?.force &&
         existing?.fetchedAt &&
-        Date.now() - Date.parse(existing.fetchedAt) < APIFY_FRESH_MS
+        collectedInCurrentCycle(existing.fetchedAt)
       ) {
         continue;
       }
       const result = await scrapePersonPosts(person);
-      spent += result.cost;
-      chargeApify(feed, result.cost);
+      const photoCost = await refreshPersonPicture(person, result.photoUrl);
+      spent += result.cost + photoCost;
+      chargeApify(feed, result.cost + photoCost);
       if (result.failed) {
         console.error(
           `[market-intel] person ${person.id}: scrape failed. Keeping previous data, will retry next tick`
@@ -1163,15 +1192,23 @@ export async function runMarketIntelRefresh(options?: {
 /** New company just tracked: collect its first briefing right now. */
 export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise<void> {
   if (!hasEnv()) return;
+  await loadProviderConfig();
   const feed: any = await loadFeedForWrite();
   const source = trackedToSource(company);
-  const postsResult = await scrapeCompanyPosts(source);
-  const newsResult = await scrapeNews(source);
-  // The first briefing should include today's stories, same as the standing
-  // watch gets on every run.
-  const freshResult = await scrapeFreshNews(source, activePerplexityKey);
-  // Their own website, on the first briefing rather than a day later.
-  const siteResult = await scrapeSiteUpdates(source, activePerplexityKey);
+  const existing: FeedCompany | undefined = feed.companies[source.id];
+  // Independent sources run together. Discovery can start searching while the
+  // website reader collects official headlines for its follow-up searches.
+  const siteCollection = scrapeSiteUpdates(source, activePerplexityKey, {fastInitial:true});
+  const [postsResult, newsResult, siteResult, freshResult] = await Promise.all([
+    scrapeCompanyPosts(source),
+    scrapeNews(source),
+    siteCollection,
+    scrapeFreshNews(source, activePerplexityKey, {
+      initial: !existing?.newsAt,
+      officialUpdates: [],
+      webSearchToken: activeApifyToken,
+    }),
+  ]);
   if (postsResult.cost + newsResult.cost > TARGETED_CAP_USD) {
     // Cannot exceed by design (10 posts + 10 articles is at most ~$0.10),
     // but the guard stays in case limits change.
@@ -1179,18 +1216,30 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
   const entry: FeedCompany = {
     id: source.id,
     name: source.name,
-    slug: postsResult.slug,
-    author: postsResult.author,
-    posts: postsResult.posts,
-    news: mergeNews(newsResult.news, freshResult.news),
-    site: siteResult.updates,
+    slug: postsResult.slug || existing?.slug || null,
+    author: postsResult.author || existing?.author || null,
+    logoUrl: existing?.logoUrl,
+    logoCheckedAt: existing?.logoCheckedAt,
+    posts: mergePosts(existing?.posts ?? [], postsResult.posts),
+    news: mergeNews(existing?.news ?? [], mergeNews(newsResult.news, freshResult.news)),
+    pendingNews: existing?.pendingNews,
+    site: mergeNews((existing?.site ?? []).filter(item => !isNewsIndex(item.url)), siteResult.updates),
     tldr: null,
-    fetchedAt: new Date().toISOString(),
-    newsAt: new Date().toISOString(),
-    siteAt: new Date().toISOString(),
+    fetchedAt: postsResult.failed ? existing?.fetchedAt ?? new Date(0).toISOString() : new Date().toISOString(),
+    newsAt: freshResult.failed ? existing?.newsAt : new Date().toISOString(),
+    siteAt: siteResult.failed ? existing?.siteAt : new Date().toISOString(),
+    collectionWarnings: [
+      ...(postsResult.failed ? ["LinkedIn could not be refreshed; saved posts are shown."] : []),
+      ...(newsResult.failed && freshResult.failed ? ["News collection is temporarily unavailable."] : []),
+      ...(freshResult.failed ? ["Some news searches or source pages could not be read; available updates are shown."] : []),
+      ...(siteResult.failed ? ["Website updates could not be collected yet."] : []),
+      ...(siteResult.warning ? [siteResult.warning] : []),
+    ],
     group: company.group === "competitor" ? "competitor" : "customer",
   };
-  await applyLabels(entry, { calls: 8 });
+  // Initial collections can contain hundreds of discovered articles. Size the
+  // first pass to the collected batch instead of silently deferring after 160.
+  await applyLabels(entry, { calls: Math.max(8, Math.ceil((entry.posts.length + entry.news.length + (entry.site?.length ?? 0)) / CLASSIFY_BATCH)) });
   await applyDigest(entry);
   feed.companies[source.id] = entry;
   feed.updatedAt = feed.updatedAt ?? new Date().toISOString();
@@ -1202,21 +1251,45 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
   await saveFeedCompany(feed, source.id);
 }
 
+/** Persist the logo with the feed, including website-only companies. */
+async function saveFeedCompany(feed: MarketIntelFeed, id: string): Promise<void> {
+  const company = feed.companies[id];
+  if (!company) return;
+  if (!company.author?.logoUrl && !company.logoUrl &&
+      Date.now() - Date.parse(company.logoCheckedAt || "1970-01-01") >= MARKET_INTEL_REFRESH_MS) {
+    company.logoCheckedAt = new Date().toISOString();
+    try {
+      const tracking = await readRow(TRACKING_ROW);
+      const source = tracking?.companies?.find((c: TrackedCompany) => c.id === id);
+      if (source?.logoUrl) company.logoUrl = source.logoUrl;
+      else {
+        const domain = normalizeSiteDomain(source?.scrape?.site || source?.website);
+        const image = domain ? await findSiteLogo(domain) : null;
+        if (image) company.logoUrl = await storeCompanyLogo(id, image);
+      }
+    } catch { console.error("[market-intel] company logo could not be stored", id); }
+  }
+  await persistFeedCompany(feed, id);
+}
+
 /** New person just followed: pull their recent posts right now. */
 export async function refreshTrackedPersonNow(person: TrackedPerson): Promise<void> {
   if (!hasEnv() || !person.linkedinUrl) return;
+  await loadProviderConfig();
   const feed: any = await loadFeedForWrite();
   const result = await scrapePersonPosts(person);
+  const photoCost = await refreshPersonPicture(person, result.photoUrl, true);
+  if (result.failed) return;
   if (result.headline && result.headline !== person.headline) {
     await updateTrackedPersonProfile(person.id, {
       headline: result.headline,
     }).catch(() => undefined);
   }
   feed.people[person.id] = {
-    posts: result.posts,
+    posts: mergePosts(feed.people[person.id]?.posts ?? [], result.posts),
     fetchedAt: new Date().toISOString(),
   };
-  chargeApify(feed, result.cost);
+  chargeApify(feed, result.cost + photoCost);
   await saveFeedPerson(feed, person.id);
 }
 
@@ -1226,11 +1299,15 @@ export async function refreshTrackedPersonNow(person: TrackedPerson): Promise<vo
 // data pull all come from the page itself.
 
 export type AddCompanyMeta = {
+  queuedCompanyId?: string;
+  queueLease?: string;
+  onProgress?: (progress: TrackProgress) => void | Promise<void>;
   addedBy?: TrackedCompany["addedBy"];
   divisions?: Division[];
 };
 
 export type AddCompanyResult = {
+  warnings?: string[];
   id: string;
   name: string;
   group: "customer" | "competitor";
@@ -1244,6 +1321,7 @@ export type AddCompanyResult = {
 
 
 export type AddCompanyInput = {
+  name?: string;
   /** A LinkedIn company page, or empty. */
   linkedinUrl?: string;
   /** Their official website, or empty. */
@@ -1256,6 +1334,9 @@ export async function addCompanyByLink(
   meta: AddCompanyMeta = {}
 ): Promise<AddCompanyResult> {
   if (!hasEnv()) throw new Error("Tracking needs the configured services.");
+  await loadProviderConfig();
+  await meta.onProgress?.({stage:"identity"});
+  const suppliedName = String(input.name ?? "").trim().slice(0,120);
   const liRaw = String(input.linkedinUrl ?? "").trim();
   const siteRaw = String(input.website ?? "").trim();
   /* AT LEAST ONE, AND EACH ONE RIGHT (Anir, Sep 10: "the user enters the
@@ -1265,16 +1346,17 @@ export async function addCompanyByLink(
   if (!liRaw && !siteRaw) {
     throw new Error("Enter their website or their LinkedIn page. At least one is needed.");
   }
-  const slug = liRaw ? (liRaw.match(/linkedin\.com\/company\/([^/?#\s]+)/i)?.[1] ?? null) : null;
+  let slug = liRaw ? linkedInIdentifier(liRaw, "company") : null;
   if (liRaw && !slug) {
     throw new Error("That LinkedIn link should be a company page, like linkedin.com/company/gsk.");
   }
-  const domain = siteRaw ? normalizeSiteDomain(siteRaw) : null;
+  const domain = siteRaw ? companyDomain(siteRaw) : null;
   if (siteRaw && (!domain || /(^|\.)linkedin\.com$/.test(domain))) {
     throw new Error("That website doesn't look right. It should look like gsk.com.");
   }
   const registry = await loadRegistry();
   const tracking = registry.tracking;
+  if(meta.queuedCompanyId) registry.companies = registry.companies.filter(c=>c.id!==meta.queuedCompanyId);
 
   /* KNOWN BEFORE PAID, BY EITHER LINK (Anir, Sep 10: "if someone chooses that
      same company it won't scrape twice"). The LinkedIn slug and the website
@@ -1282,8 +1364,8 @@ export async function addCompanyByLink(
      already there is simply ticked, and two links naming two different
      companies are refused rather than guessed between. */
   const bySlug = slug
-    ? (registry.companies.find((c) => (c.scrape?.li ?? []).some((l) => l.toLowerCase() === slug.toLowerCase())) ??
-      findTrackedByLinkedInSlug(tracking, slug))
+    ? (registry.companies.find((c) => (c.scrape?.li ?? []).some((l) => l.toLowerCase() === slug?.toLowerCase())) ??
+      findTrackedByLinkedInSlug({...tracking,companies:registry.companies}, slug))
     : undefined;
   const bySite = domain
     ? registry.companies.find((c) => {
@@ -1294,16 +1376,8 @@ export async function addCompanyByLink(
   if (bySlug && bySite && bySlug.id !== bySite.id) {
     throw new Error(`That LinkedIn page is ${bySlug.name}, but the website is ${bySite.name}. Check both links.`);
   }
-  const existingResult = (c: TrackedCompany): AddCompanyResult => ({
-    id: c.id,
-    name: c.name,
-    group: c.group === "competitor" ? "competitor" : "customer",
-    existing: true,
-    resumed: !isActiveCompany(c, registry.followers),
-    company: c,
-  });
-  const known = bySlug ?? bySite;
-  if (known) return existingResult(known);
+  const known = bySlug ?? bySite ?? findCompanyDuplicate(registry.companies, siteRaw, liRaw);
+  if (known) throw new DuplicateCompanyError(known);
 
   /* THE DIVISIONS ARE CHECKED BEFORE ANY MONEY MOVES: a company nobody has
      needs one, and asking after a paid probe wasted it. There is no limit on
@@ -1313,44 +1387,78 @@ export async function addCompanyByLink(
     throw new Error("Pick at least one division (MPR, MDV or CON) for a company that isn't on the list yet.");
   }
 
-  const feed: any = await loadFeedForWrite();
+  // Onboarding one company must not load every article for every company.
+  const feed: MarketIntelFeed = { ...emptyFeed(), ...(await readFeedMeta()), companies: {}, people: {} };
+  const assertOwner = async () => {
+    if (meta.queuedCompanyId) await editQueuedCompany(meta.queuedCompanyId, c => {
+      if (c.onboarding?.lease !== meta.queueLease || c.onboarding?.status !== "collecting") throw new Error("Collection was superseded.");
+      return c;
+    });
+  };
+  const phase = <T,>(key: string, work: () => Promise<T>) => collectionPhase(meta.queuedCompanyId, input, key, work, assertOwner);
+  if (!meta.queuedCompanyId) {
+    const prior = await readFeedCompany(miSlug(suppliedName || slug || domain || ""));
+    if (prior) feed.companies[prior.id] = prior;
+  }
   let name = "";
   let nameCost = 0;
+  let newsQuery: string | undefined;
   let probe: Awaited<ReturnType<typeof scrapeCompanyPosts>> | null = null;
+  const [siteIdentity, initialProbe] = await Promise.all([
+    domain ? phase("identity", () => readCompanyNameFromSite(domain, activePerplexityKey)) : Promise.resolve(null),
+    slug ? phase("linkedin", () => scrapeCompanyPosts({ id: slug!, name: slug!, li: [slug!], expect: "" })) : Promise.resolve(null),
+  ]);
+  nameCost = siteIdentity?.cost ?? 0;
+  newsQuery = siteIdentity?.newsQuery;
+  if (!slug && siteIdentity?.linkedinUrl) {
+    slug=linkedInIdentifier(siteIdentity.linkedinUrl,"company");
+    const duplicate=findCompanyDuplicate(registry.companies,"",siteIdentity.linkedinUrl);
+    if(duplicate)throw new DuplicateCompanyError(duplicate);
+  }
   if (slug) {
-    probe = await scrapeCompanyPosts({ id: slug, name: slug, li: [slug], expect: "" });
+    probe = initialProbe ?? await phase("linkedin", () => scrapeCompanyPosts({ id: slug!, name: slug!, li: [slug!], expect: "" }));
+    if (probe.failed) throw new Error(lastApifyError || "LinkedIn collection was interrupted. Retry will reuse the saved scraper run.");
     chargeApify(feed, probe.cost);
+    // The provider has already billed this call, even if identity checks fail.
+    await saveFeedMeta(feed);
     name = probe.author?.name?.trim() ?? "";
+    if (!name && domain && siteIdentity?.name && await websiteConfirmsLinkedIn(domain,slug)) name = siteIdentity.name;
     if (!name) {
       await saveFeedMeta(feed);
       throw new Error("Couldn't read that LinkedIn page. Check the link, or try again in a minute.");
     }
   } else if (domain) {
-    const read = await readCompanyNameFromSite(domain, activePerplexityKey);
+    const read = siteIdentity!;
     nameCost = read.cost;
     name = read.name ?? "";
+    newsQuery = read.newsQuery;
     if (!name) {
       feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + nameCost) * 1000) / 1000;
       await saveFeedMeta(feed);
       throw new Error("Couldn't read the company's name from that website. Add their LinkedIn page too.");
     }
   }
-  const id = miSlug(name);
+  if (siteIdentity?.name && probe?.author?.name && !compatibleCompanyNames(siteIdentity.name, probe.author.name)) {
+    throw new Error(`The website identifies ${siteIdentity.name}, but LinkedIn identifies ${probe.author.name}. Check that both links belong to the same company.`);
+  }
+  if (suppliedName && !compatibleCompanyNames(suppliedName,name)) {
+    throw new Error(`The sources identify ${name}. Check the company name and links before adding it.`);
+  }
+  await meta.onProgress?.({stage:"sources",name,detail:"Reading company posts, news coverage and website updates."});
+  if(meta.queuedCompanyId){
+    const duplicate=registry.companies.find(c=>miSlug(c.name)===miSlug(name));
+    if(duplicate)throw new DuplicateCompanyError(duplicate);
+  }
+  const id = meta.queuedCompanyId || miSlug(name);
   const already: TrackedCompany | undefined = tracking.companies.find((c: TrackedCompany) => c.id === id);
-  if (already || feed.companies[id]) {
+  if (!meta.queuedCompanyId && (already || feed.companies[id])) {
     /* A different link to a company already in the list: reading the name
        was the only cost, and the answer is the same as a known link. */
     feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + nameCost) * 1000) / 1000;
     await saveFeedMeta(feed);
-    if (already) return existingResult(already);
+    if (already) throw new DuplicateCompanyError(already);
     const storedGroup = feed.companies[id]?.group;
-    return {
-      id,
-      name: feed.companies[id]?.name ?? name,
-      group: storedGroup === "competitor" ? "competitor" : "customer",
-      existing: true,
-      resumed: false,
-    };
+    throw new DuplicateCompanyError({ name: feed.companies[id]?.name ?? name, group: storedGroup === "competitor" ? "competitor" : "customer" });
   }
   const now = new Date().toISOString();
   const company: TrackedCompany = {
@@ -1366,41 +1474,139 @@ export async function addCompanyByLink(
     note: "",
     addedAt: now,
     divisions,
+    ...(newsQuery ? { newsQuery } : {}),
     ...(meta.addedBy ? { addedBy: meta.addedBy } : {}),
   };
-  tracking.companies.push(company);
-  tracking.divisions = { ...(tracking.divisions ?? {}), [id]: divisions };
-  await writeRow(TRACKING_ROW, tracking);
-
-  const newsResult = await scrapeNews({ name });
-  const freshResult = await scrapeFreshNews({ name }, activePerplexityKey);
-  /* THE WEBSITE THEY TYPED, AND ONLY THAT ONE. No website, no website column. */
-  const siteResult = domain
-    ? await scrapeSiteUpdates({ name, site: domain }, activePerplexityKey)
-    : { updates: [], cost: 0, failed: false };
-  const entry: FeedCompany = {
+  // Persist usable sources before slower discovery and digest generation finish.
+  const previousPreview = meta.queuedCompanyId ? await readFeedCompany(id) : null;
+  const preview: FeedCompany = {id, name, group, slug: probe?.slug ?? null,
+    author: probe?.author ?? null, posts: probe?.posts ?? previousPreview?.posts ?? [], news: previousPreview?.news ?? [], site: previousPreview?.site ?? [],
+    tldr: previousPreview?.tldr ?? null, fetchedAt: now};
+  const publishPreview = async () => {
+    if (!meta.queuedCompanyId) return;
+    await assertOwner();
+    await saveFeedCompany({...feed, companies: {[id]: preview}}, id);
+  };
+  if (meta.queuedCompanyId) {
+    await editQueuedCompany(id, c => {
+      if(c.onboarding?.lease!==meta.queueLease || c.onboarding?.status!=="collecting") throw new Error("Collection was superseded.");
+      return {...c, name, logoUrl: probe?.author?.logoUrl || c.logoUrl};
+    });
+    await publishPreview();
+  }
+  const siteCollection = (domain ? phase("website", () => scrapeSiteUpdates({ name, site: domain }, activePerplexityKey, {fastInitial:true})) : Promise.resolve({ updates: [], cost: 0, failed: false })).then(async result => {
+    preview.site = result.updates;
+    await publishPreview();
+    return result;
+  });
+  const [newsResult, freshResult, siteResult] = await Promise.all([
+    phase("news-index", () => scrapeNews({ name, site: domain || undefined, newsQ: newsQuery })),
+    // External coverage must not wait for the official-site crawl. Both are
+    // independent first-pass sources; the standing refresh can later use
+    // official headlines to broaden syndication coverage.
+    phase("news-discovery", () => scrapeFreshNews({ name, newsQ: newsQuery, site: domain || undefined }, activePerplexityKey, {initial:true,officialUpdates:[],webSearchToken:activeApifyToken})),
+    siteCollection,
+  ]);
+  if (newsResult.failed && freshResult.failed && (!domain || siteResult.failed) && !probe?.posts.length) {
+    throw new Error("The news sources could not be reached. Nothing was added. Please try again later.");
+  }
+  const warnings = [
+    ...(slug && !probe?.posts.length ? ["The LinkedIn page is linked from the official website, but no public posts were collected yet."] : []),
+    ...(probe?.truncated ? ["LinkedIn returned a limited history. Older posts may not be included yet."] : []),
+    ...(newsResult.failed && freshResult.failed ? ["News collection is temporarily unavailable."] : []),
+    ...(domain && siteResult.failed ? ["Website updates could not be collected yet."] : []),
+    ...("warning" in siteResult && siteResult.warning ? [String(siteResult.warning)] : []),
+    ...(freshResult.failed ? ["Some news searches or source pages could not be read; available updates are shown."] : []),
+  ];
+  let entry: FeedCompany = {
     id,
     name,
     slug: probe?.slug ?? null,
     author: probe?.author ?? null,
     posts: probe?.posts ?? [],
-    news: mergeNews(newsResult.news, freshResult.news),
+    news: mergeNews(newsResult.news, freshResult.news).filter(n => !siteResult.updates.some(site => site.url.replace(/\/$/, "") === n.url.replace(/\/$/, ""))),
     site: siteResult.updates,
     tldr: null,
     group,
     fetchedAt: now,
-    newsAt: now,
-    ...(domain ? { siteAt: now } : {}),
+    collectionWarnings: warnings,
+    ...(!freshResult.failed ? { newsAt: now } : {}),
+    ...(domain && !siteResult.failed ? { siteAt: now } : {}),
   };
-  await applyLabels(entry, { calls: 8 });
-  await applyDigest(entry);
+  await meta.onProgress?.({stage:"briefing",name,detail:`${entry.posts.length} posts · ${entry.news.length} news articles · ${entry.site?.length ?? 0} website updates`});
+  entry = await phase("briefing", async () => {
+    await applyLabels(entry, { calls: Math.max(8, Math.ceil((entry.posts.length + entry.news.length + (entry.site?.length ?? 0)) / CLASSIFY_BATCH)) });
+    if (meta.queuedCompanyId) {
+      await assertOwner();
+      await saveFeedCompany({...feed, companies: {[id]: entry}}, id);
+    }
+    await applyDigest(entry);
+    return entry;
+  });
+  if (entry.pendingNews?.length) warnings.push("Some news sources are still being verified and will be retried during refresh.");
   feed.companies[id] = entry;
   feed.updatedAt = feed.updatedAt ?? now;
   chargeApify(feed, newsResult.cost);
   feed.spendUsd =
     Math.round(((feed.spendUsd ?? 0) + freshResult.cost + nameCost + siteResult.cost) * 1000) / 1000;
-  await saveFeedCompany(feed, id);
-  return { id, name, group, existing: false, resumed: false, company };
+  await meta.onProgress?.({stage:"saving",name});
+  if(meta.queuedCompanyId){
+    await editQueuedCompany(id,c=>{if(c.onboarding?.lease!==meta.queueLease || c.onboarding?.status!=="collecting")throw new Error("Collection was superseded.");return c;});
+  } else await insertNewTrackedCompany(company);
+  try { await phase("saved", async () => { await saveFeedCompany(feed, id); return true; }); }
+  catch (saveError) {
+    if(meta.queuedCompanyId)throw saveError;
+    // The feed write and its metadata write are separate. Check what actually
+    // persisted before offering a retry, or an already-saved company becomes
+    // a duplicate on the user's next attempt.
+    const saved = await client().from("offering_catalog_state").select("catalog").eq("id",`market-intel-company:${id}`).maybeSingle();
+    if (!saved.error && saved.data?.catalog?.company?.id === id) {
+      warnings.push("The company briefing was saved, but refresh status could not be updated yet.");
+    } else if (!saved.error && !saved.data) {
+      const rolledBack = await rollbackNewTrackedCompany(company);
+      if (rolledBack) throw new Error("The briefing could not be saved. Nothing was added; please try again.");
+      throw new Error(`${name} was added, but its briefing could not be saved. Open it from Manage ${group === "competitor" ? "competitors" : "customers"} to retry collection.`);
+    } else {
+      throw new Error(`Could not confirm whether ${name}'s briefing was saved. Check Manage ${group === "competitor" ? "competitors" : "customers"} before retrying.`);
+    }
+  }
+  if(meta.queuedCompanyId) await editQueuedCompany(id,c=>{if(c.onboarding?.lease!==meta.queueLease || c.onboarding?.status!=="collecting")throw new Error("Collection was superseded.");const {onboarding: _job,...saved}=c;void _job;return {...saved,name,linkedinUrl:company.linkedinUrl,newsQuery:company.newsQuery};});
+  return { id, name, group, existing: false, resumed: false, company, warnings };
+}
+
+async function rollbackNewTrackedCompany(company: TrackedCompany): Promise<boolean> {
+  const db = client();
+  for (let attempt=0;attempt<5;attempt++) {
+    const {data,error}=await db.from("offering_catalog_state").select("catalog,updated_at").eq("id",TRACKING_ROW).single();
+    if(error)return false;
+    const current=data.catalog.companies.find((c:TrackedCompany)=>c.id===company.id);
+    if(!current)return true;
+    // Never remove a company that another request has changed in the meantime.
+    if(!isDeepStrictEqual(current,company))return false;
+    data.catalog.companies=data.catalog.companies.filter((c:TrackedCompany)=>c.id!==company.id);
+    if(data.catalog.divisions)delete data.catalog.divisions[company.id];
+    const saved=await db.from("offering_catalog_state").update({catalog:data.catalog,updated_at:new Date().toISOString()}).eq("id",TRACKING_ROW).eq("updated_at",data.updated_at).select("id");
+    if(saved.error)return false;
+    if(saved.data?.length){bustMarketIntelTrackingCache();return true;}
+  }
+  return false;
+}
+
+async function insertNewTrackedCompany(company: TrackedCompany): Promise<void> {
+  const db = client();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const {data,error} = await db.from("offering_catalog_state").select("catalog,updated_at").eq("id",TRACKING_ROW).single();
+    if (error) throw new Error(error.message);
+    const tracking = data.catalog;
+    const duplicate = findCompanyDuplicate(tracking.companies, company.website, company.linkedinUrl) || tracking.companies.find((c: TrackedCompany) => c.id === company.id);
+    if (duplicate) throw new DuplicateCompanyError(duplicate);
+    tracking.companies.push(company);
+    tracking.divisions = {...tracking.divisions,[company.id]:company.divisions};
+    const saved = await db.from("offering_catalog_state").update({catalog:tracking,updated_at:new Date().toISOString()}).eq("id",TRACKING_ROW).eq("updated_at",data.updated_at).select("id");
+    if (saved.error) throw new Error(saved.error.message);
+    if (saved.data?.length) {bustMarketIntelTrackingCache();return;}
+  }
+  throw new Error("The company list changed while saving. Please try again.");
 }
 
 export async function addPersonByLink(
@@ -1408,7 +1614,8 @@ export async function addPersonByLink(
   linkedinUrl: string
 ): Promise<TrackedPerson> {
   if (!hasEnv()) throw new Error("Tracking needs the configured services.");
-  const username = linkedinUrl.match(/linkedin\.com\/in\/([^/?#]+)/i)?.[1];
+  await loadProviderConfig();
+  const username = linkedInIdentifier(linkedinUrl, "in");
   if (!username) {
     throw new Error(
       "That doesn't look like a LinkedIn profile. It should look like linkedin.com/in/their-name"
@@ -1463,12 +1670,16 @@ export async function addPersonByLink(
  * background refresh is scheduled after the response goes out. The lock makes
  * simultaneous visitors harmless.
  */
+let lastScheduledCheck = 0;
 export function maybeScheduleMarketIntelRefresh(
-  feed: { updatedAt: string | null } | null
+  _feed: { updatedAt: string | null } | null
 ): void {
-  const stale =
-    !feed?.updatedAt || Date.now() - Date.parse(feed.updatedAt) > STALE_AFTER_MS;
-  if (!stale) return;
+  armCompanyOnboarding();
+  void _feed;
+  // The database lock protects all instances; throttle page-triggered checks
+  // locally while the runner checks each company's own daily timestamps.
+  if (Date.now() - lastScheduledCheck < 30 * 60_000) return;
+  lastScheduledCheck = Date.now();
   after(() =>
     runMarketIntelRefresh().catch((error) =>
       console.error("[market-intel] scheduled refresh failed:", error)
@@ -1506,10 +1717,9 @@ export function maybeScheduleMarketIntelRefresh(
  * list is covered across runs without any single run needing to be long-lived.
  */
 
-/** A newsroom moves in weeks, so twice in one day buys the same answer twice.
- *  Twelve hours is what lets a twice-daily schedule actually land on a company
- *  scanned in the previous window rather than skip it as fresh. */
-const SITE_RUN_FRESH_MS = 12 * 60 * 60 * 1000;
+/** A newsroom moves in weeks, so once a day is plenty (Anir, Sep 11: "it's
+ *  supposed to be once a day"). The shared daily clock lets the scan land on
+ *  a company scanned the day before rather than skip it as fresh. */
 /** How long one invocation may spend, under any request ceiling. */
 const SITE_RUN_BUDGET_MS = 4 * 60 * 1000;
 
@@ -1532,6 +1742,14 @@ export async function runSiteUpdatesRefresh(options?: {
   budgetMs?: number;
   onlyCompanyIds?: string[];
 }): Promise<SiteRunSummary> {
+  if (!hasEnv()) return {ran:false,reason:"missing database",scanned:0,withUpdates:0,items:0,failed:0,skippedFresh:0,remaining:0,spendUsd:0,seconds:0};
+  const token = await claimLock();
+  if (!token) return {ran:false,reason:"another news or website refresh is running",scanned:0,withUpdates:0,items:0,failed:0,skippedFresh:0,remaining:0,spendUsd:0,seconds:0};
+  try { return await runSiteUpdatesRefreshLocked(options); }
+  finally { await releaseLock(token); }
+}
+
+async function runSiteUpdatesRefreshLocked(options?: {force?:boolean;budgetMs?:number;onlyCompanyIds?:string[]}): Promise<SiteRunSummary> {
   const started = Date.now();
   const budgetMs = options?.budgetMs ?? SITE_RUN_BUDGET_MS;
   const nothing = (reason: string): SiteRunSummary => ({
@@ -1550,7 +1768,6 @@ export async function runSiteUpdatesRefresh(options?: {
   if (!hasEnv()) return nothing("missing env (database)");
   const config = await readRow(CONFIG_ROW).catch(() => null);
   const key = config?.perplexityKey || process.env.PERPLEXITY_API_KEY;
-  if (!key) return nothing("no PERPLEXITY key in config row or env");
 
   const feed: any = await readMarketIntelFeed({ fresh: true }).catch(() => null);
   if (!feed || !feed.companies) return nothing("no feed row yet");
@@ -1592,7 +1809,7 @@ export async function runSiteUpdatesRefresh(options?: {
     if (
       !options?.force &&
       existing?.siteAt &&
-      Date.now() - Date.parse(existing.siteAt) < SITE_RUN_FRESH_MS
+      collectedInCurrentCycle(existing.siteAt)
     ) {
       skippedFresh += 1;
       continue;
@@ -1620,7 +1837,7 @@ export async function runSiteUpdatesRefresh(options?: {
     };
     if (result.failed) failed += 1;
     if (result.updates.length > 0) {
-      entry.site = mergeNews(entry.site ?? [], result.updates);
+      entry.site = mergeNews((entry.site ?? []).filter(item => !isNewsIndex(item.url)), result.updates);
       withUpdates += 1;
       items += result.updates.length;
       // New website items are read like everything else, here and now.
@@ -1747,7 +1964,7 @@ export async function runMarketIntelLabeling(options?: {
   let remaining = 0;
   for (const entry of companiesList) {
     for (const p of entry.posts) if (unread(p) && inLabelWindow(p.date)) remaining += 1;
-    for (const n of entry.news) if (unread(n) && inLabelWindow(n.published)) remaining += 1;
+    for (const n of [...entry.news, ...(entry.pendingNews ?? [])]) if ((unread(n) || typeof n.label?.isCompanyNews !== "boolean") && inLabelWindow(n.published)) remaining += 1;
     for (const n of entry.site ?? []) if (unread(n) && inLabelWindow(n.published)) remaining += 1;
   }
   for (const person of trackedPeople) {
@@ -1894,19 +2111,8 @@ export async function checkMarketIntelConnections(): Promise<NonNullable<MarketI
   if (!perplexityKey) health.perplexity = { ok: false, at, note: "no Perplexity key in the config row or env" };
   else {
     try {
-      const res = await fetch("https://api.perplexity.ai/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${perplexityKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: "Say ok" }], max_tokens: 20 }),
-        signal: AbortSignal.timeout(30_000),
-      });
-      health.perplexity = res.ok
-        ? { ok: true, at }
-        : {
-            ok: false,
-            at,
-            note: `Perplexity HTTP ${res.status}${res.status === 401 ? " (out of credits or bad key)" : ""}`,
-          };
+      await requestMarketIntelSearch({ model: "sonar", messages: [{ role: "user", content: "Say ok" }], max_tokens: 20, web_search_options: {search_context_size:"low"} }, perplexityKey, "service-check", "Perplexity");
+      health.perplexity = {ok:true,at};
     } catch (error) {
       health.perplexity = { ok: false, at, note: String(error instanceof Error ? error.message : error).slice(0, 120) };
     }

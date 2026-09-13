@@ -76,7 +76,7 @@ export default async function MarketIntelPage({
   /* Adding to the watch list is a write, and each add fires a paid scrape. */
   const canTrack = !(await moduleWriteRefusal("/market-intel"));
   const { tab } = await searchParams;
-  const tracking = await readMarketIntelTracking().catch(() => ({
+  const tracking = await readMarketIntelTracking({fresh:true}).catch(() => ({
     companies: [],
     people: [],
   }));
@@ -86,7 +86,7 @@ export default async function MarketIntelPage({
   if (getDataMode() === "live") {
     /* SUMMARIES, NOT ITEMS (Sep 10): the list page reads one small summary
        per company, never the briefings themselves. */
-    const intel = await readMarketIntelSummaries().catch(() => null);
+    const intel = await readMarketIntelSummaries({fresh:true}).catch(() => null);
     // Nobody clicks anything: a stale feed schedules ONE background refresh
     // after this response, and a database lock keeps a hundred simultaneous
     // visitors from becoming a hundred refreshes.
@@ -100,11 +100,7 @@ export default async function MarketIntelPage({
             <MiTabs
               active="market"
               action={
-                <RefreshChip
-                  updatedAt={intel.meta.updatedAt}
-                  health={intel.meta.health}
-                  isAdmin={(await getCurrentUser()).role === "admin"}
-                />
+                <RefreshChip updatedAt={intel.meta.updatedAt} />
               }
             >
               <MnaTracker board={intel.meta.mna ?? null} thought={intel.meta.thought ?? null} />

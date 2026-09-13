@@ -1,34 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { PendingCompanyCard } from "./PendingCompanyCard";
+import { useCollectionStatusRefresh } from "./useCollectionStatusRefresh";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownAZ,
   ArrowDownWideNarrow,
   CalendarClock,
   Flame,
-  Hourglass,
   Layers,
   Moon,
   Star,
-  Swords,
   Tag,
-  Users,
 } from "lucide-react";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
+
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import {
   PrioritySearchInput,
   SearchPriority,
 } from "@/components/ui/SearchPriority";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import {
   LiveCompanyCard,
   type CardPerson,
 } from "@/components/market-intel/LiveCompanyCard";
-import { DivisionChips } from "@/components/market-intel/DivisionChips";
-import { WatchStatus, type WatchState } from "@/components/market-intel/WatchStatus";
+
+import { type WatchState } from "@/components/market-intel/WatchStatus";
 import type { CompanyCard } from "@/lib/marketIntelFeed";
 import type { TrackedCompany } from "@/lib/marketIntelTracking";
 import { DIVISIONS, DIVISION_META, type Division } from "@/lib/offeringMaterials";
@@ -59,6 +58,8 @@ export function LiveCompanyGrid({
   divisions,
   watch,
   starred = [],
+  isAdmin = false,
+  addedAt = {},
 }: {
   cards: CompanyCard[];
   pending: TrackedCompany[];
@@ -70,9 +71,12 @@ export function LiveCompanyGrid({
   watch: Record<string, WatchState>;
   /** This person's favourites, from the server. */
   starred?: string[];
+  isAdmin?: boolean;
+  addedAt?: Record<string,string>;
 }) {
   const { toast } = useToast();
   const router = useRouter();
+  const [unstar, setUnstar] = useState<{id: string; name: string} | null>(null);
   const [query, setQuery] = useState("");
   const [activity, setActivity] = useState<Activity>("all");
   const [sort, setSort] = useState<Sort>("active");
@@ -81,6 +85,8 @@ export function LiveCompanyGrid({
   const [stars, setStars] = useState<Set<string>>(new Set(starred));
   const stateOf = (id: string): WatchState => watch[id] ?? { followers: 0 };
 
+  useCollectionStatusRefresh(pending);
+  useEffect(()=>{const added=()=>{setQuery("");setActivity("all");setDivisionFilter([]);setStarredOnly(false);};window.addEventListener("mi-company-added",added);return ()=>window.removeEventListener("mi-company-added",added);},[]);
   useEffect(() => setStars(new Set(starred)), [starred]);
 
   /* THE STAR IS A FAVOURITE, not the list itself: every card here is already
@@ -113,6 +119,10 @@ export function LiveCompanyGrid({
     !q ||
     name.toLowerCase().includes(q) ||
     (industry ?? "").toLowerCase().includes(q) ||
+    /* A division code finds its companies (Anir, Sep 11: typing "mdv"). */
+    (divisions[id] ?? []).some(
+      (d) => d.toLowerCase() === q || (q.length >= 3 && DIVISION_META[d].label.toLowerCase().includes(q))
+    ) ||
     (people[id] ?? []).some(
       (p) =>
         p.name.toLowerCase().includes(q) || p.role.toLowerCase().includes(q)
@@ -134,7 +144,9 @@ export function LiveCompanyGrid({
   const shown = cards
     .filter((c) => matches(c.id, c.name) && passesActivity(c) && passesDivision(c.id) && passesStar(c.id))
     .sort((a, b) =>
-      sort === "az"
+      sort !== "az" && ((Date.parse(addedAt[a.id] || "") || 0) > Date.now()-86400_000 || (Date.parse(addedAt[b.id] || "") || 0) > Date.now()-86400_000)
+        ? (Date.parse(addedAt[b.id] || "") || 0)-(Date.parse(addedAt[a.id] || "") || 0)
+        : sort === "az"
         ? a.name.localeCompare(b.name)
         : sort === "month"
           ? b.itemsThisMonth - a.itemsThisMonth
@@ -248,6 +260,7 @@ export function LiveCompanyGrid({
         </div>
       ) : (
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 stagger">
+          {shownPending.map(company=><PendingCompanyCard key={company.id} company={company} divisions={divisions[company.id] ?? []}/>)}
           {shown.map((card) => (
             <LiveCompanyCard
               key={card.id}
@@ -255,91 +268,23 @@ export function LiveCompanyGrid({
               people={people[card.id]}
               divisions={divisions[card.id] ?? []}
               starred={stars.has(card.id)}
-              onStar={(on) => void setStar(card.id, on)}
-              watch={stateOf(card.id)}
+              onStar={(on) => on ? void setStar(card.id, true) : setUnstar({id: card.id, name: card.name})}
+              watch={isAdmin ? stateOf(card.id) : undefined}
             />
           ))}
 
-          {shownPending.map((company) => {
-            const peopleCount = (people[company.id] ?? []).length;
-            const on = stars.has(company.id);
-            return (
-              <Link
-                key={company.id}
-                href={`/market-intel/${company.id}`}
-                className="group block rounded-xl border border-border-light bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="flex min-w-0 items-center gap-2.5">
-                    <CompanyLogo
-                      name={company.name}
-                      className="h-9 w-9 shrink-0"
-                    />
-                    <span className="min-w-0">
-                      <span className="block truncate text-[14.5px] font-semibold text-text-primary group-hover:text-blue-primary">
-                        {company.name}
-                      </span>
-                      <span className="mt-0.5 block">
-                        <WatchStatus state={stateOf(company.id)} />
-                      </span>
-                    </span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-1.5">
-                    <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-bold text-[color:var(--ink-bright-blue)]">
-                      New
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        void setStar(company.id, !on);
-                      }}
-                      aria-pressed={on}
-                      aria-label={on ? `Unstar ${company.name}` : `Star ${company.name}`}
-                      className={cn(
-                        "flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors",
-                        on ? "bg-[rgba(180,83,9,0.12)] text-[#B45309]" : "text-text-tertiary hover:bg-surface hover:text-[#B45309]"
-                      )}
-                    >
-                      <Star size={13} strokeWidth={2.2} fill={on ? "currentColor" : "none"} />
-                    </button>
-                  </span>
-                </div>
-                <div className="mt-3 flex h-9 items-center justify-center rounded-md border border-dashed border-border-light text-[10.5px] font-medium text-text-tertiary">
-                  Collecting the first weeks of activity
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  {group !== "competitor" && (
-                    <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-bright-blue)]">
-                      <Users size={10.5} strokeWidth={2.2} />
-                      {peopleCount} {peopleCount === 1 ? "person" : "people"} followed
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1 rounded-full bg-[rgba(180,49,143,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-magenta)]">
-                    <Swords size={10.5} strokeWidth={2.2} />
-                    {company.competitors.length}{" "}
-                    {company.competitors.length === 1
-                      ? "competitor"
-                      : "competitors"}
-                  </span>
-                  {(divisions[company.id] ?? []).length > 0 && (
-                    <DivisionChips divisions={divisions[company.id]} className="ml-auto" />
-                  )}
-                </div>
-                <p className="mt-3 flex items-center gap-1.5 border-t border-border-light pt-2.5 text-[12px] leading-snug text-text-secondary">
-                  <Hourglass
-                    size={12}
-                    strokeWidth={2.2}
-                    className="shrink-0 text-blue-primary"
-                  />
-                  First briefing lands on the next refresh.
-                </p>
-              </Link>
-            );
-          })}
+
         </section>
       )}
+      <ConfirmDialog
+        open={unstar !== null}
+        onClose={() => setUnstar(null)}
+        onConfirm={() => { if (unstar) void setStar(unstar.id, false); setUnstar(null); }}
+        tone="primary"
+        title="Remove star?"
+        body={`${unstar?.name ?? "This company"} will no longer be starred. It will stay on your page.`}
+        confirmLabel="Remove star"
+      />
     </>
   );
 }

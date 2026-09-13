@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { shortName } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -483,6 +484,17 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
   // literally said that"). Name, email and role, because "who is the manager"
   // is as common a question as "where is Priyanka".
   const [query, setQuery] = useState("");
+  const requestedMember = useSearchParams().get("member");
+  useEffect(() => {
+    const member = reps.find(rep => rep.identityKey === requestedMember);
+    if (!member) return;
+    setQuery(member.name);
+    setOpenRep(member.identityKey);
+    setView("table");
+    // Apply the deep link on navigation, not on every local filter edit.
+    // useStoredView's setter is recreated on each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedMember, reps]);
   const q = query.trim().toLowerCase();
   const shown = q
     ? reps.filter(
@@ -1249,5 +1261,3 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
     </div>
   );
 }
-
-

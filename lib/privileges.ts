@@ -131,17 +131,37 @@ export const PRIVILEGE_MODULES: {
 }[] = [
   { key: "agent", label: "Agent", path: "/agent" },
   { key: "offerings", label: "Offerings", path: "/offerings" },
-  { key: "digital_components", label: "Digital components", path: "/components" },
+  {
+    key: "digital_components",
+    label: "Digital components",
+    path: "/components",
+  },
   { key: "opportunities", label: "Opportunities", path: "/opportunities" },
   { key: "customers", label: "Customers", path: "/customers" },
   { key: "contacts", label: "Contacts", path: "/contacts" },
-  { key: "solution_requests", label: "Solution requests", path: "/solutioning" },
-  { key: "submissions", label: "Submissions", path: "/solutioning?tab=submissions" },
-  { key: "presentations", label: "Presentations", path: "/solutioning?tab=presentations" },
+  {
+    key: "solution_requests",
+    label: "Solution requests",
+    path: "/solutioning",
+  },
+  {
+    key: "submissions",
+    label: "Submissions",
+    path: "/solutioning?tab=submissions",
+  },
+  {
+    key: "presentations",
+    label: "Presentations",
+    path: "/solutioning?tab=presentations",
+  },
   { key: "meetings", label: "Meetings", path: "/meetings" },
   { key: "leads", label: "Leads", path: "/leads" },
   { key: "contracts", label: "Contracts", path: "/contracts" },
-  { key: "revenue_accruals", label: "Revenue accruals", path: "/revenue-accruals" },
+  {
+    key: "revenue_accruals",
+    label: "Revenue accruals",
+    path: "/revenue-accruals",
+  },
   { key: "team", label: "Team", path: "/team" },
   { key: "goals", label: "Goals", path: "/performance" },
   { key: "reports", label: "Reports", path: "/reports" },
@@ -218,19 +238,71 @@ export type PrivilegeDef = {
  * groupType below.
  */
 export const BUILT_IN_PRIVILEGES: PrivilegeDef[] = [
-  { id: "bd_owner", label: "BD Owner", groupType: "business_development", blurb: "Runs a business development group.", builtIn: true },
-  { id: "bd_member", label: "BD Member", groupType: "business_development", blurb: "Works in a business development group.", builtIn: true },
-  { id: "bo_owner", label: "BO Owner", groupType: "business_offering", blurb: "Owns an offering.", builtIn: true },
-  { id: "bo_member", label: "BO Member", groupType: "business_offering", blurb: "Works on an offering.", builtIn: true },
-  { id: "sol_owner", label: "Solutioning Owner", groupType: "solutioning", blurb: "Runs a solutioning group.", builtIn: true },
-  { id: "sol_member", label: "Solutioning Member", groupType: "solutioning", blurb: "Builds what sales asks for.", builtIn: true },
+  {
+    id: "bd_owner",
+    label: "BD Owner",
+    groupType: "business_development",
+    blurb: "Runs a business development group.",
+    builtIn: true,
+  },
+  {
+    id: "bd_member",
+    label: "BD Member",
+    groupType: "business_development",
+    blurb: "Works in a business development group.",
+    builtIn: true,
+  },
+  {
+    id: "bo_owner",
+    label: "BO Owner",
+    groupType: "business_offering",
+    blurb: "Owns an offering.",
+    builtIn: true,
+  },
+  {
+    id: "bo_member",
+    label: "BO Member",
+    groupType: "business_offering",
+    blurb: "Works on an offering.",
+    builtIn: true,
+  },
+  {
+    id: "sol_owner",
+    label: "Solutioning Owner",
+    groupType: "solutioning",
+    blurb: "Runs a solutioning group.",
+    builtIn: true,
+  },
+  {
+    id: "sol_member",
+    label: "Solutioning Member",
+    groupType: "solutioning",
+    blurb: "Builds what sales asks for.",
+    builtIn: true,
+  },
   /* DELIVERY IS A PRIVILEGE WITHOUT A GROUP TYPE OF ITS OWN. His sheet lists
      Delivery Owner and Delivery Member as columns, but the group-type list he
      dictated has four entries and Delivery is not one of them — so delivery
      people sit in a group of one of those four types and carry this badge. */
-  { id: "delivery_owner", label: "Delivery Owner", blurb: "Owns what has been sold being delivered.", builtIn: true },
-  { id: "delivery_member", label: "Delivery Member", blurb: "Delivers the work.", builtIn: true },
-  { id: "admin", label: "Admin", groupType: "admin", blurb: "Runs the workspace. Everything, everywhere.", builtIn: true },
+  {
+    id: "delivery_owner",
+    label: "Delivery Owner",
+    blurb: "Owns what has been sold being delivered.",
+    builtIn: true,
+  },
+  {
+    id: "delivery_member",
+    label: "Delivery Member",
+    blurb: "Delivers the work.",
+    builtIn: true,
+  },
+  {
+    id: "admin",
+    label: "Admin",
+    groupType: "admin",
+    blurb: "Runs the workspace. Everything, everywhere.",
+    builtIn: true,
+  },
   /**
    * THE ONE THAT WORKS DIFFERENTLY (Suren, Aug 29): "View all privilege is the
    * only one which helps you to see customers that are not related to you...
@@ -242,7 +314,12 @@ export const BUILT_IN_PRIVILEGES: PrivilegeDef[] = [
    * may you SEE that is not yours", and it never carries the pen — see
    * VIEW_ALL and the note above recordAccess.
    */
-  { id: "view_all", label: "View all", blurb: "Can look at records that are not theirs. Read only, never write.", builtIn: true },
+  {
+    id: "view_all",
+    label: "View all",
+    blurb: "Can look at records that are not theirs. Read only, never write.",
+    builtIn: true,
+  },
 ];
 
 /** The privilege that widens what you can SEE rather than what you can do. */
@@ -326,6 +403,8 @@ export type PrivilegeState = {
   /** person name -> the privileges they hold. The only place privileges are
    *  granted; a group confers none. */
   peoplePrivileges: Record<string, string[]>;
+  /** Stable app_users IDs. Legacy names migrate only after a unique directory match. */
+  memberPrivileges?: Record<string, string[]>;
   updatedBy?: string;
   updatedAt?: string;
 };
@@ -387,28 +466,226 @@ function defaultMatrix(): Record<string, Partial<Record<ModuleKey, Access>>> {
      widens what you see without ever handing you the pen. */
   const GRID: Record<string, Access[]> = {
     //                     BDo       BDm     BOo       BOm     SOLo      SOLm    DELo      DELm    ADM       VIEWALL
-    agent:              ["create", "edit", "create", "edit", "create", "edit", "create", "edit", "create", "view"],
-    offerings:          ["view",   "view", "create", "edit", "view",   "view", "view",   "view", "create", "view"],
-    digital_components: ["view",   "view", "create", "edit", "view",   "view", "view",   "view", "create", "view"],
-    opportunities:      ["create", "edit", "create", "edit", "view",   "view", "create", "edit", "create", "view"],
-    customers:          ["create", "edit", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
-    contacts:           ["create", "edit", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
-    solution_requests:  ["create", "edit", "create", "edit", "create", "edit", "create", "edit", "create", "view"],
-    submissions:        ["create", "edit", "create", "edit", "create", "edit", "create", "edit", "create", "view"],
-    presentations:      ["create", "edit", "create", "edit", "create", "edit", "create", "edit", "create", "view"],
-    meetings:           ["create", "edit", "create", "edit", "create", "edit", "create", "edit", "create", "view"],
-    leads:              ["create", "edit", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
-    contracts:          ["create", "edit", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
-    revenue_accruals:   ["create", "edit", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
-    team:               ["view",   "view", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
-    goals:              ["create", "view", "create", "view", "create", "view", "create", "view", "create", "view"],
-    reports:            ["view",   "view", "view",   "view", "view",   "view", "view",   "view", "create", "view"],
+    agent: [
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "view",
+    ],
+    offerings: [
+      "view",
+      "view",
+      "create",
+      "edit",
+      "view",
+      "view",
+      "view",
+      "view",
+      "create",
+      "view",
+    ],
+    digital_components: [
+      "view",
+      "view",
+      "create",
+      "edit",
+      "view",
+      "view",
+      "view",
+      "view",
+      "create",
+      "view",
+    ],
+    opportunities: [
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "view",
+      "view",
+      "create",
+      "edit",
+      "create",
+      "view",
+    ],
+    customers: [
+      "create",
+      "edit",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "create",
+      "view",
+    ],
+    contacts: [
+      "create",
+      "edit",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "create",
+      "view",
+    ],
+    solution_requests: [
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "view",
+    ],
+    submissions: [
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "view",
+    ],
+    presentations: [
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "view",
+    ],
+    meetings: [
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "edit",
+      "create",
+      "view",
+    ],
+    leads: [
+      "create",
+      "edit",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "create",
+      "view",
+    ],
+    contracts: [
+      "create",
+      "edit",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "create",
+      "view",
+    ],
+    revenue_accruals: [
+      "create",
+      "edit",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "create",
+      "view",
+    ],
+    team: [
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "create",
+      "view",
+    ],
+    goals: [
+      "create",
+      "view",
+      "create",
+      "view",
+      "create",
+      "view",
+      "create",
+      "view",
+      "create",
+      "view",
+    ],
+    reports: [
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "create",
+      "view",
+    ],
     /* BD ADDS COMPANIES TO THE WATCH (Saras, Sep 10: "give it to the BD
        members as well and maybe keep a limit... up to, say, 20 companies";
        Anir, Sep 10: build it). The cap lives in the tracking API; the cell
        here is what lets the button appear for them. */
-    market_intel:       ["create", "create", "view", "view", "view",   "view", "view",   "view", "create", "view"],
-    admin:              ["none",   "none", "none",   "none", "none",   "none", "none",   "none", "create", "none"],
+    market_intel: [
+      "create",
+      "create",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "create",
+      "view",
+    ],
+    admin: [
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "create",
+      "none",
+    ],
   };
 
   const COLUMNS = [
@@ -462,7 +739,7 @@ export function mergeAccess(a: Access, b: Access): Access {
  */
 export function privilegesForPerson(
   state: PrivilegeState,
-  person: string
+  person: string,
 ): string[] {
   const held = new Set<string>();
   for (const [name, list] of Object.entries(state.peoplePrivileges)) {
@@ -584,7 +861,7 @@ export function recordAccess(input: {
 export function accessForPrivileges(
   state: PrivilegeState,
   privileges: string[],
-  module: ModuleKey
+  module: ModuleKey,
 ): Access {
   let out: Access = "none";
   for (const id of privileges) {
@@ -603,7 +880,7 @@ declare global {
 function client() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 }
 
@@ -701,17 +978,20 @@ export function normalizePrivilegeState(raw: unknown): PrivilegeState {
     if (isGroupType(t)) groupTypes[str(gid, 60)] = t;
   }
 
-  const listOf = (src: unknown): Record<string, string[]> => {
+  const listOf = (
+    src: unknown,
+    keepEmpty = false,
+  ): Record<string, string[]> => {
     const out: Record<string, string[]> = {};
     for (const [k, val] of Object.entries(
-      (src ?? {}) as Record<string, unknown>
+      (src ?? {}) as Record<string, unknown>,
     )) {
       const key = str(k, 80);
       if (!key || !Array.isArray(val)) continue;
       const ids = [
         ...new Set(val.map((x) => str(String(x ?? ""), 60)).filter(Boolean)),
       ].filter((id) => byId.has(id));
-      if (ids.length) out[key] = ids;
+      if (ids.length || keepEmpty) out[key] = ids;
     }
     return out;
   };
@@ -721,6 +1001,9 @@ export function normalizePrivilegeState(raw: unknown): PrivilegeState {
     matrix,
     groupTypes,
     peoplePrivileges: listOf(v.peoplePrivileges),
+    ...(v.memberPrivileges
+      ? { memberPrivileges: listOf(v.memberPrivileges, true) }
+      : {}),
     updatedBy: str(v.updatedBy, 80) || undefined,
     updatedAt: str(v.updatedAt, 40) || undefined,
   };
@@ -767,7 +1050,7 @@ export async function readPrivileges(): Promise<PrivilegeState> {
 
 export async function writePrivileges(
   next: PrivilegeState,
-  by: string
+  by: string,
 ): Promise<PrivilegeState> {
   return withWrite(async () => {
     const state = normalizePrivilegeState({
@@ -775,13 +1058,11 @@ export async function writePrivileges(
       updatedBy: by,
       updatedAt: new Date().toISOString(),
     });
-    const { error } = await client()
-      .from("offering_catalog_state")
-      .upsert({
-        id: ROW_ID,
-        catalog: state,
-        updated_at: new Date().toISOString(),
-      });
+    const { error } = await client().from("offering_catalog_state").upsert({
+      id: ROW_ID,
+      catalog: state,
+      updated_at: new Date().toISOString(),
+    });
     if (error) throw new Error(error.message);
     return state;
   });
@@ -850,9 +1131,10 @@ export function accessMapFor(input: {
   state: PrivilegeState;
   role: string;
   person: string;
+  heldPrivileges?: string[];
 }): Record<ModuleKey, Access> {
   const held = new Set<string>(
-    privilegesForPerson(input.state, input.person)
+    input.heldPrivileges ?? privilegesForPerson(input.state, input.person),
   );
   const fromRole = ROLE_PRIVILEGE[input.role];
   if (fromRole) held.add(fromRole);
@@ -869,10 +1151,11 @@ export function accessMapFor(input: {
 export function hasViewAll(
   state: PrivilegeState,
   person: string,
-  role: string
+  role: string,
+  heldPrivileges?: string[],
 ): boolean {
   if (ROLE_PRIVILEGE[role] === "admin") return true;
-  const held = privilegesForPerson(state, person);
+  const held = heldPrivileges ?? privilegesForPerson(state, person);
   /* The admin privilege sees everything, the same as the admin role. */
   return held.includes(VIEW_ALL) || held.includes("admin");
 }
@@ -904,7 +1187,8 @@ export function moduleForPath(path: string): ModuleKey | null {
   for (const m of PRIVILEGE_MODULES) {
     const base = m.path.split("?")[0];
     if (clean !== base && !clean.startsWith(`${base}/`)) continue;
-    if (!best || base.length > best.len) best = { key: m.key, len: base.length };
+    if (!best || base.length > best.len)
+      best = { key: m.key, len: base.length };
   }
   return best?.key ?? null;
 }

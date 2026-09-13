@@ -1,3 +1,4 @@
+import { verifiedMemberPrivileges } from "@/lib/memberPrivilegeIdentity";
 import { notFound, redirect } from "next/navigation";
 import { estimatedTcvOf } from "@/lib/opportunitiesShared";
 import { ArrowLeft } from "lucide-react";
@@ -88,7 +89,7 @@ export default async function EditDealPage({
     customers.find(
       (c) =>
         (c.company_name ?? "").trim().toLowerCase() ===
-        deal.customer.trim().toLowerCase()
+        deal.customer.trim().toLowerCase(),
     )?.id ?? null;
 
   /* The same question the Edit button asks on the deal page, asked again here
@@ -97,6 +98,7 @@ export default async function EditDealPage({
     privileges,
     teams,
     person: me.name,
+    heldPrivileges: await verifiedMemberPrivileges(privileges, me.memberId),
     role,
     opportunityId: deal.id,
     ...(customerId ? { customerId } : {}),
@@ -116,7 +118,7 @@ export default async function EditDealPage({
           (directory?.members ?? [])
             .filter((m) => m.active && m.accountType === "real")
             .map((m) => m.name.trim())
-            .filter(Boolean)
+            .filter(Boolean),
         ),
       ].sort((a, b) => a.localeCompare(b))
     : [
@@ -158,7 +160,7 @@ export default async function EditDealPage({
     !(await moduleWriteRefusal("/revenue-accruals"));
   const accrualPlan = (await canOpenModule("/revenue-accruals"))
     ? ((await readRevenueAccruals().catch(() => null))?.plans.find(
-        (p) => p.opportunityId === deal.id
+        (p) => p.opportunityId === deal.id,
       ) ?? null)
     : null;
   const accrualLine = (deal.lines ?? [])[0];

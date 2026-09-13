@@ -33,7 +33,7 @@ function roleFromClaims(user: AuthenticatedUser): UserIdentityRole {
 function identityFromPrincipal(
   principal: AuthenticatedUser,
   role: UserIdentityRole,
-  memberId: string | null = null
+  memberId: string | null = null,
 ): UserIdentity {
   return {
     id: principal.id,
@@ -62,7 +62,7 @@ export async function getCurrentUser(): Promise<UserIdentity> {
         : authMode === "aws-alb"
           ? parseAlbOidcPrincipal(
               headerStore.get("x-amzn-oidc-data"),
-              headerStore.get("x-amzn-oidc-identity")
+              headerStore.get("x-amzn-oidc-identity"),
             )
           : null;
 
@@ -71,12 +71,12 @@ export async function getCurrentUser(): Promise<UserIdentity> {
     let memberId: string | null = null;
     if (isApprovalGateEnabled()) {
       const grant = await verifyAccessGrant(
-        cookieStore.get(ACCESS_COOKIE)?.value
+        cookieStore.get(ACCESS_COOKIE)?.value,
       );
       if (grant?.sub === principal.id) {
         /* Same lift as getRoleInfo, so an API route asking me.role and a page
            asking getRole() agree about who is an admin (lib/effectiveRole). */
-        role = await liftToAdmin(grant.role, grant.displayName);
+        role = await liftToAdmin(grant.role, grant.userId);
         memberId = grant.userId;
         if (grant.displayName) {
           principal.name = grant.displayName;
@@ -145,7 +145,7 @@ async function memberForEmail(email: string): Promise<{
   try {
     const { data } = await createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
       .from("app_users")
       .select("id,display_name,email,app_role")
@@ -154,7 +154,8 @@ async function memberForEmail(email: string): Promise<{
       .maybeSingle();
     if (!data?.id) return null;
     const raw = String(data.app_role ?? "bd_member");
-    const role = raw === "admin" ? "admin" : raw === "bd_owner" ? "bd_owner" : "bd_member";
+    const role =
+      raw === "admin" ? "admin" : raw === "bd_owner" ? "bd_owner" : "bd_member";
     return {
       id: String(data.id),
       name: String(data.display_name ?? email),
@@ -166,7 +167,9 @@ async function memberForEmail(email: string): Promise<{
   }
 }
 
-export async function memberIdForEmail(email: string | null): Promise<string | null> {
+export async function memberIdForEmail(
+  email: string | null,
+): Promise<string | null> {
   if (!email || !hasSupabase()) return null;
   const key = email.toLowerCase();
   if (!globalThis.__FREYR_MEMBER_ID_BY_EMAIL__)
@@ -176,7 +179,7 @@ export async function memberIdForEmail(email: string | null): Promise<string | n
   try {
     const { data } = await createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
       .from("app_users")
       .select("id")

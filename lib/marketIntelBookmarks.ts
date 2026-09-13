@@ -1,4 +1,5 @@
 import "server-only";
+import { applyBookmarkChanges, type BookmarkChange } from "./marketIntelBookmarkChanges";
 
 import { createClient } from "@supabase/supabase-js";
 import type { WorkspaceMemberScope } from "@/lib/types";
@@ -44,6 +45,7 @@ function client() {
   if (!url || !key) return null;
   return createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) },
   });
 }
 
@@ -170,6 +172,36 @@ export async function setMarketIntelBookmarks(
     }
   }
   return writeBookmarks(scope, Array.from(list), Array.from(stars));
+}
+
+/** Persist the entire draft in one write, preserving untouched companies. */
+export async function saveMarketIntelBookmarkChanges(
+  scope: WorkspaceMemberScope,
+  changes: BookmarkChange[]
+): Promise<MarketIntelBookmarks> {
+  const db = client();
+  if (!db) throw new Error("Your list is not configured.");
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await db.from("offering_catalog_state")
+      .select("catalog,updated_at").eq("id", rowId(scope)).maybeSingle();
+    if (error) throw new Error(error.message);
+    const current = { companyIds: ids(data?.catalog?.companyIds), starredIds: ids(data?.catalog?.starredIds) };
+    const merged = applyBookmarkChanges(current, changes);
+    const updatedAt = new Date().toISOString();
+    const next = { ...merged, updatedAt };
+    const row = { id: rowId(scope), catalog: { workspaceId: scope.workspaceId, userId: scope.userId, ...next }, updated_at: updatedAt };
+    if (!data) {
+      const { error: insertError } = await db.from("offering_catalog_state").insert(row);
+      if (!insertError) return next;
+      if (insertError.code === "23505") continue;
+      throw new Error(insertError.message);
+    }
+    const { data: saved, error: saveError } = await db.from("offering_catalog_state")
+      .update(row).eq("id", rowId(scope)).eq("updated_at", data.updated_at).select("id");
+    if (saveError) throw new Error(saveError.message);
+    if (saved?.length) return next;
+  }
+  throw new Error("Your list changed in another window. Your draft is still here; save again.");
 }
 
 async function writeBookmarks(

@@ -1,4 +1,6 @@
 "use client";
+import { ConversationRecovery } from "@/components/agent/ConversationRecovery";
+import { normalizeAgentLinks, readableLinkLabel } from "@/lib/agentAnswerPresentation";
 
 import { useEffect, useId, useRef, useState, useCallback, useMemo, type ReactNode } from "react";
 import Link from "next/link";
@@ -24,14 +26,18 @@ import {
   listStamp,
   sameDay,
 } from "@/lib/chatTime";
+import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { putConversations } from "@/lib/saveConversations";
 import {
   injectEntities,
+  entityLink,
+  entitiesForAnswer,
   useEntityIndex,
   type Entity,
 } from "@/components/agent/EntityPills";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { AGENT_NAME } from "@/lib/agentIdentity";
+import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AreaChart, BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import {
@@ -43,7 +49,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 
-type Msg = { role: "user" | "agent"; text: string; ts: number };
+type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[] };
 type OfferingContext = { id: string; name: string };
 type Convo = {
   id: string;
@@ -177,8 +183,7 @@ const APP_ROUTES = new Set([
 ]);
 
 // --- lightweight markdown: [link](/path), **bold**, *italic*, `code` + bullets -
-// Links are restricted to internal paths (href must start with "/") so the chat
-// can only ever deep-link inside the app, never to an external URL.
+// Only app paths and HTTP(S) citations become links; other schemes remain text.
 // The `entities` index turns bare names in the plain-text runs into pills.
 // Markdown links are handled below and are left alone.
 function renderInline(
@@ -187,7 +192,7 @@ function renderInline(
   entities: Entity[] = []
 ): ReactNode[] {
   const nodes: ReactNode[] = [];
-  const re = /(\[([^\]]+)\]\((\/[^)\s]+)\)|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*\n]+)\*|_([^_\n]+)_|`([^`]+)`)/g;
+  const re = /(\[([^\]]+)\]\(((?:https?:\/\/|\/)[^)\s]+)\)|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*\n]+)\*|_([^_\n]+)_|`([^`]+)`)/g;
   let last = 0;
   let m: RegExpExecArray | null;
   let k = 0;
@@ -198,7 +203,13 @@ function renderInline(
       );
     if (m[2] != null && m[3] != null) {
       const href = m[3];
-      const label = m[2];
+      const label = readableLinkLabel(m[2], href);
+      const badge = entityLink(href, label, entities, `${keyBase}-${k++}`);
+      if (badge) { nodes.push(badge); last = m.index + m[0].length; continue; }
+      if (/^https?:\/\//i.test(href)) {
+        nodes.push(<a key={`${keyBase}-${k++}`} href={href} target="_blank" rel="noopener noreferrer" className="text-blue-primary font-medium underline decoration-blue-subtle underline-offset-2 hover:decoration-blue-primary">{label}</a>);
+        last = m.index + m[0].length; continue;
+      }
       // Company/contact mentions render as a proper PILL: logo/headshot + bold
       // name in a rounded chip, not a bare blue link (Suren: "make it an actual
       // pill with the logo and the name bolded"). Still deep-links through.
@@ -231,25 +242,25 @@ function renderInline(
     else if (m[4] != null)
       nodes.push(
         <strong key={`${keyBase}-${k++}`}>
-          {injectEntities(m[4], entities, `${keyBase}-b${k}`)}
+          {renderInline(m[4], `${keyBase}-b${k}`, entities)}
         </strong>
       );
     else if (m[5] != null)
       nodes.push(
         <strong key={`${keyBase}-${k++}`}>
-          {injectEntities(m[5], entities, `${keyBase}-b${k}`)}
+          {renderInline(m[5], `${keyBase}-b${k}`, entities)}
         </strong>
       );
     else if (m[6] != null)
       nodes.push(
         <em key={`${keyBase}-${k++}`}>
-          {injectEntities(m[6], entities, `${keyBase}-i${k}`)}
+          {renderInline(m[6], `${keyBase}-i${k}`, entities)}
         </em>
       );
     else if (m[7] != null)
       nodes.push(
         <em key={`${keyBase}-${k++}`}>
-          {injectEntities(m[7], entities, `${keyBase}-i${k}`)}
+          {renderInline(m[7], `${keyBase}-i${k}`, entities)}
         </em>
       );
     else if (m[8] != null) {
@@ -274,7 +285,7 @@ function renderInline(
             href={path}
             className="inline-flex items-center rounded bg-blue-light/70 border border-blue-subtle/60 px-1.5 py-0.5 font-semibold text-blue-primary no-underline hover:bg-blue-light hover:border-blue-subtle transition-colors"
           >
-            {path}
+            {readableLinkLabel(path, path)}
           </Link>
         );
       } else {
@@ -400,12 +411,15 @@ function ChatChart({ spec }: { spec: ChartSpec }) {
 
 function MarkdownText({
   text,
-  entities = [],
+  entities: allEntities = [],
+  entityContext = [],
 }: {
   text: string;
   entities?: Entity[];
+  entityContext?: string[];
 }) {
-  const lines = text.split("\n");
+  const entities = entitiesForAnswer(text, allEntities, entityContext);
+  const lines = normalizeAgentLinks(text).split("\n");
   const blocks: ReactNode[] = [];
   let bullets: string[] = [];
   const flush = (key: string) => {
@@ -421,7 +435,7 @@ function MarkdownText({
     );
   };
 
-  const isTableRow = (l: string) => /^\s*\|.*\|\s*$/.test(l);
+  const isTableRow = (l: string) => /^\s*\|.+\|/.test(l);
   const isTableSep = (l: string) => /^\s*\|[\s\-:|]+\|\s*$/.test(l);
   const splitRow = (l: string) =>
     l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
@@ -506,6 +520,14 @@ function MarkdownText({
       continue;
     }
 
+    const heading = line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*#*$/);
+    if (heading) {
+      flush(`ul-${i}`);
+      blocks.push(<h3 key={`h-${i}`} className="mt-3 mb-1 font-semibold">{renderInline(heading[1], `h-${i}`, entities)}</h3>);
+      i++;
+      continue;
+    }
+
     const bullet = line.match(/^\s*[-*•]\s+(.*)$/);
     if (bullet) {
       bullets.push(bullet[1]);
@@ -527,58 +549,6 @@ function MarkdownText({
   }
   flush("ul-end");
   return <>{blocks}</>;
-}
-
-// While the typewriter reveals a reply char-by-char, the visible slice can end
-// mid-markdown-link ("· [open →](/x" before it closes), which flashes raw
-// syntax. Hide a trailing *incomplete* link token (and its dangling separator)
-// so a link only ever appears once fully formed, then renders normally.
-function trimStreamingLink(s: string): string {
-  const lb = s.lastIndexOf("[");
-  if (lb === -1) return s;
-  const tail = s.slice(lb);
-  if (/^\[[^\]]*$/.test(tail) || /^\[[^\]]*\]\([^)]*$/.test(tail)) {
-    return s.slice(0, lb).replace(/\s*[·•–—-]\s*$/, "");
-  }
-  return s;
-}
-
-// Quick typewriter reveal for the freshest agent reply (ChatGPT-style).
-function Typewriter({
-  text,
-  onDone,
-  onTick,
-  entities = [],
-}: {
-  text: string;
-  onDone: () => void;
-  onTick?: () => void;
-  entities?: Entity[];
-}) {
-  const [n, setN] = useState(0);
-  const doneRef = useRef(false);
-  useEffect(() => {
-    setN(0);
-    doneRef.current = false;
-  }, [text]);
-  useEffect(() => {
-    if (n >= text.length) {
-      if (!doneRef.current) {
-        doneRef.current = true;
-        onDone();
-      }
-      return;
-    }
-    const step = Math.max(2, Math.round(text.length / 140));
-    const t = setTimeout(() => {
-      setN((x) => Math.min(text.length, x + step));
-      onTick?.();
-    }, 14);
-    return () => clearTimeout(t);
-  }, [n, text, onDone, onTick]);
-  return (
-    <MarkdownText text={trimStreamingLink(text.slice(0, n))} entities={entities} />
-  );
 }
 
 function ThinkingDots() {
@@ -632,14 +602,6 @@ export function AgentChat({
     initialOffering ?? null
   );
 
-  const [suggestions, setSuggestions] = useState<string[]>(
-    initialOffering
-      ? offeringStarters(initialOffering.name)
-      : offeringsOnly
-        ? OFFERINGS_STARTERS
-        : STARTERS
-  );
-  const [typingTs, setTypingTs] = useState<number | null>(null);
   const [summary, setSummary] = useState<{
     needsApproval: number;
     cooling: number;
@@ -648,6 +610,7 @@ export function AgentChat({
   const scrollRef = useRef<HTMLDivElement>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
   const activeUserIdRef = useRef(currentUser.id);
+  const historyBaseRef = useRef<Convo[] | null>(null);
   const historySaveChainRef = useRef<Promise<void>>(Promise.resolve());
   const [historyReadyForSync, setHistoryReadyForSync] = useState(false);
   const [historySyncFailed, setHistorySyncFailed] = useState(false);
@@ -659,6 +622,7 @@ export function AgentChat({
   useEffect(() => {
     let cancelled = false;
     activeUserIdRef.current = currentUser.id;
+    historyBaseRef.current = null;
     requestControllerRef.current?.abort();
     requestControllerRef.current = null;
     setHistoryReadyForSync(false);
@@ -683,14 +647,6 @@ export function AgentChat({
     setInput("");
     setSendingId(null);
     setPendingOffering(initialOfferingRef.current ?? null);
-    setSuggestions(
-      initialOfferingRef.current
-        ? offeringStarters(initialOfferingRef.current.name)
-        : offeringsOnly
-          ? OFFERINGS_STARTERS
-          : STARTERS
-    );
-    setTypingTs(null);
     setSummary(null);
 
     fetch("/api/agent/conversations", { cache: "no-store" })
@@ -703,15 +659,31 @@ export function AgentChat({
         const accountHistory = Array.isArray(data?.conversations)
           ? (data.conversations as Convo[])
           : [];
+        historyBaseRef.current = accountHistory;
         // A contextual hand-off can submit while this GET is in flight. Merge
         // with the CURRENT list, not only the startup snapshot, or the GET can
         // erase the brand-new message a split second after it appears.
         setConvos((current) => {
-          const merged = mergeConversations(
-            accountHistory,
-            browserHistory,
-            current
+          let cachedBase: Convo[] | null = null;
+          try {
+            const value = JSON.parse(localStorage.getItem(`${storageKey}:base`) || "null");
+            if (Array.isArray(value)) cachedBase = value;
+          } catch {}
+          // Unversioned caches cannot distinguish a deleted chat from a draft.
+          // Retain a recovery copy, but never upload stale history over an
+          // initialized account. New messages submitted during loading survive.
+          if (!cachedBase && data.initialized && browserHistory.length) {
+            localStorage.setItem(`${storageKey}:recovery`, JSON.stringify(browserHistory));
+          }
+          const merged = mergeConversationChanges(
+            cachedBase ?? (data.initialized ? browserHistory : []),
+            current,
+            accountHistory
           );
+          if (!merged) {
+            historyBaseRef.current = null;
+            return current;
+          }
           save(storageKey, merged);
           return merged;
         });
@@ -740,17 +712,23 @@ export function AgentChat({
   useEffect(() => {
     if (!historyReadyForSync || loadedStorageKey !== storageKey) return;
     const snapshot = convos;
+    const savingUserId = currentUser.id;
     // Serialize writes so a slower older request can never finish after a
     // newer one and resurrect a deleted chat or drop the latest reply.
     historySaveChainRef.current = historySaveChainRef.current
       .catch(() => {})
       .then(async () => {
         // Size-aware keepalive lives in one place; see lib/saveConversations.
-        await putConversations(snapshot);
+        if (activeUserIdRef.current !== savingUserId) return;
+        if (!historyBaseRef.current) throw new Error("History must load before saving.");
+        await putConversations(snapshot, historyBaseRef.current);
+        if (activeUserIdRef.current !== savingUserId) return;
+        historyBaseRef.current = snapshot;
+        localStorage.setItem(`${storageKey}:base`, JSON.stringify(snapshot));
       })
       .then(() => setHistorySyncFailed(false))
       .catch(() => setHistorySyncFailed(true));
-  }, [convos, historyReadyForSync, loadedStorageKey, storageKey]);
+  }, [convos, historyReadyForSync, loadedStorageKey, storageKey, currentUser.id]);
 
   // Proactive greeting: what's on the rep's plate (deterministic, no LLM call).
   // Not fetched at all in real mode: nothing would be rendered from it, and a
@@ -807,7 +785,6 @@ export function AgentChat({
   const scrollToBottom = useCallback(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, []);
-  const finishTyping = useCallback(() => setTypingTs(null), []);
 
   useEffect(() => {
     scrollToBottom();
@@ -896,7 +873,7 @@ export function AgentChat({
             return;
           }
           controller.abort();
-        }, 45000);
+        }, 90000);
       };
       arm();
       try {
@@ -929,15 +906,14 @@ export function AgentChat({
         if (activeUserIdRef.current !== requestUserId) return;
         const reply: string = data.reply;
         if (!reply) throw new Error("empty reply");
-        if (Array.isArray(data.suggestions) && data.suggestions.length)
-          setSuggestions(data.suggestions);
+        const nextSuggestions: string[] = Array.isArray(data.suggestions) ? data.suggestions.filter((s: unknown) => typeof s === "string").slice(0, 3) : [];
         const replyTs = Date.now();
         setConvos((prev) => {
           const next = prev.map((c) =>
             c.id === id
               ? {
                   ...c,
-                  messages: [...c.messages, { role: "agent" as const, text: reply, ts: replyTs }],
+                  messages: [...c.messages, { role: "agent" as const, text: reply, ts: replyTs, suggestions: nextSuggestions, entityContext: Array.isArray(data.entityContext) ? data.entityContext.filter((v: unknown) => typeof v === "string") : [] }],
                   updated: replyTs,
                 }
               : c
@@ -945,7 +921,6 @@ export function AgentChat({
           save(storageKey, next);
           return next;
         });
-        setTypingTs(replyTs); // animate this reply in with a typewriter reveal
       } catch {
         if (activeUserIdRef.current !== requestUserId) return;
         setConvos((prev) => {
@@ -987,13 +962,6 @@ export function AgentChat({
     setActiveId(null);
     setPendingExcluded([]);
     setPendingOffering(nextOffering);
-    setSuggestions(
-      nextOffering
-        ? offeringStarters(nextOffering.name)
-        : offeringsOnly
-          ? OFFERINGS_STARTERS
-          : STARTERS
-    );
     setInput("");
   }
 
@@ -1009,7 +977,6 @@ export function AgentChat({
         return next;
       });
     }
-    setSuggestions(offeringsOnly ? OFFERINGS_STARTERS : STARTERS);
   }
 
   // The query parameter is only a hand-off envelope. Once the Agent page has
@@ -1023,7 +990,6 @@ export function AgentChat({
     offeringRouteConsumed.current = key;
     setActiveId(null);
     setPendingOffering(initialOffering);
-    setSuggestions(offeringStarters(initialOffering.name));
     window.history.replaceState(null, "", "/agent");
   }, [currentUser.id, initialOffering, loadedStorageKey, storageKey]);
 
@@ -1047,6 +1013,7 @@ export function AgentChat({
 
   /* Every delete asks (Anir, Aug 27: "every delete button... a pop-up in
      the entire app"). A chat is real work; one hover-click erased it. */
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
   const [confirmChat, setConfirmChat] = useState<{ id: string; title: string } | null>(null);
   function remove(id: string) {
     setConvos((prev) => {
@@ -1057,25 +1024,11 @@ export function AgentChat({
     if (activeId === id) setActiveId(null);
   }
 
-  return (
-    <div data-tour="agent-workspace" className="flex h-full min-h-0">
-      <ConfirmDialog
-        open={confirmChat !== null}
-        onClose={() => setConfirmChat(null)}
-        onConfirm={() => {
-          if (confirmChat) remove(confirmChat.id);
-          setConfirmChat(null);
-        }}
-        title="Delete this chat?"
-        body={<><b>{confirmChat?.title}</b> and everything in it goes away.</>}
-        detail="There is no undo for a deleted conversation."
-        confirmLabel="Delete it"
-      />
-      {/* Conversation list */}
-      <aside className="w-[260px] shrink-0 border-r border-border-light flex flex-col bg-surface/40">
+  const historyPanel = (<>
+
         <div className="p-3">
           <button
-            onClick={() => newChat()}
+            onClick={() => { newChat(); setMobileHistoryOpen(false); }}
             className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-blue-primary text-white text-[14px] font-semibold hover:bg-blue-hover transition-colors"
           >
             <Plus size={17} strokeWidth={2.2} />
@@ -1101,7 +1054,7 @@ export function AgentChat({
                   {group.items.map((c) => (
                     <li key={c.id} className="group relative">
                       <button
-                        onClick={() => setActiveId(c.id)}
+                        onClick={() => { setActiveId(c.id); setMobileHistoryOpen(false); }}
                         /* The stamp costs a little title width, so hover gives
                            back the untruncated title alongside the full date. */
                         title={[c.title || "New chat", c.updated ? dayAndTime(c.updated) : ""]
@@ -1142,16 +1095,42 @@ export function AgentChat({
               Saved on this device. Account sync will retry with your next change.
             </p>
           )}
+          <ConversationRecovery storageKey={storageKey} failed={historySyncFailed} ready={historyReadyForSync} />
           {/* What the assistant knows, and what THIS chat is allowed to use. */}
           <KnowledgeRailButton onClick={() => setKnowledgeOpen(true)} />
           <Link href="/agent/settings" className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-text-secondary hover:bg-surface transition-colors">
             <SlidersHorizontal size={16} strokeWidth={1.7} /> Agent settings
           </Link>
         </div>
-      </aside>
+
+  </>);
+
+  return (
+    <div data-tour="agent-workspace" className="flex h-full min-h-0">
+      <ConfirmDialog
+        open={confirmChat !== null}
+        onClose={() => setConfirmChat(null)}
+        onConfirm={() => {
+          if (confirmChat) remove(confirmChat.id);
+          setConfirmChat(null);
+        }}
+        title="Delete this chat?"
+        body={<><b>{confirmChat?.title}</b> and everything in it goes away.</>}
+        detail="There is no undo for a deleted conversation."
+        confirmLabel="Delete it"
+      />
+      {/* Conversation list */}
+      <aside className="hidden md:flex w-[260px] shrink-0 border-r border-border-light flex-col bg-surface/40">{historyPanel}</aside>
+      <Modal open={mobileHistoryOpen} onClose={() => setMobileHistoryOpen(false)} title="Your chats" bodyClassName="flex flex-col h-[65dvh] !p-0">
+        {historyPanel}
+      </Modal>
 
       {/* Thread + composer */}
       <div className="flex-1 min-w-0 flex flex-col">
+        <div className="md:hidden flex items-center justify-between border-b border-border-light px-4 py-2">
+          <button onClick={() => setMobileHistoryOpen(true)} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-text-secondary"><MessageSquareText size={17} />Your chats</button>
+          <button onClick={() => newChat()} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-blue-primary"><Plus size={17} />New chat</button>
+        </div>
         {offeringContext && (
           <div className="border-b border-border-light bg-blue-light px-4 py-2.5">
             <div className="relative mx-auto flex h-7 max-w-[760px] items-center justify-center">
@@ -1205,7 +1184,7 @@ export function AgentChat({
                 ? `This new chat is grounded in ${offeringContext.name}. Ask about its capabilities, fit, roadmap, or sales materials.`
                 : offeringsOnly
                 ? "Ask about an offering, who it suits, or what an uploaded document says. I'll do the work and leave everything for you to review."
-                : "Ask about your pipeline, an account, or have me draft outreach. I'll do the work and leave everything for you to review."}
+                : "Ask about your work, company updates, offerings, or how to use the app."}
             </p>
 
             {/* Proactive: what's on the rep's plate right now — clickable.
@@ -1274,7 +1253,7 @@ export function AgentChat({
           </div>
         ) : (
           <div ref={scrollRef} className="flex-1 overflow-y-auto">
-            <div className="max-w-[760px] mx-auto px-6 py-8 space-y-5">
+            <div className="max-w-[760px] mx-auto px-3 sm:px-6 py-5 sm:py-8 space-y-5">
               {active.messages.map((msg, i) => {
                 /* A divider whenever the conversation crosses midnight, and on
                    the first message so even a one-day chat is dated. Without
@@ -1307,7 +1286,7 @@ export function AgentChat({
                         <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0 mt-0.5">
                           <Sparkles size={16} strokeWidth={1.9} />
                         </span>
-                        <div className="min-w-0 max-w-[82%]">
+                        <div className="min-w-0 max-w-[calc(100%-44px)] sm:max-w-[82%]">
                           <p className="text-[12px] font-semibold text-text-tertiary mb-1">
                             {AGENT_NAME}
                             <span className="ml-2 font-normal tabular-nums">
@@ -1315,16 +1294,7 @@ export function AgentChat({
                             </span>
                           </p>
                           <div className="text-[14px] text-text-primary leading-relaxed bg-surface border border-border-light rounded-2xl rounded-tl-md px-4 py-2.5">
-                            {msg.ts === typingTs ? (
-                              <Typewriter
-                                text={msg.text}
-                                onDone={finishTyping}
-                                onTick={scrollToBottom}
-                                entities={entities}
-                              />
-                            ) : (
-                              <MarkdownText text={msg.text} entities={entities} />
-                            )}
+                            <MarkdownText text={msg.text} entities={entities} entityContext={msg.entityContext} />
                           </div>
                         </div>
                       </div>
@@ -1346,23 +1316,23 @@ export function AgentChat({
           </div>
         )}
 
-        {/* Composer */}
-        <div className="border-t border-border-light px-4 py-3">
+        {/* The footer reserves its own space; the floating controls never cover a reply. */}
+        <div className="relative z-10 shrink-0 px-3 sm:px-6 pb-4 pt-2 bg-gradient-to-t from-white via-white to-white/0">
           <div className="max-w-[760px] mx-auto">
-            {active && active.messages.length > 0 && suggestions.length > 0 && !sending && (
-              <div className="flex gap-2 mb-2.5 overflow-x-auto no-scrollbar">
-                {suggestions.slice(0, 3).map((s) => (
+            {active && active.messages.length > 0 && (active.messages.at(-1)?.suggestions?.length ?? 0) > 0 && !sending && (
+              <div key={active.messages.at(-1)?.ts} className="flex sm:flex-wrap gap-2 mb-3 overflow-x-auto sm:overflow-visible no-scrollbar py-1">
+                {active.messages.at(-1)?.suggestions?.slice(0, 3).map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
-                    className="shrink-0 whitespace-nowrap text-[12px] text-text-secondary border border-border-light rounded-full px-3 py-1 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                    className="shrink-0 sm:shrink whitespace-nowrap sm:whitespace-normal sm:text-left sm:max-w-full text-[12px] text-text-secondary border border-border-light bg-white rounded-full px-3.5 py-2 shadow-sm hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary transition-colors"
                   >
                     {s}
                   </button>
                 ))}
               </div>
             )}
-            <div className="flex items-end gap-2 bg-surface border border-border rounded-2xl px-3 py-2 focus-within:border-blue-primary transition-colors">
+            <div className="flex items-end gap-3 bg-white border border-border rounded-2xl px-4 py-3 shadow-[0_4px_24px_-8px_rgba(20,45,80,0.2)] focus-within:border-blue-primary focus-within:shadow-[0_4px_24px_-8px_rgba(0,112,243,0.25)] transition-all">
               <textarea
                 value={input}
                 autoFocus
@@ -1380,7 +1350,7 @@ export function AgentChat({
                     ? `Ask about ${offeringContext.name}…`
                     : offeringsOnly
                     ? "Ask about an offering, a market, or an uploaded document…"
-                    : "Ask the agent anything about your pipeline…"
+                    : "Ask about your work or anything in the app…"
                 }
                 className="flex-1 bg-transparent outline-none focus:shadow-none focus-visible:shadow-none resize-none text-[14px] text-text-primary placeholder:text-text-tertiary py-1.5 max-h-40"
               />
@@ -1398,9 +1368,6 @@ export function AgentChat({
                 <ArrowUp size={16} strokeWidth={2.2} />
               </button>
             </div>
-            <p className="text-[11px] text-text-tertiary text-center mt-2">
-              The agent drafts and recommends, you approve everything before it goes out.
-            </p>
           </div>
         </div>
       </div>

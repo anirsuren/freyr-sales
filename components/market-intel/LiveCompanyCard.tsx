@@ -22,6 +22,7 @@ import { WatchStatus, isInactive, type WatchState } from "@/components/market-in
 import type { CompanyCard } from "@/lib/marketIntelFeed";
 import type { Division } from "@/lib/offeringMaterials";
 import { cn } from "@/lib/utils";
+import { safeHref } from "@/lib/safeUrl";
 
 /**
  * One company on the live dashboard. The bottom line is a ticker (Anir,
@@ -183,27 +184,29 @@ export function LiveCompanyCard({
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
+      <div className="mt-3 flex items-center justify-between gap-1 whitespace-nowrap pb-1 [&>span]:shrink-0 [&_svg]:shrink-0">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
           <LinkedInIcon size={10.5} />
           {card.counts.posts} {card.counts.posts === 1 ? "post" : "posts"}
         </span>
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-teal-deep)] tnum">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-teal-deep)] tnum">
           <Newspaper size={10.5} strokeWidth={2.2} />
           {card.counts.news} news
         </span>
         {card.counts.site > 0 && (
-          <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-orange)] tnum">
+          <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-orange)] tnum">
             <Globe2 size={10.5} strokeWidth={2.2} />
             {card.counts.site} from them
           </span>
         )}
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-violet-soft)] tnum">
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-violet-soft)] tnum">
           <Radar size={10.5} strokeWidth={2.2} />
           {card.signalTotal} {card.signalTotal === 1 ? "signal" : "signals"}
         </span>
-        {divisions.length > 0 && <DivisionChips divisions={divisions} className="ml-auto" />}
+
       </div>
+
+      {divisions.length > 0 && <DivisionChips divisions={divisions} className="mt-1" />}
 
       {story && (
         <div
@@ -218,7 +221,9 @@ export function LiveCompanyCard({
             <span className="font-semibold text-text-primary">
               {story.source}:
             </span>{" "}
-            {story.title}
+            {safeHref(story.url) ? <a href={safeHref(story.url) as string} target="_blank" rel="noreferrer" className="text-blue-primary underline decoration-blue-primary/30 underline-offset-2 hover:decoration-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+              {story.title}
+            </a> : story.title}
           </p>
           <span className="mt-1.5 flex items-center gap-1">
             {stories.map((_, i) => (
@@ -325,7 +330,9 @@ export function LiveCompanyCard({
               <span className="font-semibold text-text-primary">
                 {item.source}:
               </span>{" "}
-              <span className="text-text-secondary">{item.title}</span>
+              {safeHref(item.url) ? <a href={safeHref(item.url) as string} target="_blank" rel="noreferrer" className="text-blue-primary underline decoration-blue-primary/30 underline-offset-2 hover:decoration-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+                {item.title}
+              </a> : <span className="text-text-secondary">{item.title}</span>}
               <span className="text-text-tertiary" suppressHydrationWarning>
                 {" "}
                 · {fmtDate(item.published)}
@@ -349,6 +356,7 @@ export function LiveCompanyCard({
     <HoverExpandCard
       className={watch && isInactive(watch) ? "h-full opacity-75" : "h-full"}
       href={`/market-intel/${card.id}`}
+      linkLabel={`Open ${card.name} briefing`}
       summary={summary}
       extra={extra}
     />

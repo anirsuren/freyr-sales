@@ -199,7 +199,7 @@ export function ResetPasswordScreen({
               Your new password is ready. Sign in again with it on your next visit.
             </p>
             <a
-              href="/api/auth/logout"
+              href="/api/auth/logout?next=/login"
               className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-md bg-blue-primary text-[13.5px] font-semibold text-white hover:bg-blue-hover"
             >
               Continue to sign in

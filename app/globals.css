@@ -574,6 +574,20 @@ select:focus-visible {
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
+/* Keep onboarding placeholders visible throughout the sweep, without fading
+   the entire card into what looks like an empty or broken result. */
+.mi-loading-shimmer {
+  background: linear-gradient(100deg, #dce8f6 25%, #f4f8fe 45%, #dce8f6 65%);
+  background-size: 800px 100%;
+  animation: shimmer 1.8s linear infinite;
+}
+.dark .mi-loading-shimmer {
+  background-image: linear-gradient(100deg, #263b56 25%, #3b5474 45%, #263b56 65%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mi-loading-shimmer { animation: none; }
+}
+
 
 
 /* Toast entrance */
@@ -2273,4 +2287,19 @@ input {
   color: var(--accrual-chip-color-dark) !important;
   background-color: var(--accrual-chip-bg-dark) !important;
   border-color: var(--accrual-chip-border-dark) !important;
+}
+
+/* Keep collection visible across the whole table row without fading its text. */
+@keyframes mi-collection-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+tr.mi-collecting-row {
+  background-color: #edf5ff;
+  background-image: linear-gradient(105deg, transparent 20%, rgba(0,113,227,.13) 45%, rgba(255,255,255,.85) 50%, rgba(0,113,227,.13) 55%, transparent 80%);
+  background-size: 200% 100%;
+  animation: mi-collection-sweep 2.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  tr.mi-collecting-row { animation: none; background-image: none; }
 }

@@ -25,6 +25,7 @@ export type TrackedPerson = {
   addedAt: string;
   /** LinkedIn profile photo, when discovery or the team provided one. */
   photoUrl?: string;
+  photoCheckedAt?: string;
   /** Their full LinkedIn headline, exactly as it reads on the profile. */
   headline?: string;
   /** "City, Region, Country" as LinkedIn shows it. */
@@ -38,6 +39,9 @@ export type TrackedPerson = {
 };
 
 export type TrackedCompany = {
+  onboarding?: {stage?: import('./marketIntelTrackProgress').TrackStage; stageStartedAt?: string; status:'queued'|'collecting'|'failed'; requestedName?:string; attempts:number; updatedAt:string; error?:string; lease?:string; leaseUntil?:number};
+  newsQuery?: string;
+  logoUrl?: string;
   id: string;
   name: string;
   /** Which intelligence tab owns it; absent means customer. */
@@ -56,6 +60,10 @@ export type TrackedCompany = {
   addedBy?: { id: string; name?: string; email?: string };
   /** Came from the code's seed list; keeps the scraper's own settings. */
   seed?: boolean;
+  /** On the standing list (Anir, Sep 11: "all of these current ones are
+   *  active by default"): collected every day even when nobody has it
+   *  ticked. A company added later is collected while somebody has it. */
+  activeByDefault?: boolean;
   scrape?: {
     li: string[] | null;
     expect: string;
@@ -87,14 +95,19 @@ const EMPTY: MarketIntelTracking = { companies: [], people: [], divisions: {}, r
 export type Followers = Record<string, string[]>;
 
 /**
- * ACTIVE MEANS SOMEBODY HAS IT (Anir, Sep 10: "I should clearly be able to
- * distinguish which ones are active, which means someone has it in their
- * list, and which ones are inactive, which means no one has it"). That is the
- * whole rule: one person ticking it keeps it collected, the last person
- * unticking it stops the collection. Nothing is tracked "for everyone".
+ * ACTIVE MEANS IT IS COLLECTED, and there are two ways to be.
+ *
+ * - On the standing list (Anir, Sep 11: "These are the set ones. If someone
+ *   wants to add something else, they can, but all of these current ones are
+ *   active by default"). Every company in the catalogue that day carries
+ *   `activeByDefault` and stays collected with nobody ticking it.
+ * - Somebody has it ticked (Anir, Sep 10). That is how a company added later
+ *   stays collected, and the last person unticking it stops it.
+ *
+ * The old `standing: true` on the August rows is dead data and still ignored.
  */
 export function isActiveCompany(company: TrackedCompany, followers: Followers): boolean {
-  return (followers[company.id]?.length ?? 0) > 0;
+  return company.activeByDefault === true || (followers[company.id]?.length ?? 0) > 0;
 }
 
 /** How many people have this company on their list. */
@@ -129,6 +142,7 @@ export function seedCompanies(tracking: MarketIntelTracking): number {
       addedAt: "2026-08-11T00:00:00.000Z",
       addedBy: { id: "workspace", name: "Built in" },
       seed: true,
+      activeByDefault: true,
       scrape: {
         li: source.li,
         expect: source.expect,
@@ -252,7 +266,8 @@ function trackingClient() {
   // SDK never rides into a client bundle through this module's types.
   return require("@supabase/supabase-js").createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { global: { fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, cache: "no-store" }) } }
   );
 }
 

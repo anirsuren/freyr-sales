@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, PenLine } from "lucide-react";
+import { Check, Loader2, PenLine } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { DIVISIONS, DIVISION_META, type Division } from "@/lib/offeringMaterials";
+import {
+  DIVISIONS,
+  DIVISION_META,
+  type Division,
+} from "@/lib/offeringMaterials";
 import { cn } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 
@@ -36,11 +40,14 @@ export function DivisionChips({
             title={meta.label}
             className={cn(
               "flex items-center gap-1 rounded-full font-bold uppercase tracking-[0.04em]",
-              size === "md" ? "px-2 py-0.5 text-[11px]" : "px-1.5 py-0.5 text-[10px]"
+              size === "md"
+                ? "px-2 py-0.5 text-[11px]"
+                : "px-1.5 py-0.5 text-[10px]",
             )}
             style={{ color: meta.color, background: tint(meta.color, 10) }}
           >
-            <Icon size={size === "md" ? 11 : 10} strokeWidth={2.4} /> {meta.short}
+            <Icon size={size === "md" ? 11 : 10} strokeWidth={2.4} />{" "}
+            {meta.short}
           </span>
         );
       })}
@@ -48,7 +55,7 @@ export function DivisionChips({
   );
 }
 
-/** Three toggles, at least one on. Used by the add form and the editor. */
+/** Equal-width rows keep multi-selection clear at every screen size. */
 export function DivisionPicker({
   value,
   onChange,
@@ -59,7 +66,7 @@ export function DivisionPicker({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Divisions">
+    <div className="grid gap-2" role="group" aria-label="Divisions">
       {DIVISIONS.map((d) => {
         const meta = DIVISION_META[d];
         const Icon = meta.icon;
@@ -68,23 +75,48 @@ export function DivisionPicker({
           <button
             key={d}
             type="button"
-            aria-pressed={on}
+            role="checkbox"
+            aria-checked={on}
             disabled={disabled}
             onClick={() =>
-              onChange(on ? value.filter((v) => v !== d) : [...DIVISIONS].filter((v) => v === d || value.includes(v)))
+              onChange(
+                on
+                  ? value.filter((v) => v !== d)
+                  : DIVISIONS.filter((v) => v === d || value.includes(v)),
+              )
             }
             className={cn(
-              "flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+              "flex min-h-16 w-full cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
               on
-                ? "border-transparent text-white"
-                : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+                ? "border-blue-primary/40 bg-blue-light/50"
+                : "border-border-light bg-white hover:border-blue-subtle hover:bg-surface",
             )}
-            style={on ? { background: meta.color } : { color: meta.color }}
           >
-            <Icon size={13} strokeWidth={2.2} />
-            {meta.label}
-            <span className="opacity-70">({meta.short})</span>
-            {on && <Check size={13} strokeWidth={2.6} />}
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+              style={{ color: meta.color, background: tint(meta.color, 10) }}
+            >
+              <Icon size={18} strokeWidth={1.8} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-semibold leading-5 text-text-primary">
+                {meta.label}
+              </span>
+              <span className="block text-[11px] leading-4 text-text-tertiary">
+                {meta.short}
+              </span>
+            </span>
+            <span
+              aria-hidden="true"
+              className={cn(
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
+                on
+                  ? "border-blue-primary bg-blue-primary text-white"
+                  : "border-border-light bg-white",
+              )}
+            >
+              {on && <Check size={13} strokeWidth={2.5} />}
+            </span>
           </button>
         );
       })}
@@ -123,7 +155,11 @@ export function DivisionEditor({
       const res = await fetch("/api/market-intel/tracking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "divisions", id: companyId, divisions: draft }),
+        body: JSON.stringify({
+          kind: "divisions",
+          id: companyId,
+          divisions: draft,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Could not save.");
@@ -131,7 +167,10 @@ export function DivisionEditor({
       setOpen(false);
       router.refresh();
     } catch (caught) {
-      toast(caught instanceof Error ? caught.message : "Could not save.", "error");
+      toast(
+        caught instanceof Error ? caught.message : "Could not save.",
+        "error",
+      );
     } finally {
       setBusy(false);
     }
@@ -163,15 +202,29 @@ export function DivisionEditor({
         )}
       </span>
 
-      <Modal open={open} onClose={() => !busy && setOpen(false)} title={`${companyName}: divisions`}>
-        <p className="text-[12.5px] leading-relaxed text-text-secondary">
-          Which of Freyr&apos;s divisions this company belongs to. Pick every one
-          that applies; the Customer Intelligence list filters on it.
+      <Modal
+        open={open}
+        onClose={() => !busy && setOpen(false)}
+        title="Edit divisions"
+      >
+        <p className="break-words text-[15px] font-semibold leading-6 text-text-primary">
+          {companyName}
         </p>
-        <div className="mt-3">
+        <p className="mt-1 text-[13px] leading-5 text-text-secondary">
+          Select all divisions that apply.
+        </p>
+        <div className="mt-5">
           <DivisionPicker value={draft} onChange={setDraft} disabled={busy} />
         </div>
-        <div className="mt-4 flex items-center justify-end gap-2 border-t border-border-light pt-4">
+        <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-border-light pt-4">
+          <p
+            className="mr-auto text-[12px] text-text-secondary"
+            aria-live="polite"
+          >
+            {draft.length === 0
+              ? "Select at least one"
+              : `${draft.length} selected`}
+          </p>
           <button
             type="button"
             onClick={() => setOpen(false)}
@@ -183,10 +236,16 @@ export function DivisionEditor({
           <button
             type="button"
             onClick={save}
-            disabled={busy || draft.length === 0}
+            disabled={
+              busy ||
+              draft.length === 0 ||
+              (draft.length === divisions.length &&
+                draft.every((d) => divisions.includes(d)))
+            }
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            <Check size={14} strokeWidth={2.6} /> Save
+            {busy && <Loader2 size={14} className="animate-spin" />}
+            {busy ? "Saving…" : "Save changes"}
           </button>
         </div>
       </Modal>

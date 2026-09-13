@@ -902,10 +902,9 @@ export function OfferingsBrowser({
             )}
             {/* Nothing filled in yet */}
             {!mapped && (
-              <p className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary">
-                <span className="w-1.5 h-1.5 rounded-full border border-text-tertiary" />
-                Awaiting details. Add who it is for, its markets and its sales
-                materials
+              <p className="flex min-w-0 items-center gap-1.5 text-[11px] text-text-tertiary">
+                <span className="w-1.5 h-1.5 shrink-0 rounded-full border border-text-tertiary" />
+                <span className="truncate">Awaiting offering details</span>
               </p>
             )}
           </div>

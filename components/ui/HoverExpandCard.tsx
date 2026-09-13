@@ -21,10 +21,13 @@ export function HoverExpandCard({
   className,
   stretchSummary = false,
   accent,
+  linkLabel,
 }: {
   summary: ReactNode;
   extra: ReactNode;
   href?: string;
+  /** Use a sibling navigation link when content contains its own links. */
+  linkLabel?: string;
   className?: string;
   /** Let the resting summary FILL the card's height so a `mt-auto` row inside
    *  it (a phone line, a footer) sits on the card's bottom edge — the divider
@@ -117,7 +120,14 @@ export function HoverExpandCard({
     >
       {/* The real, visible card comes FIRST in DOM so any `.first()` selector
           (and screen-reader focus) lands on it, not the hidden clone below. */}
-      {href ? (
+      {href && linkLabel ? (
+        <div className={cardCls} style={accentStyle}>
+          <Link href={href} aria-label={linkLabel} className="absolute inset-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary" />
+          <div className="pointer-events-none relative [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_.hover-yield]:pointer-events-auto">
+            {body}
+          </div>
+        </div>
+      ) : href ? (
         <Link href={href} className={cardCls} style={accentStyle}>
           {body}
         </Link>

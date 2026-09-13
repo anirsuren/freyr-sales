@@ -1,7 +1,10 @@
+import { readAgentAccountContext } from "@/lib/agentAccountContext";
+import { authenticatedRequestActorName } from "@/lib/requestPrincipal";
+import { canOpenModule } from "@/lib/moduleAccessServer";
 import { NextRequest, NextResponse } from "next/server";
 import { bumpUsage } from "@/lib/usageCounters";
 import { getDb } from "@/lib/db";
-import { answerAccountQuestion, type AccountContext } from "@/lib/agent";
+import { answerAccountQuestion } from "@/lib/agent";
 import { agentAnswer } from "@/lib/claude";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { repIdentityBlock } from "@/lib/repIdentity";
@@ -18,7 +21,13 @@ export async function GET(req: NextRequest) {
   if (!scope) {
     return NextResponse.json(
       { error: "Verified workspace access required." },
-      { status: 403 }
+      { status: 403 },
+    );
+  }
+  if (!(await canOpenModule("/customers"))) {
+    return NextResponse.json(
+      { error: "Customers are not available on this account." },
+      { status: 403 },
     );
   }
   const { searchParams } = new URL(req.url);
@@ -37,7 +46,13 @@ export async function DELETE(req: NextRequest) {
   if (!scope) {
     return NextResponse.json(
       { error: "Verified workspace access required." },
-      { status: 403 }
+      { status: 403 },
+    );
+  }
+  if (!(await canOpenModule("/customers"))) {
+    return NextResponse.json(
+      { error: "Customers are not available on this account." },
+      { status: 403 },
     );
   }
   const body = (await req.json().catch(() => ({}))) ?? {};
@@ -55,16 +70,27 @@ export async function POST(req: NextRequest) {
   if (!scope) {
     return NextResponse.json(
       { error: "Verified workspace access required." },
-      { status: 403 }
+      { status: 403 },
+    );
+  }
+  if (!(await canOpenModule("/customers"))) {
+    return NextResponse.json(
+      { error: "Customers are not available on this account." },
+      { status: 403 },
     );
   }
   const body = (await req.json().catch(() => ({}))) ?? {};
   const customerId = String(body.customerId || "");
   const question = String(body.question || "").trim();
-  const context = (body.context || {}) as AccountContext;
-  if (!customerId || !question || !context.company) {
-    return NextResponse.json({ error: "Missing question or context" }, { status: 400 });
+  if (!customerId || !question) {
+    return NextResponse.json(
+      { error: "Missing question or context" },
+      { status: 400 },
+    );
   }
+  const context = await readAgentAccountContext(customerId);
+  if (!context)
+    return NextResponse.json({ error: "Account not found" }, { status: 404 });
   // Counted for the monthly note (Anir, Aug 18). After validation, so a
   // malformed request never counts as an interaction.
   bumpUsage(scope.userId, "agent");
@@ -97,26 +123,26 @@ export async function POST(req: NextRequest) {
   ]);
   const identity = repIdentityBlock(
     {
-      name: context.owner || null,
+      name: await authenticatedRequestActorName(req),
       title: memberProfile.title || prefs?.linkedin_headline || null,
     },
-    prefs
+    prefs,
   );
 
   const grounded = answerAccountQuestion(question, context);
   const system =
     "You are Freyr's AI sales agent answering a rep's question about ONE account. " +
     "Be concise (1-3 sentences), specific, and grounded ONLY in the facts provided. " +
-    "Never invent numbers. If the facts don't cover it, say what you'd check next. " +
+    "Counts and estimates cover only sources this user can access, not necessarily the entire account. Never infer that hidden records do not exist. Never invent numbers. If the facts don't cover it, say what you'd check next. " +
     "Earlier turns of this conversation are provided: resolve follow-ups like " +
     '"what about them?" against that history rather than asking the rep to repeat themselves.' +
     (identity ? `\n\n${identity}` : "");
   const facts = [
     `Account: ${context.company}`,
-    `Health: ${context.healthLabel} (${context.healthScore}/100)`,
-    `Open value: ${context.openValue}`,
-    `Deals: ${context.dealCount}`,
-    `Contacts: ${context.contactCount}${context.topContact ? ` (e.g. ${context.topContact})` : ""}`,
+    `Health estimate from visible records: ${context.healthLabel} (${context.healthScore}/100)`,
+    `Visible pipeline value: ${context.openValue}`,
+    `Visible deals: ${context.dealCount}`,
+    `Visible contacts: ${context.contactCount}${context.topContact ? ` (e.g. ${context.topContact})` : ""}`,
     context.owner ? `Owner: ${context.owner}` : null,
     context.competitor ? `Competitor: ${context.competitor}` : null,
     context.lastActivity ? `Last activity: ${context.lastActivity}` : null,
@@ -132,15 +158,14 @@ export async function POST(req: NextRequest) {
       `Rep's question: ${question}`,
     ]
       .filter(Boolean)
-      .join("\n\n")
+      .join("\n\n"),
   );
-  const testFallback =
-    process.env.AGENT_FORCE_MOCK === "1" ? grounded : null;
+  const testFallback = process.env.AGENT_FORCE_MOCK === "1" ? grounded : null;
   const answer = llm || testFallback;
   if (!answer) {
     return NextResponse.json(
       { error: "The assistant is unreachable right now." },
-      { status: 503 }
+      { status: 503 },
     );
   }
   const source: "claude" | "mock" = llm ? "claude" : "mock";

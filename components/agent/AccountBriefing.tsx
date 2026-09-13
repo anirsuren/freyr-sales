@@ -14,7 +14,13 @@ import {
 // account. Renders the deterministic synthesis instantly, then swaps in a
 // Claude-narrated headline when a key is present (mock-first, never blocks).
 // Re-brief + copy-to-clipboard added in #72.
-export function AccountBriefing({ context }: { context: AccountContext }) {
+export function AccountBriefing({
+  customerId,
+  context,
+}: {
+  customerId: string;
+  context: AccountContext;
+}) {
   const briefing: Briefing = buildAccountBriefing(context);
   const { toast } = useToast();
   const [narrative, setNarrative] = useState(briefing.narrative);
@@ -28,7 +34,7 @@ export function AccountBriefing({ context }: { context: AccountContext }) {
       const res = await fetch("/api/agent/briefing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context }),
+        body: JSON.stringify({ customerId }),
       });
       const d = await res.json();
       if (d.ok && d.narrative) {
@@ -120,7 +126,11 @@ export function AccountBriefing({ context }: { context: AccountContext }) {
       </div>
 
       <div className="flex items-center gap-2 pt-2.5 border-t border-blue-subtle">
-        <ArrowRight size={14} strokeWidth={2} className="text-blue-primary shrink-0" />
+        <ArrowRight
+          size={14}
+          strokeWidth={2}
+          className="text-blue-primary shrink-0"
+        />
         <p className="text-[12px] text-text-primary">
           <span className="font-semibold">Recommended:</span>{" "}
           {briefing.recommendation}

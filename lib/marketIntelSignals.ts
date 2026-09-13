@@ -284,6 +284,8 @@ export function isItemIndustry(value: unknown): value is ItemIndustry {
  * classifier wrote; `labelSignals` maps them onto Saras's titles.
  */
 export type ItemLabel = {
+  /** Company identity and editorial validity, independent of industry relevance. */
+  isCompanyNews?: boolean;
   signals?: SignalId[];
   signal?: string;
   tags?: string[];

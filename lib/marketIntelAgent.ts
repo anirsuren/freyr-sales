@@ -22,6 +22,7 @@ import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 function fmtDate(iso: string | null): string {
   if (!iso) return "undated";
   return new Date(iso).toLocaleDateString("en-US", {
+    timeZone: "UTC",
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -36,49 +37,76 @@ function trim(text: string, max: number): string {
 function companyBlock(
   feed: MarketIntelFeed,
   company: FeedCompany,
-  peopleLines: string[]
+  peopleLines: string[],
+  since: number | null = null
 ): string {
   const signals = buildBriefing(
     company,
     Object.values(feed.companies).map((c) => ({ id: c.id, name: c.name }))
   ).signals;
-  const posts = [...company.posts]
+  const inWindow = (date: string | null | undefined) => since === null || (Date.parse(date ?? "") >= since && Date.parse(date ?? "") <= Date.now());
+  const windowPosts = company.posts.filter(p => inWindow(p.date));
+  const windowNews = company.news.filter(n => inWindow(n.published));
+  const windowSite = (company.site ?? []).filter(n => inWindow(n.published));
+  const posts = [...windowPosts]
     .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0))
-    .slice(0, 6);
-  const news = [...company.news]
+    .slice(0, 100);
+  const news = [...windowNews]
     .sort(
       (a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0)
     )
-    .slice(0, 8);
+    .slice(0, 100);
+  const site = [...windowSite]
+    .sort((a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0))
+    .slice(0, 100);
+  let remainingEvidence = 60000;
+  const sourceEvidence = (item: {articleText?: string; articleTextPartial?: boolean; excerpt?: string}) => {
+    const body = item.articleText || item.excerpt;
+    if (!body || remainingEvidence <= 0) return " [Original article text unavailable in this result; summary alone cannot establish detailed terms.]";
+    const limit = Math.min(6000, remainingEvidence);
+    const text = body.replace(/\s+/g, " ").trim();
+    const excerpt = text.slice(0, limit);
+    remainingEvidence -= excerpt.length;
+    return `\n  Publisher evidence${item.articleTextPartial || text.length > limit || !item.articleText ? " (partial)" : ""}: ${excerpt}`;
+  };
   return [
-    `TRACKED COMPANY: ${company.name} (${company.group === "competitor" ? "competitor" : "customer"} bucket, /market-intel/${company.id})`,
+    since !== null && `DATE SCOPE: ${new Date(since).toISOString()} through ${new Date().toISOString()}. Matching stored counts: ${windowPosts.length} company posts, ${windowNews.length} outside news articles, ${windowSite.length} website updates. Only dated records in this window are included below.`,
+    `Evidence limits: Stored AI summaries are secondary. Use publisher evidence when included, preserving its limitations over any conflicting summary. Partial evidence is not a complete article. Preserve qualifications and technical terminology exactly; do not infer territories, approval indications, transaction completion or mechanisms absent from the supplied text. Dates label publication, not necessarily the event date. If a term is missing, omit it or say it is not specified here.
+Coverage: Counts describe matching stored records within DATE SCOPE when supplied; otherwise all stored dates. Filter by each item's date before answering. A displayed sample is never the total for a period. Undated items cannot establish a date-window count. Stored coverage does not establish that every published item was collected.`,
+    `Last recorded collection timestamps: LinkedIn ${company.fetchedAt || "unknown"}; news ${company.newsAt || "unknown"}; website ${company.siteAt || "unknown"}. Per-company last-attempt status and error history are not included in this record. You cannot determine whether a later attempt failed. Recent stored posts do not rule out a later failure; an absence of newer articles does not prove none were published. If asked whether sources failed, state that status is unavailable, rather than diagnosing normal cadence or a healthy source.`,
+    `TRACKED COMPANY: [${company.name}](/market-intel/${company.id}) (${company.group === "competitor" ? "competitor" : "customer"} bucket; use this briefing link for news/post answers)`,
     company.author?.followerCount != null &&
       `LinkedIn followers: ${company.author.followerCount.toLocaleString("en-US")}`,
-    company.tldr && `AI rundown: ${company.tldr}`,
+
     "",
-    `Latest LinkedIn posts (${company.posts.length} collected, newest ${posts.length} shown):`,
-    ...posts.map((p) => `- [${fmtDate(p.date)}] ${trim(p.text, 280)}`),
+    `Latest LinkedIn posts (${windowPosts.length} matching records, newest ${posts.length} shown):`,
+    ...posts.map((p) => `- [${fmtDate(p.date)}] ${trim(p.text, 280)} [Source](${p.url})`),
     "",
-    `Latest news (${company.news.length} collected, newest ${news.length} shown):`,
+    `Latest news (${windowNews.length} matching records, newest ${news.length} shown):`,
     ...news.map(
       (n) =>
-        `- [${fmtDate(n.published)}] ${n.source}: ${n.title}${n.summary ? ` — ${trim(n.summary, 200)}` : ""}`
+        `- [${fmtDate(n.published)}] ${n.source}: ${n.title}${n.summary && n.articleText ? ` — Stored summary (secondary to publisher text): ${n.summary.replace(/\s+/g, " ").trim()}` : ""} [Source](${n.url})${sourceEvidence(n)}`
     ),
+    "",
+    `Company website updates (${windowSite.length} matching records, newest ${site.length} shown):`,
+    ...site.map(n => `- [${fmtDate(n.published)}] ${n.title}${n.summary && n.articleText ? ` — Stored summary (secondary to publisher text): ${n.summary.replace(/\s+/g, " ").trim()}` : ""} [Source](${n.url})${sourceEvidence(n)}`),
     "",
     /* Every item carries a signal since Sep 11; "Others" is not worth naming here. */
     signals.some((s) => s.kinds[0] !== "others") &&
       `Signals detected: ${signals
-        .filter((s) => s.kinds[0] !== "others")
+        .filter((s) => s.kinds[0] !== "others" && inWindow(s.date))
         .slice(0, 8)
         .map((s) => `${s.title} (${s.kinds.map((kind) => SIGNAL_META[kind].label).join(", ")}, ${fmtDate(s.date)})`)
         .join("; ")}`,
-    peopleLines.length && `People followed here:\n${peopleLines.join("\n")}`,
+    peopleLines.length && `People followed here (use each exact supplied profile URL and stored name for profile links; never derive or rewrite a profile URL from a post slug; recency refers only to stored posts, not proof of the person's actual activity):\n${peopleLines.join("\n")}`,
   ]
     .filter(Boolean)
     .join("\n");
 }
 
-export async function searchMarketIntel(query: string): Promise<string> {
+export async function searchMarketIntel(query: string, question = query): Promise<string> {
+  const days = question.match(/\b(?:past|last)\s+(\d+)\s+days?\b/i);
+  const since = days ? Date.now() - Math.min(3650, Number(days[1])) * 86400000 : null;
   const [feed, tracking] = await Promise.all([
     readMarketIntelFeed().catch(() => null),
     readMarketIntelTracking().catch(() => ({ companies: [], people: [] })),
@@ -94,31 +122,35 @@ export async function searchMarketIntel(query: string): Promise<string> {
   const peopleLinesFor = (companyId: string) =>
     tracking.people
       .filter((p) => p.companyId === companyId)
-      .map(
-        (p) =>
-          `- ${p.name}, ${p.role || "tracked person"} (${feed.people[p.id]?.posts.length ?? 0} posts collected)`
-      );
+      .map(p => {
+        const posts = [...(feed.people[p.id]?.posts ?? [])].sort((a,b)=>(Date.parse(b.date??"")||0)-(Date.parse(a.date??"")||0));
+        const recent = posts.filter(post => since === null || Date.parse(post.date??"") >= since);
+        return `- [${p.name}](${p.linkedinUrl}), ${p.role || "tracked person"}: ${posts.length} stored posts across all dates; latest ${posts[0]?.date || "unknown/no dated post"}.\n` + recent.slice(0,3).map(post=>`  [${fmtDate(post.date)}] ${trim(post.text,200)} [Post](${post.url})`).join("\n");
+      });
 
   // Deals asked for by name get the whole board.
   if (/\bm\s*&\s*a\b|merger|acquisition|acquire|deal/.test(q)) {
     const deals = feed.mna?.items ?? [];
     if (deals.length) {
       return [
-        `M&A TRACKER (${deals.length} deals, /market-intel?tab=market):`,
+        `M&A records may include reported or rumored deals; preserve uncertainty from summaries rather than treating a status as independent verification. M&A TRACKER (${deals.length} deals, /market-intel?tab=market):`,
         ...deals.map(
           (d) =>
-            `- ${d.acquirer} → ${d.target} (${d.status}, ${d.division}${d.valueLabel ? `, ${d.valueLabel}` : ""}, ${fmtDate(d.date)}): ${trim(d.summary, 180)} [source: ${d.sourceLabel}]`
+            `- ${d.acquirer} → ${d.target} (${d.status}, ${d.division}${d.valueLabel ? `, ${d.valueLabel}` : ""}, ${fmtDate(d.date)}): ${trim(d.summary, 180)} [${d.sourceLabel}](${d.sourceUrl})`
         ),
       ].join("\n");
     }
   }
 
   // A named tracked company gets its complete record.
-  const named = companies.find((c) => {
-    const name = c.name.toLowerCase();
-    return q.includes(name) || name.split(/\s+/).some((part) => part.length >= 4 && q.includes(part));
-  });
-  if (named) return companyBlock(feed, named, peopleLinesFor(named.id));
+  const normalized = ` ${q.replace(/[^\p{L}\p{N}]+/gu, " ")} `;
+  const exact = companies.filter(c => {
+    const name = c.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    return name && normalized.includes(` ${name} `);
+  }).sort((a,b) => b.name.length-a.name.length);
+  const partial = companies.filter(c => c.name.toLowerCase().split(/\s+/).some(part => part.length >= 4 && normalized.includes(` ${part} `)));
+  const named = exact[0] ?? (partial.length === 1 ? partial[0] : undefined);
+  if (named) return companyBlock(feed, named, peopleLinesFor(named.id), since);
 
   // A tracked person's name resolves to their posts.
   const person = tracking.people.find((p) => q.includes(p.name.toLowerCase()));
@@ -129,7 +161,7 @@ export async function searchMarketIntel(query: string): Promise<string> {
       `TRACKED PERSON: ${person.name}, ${person.role || "role unknown"} at ${companyName} (${posts.length} posts collected)`,
       ...posts
         .slice(0, 5)
-        .map((p) => `- [${fmtDate(p.date)}] ${trim(p.text, 280)}`),
+        .map((p) => `- [${fmtDate(p.date)}] ${trim(p.text, 280)} [Source](${p.url})`),
     ].join("\n");
   }
 
@@ -149,21 +181,21 @@ export async function searchMarketIntel(query: string): Promise<string> {
       if (words.some((w) => hay.includes(w)))
         hits.push({
           when: Date.parse(n.published ?? "") || 0,
-          line: `- [${fmtDate(n.published)}] ${company.name} news, ${n.source}: ${n.title}`,
+          line: `- [${fmtDate(n.published)}] ${company.name} news, ${n.source}: ${n.title} [Source](${n.url})`,
         });
     }
     for (const p of company.posts) {
       if (words.some((w) => p.text.toLowerCase().includes(w)))
         hits.push({
           when: Date.parse(p.date ?? "") || 0,
-          line: `- [${fmtDate(p.date)}] ${company.name} LinkedIn post: ${trim(p.text, 200)}`,
+          line: `- [${fmtDate(p.date)}] ${company.name} LinkedIn post: ${trim(p.text, 200)} [Source](${p.url})`,
         });
     }
     for (const s of companySignals.filter((signal) => signal.kinds[0] !== "others")) {
       if (words.some((w) => s.title.toLowerCase().includes(w)))
         hits.push({
           when: Date.parse(s.date ?? "") || 0,
-          line: `- [${fmtDate(s.date)}] ${company.name} signal (${s.kinds.map((kind) => SIGNAL_META[kind].label).join(", ")}): ${s.title}`,
+          line: `- [${fmtDate(s.date)}] ${company.name} signal (${s.kinds.map((kind) => SIGNAL_META[kind].label).join(", ")}): ${s.title} [Company briefing](/market-intel/${company.id})`,
         });
     }
   }

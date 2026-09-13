@@ -1,4 +1,4 @@
-import { MI_COMPANIES, MI_WATCHLIST, SIGNAL_META, type MiSignalKind } from "./marketIntelMock";
+import { MI_COMPANIES, MI_WATCHLIST, SIGNAL_META } from "./marketIntelMock";
 import {
   fallbackSignals,
   isLabeled,
@@ -22,6 +22,7 @@ import {
  */
 
 export type FeedPost = {
+  mediaType?: string;
   url: string;
   text: string;
   date: string | null;
@@ -34,6 +35,16 @@ export type FeedPost = {
 };
 
 export type FeedNews = {
+  /** Extracted source evidence for identity validation, not an AI summary. */
+  excerpt?: string;
+  /** Publisher body read by the collector, retained separately from search snippets. */
+  articleText?: string;
+  /** Visible excerpt only, or a reader length limit was reached. */
+  articleTextPartial?: boolean;
+  articleReadAt?: string;
+  publisherUrl?: string;
+  /** Other URLs for the same publisher article, including language editions. */
+  alternateUrls?: string[];
   title: string;
   source: string;
   url: string;
@@ -83,6 +94,10 @@ export function cleanSourceLabel(raw: string): string {
 }
 
 export type FeedCompany = {
+  /** Source failures are independent; successful source data stays usable. */
+  collectionWarnings?: string[];
+  logoUrl?: string | null;
+  logoCheckedAt?: string;
   id: string;
   name: string;
   slug: string | null;
@@ -94,6 +109,8 @@ export type FeedCompany = {
   } | null;
   posts: FeedPost[];
   news: FeedNews[];
+  /** Search candidates awaiting an explicit company-news decision; never shown as verified news. */
+  pendingNews?: FeedNews[];
   /** The AI rundown shown at the top of the briefing; refreshed with the feed. */
   tldr?: string | null;
   /** "customer" (default) or "competitor" — which intelligence tab owns it. */
@@ -308,7 +325,8 @@ function hasFeedDatabase(): boolean {
 function feedClient() {
   return require("@supabase/supabase-js").createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { global: { fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, cache: "no-store" }) } }
   );
 }
 
@@ -731,7 +749,7 @@ export function summarizeCompany(company: FeedCompany): FeedCompanySummary {
     name: company.name,
     slug: company.slug,
     group: company.group === "competitor" ? "competitor" : "customer",
-    logoUrl: company.author?.logoUrl ?? null,
+    logoUrl: company.author?.logoUrl || company.logoUrl || null,
     followerCount: company.author?.followerCount ?? null,
     tldr: company.tldr ?? null,
     fetchedAt: company.fetchedAt,
@@ -1032,7 +1050,7 @@ export function buildBriefing(
     group: company.group === "competitor" ? ("competitor" as const) : ("customer" as const),
     name: company.name,
     followerCount: company.author?.followerCount ?? null,
-    logoUrl: company.author?.logoUrl ?? null,
+    logoUrl: company.author?.logoUrl || company.logoUrl || null,
     tldr: company.tldr ?? null,
     fetchedAt: freshest,
     updatedLabel: updatedLabel(freshest),
@@ -1041,8 +1059,10 @@ export function buildBriefing(
     trend: points,
     trendLabels: labels,
     posts,
-    news,
-    site,
+    // Retained publisher evidence is for server-side verification/digests.
+    // The browser needs summaries and links, not entire source documents.
+    news: news.map(({articleText: _text,articleReadAt: _readAt,...item})=>item),
+    site: site.map(({articleText: _text,articleReadAt: _readAt,...item})=>item),
     signals,
     competitorMentions,
   };

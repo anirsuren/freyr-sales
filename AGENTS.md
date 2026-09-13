@@ -1,5 +1,17 @@
 # AGENTS.md — read this before touching anything
 
+> **Environment correction verified Sep 11, 2026:** localhost:3006 and
+> `freyrsales.dev.freyrapps.com` use Supabase project `ebyoefeikqxxxxifgjxk`
+> (development). Production at `freyrsales.freyrapps.com` uses the separate
+> project `kthwujrkgmpvrfcghqib`. Verified from all three running login pages'
+> runtime configuration and the local database key's project claim. The older
+> statements below that local/dev shares production are historical and stale.
+> `.env.local` also contains `FREYR_PROD_*` migration credentials: these are
+> not used by the running app and must not be used for dev tests. Dev is still
+> shared data: use identified temporary fixtures and clean them up. The blanket
+> Playwright-suite restriction remains until that suite has its own write guard.
+
+
 **New session? Start here:** read §9 (current state + open queue), then run
 `git log origin/main..HEAD --oneline` — the unpushed commits ARE the change
 log, each message says what changed and why. §9 is the master tracker:
@@ -19,11 +31,12 @@ work; you build.
 
 ## 1. THE ONE WAY TO DESTROY PRODUCTION (it happened on Jul 30, 2026)
 
-`.env.local` contains the **real production Supabase URL + service-role key**
-and the real Freya.Docs credentials. There is no staging database.
+The local app uses the **development Supabase database**. `.env.local` also
+contains explicitly prefixed production migration credentials and real
+Freya.Docs credentials; never select those for development tests.
 
-- Any local server in **live mode** reads AND WRITES the production database.
-  Real is the default; Mock is an explicit, per-browser session view.
+- A local server in **live mode** reads and writes the configured development
+  database. Real is the default; Mock is an explicit browser session view.
 - `PORT=3007` / `NEXT_DIST_DIR=.next-test` isolate the **build cache only** —
   NOT the database.
 - On Jul 30 the Playwright suite, run the "safe" way, **overwrote the
@@ -59,7 +72,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 3. Environment map
 
-- **Prod**: https://freyrsales.dev.freyrapps.com (AWS ECS). Boots in real
+- **Production**: https://freyrsales.freyrapps.com (separate Supabase project).
+- **Development**: https://freyrsales.dev.freyrapps.com (AWS ECS). Boots in real
   ("live") mode. Auth = Supabase; @freyrsolutions.com emails auto-join.
 - **Anir's dev server**: `PORT=3001 npm run dev` (defaults to 3000 without
   PORT). This is his live view — treat it as shared. It usually runs in live
@@ -179,6 +193,177 @@ what was written back, `deleted-test-customers.json`).
   named accounts imported from KonnectCo without disrupting it.
 
 ## 9. Current state — Jul 31, 2026
+
+- **Sep12 Premier Research AI website test:** Generic Firecrawl URL inventory →
+  AI ID selection → exact-page scrape/date check is wired into the shared website
+  collector. Chrome submission completed; repaired feed has 147 posts, 4 external
+  articles and 23 website updates. All seven current blog articles manually
+  checked on the official page are visible in Chrome. 40 focused tests/typecheck
+  pass. Initial run still took ~15 minutes; updated reader-pool latency and the
+  daily scheduler remain unverified. Details and limitations in
+  `docs/qa/market-intel-onboarding-2026-09-12.md`. No deployment.
+
+- **Sep12 dashboard story links:** LiveCompanyCard now adds Read/external links
+  to its ticker and all expanded top stories. HoverExpandCard has an opt-in
+  sibling navigation link so article anchors are not nested inside a card
+  anchor. Typecheck passes; browser audit tab was closed before retest.
+
+- **Sep12 refresh popup layering:** NextRefresh now portals its opaque panel
+  to document.body with shared floating-menu positioning, escaping the animated
+  company header stacking context. Outside click/Escape/scroll/resize dismiss
+  it. Opened in Chrome on Pfizer; typecheck passes. Audit tab953422837.
+
+- **Sep12 Pfizer Chrome submission/retry:** Fixed company identity mistakenly
+  taken from a reshared person's post; company slug now selects its own author.
+  Fixed initial classification budget to cover the collected items. Saved
+  Pfizer pfizer-8d31826f in dev: 8 posts, 210 news, 13 website items, zero pending
+  after processing its existing backlog. Clearer shimmer and consistent summary
+  cards; typecheck and four targeted tests pass. See
+  docs/pfizer-tracking-check-2026-09-12.md for evidence and limits. Initial
+  collection took about ten minutes; not exhaustive-source certification.
+  Server 3006 session98908, audit Chrome tab953422825. Loop remains PAUSED.
+
+- **Sep12 Chrome 50-question audit completed:** See docs/agent-50-query-audit.md
+  for the 50 scenarios, fixes/retests and explicit limits. All 48 targeted
+  regressions and typecheck pass. Two temporary accounts and all 15 business
+  fixtures removed and verified; temporary module restriction restored.
+  Only administrator Chrome audit tab 953422793 remains. Server on 3006 is
+  running (session 47469); recurring loop PAUSED. Two GSK portraits unavailable
+  upstream; legacy news without original source evidence remains unverified.
+  This is not a 2,000-user load certification or blanket all-features pass.
+
+
+- **Sep12 audit Pass18:** Prior Today-below-old-months observation reproduced
+  from server insertion order. bucketByDay now sorts copy newest-first;
+  failing regression passes, typecheck passes. Chrome retest pending locked
+  Mac along with Team/goal links and restricted roles. No fixture mutations.
+
+- **Sep12 audit Pass17:** Locked desktop persists. Goal pill discarded record
+  id and opened general list; now exact encoded /performance/goal/[id]. Ten
+  entity/rendering tests and typecheck pass. Chrome goal/Team link checks and
+  restricted-role tests remain pending unlock; no active fixtures.
+
+- **Sep12 audit Pass16:** Manager Agent could not read workspace people roles.
+  Added permission-gated Team directory tool; fresh Chrome answer correctly
+  identifies Anir as admin. Ten workspace tests/typecheck pass. Fixture cleaned.
+  Mac locked during Team link check, so destination remains pending. Next
+  restricted-role browser tests after unlock; max tabs953422766/953422772.
+
+- **Sep12 audit Pass15:** Actual Chrome temporary BD Member login, role/list
+  answer, private history, direct Admin-page denial and logout passed. Used
+  127.0.0.1:3006 isolated from localhost admin cookies. Fixture account/history
+  cleaned and absence verified. Next manager/restricted accounts and people
+  queries. Keep only audit tab953422766; create second role tab as needed.
+
+- **Sep12 audit Pass14:** Agent starring explanation now verified after fixing
+  conflicting main prompt. Specific opportunity links fixed in tool/pills and
+  clicked in Chrome. Agent confidence now uses same weighted helper as UI;
+  Medical device GRI60% retested (was wrongly100%). Nine workspace tests and
+  typecheck pass. Next isolated roles/people, cookie-isolation verification;
+  suspected history ordering/goal-link issues queued. Single tab953422766.
+
+- **Sep 12 full-app audit restarted every two minutes, Agent first:** Chrome
+  control recovered in audit tab 953422766. Actual identity question exposed
+  wrong admin ownership guidance. Corrected appManual; fresh Chrome answer now
+  accurately allows admin Customer/Opportunity edits regardless of ownership.
+  Pass13 fixed personal counts (35 customers/41 competitors), Chrome verified
+  and Sitero link opened. Eight workspace tests/typecheck pass. Next fresh
+  starring-rule retest after guide edit, owned queries, then isolated roles. See full-app-audit-loop Pass12.
+  Earlier browser-disconnected notes below are superseded.
+
+- **Sep 12 Market Intel retest in progress:** Sitero was saved and browser-checked
+  against 18 publisher references (17 grouped articles), six official items,
+  73 in-window LinkedIn activities. Rimsys is NOT passed or replaced: the latest
+  full replay has 19 news, 25 unique posts, two site items, zero pending; the
+  expanded browser reference inventory has 22 publisher URLs. Later discovery
+  recovers KnowledgeNile and Rutland but still varies between other publishers.
+  User authorized $10 instead of $1 paid-search default; atomic accounting and
+  caching remain. Latest search ledger $1.2041691 spent + $0.03 reserved; this
+  is not all-provider billing. Generic archive pagination, redirect metadata,
+  source-body validation and provider-failure fallback are implemented.
+  Secondary source search now uses bounded GPT-5-mini reasoning (two calls),
+  actual tool URLs only. Google News actor is a primary-search failure fallback.
+  Two diagnostic runs were stopped after high CPU/memory; found unbounded HTML
+  buffering including PDFs, now reject binary and stream-limit HTML to 3MB.
+  Regression passes. All 69 focused tests and typecheck pass. Safe-reader
+  discovery completed: 33 pre-verification candidates, zero incremental search
+  cost (cache), incomplete flag true. Two known publishers still missing:
+  News-Press NOW and MidFlorida; FinancialContent has an alternate article URL.
+  No audit process remains running.
+  Chrome tab control repeatedly returns "Debugger unattached" even after session
+  reset; no new browser verification can be claimed. One existing audit tab,
+  no desktop control or unrelated tabs. See docs/market-intel-retest-2026-09-12.md.
+  No production sign-off, no feed replacement or deployment.
+
+- **Sep 11 company-source replay:** shared discovery, archive pagination,
+  publication-date extraction, article URLs, news eligibility and captionless
+  LinkedIn handling improved. Reference matches: Veranex 18/18 official + 1/1
+  publisher; Rimsys 2/2 official + 5/5 publishers; Sitero 6/6 official + 5/6
+  publishers. Sitero's Business Times Journal copy remains an automatic-discovery
+  miss; do not claim exhaustive coverage. No expected URLs were fed into the
+  collector. 35 focused Node checks + typecheck passed. See
+  `docs/company-tracking-source-audit-2026-09-11.md` for methodology and limits.
+
+- **Sep 11 background onboarding replaces the modal progress flow:** user
+  rejected keeping the modal open during collection. POST now reserves a
+  company + durable onboarding state, follows it, returns 202 and closes the
+  modal. PendingCompanyCard shows its name and skeleton on the dashboard;
+  persisted failed jobs have Retry. Leases/heartbeats protect the worker and
+  expired leases recover after process restarts. Refresh/reopening tabs reads
+  persisted state; pending pages poll every 5s. Health and Market Intel pages
+  arm the worker. No fixture companies were added to the real catalogue.
+  All recurring sources now share a **06:00 UTC daily cycle**, including
+  paid-search cache expiry; adding a company does not move that cycle.
+  23 isolated checks passed, including concurrent add/claim, independent
+  reads, expired-lease recovery, failure/retry and shared scheduling. Guarded
+  browser fixture checks passed for Add dismissal, duplicates, pending/error
+  cards and mobile layout; the temporary preview route was removed.
+  Code remains local. Local server 3006 uses `.next-local-3006`; log is
+  `/tmp/freyr-sales-3006.log` (restarted after its prior compiler stalled).
+
+- **Sep 11 temporary removal requested by Anir:** Integras, Cure Media,
+  Lavida Consultancy and FDS Basics removed from the live catalogue, feed
+  rows and personal lists; verified absent. 189 companies remain. Preserved
+  restoration data in `market-intel-archive:2026-09-11:four-unverified` and
+  `.local-backups/four-unverified-removal/archive.json`. All four ids are in
+  removedSeeds so they do not reappear. Do not restore until requested.
+
+- **Sep 11 full Market Intel audit, local code; verified data repairs applied:**
+  audited all 193 companies (34 customers/159 competitors), all 68 original
+  LinkedIn links, replacements and 65 official-footer candidates in Chrome.
+  Added 64 verified LinkedIn links, corrected 14 links, CuraTeQ's domain and
+  Gedeon Richter's name with before/after backups and conditional writes.
+  Tracking selections and people preserved. 132 companies now have LinkedIn
+  links; 61 do not, with Amplexor/Sparta/DDi links additionally unavailable.
+  Direct+fallback official updates found for 135 companies; zero results do
+  not establish no news exists. Recorded Perplexity audit cost $0.68828;
+  four real Apify pagination calls returned 69 items (estimated $0.345).
+  Added actual streamed onboarding stages, partial/save-failure handling,
+  paginated LinkedIn collection, per-source daily scheduling and bounded
+  collection phases. 21 isolated tests, 193-entry duplicate replay, tsc and
+  guarded mobile/desktop UI checks passed. No deployment. See
+  `docs/market-intel-full-audit-2026-09-11.md` for limits and full results.
+  User said to leave unresolved identities unverified, not request more
+  information: Integras, Cure Media, Lavida Consultancy, FDS Basics remain
+  unverified; possible matches are documented, not silently attached.
+
+- **Sep 11 website-only tracking and spending follow-up, local only:**
+  duplicate preflight disables Start tracking; server rejects duplicates.
+  Direct website/RSS/sitemap collection and free Google News precede paid
+  fallbacks. Ten website-only company tests returned outside news and
+  official updates, with representative articles opened in Chrome. Added
+  shared atomic refresh lock, 24-hour paid-query cache, per-purpose cost
+  records, and a default $1/UTC-day Perplexity fallback cap. No companies
+  added and no deployment. The cap applies to updated code, not old deployed
+  clients. Details: `docs/market-intel-website-audit-2026-09-11.md`.
+
+- **Sep 11 Market Intel local handoff:** full Manage pages with explicit
+  Save/Discard, admin-only tracking status, daily collection, single-line
+  source chips, company-logo and person-photo enrichment. Not deployed.
+  Image audit: 189/193 company logos and 90/133 stored person photos; four
+  company identities remain unverified and 43 photos remain unavailable.
+  Pfizer was validated without adding it. Details and verification:
+  `docs/market-intel-handoff-2026-09-11.md`.
 
 - **Aug 5 evening: Anir ordered the deploy — 9f55d84 + 80375ac pushed to
   main.** 80375ac adds: the roadmap editor rebuilt as guided visual cards
@@ -390,6 +575,18 @@ rightward-growing search + Add customer / Import CSV doors through
   deployment may add explicit verified emails through
   `ROADMAP_NEXT_VIEWER_EMAILS` without relying on mutable display names.
 - Later: ~100-account list, KonnectCo export, offering taxonomy bucketing.
+
+### Sep 12: shared workflow wiring
+Daily Google/Apify discovery now uses the same publisher reader as onboarding; Firecrawl website collector is shared. Website-only failure no longer discards successful onboarding sources; per-pass website work is bounded and cached. Node boot arms the existing daily-cycle timers. 47 focused tests pass; no deployment.
+
+### Sep 12: external Caidya audit
+All 47 saved external URLs checked; one author archive removed, 36/46 have readable content, 10 remain unreadable/limited. Fixed archive filtering, Drupal body selection, and rendered fallback after empty extraction. Forty reader tests pass; see QA report for scope and ownership/date limitations.
+
+### Sep 12: Firecrawl website trial
+Caidya: 140 Firecrawl pages, 31 recent official updates now saved and visible in Chrome. General daily site collector uses Firecrawl discovery and parsed-page caching; see QA report for precise scope and limitations. Sixteen focused tests pass. No production changes.
+
+### Sep 12: onboarding recovery evidence
+See `docs/qa/market-intel-onboarding-2026-09-12.md`. Veristat completed after checkpoint/actor recovery (34 posts, 26 news, 12 website updates). Six focused tests and typecheck passed. Final ready-state and fresh-company Chrome verification remain unpassed because the browser connection failed; do not describe this as a completed enterprise audit.
 
 ## 10. Meeting knowledge (Jul 30 stakeholder meeting, fully transcribed)
 

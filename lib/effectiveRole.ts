@@ -1,6 +1,7 @@
+import { verifiedMemberPrivileges } from "./memberPrivilegeIdentity";
 import "server-only";
 import { cache } from "react";
-import { privilegesForPerson, readPrivileges } from "./privileges";
+import { readPrivileges } from "./privileges";
 
 /**
  * THE ADMIN PRIVILEGE MAKES YOU AN ADMIN (Anir, Sep 8: "why am I the only
@@ -25,22 +26,23 @@ import { privilegesForPerson, readPrivileges } from "./privileges";
  * or expired grant never reaches here.
  */
 export const holdsAdminPrivilege = cache(
-  async (displayName: string | null | undefined): Promise<boolean> => {
-    const name = displayName?.trim();
-    if (!name) return false;
+  async (memberId: string | null | undefined): Promise<boolean> => {
+    if (!memberId) return false;
     try {
       const state = await readPrivileges();
-      return privilegesForPerson(state, name).includes("admin");
+      return (await verifiedMemberPrivileges(state, memberId)).includes(
+        "admin",
+      );
     } catch {
       return false;
     }
-  }
+  },
 );
 
 export async function liftToAdmin<R extends string>(
   role: R,
-  displayName: string | null | undefined
+  memberId: string | null | undefined,
 ): Promise<R | "admin"> {
   if (role === "admin") return role;
-  return (await holdsAdminPrivilege(displayName)) ? "admin" : role;
+  return (await holdsAdminPrivilege(memberId)) ? "admin" : role;
 }

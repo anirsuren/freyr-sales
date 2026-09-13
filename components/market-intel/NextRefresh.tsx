@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { floatingMenuStyle, type FloatingMenuStyle } from "@/components/ui/ColorSelect";
 import {
   CalendarClock,
-  CheckCircle2,
   ChevronDown,
   History,
   Loader2,
   Users,
-  XCircle,
 } from "lucide-react";
+import { MARKET_INTEL_REFRESH_MS, nextMarketIntelCycle, marketIntelCycleStart } from "@/lib/marketIntelCadence";
 import { cn } from "@/lib/utils";
-import type { FeedHealth } from "@/lib/marketIntelFeed";
 
 /**
  * The live-data chip (Anir, Aug 11): at rest it only says when the feed last
@@ -19,7 +19,9 @@ import type { FeedHealth } from "@/lib/marketIntelFeed";
  * cycle is, and the shared-by-everyone note. Times render in the viewer's own
  * timezone — the server runs on UTC in production.
  */
-const REFRESH_EVERY_MS = 11 * 60 * 60 * 1000;
+/* ONCE A DAY (Anir, Sep 11: "it's supposed to be once a day"): the runner's own
+   clock, STALE_AFTER_MS in lib/marketIntelRefresh.ts. */
+const REFRESH_EVERY_MS = MARKET_INTEL_REFRESH_MS;
 
 function clock(ms: number): string {
   return new Date(ms).toLocaleTimeString("en-US", {
@@ -53,38 +55,22 @@ function agoLabel(ms: number, now: number): string {
 
 export function RefreshChip({
   updatedAt,
-  health,
-  isAdmin = false,
 }: {
   updatedAt: string | null;
-  /** Whether the outside services answered on the last run (Anir, Sep 10:
-   *  "do the API keys work? Is the storage good?"). */
-  health?: FeedHealth;
-  /** Admins get a button that checks every connection right now. */
-  isAdmin?: boolean;
 }) {
   // Stamped after mount so the server and browser never disagree on the time.
   const [now, setNow] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
-  const [checking, setChecking] = useState(false);
-  const [live, setLive] = useState<FeedHealth | undefined>(health);
   const anchorRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelStyle, setPanelStyle] = useState<FloatingMenuStyle | null>(null);
 
-  useEffect(() => setLive(health), [health]);
-
-  async function checkNow() {
-    setChecking(true);
-    try {
-      const res = await fetch("/api/market-intel/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ check: true }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data?.health) setLive(data.health);
-    } finally {
-      setChecking(false);
+  function toggle() {
+    if (!open && anchorRef.current) {
+      setPanelStyle(floatingMenuStyle(anchorRef.current.getBoundingClientRect(), 324, 250));
+      setNow(Date.now());
     }
+    setOpen(v => !v);
   }
 
   useEffect(() => {
@@ -94,16 +80,21 @@ export function RefreshChip({
   useEffect(() => {
     if (!open) return;
     const onDown = (event: MouseEvent) => {
-      if (!anchorRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!anchorRef.current?.contains(event.target as Node) && !panelRef.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
+    const close = () => setOpen(false);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
     };
   }, [open]);
 
@@ -119,15 +110,15 @@ export function RefreshChip({
     );
   }
 
-  const next = last + REFRESH_EVERY_MS;
+  const next = nextMarketIntelCycle(now);
   const due = next <= now;
-  const pct = Math.min(100, Math.round(((now - last) / REFRESH_EVERY_MS) * 100));
+  const pct = Math.min(100, Math.round(((now - marketIntelCycleStart(now)) / REFRESH_EVERY_MS) * 100));
 
   return (
     <div ref={anchorRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         aria-haspopup="dialog"
         aria-expanded={open}
         className="flex h-[34px] cursor-pointer items-center gap-2 rounded-full border border-border-light bg-white px-3 text-[12px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:text-text-primary"
@@ -147,14 +138,16 @@ export function RefreshChip({
         />
       </button>
 
-      {open && (
+      {open && panelStyle && createPortal(
         <div
+          ref={panelRef}
+          style={panelStyle}
           role="dialog"
           aria-label="Refresh schedule"
-          className="menu-in absolute right-0 top-full z-50 mt-2 w-[324px] rounded-xl border border-border-light bg-white p-3.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
+          className="menu-in z-[1000] overflow-y-auto rounded-xl border border-border-light bg-white p-3.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
         >
           <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-            Live data · twice a day
+            Live data · once a day
           </p>
 
           {/* One horizontal timeline: refreshed on the left, next run on the
@@ -178,7 +171,7 @@ export function RefreshChip({
                 Next refresh
               </span>
               <span className="mt-0.5 block text-[14px] font-bold text-text-primary tnum">
-                {due ? "running now" : `~${clock(next)}`}
+                {due ? "Due shortly" : `~${clock(next)}`}
               </span>
             </span>
           </div>
@@ -223,64 +216,10 @@ export function RefreshChip({
               strokeWidth={2.2}
               className="mt-0.5 shrink-0 text-blue-primary"
             />
-            Everyone sees the same live feed. Today&apos;s news lands twice
-            a day; LinkedIn posts, the wider news search and the M&amp;A board
-            once a day.
+            Everyone sees the same live feed. News, company websites, LinkedIn posts
+            and the M&amp;A board follow the same daily refresh schedule.
           </p>
-
-          {/* DO THE CONNECTIONS WORK: what the last run saw, and a button to
-              ask right now. */}
-          {(live || isAdmin) && (
-            <div className="mt-2.5 border-t border-border-light pt-2.5">
-              <p className="flex items-center justify-between text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-                Connections
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => void checkNow()}
-                    disabled={checking}
-                    className="cursor-pointer rounded-full border border-border-light bg-white px-2 py-0.5 text-[10.5px] font-semibold normal-case tracking-normal text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:opacity-60"
-                  >
-                    {checking ? "Checking…" : "Check now"}
-                  </button>
-                )}
-              </p>
-              <ul className="mt-1.5 space-y-1">
-                {(
-                  [
-                    { key: "apify", label: "LinkedIn and news search (Apify)" },
-                    { key: "perplexity", label: "Same-day news, websites, reports (Perplexity)" },
-                    { key: "anthropic", label: "Summaries and signals (AI)" },
-                    { key: "storage", label: "Storage" },
-                  ] as const
-                ).map((row) => {
-                  const h = live?.[row.key];
-                  const Icon = !h ? CalendarClock : h.ok ? CheckCircle2 : XCircle;
-                  const color = !h ? "#5B6B8C" : h.ok ? "var(--ink-green)" : "#DC2626";
-                  const extra =
-                    row.key === "storage" && h && "companies" in h && h.companies !== undefined
-                      ? ` · ${h.companies} companies, ${h.people ?? 0} people, largest ${h.largestKb ?? 0} KB`
-                      : "";
-                  return (
-                    <li key={row.key} className="flex items-start gap-1.5 text-[11px] leading-snug text-text-secondary">
-                      <Icon size={12} strokeWidth={2.2} className="mt-0.5 shrink-0" style={{ color }} />
-                      <span>
-                        <span className="font-semibold text-text-primary">{row.label}</span>
-                        {!h ? (
-                          <span className="text-text-tertiary"> · not checked yet</span>
-                        ) : h.ok ? (
-                          <span className="text-text-tertiary"> · OK{extra}{now ? `, ${agoLabel(Date.parse(h.at), now)}` : ""}</span>
-                        ) : (
-                          <span className="font-medium" style={{ color }}> · failing{h.note ? `: ${h.note}` : ""}</span>
-                        )}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-        </div>
+        </div>, document.body
       )}
     </div>
   );

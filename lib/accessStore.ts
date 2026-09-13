@@ -635,7 +635,7 @@ export async function listWorkspaceAccess(workspace: string): Promise<AccessDire
       id: item.id,
       name: item.display_name,
       email: item.email,
-      requestedRole: item.requested_role as WorkspaceRole,
+      requestedRole: normalizeWorkspaceRole(item.requested_role) ?? "bd_member",
       requestedAt: item.created_at,
     })),
     invitations: (invitations.data || []).map((item) => ({

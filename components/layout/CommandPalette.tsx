@@ -12,6 +12,7 @@ import {
   Rocket,
   Zap,
   LucideIcon,
+  Radar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { askBeforeLeaving } from "@/lib/unsavedGuard";
@@ -152,6 +153,9 @@ export function CommandPalette({
             ? next.filter(
                 (result: Result) =>
                   result.type === "Offering" ||
+                  /* The server only returns a Market Intel company to someone who can
+                     open the module (Sep 11), so it passes the offerings-only gate. */
+                  result.type === "Market Intel" ||
                   (customersReleased && result.type === "Customer")
               )
             : next
@@ -290,6 +294,8 @@ export function CommandPalette({
               ? Building
               : r.type === "Offering"
               ? Package
+              : r.type === "Market Intel"
+              ? Radar
               : User,
           label: r.label,
           sublabel: r.sublabel,
@@ -408,7 +414,7 @@ export function CommandPalette({
                   )}
                   data-selected={selected}
                 >
-                  {it.recordType === "Customer" ? (
+                  {it.recordType === "Customer" || it.recordType === "Market Intel" ? (
                     <CompanyLogo
                       name={it.recordName || it.label}
                       className="w-6 h-6 text-[9px] shrink-0"

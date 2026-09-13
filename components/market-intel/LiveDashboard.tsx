@@ -13,11 +13,7 @@ import { LiveCompanyGrid } from "@/components/market-intel/LiveCompanyGrid";
 import { MiTabs } from "@/components/market-intel/MiTabs";
 import { RefreshChip } from "@/components/market-intel/NextRefresh";
 import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton";
-import {
-  ManageCompaniesButton,
-  ManageCompaniesProvider,
-  type ManagedCompany,
-} from "@/components/market-intel/ManageCompaniesButton";
+import { ManageCompaniesButton } from "@/components/market-intel/ManageCompaniesButton";
 import {
   cardFromSummary,
   type FeedCompanySummary,
@@ -72,22 +68,22 @@ export function LiveMarketIntelDashboard({
   /* MY PAGE IS EXACTLY WHAT I TICKED (Anir, Sep 10: "they have to
      individually check off everything"). The catalogue is every company the
      team knows about; this page carries the ones this person ticked in
-     Manage companies, and nothing else. Ticking one is also what keeps it
-     collected, so everything here is active by definition. */
+     Manage companies, and nothing else. Whether a company is collected is a
+     separate question (isActiveCompany). */
   const registry = new Map(tracking.companies.map((c) => [c.id, c]));
   const watch: Record<string, WatchState> = {};
   for (const c of tracking.companies) {
-    watch[c.id] = { followers: followers[c.id]?.length ?? 0 };
+    watch[c.id] = { followers: followers[c.id]?.length ?? 0, byDefault: c.activeByDefault === true };
   }
   const inGroup = (id: string) => (registry.get(id)?.group ?? "customer") === group;
   const myIds = new Set(viewer.myIds);
   const cards = Object.values(summaries)
-    .filter((company) => registry.has(company.id) && inGroup(company.id) && myIds.has(company.id))
-    .map(cardFromSummary)
+    .filter((company) => registry.has(company.id) && !registry.get(company.id)?.onboarding && inGroup(company.id) && myIds.has(company.id))
+    .map((summary) => ({ ...cardFromSummary(summary), logoUrl: registry.get(summary.id)?.logoUrl || summary.logoUrl || null }))
     .sort((a, b) => b.itemsInWindow - a.itemsInWindow);
 
   const pending = tracking.companies.filter(
-    (c) => !summaries[c.id] && inGroup(c.id) && myIds.has(c.id)
+    (c) => (c.onboarding || !summaries[c.id]) && inGroup(c.id) && myIds.has(c.id)
   );
   const totalPosts = cards.reduce((a, c) => a + c.counts.posts, 0);
   const totalNews = cards.reduce((a, c) => a + c.counts.news, 0);
@@ -122,41 +118,14 @@ export function LiveMarketIntelDashboard({
     divisions[c.id] = companyDivisions(tracking, c.id, sourceDefault(c.id));
   }
 
-  /* EVERY COMPANY THE TEAM KNOWS, FOR THE POP-UP: customers and competitors,
-     ticked or not, with what a person needs to decide about each one. */
-  const managed: ManagedCompany[] = tracking.companies
-    .map((c) => {
-      const summary = summaries[c.id];
-      return {
-        id: c.id,
-        name: c.name,
-        group: c.group === "competitor" ? ("competitor" as const) : ("customer" as const),
-        followers: followers[c.id]?.length ?? 0,
-        divisions: divisions[c.id] ?? [],
-        logoUrl: summary?.logoUrl ?? null,
-        sources: {
-          linkedin: c.scrape ? (c.scrape.li?.length ?? 0) > 0 : /linkedin\.com\/company\//i.test(c.linkedinUrl),
-          news: true,
-          website: !!(c.scrape?.site || c.website),
-        },
-      };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <ManageCompaniesProvider
-      companies={managed}
-      group={group}
-      isAdmin={isAdmin}
-      canWrite={canTrack}
-      myIds={viewer.myIds}
-      starredIds={viewer.starredIds}
-    >
+    <>
       <MiTabs
         active={group === "competitor" ? "competitors" : "customers"}
         action={
           <span className="flex flex-wrap items-center gap-2.5">
-            <RefreshChip updatedAt={meta.updatedAt} health={meta.health} isAdmin={isAdmin} />
+            <RefreshChip updatedAt={meta.updatedAt} />
             <ManageCompaniesButton group={group} />
             <TrackCompanyButton group={group} canTrack={canTrack} />
           </span>
@@ -208,41 +177,43 @@ export function LiveMarketIntelDashboard({
           "the four cards at the top don't animate at all"). */}
       <section className="stagger mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
+          singleLine
           icon={group === "competitor" ? Swords : Building2}
-          label={group === "competitor" ? "Competitors on my page" : "Customers on my page"}
+          label={group === "competitor" ? "Competitors tracked" : "Customers tracked"}
           value={String(onMyPage)}
-          sub={
-            catalogue > onMyPage
-              ? `${busy} busy this month · ${catalogue - onMyPage} more to pick from in Manage ${group === "competitor" ? "competitors" : "companies"}`
-              : `${busy} busy this month`
-          }
+          sub={`${busy} busy this month`}
         />
         <StatTile
+          singleLine
           icon={LinkedInGlyph}
           label="LinkedIn posts"
           value={String(totalPosts)}
-          sub="from company pages, 90 days"
+          sub="Company posts · past 90 days"
         />
         <StatTile
+          singleLine
           icon={Newspaper}
           label="News picked up"
           value={String(totalNews)}
-          sub={`real articles, 90 days · ${totalSite} from their own sites`}
+          sub={`90 days · ${totalSite} website updates`}
         />
         {/* THE COUNT IS THE COUNT (Sep 10). Signals used to be capped at eight
             per company; now every item that carries one of the nine signals
             is counted. */}
         <StatTile
+          singleLine
           icon={Radar}
           label="Signals live"
           value={String(totalSignals)}
-          sub="items carrying one of the nine signals"
+          sub="Updates with detected signals"
         />
       </section>
 
       <LiveCompanyGrid
+          isAdmin={isAdmin}
         cards={cards}
         pending={pending}
+        addedAt={Object.fromEntries(tracking.companies.map(c=>[c.id,c.addedAt]))}
         people={peopleByCompany}
         group={group}
         divisions={divisions}
@@ -253,6 +224,6 @@ export function LiveMarketIntelDashboard({
       )}
         </>
       </MiTabs>
-    </ManageCompaniesProvider>
+    </>
   );
 }

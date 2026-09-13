@@ -1,7 +1,7 @@
 "use client";
+import { ConversationRecovery } from "@/components/agent/ConversationRecovery";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
 import {
   Sparkles,
   ArrowUp,
@@ -11,6 +11,7 @@ import {
   PanelRightClose,
 } from "lucide-react";
 import { cn, POPOVER_SURFACE } from "@/lib/utils";
+import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { putConversations } from "@/lib/saveConversations";
 import { clockTime, dayLabel, sameDay } from "@/lib/chatTime";
 import {
@@ -374,10 +375,12 @@ export function AgentDock({
   // Customers, contacts, offerings, FDL components, teammates and reports.
   const entities = useEntityIndex();
   const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(null);
+  const [historySyncFailed, setHistorySyncFailed] = useState(false);
   const [historyReady, setHistoryReady] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const activeUserIdRef = useRef(currentUser.id);
+  const historyBaseRef = useRef<Convo[] | null>(null);
   const historySaveChainRef = useRef<Promise<void>>(Promise.resolve());
   const requestControllerRef = useRef<AbortController | null>(null);
   const explicitContextRef = useRef(false);
@@ -410,6 +413,7 @@ export function AgentDock({
   useEffect(() => {
     let cancelled = false;
     activeUserIdRef.current = currentUser.id;
+    historyBaseRef.current = null;
     requestControllerRef.current?.abort();
     requestControllerRef.current = null;
     explicitContextRef.current = false;
@@ -494,12 +498,28 @@ export function AgentDock({
         const accountHistory = Array.isArray(data?.conversations)
           ? (data.conversations as Convo[])
           : [];
+        historyBaseRef.current = accountHistory;
         setConvos((current) => {
-          const merged = mergeConversations(
-            accountHistory,
-            browserHistory,
-            current
+          let cachedBase: Convo[] | null = null;
+          try {
+            const value = JSON.parse(localStorage.getItem(`${conversationStorageKey}:base`) || "null");
+            if (Array.isArray(value)) cachedBase = value;
+          } catch {}
+          // Unversioned caches cannot distinguish a deleted chat from a draft.
+          // Retain a recovery copy, but never upload stale history over an
+          // initialized account. New messages submitted during loading survive.
+          if (!cachedBase && data.initialized && browserHistory.length) {
+            localStorage.setItem(`${conversationStorageKey}:recovery`, JSON.stringify(browserHistory));
+          }
+          const merged = mergeConversationChanges(
+            cachedBase ?? (data.initialized ? browserHistory : []),
+            current,
+            accountHistory
           );
+          if (!merged) {
+            historyBaseRef.current = null;
+            return current;
+          }
           try {
             localStorage.setItem(
               conversationStorageKey,
@@ -545,6 +565,7 @@ export function AgentDock({
     )
       return;
     const snapshot = convos;
+    const savingUserId = currentUser.id;
     try {
       localStorage.setItem(conversationStorageKey, JSON.stringify(snapshot));
     } catch {}
@@ -553,10 +574,17 @@ export function AgentDock({
       .then(async () => {
         // Had the same 64KB keepalive bug as the chat page, with the error
         // swallowed below so it failed silently. Shared helper now.
-        await putConversations(snapshot);
+        if (activeUserIdRef.current !== savingUserId) return;
+        if (!historyBaseRef.current) throw new Error("History must load before saving.");
+        await putConversations(snapshot, historyBaseRef.current);
+        if (activeUserIdRef.current !== savingUserId) return;
+        historyBaseRef.current = snapshot;
+        localStorage.setItem(`${conversationStorageKey}:base`, JSON.stringify(snapshot));
       })
-      .catch(() => {});
+      .then(() => setHistorySyncFailed(false))
+      .catch(() => setHistorySyncFailed(true));
   }, [
+    currentUser.id,
     conversationStorageKey,
     convos,
     historyReady,
@@ -726,7 +754,8 @@ export function AgentDock({
 
     const controller = new AbortController();
     requestControllerRef.current = controller;
-    const timer = setTimeout(() => controller.abort(), 45000);
+    const timer = setTimeout(() => controller.abort(), 90000);
+    const pathChanged = lastAskedPath.current !== null && lastAskedPath.current !== pathname;
     lastAskedPath.current = pathname;
     try {
       const res = await fetch("/api/agent/converse", {
@@ -752,7 +781,7 @@ export function AgentDock({
            * Saying the page moved is enough for the model to drop the stale
            * context instead of blending it.
            */
-          pathChanged: lastAskedPath.current !== null && lastAskedPath.current !== pathname,
+          pathChanged,
           pageContext: (document.querySelector("main")?.textContent || "")
             .replace(/\s+/g, " ")
             .slice(0, 5000),
@@ -926,6 +955,8 @@ export function AgentDock({
               <X size={17} strokeWidth={2} />
             </button>
           </div>
+          <ConversationRecovery storageKey={conversationStorageKey} failed={historySyncFailed} ready={historyReady} />
+          {historySyncFailed && <p role="status" className="mx-4 mt-2 rounded-md bg-warning/10 px-3 py-2 text-xs text-text-primary">Your changes are saved on this device. Account history could not sync; another tab may have changed this chat.</p>}
 
           {/* Messages: greeting is always the first bubble so it never vanishes */}
           <div

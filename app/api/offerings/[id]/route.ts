@@ -65,7 +65,7 @@ export async function GET(
     redactUnverifiedOfferingPeople(offering, people)
   );
   const user = await getCurrentUser();
-  const visible = redactAgentOnlyMaterials(hydrated, user.memberId);
+  const visible = redactAgentOnlyMaterials(hydrated, user.memberId, user.role === "admin");
   return NextResponse.json({
     offering: (await canViewNextCustomerVersion(offering))
       ? visible
@@ -267,7 +267,8 @@ export async function PATCH(
       ok: true,
       offering: redactAgentOnlyMaterials(
         redactUnverifiedOfferingPeople(offering, people),
-        user.memberId
+        user.memberId,
+        user.role === "admin"
       ),
     });
   } catch (error) {

@@ -1,3 +1,4 @@
+import { armCompanyOnboarding } from "./marketIntelOnboarding";
 /**
  * MARKET INTEL RUNS ITSELF (Anir, Aug 11: "I'm gonna close my laptop... it
  * has to just run by itself"). The refresh used to fire only from page
@@ -11,7 +12,7 @@
  * pings continuously in production — so the timer arms seconds after every
  * server boot with no edge exposure.
  *
- * The runner itself no-ops as "fresh" between the twice-daily windows and
+ * The runner itself no-ops as "fresh" between the daily runs and
  * takes a database lock, so many server instances never double-run.
  */
 const ARMED_KEY = "__MI_SELF_REFRESH_ARMED__";
@@ -19,6 +20,7 @@ const LOGGED_KEY = "__MI_SELF_REFRESH_FIRST_LOGGED__";
 const CHECK_MS = 30 * 60 * 1000;
 
 export function armMarketIntelSelfRefresh(): void {
+  armCompanyOnboarding();
   const g = globalThis as Record<string, unknown>;
   if (g[ARMED_KEY]) return;
   g[ARMED_KEY] = true;
@@ -48,9 +50,6 @@ export function armMarketIntelSelfRefresh(): void {
 /**
  * THE WEBSITE SCAN RUNS ITSELF TOO.
  *
- * Anir, Aug 30: "until you have a good way of scanning those things every two
- * times a day, that's not considered done."
- *
  * Same shape as the refresh above and for the same reason — there is no
  * external scheduler in this deployment, the app arms its own timers on boot.
  * A SECOND timer rather than more work inside the first, because that is the
@@ -58,8 +57,8 @@ export function armMarketIntelSelfRefresh(): void {
  * that never got that far, and every company in the feed had never once been
  * scanned.
  *
- * TWICE A DAY FALLS OUT OF THE PARTS. Each company carries its own 12-hour
- * stamp, so a tick only visits the ones that are due; each tick spends at most
+ * ONCE A DAY FALLS OUT OF THE PARTS. All companies share the 06:00 UTC daily
+ * cycle, so a tick only visits sources not yet collected in that cycle; each tick spends at most
  * a few minutes and writes as it goes, so the list is covered across ticks
  * rather than in one long run that can die halfway.
  */

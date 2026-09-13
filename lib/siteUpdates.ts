@@ -1,6 +1,9 @@
+import { requestMarketIntelSearch } from "./marketIntelSearch";
 import { cleanSourceLabel, type FeedNews } from "./marketIntelFeed";
 import { notePerplexityError } from "./marketIntelRefresh";
 import type { CompanySource } from "./marketIntelSources";
+import { collectCompanyWebsite, articleFromHtml, readPublicPage, linkedInCompanyFromHtml, publishedDate, readGoogleNews } from "./companyWebsiteNews";
+import { load } from "cheerio";
 
 /**
  * WHAT THE COMPANY SAYS ABOUT ITSELF.
@@ -37,7 +40,6 @@ import type { CompanySource } from "./marketIntelSources";
  * URL makes that class of mismatch impossible.
  */
 
-const ENDPOINT = "https://api.perplexity.ai/chat/completions";
 /** $5/1k searches plus a few hundred tokens of sonar, when the response
  *  omits its own cost breakdown. */
 const FALLBACK_COST_USD = 0.006;
@@ -158,16 +160,45 @@ export function hostBelongsToSite(url: string, domain: string): boolean {
   return host === site || host.endsWith(`.${site}`);
 }
 
-export type SiteUpdatesResult = { updates: FeedNews[]; cost: number; failed: boolean };
+export type SiteUpdatesResult = { updates: FeedNews[]; cost: number; failed: boolean; warning?: string; pagesRead?: number };
 
 export async function scrapeSiteUpdates(
+  source: Pick<CompanySource, "name" | "site">,
+  key: string | undefined,
+  options: { fastInitial?: boolean } = {},
+): Promise<SiteUpdatesResult> {
+  const inputDomain = normalizeSiteDomain(source.site);
+  if (!inputDomain) return { updates: [], cost: 0, failed: false };
+  const domain = await import('./marketIntelWebsiteCrawl').then(m => m.resolveWebsiteDomain(inputDomain));
+  source = {...source, site: domain};
+  const direct = process.env.FIRECRAWL_API_KEY
+    ? await import('./marketIntelWebsiteCrawl').then(m => m.collectFirecrawlWebsite(domain, process.env.FIRECRAWL_API_KEY!, options)).catch(error => ({updates: [], failed: true, pagesRead: 0, errors: [String(error)], entryPoints: []}))
+    : await collectCompanyWebsite(domain);
+  const search = direct.updates.length >= 3 ? {updates: [], cost: 0, failed: false} : await searchSiteUpdates(source, key);
+  const items = new Map<string, FeedNews>();
+  for (const item of direct.updates) items.set(item.url, item);
+  // Search dates can be crawl/import dates. Confirm fallback URLs against their own pages.
+  for (let at=0;at<search.updates.length;at+=4) {
+    await Promise.all(search.updates.slice(at,at+4).map(async candidate=>{
+      if(items.has(candidate.url))return;
+      try { const page=await readPublicPage(candidate.url,domain);const item=articleFromHtml(page.html,page.url,domain);if(item)items.set(item.url,item); } catch {}
+    }));
+  }
+  return {
+    updates: [...items.values()], cost: search.cost,
+    failed: items.size === 0 && (direct.failed || search.failed), pagesRead: direct.pagesRead,
+    ...((search.failed || direct.errors.length) ? { warning: [search.failed ? "Website search unavailable." : "", ...direct.errors].filter(Boolean).join(" ") } : {}),
+  };
+}
+
+export async function searchSiteUpdates(
   source: Pick<CompanySource, "name" | "site">,
   key: string | undefined
 ): Promise<SiteUpdatesResult> {
   const domain = normalizeSiteDomain(source.site);
   // No domain on file is not a failure: the company simply has no website
   // column, which is the honest answer and costs nothing.
-  if (!key || !domain) return { updates: [], cost: 0, failed: false };
+  if (!key || !domain) return { updates: [], cost: 0, failed: true };
 
   const body = {
     model: "sonar",
@@ -190,17 +221,7 @@ export async function scrapeSiteUpdates(
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const res = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(90_000),
-      });
-      if (!res.ok) throw new Error(`perplexity HTTP ${res.status}`);
-      const data = await res.json();
+      const data = await requestMarketIntelSearch(body, key, "website-updates", source.name);
       const cost =
         typeof data?.usage?.cost?.total_cost === "number"
           ? data.usage.cost.total_cost
@@ -233,19 +254,13 @@ export async function scrapeSiteUpdates(
           )
           .replace(/\*+/g, "")
           .trim();
-        const modelHeadline = String(item?.headline ?? "")
-          .replace(/\*+/g, "")
-          .trim();
-        const title =
-          !raw || GENERIC_TITLE.test(raw) || raw.length < 12 || !mostlyLatin(raw)
-            ? modelHeadline || raw
-            : raw;
+        const title = raw;
+        if (GENERIC_TITLE.test(title) || title.length < 12 || !mostlyLatin(title)) continue;
         if (!url || !title) continue;
         // THE CHECK THAT MAKES THIS SOURCE MEAN ANYTHING. Without it the
         // column would quietly become "news again, sometimes".
         if (!hostBelongsToSite(url, domain)) continue;
-        const dated =
-          Date.parse(hit?.date ?? "") || Date.parse(hit?.last_updated ?? "");
+        const dated = Date.parse(publishedDate(hit?.date) || "");
         if (dated && Date.now() - dated > MAX_AGE_MS) continue;
         const dedupe = title.toLowerCase();
         if (seen.has(dedupe)) continue;
@@ -339,14 +354,7 @@ export async function resolveOfficialDomain(
     max_tokens: 20,
   };
   try {
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60_000),
-    });
-    if (!res.ok) throw new Error(`perplexity HTTP ${res.status}`);
-    const data = await res.json();
+    const data = await requestMarketIntelSearch(body, key, "domain-lookup", name);
     const cost =
       typeof data?.usage?.cost?.total_cost === "number"
         ? data.usage.cost.total_cost
@@ -395,7 +403,8 @@ function nameLinesUpWithDomain(domain: string, name: string): boolean {
   const whole = squash(name);
   const first = squash(name.split(/[\s&,]+/)[0] ?? "");
   if (!label || !whole) return false;
-  return whole.startsWith(label) || label.startsWith(whole) || (first.length >= 3 && label.startsWith(first));
+  return whole.startsWith(label) || label.startsWith(whole) || (first.length >= 3 && label.startsWith(first)) ||
+    name.split(/\s+/).some((word) => squash(word) === label && label.length >= 4);
 }
 
 function decodeEntities(text: string): string {
@@ -411,47 +420,61 @@ function decodeEntities(text: string): string {
 }
 
 export function nameFromHomepage(html: string, domain: string): string | null {
+  const structured = homepageOrganization(html);
   const og =
     html.match(/<meta[^>]+property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i)?.[1] ??
     html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:site_name["']/i)?.[1];
   const app = html.match(/<meta[^>]+name=["']application-name["'][^>]*content=["']([^"']+)["']/i)?.[1];
   const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
   const fits = (c: string) =>
-    c.length >= 2 && c.length <= 60 && !NOT_A_NAME.test(c) && nameLinesUpWithDomain(domain, c);
-  const named = [og, app].filter((v): v is string => !!v).map(decodeEntities).find(fits);
-  if (named) return named;
-  const segments = title ? decodeEntities(title).split(/\s+[-:|·•]\s+|\s*[|–—·•]\s*/) : [];
-  return segments.map((s) => s.trim()).filter(fits).sort((a, b) => a.length - b.length)[0] ?? null;
+    c.length >= 2 && c.length <= 60 && !NOT_A_NAME.test(c);
+  // The domain need not spell the company name (Vertex uses vrtx.com).
+  // Explicit site-name metadata is evidence from the supplied official site.
+  const explicit = [structured.name, og, app].filter((v): v is string => !!v).map(decodeEntities).filter(fits);
+  if (explicit.length) return explicit.sort((a,b)=>a.length-b.length)[0].replace(/\.(com|io|org)$/i, "").trim();
+  const segments = title ? decodeEntities(title).split(/\s+[-|·•]\s+|\s*[:|–—·•]\s*/) : [];
+  return [...[structured.name, og, app].filter((v): v is string => !!v).map(decodeEntities), ...segments]
+    .map((s) => s.replace(/\.com$|\.io$/i, "").replace(/\s+Global$/i, "").trim()).filter(c=>fits(c) && nameLinesUpWithDomain(domain,c)).sort((a,b) => a.length-b.length)[0] ?? null;
+}
+
+export function homepageOrganization(html: string): { name?: string; legalName?: string } {
+  const $ = load(html);
+  const found: {name?:string;legalName?:string} = {};
+  const walk = (value: any) => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) { value.forEach(walk); return; }
+    if (/^(Organization|Corporation|SoftwareApplication)$/.test(String(value["@type"]))) {
+      if (typeof value.name === "string" && !found.name) found.name = value.name;
+      if (typeof value.legalName === "string" && !found.legalName) found.legalName = value.legalName;
+    }
+    for (const key of ["@graph", "publisher", "about"]) if (value[key]) walk(value[key]);
+  };
+  $('script[type="application/ld+json"]').each((_,el) => { try {walk(JSON.parse($(el).text()));}catch{} });
+  return found;
 }
 
 export async function readCompanyNameFromSite(
   domain: string,
   key: string | undefined
-): Promise<{ name: string | null; cost: number; via: "page" | "search" | null }> {
+): Promise<{ name: string | null; cost: number; via: "page" | "search" | null; newsQuery?: string; linkedinUrl?: string }> {
   try {
-    const res = await fetch(`https://${domain}`, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
-        "Accept-Language": "en",
-        Accept: "text/html",
-      },
-      redirect: "follow",
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (res.ok) {
-      const name = nameFromHomepage((await res.text()).slice(0, 400_000), domain);
-      if (name) return { name, cost: 0, via: "page" };
+    const page = await readPublicPage(`https://${domain}`, domain);
+    {
+      const html = page.html;
+      const name = nameFromHomepage(html, domain);
+      const legal = homepageOrganization(html).legalName?.split(/,\s*(?:Inc\.?|Ltd\.?|LLC|Rahway)\b/i)[0];
+      if (name) return { name, cost: 0, via: "page", ...(linkedInCompanyFromHtml(html) ? {linkedinUrl:linkedInCompanyFromHtml(html)!} : {}), ...(legal && legal !== name && legal.length > name.length && nameLinesUpWithDomain(domain, legal) ? { newsQuery: `"${legal.replace(/"/g, "")}" when:90d` } : {}) };
     }
   } catch {
     /* a site that turns servers away is asked about below */
   }
+  // An indexed publisher label is evidence even when the homepage blocks servers.
+  const indexed = await readGoogleNews(`site:${domain}`);
+  const publisher = indexed.news.map((item) => item.source.replace(/\.com$|\.io$/i, "").trim()).find((name) => name && name.length <= 60 && !/careers|jobs|recruit|direct|coupon|savings/i.test(name) && nameLinesUpWithDomain(domain, name));
+  if (publisher) return { name: publisher, cost: 0, via: "search" };
   if (!key) return { name: null, cost: 0, via: null };
   try {
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const data = await requestMarketIntelSearch({
         model: "sonar",
         messages: [
           {
@@ -464,17 +487,14 @@ export async function readCompanyNameFromSite(
         search_domain_filter: [domain],
         web_search_options: { search_context_size: "low" },
         max_tokens: 20,
-      }),
-      signal: AbortSignal.timeout(60_000),
-    });
-    if (!res.ok) throw new Error(`perplexity HTTP ${res.status}`);
-    const data = await res.json();
+      }, key, "company-identity", domain);
     const cost =
       typeof data?.usage?.cost?.total_cost === "number" ? data.usage.cost.total_cost : FALLBACK_COST_USD;
     const name = decodeEntities(String(data?.choices?.[0]?.message?.content ?? ""))
       .replace(/^["'“”]+|["'“”.]+$/g, "")
       .trim();
-    if (name && name.length <= 60 && nameLinesUpWithDomain(domain, name)) return { name, cost, via: "search" };
+    const grounded = Array.isArray(data.search_results) && data.search_results.some((hit:any) => hostBelongsToSite(String(hit.url || ""),domain) && squash(`${hit.title || ""} ${hit.snippet || ""}`).includes(squash(name)));
+    if (name && name.length <= 60 && nameLinesUpWithDomain(domain, name) && grounded) return { name, cost, via: "search" };
     return { name: null, cost, via: null };
   } catch (error) {
     notePerplexityError(error instanceof Error ? error.message : String(error));

@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useMiSection } from "@/components/market-intel/MiSection";
 import {
   ChevronDown,
   FolderOpen,
@@ -88,6 +89,8 @@ export function Sidebar({
   const currentUser = useCurrentUser();
   /** Market Intel picks its room with ?tab=, so the sidebar has to read it. */
   const search = useSearchParams().toString();
+  /* A Market Intel company page has no ?tab=, so it tells the sidebar its room. */
+  const miSection = useMiSection();
   // The signed-in user's uploaded picture, shared by every avatar of them.
   const { photo: myPhoto } = useMyPhoto();
   const offeringsOnly = isOfferingsOnly(dataMode);
@@ -277,8 +280,15 @@ export function Sidebar({
       );
     });
 
-    const active =
-      itemPath === "/solutioning"
+    /* A MARKET INTEL COMPANY LIGHTS ITS OWN ROOM (Anir, Sep 11: "It says go back
+       to competitor intelligence, but it says I'm selected customer
+       intelligence"). /market-intel/<id> carries no ?tab=, so the bare
+       Customer Intelligence entry claimed every company as its child. The
+       page says which room it belongs to; until it has, nothing lights. */
+    const onMiCompany = itemPath === "/market-intel" && isChild;
+    const active = onMiCompany
+      ? miSection === (itemTab || "customers")
+      : itemPath === "/solutioning"
         ? (pathname === itemPath || isChild) && hereTab === itemTab
         : itemQuery || search
           ? pathname === itemPath && (search ?? "") === itemQuery

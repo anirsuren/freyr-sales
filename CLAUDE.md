@@ -81,6 +81,8 @@ for `--no-verify`. If the hook fires, the answer is to go and ask him.
 
 ## 3b. Production is a SECOND gate, with its own explicit words
 
+Verified Sep 11 from running login pages: localhost:3006 and deployed dev use Supabase `ebyoefeikqxxxxifgjxk`; production uses `kthwujrkgmpvrfcghqib`. Local `.env.local` also holds separate `FREYR_PROD_*` migration credentials; those are not the running app configuration. Do not use them for development tests.
+
 Since Aug 27 there are two environments. A push to `main` deploys **dev**
 (`freyrsales.dev.freyrapps.com`, account 602367507820) and needs its yes as
 above. **Production** (`freyrsales.freyrapps.com`, account 966427768186) is

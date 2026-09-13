@@ -1,6 +1,15 @@
 import { cookies, headers } from "next/headers";
-import { hasAppRole, parseAlbOidcPrincipal, parseEasyAuthPrincipal } from "./auth";
-import { ACCESS_COOKIE, isApprovalGateEnabled, normalizeWorkspaceRole, verifyAccessGrant } from "./accessControl";
+import {
+  hasAppRole,
+  parseAlbOidcPrincipal,
+  parseEasyAuthPrincipal,
+} from "./auth";
+import {
+  ACCESS_COOKIE,
+  isApprovalGateEnabled,
+  normalizeWorkspaceRole,
+  verifyAccessGrant,
+} from "./accessControl";
 import { liftToAdmin } from "./effectiveRole";
 
 // Workspace roles come from the signed access grant in every protected
@@ -76,11 +85,22 @@ async function roleForLocalPersona(email: string): Promise<Role | null> {
   try {
     const res = await fetch(
       `${url}/rest/v1/app_users?email=eq.${encodeURIComponent(email.toLowerCase())}&active=eq.true&select=app_role`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" }
+      {
+        headers: { apikey: key, Authorization: `Bearer ${key}` },
+        cache: "no-store",
+      },
     );
     const rows = (await res.json()) as { app_role?: string }[];
     const raw = rows?.[0]?.app_role;
-    return raw === "admin" ? "admin" : raw === "bd_owner" ? "bd_owner" : raw === "bd_member" ? "bd_member" : raw === "sol_member" ? "sol_member" : null;
+    return raw === "admin"
+      ? "admin"
+      : raw === "bd_owner"
+        ? "bd_owner"
+        : raw === "bd_member"
+          ? "bd_member"
+          : raw === "sol_member"
+            ? "sol_member"
+            : null;
   } catch {
     return null;
   }
@@ -94,7 +114,7 @@ export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
     if (grant) {
       /* The admin PRIVILEGE counts, not only the role string: see
          lib/effectiveRole. */
-      const realRole = await liftToAdmin(grant.role, grant.displayName);
+      const realRole = await liftToAdmin(grant.role, grant.userId);
       return { role: applyViewAs(realRole, viewAs), realRole };
     }
     // Protected deployments must never turn a missing or invalid grant into
@@ -109,7 +129,7 @@ export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
       : process.env.AUTH_MODE === "aws-alb"
         ? parseAlbOidcPrincipal(
             headerStore.get("x-amzn-oidc-data"),
-            headerStore.get("x-amzn-oidc-identity")
+            headerStore.get("x-amzn-oidc-identity"),
           )
         : null;
   if (principal) {
@@ -131,7 +151,8 @@ export async function getRoleInfo(): Promise<{ role: Role; realRole: Role }> {
     const asEmail = process.env.FREYR_LOCAL_IDENTITY_EMAIL?.trim();
     if (asEmail) {
       const persona = await roleForLocalPersona(asEmail);
-      if (persona) return { role: applyViewAs(persona, viewAs), realRole: persona };
+      if (persona)
+        return { role: applyViewAs(persona, viewAs), realRole: persona };
     }
     // Demo harness (no authentication configured): the switcher IS the role,
     // and its identity defaults to admin.

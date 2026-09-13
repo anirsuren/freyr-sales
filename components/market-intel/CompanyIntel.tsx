@@ -1,15 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
 import { useState } from "react";
 import {
   ArrowLeft,
-  Crown,
   ExternalLink,
-  FileCheck2,
-  Globe2,
-  Handshake,
   LayoutGrid,
   List,
   MessageSquare,
@@ -20,7 +15,6 @@ import {
   ThumbsUp,
   TrendingDown,
   TrendingUp,
-  UserPlus,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -194,8 +188,8 @@ export function CompanyIntel({
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* ------------------------------------------------ the feed */}
-        <div className="lg:col-span-2">
-          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <div className="min-w-0 lg:col-span-2">
+          <div className="mb-3 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1">
             {lenses.map((l) => {
               const LIcon = l.icon;
               const active = lens === l.key;
@@ -206,7 +200,7 @@ export function CompanyIntel({
                   onClick={() => setLens(l.key)}
                   aria-pressed={active}
                   className={cn(
-                    "flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
+                    "flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
                     active
                       ? "border-transparent text-white"
                       : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"

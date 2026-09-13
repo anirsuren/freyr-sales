@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Plus, Star } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,6 +31,7 @@ export function MyListToggle({
   const { toast } = useToast();
   const [mine, setMine] = useState(onMyPage);
   const [star, setStar] = useState(starred);
+  const [confirm, setConfirm] = useState<"remove" | "unstar" | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function save(body: Record<string, unknown>) {
@@ -42,6 +44,7 @@ export function MyListToggle({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Could not save your list.");
+      setConfirm(null);
       router.refresh();
       return data as { resumed?: boolean; stopped?: boolean };
     } finally {
@@ -54,10 +57,8 @@ export function MyListToggle({
     setMine(next);
     if (!next) setStar(false);
     try {
-      const data = await save({ id: companyId, on: next });
-      if (data.resumed) toast(`${companyName} is on your page. Nobody had it, so it starts collecting again.`);
-      else if (data.stopped) toast(`${companyName} is off your page. Nobody has it now, so it stops collecting.`);
-      else toast(next ? `${companyName} is on your page.` : `${companyName} is off your page.`);
+      await save({ id: companyId, on: next });
+      toast(next ? `Now tracking ${companyName}.` : `Stopped tracking ${companyName}.`);
     } catch (caught) {
       setMine(!next);
       setStar(starred);
@@ -75,9 +76,9 @@ export function MyListToggle({
       toast(
         next
           ? joining
-            ? `${companyName} is starred, and now on your page too.`
+            ? `${companyName} is now tracked and starred.`
             : `${companyName} is starred.`
-          : `${companyName} is no longer starred. It stays on your page.`
+          : `${companyName} is no longer starred. You are still tracking it.`
       );
     } catch (caught) {
       setStar(!next);
@@ -87,16 +88,17 @@ export function MyListToggle({
   }
 
   return (
+    <>
     <span className="flex items-center gap-1.5">
       <button
         type="button"
-        onClick={() => void toggleMine()}
+        onClick={() => mine ? setConfirm("remove") : void toggleMine()}
         disabled={busy}
         aria-pressed={mine}
         title={
           mine
-            ? "On your page. Click to take it off; if nobody else has it, it stops collecting."
-            : "Put it on your page. That also keeps it collected."
+            ? "Tracking this company. Click to stop tracking."
+            : "Track this company."
         }
         className={cn(
           "flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-60",
@@ -106,15 +108,15 @@ export function MyListToggle({
         )}
       >
         {mine ? <Check size={13} strokeWidth={2.6} /> : <Plus size={13} strokeWidth={2.6} />}
-        {mine ? "On my page" : "Add to my page"}
+        {mine ? "Tracking" : "Track company"}
       </button>
       <button
         type="button"
-        onClick={() => void toggleStar()}
+        onClick={() => star ? setConfirm("unstar") : void toggleStar()}
         disabled={busy}
         aria-pressed={star}
         aria-label={star ? `Unstar ${companyName}` : `Star ${companyName}`}
-        title={star ? "Starred. Click to unstar; it stays on your page." : "Star it as a favourite"}
+        title={star ? "Starred. Click to unstar; tracking stays on." : "Star it as a favourite"}
         className={cn(
           "flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-full transition-colors disabled:opacity-60",
           star
@@ -125,5 +127,16 @@ export function MyListToggle({
         <Star size={14} strokeWidth={2.2} fill={star ? "currentColor" : "none"} />
       </button>
     </span>
+    <ConfirmDialog
+      open={confirm !== null}
+      onClose={() => !busy && setConfirm(null)}
+      onConfirm={() => void (confirm === "remove" ? toggleMine() : toggleStar())}
+      busy={busy}
+      tone="primary"
+      title={confirm === "remove" ? "Stop tracking?" : "Remove star?"}
+      body={confirm === "remove" ? `${companyName} will leave your Market Intel page and starred list. You can add it again from Manage companies.` : `${companyName} will no longer be starred. It will stay on your page.`}
+      confirmLabel={confirm === "remove" ? "Stop tracking" : "Remove star"}
+    />
+    </>
   );
 }

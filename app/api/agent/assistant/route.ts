@@ -94,7 +94,7 @@ export async function POST(req: Request) {
         const roadmapSafe = (await canViewNextCustomerVersion(raw))
           ? hydrated
           : hideNextCustomerVersions(hydrated);
-        const o = redactAgentOnlyMaterials(roadmapSafe, viewer.memberId);
+        const o = redactAgentOnlyMaterials(roadmapSafe, viewer.memberId, viewer.role === "admin");
         const mats = o.materials || [];
         focus = [
           `THE OFFERING ON SCREEN, complete record, treat as authoritative:`,

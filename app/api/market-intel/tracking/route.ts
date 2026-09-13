@@ -1,14 +1,22 @@
+import {
+  enqueueCompany,
+  armCompanyOnboarding,
+  runCompanyOnboarding,
+  retryCompanyOnboarding,
+} from "@/lib/marketIntelOnboarding";
 import { NextRequest, NextResponse } from "next/server";
 import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { after } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import {
-  addCompanyByLink,
+  DuplicateCompanyError,
+  findCompanyDuplicate,
+} from "@/lib/marketIntelDuplicates";
+import {
   addPersonByLink,
   refreshTrackedCompanyNow,
   refreshTrackedPersonNow,
-  resumeCompanyIfStale,
 } from "@/lib/marketIntelRefresh";
 import { deleteFeedCompany } from "@/lib/marketIntelFeed";
 import {
@@ -68,7 +76,54 @@ async function acquireTrackingWrite(): Promise<() => void> {
  */
 async function readOnly(): Promise<NextResponse | null> {
   const refusal = await moduleWriteRefusal("/market-intel");
-  return refusal ? NextResponse.json({ error: refusal }, { status: 403 }) : null;
+  return refusal
+    ? NextResponse.json({ error: refusal }, { status: 403 })
+    : null;
+}
+
+export async function GET(req: NextRequest) {
+  if (!(await verifiedRequestMemberScope(req)))
+    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  const shut = await readOnly();
+  if (shut) return shut;
+  try {
+    const tracking = await readMarketIntelTracking({ fresh: true });
+    const statusIds = (req.nextUrl.searchParams.get("statusIds") || "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .slice(0, 50);
+    if (statusIds.length) {
+      const wanted = new Set(statusIds);
+      return NextResponse.json({
+        companies: tracking.companies
+          .filter((company) => wanted.has(company.id))
+          .map((company) => ({ id: company.id, onboarding: company.onboarding ?? null })),
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
+    const company = findCompanyDuplicate(
+      tracking.companies,
+      req.nextUrl.searchParams.get("website") || "",
+      req.nextUrl.searchParams.get("linkedinUrl") || "",
+    );
+    return NextResponse.json(
+      {
+        duplicate: company
+          ? {
+              id: company.id,
+              name: company.name,
+              group: company.group || "customer",
+            }
+          : null,
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Could not check existing companies. Please try again." },
+      { status: 503 },
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -86,34 +141,60 @@ export async function POST(req: NextRequest) {
     ...(user.email ? { email: user.email } : {}),
   };
   const body = (await req.json().catch(() => ({}))) ?? {};
+  if (body?.kind === "company-link" || body?.kind === "company-retry") {
+    try {
+      let company;
+      if (body.kind === "company-retry") {
+        const tracking = await readMarketIntelTracking({ fresh: true });
+        company = tracking.companies.find((c) => c.id === String(body.id));
+        if (!company) throw new Error("Company is no longer tracked.");
+        await retryCompanyOnboarding(company.id);
+      } else {
+        company = await enqueueCompany(
+          {
+            name: body.name,
+            website: body.website,
+            linkedinUrl: body.linkedinUrl,
+          },
+          body.group === "competitor" ? "competitor" : "customer",
+          { addedBy, divisions: cleanDivisions(body.divisions) },
+        );
+        try {
+          await setMarketIntelBookmark(scope, company.id, true);
+        } catch {
+          throw new Error(
+            `${company.name} was saved, but could not be added to your personal list. Select it in Manage ${company.group === "competitor" ? "competitors" : "customers"}.`,
+          );
+        }
+      }
+      armCompanyOnboarding();
+      after(() => runCompanyOnboarding());
+      return NextResponse.json(
+        {
+          ok: true,
+          company: { id: company.id, name: company.name, group: company.group },
+          status: "queued",
+        },
+        { status: 202 },
+      );
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error ? error.message : "Could not add company.",
+        },
+        { status: error instanceof DuplicateCompanyError ? 409 : 400 },
+      );
+    }
+  }
   const releaseWrite = await acquireTrackingWrite();
   try {
     // Link-only flows: the LinkedIn page is the whole form; everything else
     // (name, logo, title, photo, first data pull) comes from the page itself.
-    if (body?.kind === "company-link") {
-      const result = await addCompanyByLink(
-        { linkedinUrl: String(body.linkedinUrl ?? ""), website: String(body.website ?? "") },
-        body?.group === "competitor" ? "competitor" : "customer",
-        {
-          addedBy,
-          divisions: cleanDivisions(body.divisions),
-        }
-      );
-      // Whoever added or chose it gets it ticked: it lands on their own page.
-      await setMarketIntelBookmark(scope, result.id, true).catch(() => undefined);
-      // A company nobody had is pulled now if its data is old.
-      if (result.resumed) after(() => resumeCompanyIfStale(result.id));
-      return NextResponse.json({
-        ok: true,
-        company: { id: result.id, name: result.name, group: result.group },
-        existing: result.existing,
-        resumed: result.resumed,
-      });
-    }
     if (body?.kind === "person-link") {
       const person = await addPersonByLink(
         String(body.companyId ?? "").trim(),
-        String(body.linkedinUrl ?? "")
+        String(body.linkedinUrl ?? ""),
       );
       return NextResponse.json({ ok: true, person });
     }
@@ -122,17 +203,17 @@ export async function POST(req: NextRequest) {
       if (divisions.length === 0) {
         return NextResponse.json(
           { error: "Pick at least one division (MPR, MDV or CON)." },
-          { status: 400 }
+          { status: 400 },
         );
       }
       const result = await trackCompany(body, { addedBy, divisions });
-      await setMarketIntelBookmark(scope, result.company.id, true).catch(() => undefined);
+      await setMarketIntelBookmark(scope, result.company.id, true);
       // The first briefing is collected right after this response goes out
       // (a few cents), so the page fills in minutes instead of a day.
       after(() =>
         refreshTrackedCompanyNow(result.company).catch((error) =>
-          console.error("[market-intel] first company scrape failed:", error)
-        )
+          console.error("[market-intel] first company scrape failed:", error),
+        ),
       );
       return NextResponse.json({ ok: true, ...result });
     }
@@ -140,8 +221,8 @@ export async function POST(req: NextRequest) {
       const person = await trackPerson(body);
       after(() =>
         refreshTrackedPersonNow(person).catch((error) =>
-          console.error("[market-intel] first person scrape failed:", error)
-        )
+          console.error("[market-intel] first person scrape failed:", error),
+        ),
       );
       return NextResponse.json({ ok: true, person });
     }
@@ -149,8 +230,11 @@ export async function POST(req: NextRequest) {
     if (body?.kind === "group") {
       if (!isAdmin) {
         return NextResponse.json(
-          { error: "Only an admin moves a company between customers and competitors." },
-          { status: 403 }
+          {
+            error:
+              "Only an admin moves a company between customers and competitors.",
+          },
+          { status: 403 },
         );
       }
       const id = String(body?.id ?? "").trim();
@@ -164,7 +248,7 @@ export async function POST(req: NextRequest) {
       if (divisions.length === 0) {
         return NextResponse.json(
           { error: "Every company needs at least one division." },
-          { status: 400 }
+          { status: 400 },
         );
       }
       const saved = await setCompanyDivisions(String(body.id ?? ""), divisions);
@@ -174,7 +258,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Could not save." },
-      { status: 400 }
+      { status: error instanceof DuplicateCompanyError ? 409 : 400 },
     );
   } finally {
     releaseWrite();
@@ -202,20 +286,34 @@ export async function DELETE(req: NextRequest) {
          its data rows and every follow, and a seed stays deleted. */
       if (!isAdmin) {
         return NextResponse.json(
-          { error: "Only an admin can delete a company for everyone. Remove it from your list with the star instead." },
-          { status: 403 }
+          {
+            error:
+              "Only an admin can delete a company for everyone. Remove it from your list with the star instead.",
+          },
+          { status: 403 },
         );
       }
       const tracking = await readMarketIntelTracking();
-      const personIds = tracking.people.filter((p) => p.companyId === id).map((p) => p.id);
+      const personIds = tracking.people
+        .filter((p) => p.companyId === id)
+        .map((p) => p.id);
       const followers =
-        (await readMarketIntelFollowers().catch(() => ({}) as Record<string, string[]>))[id]?.length ?? 0;
+        (
+          await readMarketIntelFollowers().catch(
+            () => ({}) as Record<string, string[]>,
+          )
+        )[id]?.length ?? 0;
       const gone = await deleteCompanyForGood(id);
       await deleteFeedCompany(id, personIds).catch((error) =>
-        console.error("[market-intel] delete of feed rows failed:", error)
+        console.error("[market-intel] delete of feed rows failed:", error),
       );
       const lists = await forgetMarketIntelCompany(id).catch(() => 0);
-      return NextResponse.json({ ok: true, found: gone.found, followersRemoved: followers, listsTouched: lists });
+      return NextResponse.json({
+        ok: true,
+        found: gone.found,
+        followersRemoved: followers,
+        listsTouched: lists,
+      });
     }
     if (body?.kind === "person") {
       await untrackPerson(id);
@@ -225,7 +323,7 @@ export async function DELETE(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Could not save." },
-      { status: 400 }
+      { status: 400 },
     );
   } finally {
     releaseWrite();

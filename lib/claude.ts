@@ -483,7 +483,8 @@ type CompletedText = {
 async function completeTextResponse(
   params: Anthropic.MessageCreateParamsNonStreaming,
   initial?: Anthropic.Message,
-  maxContinuations = 3
+  maxContinuations = 3,
+  onUsage?: (usage: Anthropic.Message["usage"]) => void
 ): Promise<CompletedText> {
   if (!client) return { text: "", truncated: false, stopReason: null };
   const messages = [...params.messages];
@@ -492,6 +493,7 @@ async function completeTextResponse(
   let continuations = 0;
 
   while (true) {
+    onUsage?.(response.usage);
     const piece = rawTextFrom(response);
     if (piece) pieces.push(piece);
     const decision = continuationDecision(
@@ -750,7 +752,7 @@ async function agentConverseOnce(
   tools: AgentToolDef[],
   runTool: (name: string, input: any) => Promise<{ content: string; did?: string }>,
   maxSteps = 6
-): Promise<{ text: string; dids: string[]; truncated: boolean } | null> {
+): Promise<{ text: string; dids: string[]; truncated: boolean; usage: {inputTokens:number;outputTokens:number;cacheReadTokens:number;cacheWriteTokens:number;modelCalls:number} } | null> {
   await hydrateAnthropicKey();
   if (!client) return null;
   // Claude requires the first message from the user with alternating roles —
@@ -768,6 +770,8 @@ async function agentConverseOnce(
   }
   if (!messages.length || messages[messages.length - 1].role !== "user") return null;
 
+  const usage = {inputTokens:0,outputTokens:0,cacheReadTokens:0,cacheWriteTokens:0,modelCalls:0};
+  const recordUsage = (u: Anthropic.Message["usage"]) => {usage.inputTokens+=u.input_tokens;usage.outputTokens+=u.output_tokens;usage.cacheReadTokens+=u.cache_read_input_tokens??0;usage.cacheWriteTokens+=u.cache_creation_input_tokens??0;usage.modelCalls++;};
   const dids: string[] = [];
   try {
     for (let step = 0; step < maxSteps; step++) {
@@ -780,7 +784,7 @@ async function agentConverseOnce(
       };
       const response = await client.messages.create(request);
       if (response.stop_reason !== "tool_use") {
-        const completed = await completeTextResponse(request, response);
+        const completed = await completeTextResponse(request, response, 3, recordUsage);
         const written = completed.text.trim();
         // An empty turn is not an answer. It happens when the model stops
         // without prose — most often truncated part-way through a tool call —
@@ -789,10 +793,11 @@ async function agentConverseOnce(
         // through to the no-tools pass below, which has to reply in words.
         if (written) {
           noteClaudeCall(true);
-          return { text: written, dids, truncated: completed.truncated };
+          return { text: written, dids, truncated: completed.truncated, usage };
         }
         break;
       }
+      recordUsage(response.usage);
       // Carry the assistant's tool-call turn, then answer each tool call.
       messages.push({ role: "assistant", content: response.content });
       const results: Anthropic.ToolResultBlockParam[] = [];
@@ -838,7 +843,7 @@ async function agentConverseOnce(
       messages,
     };
     const final = await client.messages.create(finalRequest);
-    const completed = await completeTextResponse(finalRequest, final);
+    const completed = await completeTextResponse(finalRequest, final, 3, recordUsage);
     const text = completed.text.trim();
     if (!text) {
       // Still nothing written. Report it as a failure so the caller retries
@@ -854,7 +859,7 @@ async function agentConverseOnce(
       return null;
     }
     noteClaudeCall(true);
-    return { text, dids, truncated: completed.truncated };
+    return { text, dids, truncated: completed.truncated, usage };
   } catch (e) {
     noteClaudeCall(false, e);
     // NEVER fail silently. The canned fallback answering in Claude's place is

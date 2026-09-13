@@ -1,3 +1,4 @@
+import { prepareMemberPrivilegeSave } from "@/lib/memberPrivilegeIdentity";
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
 import {
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
   if (me.role !== "admin")
     return NextResponse.json(
       { error: "Only an admin can change privileges." },
-      { status: 403 }
+      { status: 403 },
     );
 
   const body = (await req.json().catch(() => null)) as {
@@ -53,8 +54,11 @@ export async function POST(req: NextRequest) {
        cannot half-apply. normalize() is what refuses anything malformed. */
     const before = await readPrivileges();
     const state = await writePrivileges(
-      normalizePrivilegeState(body.state),
-      me.name
+      await prepareMemberPrivilegeSave(
+        normalizePrivilegeState(body.state),
+        before,
+      ),
+      me.name,
     );
 
     /* EVERY CHANGE IS ANNOUNCED (Suren, Aug 29). Diffed here rather than sent
@@ -67,7 +71,7 @@ export async function POST(req: NextRequest) {
        admin needs told about (Anir, Aug 31: "stop spamming us"). A save that
        only touched test accounts sends nothing at all. */
     const lines = diffLines(before, state).filter(
-      (line) => !isTestAccountName(line.split(":")[0])
+      (line) => !isTestAccountName(line.split(":")[0]),
     );
     if (lines.length) {
       void notifyPrivilegesChanged({ changedBy: me.name, lines });
@@ -85,7 +89,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "That did not save." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
@@ -100,7 +104,7 @@ export async function POST(req: NextRequest) {
 function personChanges(
   before: PrivilegeState,
   after: PrivilegeState,
-  actor: string
+  actor: string,
 ): { actor: string; subject: string; kind: "privileges"; detail: string }[] {
   const nameOf = (id: string) =>
     after.privileges.find((p) => p.id === id)?.label ?? id;
@@ -108,7 +112,12 @@ function personChanges(
     ...Object.keys(before.peoplePrivileges),
     ...Object.keys(after.peoplePrivileges),
   ]);
-  const out: { actor: string; subject: string; kind: "privileges"; detail: string }[] = [];
+  const out: {
+    actor: string;
+    subject: string;
+    kind: "privileges";
+    detail: string;
+  }[] = [];
   for (const person of people) {
     const wasIds = (before.peoplePrivileges[person] ?? []).slice().sort();
     const nowIds = (after.peoplePrivileges[person] ?? []).slice().sort();
@@ -122,7 +131,9 @@ function personChanges(
     const moved = [
       gained.length ? `gained ${gained.join(", ")}` : "",
       lost.length ? `lost ${lost.join(", ")}` : "",
-    ].filter(Boolean).join(" and ");
+    ]
+      .filter(Boolean)
+      .join(" and ");
     out.push({
       actor,
       subject: person,
@@ -156,11 +167,17 @@ function diffLines(before: PrivilegeState, after: PrivilegeState): string[] {
     ...Object.keys(after.peoplePrivileges),
   ]);
   for (const person of people) {
-    const was = (before.peoplePrivileges[person] ?? []).slice().sort().join(", ");
-    const now = (after.peoplePrivileges[person] ?? []).slice().sort().join(", ");
+    const was = (before.peoplePrivileges[person] ?? [])
+      .slice()
+      .sort()
+      .join(", ");
+    const now = (after.peoplePrivileges[person] ?? [])
+      .slice()
+      .sort()
+      .join(", ");
     if (was === now) continue;
     out.push(
-      `${person}: ${now ? now.split(", ").map(nameOf).join(", ") : "no privileges"}`
+      `${person}: ${now ? now.split(", ").map(nameOf).join(", ") : "no privileges"}`,
     );
   }
 

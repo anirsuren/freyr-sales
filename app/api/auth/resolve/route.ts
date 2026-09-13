@@ -1,3 +1,4 @@
+import { clearAccessGrant } from "@/lib/accessResponse";
 import { NextRequest, NextResponse } from "next/server";
 import { requestUsesHttps } from "@/lib/appSession";
 import {
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
   if (!principal) {
     const login = new URL("/login", origin);
     login.searchParams.set("next", next);
-    return NextResponse.redirect(login);
+    return clearAccessGrant(NextResponse.redirect(login), request);
   }
   if (!isApprovalGateEnabled()) {
     return NextResponse.redirect(new URL(next, origin));
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
     if (access.status === "pending") {
       const pending = new URL("/access-pending", origin);
       if (principal.email) pending.searchParams.set("email", principal.email);
-      return NextResponse.redirect(pending);
+      return clearAccessGrant(NextResponse.redirect(pending), request);
     }
 
     const token = await signAccessGrant({

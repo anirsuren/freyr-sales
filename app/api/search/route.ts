@@ -8,6 +8,7 @@ import { isReleased } from "@/lib/release";
 import { getRole } from "@/lib/role";
 import { canAccessModule } from "@/lib/moduleAccess";
 import { readOpportunities } from "@/lib/opportunities";
+import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,27 @@ export async function GET(req: Request) {
       });
     }
   }
+  /* A MARKET INTEL COMPANY IS FINDABLE BY NAME (Anir, Sep 11: "I don't even
+     know how to get to these pages apart from the links"). A company nobody
+     has ticked sits on no one's page, so search is the other way in. Accents
+     are ignored, so "tuv" finds TÜV. Ahead of offerings, whose descriptions
+     match broad words and would fill the twelve slots first. */
+  if (canSee("/market-intel")) {
+    const tracking = await readMarketIntelTracking().catch(() => null);
+    const fold = (text: string) => text.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const needle = fold(q);
+    for (const c of tracking?.companies ?? []) {
+      if (!fold(c.name).includes(needle)) continue;
+      const divisions = tracking?.divisions?.[c.id] ?? c.divisions ?? [];
+      results.push({
+        type: "Market Intel",
+        label: c.name,
+        sublabel: [c.group === "competitor" ? "Competitor" : "Customer", divisions.join(", ")].filter(Boolean).join(" · "),
+        href: `/market-intel/${c.id}`,
+      });
+    }
+  }
+
   // Offerings are a core object now — make them findable in global search too,
   // matching the same fields the in-page offerings search does (name, type,
   // description, plus the markets and customer types they're mapped to) so

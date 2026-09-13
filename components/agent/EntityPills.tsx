@@ -11,6 +11,7 @@ import {
   Paperclip,
   Target,
   UserPlus,
+  Presentation,
 } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
@@ -28,6 +29,9 @@ import { Avatar } from "@/components/ui/Avatar";
  */
 
 export type EntityKind =
+  | "trackedPerson"
+  | "marketCompany"
+  | "solution"
   | "company"
   | "contact"
   | "offering"
@@ -40,24 +44,58 @@ export type EntityKind =
   | "lead"
   | "goal";
 
-export type Entity = { name: string; id: string; kind: EntityKind };
+export type Entity = {
+  name: string;
+  id: string;
+  kind: EntityKind;
+  logoUrl?: string;
+};
 
 /** Where a pill of each kind goes, and what it wears. */
 const KIND: Record<
   EntityKind,
-  { href: (id: string) => string; mark: (name: string) => ReactNode }
+  {
+    href: (id: string) => string;
+    mark: (name: string, logoUrl?: string) => ReactNode;
+  }
 > = {
+  trackedPerson: {
+    href: (id) => id,
+    mark: (name, photoUrl) => <Avatar name={name} src={photoUrl} className="w-4 h-4 text-[7px] shrink-0" />,
+  },
+  marketCompany: {
+    href: (id) => `/market-intel/${encodeURIComponent(id)}`,
+    mark: (name, logoUrl) => (
+      <CompanyLogo
+        name={name}
+        src={logoUrl}
+        className="w-4 h-4 text-[7px] shrink-0"
+      />
+    ),
+  },
+  solution: {
+    href: (id) => `/solutioning/${encodeURIComponent(id)}`,
+    mark: () => (
+      <Presentation size={13} strokeWidth={1.9} className="shrink-0" />
+    ),
+  },
   company: {
-    href: (id) => `/customers/${id}`,
-    mark: (name) => <CompanyLogo name={name} className="w-4 h-4 text-[7px] shrink-0" />,
+    href: (id) => `/customers/${encodeURIComponent(id)}`,
+    mark: (name) => (
+      <CompanyLogo name={name} className="w-4 h-4 text-[7px] shrink-0" />
+    ),
   },
   contact: {
-    href: (id) => `/contacts/${id}`,
-    mark: (name) => <Avatar name={name} className="w-4 h-4 text-[7px] shrink-0" />,
+    href: (id) => `/contacts/${encodeURIComponent(id)}`,
+    mark: (name) => (
+      <Avatar name={name} className="w-4 h-4 text-[7px] shrink-0" />
+    ),
   },
   person: {
-    href: () => "/team",
-    mark: (name) => <Avatar name={name} className="w-4 h-4 text-[7px] shrink-0" />,
+    href: (id) => `/team?member=${encodeURIComponent(id)}`,
+    mark: (name) => (
+      <Avatar name={name} className="w-4 h-4 text-[7px] shrink-0" />
+    ),
   },
   /**
    * A plain glyph, not the offering's own gradient tile (Anir, Sep 2: "can you
@@ -67,15 +105,15 @@ const KIND: Record<
    * component, report and deal pills wear.
    */
   offering: {
-    href: (id) => `/offerings/${id}`,
+    href: (id) => `/offerings/${encodeURIComponent(id)}`,
     mark: () => <Package size={13} strokeWidth={1.9} className="shrink-0" />,
   },
   component: {
-    href: (id) => `/components/${id}`,
+    href: (id) => `/components/${encodeURIComponent(id)}`,
     mark: () => <Layers size={13} strokeWidth={1.9} className="shrink-0" />,
   },
   report: {
-    href: (id) => (id ? `/reports/${id}` : "/reports"),
+    href: (id) => (id ? `/reports/${encodeURIComponent(id)}` : "/reports"),
     mark: () => <BarChart3 size={13} strokeWidth={1.9} className="shrink-0" />,
   },
   /**
@@ -84,31 +122,32 @@ const KIND: Record<
    * named video in an answer lands on it playing rather than on the offering
    * page with a tab to hunt through.
    */
-  /* These four list pages do not deep-link to a single row yet, so the pill
-     lands on the list — identity first, navigation as far as it goes, the
-     same bargain the `person` pill has always struck with /team. */
+  /* Opportunities have record detail pages. Contracts and leads currently
+     use list pages; preserve their supported navigation. */
   deal: {
-    href: () => "/opportunities",
+    href: (id) => `/opportunities/${encodeURIComponent(id)}`,
     mark: () => <Briefcase size={13} strokeWidth={1.9} className="shrink-0" />,
   },
   contract: {
     href: () => "/contracts",
-    mark: () => <FileSignature size={13} strokeWidth={1.9} className="shrink-0" />,
+    mark: () => (
+      <FileSignature size={13} strokeWidth={1.9} className="shrink-0" />
+    ),
   },
   lead: {
     href: () => "/leads",
     mark: () => <UserPlus size={13} strokeWidth={1.9} className="shrink-0" />,
   },
   goal: {
-    href: () => "/goals",
+    href: (id) => `/performance/goal/${encodeURIComponent(id)}`,
     mark: () => <Target size={13} strokeWidth={1.9} className="shrink-0" />,
   },
   material: {
     href: (id) => {
       const [offeringId, materialId] = id.split(":");
       return materialId
-        ? `/offerings/${offeringId}?tab=materials&material=${encodeURIComponent(materialId)}`
-        : `/offerings/${offeringId}?tab=materials`;
+        ? `/offerings/${encodeURIComponent(offeringId)}?tab=materials&material=${encodeURIComponent(materialId)}`
+        : `/offerings/${encodeURIComponent(offeringId)}?tab=materials`;
     },
     mark: () => <Paperclip size={13} strokeWidth={1.9} className="shrink-0" />,
   },
@@ -130,11 +169,27 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** A name alone cannot choose between two records. Keep those names as
+ * prose; an explicit link in the answer can still name the intended page. */
+export function unambiguousEntities(entities: Entity[]): Entity[] {
+  const byName = new Map<string, Map<string, Entity>>();
+  for (const entity of entities) {
+    if (!entity.name?.trim()) continue;
+    const matches = byName.get(entity.name) || new Map<string, Entity>();
+    matches.set(`${entity.kind}:${entity.id}`, entity);
+    byName.set(entity.name, matches);
+  }
+  return [...byName.values()]
+    .filter((matches) => matches.size === 1)
+    .map((matches) => [...matches.values()][0])
+    .sort((a, b) => b.name.length - a.name.length);
+}
+
 /**
  * Rewrite a plain string so every known name becomes a pill.
  *
  * Matched longest-first so "Cortexa Biopharma" beats "Cortexa" and
- * "Freya.Register" is not cut down to "Freya". Case-insensitive.
+ * "Freya.Register" is not cut down to "Freya". Case-sensitive.
  *
  * The trailing guard excludes word characters and hyphens but NOT the full
  * stop. Excluding "." looked right (it stops "Freya" matching inside
@@ -143,12 +198,28 @@ function escapeRe(s: string): string {
  * while every mid-sentence name pilled. Prefix collisions are already handled
  * by sorting longest-first, since alternation is first-match-wins.
  */
+/** A verified explicit destination in this answer can disambiguate its earlier plain mentions. */
+export function entitiesForAnswer(text: string, entities: Entity[], context: string[] = []): Entity[] {
+  const urls = new Set([...text.matchAll(/\[[^\]]*\]\(([^\s)]+)\)/g)].map(m => m[1]));
+  const groups = new Map<string, Entity[]>();
+  for (const entity of entities) {
+    const name = entity.name.trim().toLocaleLowerCase();
+    groups.set(name, [...(groups.get(name) || []), entity]);
+  }
+  return [...groups.values()].flatMap(group => {
+    const explicit = group.filter(e => urls.has(KIND[e.kind].href(e.id)));
+    const linked = explicit.length ? explicit : group.filter(e => context.includes(KIND[e.kind].href(e.id)));
+    const destinations = new Set(linked.map(e => KIND[e.kind].href(e.id)));
+    return destinations.size === 1 ? linked : group;
+  });
+}
+
 export function injectEntities(
   text: string,
   entities: Entity[],
   keyBase: string,
   /** Offerings-only release has no customer or contact pages to link to. */
-  linkable = true
+  linkable = true,
 ): ReactNode[] {
   if (!entities.length || !text) return [text];
   /**
@@ -166,7 +237,12 @@ export function injectEntities(
    * bonus. So a name with no destination renders as the same pill without the
    * href, instead of not rendering as a pill at all.
    */
-  const usable = entities;
+  // Single-word catalogue titles can also be ordinary words or another company's product.
+  // Require an explicit entity link for those; do not infer identity from capitalization.
+  const usable = unambiguousEntities(entities).filter(e =>
+    !["component", "offering", "report", "material"].includes(e.kind) || /[\s.]/.test(e.name)
+  );
+  if (!usable.length) return [text];
 
   /**
    * CASE-SENSITIVE ON PURPOSE (Anir, Aug 15: "that's not supposed to be
@@ -183,7 +259,7 @@ export function injectEntities(
    */
   const re = new RegExp(
     `\\b(${usable.map((e) => escapeRe(e.name)).join("|")})(?![\\w-])`,
-    "g"
+    "g",
   );
   const out: ReactNode[] = [];
   let last = 0;
@@ -197,22 +273,35 @@ export function injectEntities(
       // Offerings-only has no customer or contact pages; those pills stay
       // pills and simply do not navigate.
       const hasPage =
-        linkable || hit.kind === "offering" || hit.kind === "component" ||
-        hit.kind === "person" || hit.kind === "report" ||
-        hit.kind === "material" || hit.kind === "deal" ||
-        hit.kind === "contract" || hit.kind === "lead" || hit.kind === "goal";
+        linkable ||
+        hit.kind === "offering" ||
+        hit.kind === "component" ||
+        hit.kind === "person" ||
+        hit.kind === "report" ||
+        hit.kind === "material" ||
+        hit.kind === "deal" ||
+        hit.kind === "contract" ||
+        hit.kind === "lead" ||
+        hit.kind === "goal" ||
+        hit.kind === "marketCompany" ||
+        hit.kind === "solution";
       out.push(
         hasPage ? (
-          <Link key={`${keyBase}-e${k++}`} href={style.href(hit.id)} className={PILL}>
-            {style.mark(hit.name)}
+          <Link
+            key={`${keyBase}-e${k++}`}
+            href={style.href(hit.id)}
+            {...(hit.kind === "trackedPerson" ? {target:"_blank", rel:"noopener noreferrer"} : {})}
+            className={PILL}
+          >
+            {style.mark(hit.name, hit.logoUrl)}
             {m[1]}
           </Link>
         ) : (
           <span key={`${keyBase}-e${k++}`} className={`${PILL} cursor-default`}>
-            {style.mark(hit.name)}
+            {style.mark(hit.name, hit.logoUrl)}
             {m[1]}
           </span>
-        )
+        ),
       );
     } else {
       out.push(m[1]);
@@ -221,6 +310,21 @@ export function injectEntities(
   }
   if (last < text.length) out.push(text.slice(last));
   return out;
+}
+
+/** Explicit model links and automatically detected names share the same badge. */
+export function entityLink(href: string, label: string, entities: Entity[], key: string): ReactNode | null {
+  const candidates = entities.filter(e => KIND[e.kind].href(e.id) === href || (href === "/team" && e.kind === "person"));
+  const normalizedLabel = label.trim().toLocaleLowerCase();
+  const named = candidates.filter(e => e.name.trim().toLocaleLowerCase() === normalizedLabel);
+  // Shared list destinations do not identify a person or record. A Team link
+  // stays a navigation link; a named teammate gets only their own portrait.
+  const entity = named.length === 1 ? named[0] :
+    candidates.length === 1 && !["person", "lead", "contract"].includes(candidates[0].kind)
+      ? candidates[0] : undefined;
+  if (!entity) return null;
+  const style = KIND[entity.kind];
+  return <Link key={key} href={style.href(entity.id)} {...(entity.kind === "trackedPerson" ? {target:"_blank",rel:"noopener noreferrer"} : {})} className={PILL}>{style.mark(entity.name, entity.logoUrl)}{label.startsWith('/') ? entity.name : label}</Link>;
 }
 
 /**
@@ -235,18 +339,33 @@ export function useEntityIndex(): Entity[] {
   const [entities, setEntities] = useState<Entity[]>([]);
   useEffect(() => {
     let alive = true;
-    fetch("/api/agent/entities")
-      .then((r) => r.json())
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
+    let attempts = 0;
+    const load = () => fetch("/api/agent/entities", {signal: controller.signal, cache:"no-store"})
+      .then((r) => {
+        if (r.status === 401 || r.status === 403) { alive = false; return null; }
+        if (!r.ok) throw new Error("Entity index unavailable");
+        return r.json();
+      })
       .then((d) => {
         if (!alive) return;
         const take = (rows: unknown, kind: EntityKind): Entity[] =>
-          ((rows as { name: string; id: string }[]) || []).map((r) => ({
-            name: r.name,
-            id: r.id,
-            kind,
-          }));
+          (Array.isArray(rows) ? rows : [])
+            .filter(
+              (r) => typeof r?.name === "string" && typeof r?.id === "string",
+            )
+            .map((r) => ({
+              name: r.name,
+              id: r.id,
+              kind,
+              logoUrl: typeof r.logoUrl === "string" ? r.logoUrl : undefined,
+            }));
         const list = [
           ...take(d.companies, "company"),
+          ...take(d.marketCompanies, "marketCompany"),
+          ...take(d.trackedPeople, "trackedPerson"),
+          ...take(d.solutioning, "solution"),
           ...take(d.contacts, "contact"),
           ...take(d.offerings, "offering"),
           ...take(d.components, "component"),
@@ -261,9 +380,14 @@ export function useEntityIndex(): Entity[] {
         list.sort((a, b) => b.name.length - a.name.length);
         setEntities(list);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (alive && attempts++ < 3) retry = setTimeout(load, 1000 * 2 ** attempts);
+      });
+    void load();
     return () => {
       alive = false;
+      controller.abort();
+      if (retry) clearTimeout(retry);
     };
   }, []);
   return entities;

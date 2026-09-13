@@ -1,3 +1,4 @@
+import { clearAccessGrant } from "@/lib/accessResponse";
 import { NextRequest, NextResponse } from "next/server";
 import {
   ACCESS_COOKIE,
@@ -14,10 +15,10 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   const principal = await authenticatedRequestPrincipal(request);
   if (!principal) {
-    return NextResponse.json(
+    return clearAccessGrant(NextResponse.json(
       { error: "Authentication required" },
       { status: 401 }
-    );
+    ), request);
   }
 
   if (!isApprovalGateEnabled()) {
@@ -27,10 +28,10 @@ export async function POST(request: NextRequest) {
   try {
     const access = await resolveWorkspaceAccess(principal);
     if (access.status === "pending") {
-      return NextResponse.json(
+      return clearAccessGrant(NextResponse.json(
         { error: "Workspace owner approval required" },
         { status: 403 }
-      );
+      ), request);
     }
 
     const token = await signAccessGrant({

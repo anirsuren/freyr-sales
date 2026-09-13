@@ -1,3 +1,4 @@
+import { canOpenModule } from "@/lib/moduleAccessServer";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { agentAnswer } from "@/lib/claude";
@@ -18,7 +19,13 @@ export async function POST(req: NextRequest) {
   if (!scope) {
     return NextResponse.json(
       { error: "Verified workspace access required." },
-      { status: 403 }
+      { status: 403 },
+    );
+  }
+  if (!(await canOpenModule("/customers"))) {
+    return NextResponse.json(
+      { error: "Customers are not available on this account." },
+      { status: 403 },
     );
   }
   const senderName = await authenticatedRequestActorName(req);
@@ -38,10 +45,15 @@ export async function POST(req: NextRequest) {
   const tone = ["formal", "warm", "brief"].includes(String(body.tone))
     ? String(body.tone)
     : prefs?.draft_tone || "warm";
-  const contacts = await db.contacts.list(customerId);
-  const sessions = await db.pitchSessions.list(customerId);
+  const contacts = (await canOpenModule("/contacts"))
+    ? await db.contacts.list(customerId)
+    : [];
+  const sessions = (await canOpenModule("/sessions"))
+    ? await db.pitchSessions.list(customerId)
+    : [];
   const contact = contacts[0];
-  const services = (sessions[0]?.recommended_services || []) as RecommendedService[];
+  const services = (sessions[0]?.recommended_services ||
+    []) as RecommendedService[];
   const service = services[0]?.service_name || "Regulatory Submission Services";
   const co = customer.company_name;
   const firstName =
@@ -68,26 +80,24 @@ export async function POST(req: NextRequest) {
   // … and the tone sets the greeting, CTA, and sign-off.
   const savedSignature =
     memberProfile.signature.trim() || `${senderName}\nFreyr Solutions`;
-  const TONES: Record<
-    string,
-    { greet: string; cta: string; signoff: string }
-  > = {
-    warm: {
-      greet: `Hi ${firstName},`,
-      cta: `Worth a 20-minute call to see if it fits your near-term milestones?`,
-      signoff: savedSignature,
-    },
-    formal: {
-      greet: `Dear ${firstName},`,
-      cta: `Would you be open to a 20-minute call to assess fit against ${co}'s upcoming milestones?`,
-      signoff: savedSignature,
-    },
-    brief: {
-      greet: `Hi ${firstName},`,
-      cta: `Worth 20 minutes this week?`,
-      signoff: savedSignature,
-    },
-  };
+  const TONES: Record<string, { greet: string; cta: string; signoff: string }> =
+    {
+      warm: {
+        greet: `Hi ${firstName},`,
+        cta: `Worth a 20-minute call to see if it fits your near-term milestones?`,
+        signoff: savedSignature,
+      },
+      formal: {
+        greet: `Dear ${firstName},`,
+        cta: `Would you be open to a 20-minute call to assess fit against ${co}'s upcoming milestones?`,
+        signoff: savedSignature,
+      },
+      brief: {
+        greet: `Hi ${firstName},`,
+        cta: `Worth 20 minutes this week?`,
+        signoff: savedSignature,
+      },
+    };
   const angle = ANGLES[variant % ANGLES.length];
   const t = TONES[tone];
   const composedBody = `${t.greet}\n\n${angle.value}\n\n${t.cta}\n\n${t.signoff}`;
@@ -98,8 +108,8 @@ export async function POST(req: NextRequest) {
     tone === "formal"
       ? "Tone: formal and professional."
       : tone === "brief"
-      ? "Tone: brief. 2-3 sentences, punchy."
-      : "Tone: warm and personable.";
+        ? "Tone: brief. 2-3 sentences, punchy."
+        : "Tone: warm and personable.";
   const facts = [
     `Company: ${co}`,
     `Industry: ${industry}`,
@@ -107,7 +117,9 @@ export async function POST(req: NextRequest) {
     `Lead service: ${service}`,
     customer.competitor ? `Incumbent/competitor: ${customer.competitor}` : null,
     toneHint,
-    variant > 0 ? `This is rewrite #${variant}: take a clearly different angle.` : null,
+    variant > 0
+      ? `This is rewrite #${variant}: take a clearly different angle.`
+      : null,
     `Use this exact saved signature at the end:\n${savedSignature}`,
   ]
     .filter(Boolean)
@@ -120,14 +132,14 @@ export async function POST(req: NextRequest) {
       name: senderName,
       title: memberProfile.title || prefs?.linkedin_headline || null,
     },
-    prefs
+    prefs,
   );
   const llm = await agentAnswer(
     "You are Freyr's AI sales agent writing a concise re-engagement email (under " +
       `110 words) from ${senderName}. Match the requested tone. Ground it ONLY in ` +
       "the facts. Return exactly:\nSubject: <subject>\n<blank line>\n<body>. No preamble." +
       (identity ? `\n\n${identity}` : ""),
-    facts
+    facts,
   );
 
   let outSubject = angle.subject;
@@ -142,5 +154,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ subject: outSubject, body: outBody, source, tone });
+  return NextResponse.json({
+    subject: outSubject,
+    body: outBody,
+    source,
+    tone,
+  });
 }

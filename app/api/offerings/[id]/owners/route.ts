@@ -86,7 +86,8 @@ export async function POST(
     return NextResponse.json({
       offering: redactAgentOnlyMaterials(
         hydrateOffering(saved),
-        actor.userId
+        actor.userId,
+        actor.role === "admin"
       ),
     });
   } catch (e) {
@@ -149,7 +150,8 @@ export async function DELETE(
     return NextResponse.json({
       offering: redactAgentOnlyMaterials(
         hydrateOffering(offering),
-        user.memberId
+        user.memberId,
+        user.role === "admin"
       ),
     });
   }
@@ -160,7 +162,8 @@ export async function DELETE(
     return NextResponse.json({
       offering: redactAgentOnlyMaterials(
         hydrateOffering(saved),
-        user.memberId
+        user.memberId,
+        user.role === "admin"
       ),
     });
   } catch (e) {

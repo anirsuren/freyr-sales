@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createRequire}from'node:module';
+const require=createRequire(import.meta.url),Module=require('node:module'),original=Module._load;let sent=[],failure=false;
+process.env.AUTH_MODE='supabase';process.env.NEXT_PUBLIC_SUPABASE_URL='https://fixture.invalid';process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY='fixture';
+const mocks={'@supabase/supabase-js':{createClient:()=>({auth:{resetPasswordForEmail:async(email,options)=>{sent.push({email,options});return {error:failure?{message:'unavailable'}:null}}}})},'@/lib/authOrigin':{authUrl:path=>new URL(path,'https://app.example.com')},'@/lib/currentUser':{getCurrentUser:async()=>({email:'verified@example.com'})}};
+Module._load=function(id,...rest){return mocks[id]??original.call(this,id,...rest)};
+const request=require('../app/api/auth/password-reset/request/route.ts').POST,personal=require('../app/api/auth/password-reset/route.ts').POST;const{NextRequest}=require('next/server');Module._load=original;
+const body=email=>new NextRequest('https://app.example.com/api/auth/password-reset/request',{method:'POST',body:JSON.stringify({email})});
+test('invalid addresses cannot invoke email delivery',async()=>{for(const email of ['', 'a', 'x@y', 'a@@example.com'])assert.equal((await request(body(email))).status,400);assert.equal(sent.length,0)});
+test('known and unknown addresses receive the same response; safe redirect',async()=>{sent=[];let responses=[];for(const email of ['known@example.com','unknown@example.com'])responses.push(await(await request(body(email))).json());assert.deepEqual(responses,[{ok:true},{ok:true}]);assert.ok(sent.every(s=>s.options.redirectTo==='https://app.example.com/auth/reset-password'))});
+test('provider failure reports retryable error without account details',async()=>{failure=true;const r=await request(body('known@example.com'));assert.equal(r.status,502);assert.equal((await r.json()).error,'We could not send the reset email. Try again shortly.');failure=false});
+test('signed-in recovery uses verified identity instead of submitted address',async()=>{sent=[];assert.equal((await personal(body('victim@example.com'))).status,200);assert.equal(sent[0].email,'verified@example.com')});

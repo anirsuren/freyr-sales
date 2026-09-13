@@ -29,8 +29,8 @@
 /** Below the 64KB spec limit with room for headers and the JSON envelope. */
 const KEEPALIVE_MAX_BYTES = 60 * 1024;
 
-export async function putConversations(conversations: unknown[]): Promise<void> {
-  const body = JSON.stringify({ conversations });
+export async function putConversations(conversations: unknown[], base: unknown[]): Promise<void> {
+  const body = JSON.stringify({ conversations, base });
   const response = await fetch("/api/agent/conversations", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

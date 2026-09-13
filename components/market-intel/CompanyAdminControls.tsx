@@ -3,14 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2 } from "lucide-react";
 import { floatingMenuStyle, menuMotionVars } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 
 /**
- * WHAT AN ADMIN CAN DO TO A COMPANY (Anir, Sep 10): move it between the
- * customer and competitor tabs, or delete it for everyone. Nothing is
+ * WHAT AN ADMIN CAN DO TO A COMPANY (Anir, Sep 10): delete it for everyone after confirmation. Nothing is
  * "tracked for everyone" any more: a company is collected while at least one
  * person has it ticked on their own list, and stops when the last person
  * unticks it.
@@ -35,7 +34,7 @@ export function CompanyAdminControls({
 }) {
   const router = useRouter();
   const { toast } = useToast();
-  const [busy, setBusy] = useState<"group" | "delete" | null>(null);
+  const [busy, setBusy] = useState<"delete" | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<ReturnType<typeof floatingMenuStyle> | null>(null);
@@ -77,32 +76,6 @@ export function CompanyAdminControls({
     };
   }, [menuOpen]);
 
-  async function post(body: Record<string, unknown>) {
-    const res = await fetch("/api/market-intel/tracking", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error || "Could not save.");
-    return data;
-  }
-
-  async function move() {
-    setBusy("group");
-    const next = group === "competitor" ? "customer" : "competitor";
-    try {
-      await post({ kind: "group", id: companyId, group: next });
-      toast(`${companyName} moved to ${next === "competitor" ? "Competitor" : "Customer"} Intelligence.`);
-      router.push(next === "competitor" ? "/market-intel?tab=competitors" : "/market-intel");
-      router.refresh();
-    } catch (caught) {
-      toast(caught instanceof Error ? caught.message : "Could not save.", "error");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function remove() {
     setBusy("delete");
     try {
@@ -123,7 +96,6 @@ export function CompanyAdminControls({
     }
   }
 
-  const moveLabel = group === "competitor" ? "Move to customers" : "Move to competitors";
   const dialog = (
     <ConfirmDialog
       open={confirming}
@@ -144,7 +116,7 @@ export function CompanyAdminControls({
           )}
         </>
       }
-      detail="To stop collecting without deleting anything, untick it in Manage companies instead. It stops by itself once nobody has it."
+      detail="It leaves every list, and everything collected for it goes too."
       confirmLabel="Delete for everyone"
     />
   );
@@ -183,18 +155,6 @@ export function CompanyAdminControls({
               className="menu-in z-[110] flex flex-col rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
               style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
             >
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setMenuOpen(false);
-                  void move();
-                }}
-                className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium text-text-primary transition-colors hover:bg-surface"
-              >
-                <ArrowLeftRight size={14} strokeWidth={2} className="text-text-tertiary" />
-                {moveLabel}
-              </button>
               {/* DELETE IS RED AND ASKS FIRST, like every delete in the app. */}
               <button
                 type="button"
@@ -219,16 +179,6 @@ export function CompanyAdminControls({
 
   return (
     <span className="flex flex-wrap items-center gap-1.5">
-      <button
-        type="button"
-        onClick={() => void move()}
-        disabled={busy !== null}
-        title={group === "competitor" ? "Move to Customer Intelligence" : "Move to Competitor Intelligence"}
-        className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border-light bg-white px-3 py-1.5 text-[12px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:opacity-60"
-      >
-        <ArrowLeftRight size={13} strokeWidth={2} />
-        {moveLabel}
-      </button>
       {/* DELETE IS A RED SQUARE WITH A CONFIRM, like every delete in the app. */}
       <button
         type="button"

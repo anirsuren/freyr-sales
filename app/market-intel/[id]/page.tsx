@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { CollectionProgress } from "@/components/market-intel/CollectionProgress";
+import { PendingCompanyCard } from "@/components/market-intel/PendingCompanyCard";
 import { SmartBack } from "@/components/ui/BackButton";
 import { AutoFresh } from "@/components/market-intel/AutoFresh";
 import {
@@ -15,9 +16,8 @@ import { CompanyIntel } from "@/components/market-intel/CompanyIntel";
 import { LiveCompanyBriefing } from "@/components/market-intel/LiveCompanyBriefing";
 import { TrackPersonButton } from "@/components/market-intel/TrackPersonControls";
 import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
-import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { MiLogo } from "@/components/market-intel/MiLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { getDataMode } from "@/lib/dataMode";
@@ -42,6 +42,8 @@ import {
 import { DivisionEditor } from "@/components/market-intel/DivisionChips";
 import { CompanyAdminControls } from "@/components/market-intel/CompanyAdminControls";
 import { WatchStatus } from "@/components/market-intel/WatchStatus";
+import { isInactive } from "@/lib/marketIntelWatchState";
+import { MiSectionMarker } from "@/components/market-intel/MiSection";
 import { MyListToggle } from "@/components/market-intel/MyListToggle";
 import type { Division } from "@/lib/offeringMaterials";
 import { moduleWriteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
@@ -107,7 +109,10 @@ export default async function MarketIntelCompanyPage({
     : emptyBookmarks();
   const onMyPage = myLists.companyIds.includes(id);
   const starred = myLists.starredIds.includes(id);
-  const watchOf = (companyId: string) => ({ followers: followers[companyId]?.length ?? 0 });
+  const watchOf = (companyId: string) => ({
+    followers: followers[companyId]?.length ?? 0,
+    byDefault: tracking.companies.some((c) => c.id === companyId && c.activeByDefault === true),
+  });
 
   if (getDataMode() === "live") {
     /* ONE ROW (Sep 10): the briefing reads this company's row and, for a
@@ -135,24 +140,25 @@ export default async function MarketIntelCompanyPage({
         }))
       );
       return (
-        <LiveCompanyBriefing
-          briefing={briefing}
-          subtitle={
-            [trackedConfig?.industry, trackedConfig?.hq]
-              .filter(Boolean)
-              .join(" · ") || undefined
-          }
-          extraPeople={isCompetitor ? [] : extraPeople}
-          personPosts={Object.fromEntries(
-            withFeed.map((p) => [p.id, peopleFeeds[p.id]?.posts ?? []])
-          )}
-          divisions={companyDivisions(tracking, id, sourceDefault(id))}
-          canWrite={canEdit}
-          isAdmin={isAdmin}
-          watch={watchOf(id)}
-          onMyPage={onMyPage}
-          starred={starred}
-        />
+        <>
+          <MiSectionMarker section={isCompetitor ? "competitors" : "customers"} />
+          {trackedConfig?.onboarding && <CollectionProgress job={trackedConfig.onboarding} />}
+          <LiveCompanyBriefing
+            collection={trackedConfig?.onboarding}
+            briefing={{ ...briefing, logoUrl: trackedConfig?.logoUrl || briefing.logoUrl || null }}
+            refreshUpdatedAt={intel?.meta.updatedAt ?? null}
+            extraPeople={isCompetitor ? [] : extraPeople}
+            personPosts={Object.fromEntries(
+              withFeed.map((p) => [p.id, peopleFeeds[p.id]?.posts ?? []])
+            )}
+            divisions={companyDivisions(tracking, id, sourceDefault(id))}
+            canWrite={canEdit}
+            isAdmin={isAdmin}
+            watch={watchOf(id)}
+            onMyPage={onMyPage}
+            starred={starred}
+          />
+        </>
       );
     }
   } else {
@@ -163,6 +169,11 @@ export default async function MarketIntelCompanyPage({
   }
 
   const mine = tracking.companies.find((c) => c.id === id);
+  if (mine?.onboarding) return <>
+    <AutoFresh everyMs={15_000} />
+    <div className="mx-auto max-w-xl"><PendingCompanyCard company={mine} divisions={companyDivisions(tracking, id, sourceDefault(id))} /></div>
+  </>;
+
   /**
    * BACK GOES TO THE BUCKET YOU CAME FROM, NAMED CORRECTLY.
    *
@@ -216,8 +227,10 @@ export default async function MarketIntelCompanyPage({
     month: "short",
     day: "numeric",
   });
+  const idle = isInactive(watchOf(mine.id));
   return (
     <div>
+      <MiSectionMarker section={mine.group === "competitor" ? "competitors" : "customers"} />
       <SmartBack
         fallback={backHref}
         className="mb-2 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
@@ -228,12 +241,12 @@ export default async function MarketIntelCompanyPage({
       {/* ONE LINE, THE SAME AS A LIVE BRIEFING (Anir, Sep 11: "confusing ui and
           clean it up. minimal space"). */}
       <div className="rise-in flex flex-wrap items-center gap-x-2.5 gap-y-2">
-        <CompanyLogo name={mine.name} className="h-9 w-9 shrink-0" />
+        <MiLogo logoUrl={mine.logoUrl} name={mine.name} className="h-9 w-9 shrink-0" />
         <h1 className="text-[22px] font-bold tracking-[-0.02em] text-text-primary">{mine.name}</h1>
         <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:var(--ink-bright-blue)]">
           New
         </span>
-        <WatchStatus state={watchOf(mine.id)} />
+        {isAdmin && <WatchStatus state={watchOf(mine.id)} />}
         <DivisionEditor
           companyId={mine.id}
           companyName={mine.name}
@@ -271,13 +284,12 @@ export default async function MarketIntelCompanyPage({
               </span>
               <div>
                 <h2 className="text-[15px] font-semibold text-text-primary">
-                  Tracking is set up. The first briefing is on its way.
+                  {idle ? "Nothing is being collected yet." : "Tracking is set up. The first briefing is on its way."}
                 </h2>
                 <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
-                  {mine.name} joined the watch on {addedOn}. From the next
-                  refresh this page fills with the same briefing the other
-                  companies have: LinkedIn activity, summarized news and
-                  competitive signals from the past 3 months.
+                  {idle
+                    ? `${mine.name} joined the watch on ${addedOn}. Nobody has it on their list, so collecting starts when somebody ticks it.`
+                    : `${mine.name} joined the watch on ${addedOn}. From the next refresh this page fills with the same briefing the other companies have: summarized news and competitive signals from the past 3 months${mine.linkedinUrl || people.length > 0 ? ", plus LinkedIn activity" : ""}.`}
                 </p>
               </div>
             </div>
@@ -287,8 +299,11 @@ export default async function MarketIntelCompanyPage({
                   <LinkedInIcon size={12} /> LinkedIn activity
                 </p>
                 <p className="mt-1 text-[11.5px] leading-snug text-text-secondary">
-                  Posts from the {people.length === 1 ? "person" : "people"}{" "}
-                  you follow{people.length ? "" : ", once someone is added"}.
+                  {mine.group === "competitor"
+                    ? mine.linkedinUrl
+                      ? "Posts from their LinkedIn page."
+                      : "No LinkedIn page on file, so this starts with news."
+                    : `Posts from the ${people.length === 1 ? "person" : "people"} you follow${people.length ? "" : ", once someone is added"}.`}
                 </p>
               </div>
               <div className="rounded-lg border border-border-light bg-surface p-3">

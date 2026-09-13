@@ -1,0 +1,2274 @@
+{
+  "createdAt": "2026-09-11T23:16:40.439697+00:00",
+  "environment": "localhost:3006 / live / development",
+  "cursor": "Pass18 history ordering reproduction failed then passed after sorting copy in bucketByDay; typecheck passed. Mac locked. Pending Chrome Team/goal links, history reload/order and restricted-role tests. No active fixtures. Saved audit tabs953422766/953422772 only.",
+  "note": "Routes are the initial coverage index, not the complete feature list. Expand controls, tabs, workflows, permission variants and persistence scenarios during inspection. Prior audit evidence must be labelled historical until revalidated.",
+  "items": [
+    {
+      "source": "app/access-pending/page.tsx",
+      "route": "/access-pending",
+      "kind": "page",
+      "status": "partially tested",
+      "scenarios": [
+        "Pending and configuration-error UI rendered; retry preserves destination."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/password-recovery.json",
+        "tests/password-recovery.test.mjs"
+      ]
+    },
+    {
+      "source": "app/activity/page.tsx",
+      "route": "/activity",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/admin/[tab]/page.tsx",
+      "route": "/admin/[tab]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/admin/goal-master/page.tsx",
+      "route": "/admin/goal-master",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/admin/groups/[id]/page.tsx",
+      "route": "/admin/groups/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/admin/groups/page.tsx",
+      "route": "/admin/groups",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/admin/page.tsx",
+      "route": "/admin",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/agent/impact/page.tsx",
+      "route": "/agent/impact",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/agent/inbox/page.tsx",
+      "route": "/agent/inbox",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/agent/page.tsx",
+      "route": "/agent",
+      "kind": "page",
+      "status": "partially tested",
+      "scenarios": [
+        "Sep12 actual Chrome: identity question exposed wrong blanket admin ownership rule; shared guide corrected and fresh answer retested. Dynamic follow-ups changed. Other role variants and privilege enumeration remain unverified.",
+        "Sep12 personal counts: wrong34/42 fixed with pre-pagination server counts; Chrome retest35/41 correct. Sitero link opens real briefing. Starring explanation remains pending fresh retest.",
+        "Pass14 Chrome: starring rule corrected at conflicting main prompt and retested; personal owns none/one matched DB; direct deal link fixed/clicked; confidence100->60 fixed using UI helper and retested.",
+        "Pass15 temporary BD Member actual Chrome password sign-in, empty private history/lists, correct identity, Admin direct-page denial, logout and separate localhost admin session verified. Fixture cleaned."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/baseline.json",
+        ".local-backups/full-app-audit/desktop-baseline.json",
+        ".local-backups/full-app-audit/desktop-baseline.png",
+        "docs/full-app-audit-loop.md#pass-12--live-agent-identity-and-admin-ownership-september-12"
+      ]
+    },
+    {
+      "source": "app/agent/plan/page.tsx",
+      "route": "/agent/plan",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/agent/review/page.tsx",
+      "route": "/agent/review",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/agent/runs/[id]/page.tsx",
+      "route": "/agent/runs/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/agent/settings/page.tsx",
+      "route": "/agent/settings",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/analytics/page.tsx",
+      "route": "/analytics",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/analytics/reps/[slug]/page.tsx",
+      "route": "/analytics/reps/[slug]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/auth/confirm/page.tsx",
+      "route": "/auth/confirm",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/auth/reset-password/page.tsx",
+      "route": "/auth/reset-password",
+      "kind": "page",
+      "status": "partially tested",
+      "scenarios": [
+        "Real recovery OTP and password change in desktop Chrome; mismatch validation; old password rejected/new accepted; success navigation fixed and verified."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/password-recovery.json",
+        "tests/password-recovery.test.mjs"
+      ]
+    },
+    {
+      "source": "app/campaigns/[id]/page.tsx",
+      "route": "/campaigns/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/campaigns/page.tsx",
+      "route": "/campaigns",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/components/[id]/page.tsx",
+      "route": "/components/[id]",
+      "kind": "page",
+      "status": "partially tested",
+      "scenarios": [
+        "Real dev FDL create/edit/delete fixture, invalid create400, current-release uniqueness and unknown feature-version stripping; persisted detail visible in desktop Chrome.",
+        "Same account downgraded to member: create/PATCH/DELETE403 and fixture unchanged; restored admin for exact cleanup.",
+        "After cleanup all pre-existing components exactly equal pre-test snapshot."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/fdl-lifecycle.json",
+        ".local-backups/full-app-audit/fdl-role-boundary.json"
+      ]
+    },
+    {
+      "source": "app/components/page.tsx",
+      "route": "/components",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/components/release-calendar/page.tsx",
+      "route": "/components/release-calendar",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/contacts/[id]/page.tsx",
+      "route": "/contacts/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/contacts/page.tsx",
+      "route": "/contacts",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/contracts/page.tsx",
+      "route": "/contracts",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/customers/[id]/edit/page.tsx",
+      "route": "/customers/[id]/edit",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/customers/[id]/page.tsx",
+      "route": "/customers/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/customers/[id]/report/page.tsx",
+      "route": "/customers/[id]/report",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/customers/groups/page.tsx",
+      "route": "/customers/groups",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/customers/page.tsx",
+      "route": "/customers",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/customers/targets/page.tsx",
+      "route": "/customers/targets",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/dashboard/page.tsx",
+      "route": "/dashboard",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/deals/[id]/page.tsx",
+      "route": "/deals/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/forecast/page.tsx",
+      "route": "/forecast",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/goals/[tab]/page.tsx",
+      "route": "/goals/[tab]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/goals/page.tsx",
+      "route": "/goals",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/import/page.tsx",
+      "route": "/import",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/intake/page.tsx",
+      "route": "/intake",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/leads/page.tsx",
+      "route": "/leads",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/login/page.tsx",
+      "route": "/login",
+      "kind": "page",
+      "status": "partially tested",
+      "scenarios": [
+        {
+          "description": "Real desktop Chrome email/password sign-in for bd_member and admin; redirects to /offerings",
+          "status": "passed",
+          "evidence": ".local-backups/full-app-audit/account-pass-02.json"
+        },
+        {
+          "description": "Wrong password rejected by actual Supabase auth",
+          "status": "passed",
+          "evidence": ".local-backups/full-app-audit/account-pass-02.json"
+        },
+        "Pass15 temporary BD Member actual Chrome password sign-in, empty private history/lists, correct identity, Admin direct-page denial, logout and separate localhost admin session verified. Fixture cleaned."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/baseline.json",
+        ".local-backups/full-app-audit/account-pass-02.json"
+      ]
+    },
+    {
+      "source": "app/market-intel/[id]/page.tsx",
+      "route": "/market-intel/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/market-intel/manage/page.tsx",
+      "route": "/market-intel/manage",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/market-intel/page.tsx",
+      "route": "/market-intel",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/meetings/[id]/documents/[docId]/page.tsx",
+      "route": "/meetings/[id]/documents/[docId]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/meetings/[id]/page.tsx",
+      "route": "/meetings/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/meetings/completed/page.tsx",
+      "route": "/meetings/completed",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/meetings/page.tsx",
+      "route": "/meetings",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/notifications/page.tsx",
+      "route": "/notifications",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/offerings/[id]/edit/page.tsx",
+      "route": "/offerings/[id]/edit",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/offerings/[id]/materials/[materialId]/page.tsx",
+      "route": "/offerings/[id]/materials/[materialId]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/offerings/[id]/page.tsx",
+      "route": "/offerings/[id]",
+      "kind": "page",
+      "status": "partially tested",
+      "scenarios": [
+        "Actual dev offering create/edit/delete; blank name400 and forged identity/owners ignored.",
+        "Admin sees two fixture materials; non-owner member sees only client-facing material, agent-only metadata removed.",
+        "Desktop search finds saved fixture; saved detail heading renders.",
+        "All existing offerings equal pre-test snapshot after exact fixture cleanup."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/offering-lifecycle.json",
+        ".local-backups/full-app-audit/offering-detail.png"
+      ]
+    },
+    {
+      "source": "app/offerings/customer-types/page.tsx",
+      "route": "/offerings/customer-types",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/offerings/materials/page.tsx",
+      "route": "/offerings/materials",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/offerings/offering-categories/page.tsx",
+      "route": "/offerings/offering-categories",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/offerings/offering-types/page.tsx",
+      "route": "/offerings/offering-types",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/offerings/page.tsx",
+      "route": "/offerings",
+      "kind": "page",
+      "status": "partially tested",
+      "scenarios": [
+        "Actual dev offering create/edit/delete; blank name400 and forged identity/owners ignored.",
+        "Admin sees two fixture materials; non-owner member sees only client-facing material, agent-only metadata removed.",
+        "Desktop search finds saved fixture; saved detail heading renders.",
+        "All existing offerings equal pre-test snapshot after exact fixture cleanup."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/offering-lifecycle.json",
+        ".local-backups/full-app-audit/offering-detail.png"
+      ]
+    },
+    {
+      "source": "app/onboarding/page.tsx",
+      "route": "/onboarding",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/opportunities/[id]/edit/page.tsx",
+      "route": "/opportunities/[id]/edit",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/opportunities/[id]/page.tsx",
+      "route": "/opportunities/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/opportunities/page.tsx",
+      "route": "/opportunities",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/page.tsx",
+      "route": "/",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/performance/[tab]/page.tsx",
+      "route": "/performance/[tab]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/performance/goal/[id]/page.tsx",
+      "route": "/performance/goal/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/performance/page.tsx",
+      "route": "/performance",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/pipeline/page.tsx",
+      "route": "/pipeline",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/recordings/page.tsx",
+      "route": "/recordings",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/reports/activity-goal-flow/page.tsx",
+      "route": "/reports/activity-goal-flow",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/reports/customer-offering-heat-map/page.tsx",
+      "route": "/reports/customer-offering-heat-map",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/reports/page.tsx",
+      "route": "/reports",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/revenue-accruals/[id]/page.tsx",
+      "route": "/revenue-accruals/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/revenue-accruals/page.tsx",
+      "route": "/revenue-accruals",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/search/page.tsx",
+      "route": "/search",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/sequences/page.tsx",
+      "route": "/sequences",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/services/page.tsx",
+      "route": "/services",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/sessions/[id]/loading/page.tsx",
+      "route": "/sessions/[id]/loading",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/sessions/[id]/page.tsx",
+      "route": "/sessions/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/sessions/page.tsx",
+      "route": "/sessions",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/settings/page.tsx",
+      "route": "/settings",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/solutioning/[id]/documents/[docId]/page.tsx",
+      "route": "/solutioning/[id]/documents/[docId]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/solutioning/[id]/page.tsx",
+      "route": "/solutioning/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/solutioning/page.tsx",
+      "route": "/solutioning",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/tasks/page.tsx",
+      "route": "/tasks",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/team/page.tsx",
+      "route": "/team",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/voice/agents/[slug]/page.tsx",
+      "route": "/voice/agents/[slug]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/voice/c/[id]/page.tsx",
+      "route": "/voice/c/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/voice/contact/[id]/page.tsx",
+      "route": "/voice/contact/[id]",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/voice/page.tsx",
+      "route": "/voice",
+      "kind": "page",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/access-history/route.ts",
+      "route": "/api/access-history",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/activity-master/route.ts",
+      "route": "/api/activity-master",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/admin/email-preview/route.ts",
+      "route": "/api/admin/email-preview",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/admin/email/owner-digest/route.ts",
+      "route": "/api/admin/email/owner-digest",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/admin/email/route.ts",
+      "route": "/api/admin/email",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/act/route.ts",
+      "route": "/api/agent/act",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/advance/route.ts",
+      "route": "/api/agent/advance",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/approve-all/route.ts",
+      "route": "/api/agent/approve-all",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/ask/route.ts",
+      "route": "/api/agent/ask",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/assistant/route.ts",
+      "route": "/api/agent/assistant",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/autopilot/route.ts",
+      "route": "/api/agent/autopilot",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/briefing/route.ts",
+      "route": "/api/agent/briefing",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/cadence-run/route.ts",
+      "route": "/api/agent/cadence-run",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/chat/route.ts",
+      "route": "/api/agent/chat",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/conversations/route.ts",
+      "route": "/api/agent/conversations",
+      "kind": "api",
+      "status": "confirmed overwrite/deletion defects fixed and verified for durable dev path; adjacent recovery coverage pending",
+      "scenarios": [
+        {
+          "description": "Real dev write/read; body/query spoofed identity cannot choose storage owner",
+          "status": "passed",
+          "evidence": ".local-backups/full-app-audit/account-pass-02.json"
+        },
+        "Two authenticated Chrome contexts load same history; sequentially save distinct new chats; second save erases first context chat (confirmed).",
+        "One context deletes history; another saves stale history; deleted chats reappear (confirmed).",
+        "Baseline changes merged with atomically compared durable catalog; separate chats survive, same-chat conflict409; old clients without baseline428.",
+        "Real Agent page reload with stale local cache preserves remote deletion.",
+        "Eight concurrent first writes with explicit409 retries retain all eight chats.",
+        "120KB history plus baseline: actual dock response persistence passes after moving conditional comparison from URL into server-only database function.",
+        "Anonymous execution of conditional-save RPC denied42501.",
+        "Desktop recovery UI retains draft during mocked503 outage; retry persists separate copy and original remote chat unchanged."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/account-pass-02.json",
+        ".local-backups/full-app-audit/conversation-concurrency-before.json",
+        ".local-backups/full-app-audit/conversation-concurrency.mjs",
+        ".local-backups/full-app-audit/conversation-concurrency-after.json",
+        "tests/conversation-changes.test.mjs",
+        ".local-backups/full-app-audit/conversation-history-stress.json",
+        ".local-backups/full-app-audit/history-rpc-permissions.json",
+        ".local-backups/full-app-audit/history-recovery.json"
+      ]
+    },
+    {
+      "source": "app/api/agent/converse/route.ts",
+      "route": "/api/agent/converse",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/digest/route.ts",
+      "route": "/api/agent/digest",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/draft/route.ts",
+      "route": "/api/agent/draft",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/enroll/route.ts",
+      "route": "/api/agent/enroll",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/entities/route.ts",
+      "route": "/api/agent/entities",
+      "kind": "api",
+      "status": "baseline smoke passed; full feature tests pending",
+      "scenarios": [],
+      "evidence": [
+        ".local-backups/full-app-audit/baseline.json"
+      ]
+    },
+    {
+      "source": "app/api/agent/inbox/route.ts",
+      "route": "/api/agent/inbox",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/knowledge/route.ts",
+      "route": "/api/agent/knowledge",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/mode/route.ts",
+      "route": "/api/agent/mode",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/plan-steps/route.ts",
+      "route": "/api/agent/plan-steps",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/plan/route.ts",
+      "route": "/api/agent/plan",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/prefs/route.ts",
+      "route": "/api/agent/prefs",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/review/share/route.ts",
+      "route": "/api/agent/review/share",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/run/route.ts",
+      "route": "/api/agent/run",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/runs/route.ts",
+      "route": "/api/agent/runs",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/send-all/route.ts",
+      "route": "/api/agent/send-all",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/snippets/route.ts",
+      "route": "/api/agent/snippets",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/snippets/use/route.ts",
+      "route": "/api/agent/snippets/use",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/summary/route.ts",
+      "route": "/api/agent/summary",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/agent/undo/route.ts",
+      "route": "/api/agent/undo",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/auth/access/route.ts",
+      "route": "/api/auth/access",
+      "kind": "api",
+      "status": "partially tested; confirmed defects fixed and verified",
+      "scenarios": [
+        "Real dev account admin-to-rep downgrade removes admin write access after refresh.",
+        "Inactive account returns pending denial and expires stale browser grant; retry resolution redirects to access-pending and expires grant.",
+        "Signed-out requests denied; unit regression preserves grant during service outage."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/access-refresh-before.json",
+        ".local-backups/full-app-audit/access-refresh-after.json",
+        "tests/auth-access-refresh.test.mjs"
+      ]
+    },
+    {
+      "source": "app/api/auth/logout/route.ts",
+      "route": "/api/auth/logout",
+      "kind": "api",
+      "status": "listed scenarios passed; remaining variants pending",
+      "scenarios": [
+        {
+          "description": "Logout response expires application session cookie",
+          "status": "passed",
+          "evidence": ".local-backups/full-app-audit/account-pass-02.json"
+        }
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/account-pass-02.json"
+      ]
+    },
+    {
+      "source": "app/api/auth/lookup/route.ts",
+      "route": "/api/auth/lookup",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/auth/passkey/login/options/route.ts",
+      "route": "/api/auth/passkey/login/options",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/auth/passkey/login/verify/route.ts",
+      "route": "/api/auth/passkey/login/verify",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/auth/passkey/register/options/route.ts",
+      "route": "/api/auth/passkey/register/options",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/auth/passkey/register/verify/route.ts",
+      "route": "/api/auth/passkey/register/verify",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/auth/passkey/route.ts",
+      "route": "/api/auth/passkey",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/auth/password-reset/request/route.ts",
+      "route": "/api/auth/password-reset/request",
+      "kind": "api",
+      "status": "partially tested",
+      "scenarios": [
+        "Delivery stubbed: input validation, neutral response, provider failure, verified personal email. Actual delivery not tested."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/password-recovery.json",
+        "tests/password-recovery.test.mjs"
+      ]
+    },
+    {
+      "source": "app/api/auth/password-reset/route.ts",
+      "route": "/api/auth/password-reset",
+      "kind": "api",
+      "status": "partially tested",
+      "scenarios": [
+        "Delivery stubbed: input validation, neutral response, provider failure, verified personal email. Actual delivery not tested."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/password-recovery.json",
+        "tests/password-recovery.test.mjs"
+      ]
+    },
+    {
+      "source": "app/api/auth/profile/route.ts",
+      "route": "/api/auth/profile",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/auth/register/route.ts",
+      "route": "/api/auth/register",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/auth/resolve/route.ts",
+      "route": "/api/auth/resolve",
+      "kind": "api",
+      "status": "partially tested; confirmed defects fixed and verified",
+      "scenarios": [
+        "Real dev account admin-to-rep downgrade removes admin write access after refresh.",
+        "Inactive account returns pending denial and expires stale browser grant; retry resolution redirects to access-pending and expires grant.",
+        "Signed-out requests denied; unit regression preserves grant during service outage."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/access-refresh-before.json",
+        ".local-backups/full-app-audit/access-refresh-after.json",
+        "tests/auth-access-refresh.test.mjs"
+      ]
+    },
+    {
+      "source": "app/api/auth/session/route.ts",
+      "route": "/api/auth/session",
+      "kind": "api",
+      "status": "listed scenarios passed; remaining variants pending",
+      "scenarios": [
+        {
+          "description": "Confirmed dev email/password token exchange",
+          "status": "passed",
+          "evidence": ".local-backups/full-app-audit/account-pass-02.json"
+        },
+        {
+          "description": "Signed member ID, role and canonical display name verified",
+          "status": "passed",
+          "evidence": ".local-backups/full-app-audit/account-pass-02.json"
+        }
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/account-pass-02.json"
+      ]
+    },
+    {
+      "source": "app/api/campaigns/[id]/route.ts",
+      "route": "/api/campaigns/[id]",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/campaigns/route.ts",
+      "route": "/api/campaigns",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/contacts/[id]/message/route.ts",
+      "route": "/api/contacts/[id]/message",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/contacts/[id]/route.ts",
+      "route": "/api/contacts/[id]",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/contracts/download/route.ts",
+      "route": "/api/contracts/download",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/contracts/preview/route.ts",
+      "route": "/api/contracts/preview",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/contracts/route.ts",
+      "route": "/api/contracts",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/contracts/upload/route.ts",
+      "route": "/api/contracts/upload",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/cron/announce/route.ts",
+      "route": "/api/cron/announce",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/cron/market-intel-sites/route.ts",
+      "route": "/api/cron/market-intel-sites",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/cron/monthly/route.ts",
+      "route": "/api/cron/monthly",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/cron/roadmap-digest/route.ts",
+      "route": "/api/cron/roadmap-digest",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customer-groups/route.ts",
+      "route": "/api/customer-groups",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customer-types/[id]/route.ts",
+      "route": "/api/customer-types/[id]",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customer-types/family/route.ts",
+      "route": "/api/customer-types/family",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customer-types/route.ts",
+      "route": "/api/customer-types",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customers/[id]/analyze/route.ts",
+      "route": "/api/customers/[id]/analyze",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customers/[id]/contacts/route.ts",
+      "route": "/api/customers/[id]/contacts",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customers/[id]/profile/route.ts",
+      "route": "/api/customers/[id]/profile",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customers/[id]/route.ts",
+      "route": "/api/customers/[id]",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customers/download/route.ts",
+      "route": "/api/customers/download",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customers/preview/route.ts",
+      "route": "/api/customers/preview",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customers/route.ts",
+      "route": "/api/customers",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/customers/upload/route.ts",
+      "route": "/api/customers/upload",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/digest/route.ts",
+      "route": "/api/digest",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/fdl-components/[id]/files/route.ts",
+      "route": "/api/fdl-components/[id]/files",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/fdl-components/[id]/route.ts",
+      "route": "/api/fdl-components/[id]",
+      "kind": "api",
+      "status": "partially tested",
+      "scenarios": [
+        "Real dev FDL create/edit/delete fixture, invalid create400, current-release uniqueness and unknown feature-version stripping; persisted detail visible in desktop Chrome.",
+        "Same account downgraded to member: create/PATCH/DELETE403 and fixture unchanged; restored admin for exact cleanup.",
+        "After cleanup all pre-existing components exactly equal pre-test snapshot."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/fdl-lifecycle.json",
+        ".local-backups/full-app-audit/fdl-role-boundary.json"
+      ]
+    },
+    {
+      "source": "app/api/fdl-components/[id]/upload/route.ts",
+      "route": "/api/fdl-components/[id]/upload",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/fdl-components/route.ts",
+      "route": "/api/fdl-components",
+      "kind": "api",
+      "status": "partially tested",
+      "scenarios": [
+        "Real dev FDL create/edit/delete fixture, invalid create400, current-release uniqueness and unknown feature-version stripping; persisted detail visible in desktop Chrome.",
+        "Same account downgraded to member: create/PATCH/DELETE403 and fixture unchanged; restored admin for exact cleanup.",
+        "After cleanup all pre-existing components exactly equal pre-test snapshot."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/fdl-lifecycle.json",
+        ".local-backups/full-app-audit/fdl-role-boundary.json"
+      ]
+    },
+    {
+      "source": "app/api/feedback/route.ts",
+      "route": "/api/feedback",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/fx/route.ts",
+      "route": "/api/fx",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/health/route.ts",
+      "route": "/api/health",
+      "kind": "api",
+      "status": "baseline smoke passed; full feature tests pending",
+      "scenarios": [],
+      "evidence": [
+        ".local-backups/full-app-audit/baseline.json"
+      ]
+    },
+    {
+      "source": "app/api/import/crm/route.ts",
+      "route": "/api/import/crm",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/kb/crawl/route.ts",
+      "route": "/api/kb/crawl",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/kb/services/route.ts",
+      "route": "/api/kb/services",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/kb/status/route.ts",
+      "route": "/api/kb/status",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/leads/route.ts",
+      "route": "/api/leads",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/lookup/addresses/details/route.ts",
+      "route": "/api/lookup/addresses/details",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/lookup/addresses/route.ts",
+      "route": "/api/lookup/addresses",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/lookup/companies/details/route.ts",
+      "route": "/api/lookup/companies/details",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/lookup/companies/route.ts",
+      "route": "/api/lookup/companies",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/market-intel/bookmarks/route.ts",
+      "route": "/api/market-intel/bookmarks",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/market-intel/refresh/route.ts",
+      "route": "/api/market-intel/refresh",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/market-intel/tracking/route.ts",
+      "route": "/api/market-intel/tracking",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/markets/[id]/route.ts",
+      "route": "/api/markets/[id]",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/markets/route.ts",
+      "route": "/api/markets",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/meetings/download/route.ts",
+      "route": "/api/meetings/download",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/meetings/preview/route.ts",
+      "route": "/api/meetings/preview",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/meetings/route.ts",
+      "route": "/api/meetings",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/meetings/transcribe/route.ts",
+      "route": "/api/meetings/transcribe",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/meetings/upload-draft/route.ts",
+      "route": "/api/meetings/upload-draft",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/meetings/upload/route.ts",
+      "route": "/api/meetings/upload",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/my-access/route.ts",
+      "route": "/api/my-access",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/notifications/route.ts",
+      "route": "/api/notifications",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offering-categories/[id]/route.ts",
+      "route": "/api/offering-categories/[id]",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offering-categories/route.ts",
+      "route": "/api/offering-categories",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offering-types/[id]/route.ts",
+      "route": "/api/offering-types/[id]",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offering-types/route.ts",
+      "route": "/api/offering-types",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/[id]/contacts/route.ts",
+      "route": "/api/offerings/[id]/contacts",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/archive/route.ts",
+      "route": "/api/offerings/[id]/materials/archive",
+      "kind": "api",
+      "status": "partially tested: permission refusals",
+      "scenarios": [
+        "Non-owner private material access404, foreign offering path403, upload grant403; no file bytes written."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/material-access.json"
+      ]
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/complete/route.ts",
+      "route": "/api/offerings/[id]/materials/complete",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/download/route.ts",
+      "route": "/api/offerings/[id]/materials/download",
+      "kind": "api",
+      "status": "partially tested including actual dev bytes",
+      "scenarios": [
+        "Non-owner private material access404, foreign offering path403, upload grant403; no file bytes written.",
+        "Browser direct-upload CORS succeeds; authorized download and native text preview return exact fixture bytes; anonymous storage read denied; exact object deletion verified."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/material-access.json",
+        ".local-backups/full-app-audit/material-bytes.json"
+      ]
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/folder/route.ts",
+      "route": "/api/offerings/[id]/materials/folder",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/pdf/route.ts",
+      "route": "/api/offerings/[id]/materials/pdf",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/preview/route.ts",
+      "route": "/api/offerings/[id]/materials/preview",
+      "kind": "api",
+      "status": "partially tested including actual dev bytes",
+      "scenarios": [
+        "Non-owner private material access404, foreign offering path403, upload grant403; no file bytes written.",
+        "Browser direct-upload CORS succeeds; authorized download and native text preview return exact fixture bytes; anonymous storage read denied; exact object deletion verified."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/material-access.json",
+        ".local-backups/full-app-audit/material-bytes.json"
+      ]
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/read-status/route.ts",
+      "route": "/api/offerings/[id]/materials/read-status",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/reconcile-transcript/route.ts",
+      "route": "/api/offerings/[id]/materials/reconcile-transcript",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/reindex/route.ts",
+      "route": "/api/offerings/[id]/materials/reindex",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/transcript/route.ts",
+      "route": "/api/offerings/[id]/materials/transcript",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/upload-url/route.ts",
+      "route": "/api/offerings/[id]/materials/upload-url",
+      "kind": "api",
+      "status": "partially tested including actual dev bytes",
+      "scenarios": [
+        "Non-owner private material access404, foreign offering path403, upload grant403; no file bytes written.",
+        "Browser direct-upload CORS succeeds; authorized download and native text preview return exact fixture bytes; anonymous storage read denied; exact object deletion verified."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/material-access.json",
+        ".local-backups/full-app-audit/material-bytes.json"
+      ]
+    },
+    {
+      "source": "app/api/offerings/[id]/materials/upload/route.ts",
+      "route": "/api/offerings/[id]/materials/upload",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/[id]/owners/route.ts",
+      "route": "/api/offerings/[id]/owners",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/[id]/route.ts",
+      "route": "/api/offerings/[id]",
+      "kind": "api",
+      "status": "partially tested",
+      "scenarios": [
+        "Actual dev offering create/edit/delete; blank name400 and forged identity/owners ignored.",
+        "Admin sees two fixture materials; non-owner member sees only client-facing material, agent-only metadata removed.",
+        "Desktop search finds saved fixture; saved detail heading renders.",
+        "All existing offerings equal pre-test snapshot after exact fixture cleanup.",
+        "Admin PATCH response incorrectly hid agent-only material: reproduced count1 vs expected2; corrected verified admin flag and retested count2."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/offering-lifecycle.json",
+        ".local-backups/full-app-audit/offering-detail.png",
+        ".local-backups/full-app-audit/material-admin-save-before.json",
+        ".local-backups/full-app-audit/material-admin-save.json"
+      ]
+    },
+    {
+      "source": "app/api/offerings/competition/route.ts",
+      "route": "/api/offerings/competition",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/import/route.ts",
+      "route": "/api/offerings/import",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/offerings/route.ts",
+      "route": "/api/offerings",
+      "kind": "api",
+      "status": "partially tested",
+      "scenarios": [
+        "Actual dev offering create/edit/delete; blank name400 and forged identity/owners ignored.",
+        "Admin sees two fixture materials; non-owner member sees only client-facing material, agent-only metadata removed.",
+        "Desktop search finds saved fixture; saved detail heading renders.",
+        "All existing offerings equal pre-test snapshot after exact fixture cleanup."
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/offering-lifecycle.json",
+        ".local-backups/full-app-audit/offering-detail.png"
+      ]
+    },
+    {
+      "source": "app/api/onboarding/route.ts",
+      "route": "/api/onboarding",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/opportunities/route.ts",
+      "route": "/api/opportunities",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/performance/evidence/complete/route.ts",
+      "route": "/api/performance/evidence/complete",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/performance/evidence/route.ts",
+      "route": "/api/performance/evidence",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/performance/evidence/upload-url/route.ts",
+      "route": "/api/performance/evidence/upload-url",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/performance/route.ts",
+      "route": "/api/performance",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/presence/route.ts",
+      "route": "/api/presence",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/privileges/route.ts",
+      "route": "/api/privileges",
+      "kind": "api",
+      "status": "listed scenarios passed; remaining variants pending",
+      "scenarios": [
+        {
+          "description": "Signed-in read returns200 intentionally",
+          "status": "passed",
+          "evidence": ".local-backups/full-app-audit/account-pass-02.json"
+        },
+        {
+          "description": "bd_member cannot POST:403",
+          "status": "passed",
+          "evidence": ".local-backups/full-app-audit/account-pass-02.json"
+        },
+        {
+          "description": "Admin malformed POST returns400 without mutation",
+          "status": "passed",
+          "evidence": ".local-backups/full-app-audit/account-pass-02.json"
+        }
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/baseline.json",
+        ".local-backups/full-app-audit/account-pass-02.json"
+      ]
+    },
+    {
+      "source": "app/api/profile/linkedin/route.ts",
+      "route": "/api/profile/linkedin",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/profile/photo/route.ts",
+      "route": "/api/profile/photo",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/profile/photo/team/route.ts",
+      "route": "/api/profile/photo/team",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/profile/preferences/route.ts",
+      "route": "/api/profile/preferences",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/profile/timezone/route.ts",
+      "route": "/api/profile/timezone",
+      "kind": "api",
+      "status": "listed scenarios passed; remaining variants pending",
+      "scenarios": [
+        {
+          "description": "Real dev save/read persistence",
+          "status": "passed",
+          "evidence": ".local-backups/full-app-audit/account-pass-02.json"
+        },
+        {
+          "description": "Invalid IANA timezone rejected with400; previous value retained",
+          "status": "passed",
+          "evidence": ".local-backups/full-app-audit/account-pass-02.json"
+        }
+      ],
+      "evidence": [
+        ".local-backups/full-app-audit/account-pass-02.json"
+      ]
+    },
+    {
+      "source": "app/api/record-team/route.ts",
+      "route": "/api/record-team",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/revenue-accruals/route.ts",
+      "route": "/api/revenue-accruals",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/roadmap-subscriptions/route.ts",
+      "route": "/api/roadmap-subscriptions",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/search/route.ts",
+      "route": "/api/search",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sequences/[id]/route.ts",
+      "route": "/api/sequences/[id]",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sequences/enrollments/route.ts",
+      "route": "/api/sequences/enrollments",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sequences/route.ts",
+      "route": "/api/sequences",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sessions/[id]/crm/route.ts",
+      "route": "/api/sessions/[id]/crm",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sessions/[id]/duplicate/route.ts",
+      "route": "/api/sessions/[id]/duplicate",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sessions/[id]/outcome/route.ts",
+      "route": "/api/sessions/[id]/outcome",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sessions/[id]/pitch/route.ts",
+      "route": "/api/sessions/[id]/pitch",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sessions/[id]/regenerate/route.ts",
+      "route": "/api/sessions/[id]/regenerate",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sessions/[id]/review/route.ts",
+      "route": "/api/sessions/[id]/review",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sessions/[id]/route.ts",
+      "route": "/api/sessions/[id]",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sessions/[id]/send/route.ts",
+      "route": "/api/sessions/[id]/send",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sessions/[id]/versions/route.ts",
+      "route": "/api/sessions/[id]/versions",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/sessions/create/route.ts",
+      "route": "/api/sessions/create",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/settings/access/route.ts",
+      "route": "/api/settings/access",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/settings/data-mode/route.ts",
+      "route": "/api/settings/data-mode",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/solutioning/download/route.ts",
+      "route": "/api/solutioning/download",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/solutioning/preview/route.ts",
+      "route": "/api/solutioning/preview",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/solutioning/route.ts",
+      "route": "/api/solutioning",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/solutioning/upload/route.ts",
+      "route": "/api/solutioning/upload",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/targets/route.ts",
+      "route": "/api/targets",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/telegram/test/route.ts",
+      "route": "/api/telegram/test",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/voice/call/route.ts",
+      "route": "/api/voice/call",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/voice/conversations/route.ts",
+      "route": "/api/voice/conversations",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/voice/queue/route.ts",
+      "route": "/api/voice/queue",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/voice/webhooks/elevenlabs/route.ts",
+      "route": "/api/voice/webhooks/elevenlabs",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    },
+    {
+      "source": "app/api/voice/webhooks/inbound/route.ts",
+      "route": "/api/voice/webhooks/inbound",
+      "kind": "api",
+      "status": "not tested in this audit",
+      "scenarios": [],
+      "evidence": []
+    }
+  ],
+  "lastBlockedCheck": {
+    "at": "2026-09-12T18:13:22Z",
+    "runtime": "healthy/dev/live",
+    "database": "ebyoefeikqxxxxifgjxk",
+    "browser": "Mac locked; existing unlock request remains pending",
+    "action": "Saved browser cursor retained; no new tests claimed, paid calls, fixtures or tabs."
+  }
+}

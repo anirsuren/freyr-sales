@@ -1,3 +1,4 @@
+import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
@@ -9,12 +10,15 @@ export const dynamic = "force-dynamic";
 const MAX_CONVERSATIONS = 500;
 const MAX_MESSAGES_PER_CONVERSATION = 500;
 const MAX_TEXT_LENGTH = 50_000;
-const MAX_PAYLOAD_BYTES = 4_000_000;
+// Current snapshot plus its baseline, each within the previous 4 MB budget.
+const MAX_PAYLOAD_BYTES = 8_000_000;
 
 type StoredMessage = {
   role: "user" | "agent";
   text: string;
   ts: number;
+  suggestions?: string[];
+  entityContext?: string[];
 };
 
 type StoredConversation = {
@@ -45,6 +49,8 @@ function sanitizeConversation(value: unknown): StoredConversation | null {
     const text = cleanString(message.text, MAX_TEXT_LENGTH);
     if (!text) return null;
     messages.push({
+      ...(message.role === "agent" && Array.isArray(message.suggestions) ? { suggestions: message.suggestions.filter((s): s is string => typeof s === "string").map(s => s.slice(0, 160)).slice(0, 3) } : {}),
+      ...(Array.isArray(message.entityContext) ? {entityContext: message.entityContext.filter((v): v is string => typeof v === "string" && v.startsWith("/market-intel/")).slice(0, 3)} : {}),
       role: message.role,
       text,
       ts: typeof message.ts === "number" ? message.ts : Date.now(),
@@ -144,27 +150,44 @@ async function readDurableConversations(
   return conversations;
 }
 
+class HistoryConflict extends Error {}
+
 async function writeDurableConversations(
   scope: WorkspaceMemberScope,
-  conversations: StoredConversation[]
+  conversations: StoredConversation[],
+  base: StoredConversation[]
 ): Promise<boolean> {
   const db = await serviceClient();
   if (!db) return false;
   const durable = await durableScope(scope, db);
-  const { error } = await db.from("offering_catalog_state").upsert(
-    {
-      id: rowId(durable),
-      catalog: {
-        workspaceId: durable.workspaceId,
-        userId: durable.userId,
-        conversations,
-        updatedAt: new Date().toISOString(),
-      },
-    },
-    { onConflict: "id" }
-  );
-  if (error) throw new Error(error.message);
-  return true;
+  const id = rowId(durable);
+  // Compare the exact stored JSON atomically; process-local locks cannot protect
+  // saves from another server instance. Retry disjoint concurrent changes.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const { data, error } = await db.from("offering_catalog_state")
+      .select("catalog").eq("id", id).maybeSingle();
+    if (error) throw new Error(error.message);
+    const previous = data?.catalog;
+    const current = previous ? sanitizeConversations(previous.conversations) : [];
+    if (!current) throw new Error("Stored conversation history is invalid.");
+    const merged = mergeConversationChanges(base, conversations, current);
+    if (!merged) throw new HistoryConflict("Another tab changed the same conversation.");
+    if (merged.length > MAX_CONVERSATIONS) throw new HistoryConflict("History limit reached.");
+    const catalog = { workspaceId: durable.workspaceId, userId: durable.userId,
+      conversations: merged, updatedAt: new Date().toISOString() };
+    if (data) {
+      const written = await db.rpc("save_agent_history_if_unchanged", {
+        p_id: id, p_expected: previous, p_catalog: catalog,
+      });
+      if (written.error) throw new Error(written.error.message);
+      if (written.data === true) return true;
+    } else {
+      const written = await db.from("offering_catalog_state").insert({ id, catalog });
+      if (!written.error) return true;
+      if (written.error.code !== "23505") throw new Error(written.error.message);
+    }
+  }
+  throw new HistoryConflict("Conversation history changed during saving. Try again.");
 }
 
 export async function GET(req: NextRequest) {
@@ -177,10 +200,11 @@ export async function GET(req: NextRequest) {
   }
   try {
     const durable = await readDurableConversations(scope);
-    if (durable) return NextResponse.json({ conversations: durable });
+    if (durable) return NextResponse.json({ conversations: durable, initialized: true });
     const prefs = await getDb().agentPrefs.get(scope);
     return NextResponse.json({
       conversations: sanitizeConversations(prefs?.conversation_state) || [],
+      initialized: Boolean(prefs?.conversation_state),
     });
   } catch (error) {
     console.error(
@@ -220,8 +244,12 @@ export async function PUT(req: NextRequest) {
   if (!conversations) {
     return NextResponse.json({ error: "Invalid conversation history." }, { status: 400 });
   }
+  const base = sanitizeConversations(body.base);
+  if (!base) return NextResponse.json(
+    { error: "Reload conversation history before saving." }, { status: 428 }
+  );
   try {
-    const durable = await writeDurableConversations(scope, conversations);
+    const durable = await writeDurableConversations(scope, conversations, base);
     if (!durable) {
       await getDb().agentPrefs.update(scope, {
         conversation_state: conversations,
@@ -229,6 +257,9 @@ export async function PUT(req: NextRequest) {
     }
     return NextResponse.json({ ok: true, count: conversations.length });
   } catch (error) {
+    if (error instanceof HistoryConflict) return NextResponse.json(
+      { error: error.message }, { status: 409 }
+    );
     console.error(
       "[agent/conversations] save failed:",
       error instanceof Error ? error.message : error

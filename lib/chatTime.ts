@@ -59,16 +59,15 @@ export function bucketLabel(ts: number): string {
 }
 
 /**
- * Split threads into labelled, ordered buckets. Preserves the order it is
- * given (the chat sorts newest-first) so a bucket never reshuffles a list
- * that was already sorted.
+ * Split threads into newest-first buckets. Account-history merges preserve
+ * insertion order, so sort a copy here rather than relying on storage order.
  */
 export function bucketByDay<T>(
   items: T[],
   at: (item: T) => number
 ): { label: string; items: T[] }[] {
   const out: { label: string; items: T[] }[] = [];
-  for (const item of items) {
+  for (const item of [...items].sort((a, b) => at(b) - at(a))) {
     const label = bucketLabel(at(item));
     const last = out[out.length - 1];
     if (last && last.label === label) last.items.push(item);

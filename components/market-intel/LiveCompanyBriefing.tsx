@@ -15,9 +15,12 @@ import {
   Globe2,
   History,
   LayoutGrid,
+  Loader2,
   List,
   MessageSquare,
   Newspaper,
+  PanelRightClose,
+  PanelRightOpen,
   Radar,
   Repeat2,
   Sparkles,
@@ -33,7 +36,7 @@ import {
 import { AutoFresh } from "@/components/market-intel/AutoFresh";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
-import { InfoHint } from "@/components/ui/InfoHint";
+import { RefreshChip } from "@/components/market-intel/NextRefresh";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import {
   PrioritySearchInput,
@@ -53,7 +56,7 @@ import { cn } from "@/lib/utils";
 import { SIGNAL_META, type ItemLabel, type SignalId } from "@/lib/marketIntelSignals";
 import { groupStories, type StoryGroup, type StoryInput } from "@/lib/marketIntelStories";
 import type { BriefingPost, FeedNews, FeedPost, LiveBriefing, LiveSignal } from "@/lib/marketIntelFeed";
-import type { TrackedPerson } from "@/lib/marketIntelTracking";
+import type { TrackedPerson, TrackedCompany } from "@/lib/marketIntelTracking";
 import type { Division } from "@/lib/offeringMaterials";
 import { useStoredView } from "@/lib/useStoredView";
 import { tint } from "@/lib/tint";
@@ -103,7 +106,8 @@ type Item = StoryInput & {
 
 export function LiveCompanyBriefing({
   briefing,
-  subtitle,
+  refreshUpdatedAt = null,
+  collection,
   extraPeople = [],
   personPosts = {},
   divisions = [],
@@ -114,7 +118,8 @@ export function LiveCompanyBriefing({
   starred = false,
 }: {
   briefing: LiveBriefing;
-  subtitle?: string;
+  collection?: TrackedCompany["onboarding"];
+  refreshUpdatedAt?: string | null;
   extraPeople?: TrackedPerson[];
   /** Collected posts per tracked person id; a missing key means no sync yet. */
   personPosts?: Record<string, FeedPost[]>;
@@ -136,6 +141,8 @@ export function LiveCompanyBriefing({
      their posts are related to these industries should they show up here").
      Nothing is thrown away: the switch shows everything, with a count. */
   const [relevantOnly, setRelevantOnly] = useState(isCompetitor);
+  const [detailsView, setDetailsView] = useStoredView("freyr.mi.details", "open", ["open", "closed"] as const);
+  const detailsOpen = detailsView === "open";
   const [viewOpen, setViewOpen] = useState(false);
   const viewRef = useRef<HTMLDivElement>(null);
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
@@ -178,7 +185,7 @@ export function LiveCompanyBriefing({
     ...briefing.posts.map<Item>((p) => ({
       key: p.url,
       kind: p.by ? "people" : "company",
-      title: p.text.split("\n")[0].slice(0, 160),
+      title: p.text.split("\n")[0].slice(0, 160) || "View post on LinkedIn",
       body: p.text,
       date: p.date,
       url: p.url,
@@ -254,10 +261,10 @@ export function LiveCompanyBriefing({
         <span
           key={kind}
           title={meta.label}
-          className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
+          className="inline-flex w-max shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold leading-4"
           style={{ color: meta.color, background: tint(meta.color, 8) }}
         >
-          <SIcon size={10.5} strokeWidth={2.2} /> {meta.label}
+          <SIcon size={12} strokeWidth={2} className="shrink-0" /> {meta.label}
         </span>
       );
     });
@@ -271,27 +278,52 @@ export function LiveCompanyBriefing({
 
   /* ONE STORY, MANY SOURCES (Saras, Sep 10): the others are named under the
      card rather than shown again as cards of their own. */
-  const othersLine = (group: StoryGroup<Item>) =>
-    group.others.length > 0 ? (
-      <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border-light pt-2 text-[11.5px] text-text-tertiary">
-        <span>
-          {group.lead.kind === "company" || group.lead.kind === "people"
-            ? "Also posted by:"
-            : "Other sources talking about this:"}
-        </span>
-        {group.others.map((o, i) => (
-          <a
-            key={`${o.key}-${i}`}
-            href={safeHref(o.url) as string}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-0.5 font-semibold text-text-secondary hover:text-blue-primary"
-          >
-            {o.sourceLabel} <ExternalLink size={10} strokeWidth={2.2} />
-          </a>
-        ))}
-      </p>
-    ) : null;
+  const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
+  const othersLine = (group: StoryGroup<Item>) => {
+    if (!group.others.length) return null;
+    const expanded = !!expandedSources[group.lead.key];
+    const panelId = `other-sources-${encodeURIComponent(group.lead.key)}`;
+    return (
+      <div className="mt-2.5">
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={panelId}
+          onClick={() => setExpandedSources(previous => ({ ...previous, [group.lead.key]: !expanded }))}
+          className="inline-flex items-center gap-1.5 rounded py-1 text-[11px] font-medium text-text-secondary transition-colors hover:text-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+        >
+          <Newspaper size={12} className="shrink-0" />
+          <span>{group.others.length} other {group.others.length === 1 ? "source" : "sources"}</span>
+          <ChevronDown size={12} className={cn("transition-transform duration-200 motion-reduce:transition-none", expanded && "rotate-180")} />
+        </button>
+        <div
+          id={panelId}
+          className={cn("grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none", expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}
+          aria-hidden={!expanded}
+          inert={!expanded}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <ul className="my-1.5 space-y-1 border-l border-border-light pl-3">
+              {group.others.map((source, index) => (
+                <li key={`${source.key}-${index}`}>
+                  <a
+                    href={safeHref(source.url) as string}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={source.title}
+                    className="group inline-flex max-w-full items-center gap-1.5 rounded py-1 text-[11px] leading-4 text-blue-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+                  >
+                    <span className="min-w-0 [overflow-wrap:anywhere]">{source.sourceLabel.replace(/^www\./, "")}</span>
+                    <ExternalLink size={10} className="shrink-0 opacity-50 transition-opacity group-hover:opacity-100" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const leadKind = (item: Item) => kindsOf(item)[0];
   const cardStyle = (item: Item) =>
@@ -352,7 +384,7 @@ export function LiveCompanyBriefing({
             <p className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-text-primary">
               {isLong && !open
                 ? `${chars.slice(0, 420).join("").trimEnd()}…`
-                : post.text}
+                : post.text || "This post has no caption. Open it on LinkedIn to view."}
             </p>
             {isLong && (
               <button
@@ -425,7 +457,15 @@ export function LiveCompanyBriefing({
           </span>
         </p>
         <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
-          {article.title}
+          <a
+            href={safeHref(article.url) as string}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-start gap-1 text-blue-primary hover:underline"
+          >
+            <span>{article.title}</span>
+            <ExternalLink size={11} strokeWidth={2.2} className="mt-1 shrink-0" />
+          </a>
         </h3>
         {article.summary && (
           <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
@@ -435,26 +475,11 @@ export function LiveCompanyBriefing({
             </span>
           </p>
         )}
-        <a
-          href={safeHref(article.url) as string}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
-        >
-          {own ? "Read it on their site" : "Read the article"}
-          <ExternalLink size={11} strokeWidth={2.2} />
-        </a>
         {item.signal?.why && whyLine(item.signal)}
         {othersLine(group)}
       </Card>
     );
   };
-
-  const TABLE_TAG = {
-    post: { color: "var(--ink-bright-blue)" },
-    news: { color: "var(--ink-teal-deep)" },
-    site: { color: "var(--ink-orange)" },
-  } as const;
 
   return (
     <div>
@@ -480,7 +505,6 @@ export function LiveCompanyBriefing({
         />
         <h1 className="flex items-center gap-1.5 text-[22px] font-bold tracking-[-0.02em] text-text-primary">
           {briefing.name}
-          <InfoHint text={subtitle || "Live briefing from LinkedIn, the news wire and their own website, past 3 months."} />
         </h1>
         {briefing.momentumPct === null ? (
           /* A COUNT, NOT A TREND, and an exact one: nothing is capped any
@@ -506,7 +530,7 @@ export function LiveCompanyBriefing({
             {briefing.momentumPct}% vs last month
           </span>
         )}
-        <WatchStatus state={watch} />
+        {isAdmin && <WatchStatus state={watch} />}
         <DivisionEditor
           companyId={briefing.id}
           companyName={briefing.name}
@@ -519,17 +543,7 @@ export function LiveCompanyBriefing({
           </span>
         )}
         <span className="ml-auto flex items-center gap-2">
-          <span className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
-            <span
-              className={cn(
-                "inline-flex h-1.5 w-1.5 rounded-full",
-                watch.followers === 0 ? "bg-[#9AA5B8]" : "bg-[#1A7A35]"
-              )}
-            />
-            {watch.followers === 0
-              ? `Nothing new since ${briefing.updatedLabel}`
-              : `Updated ${briefing.updatedLabel}`}
-          </span>
+          <RefreshChip updatedAt={refreshUpdatedAt} />
           <MyListToggle
             companyId={briefing.id}
             companyName={briefing.name}
@@ -571,16 +585,20 @@ export function LiveCompanyBriefing({
         onPick={setSignalPick}
       />
 
-      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className={cn(
+        "-mr-4 mt-5 grid items-start gap-4 motion-safe:transition-[grid-template-columns] motion-safe:duration-300 motion-safe:ease-in-out",
+        detailsOpen ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,calc((100%_-_16px)/3))]" : "grid-cols-[minmax(0,1fr)_40px] lg:grid-cols-[minmax(0,1fr)_minmax(0,40px)]"
+      )}>
+        <div className="min-w-0">
           {/* THE SECONDARY BAR: SOURCES (Saras, Sep 11), under the Signals
               bar: where an item came from. Thought leadership and awards are
               signals now, so they are not sources any more. */}
-          <div className="mb-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Sources">
+          <div className="mb-3 flex min-w-0 items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1" role="group" aria-label="Sources">
             <span className="mr-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Sources</span>
             {SOURCES.map((s) => {
               const SIcon = s.icon;
               const on = source === s.key;
+              const pending = collection?.status === "collecting" && collection.stage === "sources" && s.count === 0 && (s.key === "news" || s.key === "site");
               return (
                 <button
                   key={s.key}
@@ -588,7 +606,7 @@ export function LiveCompanyBriefing({
                   onClick={() => setSource(s.key)}
                   aria-pressed={on}
                   className={cn(
-                    "flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors",
+                    "flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors",
                     on
                       ? "border-transparent text-white"
                       : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
@@ -597,7 +615,7 @@ export function LiveCompanyBriefing({
                 >
                   <SIcon size={12} strokeWidth={2.2} />
                   {s.label}
-                  <span className={cn("tnum", on ? "opacity-80" : "text-text-tertiary")}>{s.count}</span>
+                  {pending ? <span className="inline-flex items-center gap-1 text-blue-primary"><Loader2 size={12} className="motion-safe:animate-spin" /><span className="text-[10px]">Collecting</span></span> : <span className={cn("tnum", on ? "opacity-80" : "text-text-tertiary")}>{s.count}</span>}
                 </button>
               );
             })}
@@ -723,9 +741,20 @@ export function LiveCompanyBriefing({
                 : "space-y-2.5"
             )}
           >
-            {newsView === "table" ? (
+            {groups.length === 0 ? (
+              <Card className="p-6 text-[13px] leading-relaxed text-text-secondary">
+                {relevantOnly && hiddenByRelevance > 0 && matched.length > 0
+                  ? `Nothing here concerns Freyr's industries. ${hiddenByRelevance} ${hiddenByRelevance === 1 ? "item is" : "items are"} hidden; switch to "Showing everything" to see them.`
+                  : "Nothing matches the current filters. Widen the source, signal, time range or search to see more."}
+              </Card>
+            ) : newsView === "table" ? (
               <Card className="overflow-x-auto p-0">
-                <table className="min-w-[560px] w-full">
+                <table className="min-w-[560px] w-full table-fixed">
+                  <colgroup>
+                    <col className="w-[23%]" />
+                    <col />
+                    <col className="w-[170px]" />
+                  </colgroup>
                   <thead>
                     <tr className="border-b border-border-light">
                       <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
@@ -737,9 +766,6 @@ export function LiveCompanyBriefing({
                       <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                         When
                       </th>
-                      <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                        Article
-                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light">
@@ -748,73 +774,65 @@ export function LiveCompanyBriefing({
                       const rowKind = item.kind === "news" ? "news" : item.kind === "site" ? "site" : "post";
                       const lead = leadKind(item);
                       const tagged = lead !== "others";
-                      const color = tagged ? SIGNAL_META[lead].color : TABLE_TAG[rowKind].color;
-                      const RowIcon = tagged
-                        ? SIGNAL_META[lead].icon
-                        : rowKind === "news"
+                      const color = SIGNAL_META[lead].color;
+                      const SignalIcon = SIGNAL_META[lead].icon;
+                      const RowIcon = rowKind === "news"
                           ? Newspaper
                           : rowKind === "site"
                             ? Globe2
                             : (LinkedInIcon as unknown as LucideIcon);
+                      let domain = "";
+                      try { domain = new URL(item.url).hostname.replace(/^www\./, ""); } catch {}
+                      const sourceName = rowKind === "post" ? "LinkedIn" : rowKind === "site" ? domain || item.sourceLabel : item.sourceLabel || domain;
                       return (
                         <tr key={index} className="transition-colors hover:bg-surface">
-                          <td className="px-4 py-3 align-top">
-                            <span
-                              className="flex w-max max-w-[200px] items-center gap-1 truncate rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]"
-                              style={{ color, background: tint(color, 8) }}
-                            >
-                              <RowIcon size={10.5} strokeWidth={2.2} />
-                              {tagged ? SIGNAL_META[lead].label : item.sourceLabel}
-                            </span>
-                            {tagged && (
-                              <span className="mt-1 block max-w-[200px] truncate text-[11px] text-text-tertiary">
-                                {item.sourceLabel}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            <p className="overflow-hidden text-[13px] font-semibold leading-snug text-text-primary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                              {item.title}
-                            </p>
-                            {(item.signal?.why || item.news?.summary) && (
-                              <p className="mt-0.5 overflow-hidden text-[12px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                                {item.signal?.why ?? item.news?.summary}
-                              </p>
-                            )}
-                            {group.others.length > 0 && (
-                              <p className="mt-0.5 text-[11px] text-text-tertiary tnum">
-                                +{group.others.length} more {group.others.length === 1 ? "source" : "sources"}
-                              </p>
-                            )}
-                          </td>
-                          <td
-                            className="whitespace-nowrap px-4 py-3 align-top text-[12px] text-text-secondary"
-                            suppressHydrationWarning
-                          >
-                            {fmtDate(item.date)}
-                          </td>
                           <td className="px-4 py-3 align-top">
                             <a
                               href={safeHref(item.url) as string}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
+                              className="inline-flex max-w-full items-center gap-1.5 text-[12px] font-semibold text-blue-primary hover:underline"
                             >
-                              {rowKind === "post" ? "Open" : "Read"}{" "}
-                              <ExternalLink size={11} strokeWidth={2.2} />
+                              <RowIcon size={12} strokeWidth={2} className="shrink-0" />
+                              <span className="min-w-0 [overflow-wrap:anywhere]">{sourceName}</span>
+                              <ExternalLink size={10} className="shrink-0" />
                             </a>
+                            <span className="mt-1 block max-w-[200px] truncate text-[11px] text-text-tertiary" title={rowKind === "post" ? item.sourceLabel : domain}>
+                              {rowKind === "post" ? item.sourceLabel : rowKind === "site" ? "Company website" : domain !== sourceName ? domain : ""}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            {tagged && <span className="mb-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-4" style={{ color, background: tint(color, 8) }}>
+                              <SignalIcon size={12} strokeWidth={2} className="shrink-0" />
+                              {SIGNAL_META[lead].label}
+                            </span>}
+                            <a
+                              href={safeHref(item.url) as string}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="group inline-flex max-w-full items-start gap-1 text-[13px] font-semibold leading-snug text-blue-primary hover:underline"
+                            >
+                              <span className="overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">{item.title}</span>
+                              <ExternalLink size={11} strokeWidth={2.2} className="mt-0.5 shrink-0 opacity-60 group-hover:opacity-100" />
+                            </a>
+                            {(item.signal?.why || item.news?.summary) && (
+                              <p className="mt-0.5 overflow-hidden text-[12px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                                {item.signal?.why ?? item.news?.summary}
+                              </p>
+                            )}
+                            {othersLine(group)}
+                          </td>
+                          <td
+                            className="px-4 py-3 align-top text-[12px] leading-relaxed text-text-secondary"
+                            suppressHydrationWarning
+                          >
+                            {fmtDate(item.date)}
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
-              </Card>
-            ) : groups.length === 0 ? (
-              <Card className="p-6 text-[13px] leading-relaxed text-text-secondary">
-                {relevantOnly && hiddenByRelevance > 0 && matched.length > 0
-                  ? `Nothing here concerns Freyr's industries. ${hiddenByRelevance} ${hiddenByRelevance === 1 ? "item is" : "items are"} hidden; switch to "Showing everything" to see them.`
-                  : "Nothing matches the current filters. Widen the source, signal, time range or search to see more."}
               </Card>
             ) : (
               groups.map((group, index) =>
@@ -827,7 +845,32 @@ export function LiveCompanyBriefing({
         </div>
 
         {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4). */}
-        <div className="stagger space-y-4">
+        <div className="sticky top-20 min-w-0 self-start">
+          {!detailsOpen && (
+            <button
+              type="button"
+              aria-label="Show company details"
+              aria-expanded={false}
+              aria-controls="company-details-panel"
+              onClick={() => setDetailsView("open")}
+              className="flex w-10 cursor-pointer flex-col items-center gap-3 rounded-l-xl border border-r-0 border-border-light bg-white py-4 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
+            >
+              <PanelRightOpen size={16} className="shrink-0" />
+              <span className="whitespace-nowrap [writing-mode:vertical-rl]">Company details</span>
+            </button>
+          )}
+          <aside
+            id="company-details-panel"
+            aria-label="Company details"
+            aria-hidden={!detailsOpen}
+            inert={!detailsOpen}
+            className={cn("min-w-0 overflow-hidden rounded-l-2xl border-l border-border-light bg-white shadow-[-4px_0_16px_-12px_rgba(0,0,0,0.18)] motion-safe:transition-[opacity,transform,max-height] motion-safe:duration-300 motion-safe:ease-in-out", detailsOpen ? "max-h-[calc(100vh-6rem)] translate-x-0 opacity-100" : "pointer-events-none max-h-0 translate-x-4 opacity-0")}
+          >
+          <div className="max-h-[calc(100vh-6rem)] min-h-[min(600px,calc(100vh-6rem))] space-y-4 overflow-y-auto overscroll-contain p-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Company details</h2>
+            <button type="button" onClick={() => setDetailsView("closed")} aria-label="Hide company details" aria-expanded={true} aria-controls="company-details-panel" className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-medium text-text-secondary hover:bg-surface hover:text-blue-primary"><PanelRightClose size={14} className="shrink-0" />Hide</button>
+          </div>
           <Card className="p-4">
             <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
               <TrendingUp size={14} strokeWidth={2} className="text-blue-primary" />
@@ -888,6 +931,8 @@ export function LiveCompanyBriefing({
               </p>
             </Card>
           )}
+          </div>
+          </aside>
         </div>
       </div>
     </div>

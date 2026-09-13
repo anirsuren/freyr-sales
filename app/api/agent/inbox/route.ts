@@ -1,3 +1,4 @@
+import { canOpenModule } from "@/lib/moduleAccessServer";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { nextBestActions, DRAFTABLE, focusActions } from "@/lib/agent";
@@ -15,30 +16,41 @@ export async function GET(request: NextRequest) {
   if (!scope) {
     return NextResponse.json(
       { error: "Verified workspace access required." },
-      { status: 403 }
+      { status: 403 },
+    );
+  }
+  if (!(await canOpenModule("/customers"))) {
+    return NextResponse.json(
+      { error: "Customers are not available on this account." },
+      { status: 403 },
     );
   }
   const actorName = await authenticatedRequestActorName(request);
   const db = getDb();
-  const [sessions, customers, contacts, interactions, prefs] = await Promise.all([
-    db.pitchSessions.list(),
-    db.customers.list(),
-    db.contacts.list(),
-    db.interactions.list(),
-    db.agentPrefs.get(scope),
-  ]);
+  const [sessions, customers, contacts, interactions, prefs] =
+    await Promise.all([
+      canOpenModule("/sessions").then((allowed) =>
+        allowed ? db.pitchSessions.list() : [],
+      ),
+      db.customers.list(),
+      canOpenModule("/contacts").then((allowed) =>
+        allowed ? db.contacts.list() : [],
+      ),
+      db.interactions.list(),
+      db.agentPrefs.get(scope),
+    ]);
   const { actions } = focusActions(
     nextBestActions({ sessions, customers, contacts, interactions }),
     customers,
     prefs,
     actorName,
-    scope.userId
+    scope.userId,
   );
   const needsApproval = actions.filter((a) => !DRAFTABLE.includes(a.kind));
   const canHandle = actions.filter((a) => DRAFTABLE.includes(a.kind));
   // Pitches sent back for changes also need the rep — surface them too (#69).
   const reworks = sessions.filter(
-    (s) => s.review_status === "changes_requested"
+    (s) => s.review_status === "changes_requested",
   ).length;
 
   return NextResponse.json({

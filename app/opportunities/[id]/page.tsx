@@ -1,3 +1,4 @@
+import { verifiedMemberPrivileges } from "@/lib/memberPrivilegeIdentity";
 import { notFound, redirect } from "next/navigation";
 import { estimatedTcvOf } from "@/lib/opportunitiesShared";
 import { getDb } from "@/lib/db";
@@ -67,18 +68,25 @@ export default async function OpportunityPage({
   await requireServerMemberScope();
   const { id } = await params;
 
-  const [{ opportunities }, offerings, role, meetingState, me, privileges, teams] =
-    await Promise.all([
-      readOpportunities(),
-      listOfferings(),
-      getRole(),
-      readMeetings().catch(() => ({ meetings: [] })),
-      getCurrentUser(),
-      readPrivileges(),
-      readRecordTeams(),
-    ]);
+  const [
+    { opportunities },
+    offerings,
+    role,
+    meetingState,
+    me,
+    privileges,
+    teams,
+  ] = await Promise.all([
+    readOpportunities(),
+    listOfferings(),
+    getRole(),
+    readMeetings().catch(() => ({ meetings: [] })),
+    getCurrentUser(),
+    readPrivileges(),
+    readRecordTeams(),
+  ]);
   const deal = opportunities.find((o) => o.id === id);
-    /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
+  /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
      stuck on "Customer not found" after a mode switch: "i should never go
      here... just take me back to the page with all those things. dont show me
      that it doesnt exist"). The commonest way to arrive with a stale id is
@@ -98,7 +106,7 @@ export default async function OpportunityPage({
     customers.find(
       (c) =>
         (c.company_name ?? "").trim().toLowerCase() ===
-        deal.customer.trim().toLowerCase()
+        deal.customer.trim().toLowerCase(),
     )?.id ?? null;
 
   /* WHAT THIS PERSON MAY DO TO THIS DEAL — the privilege map joined to who is
@@ -109,6 +117,7 @@ export default async function OpportunityPage({
     privileges,
     teams,
     person: me.name,
+    heldPrivileges: await verifiedMemberPrivileges(privileges, me.memberId),
     role,
     opportunityId: deal.id,
     ...(customerId ? { customerId } : {}),
@@ -153,14 +162,16 @@ export default async function OpportunityPage({
   const live = getDataMode() === "live";
   const workspace = process.env.FREYR_WORKSPACE_ID;
   const directory =
-    live && workspace ? await listWorkspaceAccess(workspace).catch(() => null) : null;
+    live && workspace
+      ? await listWorkspaceAccess(workspace).catch(() => null)
+      : null;
   const members = live
     ? [
         ...new Set(
           (directory?.members ?? [])
             .filter((m) => m.active && m.accountType === "real")
             .map((m) => m.name.trim())
-            .filter(Boolean)
+            .filter(Boolean),
         ),
       ].sort((a, b) => a.localeCompare(b))
     : [
@@ -203,7 +214,7 @@ export default async function OpportunityPage({
     !(await moduleWriteRefusal("/revenue-accruals"));
   const accrualPlan = (await canOpenModule("/revenue-accruals"))
     ? ((await readRevenueAccruals().catch(() => null))?.plans.find(
-        (p) => p.opportunityId === deal.id
+        (p) => p.opportunityId === deal.id,
       ) ?? null)
     : null;
   /* The planner's own view of a deal: the same fields the Revenue accruals
@@ -229,7 +240,9 @@ export default async function OpportunityPage({
           customer: deal.customer,
           ...(deal.customerId ? { customerId: deal.customerId } : {}),
           ...(accrualOfferingId ? { offeringId: accrualOfferingId } : {}),
-          ...(accrualOfferingLabel ? { offeringLabel: accrualOfferingLabel } : {}),
+          ...(accrualOfferingLabel
+            ? { offeringLabel: accrualOfferingLabel }
+            : {}),
           /* THE DEAL'S ACTUAL MONEY, NOT ITS LEGACY COLUMN.
              Found in the loop: a deal created with Estimated TCV and no
              `value` reached the scheduler with a contract value of ZERO,

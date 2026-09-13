@@ -1,3 +1,4 @@
+import { verifiedMemberPrivileges } from "./memberPrivilegeIdentity";
 import "server-only";
 
 import { cache } from "react";
@@ -56,15 +57,24 @@ export const resolveViewerAccess = cache(
          a group hands out none — so this is one store read again. Groups still
          matter, but for which RECORDS are reachable, which each module asks
          for itself when it has records in hand. */
+      const heldPrivileges = await verifiedMemberPrivileges(
+        privileges,
+        me.memberId,
+      );
       return {
-        access: accessMapFor({ state: privileges, role, person: me.name }),
-        viewAll: hasViewAll(privileges, me.name, role),
+        access: accessMapFor({
+          state: privileges,
+          role,
+          person: me.name,
+          heldPrivileges,
+        }),
+        viewAll: hasViewAll(privileges, me.name, role, heldPrivileges),
         role,
       };
     } catch {
       return null;
     }
-  }
+  },
 );
 
 /** Just the map, for callers that do not care which role produced it. */

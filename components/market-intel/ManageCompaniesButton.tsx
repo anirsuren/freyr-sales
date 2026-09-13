@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  AlertCircle,
   ArrowDownAZ,
   Building2,
   Check,
@@ -16,94 +17,110 @@ import {
   Minus,
   Newspaper,
   Radio,
+  Save,
+  Loader2,
   Star,
   Swords,
+  Tag,
   Trash2,
 } from "lucide-react";
-import { ColorSelect } from "@/components/ui/ColorSelect";
+import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { useCollectionStatusRefresh } from "./useCollectionStatusRefresh";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { tint } from "@/lib/tint";
 import type { LucideIcon } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { MiLogo } from "@/components/market-intel/MiLogo";
 import { DivisionChips } from "@/components/market-intel/DivisionChips";
 import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton";
 import { WatchStatus } from "@/components/market-intel/WatchStatus";
-import type { Division } from "@/lib/offeringMaterials";
+import { DIVISIONS, DIVISION_META } from "@/lib/offeringMaterials";
 import { cn } from "@/lib/utils";
+import { applyBookmarkChanges } from "@/lib/marketIntelBookmarkChanges";
+import { useLeaveGuard } from "@/lib/useLeaveGuard";
+import type { ManagedCompany } from "@/lib/marketIntelManaged";
 
 /**
  * THE PLACE WHERE YOU BUILD YOUR PAGE (Anir, Sep 10: "It should be
  * checkboxes, and checkboxes are what let me see it. If GSK is not checked
  * off, I won't be able to see it on the page").
  *
- * Every company the team knows about is listed here, ticked or not. Ticking
- * one puts it on your Market Intel page and keeps it collected; unticking it
- * takes it off your page, and if you were the last person who had it, the
- * collection stops. The star is a separate thing: a favourite inside your own
- * list, which ticks the box too, because a favourite you cannot see would be
- * pointless.
+ * Every company in this section is listed here, ticked or not: competitors in
+ * Competitor Intelligence, customers in Customer Intelligence, never both
+ * (Anir, Sep 11: "if i want to see customers ill go to the other section").
+ * Ticking one edits a draft; Save changes updates your tracking list. The star is a separate
+ * thing: a favourite inside your own list, which ticks the box too, because a
+ * favourite you cannot see would be pointless.
  *
- * Wide and a fixed height, so filtering never moves the frame.
+ * A PAGE OF ITS OWN (Anir, Sep 11: "the manage competitors should be like a
+ * full page when i click on it... track competitors is a popup. that makes
+ * more sense"). The toolbar and the list use the whole width; adding a
+ * company is still the Track pop-up in the header.
  */
-export type ManagedCompany = {
-  id: string;
-  name: string;
-  group: "customer" | "competitor";
-  /** How many people have it on their list: 0 means nothing is collected. */
-  followers: number;
-  divisions: Division[];
-  logoUrl: string | null;
-  /** Which of the three sources this company is set up for. */
-  sources: { linkedin: boolean; news: boolean; website: boolean };
-};
+export type { ManagedCompany } from "@/lib/marketIntelManaged";
+
+function CollectionStatus({ company: c }: { company: ManagedCompany }) {
+  if (!c.onboarding) return null;
+  return <span role="status" className={cn("inline-flex items-center gap-2 rounded-full border border-current/15 bg-white/80 px-3 py-1.5 text-xs font-semibold", c.onboarding.status === "failed" ? "text-red-600" : "text-blue-primary")}>
+                            {c.onboarding.status === "failed" ? <AlertCircle size={13} /> : <Loader2 size={13} className="animate-spin motion-reduce:animate-none" />}
+                            {c.onboarding.status === "failed" ? "Collection needs attention" : c.onboarding.status === "queued" ? "Queued for collection" : c.onboarding.stage === "briefing" ? "Preparing briefing" : c.onboarding.stage === "saving" ? "Saving updates" : "Collection in progress"}
+                          </span>;
+}
 
 const LinkedInGlyph = LinkedInIcon as unknown as LucideIcon;
 
 type Show = "all" | "mine" | "starred" | "inactive";
-type Kind = "all" | "customer" | "competitor";
+
+/** Not being collected: added later, and on nobody's list. */
+const idle = (c: ManagedCompany) => c.followers === 0 && !c.activeByDefault;
+/** The "no division" choice in the division filter, same as the page grid. */
+const UNTAGGED = "__untagged__";
+
+/* A DIVISION IS SEARCHABLE TOO (Anir, Sep 11: "even the search bar didn't
+   work" after typing "mdv"): the code finds its companies, and from three
+   letters so does the division's name ("medical"). */
+function matchesQuery(c: ManagedCompany, q: string): boolean {
+  return (
+    !q ||
+    c.name.toLowerCase().includes(q) ||
+    c.divisions.some(
+      (d) => d.toLowerCase() === q || (q.length >= 3 && DIVISION_META[d].label.toLowerCase().includes(q))
+    )
+  );
+}
+
+function passesDivision(c: ManagedCompany, filter: string[]): boolean {
+  if (filter.length === 0) return true;
+  if (c.divisions.length === 0) return filter.includes(UNTAGGED);
+  return c.divisions.some((d) => filter.includes(d));
+}
 type Sort = "az" | "mine" | "status";
 
 const WORDS = {
   customer: {
-    button: "Manage companies",
-    title: "Companies on your watch",
-    search: "Search companies…",
-    empty: "No company matches.",
+    button: "Manage customers",
+    search: "Search customers…",
+    empty: "No customer matches.",
   },
   competitor: {
     button: "Manage competitors",
-    title: "Competitors on your watch",
     search: "Search competitors…",
     empty: "No competitor matches.",
   },
 } as const;
 
-/**
- * ONE DIALOG FOR THE WHOLE PAGE. Both the toolbar chip and the button on the
- * empty page open the SAME pop-up: ticking the first company flips the page
- * from empty to a grid, and a dialog owned by the empty state would vanish
- * mid-click when that half of the page unmounts.
- */
-const ManageOpen = createContext<((open: boolean) => void) | null>(null);
-
-export function ManageCompaniesProvider({
-  children,
-  ...props
-}: ManageProps & { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <ManageOpen.Provider value={setOpen}>
-      {children}
-      <ManageCompaniesDialog {...props} open={open} onClose={() => setOpen(false)} />
-    </ManageOpen.Provider>
-  );
+/** Where Manage lives for each section. */
+export function manageHref(group: "customer" | "competitor"): string {
+  return group === "competitor" ? "/market-intel/manage?tab=competitors" : "/market-intel/manage";
 }
 
-/** The button. It only opens the dialog the provider owns. */
+/**
+ * THE BUTTON IS A LINK NOW (Anir, Sep 11: "the manage competitors should be
+ * like a full page when i click on it"). Same look as before; it opens the
+ * Manage page for this section instead of a pop-up.
+ */
 export function ManageCompaniesButton({
   group = "customer",
   variant = "chip",
@@ -112,11 +129,9 @@ export function ManageCompaniesButton({
   /** "cta" is the button inside the empty page, which has to be found. */
   variant?: "chip" | "cta";
 }) {
-  const setOpen = useContext(ManageOpen);
   return (
-    <button
-      type="button"
-      onClick={() => setOpen?.(true)}
+    <Link
+      href={manageHref(group)}
       className={cn(
         "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full font-semibold transition-colors",
         variant === "cta"
@@ -125,7 +140,7 @@ export function ManageCompaniesButton({
       )}
     >
       <ListChecks size={14} strokeWidth={2.2} /> {WORDS[group].button}
-    </button>
+    </Link>
   );
 }
 
@@ -141,165 +156,95 @@ type ManageProps = {
   starredIds?: string[];
 };
 
-function ManageCompaniesDialog({
+export function ManageCompaniesPanel({
   companies,
   group = "customer",
   isAdmin = false,
   canWrite = false,
   myIds,
   starredIds,
-  open,
-  onClose,
-}: ManageProps & { open: boolean; onClose: () => void }) {
+}: ManageProps) {
   const router = useRouter();
   const { toast } = useToast();
   const words = WORDS[group];
+  const accent = group === "competitor" ? "var(--ink-magenta)" : "var(--ink-bright-blue)";
   const [rows, setRows] = useState<ManagedCompany[]>(companies);
   const [mine, setMine] = useState<Set<string>>(new Set(myIds ?? []));
   const [stars, setStars] = useState<Set<string>>(new Set(starredIds ?? []));
   const [query, setQuery] = useState("");
   const [show, setShow] = useState<Show>("all");
-  const [kind, setKind] = useState<Kind>(group);
+  const [divisionFilter, setDivisionFilter] = useState<string[]>([]);
   const [sort, setSort] = useState<Sort>("az");
   const [busy, setBusy] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<ManagedCompany | null>(null);
-  const [confirmBulk, setConfirmBulk] = useState<{ ids: string[]; waking: number } | null>(null);
+  const [saved, setSaved] = useState({ mine: new Set(myIds ?? []), stars: new Set(starredIds ?? []) });
+  const [saving, setSaving] = useState(false);
+  const dirty = rows.some((c) => c.group === group &&
+    (mine.has(c.id) !== saved.mine.has(c.id) || stars.has(c.id) !== saved.stars.has(c.id)));
+  const draftRef = useRef({ mine, stars, saved });
+  draftRef.current = { mine, stars, saved };
+  const { leaving, stay, leave } = useLeaveGuard(dirty);
+  const adopt = (ids: string[], favourites: string[]) => {
+    setMine(new Set(ids));
+    setStars(new Set(favourites));
+    setSaved({ mine: new Set(ids), stars: new Set(favourites) });
+  };
 
   useEffect(() => setRows(companies), [companies]);
-  useEffect(() => setMine(new Set(myIds ?? [])), [myIds]);
-  useEffect(() => setStars(new Set(starredIds ?? [])), [starredIds]);
-  useEffect(() => setKind(group), [group]);
-
-  /* My list, re-read whenever the pop-up opens, so a change made on another
-     tab or on a card is reflected here. */
+  useCollectionStatusRefresh(rows);
   useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    fetch("/api/market-intel/bookmarks")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!alive || !data) return;
-        setMine(new Set<string>(Array.isArray(data.companyIds) ? data.companyIds : []));
-        setStars(new Set<string>(Array.isArray(data.starredIds) ? data.starredIds : []));
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [open]);
+    // Keep edited rows while incorporating newly tracked companies from the popup.
+    const previous = draftRef.current;
+    const allIds = new Set([...previous.mine, ...previous.saved.mine]);
+    const changes = [...allIds].filter((id) =>
+      previous.mine.has(id) !== previous.saved.mine.has(id) || previous.stars.has(id) !== previous.saved.stars.has(id))
+      .map((id) => ({ id, on: previous.mine.has(id), star: previous.stars.has(id) }));
+    const baseline = { companyIds: myIds ?? [], starredIds: starredIds ?? [] };
+    const next = applyBookmarkChanges(baseline, changes);
+    setMine(new Set(next.companyIds));
+    setStars(new Set(next.starredIds));
+    setSaved({ mine: new Set(baseline.companyIds), stars: new Set(baseline.starredIds) });
+  }, [myIds, starredIds]);
 
-  const patch = (id: string, change: Partial<ManagedCompany>) =>
-    setRows((cur) => cur.map((c) => (c.id === id ? { ...c, ...change } : c)));
-
-  async function save(body: Record<string, unknown>) {
-    const res = await fetch("/api/market-intel/bookmarks", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error || "Could not save your list.");
-    return data as { companyIds?: string[]; starredIds?: string[]; resumed?: boolean; stopped?: boolean };
+  function toggleMine(company: ManagedCompany) {
+    const next = new Set(mine);
+    const favourites = new Set(stars);
+    if (next.has(company.id)) { next.delete(company.id); favourites.delete(company.id); }
+    else next.add(company.id);
+    setMine(next);
+    setStars(favourites);
   }
 
-  /** THE TICK: on my page or not. */
-  async function toggleMine(company: ManagedCompany) {
-    const on = !mine.has(company.id);
-    const beforeMine = new Set(mine);
-    const beforeStars = new Set(stars);
-    const nextMine = new Set(mine);
-    const nextStars = new Set(stars);
-    if (on) nextMine.add(company.id);
+  function toggleStar(company: ManagedCompany) {
+    const next = new Set(stars);
+    if (next.has(company.id)) next.delete(company.id);
     else {
-      nextMine.delete(company.id);
-      nextStars.delete(company.id);
+      next.add(company.id);
+      setMine(new Set(mine).add(company.id));
     }
-    setMine(nextMine);
-    setStars(nextStars);
-    patch(company.id, { followers: Math.max(0, company.followers + (on ? 1 : -1)) });
-    try {
-      const data = await save({ id: company.id, on });
-      if (data.resumed) toast(`${company.name} is on your page. Nobody had it, so it starts collecting again.`);
-      else if (data.stopped) toast(`${company.name} is off your page. Nobody has it now, so it stops collecting.`);
-      else if (on) toast(`${company.name} is on your page.`);
-      else toast(`${company.name} is off your page.`);
-      router.refresh();
-    } catch (caught) {
-      setMine(beforeMine);
-      setStars(beforeStars);
-      patch(company.id, { followers: company.followers });
-      toast(caught instanceof Error ? caught.message : "Could not save your list.", "error");
-    }
+    setStars(next);
   }
 
-  /** THE STAR: a favourite, which is not the same as being on my list. */
-  async function toggleStar(company: ManagedCompany) {
-    const on = !stars.has(company.id);
-    const beforeMine = new Set(mine);
-    const beforeStars = new Set(stars);
-    const nextStars = new Set(stars);
-    const nextMine = new Set(mine);
-    if (on) {
-      nextStars.add(company.id);
-      nextMine.add(company.id);
-    } else nextStars.delete(company.id);
-    setStars(nextStars);
-    setMine(nextMine);
-    const joining = on && !beforeMine.has(company.id);
-    if (joining) patch(company.id, { followers: company.followers + 1 });
+  async function saveDraft() {
+    if (saving || !dirty) return;
+    setSaving(true);
+    const changes = rows.filter((c) => c.group === group &&
+      (mine.has(c.id) !== saved.mine.has(c.id) || stars.has(c.id) !== saved.stars.has(c.id)))
+      .map((c) => ({ id: c.id, on: mine.has(c.id), star: stars.has(c.id) }));
     try {
-      const data = await save({ id: company.id, star: on });
-      if (on) toast(joining ? `${company.name} is starred, and now on your page too.` : `${company.name} is starred.`);
-      else toast(`${company.name} is no longer starred. It stays on your page.`);
-      if (data.resumed) toast(`Nobody had ${company.name}, so it starts collecting again.`);
+      const res = await fetch("/api/market-intel/bookmarks", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ changes }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not save your list. Your changes are still here.");
+      adopt(data.companyIds, data.starredIds);
+      const count = rows.filter((c) => c.group === group && data.companyIds.includes(c.id)).length;
+      toast(`Now tracking ${count} ${count === 1 ? "company" : "companies"}.`);
       router.refresh();
-    } catch (caught) {
-      setMine(beforeMine);
-      setStars(beforeStars);
-      patch(company.id, { followers: company.followers });
-      toast(caught instanceof Error ? caught.message : "Could not save your list.", "error");
-    }
-  }
-
-  /** SELECT ALL, over exactly the rows on screen. */
-  async function setBatch(ids: string[], on: boolean) {
-    setConfirmBulk(null);
-    if (ids.length === 0) return;
-    const beforeMine = new Set(mine);
-    const beforeStars = new Set(stars);
-    const beforeRows = rows;
-    const nextMine = new Set(mine);
-    const nextStars = new Set(stars);
-    for (const id of ids) {
-      if (on) nextMine.add(id);
-      else {
-        nextMine.delete(id);
-        nextStars.delete(id);
-      }
-    }
-    setMine(nextMine);
-    setStars(nextStars);
-    setRows((cur) =>
-      cur.map((c) =>
-        ids.includes(c.id) && beforeMine.has(c.id) !== on
-          ? { ...c, followers: Math.max(0, c.followers + (on ? 1 : -1)) }
-          : c
-      )
-    );
-    try {
-      await save({ ids, on });
-      toast(
-        on
-          ? `${ids.length} ${ids.length === 1 ? "company is" : "companies are"} on your page.`
-          : `${ids.length} ${ids.length === 1 ? "company is" : "companies are"} off your page.`
-      );
-      router.refresh();
-    } catch (caught) {
-      setMine(beforeMine);
-      setStars(beforeStars);
-      setRows(beforeRows);
-      toast(caught instanceof Error ? caught.message : "Could not save your list.", "error");
-    }
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not save your list. Your changes are still here.", "error");
+    } finally { setSaving(false); }
   }
 
   async function remove(company: ManagedCompany) {
@@ -335,10 +280,9 @@ function ManageCompaniesDialog({
 
   const q = query.trim().toLowerCase();
   const shown = useMemo(() => {
-    const rank = (c: ManagedCompany) => (c.followers > 0 ? 0 : 1);
+    const rank = (c: ManagedCompany) => (idle(c) ? 1 : 0);
     return rows
-      .filter((c) => !q || c.name.toLowerCase().includes(q))
-      .filter((c) => kind === "all" || c.group === kind)
+      .filter((c) => c.group === group && passesDivision(c, divisionFilter) && matchesQuery(c, q))
       .filter((c) =>
         show === "all"
           ? true
@@ -346,7 +290,7 @@ function ManageCompaniesDialog({
             ? mine.has(c.id)
             : show === "starred"
               ? stars.has(c.id)
-              : c.followers === 0
+              : idle(c)
       )
       .sort((a, b) =>
         sort === "mine"
@@ -355,38 +299,19 @@ function ManageCompaniesDialog({
             ? rank(a) - rank(b) || a.name.localeCompare(b.name)
             : a.name.localeCompare(b.name)
       );
-  }, [rows, q, kind, show, sort, mine, stars]);
+  }, [rows, q, group, divisionFilter, show, sort, mine, stars]);
 
-  const inKind = useMemo(
-    () => rows.filter((c) => kind === "all" || c.group === kind),
-    [rows, kind]
+  const inSection = useMemo(
+    () => rows.filter((c) => c.group === group && passesDivision(c, divisionFilter)),
+    [rows, group, divisionFilter]
   );
+  const untaggedCount = rows.filter((c) => c.group === group && c.divisions.length === 0).length;
   const counts = {
-    all: inKind.length,
-    mine: inKind.filter((c) => mine.has(c.id)).length,
-    starred: inKind.filter((c) => stars.has(c.id)).length,
-    inactive: inKind.filter((c) => c.followers === 0).length,
+    all: inSection.length,
+    mine: inSection.filter((c) => mine.has(c.id)).length,
+    starred: inSection.filter((c) => stars.has(c.id)).length,
+    inactive: inSection.filter(idle).length,
   };
-
-  const shownTicked = shown.filter((c) => mine.has(c.id)).length;
-  const allShownOn = shown.length > 0 && shownTicked === shown.length;
-
-  function toggleAllShown() {
-    const ids = shown.map((c) => c.id);
-    if (allShownOn) {
-      void setBatch(ids, false);
-      return;
-    }
-    const adding = shown.filter((c) => !mine.has(c.id));
-    const waking = adding.filter((c) => c.followers === 0).length;
-    /* Waking a pile of companies at once starts a pile of paid scrapes: say
-       how many before it happens. */
-    if (waking > 3) {
-      setConfirmBulk({ ids: adding.map((c) => c.id), waking });
-      return;
-    }
-    void setBatch(adding.map((c) => c.id), true);
-  }
 
   const chip = (key: Show, label: string, Icon: LucideIcon, count: number) => {
     const on = show === key;
@@ -412,27 +337,25 @@ function ManageCompaniesDialog({
 
   return (
     <>
-      <Modal
-        open={open}
-        onClose={onClose}
-        title={words.title}
-        size="workflow"
-        bodyClassName="flex h-[68vh] flex-col"
-        titleAfter={
-          <InfoHint text="Tick a company to put it on your page and keep it collected. Untick it and it leaves your page; if nobody else has it, it stops collecting and everything already collected is kept. The star is a favourite inside your own list, and starring ticks the box for you." />
-        }
-        actions={
-          canWrite ? (
-            <TrackCompanyButton
-              group={group}
-              canTrack={canWrite}
-              stacked
-              compact
-            />
-          ) : null
-        }
-      >
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="rise-in">
+        <div className="mb-4 flex flex-wrap items-center gap-x-2.5 gap-y-2">
+          <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+            style={{ color: accent, background: tint(accent, 12) }}
+          >
+            {group === "competitor" ? <Swords size={17} strokeWidth={2.2} /> : <Building2 size={17} strokeWidth={2.2} />}
+          </span>
+          <h1 className="flex min-h-9 items-center text-[22px] font-bold leading-none tracking-[-0.02em] text-text-primary">{words.button}</h1>
+          <InfoHint className="h-9 shrink-0 justify-center leading-none" text="Choose the companies you want to track, then Save changes. Star your favourites to find them quickly. To add a company that is not listed, use Track a company." />
+          </div>
+          {canWrite && (
+            <span className="ml-auto">
+              <TrackCompanyButton group={group} canTrack={canWrite} />
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-[var(--surface)] p-2.5">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -440,17 +363,23 @@ function ManageCompaniesDialog({
             aria-label={words.search.replace("…", "")}
             className="h-[34px] min-w-[220px] flex-1 rounded-full border border-border-light bg-white px-3.5 text-[12.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-subtle"
           />
-          <ColorSelect
-            value={kind}
-            onChange={(v) => setKind(v as Kind)}
-            ariaLabel="Filter by type"
-            minWidth={150}
+          <MultiColorSelect
+            values={divisionFilter}
+            onChange={setDivisionFilter}
+            ariaLabel="Filter by division"
+            minWidth={235}
             dense
             collapsible={false}
+            allLabel="All divisions"
+            allIcon={Layers}
             options={[
-              { value: "all", label: "All types", color: "var(--ink-bright-blue)", icon: Layers },
-              { value: "customer", label: "Customers", color: "var(--ink-bright-blue)", icon: Building2 },
-              { value: "competitor", label: "Competitors", color: "var(--ink-magenta)", icon: Swords },
+              ...DIVISIONS.map((d) => ({
+                value: d,
+                label: `${DIVISION_META[d].label} (${d})`,
+                color: DIVISION_META[d].color,
+                icon: DIVISION_META[d].icon,
+              })),
+              { value: UNTAGGED, label: `Untagged (${untaggedCount})`, color: "#5B6B8C", icon: Tag },
             ]}
           />
           <ColorSelect
@@ -463,7 +392,7 @@ function ManageCompaniesDialog({
             options={[
               { value: "az", label: "By name (A to Z)", color: "var(--ink-violet-soft)", icon: ArrowDownAZ },
               { value: "mine", label: "By my list first", color: "var(--ink-bright-blue)", icon: CheckSquare },
-              { value: "status", label: "By active first", color: "var(--ink-green)", icon: Radio },
+              ...(isAdmin ? [{ value: "status", label: "By active first", color: "var(--ink-green)", icon: Radio }] : []),
             ]}
           />
         </div>
@@ -471,27 +400,19 @@ function ManageCompaniesDialog({
           {chip("all", "Everything", Layers, counts.all)}
           {chip("mine", "My list", CheckSquare, counts.mine)}
           {chip("starred", "Starred", Star, counts.starred)}
-          {chip("inactive", "Inactive", CircleSlash, counts.inactive)}
+          {isAdmin && chip("inactive", "Inactive", CircleSlash, counts.inactive)}
         </div>
 
-        <div className="mt-3 min-h-0 flex-1 overflow-auto rounded-xl border border-border-light">
+        <div className="mt-3 overflow-x-auto rounded-xl border border-border-light bg-white">
           <table className="w-full min-w-[820px] border-collapse text-left">
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                <th className="w-[36%] py-2.5 pl-4 pr-3">
+                <th className="w-[48%] py-2.5 pl-4 pr-3">
                   <span className="flex items-center gap-3">
-                    <TickBox
-                      checked={allShownOn}
-                      indeterminate={shownTicked > 0 && !allShownOn}
-                      onChange={toggleAllShown}
-                      disabled={shown.length === 0}
-                      label={allShownOn ? "Take all of these off my page" : "Put all of these on my page"}
-                    />
                     Company
                   </span>
                 </th>
-                <th className="w-[12%] px-3 py-2.5">Type</th>
-                <th className="w-[18%] px-3 py-2.5">Status</th>
+                {isAdmin && <th className="w-[18%] px-3 py-2.5">Status</th>}
                 <th className="w-[14%] px-3 py-2.5">Sources</th>
                 <th className="w-[10%] px-3 py-2.5">Starred</th>
                 {/* Only an admin has anything to do here, and it is one bin. */}
@@ -511,6 +432,7 @@ function ManageCompaniesDialog({
                     key={c.id}
                     className={cn(
                       "transition-colors",
+                      c.onboarding && c.onboarding.status !== "failed" && "mi-collecting-row",
                       on ? "bg-[rgba(0,113,227,0.035)] hover:bg-[rgba(0,113,227,0.06)]" : "hover:bg-surface"
                     )}
                   >
@@ -521,15 +443,10 @@ function ManageCompaniesDialog({
                             beside the name it belongs to. */}
                         <TickBox
                           checked={on}
+                          disabled={saving}
                           onChange={() => void toggleMine(c)}
-                          label={on ? `Take ${c.name} off my page` : `Put ${c.name} on my page`}
-                          title={
-                            on
-                              ? "On your page. Untick to take it off."
-                              : c.followers === 0
-                                ? "Not on your page. Ticking it starts collecting again."
-                                : "Not on your page. Tick it to add it."
-                          }
+                          label={on ? `Stop tracking ${c.name}` : `Track ${c.name}`}
+                          title={on ? "Selected. Save changes to update your list." : "Select to track, then Save changes."}
                         />
                         <MiLogo name={c.name} logoUrl={c.logoUrl} className="h-8 w-8 shrink-0" />
                         <span className="min-w-0">
@@ -540,25 +457,14 @@ function ManageCompaniesDialog({
                             {c.name}
                             <ExternalLink size={11} strokeWidth={2.2} className="opacity-0 transition-opacity group-hover/name:opacity-100" />
                           </Link>
+                          {!isAdmin && <CollectionStatus company={c} />}
                           {c.divisions.length > 0 && <DivisionChips divisions={c.divisions} className="mt-0.5" />}
                         </span>
                       </span>
                     </td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        style={{
-                          color: c.group === "competitor" ? "var(--ink-magenta)" : "var(--ink-bright-blue)",
-                          background: c.group === "competitor" ? "rgba(180,49,143,0.10)" : "rgba(0,113,227,0.08)",
-                        }}
-                      >
-                        {c.group === "competitor" ? <Swords size={11} strokeWidth={2.2} /> : <Building2 size={11} strokeWidth={2.2} />}
-                        {c.group === "competitor" ? "Competitor" : "Customer"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <WatchStatus state={{ followers: c.followers }} />
-                    </td>
+                    {isAdmin && <td className="px-3 py-2.5">
+                      {c.onboarding ? <CollectionStatus company={c} /> : <WatchStatus state={{ followers: c.followers, byDefault: c.activeByDefault }} />}
+                    </td>}
                     <td className="px-3 py-2.5">
                       {/* WHICH SOURCES IT IS SET UP FOR: LinkedIn needs a page,
                           the website needs a domain, news always runs. */}
@@ -572,7 +478,7 @@ function ManageCompaniesDialog({
                         ).map((src) => (
                           <span
                             key={src.label}
-                            title={src.on ? `${src.label}: collected` : `${src.label}: not set up for this company`}
+                            title={src.on ? `${src.label}: ${c.onboarding ? "collection in progress" : "configured"}` : `${src.label}: not set up for this company`}
                             className={cn(
                               "flex h-6 w-6 items-center justify-center rounded-md",
                               src.on ? "" : "opacity-30 grayscale"
@@ -590,14 +496,15 @@ function ManageCompaniesDialog({
                       <button
                         type="button"
                         onClick={() => void toggleStar(c)}
+                        disabled={saving}
                         aria-pressed={starred}
                         aria-label={starred ? `Unstar ${c.name}` : `Star ${c.name}`}
                         title={
                           starred
-                            ? "Starred. Click to unstar; it stays on your page."
+                            ? "Unstar this company. Save changes to apply."
                             : on
                               ? "Star it as a favourite."
-                              : "Star it as a favourite. That puts it on your page too."
+                              : "Star it as a favourite and select it for tracking. Save changes to apply."
                         }
                         className={cn(
                           "flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors",
@@ -614,7 +521,7 @@ function ManageCompaniesDialog({
                         <button
                           type="button"
                           onClick={() => setConfirming(c)}
-                          disabled={busy === c.id}
+                          disabled={busy === c.id || dirty || saving}
                           aria-label={`Delete ${c.name} for everyone`}
                           title="Delete for everyone"
                           className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[#B02020] opacity-60 transition-[opacity,background-color] hover:bg-[rgba(176,32,32,0.10)] hover:opacity-100 focus-visible:opacity-100 disabled:opacity-30"
@@ -628,13 +535,13 @@ function ManageCompaniesDialog({
               })}
               {shown.length === 0 && (
                 <tr>
-                  <td colSpan={isAdmin ? 6 : 5} className="px-3 py-8 text-center text-[12.5px] text-text-tertiary">
+                  <td colSpan={isAdmin ? 5 : 3} className="px-3 py-8 text-center text-[12.5px] text-text-tertiary">
                     {show === "mine"
-                      ? "Nothing on your list yet. Tick a company to put it on your page."
+                      ? "No companies selected. Select companies, then Save changes."
                       : show === "starred"
                         ? "Nothing starred yet. The star marks a favourite inside your list."
                         : show === "inactive"
-                          ? "Nothing is inactive. Every company here is on somebody's list."
+                          ? "Nothing is inactive. Every company here is being collected."
                           : words.empty}
                   </td>
                 </tr>
@@ -642,22 +549,24 @@ function ManageCompaniesDialog({
             </tbody>
           </table>
         </div>
-      </Modal>
+      </div>
 
-      <ConfirmDialog
-        open={confirmBulk !== null}
-        onClose={() => setConfirmBulk(null)}
-        onConfirm={() => confirmBulk && void setBatch(confirmBulk.ids, true)}
-        title={`Put ${confirmBulk?.ids.length ?? 0} companies on your page?`}
-        body={
-          <>
-            <b>{confirmBulk?.waking}</b> of them are inactive right now, so ticking
-            them starts collecting news and posts for each one again.
-          </>
-        }
-        detail="Untick any of them later and they stop again once nobody has them."
-        confirmLabel="Put them on my page"
-      />
+      <div className="sticky bottom-4 z-20 mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white py-3 pl-4 pr-20 shadow-lg" aria-live="polite">
+        <span className="mr-auto text-[13px] font-medium text-text-secondary">
+          {dirty ? `${rows.filter((c) => c.group === group && mine.has(c.id)).length} companies selected · Unsaved changes`
+            : `Now tracking ${rows.filter((c) => c.group === group && saved.mine.has(c.id)).length} companies`}
+        </span>
+        {dirty && <button type="button" disabled={saving} onClick={() => adopt([...saved.mine], [...saved.stars])}
+          className="rounded-full px-4 py-2 text-[13px] font-semibold text-text-secondary hover:bg-surface disabled:opacity-50">Discard changes</button>}
+        <button type="button" onClick={() => void saveDraft()} disabled={!dirty || saving}
+          className="flex items-center gap-2 rounded-full bg-blue-primary px-5 py-2 text-[13px] font-semibold text-white transition-opacity disabled:opacity-40">
+          {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+          {saving ? "Saving…" : "Save changes"}
+        </button>
+      </div>
+      <ConfirmDialog open={leaving !== null} onClose={stay} onConfirm={leave}
+        title="Leave without saving?" body="Your changes to this tracking list have not been saved."
+        confirmLabel="Discard and leave" />
       <ConfirmDialog
         open={confirming !== null}
         onClose={() => setConfirming(null)}
@@ -676,7 +585,7 @@ function ManageCompaniesDialog({
             )}
           </>
         }
-        detail="To stop collecting without deleting anything, untick it instead. It stops by itself once nobody has it."
+        detail="It leaves every list, and everything collected for it goes too."
         confirmLabel="Delete for everyone"
       />
     </>

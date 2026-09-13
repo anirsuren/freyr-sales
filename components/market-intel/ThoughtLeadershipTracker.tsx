@@ -28,7 +28,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
 import { PrioritySearchInput, SearchPriority } from "@/components/ui/SearchPriority";
 import type { ThoughtBoard, ThoughtItem } from "@/lib/marketIntelFeed";
-import { THOUGHT_FIRMS } from "@/lib/marketIntelThought";
+import { THOUGHT_FIRMS } from "@/lib/marketIntelThoughtSources";
 import { tint } from "@/lib/tint";
 
 /**

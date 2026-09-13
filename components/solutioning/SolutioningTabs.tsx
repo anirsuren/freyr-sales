@@ -26,8 +26,6 @@ const TABS = [
     href: "/solutioning",
     icon: Inbox,
     color: "var(--ink-bright-blue)",
-    subtitle:
-      "What sales has asked the Solutioning team for: a submission, a presentation or a meeting.",
   },
   {
     key: "submissions",
@@ -35,7 +33,6 @@ const TABS = [
     href: "/solutioning?tab=submissions",
     icon: FileCheck2,
     color: "#0891B2",
-    subtitle: "RFI, RFP and proposal submissions being put together.",
   },
   {
     key: "presentations",
@@ -43,7 +40,6 @@ const TABS = [
     href: "/solutioning?tab=presentations",
     icon: Presentation,
     color: "var(--ink-violet-soft)",
-    subtitle: "Decks and demos being prepared for a customer meeting.",
   },
   /* THE FOURTH ROOM (Anir, Aug 28: "you added the meetings thing, but there's
      no fourth thing at the top right, so you got to fix that"). It is a route
@@ -56,7 +52,6 @@ const TABS = [
     href: "/meetings",
     icon: CalendarClock,
     color: "var(--ink-magenta)",
-    subtitle: "Customer meetings: who was in the room, and what came out of it.",
   },
 ];
 
@@ -116,7 +111,6 @@ export function SolutioningTabs({
           </div>
           {action && <div className="shrink-0">{action}</div>}
         </div>
-        <p className="mt-1 text-[13px] text-text-secondary">{current.subtitle}</p>
       </div>
 
       {switching ? (
