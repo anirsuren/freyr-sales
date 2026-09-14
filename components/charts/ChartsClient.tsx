@@ -234,8 +234,14 @@ function PointGuide({ left, color }: { left: string; color: string }) {
  */
 const TIP_CLOSE_GRACE_MS = 90;
 
-/** A tip's record list is "long" when it would otherwise be truncated — the
- *  only case where the tip needs to become hoverable + scrollable. */
+/** Any tip with records must be reachable. Even a two-row popup contains links
+ *  and details a reader may want to inspect, so its lifetime cannot depend on
+ *  whether the list happens to be long enough to scroll. */
+function tipHasRecords(items?: TipItem[]): boolean {
+  return (items?.length ?? 0) > 0;
+}
+
+/** A tip's record list is "long" when it would otherwise be truncated. */
 function tipIsLong(items?: TipItem[]): boolean {
   return (items?.length ?? 0) > TIP_INLINE_ROWS;
 }
@@ -1402,7 +1408,8 @@ export function AreaChart({
   const attainment = goal && goal > 0 ? Math.round((data[hi] / goal) * 100) : null;
   const goalGap = goal != null ? goal - data[hi] : null;
   const pointRecords = pointTips?.[hi];
-  const tipInteractive = tipIsLong(pointRecords);
+  const tipInteractive = tipHasRecords(pointRecords);
+  const tipScrollable = tipIsLong(pointRecords);
 
   function onMove(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -1584,7 +1591,7 @@ export function AreaChart({
           <TipBreakdown
             items={pointRecords}
             label="Records at this point"
-            interactive={tipInteractive}
+            interactive={tipScrollable}
           />
         </Tip>
       )}
@@ -1723,7 +1730,8 @@ export function DonutChart({
     ? Math.max(7.5, Math.min(compactCenter ? 9 : 10, subChord / (centerSub.length * 0.55)))
     : 9;
   const hoveredTip = hover != null ? segments[hover]?.tip : undefined;
-  const tipInteractive = tipIsLong(hoveredTip);
+  const tipInteractive = tipHasRecords(hoveredTip);
+  const tipScrollable = tipIsLong(hoveredTip);
   function tipAnchor(event: React.MouseEvent<SVGCircleElement>) {
     const chartElement = event.currentTarget.ownerSVGElement;
     if (!chartElement) return null;
@@ -1782,7 +1790,7 @@ export function DonutChart({
                 }}
                 onMouseMove={(e) => moveTip(tipAnchor(e))}
                 onMouseLeave={() => {
-                  closeTip(tipIsLong(s.tip) ? TIP_CLOSE_GRACE_MS : 0);
+                  closeTip(tipHasRecords(s.tip) ? TIP_CLOSE_GRACE_MS : 0);
                   if (syncId) donutSyncBroadcast(syncId, null);
                 }}
                 style={{
@@ -1847,7 +1855,7 @@ export function DonutChart({
           <TipBreakdown
             items={hoveredTip}
             label="Records in this segment"
-            interactive={tipInteractive}
+            interactive={tipScrollable}
           />
         </PortalTip>
       )}
@@ -2623,7 +2631,8 @@ export function LineChart({
     .join(", ");
   const hi = hover;
   const pointRecords = hi != null ? pointTips?.[hi] : undefined;
-  const tipInteractive = tipIsLong(pointRecords);
+  const tipInteractive = tipHasRecords(pointRecords);
+  const tipScrollable = tipIsLong(pointRecords);
 
   function onMove(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -2798,7 +2807,7 @@ export function LineChart({
               <TipBreakdown
                 items={pointRecords}
                 label="Records at this point"
-                interactive={tipInteractive}
+                interactive={tipScrollable}
               />
             </Tip>
           );
@@ -2867,7 +2876,8 @@ export function Sparkline({
   // Distinct from the `interactive` PROP above (which decides whether this
   // sparkline pops a tip at all): this is whether the tip itself can be
   // entered and scrolled.
-  const tipReachable = tipIsLong(pointRecords);
+  const tipReachable = tipHasRecords(pointRecords);
+  const tipScrollable = tipIsLong(pointRecords);
 
   function onMove(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -2965,7 +2975,7 @@ export function Sparkline({
           <TipBreakdown
             items={pointRecords}
             label="Records at this point"
-            interactive={tipReachable}
+            interactive={tipScrollable}
           />
         </Tip>
       )}
@@ -3068,7 +3078,7 @@ export function DonutLegend({
             onMouseMove={it.tip?.length ? (e) => moveTip(pointerAnchor(e)) : undefined}
             onMouseLeave={() => {
               if (syncId) donutSyncBroadcast(syncId, null);
-              if (it.tip?.length) closeTip(tipIsLong(it.tip) ? TIP_CLOSE_GRACE_MS : 0);
+              if (it.tip?.length) closeTip(TIP_CLOSE_GRACE_MS);
             }}
             className={cn(
               // Always the pointer cursor — these rows are hover-interactive
@@ -3140,7 +3150,7 @@ export function DonutLegend({
         <PortalTip
           anchor={mouse}
           wide
-          interactive={tipIsLong(items[hover].tip)}
+          interactive={tipHasRecords(items[hover].tip)}
           onEnter={keepOpen}
           onLeave={() => closeTip(TIP_CLOSE_GRACE_MS)}
         >
