@@ -2703,7 +2703,12 @@ function samplePerformance(viewer?: string): PerformanceState {
     return viewer ? asViewer(copy, viewer) : copy;
   }
   const createdAt = `${MOCK_YEAR}-01-05T09:00:00.000Z`;
-  const by = "Sample data";
+  /* Mock mode is a believable working workspace, not a data fixture exposed
+     through the product UI. Assignments and goal creation therefore come
+     from a real member of the mock team, with the same name and avatar rules
+     as every other person in the module. The mode banner already explains
+     that the records are simulated. */
+  const by = "Elena Rossi";
   const goals: PrimaryGoal[] = [];
   const actuals: PerfActual[] = [];
 

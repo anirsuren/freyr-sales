@@ -166,7 +166,7 @@ export function ActivityMasterCard({
           </Button>
         ) : (
           <span className="text-[11.5px] text-text-tertiary">
-            {live ? "Admins edit this list" : "Sample data. Switch to Real mode to change the master"}
+            {live ? "Admins edit this list" : "Switch to Real mode to change the master"}
           </span>
         )}
       </AdminTabActions>

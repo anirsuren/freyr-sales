@@ -3416,7 +3416,7 @@ function GoalPopupBody({
       {!live && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border-light pt-3">
           <span className="text-[11.5px] text-text-tertiary">
-            Sample data — switch to Real mode to change the plan.
+            Switch to Real mode to change this plan.
           </span>
         </div>
       )}
@@ -5592,4 +5592,3 @@ function LogActualModal({
     </Modal>
   );
 }
-

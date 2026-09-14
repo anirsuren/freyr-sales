@@ -1371,6 +1371,13 @@ export function PersonGoalPanel({
   const mine = goalFamilyActuals(state, goal)
     .filter((a) => a.person.trim().toLowerCase() === person.trim().toLowerCase())
     .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  const recentEntries = mine.slice(0, 6);
+  const showEntryContext = recentEntries.some(
+    (a) => a.customer || a.dealLabel || a.note
+  );
+  const entryGrid = showEntryContext
+    ? "grid-cols-[140px_100px_minmax(180px,1fr)_100px]"
+    : "grid-cols-[140px_100px_100px]";
   const verified = mine
     .filter((a) => entryStatus(a) === "verified")
     .reduce((s, a) => s + a.amount, 0);
@@ -1585,79 +1592,103 @@ export function PersonGoalPanel({
           <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
             Latest entries
           </p>
-          <ul className="mt-1.5 divide-y divide-border-light">
-            {mine.slice(0, 6).map((a) => (
-              /* LEFT-PACKED (Anir, Aug 20: "for latest entries, there's too
-                 much gap here between the left side and the right side, so
-                 that doesn't look good"). The middle column was `flex-1`, so
-                 on a row with no deal name it was an empty span holding the
-                 status pill half a screen away from the money it describes.
-                 The facts sit together now and the pill follows them. */
-              <li key={a.id} className="flex items-center gap-2 py-1.5 text-[12px]">
-                {/* TWO LINES, ONE FACT EACH (Anir, Aug 25). One string in a
-                    74px column wrapped wherever it ran out of room — "August
-                    16, / 2026 · / logged 5:47 / PM" — four lines and a date
-                    broken in half. */}
-                <span className="w-[104px] shrink-0 leading-tight text-text-tertiary tnum">
-                  {(() => {
-                    const { day, time } = resultWhenParts(a);
-                    return (
-                      <>
-                        <span className="block whitespace-nowrap">{day}</span>
-                        {time && (
-                          <span className="block whitespace-nowrap text-[11px]">
-                            logged {time}
-                          </span>
-                        )}
-                      </>
-                    );
-                  })()}
-                </span>
-                <span className="shrink-0 font-semibold text-text-primary tnum">
-                  {fmtAmount(goal.unit, a.amount, a.currency)}
-                </span>
-                {/* The account wears its own mark here too. */}
-                {a.customer && (
-                  <span className="flex min-w-0 shrink items-center gap-1.5">
-                    <CompanyLogo
-                      name={a.customer}
-                      className="h-[16px] w-[16px] shrink-0 text-[6px]"
-                    />
-                    <span className="min-w-0 truncate text-text-secondary">
-                      {a.customer}
-                    </span>
-                  </span>
-                )}
-                {/* THE ROW USES THE WIDTH IT HAS (Anir, Aug 25: "under Latest
-                    Entries, why is everything aligned to the left? You have a
-                    lot of space on the right, it just looks weird").
-
-                    Aug 20's complaint was the opposite and both are right: the
-                    gap was bad when the middle was an EMPTY flex-1 span holding
-                    the pill half a screen from the money it describes. What
-                    fills the space now is the deal name, and the status sits
-                    at the right edge where a status belongs. */}
-                <span className="min-w-0 flex-1 truncate text-text-secondary">
-                  {a.dealLabel ?? a.note ?? ""}
-                </span>
-                {/* Three states, three colours: signed off is green, sent
-                    back is red, waiting on the owner is amber. It used to say
-                    "Waiting" for both of the last two. */}
-                <span
+          {/* A HISTORY TABLE SHOULD NOT STRETCH EMPTY CELLS ACROSS THE CARD.
+              This panel can be nearly 2,000px wide in full-screen mode; the
+              old flex row put the date at the far left and the status at the
+              far right even when there was no account or note between them.
+              A compact table keeps related facts together, gives every row
+              the same scan line, and drops the context column when every row
+              would otherwise leave it empty. */}
+          <div
+            className={cn(
+              "mt-1.5 w-fit max-w-full overflow-x-auto rounded-xl border border-border-light",
+              showEntryContext && "w-full max-w-[720px]"
+            )}
+          >
+            <div
+              className={cn(
+                "grid gap-3 bg-[var(--surface)] px-3 py-2 text-[9.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
+                entryGrid,
+                showEntryContext && "min-w-[620px]"
+              )}
+            >
+              <span>Reported</span>
+              <span>Result</span>
+              {showEntryContext && <span>Context</span>}
+              <span>Status</span>
+            </div>
+            <ul
+              className={cn(
+                "divide-y divide-border-light",
+                showEntryContext && "min-w-[620px]"
+              )}
+            >
+              {recentEntries.map((a) => (
+                <li
+                  key={a.id}
                   className={cn(
-                    "ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
-                    entryStatus(a) === "verified"
-                      ? "bg-[rgba(22,163,74,0.10)] text-[color:var(--entry-verified-ink)]"
-                      : entryStatus(a) === "sent_back"
-                        ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--entry-sent-back-ink)]"
-                        : "bg-[rgba(194,65,12,0.10)] text-[color:var(--entry-waiting)]"
+                    "grid items-center gap-3 px-3 py-2 text-[12px]",
+                    entryGrid
                   )}
                 >
-                  {entryStatus(a) === "reported" ? "Waiting" : entryStatusLabel(a)}
-                </span>
-              </li>
-            ))}
-          </ul>
+                  {/* TWO LINES, ONE FACT EACH (Anir, Aug 25). One string in a
+                      74px column wrapped wherever it ran out of room — "August
+                      16, / 2026 · / logged 5:47 / PM" — four lines and a date
+                      broken in half. */}
+                  <span className="leading-tight text-text-tertiary tnum">
+                    {(() => {
+                      const { day, time } = resultWhenParts(a);
+                      return (
+                        <>
+                          <span className="block whitespace-nowrap">{day}</span>
+                          {time && (
+                            <span className="block whitespace-nowrap text-[11px]">
+                              logged {time}
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </span>
+                  <span className="font-semibold text-text-primary tnum">
+                    {fmtAmount(goal.unit, a.amount, a.currency)}
+                  </span>
+                  {showEntryContext && (
+                    <span className="flex min-w-0 items-center gap-1.5 text-text-secondary">
+                      {a.customer && (
+                        <CompanyLogo
+                          name={a.customer}
+                          className="h-[16px] w-[16px] shrink-0 text-[6px]"
+                        />
+                      )}
+                      <span className="min-w-0 truncate">
+                        {[a.customer, a.dealLabel ?? a.note]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
+                      </span>
+                    </span>
+                  )}
+                  {/* Three states, three colours: signed off is green, sent
+                      back is red, waiting on the owner is amber. It used to say
+                      "Waiting" for both of the last two. */}
+                  <span
+                    className={cn(
+                      "w-fit shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                      entryStatus(a) === "verified"
+                        ? "bg-[rgba(22,163,74,0.10)] text-[color:var(--entry-verified-ink)]"
+                        : entryStatus(a) === "sent_back"
+                          ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--entry-sent-back-ink)]"
+                          : "bg-[rgba(194,65,12,0.10)] text-[color:var(--entry-waiting)]"
+                    )}
+                  >
+                    {entryStatus(a) === "reported"
+                      ? "Waiting"
+                      : entryStatusLabel(a)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
     </div>
