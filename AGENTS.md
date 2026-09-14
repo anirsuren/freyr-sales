@@ -700,3 +700,6 @@ Never push or deploy to development or production unless Anir explicitly asks fo
 
 ### Sep 14: expanded-goal latest entries are a full-width table
 The latest six entries in an expanded person or group goal use the same compact table pattern as Logged results, with stable Reported, Result, Details, and Status columns. The table fills the panel, uses deliberate column widths, and scrolls horizontally on narrow screens; do not turn these records into cards.
+
+### Sep 14: month bars explain their stacked status sections
+The Month by month chart in expanded person and group goals shows a Status breakdown on hover: Verified, Waiting to be verified, and Sent back, with the amount and share for each nonzero section. It does not show generic share-of-year or rank statistics for these bars.

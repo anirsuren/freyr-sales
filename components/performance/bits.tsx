@@ -1400,12 +1400,22 @@ export function PersonGoalPanel({
    * this module counts in (see yearElapsed, which was fixed for exactly this
    * reason).
    */
-  const byMonth = new Map<string, { value: number; pending: number }>();
+  const byMonth = new Map<
+    string,
+    { value: number; verified: number; reported: number; sentBack: number }
+  >();
   for (const a of mine) {
     const key = a.date.slice(0, 7);
-    const cell = byMonth.get(key) ?? { value: 0, pending: 0 };
+    const cell = byMonth.get(key) ?? {
+      value: 0,
+      verified: 0,
+      reported: 0,
+      sentBack: 0,
+    };
     cell.value += a.amount;
-    if (isPending(a)) cell.pending += a.amount;
+    const status = entryStatus(a);
+    if (status === "sent_back") cell.sentBack += a.amount;
+    else cell[status] += a.amount;
     byMonth.set(key, cell);
   }
   const fiscalMonths: string[] = [];
@@ -1422,16 +1432,52 @@ export function PersonGoalPanel({
   const months = fiscalMonths
     .sort((a, b) => a.localeCompare(b))
     .map((key) => {
-      const cell = byMonth.get(key) ?? { value: 0, pending: 0 };
+      const cell = byMonth.get(key) ?? {
+        value: 0,
+        verified: 0,
+        reported: 0,
+        sentBack: 0,
+      };
+      const pending = cell.reported + cell.sentBack;
+      const breakdown = [
+        {
+          name: "Verified",
+          amount: cell.verified,
+          color: ENTRY_COLOR.verified,
+          striped: false,
+        },
+        {
+          name: "Waiting to be verified",
+          amount: cell.reported,
+          color: ENTRY_COLOR.reported,
+          striped: true,
+        },
+        {
+          name: "Sent back",
+          amount: cell.sentBack,
+          color: ENTRY_COLOR.sent_back,
+          striped: true,
+        },
+      ].filter((part) => part.amount > 0);
       return {
         label: new Date(`${key}-01T00:00:00`).toLocaleDateString(undefined, {
           month: "short",
         }),
         value: cell.value,
-        pending: cell.pending,
+        pending,
         color: ENTRY_COLOR.verified,
         pendingColor:
-          sentBackMine > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+          cell.sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+        tip: breakdown.map((part) => ({
+          name: part.name,
+          value: fmtAmount(goal.unit, part.amount),
+          bar: {
+            pct: cell.value > 0 ? (part.amount / cell.value) * 100 : 0,
+            color: part.color,
+            striped: part.striped,
+            caption: `${cell.value > 0 ? Math.round((part.amount / cell.value) * 100) : 0}%`,
+          },
+        })),
         /* NO IDENTITY DOT (Anir, Aug 25: "why is there a red dot next to
            August?"). A dot beside an axis label is a SERIES key, and this
            chart has one series — so it identified nothing, while wearing the
@@ -1568,6 +1614,8 @@ export function PersonGoalPanel({
                 same number the same way, currency symbol included. */}
             <BarChart
               hideLabelDots
+              hideTipStats
+              tipRecordsLabel="Status breakdown"
               data={months}
               height={170}
               fillCard={16}
