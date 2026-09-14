@@ -34,7 +34,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import {cn, formatDate, todayISO} from "@/lib/utils";
+import { cn, formatDateTime, todayISO } from "@/lib/utils";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
@@ -68,6 +68,8 @@ import {
 import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { LeadAnalytics } from "@/components/leads/LeadAnalytics";
+import { repSlug } from "@/lib/team";
 
 type CustomerOption = { id: string; name: string };
 
@@ -394,6 +396,8 @@ export function LeadsModule({
         />
       </div>
 
+      <LeadAnalytics leads={leads} />
+
       {/* The toolbar needs air under the stat tiles (Anir, Aug 26: "the search
           bar is touching the cards"). Every other list page spaces this row;
           these three called PageToolbar bare and it sat flush against the
@@ -644,10 +648,16 @@ export function LeadsModule({
                       </td>
                       <td className="px-4 py-2.5">
                         {lead.owner ? (
-                          <span className="flex items-center gap-1.5 text-[12.5px] text-text-secondary">
+                          <Link
+                            href={`/analytics/reps/${repSlug(lead.owner)}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="group/owner flex items-center gap-1.5 text-[12.5px] text-text-secondary"
+                          >
                             <Avatar name={lead.owner} className="h-5 w-5 shrink-0 text-[8px]" />
-                            <span className="truncate">{lead.owner}</span>
-                          </span>
+                            <span className="truncate transition-colors group-hover/owner:text-blue-primary group-hover/owner:underline">
+                              {lead.owner}
+                            </span>
+                          </Link>
                         ) : (
                           <span className="text-[12px] text-text-tertiary">Unassigned</span>
                         )}
@@ -712,88 +722,142 @@ export function LeadsModule({
                           colSpan={8}
                           className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                         >
-                          <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white p-4">
-                            {lead.interest && (
-                              <p className="text-[13px] text-text-primary">
-                                {lead.interest}
-                              </p>
-                            )}
-                            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2.5 sm:grid-cols-4">
-                              {[
-                                ["Email", lead.email],
-                                ["Phone", lead.phone],
-                                ["Country", lead.country],
-                                ["Came in", formatDate(lead.createdAt)],
-                              ].map(([label, value]) => (
-                                <span key={label as string}>
-                                  <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                                    {label}
-                                  </span>
-                                  {label === "Email" && value ? (
-                                    <a
-                                      href={`mailto:${value}`}
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="text-[12.5px] font-semibold text-blue-primary hover:underline"
-                                    >
-                                      {value}
-                                    </a>
-                                  ) : (
-                                    <span className="text-[12.5px] font-semibold text-text-primary">
-                                      {value || "—"}
-                                    </span>
-                                  )}
+                          <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
+                            <div className="flex flex-col gap-4 border-b border-border-light p-4 lg:flex-row lg:items-start lg:justify-between">
+                              <div className="min-w-0 max-w-3xl">
+                                <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                  What they asked about
                                 </span>
-                              ))}
+                                <p className="mt-1 text-[13.5px] font-medium leading-relaxed text-text-primary">
+                                  {lead.interest || "No request or interest has been recorded yet."}
+                                </p>
+                              </div>
+
+                              {lead.status === "Converted" && lead.convertedOpportunityId ? (
+                                <Link
+                                  href={`/opportunities/${lead.convertedOpportunityId}`}
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg bg-[rgba(22,163,74,0.1)] px-3 py-2 text-[12.5px] font-semibold text-[#15803D] hover:underline"
+                                >
+                                  <CheckCircle2 size={14} strokeWidth={2.2} />
+                                  Open opportunity
+                                </Link>
+                              ) : lead.status !== "Disqualified" ? (
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setRequestingFor(lead);
+                                  }}
+                                  className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg bg-blue-primary px-3 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
+                                >
+                                  <ClipboardList size={14} strokeWidth={2.2} />
+                                  Request meeting or presentation
+                                </button>
+                              ) : null}
                             </div>
 
-                            {lead.status === "Disqualified" && lead.disqualifiedReason && (
-                              <p className="mt-3 rounded-lg bg-[rgba(180,83,9,0.08)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--ink-amber)]">
-                                Dropped: {lead.disqualifiedReason}
-                              </p>
-                            )}
+                            <div className="grid grid-cols-1 divide-y divide-border-light lg:grid-cols-[1.1fr_.9fr] lg:divide-x lg:divide-y-0">
+                              <div className="p-4">
+                                <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                  Lead details
+                                </span>
+                                <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+                                  <span>
+                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Email</span>
+                                    {lead.email ? (
+                                      <a href={`mailto:${lead.email}`} onClick={(event) => event.stopPropagation()} className="text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                        {lead.email}
+                                      </a>
+                                    ) : <span className="text-[12.5px] text-text-tertiary">—</span>}
+                                  </span>
+                                  <span>
+                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Phone</span>
+                                    {lead.phone ? (
+                                      <a href={`tel:${lead.phone}`} onClick={(event) => event.stopPropagation()} className="text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                        {formatPhoneNumber(lead.phone)}
+                                      </a>
+                                    ) : <span className="text-[12.5px] text-text-tertiary">—</span>}
+                                  </span>
+                                  <span>
+                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Country</span>
+                                    <span className="text-[12.5px] font-semibold text-text-primary">{lead.country || "—"}</span>
+                                  </span>
+                                  <span>
+                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Source</span>
+                                    <span className="text-[12.5px] font-semibold text-text-primary">{lead.source}</span>
+                                  </span>
+                                  <span>
+                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Account match</span>
+                                    {linkedCustomer ? (
+                                      <Link href={`/customers/${linkedCustomer.id}`} onClick={(event) => event.stopPropagation()} className="text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                        {linkedCustomer.name}
+                                      </Link>
+                                    ) : <span className="text-[12.5px] text-text-tertiary">Not matched yet</span>}
+                                  </span>
+                                  <span>
+                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Owner</span>
+                                    {lead.owner ? (
+                                      <Link href={`/analytics/reps/${repSlug(lead.owner)}`} onClick={(event) => event.stopPropagation()} className="text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                        {lead.owner}
+                                      </Link>
+                                    ) : <span className="text-[12.5px] text-text-tertiary">Unassigned</span>}
+                                  </span>
+                                </div>
 
-                            {lead.status === "Converted" && (
-                              <p className="mt-3 rounded-lg bg-[rgba(22,163,74,0.08)] px-3 py-2 text-[12.5px] font-semibold text-[color:#16A34A]">
-                                This lead became an opportunity. The deal is the
-                                record from here.
-                              </p>
-                            )}
+                                {lead.note && (
+                                  <div className="mt-4 rounded-lg bg-surface px-3 py-2.5">
+                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Internal note</span>
+                                    <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">{lead.note}</p>
+                                  </div>
+                                )}
 
-                            {/* A LEAD IS QUALIFIED WITH A MEETING OR A
-                                PRESENTATION, NEVER A SUBMISSION (Suren, Aug 25:
-                                "at the lead level I do a meeting and
-                                presentation, not at the contact level"). Named
-                                buttons, so nothing jumps you to another module
-                                without saying so first. */}
-                            <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-border-light pt-3.5">
-                              {/* MOCK CAN DO THIS TOO (Anir, Aug 26: "all the
-                                  same functionality (add, edit etc.) should be
-                                  on mock mode, but it shouldn't affect real
-                                  data"). This was hidden in Mock back when
-                                  Solutioning refused every create there. It
-                                  does not any more — mock writes land on the
-                                  mock row and cannot reach real data — so the
-                                  guard outlived its reason and was just a
-                                  missing feature in the mode built for trying
-                                  features out. */}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setRequestingFor(lead);
-                                }}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
-                              >
-                                <ClipboardList size={13} strokeWidth={2.2} />
-                                Request a meeting or a presentation
-                              </button>
-                              {/* No second edit button — the pencil already
-                                  lives in the Actions column (Anir, Aug 27). */}
-                              <span className="ml-auto text-[11.5px] text-text-tertiary">
-                                Last moved by {lead.updatedBy} ·{" "}
-                                <DateText value={lead.updatedAt} />
-                              </span>
+                                {lead.status === "Disqualified" && lead.disqualifiedReason && (
+                                  <div className="mt-4 rounded-lg bg-[rgba(220,38,38,0.07)] px-3 py-2.5">
+                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[color:var(--status-red)]">Why it stopped</span>
+                                    <p className="mt-1 text-[12.5px] font-medium leading-relaxed text-text-secondary">{lead.disqualifiedReason}</p>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                    Lead journey
+                                  </span>
+                                  <span className="text-[11px] font-medium text-text-tertiary">Received → now → opportunity</span>
+                                </div>
+                                <div className="relative mt-4 grid grid-cols-3 gap-3 before:absolute before:left-[12%] before:right-[12%] before:top-2 before:h-px before:bg-border">
+                                  <div className="relative min-w-0">
+                                    <span className="relative z-10 block h-4 w-4 rounded-full border-[4px] border-blue-primary bg-white" />
+                                    <p className="mt-2 text-[12px] font-semibold text-text-primary">Lead received</p>
+                                    <p className="mt-0.5 text-[10.5px] text-text-tertiary tnum">{formatDateTime(lead.createdAt)}</p>
+                                    <p className="mt-0.5 truncate text-[10.5px] text-text-secondary">via {lead.source}</p>
+                                  </div>
+                                  <div className="relative min-w-0">
+                                    <span className="relative z-10 block h-4 w-4 rounded-full border-[4px] bg-white" style={{ borderColor: leadStatusColor(lead.status) }} />
+                                    <p className="mt-2 text-[12px] font-semibold" style={{ color: leadStatusColor(lead.status) }}>{lead.status}</p>
+                                    <p className="mt-0.5 text-[10.5px] text-text-tertiary tnum">{formatDateTime(lead.updatedAt)}</p>
+                                    <p className="mt-0.5 truncate text-[10.5px] text-text-secondary">moved by {lead.updatedBy}</p>
+                                  </div>
+                                  <div className="relative min-w-0">
+                                    <span className={cn("relative z-10 block h-4 w-4 rounded-full border-[4px] bg-white", lead.status !== "Converted" && "border-border")} style={lead.status === "Converted" ? { borderColor: "#16A34A" } : undefined} />
+                                    <p className={cn("mt-2 text-[12px] font-semibold", lead.status === "Converted" ? "text-[#15803D]" : "text-text-secondary")}>
+                                      {lead.status === "Converted" ? "Opportunity created" : lead.status === "Disqualified" ? "Journey ended" : "Opportunity"}
+                                    </p>
+                                    <p className="mt-0.5 text-[10.5px] text-text-tertiary tnum">
+                                      {lead.status === "Converted" ? formatDateTime(lead.convertedAt || lead.updatedAt) : lead.status === "Disqualified" ? "Not progressing" : "Next destination"}
+                                    </p>
+                                    {lead.convertedOpportunityId && (
+                                      <Link href={`/opportunities/${lead.convertedOpportunityId}`} onClick={(event) => event.stopPropagation()} className="mt-0.5 block truncate text-[10.5px] font-semibold text-blue-primary hover:underline">
+                                        Open the deal
+                                      </Link>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
+
                           </div>
                         </td>
                       </tr>
