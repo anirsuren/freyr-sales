@@ -59,7 +59,6 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
           avatar: lead.name,
           name: lead.company,
           sub: lead.name,
-          value: lead.ref,
         })),
       };
     }).filter((segment) => segment.value > 0);
@@ -77,7 +76,6 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
           avatar: lead.name,
           name: lead.company,
           sub: `${lead.name} · ${lead.status}`,
-          value: lead.ref,
         })),
       };
     }).filter((bar) => bar.value > 0);
@@ -92,7 +90,6 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
             avatar: lead.name,
             name: lead.company,
             sub: `${lead.name} · ${lead.status}`,
-            value: lead.ref,
           })
         )
       ),

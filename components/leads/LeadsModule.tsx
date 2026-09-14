@@ -208,10 +208,10 @@ export function LeadsModule({
     downloadCSV(
       `freyr-leads-${todayISO()}.csv`,
       toCSV(
-        ["Ref", "Name", "Title", "Company", "Source", "Status", "Owner",
+        ["Name", "Title", "Company", "Source", "Status", "Owner",
          "Email", "Phone", "Country", "Asked about", "Came in", "Last moved"],
         shown.map((l) => [
-          l.ref, l.name, l.title ?? "", l.company, l.source, l.status,
+          l.name, l.title ?? "", l.company, l.source, l.status,
           l.owner ?? "", l.email ?? "", l.phone ?? "", l.country ?? "",
           l.interest ?? "", l.createdAt.slice(0, 10), l.updatedAt.slice(0, 10),
         ])
@@ -525,17 +525,16 @@ export function LeadsModule({
               Solutioning (Anir, Aug 9: "there should be an option to pin the
               row headers and the column headers if I want"). */}
           <PinnableTable id="leads-table">
-          <table className="w-full min-w-[1080px] text-left">
+          <table className="w-full min-w-[960px] text-left">
             <thead>
               <tr className="border-b border-border-light bg-surface/40 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap [&>th]:px-4 [&>th]:py-2.5">
-                <th className="w-[11%] whitespace-nowrap">Ref</th>
-                <th className="w-[18%]">Who</th>
-                <th className="w-[16%]">Company</th>
-                <th className="w-[12%]">Source</th>
-                <th className="w-[12%]">Status</th>
-                <th className="w-[14%]">Owner</th>
-                <th className="w-[10%]">Last moved</th>
-                <th className="w-[9%] text-left">Actions</th>
+                <th className="w-[22%]">Person</th>
+                <th className="w-[18%]">Company</th>
+                <th className="w-[13%]">Source</th>
+                <th className="w-[13%]">Status</th>
+                <th className="w-[15%]">Owner</th>
+                <th className="w-[11%]">Last moved</th>
+                <th className="w-[8%] text-left">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -543,7 +542,7 @@ export function LeadsModule({
                 ...(sections
                   ? [
                       <tr key={`group-${sec.key}`} className="bg-surface">
-                        <td colSpan={9} className="px-4 py-2 text-[12px] font-bold text-text-secondary">
+                        <td colSpan={7} className="px-4 py-2 text-[12px] font-bold text-text-secondary">
                           {sec.key}
                           <span className="ml-1.5 tnum font-semibold opacity-70">
                             {sec.items.length}
@@ -580,13 +579,6 @@ export function LeadsModule({
                           : "hover:bg-surface"
                       )}
                     >
-                      {/* LEAD-0006 IS ONE WORD (Anir, Aug 26: "the ref has to
-                          be on one line"). At 9% the column was narrow enough
-                          to break the reference across two lines, which made
-                          every row in the table taller than it needed to be. */}
-                      <td className="whitespace-nowrap px-4 py-2.5 text-[12px] font-semibold tnum text-text-tertiary">
-                        {lead.ref}
-                      </td>
                       <td className="px-4 py-2.5">
                         <span className="flex items-center gap-2">
                           <Avatar
@@ -720,7 +712,7 @@ export function LeadsModule({
                     {open && (
                       <tr className="!border-t-0 bg-surface">
                         <td
-                          colSpan={8}
+                          colSpan={7}
                           className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                         >
                           <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
