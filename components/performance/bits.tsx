@@ -966,12 +966,6 @@ export function PaceTimeline({
    * below, always — then no distance between the dots can ever bring them
    * together, and the layout no longer jumps between two arrangements.
    */
-  /** Track thickness, and how far the biggest dot reaches past its centre. */
-  /** Breathing room between the track and a label sitting under it. */
-  const GAP = 6;
-  /** Height of a label line, so its lane can be reserved exactly. */
-  const LABEL = compact ? 14 : 17;
-
   return (
     <div className={compact ? "w-full" : "min-w-[380px]"}>
       {!compact && (
@@ -982,11 +976,9 @@ export function PaceTimeline({
         <>
           <div
             className={compact ? "relative mt-1" : "relative mt-3.5"}
-            /* THE TOP LANE ALWAYS CARRIES SOMETHING (Anir, Aug 16: "I didn't
-               ask you to shorten it. I asked you to actually use it and put
-               some text on top"). With a schedule it holds "must be at"; with
-               none it holds where you are — so the space is used either way
-               and nothing sits on the track. */
+            /* The schedule label occupies the lower lane immediately above
+               its marker; the endpoints use the upper lane. Without a
+               schedule, the current result uses the upper lane instead. */
             /* TWO LANES, NOT ONE (Anir, Aug 23: first "the endpoints text, 0
                and 400, you got to move it up a little bit… make sure it
                doesn't touch the circle", then — when I lifted them — "bro,
@@ -1013,7 +1005,7 @@ export function PaceTimeline({
                 "absolute left-0 font-semibold text-text-tertiary tnum",
                 compact ? "text-[9.5px]" : "text-[11px]"
               )}
-              style={{ top: LANE - (compact ? 2 : 1) }}
+              style={{ top: hasSchedule ? 0 : LANE - (compact ? 2 : 1) }}
             >
               {fmtAmount(unit, 0)}
             </span>
@@ -1027,16 +1019,11 @@ export function PaceTimeline({
                 "absolute right-0 font-bold text-text-primary tnum",
                 compact ? "text-[9.5px]" : "text-[11px]"
               )}
-              style={{ top: LANE - (compact ? 2 : 1) }}
+              style={{ top: hasSchedule ? 0 : LANE - (compact ? 2 : 1) }}
             >
               {fmtAmount(unit, target)}
             </span>
-            {/* WHERE YOU ARE, IN THE LANE ABOVE — when nothing else is using
-                it (Anir, Aug 16: "you're not using the top of the progress
-                bar... I didn't ask you to shorten it. I asked you to actually
-                use it and put some text on top"). With a schedule the top lane
-                belongs to "must be at" and this stays underneath, so the two
-                can never collide. */}
+            {/* WHERE YOU ARE, IN THE UPPER LANE when no schedule is set. */}
             {/* THE HEADLINE DOES NOT FLOAT (Anir, Aug 30: "and the percent is
                 in a weird spot too bro"). It was centred over the point the
                 bar reaches, so it drifted with the value — on a 23% bar it
@@ -1079,7 +1066,7 @@ export function PaceTimeline({
             {hasSchedule && (
             <span
               className="absolute flex flex-col items-center"
-              style={{ ...labelPos(marker), top: 0 }}
+              style={{ ...labelPos(marker), top: LANE }}
             >
               <span
                 className={cn(
@@ -1255,9 +1242,11 @@ export function PaceTimeline({
                 measuring against a line the app drew itself. */}
             {hasSchedule && (
               <PaceRow
+                swatch={ahead < 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.verified}
                 label={ahead < 0 ? "Behind schedule by" : "Ahead of schedule by"}
                 value={fmtAmount(unit, Math.abs(ahead))}
                 strong
+                tone={ahead < 0 ? "danger" : "success"}
               />
             )}
           </div>
@@ -1278,12 +1267,14 @@ function PaceRow({
   label,
   value,
   strong,
+  tone,
 }: {
   swatch?: string;
   faded?: boolean;
   label: string;
   value: string;
   strong?: boolean;
+  tone?: "danger" | "success";
 }) {
   return (
     <p className="flex items-center gap-2 text-[12px]">
@@ -1293,12 +1284,34 @@ function PaceRow({
           style={{ background: swatch, opacity: faded ? 0.28 : 1 }}
         />
       )}
-      <span className={cn("text-text-secondary", !swatch && "ml-4")}>{label}</span>
+      <span
+        className={cn(
+          "text-text-secondary",
+          !swatch && "ml-4",
+          tone && "font-semibold"
+        )}
+        style={
+          tone === "danger"
+            ? { color: "var(--status-red)" }
+            : tone === "success"
+              ? { color: "#15803D" }
+              : undefined
+        }
+      >
+        {label}
+      </span>
       <b
         className={cn(
           "ml-auto tnum",
           strong ? "text-text-primary" : "text-text-secondary"
         )}
+        style={
+          tone === "danger"
+            ? { color: "var(--status-red)" }
+            : tone === "success"
+              ? { color: "#15803D" }
+              : undefined
+        }
       >
         {value}
       </b>

@@ -153,6 +153,58 @@ function TypePill({
   );
 }
 
+function RevenueMixTrack({
+  segments,
+}: {
+  segments: Array<{
+    type: OfferingRevenueLine["revenue_type"];
+    value: number;
+    pct: number;
+  }>;
+}) {
+  return (
+    <div className="min-w-[250px] max-w-[330px]">
+      <div className="relative flex h-2.5 overflow-visible rounded-full bg-border-light">
+        {segments.map((segment, index) => (
+          <span
+            key={segment.type}
+            className="relative h-full first:rounded-l-full last:rounded-r-full"
+            style={{
+              width: `${segment.pct}%`,
+              background: REVENUE_TYPE_STYLE[segment.type].color,
+            }}
+            title={`${REVENUE_TYPE_META[segment.type].short}: ${formatMoney(segment.value)} (${Math.round(segment.pct)}%)`}
+          >
+            {index < segments.length - 1 && (
+              <span className="absolute -right-px -top-1 h-[18px] w-0.5 rounded-full bg-white shadow-[0_0_0_1px_rgba(100,116,139,0.18)]" aria-hidden="true" />
+            )}
+          </span>
+        ))}
+      </div>
+      <div
+        className="mt-2 grid gap-1.5"
+        style={{ gridTemplateColumns: `repeat(${segments.length}, minmax(0, 1fr))` }}
+      >
+        {segments.map((segment) => {
+          const style = REVENUE_TYPE_STYLE[segment.type];
+          const Icon = style.icon;
+          return (
+            <span key={segment.type} className="min-w-0" title={`${REVENUE_TYPE_META[segment.type].short}: ${formatMoney(segment.value)} · ${Math.round(segment.pct)}%`}>
+              <span className="flex min-w-0 items-center gap-1 text-[9.5px] font-semibold" style={{ color: style.color }}>
+                <Icon size={10} strokeWidth={2.1} className="shrink-0" />
+                <span className="truncate">{REVENUE_TYPE_META[segment.type].short}</span>
+              </span>
+              <strong className="mt-0.5 block whitespace-nowrap text-[10.5px] font-semibold text-text-primary tnum">
+                {formatMoney(segment.value)}
+              </strong>
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // How much of a contract's term is left, as a fraction for the countdown bar.
 // No dates → ongoing (full bar); expired → empty.
 function renewalRunway(line: OfferingRevenueLine, now: Date): number {
@@ -614,7 +666,7 @@ export function OfferingReports({
               </span>
             </h2>
             <p className="mt-0.5 text-[12px] text-text-tertiary">
-              What each account pays and what kind of revenue it is. Plus their seats, their live contracts, and when the next one is up. Click a row to open the account.
+              Revenue mix, seats, active contracts, and the next renewal for each account. Click a row to open it.
             </p>
           </div>
           <Layers size={17} strokeWidth={1.8} className="shrink-0 text-blue-primary" />
@@ -627,7 +679,7 @@ export function OfferingReports({
               <tr className="border-b border-border-light bg-surface text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary [&>th]:whitespace-nowrap [&>th]:px-4 [&>th]:py-2.5">
                 <th className="min-w-[250px]">Account</th>
                 <th className="w-[210px]">Booked revenue</th>
-                <th className="min-w-[270px]">What they pay for</th>
+                <th className="w-[300px]">What they pay for</th>
                 <th className="w-[92px]">Seats</th>
                 <th className="w-[118px]">Contracts</th>
                 <th className="w-[230px]">Next renewal</th>
@@ -699,38 +751,7 @@ export function OfferingReports({
                           In use, nothing booked yet
                         </span>
                       ) : (
-                        <>
-                          <span className="flex h-2 overflow-hidden rounded-full bg-border-light">
-                            {customer.typeMix.map((segment) => (
-                              <span
-                                key={segment.type}
-                                style={{
-                                  width: `${segment.pct}%`,
-                                  background: REVENUE_TYPE_STYLE[segment.type].color,
-                                }}
-                              />
-                            ))}
-                          </span>
-                          <span className="mt-2 flex flex-wrap gap-1.5">
-                            {customer.typeMix.map((segment) => {
-                              const style = REVENUE_TYPE_STYLE[segment.type];
-                              const Icon = style.icon;
-                              return (
-                                <span
-                                  key={segment.type}
-                                  className="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-[10.5px] font-semibold"
-                                  style={{ color: style.color, background: style.bg }}
-                                >
-                                  <Icon size={11} strokeWidth={2.1} />
-                                  {REVENUE_TYPE_META[segment.type].short}{" "}
-                                  <strong className="font-semibold tnum">
-                                    {formatMoney(segment.value)}
-                                  </strong>
-                                </span>
-                              );
-                            })}
-                          </span>
-                        </>
+                        <RevenueMixTrack segments={customer.typeMix} />
                       )}
                     </td>
                     <td className="px-4 py-3.5">
