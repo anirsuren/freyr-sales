@@ -1375,9 +1375,6 @@ export function PersonGoalPanel({
   const showEntryContext = recentEntries.some(
     (a) => a.customer || a.dealLabel || a.note
   );
-  const entryGrid = showEntryContext
-    ? "grid-cols-[140px_100px_minmax(180px,1fr)_100px]"
-    : "grid-cols-[140px_100px_100px]";
   const verified = mine
     .filter((a) => entryStatus(a) === "verified")
     .reduce((s, a) => s + a.amount, 0);
@@ -1589,72 +1586,63 @@ export function PersonGoalPanel({
 
       {mine.length > 0 && (
         <div className="mt-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-            Latest entries
-          </p>
-          {/* A HISTORY TABLE SHOULD NOT STRETCH EMPTY CELLS ACROSS THE CARD.
-              This panel can be nearly 2,000px wide in full-screen mode; the
-              old flex row put the date at the far left and the status at the
-              far right even when there was no account or note between them.
-              A compact table keeps related facts together, gives every row
-              the same scan line, and drops the context column when every row
-              would otherwise leave it empty. */}
-          <div
-            className={cn(
-              "mt-1.5 w-fit max-w-full overflow-x-auto rounded-xl border border-border-light",
-              showEntryContext && "w-full max-w-[720px]"
-            )}
-          >
-            <div
-              className={cn(
-                "grid gap-3 bg-[var(--surface)] px-3 py-2 text-[9.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary",
-                entryGrid,
-                showEntryContext && "min-w-[620px]"
-              )}
-            >
-              <span>Reported</span>
-              <span>Result</span>
-              {showEntryContext && <span>Context</span>}
-              <span>Status</span>
-            </div>
-            <ul
-              className={cn(
-                "divide-y divide-border-light",
-                showEntryContext && "min-w-[620px]"
-              )}
-            >
-              {recentEntries.map((a) => (
+          <div className="flex items-baseline justify-between gap-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+              Latest entries
+            </p>
+            <span className="text-[11px] text-text-tertiary">
+              {recentEntries.length} most recent
+            </span>
+          </div>
+          {/* Each entry is one compact object rather than one row in a narrow
+              table stranded at the left of a very wide goal panel. The cards
+              distribute across the full width, while date, result and status
+              stay close enough to read as one event. */}
+          <ul className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {recentEntries.map((a) => {
+              const { day, time } = resultWhenParts(a);
+              const status = entryStatus(a);
+              return (
                 <li
                   key={a.id}
-                  className={cn(
-                    "grid items-center gap-3 px-3 py-2 text-[12px]",
-                    entryGrid
-                  )}
+                  className="flex min-w-0 flex-col rounded-xl border border-border-light bg-[var(--surface)]/45 px-3.5 py-3"
                 >
-                  {/* TWO LINES, ONE FACT EACH (Anir, Aug 25). One string in a
-                      74px column wrapped wherever it ran out of room — "August
-                      16, / 2026 · / logged 5:47 / PM" — four lines and a date
-                      broken in half. */}
-                  <span className="leading-tight text-text-tertiary tnum">
-                    {(() => {
-                      const { day, time } = resultWhenParts(a);
-                      return (
-                        <>
-                          <span className="block whitespace-nowrap">{day}</span>
-                          {time && (
-                            <span className="block whitespace-nowrap text-[11px]">
-                              logged {time}
-                            </span>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </span>
-                  <span className="font-semibold text-text-primary tnum">
-                    {fmtAmount(goal.unit, a.amount, a.currency)}
-                  </span>
-                  {showEntryContext && (
-                    <span className="flex min-w-0 items-center gap-1.5 text-text-secondary">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="min-w-0 leading-tight text-text-tertiary tnum">
+                      <span className="block whitespace-nowrap text-[12px] font-medium text-text-secondary">
+                        {day}
+                      </span>
+                      {time && (
+                        <span className="mt-0.5 block whitespace-nowrap text-[10.5px]">
+                          logged {time}
+                        </span>
+                      )}
+                    </span>
+                    {/* Three states, three colours: signed off is green, sent
+                        back is red, waiting on the owner is amber. */}
+                    <span
+                      className={cn(
+                        "w-fit shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                        status === "verified"
+                          ? "bg-[rgba(22,163,74,0.10)] text-[color:var(--entry-verified-ink)]"
+                          : status === "sent_back"
+                            ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--entry-sent-back-ink)]"
+                            : "bg-[rgba(194,65,12,0.10)] text-[color:var(--entry-waiting)]"
+                      )}
+                    >
+                      {status === "reported" ? "Waiting" : entryStatusLabel(a)}
+                    </span>
+                  </div>
+                  <div className="mt-3 border-t border-border-light pt-2.5">
+                    <span className="block text-[9.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                      Result
+                    </span>
+                    <span className="mt-0.5 block text-[16px] font-bold text-text-primary tnum">
+                      {fmtAmount(goal.unit, a.amount, a.currency)}
+                    </span>
+                  </div>
+                  {showEntryContext && (a.customer || a.dealLabel || a.note) && (
+                    <span className="mt-2 flex min-w-0 items-center gap-1.5 text-[11px] text-text-secondary">
                       {a.customer && (
                         <CompanyLogo
                           name={a.customer}
@@ -1664,31 +1652,14 @@ export function PersonGoalPanel({
                       <span className="min-w-0 truncate">
                         {[a.customer, a.dealLabel ?? a.note]
                           .filter(Boolean)
-                          .join(" · ") || "—"}
+                          .join(" · ")}
                       </span>
                     </span>
                   )}
-                  {/* Three states, three colours: signed off is green, sent
-                      back is red, waiting on the owner is amber. It used to say
-                      "Waiting" for both of the last two. */}
-                  <span
-                    className={cn(
-                      "w-fit shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
-                      entryStatus(a) === "verified"
-                        ? "bg-[rgba(22,163,74,0.10)] text-[color:var(--entry-verified-ink)]"
-                        : entryStatus(a) === "sent_back"
-                          ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--entry-sent-back-ink)]"
-                          : "bg-[rgba(194,65,12,0.10)] text-[color:var(--entry-waiting)]"
-                    )}
-                  >
-                    {entryStatus(a) === "reported"
-                      ? "Waiting"
-                      : entryStatusLabel(a)}
-                  </span>
                 </li>
-              ))}
-            </ul>
-          </div>
+              );
+            })}
+          </ul>
         </div>
       )}
     </div>
