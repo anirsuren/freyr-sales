@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   CheckCircle2,
   ChevronDown,
@@ -550,6 +551,9 @@ export function LeadsModule({
                 const age = leadAgeDays(lead);
                 const isStale = isOpenLead(lead) && age >= 21;
                 const open = openRow === lead.id;
+                const linkedCustomer = customers.find(
+                  (customer) => customer.name.toLowerCase() === lead.company.trim().toLowerCase()
+                );
                 return (
                   <Fragment key={lead.id}>
                     {/* THE ROW FOLDS OPEN, like every other list in this app
@@ -598,10 +602,23 @@ export function LeadsModule({
                         </span>
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className="flex items-center gap-2 text-[12.5px] text-text-secondary">
-                          <CompanyLogo name={lead.company} className="h-6 w-6 shrink-0" />
-                          <span className="truncate">{lead.company || "—"}</span>
-                        </span>
+                        {linkedCustomer ? (
+                          <Link
+                            href={`/customers/${linkedCustomer.id}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="group/customer flex items-center gap-2 text-[12.5px] text-text-secondary"
+                          >
+                            <CompanyLogo name={lead.company} className="h-6 w-6 shrink-0" />
+                            <span className="truncate transition-colors group-hover/customer:text-blue-primary group-hover/customer:underline">
+                              {lead.company || "—"}
+                            </span>
+                          </Link>
+                        ) : (
+                          <span className="flex items-center gap-2 text-[12.5px] text-text-secondary">
+                            <CompanyLogo name={lead.company} className="h-6 w-6 shrink-0" />
+                            <span className="truncate">{lead.company || "—"}</span>
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5">
                         <span

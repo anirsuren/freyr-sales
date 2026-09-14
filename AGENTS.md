@@ -625,6 +625,9 @@ See `docs/qa/market-intel-onboarding-2026-09-12.md`. Veristat completed after ch
 ### Sep 14: sales status colour consistency
 Completed locally, not deployed: the Mock-mode deviations section has a compact diagnostic header with separate attention and owner-ranking bands. The sales status audit keeps `Deviated` violet because a changed accrual can still be valid; `Invalid`, `Lost`, `Cancelled`, and `Disqualified` retain red for actual failure states. Opportunities and revenue accruals now read opportunity colours from `lib/opportunitiesShared.ts`, and accrual states read one shared palette from `lib/revenueAccrualsShared.ts`, removing component-local copies that could drift. Typecheck passes; browser screenshot verification was unavailable because the existing Chrome CUA tab timed out.
 
+### Sep 14: linked sales table rows
+Completed locally, not deployed: in sales tables with standalone records, unused row space opens the row's primary record while linked entity names open that exact customer, opportunity, or contact. Nested buttons, links, status controls, and chevrons retain their own actions. Applied to Solutioning, Opportunities, and Revenue Accruals; Leads keeps inline expansion because it has no standalone lead route, but its recognized customer names now link to the customer. Customers and Sessions already followed the rule; Contracts remain expandable cards because there is no standalone contract route.
+
 ## 10. Meeting knowledge (Jul 30 stakeholder meeting, fully transcribed)
 
 Frames + transcript were analyzed second-by-second in a prior session.

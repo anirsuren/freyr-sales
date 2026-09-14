@@ -1526,12 +1526,16 @@ export function OpportunitiesBrowser({
                   ];
                   const rows = linesOf(o);
                   const shownConfidence = opportunityConfidence(o);
+                  const linkedCustomerId =
+                    o.customerId ?? customers.find((c) => c.name === o.customer)?.id;
                   return (
                     <Fragment key={o.id}>
                       <tr
                         data-opp-row={o.id}
-                        onClick={() => setOpenRow(open ? null : o.id)}
-                        aria-expanded={open}
+                        onClick={(event) => {
+                          if ((event.target as Element).closest("a,button,input,select,textarea,[role='button']")) return;
+                          router.push(`/opportunities/${o.id}`);
+                        }}
                         className={cn(
                           "cursor-pointer transition-colors",
                           open
@@ -1547,7 +1551,22 @@ export function OpportunitiesBrowser({
                             was a grey subtitle under the deal name, so the one
                             thing you scan a pipeline by could not be scanned. */}
                         <td className="px-4 py-3.5">
-                          <span className="flex min-w-0 items-center gap-2.5">
+                          {linkedCustomerId ? (
+                            <Link
+                              href={`/customers/${linkedCustomerId}`}
+                              onClick={(event) => event.stopPropagation()}
+                              className="group/customer flex min-w-0 items-center gap-2.5"
+                            >
+                              <CompanyLogo
+                                name={o.customer}
+                                className="h-8 w-8 shrink-0 text-[10px]"
+                              />
+                              <span className="min-w-0 truncate text-[13px] font-semibold text-text-primary transition-colors group-hover/customer:text-blue-primary group-hover/customer:underline">
+                                {o.customer}
+                              </span>
+                            </Link>
+                          ) : (
+                            <span className="flex min-w-0 items-center gap-2.5">
                             <CompanyLogo
                               name={o.customer}
                               className="h-8 w-8 shrink-0 text-[10px]"
@@ -1555,14 +1574,19 @@ export function OpportunitiesBrowser({
                             <span className="min-w-0 truncate text-[13px] font-semibold text-text-primary">
                               {o.customer}
                             </span>
-                          </span>
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3.5">
                           <span className="block min-w-0">
                             <span className="flex min-w-0 items-center gap-1.5">
-                              <span className="min-w-0 truncate text-[13.5px] font-semibold text-text-primary">
+                              <Link
+                                href={`/opportunities/${o.id}`}
+                                onClick={(event) => event.stopPropagation()}
+                                className="min-w-0 truncate text-[13.5px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
+                              >
                                 {o.name}
-                              </span>
+                              </Link>
                               <AccrualMark badge={accrualPlans[o.id]} />
                             </span>
                             <span className="flex flex-wrap items-center gap-1.5 text-[11px] text-text-secondary">
@@ -1826,15 +1850,22 @@ export function OpportunitiesBrowser({
                                 </button>
                               </>
                             )}
-                            <ChevronDown
-                              size={15}
-                              strokeWidth={2.2}
-                              aria-hidden="true"
-                              className={cn(
-                                "text-text-tertiary transition-transform",
-                                open && "rotate-180 text-blue-primary"
-                              )}
-                            />
+                            <button
+                              type="button"
+                              aria-expanded={open}
+                              aria-label={`Show the breakdown for ${o.name}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setOpenRow(open ? null : o.id);
+                              }}
+                              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                            >
+                              <ChevronDown
+                                size={15}
+                                strokeWidth={2.2}
+                                className={cn("transition-transform", open && "rotate-180")}
+                              />
+                            </button>
                           </span>
                         </td>
                       </tr>

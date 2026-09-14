@@ -901,6 +901,8 @@ function RequestRow({
   /** Absent when this person may not delete this row — see the note above. */
   onDelete?: () => void;
 }) {
+  const router = useRouter();
+  const requestHref = `/solutioning/${r.id}${room === "requests" ? "" : `?tab=${room}`}`;
   const overdue =
     r.neededBy && r.status !== "completed"
       ? r.neededBy < todayISO()
@@ -920,15 +922,14 @@ function RequestRow({
           .join(" · ");
   return (
     <>
-    {/* THE WHOLE ROW IS THE TOGGLE (Anir, Aug 24: "when I click on it, it
-        doesn't even work"). A 28px chevron was the only live surface on a
-        70px row — clicking anywhere else did nothing, which reads as broken.
-        Same split as the goal and team tables now: the row folds the
-        breakdown, the NAME navigates (stopPropagation), and so do the pick-up
-        button and the chevron itself. */}
+    {/* Empty row space opens the primary record. Entity links and controls
+        keep their own destinations; the chevron alone opens the inline
+        breakdown. */}
     <tr
-      onClick={onToggle}
-      aria-expanded={open}
+      onClick={(event) => {
+        if ((event.target as Element).closest("a,button,input,select,textarea,[role='button']")) return;
+        router.push(requestHref);
+      }}
       /* THE RAIL RUNS THE WHOLE WAY (Anir, Aug 25: "the blue thing has to
          extend all the way"). The deal table lights the OPEN row itself — same
          tint, same 3px rail — so the row and the panel under it read as one
@@ -957,9 +958,9 @@ function RequestRow({
             link exactly the width of its own two lines and hands every pixel
             beside them back to the row's toggle. */}
         <Link
-          href={`/solutioning/${r.id}${room === "requests" ? "" : `?tab=${room}`}`}
+          href={requestHref}
           onClick={(e) => e.stopPropagation()}
-          className="inline-block w-fit max-w-full min-w-0 rounded-lg -m-1.5 p-1.5 transition-colors"
+          className="group/request inline-block w-fit max-w-full min-w-0 rounded-lg -m-1.5 p-1.5 transition-colors"
         >
           <span className="flex items-center gap-1.5">
             <span className="whitespace-nowrap text-[11px] font-bold text-text-tertiary tnum">
@@ -977,22 +978,57 @@ function RequestRow({
               weird"). It floated mid-sentence next to a wrapped title and read
               as a stray glyph. The whole row is already a link and the title
               already turns blue, which is the affordance. */}
-          <span className="mt-1 block break-words text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+          <span className="mt-1 block break-words text-[13.5px] font-semibold text-text-primary transition-colors group-hover/request:text-blue-primary group-hover/request:underline">
             {r.title}
           </span>
         </Link>
       </td>
       <td className="px-4 py-3.5">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <CompanyLogo name={r.customer} className="h-5 w-5 shrink-0 text-[7px]" />
-          <span className="min-w-0 break-words text-[12.5px] text-text-primary">
-            {r.customer}
+        {r.customerId ? (
+          <Link
+            href={`/customers/${r.customerId}`}
+            onClick={(event) => event.stopPropagation()}
+            className="group/customer inline-flex min-w-0 items-center gap-1.5"
+          >
+            <CompanyLogo name={r.customer} className="h-5 w-5 shrink-0 text-[7px]" />
+            <span className="min-w-0 break-words text-[12.5px] text-text-primary transition-colors group-hover/customer:text-blue-primary group-hover/customer:underline">
+              {r.customer}
+            </span>
+          </Link>
+        ) : (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <CompanyLogo name={r.customer} className="h-5 w-5 shrink-0 text-[7px]" />
+            <span className="min-w-0 break-words text-[12.5px] text-text-primary">{r.customer}</span>
           </span>
-        </span>
+        )}
       </td>
       <td className="px-4 py-3.5">
         {against ? (
-          <span className="text-[12px] text-text-secondary">{against}</span>
+          <span className="text-[12px] text-text-secondary">
+            {r.opportunityIds.length === 1 ? (
+              <Link
+                href={`/opportunities/${r.opportunityIds[0]}`}
+                onClick={(event) => event.stopPropagation()}
+                className="transition-colors hover:text-blue-primary hover:underline"
+              >
+                1 opportunity
+              </Link>
+            ) : r.opportunityLabels.length > 0 ? (
+              `${r.opportunityLabels.length} ${r.opportunityLabels.length === 1 ? "opportunity" : "opportunities"}`
+            ) : null}
+            {r.opportunityLabels.length > 0 && r.contactNames.length > 0 ? " · " : null}
+            {r.contactIds.length === 1 ? (
+              <Link
+                href={`/contacts/${r.contactIds[0]}`}
+                onClick={(event) => event.stopPropagation()}
+                className="transition-colors hover:text-blue-primary hover:underline"
+              >
+                1 contact
+              </Link>
+            ) : r.contactNames.length > 0 ? (
+              `${r.contactNames.length} ${r.contactNames.length === 1 ? "contact" : "contacts"}`
+            ) : null}
+          </span>
         ) : (
           <span className="text-[12px] text-text-tertiary">
             the customer itself
@@ -1089,7 +1125,7 @@ function RequestRow({
             these are the two things you can do to a request from a list: look
             at it here, or go to it. */}
         <Link
-          href={`/solutioning/${r.id}${room === "requests" ? "" : `?tab=${room}`}`}
+          href={requestHref}
           title="Open the full request"
           aria-label={`Open ${r.ref} in full`}
           onClick={(e) => e.stopPropagation()}

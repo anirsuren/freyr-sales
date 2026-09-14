@@ -20,6 +20,7 @@ import {
   type Opportunity,
 } from "@/lib/opportunitiesShared";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tooltip } from "@/components/ui/Tooltip";
 import {
@@ -255,6 +256,7 @@ function DeviationsTable({
              external ids, rather than printing an empty cell. */
           externalId: opp?.externalId || plan.opportunityId,
           owner: opp?.owner || deal?.owner || "",
+          customerId: opp?.customerId,
           dealStatus: opp?.status || deal?.status || "",
           contractValue: plan.contractValue || 0,
           accrualStatus: tabAccrualStatus(summary),
@@ -646,14 +648,32 @@ function DeviationsTable({
           </thead>
           <tbody className="divide-y divide-border-light">
             {shown.map((r) => (
-              <tr key={r.plan.opportunityId} className="align-middle hover:bg-surface/60">
+              <tr
+                key={r.plan.opportunityId}
+                onClick={(event) => {
+                  if ((event.target as Element).closest("a,button,input,select,textarea,[role='button']")) return;
+                  onOpen(r.plan);
+                }}
+                className="cursor-pointer align-middle transition-colors hover:bg-surface/60"
+              >
                 <td className="px-3 py-2.5" title={r.plan.customer}>
-                  <span className="flex min-w-0 items-center gap-2">
-                    <CompanyLogo name={r.plan.customer} className="h-5 w-5 shrink-0 text-[7px]" />
-                    <span className="truncate text-[12.5px] text-text-secondary">
-                      {r.plan.customer}
+                  {r.customerId ? (
+                    <Link
+                      href={`/customers/${r.customerId}`}
+                      onClick={(event) => event.stopPropagation()}
+                      className="group/customer flex min-w-0 items-center gap-2"
+                    >
+                      <CompanyLogo name={r.plan.customer} className="h-5 w-5 shrink-0 text-[7px]" />
+                      <span className="truncate text-[12.5px] text-text-secondary transition-colors group-hover/customer:text-blue-primary group-hover/customer:underline">
+                        {r.plan.customer}
+                      </span>
+                    </Link>
+                  ) : (
+                    <span className="flex min-w-0 items-center gap-2">
+                      <CompanyLogo name={r.plan.customer} className="h-5 w-5 shrink-0 text-[7px]" />
+                      <span className="truncate text-[12.5px] text-text-secondary">{r.plan.customer}</span>
                     </span>
-                  </span>
+                  )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-[12px] tnum text-text-tertiary">
                   {r.externalId}
@@ -667,14 +687,14 @@ function DeviationsTable({
                         </span>
                       </Tooltip>
                     ) : null}
-                  <button
-                    type="button"
-                    onClick={() => onOpen(r.plan)}
+                  <Link
+                    href={`/opportunities/${r.plan.opportunityId}`}
+                    onClick={(event) => event.stopPropagation()}
                     className="w-fit max-w-full truncate text-left text-[13px] font-semibold text-text-primary hover:text-blue-primary"
                     title={r.plan.opportunityName}
                   >
                     {r.plan.opportunityName}
-                  </button>
+                  </Link>
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] font-semibold tnum text-[#7E22CE]">
@@ -739,7 +759,10 @@ function DeviationsTable({
                       the versions themselves are behind this. */}
                   <button
                     type="button"
-                    onClick={() => setHistoryFor(r.plan)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setHistoryFor(r.plan);
+                    }}
                     className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border-light px-2 py-1 text-[11.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary"
                   >
                     <HistoryIcon size={12} strokeWidth={2.2} />
