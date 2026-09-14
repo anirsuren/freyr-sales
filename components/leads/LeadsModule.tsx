@@ -37,7 +37,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { cn, formatDateTime, todayISO } from "@/lib/utils";
+import { cn, todayISO } from "@/lib/utils";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
@@ -73,6 +73,7 @@ import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { LeadAnalytics } from "@/components/leads/LeadAnalytics";
 import { LeadPersonInsights } from "@/components/leads/LeadPersonInsights";
+import { LeadJourney } from "@/components/leads/LeadJourney";
 import { repSlug } from "@/lib/team";
 
 type CustomerOption = { id: string; name: string };
@@ -830,51 +831,7 @@ export function LeadsModule({
 
                               <div>
                                 <LeadPersonInsights lead={lead} accountMatched={Boolean(linkedCustomer)} />
-                                <div className="p-4">
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                                    Lead journey
-                                  </span>
-                                  <span className="text-[11px] font-medium text-text-tertiary">Received → now → opportunity</span>
-                                </div>
-                                <div className="relative mt-4 grid grid-cols-3 gap-3 before:absolute before:left-[12%] before:right-[12%] before:top-2 before:h-px before:bg-border">
-                                  <div className="relative min-w-0">
-                                    <span className="relative z-10 block h-4 w-4 rounded-full border-[4px] border-blue-primary bg-white" />
-                                    <p className="mt-2 text-[12px] font-semibold text-text-primary">Lead received</p>
-                                    <p className="mt-0.5 text-[10.5px] text-text-tertiary tnum">{formatDateTime(lead.createdAt)}</p>
-                                    <p className="mt-0.5 truncate text-[10.5px] text-text-secondary">via {lead.source}</p>
-                                  </div>
-                                  <div className="relative min-w-0">
-                                    <span className="relative z-10 block h-4 w-4 rounded-full border-[4px] bg-white" style={{ borderColor: leadStatusColor(lead.status) }} />
-                                    <p className="mt-2 text-[12px] font-semibold" style={{ color: leadStatusColor(lead.status) }}>{lead.status}</p>
-                                    <p className="mt-0.5 text-[10.5px] text-text-tertiary tnum">{formatDateTime(lead.updatedAt)}</p>
-                                    <Link
-                                      href={`/analytics/reps/${repSlug(lead.updatedBy)}`}
-                                      onClick={(event) => event.stopPropagation()}
-                                      className="group/mover mt-1 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-secondary"
-                                    >
-                                      <Avatar name={lead.updatedBy} className="h-5 w-5 shrink-0 text-[7px]" />
-                                      <span className="truncate transition-colors group-hover/mover:text-blue-primary group-hover/mover:underline">
-                                        moved by {lead.updatedBy}
-                                      </span>
-                                    </Link>
-                                  </div>
-                                  <div className="relative min-w-0">
-                                    <span className={cn("relative z-10 block h-4 w-4 rounded-full border-[4px] bg-white", lead.status !== "Converted" && "border-border")} style={lead.status === "Converted" ? { borderColor: "#16A34A" } : undefined} />
-                                    <p className={cn("mt-2 text-[12px] font-semibold", lead.status === "Converted" ? "text-[#15803D]" : "text-text-secondary")}>
-                                      {lead.status === "Converted" ? "Opportunity created" : lead.status === "Disqualified" ? "Journey ended" : "Opportunity"}
-                                    </p>
-                                    <p className="mt-0.5 text-[10.5px] text-text-tertiary tnum">
-                                      {lead.status === "Converted" ? formatDateTime(lead.convertedAt || lead.updatedAt) : lead.status === "Disqualified" ? "Not progressing" : "Next destination"}
-                                    </p>
-                                    {lead.convertedOpportunityId && (
-                                      <Link href={`/opportunities/${lead.convertedOpportunityId}`} onClick={(event) => event.stopPropagation()} className="mt-0.5 block truncate text-[10.5px] font-semibold text-blue-primary hover:underline">
-                                        Open the deal
-                                      </Link>
-                                    )}
-                                  </div>
-                                </div>
-                                </div>
+                                <LeadJourney lead={lead} />
                               </div>
                             </div>
 
