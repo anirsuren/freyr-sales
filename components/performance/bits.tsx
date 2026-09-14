@@ -1372,9 +1372,6 @@ export function PersonGoalPanel({
     .filter((a) => a.person.trim().toLowerCase() === person.trim().toLowerCase())
     .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
   const recentEntries = mine.slice(0, 6);
-  const showEntryContext = recentEntries.some(
-    (a) => a.customer || a.dealLabel || a.note
-  );
   const verified = mine
     .filter((a) => entryStatus(a) === "verified")
     .reduce((s, a) => s + a.amount, 0);
@@ -1594,72 +1591,78 @@ export function PersonGoalPanel({
               {recentEntries.length} most recent
             </span>
           </div>
-          {/* Each entry is one compact object rather than one row in a narrow
-              table stranded at the left of a very wide goal panel. The cards
-              distribute across the full width, while date, result and status
-              stay close enough to read as one event. */}
-          <ul className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {recentEntries.map((a) => {
-              const { day, time } = resultWhenParts(a);
-              const status = entryStatus(a);
-              return (
-                <li
-                  key={a.id}
-                  className="flex min-w-0 flex-col rounded-xl border border-border-light bg-[var(--surface)]/45 px-3.5 py-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="min-w-0 leading-tight text-text-tertiary tnum">
-                      <span className="block whitespace-nowrap text-[12px] font-medium text-text-secondary">
-                        {day}
-                      </span>
-                      {time && (
-                        <span className="mt-0.5 block whitespace-nowrap text-[10.5px]">
-                          logged {time}
+          {/* Match the app's logged-results tables: one event per row with a
+              stable scan line. The table fills the panel, while explicit
+              column widths keep related values close on wide screens. */}
+          <div className="mt-2 overflow-x-auto rounded-xl border border-border-light">
+            <table className="w-full min-w-[680px] table-fixed border-collapse text-left">
+              <colgroup>
+                <col className="w-[24%]" />
+                <col className="w-[18%]" />
+                <col className="w-[38%]" />
+                <col className="w-[20%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-border-light bg-surface/50 text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                  <th className="px-4 py-2.5">Reported</th>
+                  <th className="px-4 py-2.5">Result</th>
+                  <th className="px-4 py-2.5">Details</th>
+                  <th className="px-4 py-2.5">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-light">
+                {recentEntries.map((a) => {
+                  const { day, time } = resultWhenParts(a);
+                  const status = entryStatus(a);
+                  const detail = [a.customer, a.dealLabel ?? a.note]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
+                    <tr key={a.id} className="hover:bg-surface/70">
+                      <td className="px-4 py-3 leading-tight text-text-secondary tnum">
+                        <span className="block whitespace-nowrap text-[12px] font-medium">
+                          {day}
                         </span>
-                      )}
-                    </span>
-                    {/* Three states, three colours: signed off is green, sent
-                        back is red, waiting on the owner is amber. */}
-                    <span
-                      className={cn(
-                        "w-fit shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
-                        status === "verified"
-                          ? "bg-[rgba(22,163,74,0.10)] text-[color:var(--entry-verified-ink)]"
-                          : status === "sent_back"
-                            ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--entry-sent-back-ink)]"
-                            : "bg-[rgba(194,65,12,0.10)] text-[color:var(--entry-waiting)]"
-                      )}
-                    >
-                      {status === "reported" ? "Waiting" : entryStatusLabel(a)}
-                    </span>
-                  </div>
-                  <div className="mt-3 border-t border-border-light pt-2.5">
-                    <span className="block text-[9.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                      Result
-                    </span>
-                    <span className="mt-0.5 block text-[16px] font-bold text-text-primary tnum">
-                      {fmtAmount(goal.unit, a.amount, a.currency)}
-                    </span>
-                  </div>
-                  {showEntryContext && (a.customer || a.dealLabel || a.note) && (
-                    <span className="mt-2 flex min-w-0 items-center gap-1.5 text-[11px] text-text-secondary">
-                      {a.customer && (
-                        <CompanyLogo
-                          name={a.customer}
-                          className="h-[16px] w-[16px] shrink-0 text-[6px]"
-                        />
-                      )}
-                      <span className="min-w-0 truncate">
-                        {[a.customer, a.dealLabel ?? a.note]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+                        {time && (
+                          <span className="mt-0.5 block whitespace-nowrap text-[10.5px] text-text-tertiary">
+                            logged {time}
+                          </span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-[14px] font-bold text-text-primary tnum">
+                        {fmtAmount(goal.unit, a.amount, a.currency)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="flex min-w-0 items-center gap-2 text-[12px] text-text-secondary">
+                          {a.customer && (
+                            <CompanyLogo
+                              name={a.customer}
+                              className="h-5 w-5 shrink-0 text-[7px]"
+                            />
+                          )}
+                          <span className="truncate">{detail || "—"}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold",
+                            status === "verified"
+                              ? "bg-[rgba(22,163,74,0.10)] text-[color:var(--entry-verified-ink)]"
+                              : status === "sent_back"
+                                ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--entry-sent-back-ink)]"
+                                : "bg-[rgba(194,65,12,0.10)] text-[color:var(--entry-waiting)]"
+                          )}
+                        >
+                          {status === "reported" ? "Waiting" : entryStatusLabel(a)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

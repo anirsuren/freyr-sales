@@ -698,5 +698,5 @@ The generated mock floor now attaches one solution request, one meeting request,
 ### Sep 14: deployment permission is per message
 Never push or deploy to development or production unless Anir explicitly asks for that deployment in the current message. Earlier deployment permission does not carry forward. Keep completed changes local until that explicit instruction arrives.
 
-### Sep 14: expanded-goal latest entries use the full panel
-The latest six entries in an expanded person or group goal render as a responsive three-column card grid instead of a narrow table anchored to the left. Each card keeps its date, result, status and optional account/deal context together; the section fills the available width without stretching related facts to opposite edges.
+### Sep 14: expanded-goal latest entries are a full-width table
+The latest six entries in an expanded person or group goal use the same compact table pattern as Logged results, with stable Reported, Result, Details, and Status columns. The table fills the panel, uses deliberate column widths, and scrolls horizontally on narrow screens; do not turn these records into cards.
