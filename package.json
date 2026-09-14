@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:3006": "NEXT_DIST_DIR=.next-local-3006 next dev --turbopack -p 3006",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
