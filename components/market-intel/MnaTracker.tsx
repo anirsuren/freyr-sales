@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { safeHref } from "@/lib/safeUrl";
+import { dedupeMnaDeals } from "@/lib/marketIntelMnaDedupe";
+import { readableTitle } from "@/lib/marketIntelText";
 import { fmtWhen } from "@/lib/whenLabel";
 import {
   ArrowRight,
@@ -83,7 +85,12 @@ export function MnaTracker({
   const [sourceFilter, setSourceFilter] = useState<string[]>([]);
   const [query, setQuery] = useState("");
 
-  const items = board?.items ?? [];
+  /* One deal, one row, including boards saved before the dedupe learned to
+     match paraphrased headlines (Sep 13 loop). */
+  const items = dedupeMnaDeals(board?.items ?? []);
+  const capped = Math.max(0, (board?.total ?? 0) - (board?.items?.length ?? 0));
+  const readableThought = (thought?.items ?? []).filter((item) => readableTitle(item.title));
+  const thoughtCapped = Math.max(0, (thought?.total ?? 0) - (thought?.items?.length ?? 0));
   const q = query.trim().toLowerCase();
   const sources = [...new Set(items.map((d) => d.sourceLabel).filter(Boolean))].sort();
   const shown = items.filter((deal) => {
@@ -152,16 +159,16 @@ export function MnaTracker({
           <span className="flex shrink-0 items-center gap-1.5">
             <span className="flex items-center gap-1.5 rounded-full bg-[rgba(0,113,227,0.07)] px-2.5 py-1 text-[11.5px] font-semibold text-text-primary tnum">
               <BookOpenText size={11} strokeWidth={2.4} className="text-blue-primary" />
-              {thought?.total && thought.total > (thought.items?.length ?? 0)
-                ? `${thought.items.length} of ${thought.total} publications`
-                : `${thought?.items?.length ?? 0} publications`}
+              {thoughtCapped > 0
+                ? `${readableThought.length} of ${readableThought.length + thoughtCapped} publications`
+                : `${readableThought.length} publications`}
             </span>
             <span
               className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold tnum"
               style={{ color: "var(--ink-violet)", background: "rgba(109,40,217,0.10)" }}
             >
               <span className="h-1.5 w-1.5 rounded-full bg-[#6D28D9]" />
-              {new Set((thought?.items ?? []).map((i) => i.firm)).size} firms
+              {new Set(readableThought.map((i) => i.firm)).size} firms
             </span>
           </span>
         ) : (
@@ -172,8 +179,8 @@ export function MnaTracker({
                 "40 deals" read as the size of the market rather than the size
                 of the page. Notifications sets the pattern: cap, then name the
                 remainder. */}
-            {board?.total && board.total > items.length
-              ? `${items.length} of ${board.total} deals`
+            {capped > 0
+              ? `${items.length} of ${items.length + capped} deals`
               : `${items.length} deals`}
           </span>
           <span
@@ -242,10 +249,13 @@ export function MnaTracker({
             ariaLabel="Filter by time"
             minWidth={150}
             options={[
-              { value: "all", label: "All time", icon: CalendarClock },
-              { value: "30", label: "Last 30 days", color: "var(--ink-bright-blue)", icon: CalendarClock },
-              { value: "90", label: "Last 90 days", color: "var(--ink-violet)", icon: CalendarClock },
-              { value: "year", label: "This year", color: "var(--ink-teal-deep)", icon: CalendarClock },
+              /* Blue like every other "All" filter beside it (it was the one grey
+                 chip in the row); the windows wear the company page's colours
+                 for the same spans. */
+              { value: "all", label: "All time", color: "var(--ink-bright-blue)", icon: CalendarClock },
+              { value: "30", label: "Last 30 days", color: "var(--ink-violet)", icon: CalendarClock },
+              { value: "90", label: "Last 90 days", color: "var(--ink-teal-deep)", icon: CalendarClock },
+              { value: "year", label: "This year", color: "var(--ink-orange)", icon: CalendarClock },
             ]}
           />
           <MultiColorSelect

@@ -47,6 +47,7 @@ import { MiSectionMarker } from "@/components/market-intel/MiSection";
 import { MyListToggle } from "@/components/market-intel/MyListToggle";
 import type { Division } from "@/lib/offeringMaterials";
 import { moduleWriteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
+import { displayPersonName } from "@/lib/personName";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +89,10 @@ export default async function MarketIntelCompanyPage({
     companies: [],
     people: [],
   }));
-  const extraPeople = tracking.people.filter((p) => p.companyId === id);
+  /* Names as names, not as typed on LinkedIn ("Stephane COUSIN", "Shawn. Stragier"). */
+  const extraPeople = tracking.people
+    .filter((p) => p.companyId === id)
+    .map((p) => ({ ...p, name: displayPersonName(p.name) }));
   const sourceDefault = (companyId: string): Division[] =>
     ([...COMPANY_SOURCES, ...COMPETITOR_SOURCES].find((s) => s.id === companyId)?.divisions ??
       []) as Division[];
@@ -223,7 +227,9 @@ export default async function MarketIntelCompanyPage({
   }
 
   // A company the team added: real configuration, honestly empty briefing.
-  const people = tracking.people.filter((p) => p.companyId === mine.id);
+  const people = tracking.people
+    .filter((p) => p.companyId === mine.id)
+    .map((p) => ({ ...p, name: displayPersonName(p.name) }));
   const addedOn = new Date(mine.addedAt).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -263,6 +269,7 @@ export default async function MarketIntelCompanyPage({
             companyName={mine.name}
             onMyPage={onMyPage}
             starred={starred}
+            group={mine.group === "competitor" ? "competitor" : "customer"}
           />
           {isAdmin && (
             <CompanyAdminControls

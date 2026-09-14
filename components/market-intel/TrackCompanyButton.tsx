@@ -187,7 +187,7 @@ export function TrackCompanyButton({
       if (!res.ok) throw new Error(data.error || `Could not add ${noun}.`);
       if (!data.company?.id)
         throw new Error(
-          "Tracking could not be confirmed. Check Manage companies before retrying.",
+          `Tracking could not be confirmed. Check Manage ${noun}s before retrying.`,
         );
       setOpen(false);
       toast(`${data.company.name} added. Collecting its first updates.`);

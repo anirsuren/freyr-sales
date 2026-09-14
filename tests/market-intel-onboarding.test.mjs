@@ -196,14 +196,11 @@ test("queued onboarding survives independent reads, claims once, persists the br
     }
   }
 });
-test("new and existing companies join the same next daily batch", () => {
+test("each source becomes eligible exactly 24 hours after its last collection", () => {
   const now = Date.parse("2026-09-11T20:00:00Z");
-  assert.equal(nextMarketIntelCycle(now), Date.parse("2026-09-12T06:00:00Z"));
-  for (const at of ["2026-09-11T06:15:00Z", "2026-09-11T19:59:00Z"]) {
-    assert.equal(collectedInCurrentCycle(at, now), true);
-    assert.equal(
-      collectedInCurrentCycle(at, Date.parse("2026-09-12T06:00:00Z")),
-      false,
-    );
-  }
+  const recent = "2026-09-11T19:59:00Z";
+  const old = "2026-09-10T19:59:59Z";
+  assert.equal(nextMarketIntelCycle(recent, now), Date.parse("2026-09-12T19:59:00Z"));
+  assert.equal(collectedInCurrentCycle(recent, now), true);
+  assert.equal(collectedInCurrentCycle(old, now), false);
 });

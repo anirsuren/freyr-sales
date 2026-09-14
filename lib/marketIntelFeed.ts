@@ -1,3 +1,5 @@
+import { usableRundown } from "./marketIntelRundown";
+import { clipText, titleFromUrl } from "./marketIntelText";
 import { MI_COMPANIES, MI_WATCHLIST, SIGNAL_META } from "./marketIntelMock";
 import {
   fallbackSignals,
@@ -73,25 +75,7 @@ export function withinRetention(date: string | null | undefined): boolean {
   return !Number.isFinite(t) || Date.now() - t < RETAIN_DAYS * 86_400_000;
 }
 
-/** "MARKETSCREENER.COM" and "Fierce Pharma" were both wearing the source
- *  chip; every stored label is now a clean publication name. */
-export function cleanSourceLabel(raw: string): string {
-  let s = String(raw || "News").trim();
-  if (/\.[a-z]{2,6}$/i.test(s) || /\.(com|net|org|io|co)\b/i.test(s)) {
-    s = s.replace(/^www\./i, "").split("/")[0];
-    s = s.replace(/\.[a-z]{2,6}$/i, "").replace(/\.[a-z]{2,6}$/i, "");
-    s = s.replace(/[-_.]+/g, " ");
-  }
-  s = s.replace(/\s+/g, " ").trim();
-  if (s === s.toUpperCase() || s === s.toLowerCase()) {
-    s = s
-      .toLowerCase()
-      .split(" ")
-      .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-      .join(" ");
-  }
-  return s.slice(0, 32) || "News";
-}
+export { cleanSourceLabel } from "./marketIntelText";
 
 export type FeedCompany = {
   /** Source failures are independent; successful source data stays usable. */
@@ -119,6 +103,9 @@ export type FeedCompany = {
   /** "customer" (default) or "competitor" — which intelligence tab owns it. */
   group?: "customer" | "competitor";
   fetchedAt: string;
+  /** When this cycle's LinkedIn posts pull failed while news still came back.
+   *  The rotation tries such a company once per daily cycle, not every tick. */
+  postsFailedAt?: string;
   /** Last time the cheap same-day news pass visited (Perplexity). Kept apart
    *  from `fetchedAt`, which still means "full Apify sync" and drives that
    *  rotation's ordering. */
@@ -162,7 +149,13 @@ export type PersonFeed = { posts: FeedPost[]; fetchedAt: string; removedItemUrls
 
 /** What the list page needs about a followed person: how many posts are
  *  collected, without loading them. Written beside the person's row. */
-export type PersonSummary = { posts: number; fetchedAt: string };
+export type PersonSummary = {
+  posts: number;
+  fetchedAt: string;
+  /** Each kept post's date in epoch minutes (null when undated), so a card
+   *  counts the same 3 months the company page lists. Older rows lack it. */
+  postMinutes?: (number | null)[];
+};
 
 /**
  * THE THOUGHT-LEADERSHIP TRACKER (Anant via Saras, Sep 10): reports, studies
@@ -316,6 +309,11 @@ export type FeedCompanySummary = {
   signalCounts: Partial<Record<SignalId, number>>;
   signalTotal: number;
   stories: { title: string; source: string; url: string; published: string | null }[];
+  /** When each item the company page lists was published, in epoch minutes
+   *  (null when undated), so a card counts the page's own 3-month window when
+   *  it is drawn. `signals` holds the items that hit a named signal. Older
+   *  summaries lack it and fall back to `counts` and `signalTotal`. */
+  shown?: { posts: (number | null)[]; news: (number | null)[]; site: (number | null)[]; signals: (number | null)[] };
 };
 
 /** Competitor intelligence defaults to items that the classifier marked as
@@ -688,6 +686,52 @@ export async function saveFeedMeta(feed: MarketIntelFeed | FeedMeta): Promise<vo
   bustMarketIntelFeedCache();
 }
 
+/* A REMOVED STORY STAYS REMOVED UNDER ANY OF ITS ADDRESSES (Sep 13 loop). The
+   list of removed stories held only the address a story was shown under, and
+   compared it letter for letter. The same article is also stored as a Google
+   News link or with tracking tags on the end, so a later collection could
+   bring a removed story back. publisherUrl is left out on purpose: it is often
+   just the outlet's home page, and matching on it would hide every story from
+   that outlet. */
+export function storyKey(url: string): string {
+  const raw = url.trim();
+  try {
+    const parsed = new URL(raw);
+    parsed.hash = "";
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (/^(utm_|fbclid$|gclid$|mc_cid$|mc_eid$)/i.test(key)) parsed.searchParams.delete(key);
+    }
+    if (!parsed.searchParams.toString()) parsed.search = "";
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return raw.replace(/\/$/, "");
+  }
+}
+
+type StoryAddressed = { url: string; alternateUrls?: string[] };
+
+function storyAddresses(item: StoryAddressed): string[] {
+  return [item.url, ...(item.alternateUrls ?? [])].filter(
+    (address): address is string => typeof address === "string" && address.length > 0
+  );
+}
+
+function notRemoved<T extends StoryAddressed>(items: T[], removed: Set<string>): T[] {
+  return items.filter((item) => !storyAddresses(item).some((address) => removed.has(storyKey(address))));
+}
+
+/** The company with every removed story taken out, whichever address it came under. */
+export function withoutRemovedStories(company: FeedCompany, removedItemUrls: string[]): FeedCompany {
+  const removed = new Set(removedItemUrls.map(storyKey));
+  return {
+    ...company,
+    removedItemUrls,
+    posts: notRemoved(company.posts, removed),
+    news: notRemoved(company.news, removed),
+    site: notRemoved(company.site ?? [], removed),
+  };
+}
+
 /** One company's row, with a fresh summary, plus the meta row. */
 export async function saveFeedCompany(feed: MarketIntelFeed, id: string): Promise<void> {
   let company = feed.companies[id];
@@ -695,14 +739,7 @@ export async function saveFeedCompany(feed: MarketIntelFeed, id: string): Promis
   const prior = (await readRowCatalog(`${FEED_COMPANY_PREFIX}${id}`))?.company as FeedCompany | undefined;
   const removedItemUrls = [...new Set([...(prior?.removedItemUrls ?? []), ...(company.removedItemUrls ?? [])])];
   if (removedItemUrls.length) {
-    const removed = new Set(removedItemUrls.map((url) => url.replace(/\/$/, "")));
-    company = {
-      ...company,
-      removedItemUrls,
-      posts: company.posts.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
-      news: company.news.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
-      site: (company.site ?? []).filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
-    };
+    company = withoutRemovedStories(company, removedItemUrls);
     feed.companies[id] = company;
   }
   await upsertRow(`${FEED_COMPANY_PREFIX}${id}`, {
@@ -718,11 +755,11 @@ export async function saveFeedPerson(feed: MarketIntelFeed, personId: string): P
   const prior = (await readRowCatalog(`${FEED_PERSON_PREFIX}${personId}`))?.feed as PersonFeed | undefined;
   const removedItemUrls = [...new Set([...(prior?.removedItemUrls ?? []), ...(person.removedItemUrls ?? [])])];
   if (removedItemUrls.length) {
-    const removed = new Set(removedItemUrls.map((url) => url.replace(/\/$/, "")));
+    const removed = new Set(removedItemUrls.map(storyKey));
     person = {
       ...person,
       removedItemUrls,
-      posts: person.posts.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
+      posts: notRemoved(person.posts, removed),
     };
     feed.people[personId] = person;
   }
@@ -750,16 +787,17 @@ export async function removeFeedStoryItems(
     const row = await readRowCatalog(`${FEED_COMPANY_PREFIX}${companyId}`);
     const company = row?.company as FeedCompany | undefined;
     if (company) {
-      const removedItemUrls = [...new Set([...(company.removedItemUrls ?? []), ...companyUrls])];
-      const removed = new Set(companyUrls.map((url) => url.replace(/\/$/, "")));
-      const next: FeedCompany = {
-        ...company,
-        removedItemUrls,
-        tldr: null,
-        posts: company.posts.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
-        news: company.news.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
-        site: (company.site ?? []).filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
-      };
+      /* Every address the removed story is stored under goes on the list, not
+         only the one it was shown with. */
+      const asked = new Set(companyUrls.map(storyKey));
+      const matched = [...company.posts, ...company.news, ...(company.site ?? [])]
+        .filter((item) => storyAddresses(item).some((address) => asked.has(storyKey(address))));
+      const removedItemUrls = [...new Set([
+        ...(company.removedItemUrls ?? []),
+        ...companyUrls,
+        ...matched.flatMap(storyAddresses),
+      ])];
+      const next: FeedCompany = { ...withoutRemovedStories(company, removedItemUrls), tldr: null };
       removedCount += company.posts.length - next.posts.length;
       removedCount += company.news.length - next.news.length;
       removedCount += (company.site ?? []).length - (next.site ?? []).length;
@@ -776,11 +814,11 @@ export async function removeFeedStoryItems(
     const person = row?.feed as PersonFeed | undefined;
     if (!person) continue;
     const removedItemUrls = [...new Set([...(person.removedItemUrls ?? []), ...urls])];
-    const removed = new Set(urls.map((url) => url.replace(/\/$/, "")));
+    const removed = new Set(urls.map(storyKey));
     const next: PersonFeed = {
       ...person,
       removedItemUrls,
-      posts: person.posts.filter((item) => !removed.has(item.url.replace(/\/$/, ""))),
+      posts: notRemoved(person.posts, removed),
     };
     removedCount += person.posts.length - next.posts.length;
     await upsertRow(`${FEED_PERSON_PREFIX}${personId}`, { feed: next, summary: summarizePerson(next) });
@@ -790,7 +828,19 @@ export async function removeFeedStoryItems(
 }
 
 export function summarizePerson(feed: PersonFeed): PersonSummary {
-  return { posts: feed.posts.length, fetchedAt: feed.fetchedAt };
+  const postMinutes = feed.posts
+    .map((post) => (post.date ? Date.parse(post.date) : null))
+    .filter((t): t is number | null => t === null || Number.isFinite(t))
+    .map((t) => (t === null ? null : Math.floor(t / 60_000)));
+  return { posts: feed.posts.length, fetchedAt: feed.fetchedAt, postMinutes };
+}
+
+/** A person's posts inside the company page's 3-month window. */
+export function personPostsInPageWindow(summary: PersonSummary | undefined): number {
+  if (!summary) return 0;
+  if (!summary.postMinutes) return summary.posts;
+  const cutoff = Date.now() - PAGE_WINDOW_DAYS * 86_400_000;
+  return summary.postMinutes.filter((at) => at === null || at * 60_000 > cutoff).length;
 }
 
 /** Post counts for every followed person, keyed by person id: one small
@@ -839,10 +889,19 @@ export function summarizeCompany(company: FeedCompany): FeedCompanySummary {
   const { signals } = deriveSignals(visibleCompany, []);
   const signalCounts: Partial<Record<SignalId, number>> = {};
   for (const s of signals) for (const kind of s.kinds) signalCounts[kind] = (signalCounts[kind] ?? 0) + 1;
+  /* ONE HEADLINE ONCE (Sep 13 loop): Lindus's card rotated the same board
+     appointment four times, once per outlet that ran it. */
+  const seenHeadlines = new Set<string>();
   const stories = [...visibleCompany.news]
     .sort((a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0))
+    .filter((n) => {
+      const key = n.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 90);
+      if (seenHeadlines.has(key)) return false;
+      seenHeadlines.add(key);
+      return true;
+    })
     .slice(0, 5)
-    .map((n) => ({ title: n.title, source: n.source, url: n.url, published: n.published }));
+    .map((n) => ({ title: n.title || titleFromUrl(n.url), source: n.source, url: n.url, published: n.published }));
   return {
     id: company.id,
     name: company.name,
@@ -850,7 +909,7 @@ export function summarizeCompany(company: FeedCompany): FeedCompanySummary {
     group: company.group === "competitor" ? "competitor" : "customer",
     logoUrl: company.author?.logoUrl || company.logoUrl || null,
     followerCount: company.author?.followerCount ?? null,
-    tldr: company.tldr ?? null,
+    tldr: usableRundown(company.tldr),
     fetchedAt: company.fetchedAt,
     ...(company.newsAt ? { newsAt: company.newsAt } : {}),
     ...(company.siteAt ? { siteAt: company.siteAt } : {}),
@@ -864,8 +923,45 @@ export function summarizeCompany(company: FeedCompany): FeedCompanySummary {
     /* Items that hit a named signal; "Others" is not one worth counting on a card. */
     signalTotal: signals.filter((signal) => signal.kinds[0] !== "others").length,
     stories,
+    shown: shownItemMinutes(company, signals),
   };
 }
+
+/* THE CARD COUNTS WHAT THE PAGE SHOWS (Sep 13 loop). A card counted every item
+   ever stored while its page lists the past 3 months with each address once:
+   Moderna's card said 27 website items and its page 4, Novartis 40 posts and
+   26. The summary keeps the date of each item the page would list, and the
+   card counts the window when it is drawn, so the two agree on any day. */
+function shownItemMinutes(company: FeedCompany, signals: LiveSignal[]): NonNullable<FeedCompanySummary["shown"]> {
+  /* undated: the page always lists it; unreadable: the page never does */
+  const minutes = (iso: string | null | undefined): number | null | undefined => {
+    if (!iso) return null;
+    const t = Date.parse(iso);
+    return Number.isFinite(t) ? Math.floor(t / 60_000) : undefined;
+  };
+  const listed = (values: (number | null | undefined)[]) =>
+    values.filter((value): value is number | null => value !== undefined);
+  /* The page keeps one item per address (the website copy first, then posts),
+     and only then drops what is outside Freyr's industries. */
+  const seen = new Set<string>();
+  const once = <T extends { url: string; label?: ItemLabel }>(items: T[]) =>
+    items
+      .filter((item) => (seen.has(item.url) ? false : (seen.add(item.url), true)))
+      .filter((item) => isRelevantCompanyItem(company.group, item));
+  const site = once(company.site ?? []).map((n) => ({ url: n.url, at: minutes(n.published) }));
+  const posts = once(company.posts).map((p) => ({ url: p.url, at: minutes(p.date) }));
+  const news = once(company.news).map((n) => ({ url: n.url, at: minutes(n.published) }));
+  const named = new Set(signals.filter((s) => s.kinds[0] !== "others").map((s) => s.url));
+  return {
+    posts: listed(posts.map((i) => i.at)),
+    news: listed(news.map((i) => i.at)),
+    site: listed(site.map((i) => i.at)),
+    signals: listed([...site, ...posts, ...news].filter((i) => named.has(i.url)).map((i) => i.at)),
+  };
+}
+
+/** The company page opens on "Past 3 months". */
+const PAGE_WINDOW_DAYS = 90;
 
 /**
  * A COMPANY CARD, from its summary and today's date. Counts are over the
@@ -900,6 +996,17 @@ export function cardFromSummary(summary: FeedCompanySummary): CompanyCard {
   const freshest =
     [summary.fetchedAt, summary.newsAt, summary.siteAt].filter(Boolean).sort().pop() ??
     summary.fetchedAt;
+  const pageCutoff = now - PAGE_WINDOW_DAYS * 86_400_000;
+  const inPageWindow = (values: (number | null)[]) =>
+    values.filter((at) => at === null || at * 60_000 > pageCutoff).length;
+  const shownCounts = summary.shown
+    ? {
+        posts: inPageWindow(summary.shown.posts),
+        news: inPageWindow(summary.shown.news),
+        site: inPageWindow(summary.shown.site),
+        signals: inPageWindow(summary.shown.signals),
+      }
+    : null;
   return {
     id: summary.id,
     name: summary.name,
@@ -910,11 +1017,11 @@ export function cardFromSummary(summary: FeedCompanySummary): CompanyCard {
     updatedLabel: updatedLabel(freshest),
     momentumPct: mo.pct,
     itemsThisMonth: mo.thisMonth,
-    itemsInWindow: dates.length,
+    itemsInWindow: shownCounts ? shownCounts.posts + shownCounts.news + shownCounts.site : dates.length,
     trend: points,
     trendLabels: labels,
-    counts: summary.counts,
-    signalTotal: summary.signalTotal,
+    counts: shownCounts ?? summary.counts,
+    signalTotal: shownCounts ? shownCounts.signals : summary.signalTotal,
     signalCounts: summary.signalCounts,
     stories: summary.stories,
   };
@@ -1012,11 +1119,41 @@ export function updatedLabel(iso: string | null): string {
 }
 
 // ------------------------------------------------------------------ signals
-/** A stored line cut mid-word by an earlier version ends on a whole word. */
+/** A stored line cut mid-word by an earlier version ends on a whole word. A
+ *  line that was cut with an ellipsis ("...differentiate from this...") ends
+ *  on its last complete clause instead, when there is one worth keeping, so
+ *  "Why it matters" never stops mid-thought (Sep 13 loop). */
 function tidyLine(text: string, max: number): string {
-  if (text.length < max - 1 || /[.!?…]$/.test(text)) return text;
+  const lastClause = (line: string): string | null => {
+    const body = line.replace(/\u2026$/, "").replace(/\.\.\.$/, "").trimEnd();
+    const cut = Math.max(body.lastIndexOf(". "), body.lastIndexOf("; "), body.lastIndexOf(": "));
+    return cut >= body.length * 0.35 ? `${body.slice(0, cut).replace(/[,;:\s]+$/, "")}.` : null;
+  };
+  if (/(\u2026|\.\.\.)$/.test(text)) return lastClause(text) ?? text;
+  if (text.length < max - 1 || /[.!?]$/.test(text)) return text;
   const at = text.lastIndexOf(" ");
-  return `${(at > max * 0.6 ? text.slice(0, at) : text).replace(/[,;:\s]+$/, "")}…`;
+  const cut = `${(at > max * 0.6 ? text.slice(0, at) : text).replace(/[,;:\s]+$/, "")}\u2026`;
+  return lastClause(cut) ?? cut;
+}
+
+/**
+ * A NAME IS FOUND AS A WHOLE WORD (Sep 13 loop). "Thema", an MDV consultancy
+ * from Saras's list, was counted as a competitor mentioned on GSK's page
+ * because a plain substring search found it inside other words. Every name now
+ * has to stand on its own; a one-word name must also keep its own capitals
+ * (or be in a shouted headline), so "Element" is not every "element".
+ */
+function mentionMatcher(name: string): (text: string) => boolean {
+  const clean = name.trim();
+  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+  const edge = (body: string, flags: string) => new RegExp(`(?<![\\p{L}\\p{N}])${body}(?![\\p{L}\\p{N}])`, flags);
+  if (/\s/.test(clean)) {
+    const pattern = edge(escape(clean), "iu");
+    return (text) => pattern.test(text);
+  }
+  const exact = edge(escape(clean), "u");
+  const shouted = edge(escape(clean.toUpperCase()), "u");
+  return (text) => exact.test(text) || shouted.test(text);
 }
 
 
@@ -1027,9 +1164,9 @@ export function deriveSignals(
   const signals: LiveSignal[] = [];
   const group: SignalGroup = company.group === "competitor" ? "competitor" : "customer";
   const mentionCounts = new Map<string, number>();
-  const others = allNames.filter(
-    (n) => n.id !== company.id && n.name.length > 3
-  );
+  const others = allNames
+    .filter((n) => n.id !== company.id && n.name.length > 3)
+    .map((n) => ({ name: n.name, found: mentionMatcher(n.name) }));
 
   const consider = (
     item: { label?: ItemLabel },
@@ -1048,14 +1185,14 @@ export function deriveSignals(
     if (item.label && isLabeled(item)) {
       kinds = labelSignals(item.label, group);
       const own = item.label.why?.trim() || "";
-      if (kinds[0] !== "others") why = own ? tidyLine(own, 170) : signalWhy(group, kinds[0]);
+      if (kinds[0] !== "others") why = own ? tidyLine(own, 240) : signalWhy(group, kinds[0]);
     } else {
       kinds = fallbackSignals(text, group);
       if (kinds[0] !== "others") why = signalWhy(group, kinds[0]);
     }
     signals.push({ kinds, title, sourceLabel, url, date, why });
     for (const other of others) {
-      if (text.toLowerCase().includes(other.name.toLowerCase())) {
+      if (other.found(text)) {
         mentionCounts.set(other.name, (mentionCounts.get(other.name) ?? 0) + 1);
       }
     }
@@ -1068,7 +1205,7 @@ export function deriveSignals(
     consider(n, `${n.title}. ${n.summary ?? ""}`, n.title, n.source, n.url, n.published);
   }
   for (const p of company.posts) {
-    const firstLine = p.text.split("\n")[0].slice(0, 110);
+    const firstLine = clipText(p.text.split("\n")[0], 110);
     consider(p, p.text, firstLine, "LinkedIn post", p.url, p.date);
   }
 
@@ -1151,7 +1288,7 @@ export function buildBriefing(
     name: company.name,
     followerCount: company.author?.followerCount ?? null,
     logoUrl: company.author?.logoUrl || company.logoUrl || null,
-    tldr: company.tldr ?? null,
+    tldr: usableRundown(company.tldr),
     fetchedAt: freshest,
     updatedLabel: updatedLabel(freshest),
     momentumPct: mo.pct,

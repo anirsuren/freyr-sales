@@ -116,7 +116,7 @@ export function CompanyAdminControls({
           )}
         </>
       }
-      detail="It leaves every list, and everything collected for it goes too."
+      detail="This can't be undone."
       confirmLabel="Delete for everyone"
     />
   );

@@ -12,7 +12,7 @@ import {
   Pencil, ClipboardList,
   FileText, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
-import { readMarketIntelSummaries } from "@/lib/marketIntelFeed";
+import { cardFromSummary, readMarketIntelSummaries } from "@/lib/marketIntelFeed";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
 import { IndustryTag } from "@/components/ui/IndustryTag";
@@ -101,13 +101,15 @@ export default async function CustomerDetailPage({
         return !!a && !!b && (a === b || a.startsWith(b) || b.startsWith(a));
       }) ?? null
     : null;
-  const intelligence = miCompany
+  /* The same 3-month counts the company's Market Intel card and page show. */
+  const miCounts = miCompany ? cardFromSummary(miCompany).counts : null;
+  const intelligence = miCompany && miCounts
     ? {
         name: miCompany.name,
         href: `/market-intel/${miCompany.id}`,
         tldr: miCompany.tldr ?? null,
-        posts: miCompany.counts.posts,
-        news: miCompany.counts.news,
+        posts: miCounts.posts,
+        news: miCounts.news,
         updatedAt: miCompany.fetchedAt ?? null,
       }
     : null;

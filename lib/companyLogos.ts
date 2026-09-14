@@ -36,7 +36,7 @@ function decodeHref(text: string): string {
 }
 
 /** The icons a homepage declares, best first. */
-function iconsDeclared(html: string, base: string): { url: string; score: number }[] {
+function iconsDeclared(html: string, base: string, label = ""): { url: string; score: number }[] {
   const found: { url: string; score: number }[] = [];
   for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) {
     const rel = (/\brel\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1] ?? "").toLowerCase();
@@ -62,6 +62,13 @@ function iconsDeclared(html: string, base: string): { url: string; score: number
     const identity = tag.match(/\b(?:alt|class|id)\s*=\s*["']([^"']+)["']/gi)?.join(" ") ?? "";
     const src = /\b(?:src|data-src)\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1];
     if (!src || (!/logo/i.test(identity) && !/(?:^|\/)logo[._-]/i.test(src))) continue;
+    /* THEIR LOGO, NOT A LOGO ON THEIR PAGE (Sep 13 loop): Qualio's tile showed
+       GEFCO, a customer from its logo strip, and Syneos Health's a chart from a
+       carousel. An image only counts when its file or alt text carries the
+       company's own name, and never from a customer, partner or award strip. */
+    const squashed = `${src} ${identity}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!label || !squashed.includes(label)) continue;
+    if (/carousel|client|customer|partner|award|badge|certif|trust|testimonial/i.test(`${src} ${identity}`)) continue;
     try {
       const url = new URL(decodeHref(src), base).toString();
       if (/^https?:/i.test(url)) found.push({ url, score: 160 });
@@ -116,6 +123,46 @@ export async function fetchLogoImage(url: string): Promise<Omit<LogoImage, "sour
   }
 }
 
+/**
+ * A LOGO HAS TO BE SEEN IN A SQUARE (Sep 13 loop). Cipla's stored "logo" was a
+ * wide product banner ("Cipla's Business Intelligence and Analytics Platform"),
+ * and Accenture's a white wordmark that vanished on the white tile. A picture
+ * much wider than tall is a banner or wordmark, and one that is almost all
+ * transparent or white shows nothing; both are passed over for the next
+ * candidate, and with none left the tile keeps the generated mark.
+ */
+/** The stock WordPress "W" that a site without its own icon still serves (Sep 13
+ *  loop: ChemReach's tile became the WordPress logo). 16x16 average hash. */
+const WORDPRESS_DEFAULT_ICON =
+  "1111111111111111111110000001111111110000000011111110000000001111111100111000111111110001100011111011000110001101100110001100010110011000110000011001100011001001100011000110100111001100011100111110011000110111111101000011111111111100001111111111111111111111";
+
+async function looksLikeStockIcon(png: Buffer): Promise<boolean> {
+  const raw = await sharp(png).flatten({ background: "#ffffff" }).resize(16, 16, { fit: "contain", background: "#ffffff" }).grayscale().raw().toBuffer();
+  const mean = raw.reduce((sum, value) => sum + value, 0) / raw.length;
+  let distance = 0;
+  for (let i = 0; i < raw.length; i += 1) if ((raw[i] > mean ? "1" : "0") !== WORDPRESS_DEFAULT_ICON[i]) distance += 1;
+  return distance <= 24;
+}
+
+export async function logoLooksUsable(png: Buffer): Promise<boolean> {
+  try {
+    if (await looksLikeStockIcon(png)) return false;
+    const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const { width, height, channels } = info;
+    if (!width || !height) return false;
+    if (Math.max(width, height) / Math.min(width, height) > 1.8) return false;
+    let visible = 0;
+    for (let i = 0; i + 3 < data.length; i += channels) {
+      if (data[i + 3] < 40) continue;
+      const light = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+      if (light < 235) visible += 1;
+    }
+    return visible / (width * height) >= 0.04;
+  } catch {
+    return false;
+  }
+}
+
 /** The best logo a company's own website offers, or null. Free: plain fetches. */
 export async function findSiteLogo(domain: string): Promise<LogoImage | null> {
   let html = "";
@@ -140,7 +187,7 @@ export async function findSiteLogo(domain: string): Promise<LogoImage | null> {
     /* keep the plain domain */
   }
   const tries = [
-    ...iconsDeclared(html, base).slice(0, 5),
+    ...iconsDeclared(html, base, domain.split(".")[0].toLowerCase().replace(/[^a-z0-9]/g, "")).slice(0, 5),
     { url: `${origin}/apple-touch-icon.png`, score: 180 },
     { url: `${origin}/favicon.ico`, score: 16 },
   ];
@@ -150,12 +197,12 @@ export async function findSiteLogo(domain: string): Promise<LogoImage | null> {
     if (seen.has(attempt.url)) continue;
     seen.add(attempt.url);
     const image = await fetchLogoImage(attempt.url);
-    if (!image) continue;
+    if (!image || !(await logoLooksUsable(image.bytes))) continue;
     if ((image.size ?? 0) >= 64) return { ...image, source: attempt.url };
     if ((image.size ?? 0) >= 32 && !small) small = { ...image, source: attempt.url };
   }
   const google = await fetchLogoImage(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=256`);
-  if (google && (google.size ?? 0) >= 32 && (google.size ?? 0) > (small?.size ?? 0)) {
+  if (google && (google.size ?? 0) >= 32 && (google.size ?? 0) > (small?.size ?? 0) && (await logoLooksUsable(google.bytes))) {
     return { ...google, source: "google favicon service" };
   }
   return small;

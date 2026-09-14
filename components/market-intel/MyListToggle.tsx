@@ -21,11 +21,14 @@ export function MyListToggle({
   companyName,
   onMyPage,
   starred,
+  group = "customer",
 }: {
   companyId: string;
   companyName: string;
   onMyPage: boolean;
   starred: boolean;
+  /** Names the Manage page this company lives on ("Manage competitors"). */
+  group?: "customer" | "competitor";
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -134,7 +137,7 @@ export function MyListToggle({
       busy={busy}
       tone="primary"
       title={confirm === "remove" ? "Stop tracking?" : "Remove star?"}
-      body={confirm === "remove" ? `${companyName} will leave your Market Intel page and starred list. You can add it again from Manage companies.` : `${companyName} will no longer be starred. It will stay on your page.`}
+      body={confirm === "remove" ? `${companyName} will leave your Market Intel page and starred list. You can add it again from Manage ${group === "competitor" ? "competitors" : "customers"}.` : `${companyName} will no longer be starred. It will stay on your page.`}
       confirmLabel={confirm === "remove" ? "Stop tracking" : "Remove star"}
     />
     </>

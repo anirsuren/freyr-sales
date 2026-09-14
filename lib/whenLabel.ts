@@ -19,7 +19,12 @@ export function fmtWhen(iso: string | null | undefined): string {
   // parses as UTC midnight, so anywhere west of UTC it renders as the 13th —
   // the old formatter shifted every date-only record back a day for a US
   // reader. Building it from the parts keeps the day as written.
-  const bare = !hasTime && /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  /* A MIDNIGHT-UTC STAMP IS A DATE IN DISGUISE (Sep 13 loop). Sources that give
+     only a day are stored as "2026-08-17T00:00:00.000Z", which read as an instant:
+     "Aug 16, 2026 · 8:00 PM" for a New York reader, the day before and a time
+     nobody published, on every thought leadership piece and most website items. */
+  const midnight = /^(\d{4})-(\d{2})-(\d{2})T00:00(?::00(?:\.0+)?)?(?:Z|[+-]00:?00)$/.exec(raw);
+  const bare = midnight || (!hasTime && /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw));
   const d = bare
     ? new Date(Number(bare[1]), Number(bare[2]) - 1, Number(bare[3]))
     : new Date(raw);
@@ -30,7 +35,7 @@ export function fmtWhen(iso: string | null | undefined): string {
     day: "numeric",
     year: "numeric",
   });
-  if (!hasTime) return date;
+  if (!hasTime || midnight) return date;
   return `${date} · ${d.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
+import { linkedInIdentifier } from "@/lib/marketIntelLinks";
 
 /**
  * Follow one more person: paste their LinkedIn profile link and that's it
@@ -27,12 +28,20 @@ export function TrackPersonButton({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
+  /* THE BUTTON WAITS FOR A PROFILE LINK (Sep 13 loop; Anir, Sep 10: the main
+     action stays off until the form is valid, never press-then-error). It was
+     always on, so an empty box or a company page link was only refused after
+     the click. */
+  const profile = linkedInIdentifier(linkedinUrl, "in");
+  const typed = linkedinUrl.trim().length > 0;
+  const hint = !typed || profile
+    ? ""
+    : linkedInIdentifier(linkedinUrl, "company")
+      ? "That's a company page. Paste a person's profile."
+      : "Paste a profile link, like linkedin.com/in/their-name.";
 
   async function save() {
-    if (!linkedinUrl.trim()) {
-      setError("Paste their LinkedIn profile link.");
-      return;
-    }
+    if (!profile) return;
     setBusy(true);
     setError("");
     try {
@@ -85,7 +94,10 @@ export function TrackPersonButton({
               id="mi-person-link"
               className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary"
               value={linkedinUrl}
-              onChange={(e) => setLinkedinUrl(e.target.value)}
+              onChange={(e) => {
+                setLinkedinUrl(e.target.value);
+                setError("");
+              }}
               placeholder="linkedin.com/in/their-name"
               autoFocus
               disabled={busy}
@@ -95,14 +107,24 @@ export function TrackPersonButton({
               pulled from the profile itself.
             </p>
           </div>
-          {error && (
-            <p className="text-[12.5px] font-medium text-[#DC2626]">{error}</p>
-          )}
+          <p className="min-h-[18px] text-[12px] leading-snug" aria-live="polite">
+            {error ? (
+              <span className="font-medium text-[#DC2626]">{error}</span>
+            ) : hint ? (
+              <span className="text-text-secondary">{hint}</span>
+            ) : null}
+          </p>
           <div className="flex items-center justify-between gap-3 pt-1">
             <p className="text-[11.5px] text-text-tertiary">
               {busy ? "Reading the profile and pulling their posts…" : ""}
             </p>
-            <Button onClick={save} loading={busy} className="!px-5 !py-2 text-[13px]">
+            <Button
+              onClick={save}
+              loading={busy}
+              disabled={!profile}
+              title={profile ? undefined : "Paste their LinkedIn profile link first"}
+              className="!px-5 !py-2 text-[13px]"
+            >
               Follow their posts
             </Button>
           </div>

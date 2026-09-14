@@ -23,6 +23,7 @@ import { isOfferingsReleasePath } from "@/lib/release";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { useToast } from "@/components/ui/Toast";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { MiLogo } from "@/components/market-intel/MiLogo";
 import { Avatar } from "@/components/ui/Avatar";
 
 // THE RAIL'S OWN LIST, not a copy of it (components/layout/navItems).
@@ -66,6 +67,7 @@ interface Result {
   label: string;
   sublabel: string;
   href: string;
+  logoUrl?: string | null;
 }
 
 type Item = {
@@ -79,6 +81,7 @@ type Item = {
   // For record hits we render the real logo/photo/offering-icon, not a glyph.
   recordType?: string;
   recordName?: string;
+  recordLogo?: string | null;
   run: () => void;
 };
 
@@ -302,6 +305,7 @@ export function CommandPalette({
           rightLabel: r.type,
           recordType: r.type,
           recordName: r.label,
+          recordLogo: r.logoUrl ?? null,
           run: () => go(r.href),
         })
       );
@@ -414,7 +418,13 @@ export function CommandPalette({
                   )}
                   data-selected={selected}
                 >
-                  {it.recordType === "Customer" || it.recordType === "Market Intel" ? (
+                  {it.recordType === "Market Intel" && it.recordLogo ? (
+                    <MiLogo
+                      name={it.recordName || it.label}
+                      logoUrl={it.recordLogo}
+                      className="h-6 w-6 shrink-0"
+                    />
+                  ) : it.recordType === "Customer" || it.recordType === "Market Intel" ? (
                     <CompanyLogo
                       name={it.recordName || it.label}
                       className="w-6 h-6 text-[9px] shrink-0"

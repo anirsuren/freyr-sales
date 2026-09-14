@@ -36,7 +36,7 @@ export function WatchStatus({
     <span
       title={
         off
-          ? "Nobody has this company on their list, so nothing new is being collected. Everything collected so far is kept. Tick it in Manage companies to start it again."
+          ? "Nobody has this company on their list, so nothing new is being collected. Everything collected so far is kept. Tick it on the Manage page to start it again."
           : state.followers > 0
             ? `${state.followers} ${state.followers === 1 ? "person has" : "people have"} this on their list, so it is collected every day.`
             : "Active by default, so it is collected every day even when nobody has it on their list."

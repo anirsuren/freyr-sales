@@ -1,5 +1,6 @@
 "use client";
 
+import { readableTitle } from "@/lib/marketIntelText";
 import { useState } from "react";
 import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
@@ -67,7 +68,7 @@ export function ThoughtLeadershipTracker({ board }: { board: ThoughtBoard | null
   const [sort, setSort] = useState<Sort>("newest");
   const [query, setQuery] = useState("");
 
-  const items = board?.items ?? [];
+  const items = (board?.items ?? []).filter((item) => readableTitle(item.title));
   const q = query.trim().toLowerCase();
   const shown = items
     .filter((item) => {

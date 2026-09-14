@@ -1,3 +1,5 @@
+import { usableRundown } from "./marketIntelRundown";
+import { dedupeMnaDeals } from "./marketIntelMnaDedupe";
 import { collectionPhase } from "./marketIntelCollectionStore";
 import { runDurableMarketIntelActor } from "./marketIntelActor";
 import { armCompanyOnboarding, editQueuedCompany } from "./marketIntelOnboarding";
@@ -23,6 +25,7 @@ import {
   readMarketIntelSummaries,
 } from "./marketIntelFeed";
 import { MARKET_INTEL_REFRESH_MS, collectedInCurrentCycle } from "./marketIntelCadence";
+import { marketIntelAutomaticCollectionEnabled } from "./marketIntelAutomation";
 import { findSiteLogo, storeCompanyLogo } from "./companyLogos";
 import { mirrorPhoto } from "./miPhotos";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
@@ -356,43 +359,8 @@ async function refreshMna(feed: any): Promise<number> {
     for (const item of result.news) raw.push({ ...item, division: query.division });
   }
   const classified = await classifyMna(raw);
-  const seen = new Set<string>();
   const existing: any[] = Array.isArray(feed.mna?.items) ? feed.mna.items : [];
-  const merged = [...classified, ...existing].filter((deal) => {
-    // "Integer" vs "Integer Holdings" is the same deal: key on the first
-    // word of each side so name variants collapse.
-    /* MATCH ON THE WHOLE NAME, NOT ITS FIRST WORD (Anir, Sep 4: the tracker
-       listed one deal twice). Keying on the first word collapsed "Integer" and
-       "Integer Holdings" as intended, but it also treated "Eli Lilly" and
-       "Lilly" as different companies, and a local paper's "Auburn's Currier
-       Plastics" as different from "Currier Plastics". Headlines vary at the
-       front as often as the back.
-
-       So: strip the corporate furniture and the possessive lead-in, then let
-       either name contain the other. "Lilly" is inside "eli lilly"; "Integer"
-       is inside "integer holdings"; "Pfizer" is not inside "Moderna". */
-    const bare = (name: string) =>
-      name
-        .toLowerCase()
-        .replace(/[’']s\b/g, "")
-        .replace(
-          /\b(inc|corp|corporation|ltd|limited|plc|llc|co|group|holdings?|company|pharmaceuticals?|pharma|biosciences?|therapeutics|sciences|laboratories|labs|international)\b/g,
-          ""
-        )
-        .replace(/[^a-z0-9 ]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-    const overlaps = (a: string, b: string) =>
-      !!a && !!b && (a === b || a.includes(b) || b.includes(a));
-    const key = `${bare(deal.acquirer)}|${bare(deal.target)}`;
-    const [a, t] = key.split("|");
-    for (const prev of seen) {
-      const [pa, pt] = prev.split("|");
-      if (overlaps(a, pa) && overlaps(t, pt)) return false;
-    }
-    seen.add(key);
-    return true;
-  });
+  const merged = dedupeMnaDeals([...classified, ...existing]);
   merged.sort(
     (a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0)
   );
@@ -417,16 +385,25 @@ async function refreshMna(feed: any): Promise<number> {
  *  rundown; an item it has not read yet still counts, so nothing is hidden
  *  on a guess. */
 async function applyDigest(entry: FeedCompany): Promise<void> {
-  const needs = entry.news.some((n) => !n.summary) || !entry.tldr;
+  const needs = entry.news.some((n) => !n.summary) || !usableRundown(entry.tldr);
   if (!needs) return;
   const concerns = (item: { label?: { relevant: boolean } }) =>
     entry.group !== "competitor" || !item.label || item.label.relevant;
   const picked = entry.news.map((n, i) => ({ n, i })).filter(({ n }) => concerns(n));
+  const posts = entry.posts.filter(concerns);
+  const site = (entry.site ?? []).filter(concerns);
+  /* NOTHING TO SAY IS NO RUNDOWN (Sep 13 loop): Qserve's read "No recent news
+     items or LinkedIn posts available" above four of its own press releases. */
+  if (picked.length === 0 && posts.length === 0 && site.length === 0) {
+    entry.tldr = null;
+    return;
+  }
   try {
     const digest = await digestCompany({
       name: entry.name,
       news: picked.map(({ n }) => n),
-      posts: entry.posts.filter(concerns),
+      posts,
+      site,
     });
     if (digest.tldr) entry.tldr = digest.tldr;
     digest.summaries.forEach((summary, index) => {
@@ -950,10 +927,13 @@ export async function runMarketIntelRefresh(options?: {
           group: competitorIds.has(source.id) ? "competitor" : "customer",
           fetchedAt: new Date(0).toISOString(),
         };
-        if (result.updates.length > 0) {
+        /* A scan that found nothing new still tidies what is stored (Sep 13
+           loop): Moderna kept 27 website items for 4 pages, copies that only
+           a scan with news of its own would ever have collapsed. */
+        if (result.updates.length > 0 || (entry.site?.length ?? 0) > 0) {
           entry.site = mergeNews((entry.site ?? []).filter(item => !isNewsIndex(item.url)), result.updates);
-          await applyLabels(entry, budget);
         }
+        if (result.updates.length > 0) await applyLabels(entry, budget);
         entry.siteAt = new Date().toISOString();
         feed.companies[source.id] = entry;
         feed.updatedAt = new Date().toISOString();
@@ -974,7 +954,9 @@ export async function runMarketIntelRefresh(options?: {
       if (Date.now() >= digestDeadline) break;
       const existing: FeedCompany | undefined = feed.companies[source.id];
       if (!existing || existing.tldr) continue;
-      if ((existing.news?.length ?? 0) + (existing.posts?.length ?? 0) === 0) continue;
+      /* Website updates count (Sep 13 loop): a company whose only items are its
+         own press releases was skipped here and never got a rundown. */
+      if ((existing.news?.length ?? 0) + (existing.posts?.length ?? 0) + (existing.site?.length ?? 0) === 0) continue;
       await applyDigest(existing);
       if (existing.tldr) {
         feed.companies[source.id] = existing;
@@ -1041,6 +1023,16 @@ export async function runMarketIntelRefresh(options?: {
         skippedFresh += 1;
         continue;
       }
+      /* ONE FAILED LINKEDIN TRY PER DAY (Sep 13 loop). A company whose posts
+         pull fails while its news succeeds kept its old fetchedAt, so it stayed
+         at the very front of this oldest-first queue and was pulled again on
+         every 30-minute tick (DDi and J&J MedTech, stuck since Sep 10), spending
+         each run's time before the companies behind it got a turn. It is tried
+         again next cycle; a run where everything failed still retries soon. */
+      if (!options?.force && collectedInCurrentCycle(existing?.postsFailedAt)) {
+        skippedFresh += 1;
+        continue;
+      }
       const postsResult = await scrapeCompanyPosts(source,existing?.posts.map(p=>p.url) || []);
       spent += postsResult.cost;
       const newsResult = await scrapeNews(source);
@@ -1087,6 +1079,7 @@ export async function runMarketIntelRefresh(options?: {
         ...(existing?.logoCheckedAt ? { logoCheckedAt: existing.logoCheckedAt } : {}),
         ...(existing?.site ? { site: existing.site } : {}),
         ...(existing?.siteAt ? { siteAt: existing.siteAt } : {}),
+        ...(postsResult.failed ? { postsFailedAt: new Date().toISOString() } : {}),
       };
       if (newsResult.news.length > 0) entry.tldr = null; // fresh rundown
       await applyLabels(entry, budget);
@@ -1675,6 +1668,8 @@ export function maybeScheduleMarketIntelRefresh(
   _feed: { updatedAt: string | null } | null
 ): void {
   armCompanyOnboarding();
+  // Page views must never turn development into a paid background collector.
+  if (!marketIntelAutomaticCollectionEnabled()) return;
   void _feed;
   // The database lock protects all instances; throttle page-triggered checks
   // locally while the runner checks each company's own daily timestamps.
@@ -1836,6 +1831,10 @@ async function runSiteUpdatesRefreshLocked(options?: {force?:boolean;budgetMs?:n
       fetchedAt: new Date(0).toISOString(),
     };
     if (result.failed) failed += 1;
+    /* Tidy what is stored even when nothing new came back (see the daily pass). */
+    if (result.updates.length === 0 && (entry.site?.length ?? 0) > 0) {
+      entry.site = mergeNews((entry.site ?? []).filter(item => !isNewsIndex(item.url)), []);
+    }
     if (result.updates.length > 0) {
       entry.site = mergeNews((entry.site ?? []).filter(item => !isNewsIndex(item.url)), result.updates);
       withUpdates += 1;
@@ -2021,7 +2020,7 @@ export async function runMissingRundowns(options?: {
     if (checked >= cap) break;
     if (onlyIds && !onlyIds.has(entry.id)) continue;
     if (entry.tldr) continue;
-    if ((entry.news?.length ?? 0) + (entry.posts?.length ?? 0) === 0) continue;
+    if ((entry.news?.length ?? 0) + (entry.posts?.length ?? 0) + (entry.site?.length ?? 0) === 0) continue;
     checked += 1;
     if (!entry.group) entry.group = registry.competitorIds.has(entry.id) ? "competitor" : "customer";
     await applyDigest(entry);

@@ -1,3 +1,4 @@
+import { readableTitle } from "./marketIntelText";
 import { requestMarketIntelSearch } from "./marketIntelSearch";
 import type { ThoughtBoard, ThoughtItem } from "./marketIntelFeed";
 
@@ -123,7 +124,7 @@ export async function scrapeFirmThoughtLeadership(
         const hit = results[Number(entry?.sourceIndex) - 1];
         const url = typeof hit?.url === "string" ? hit.url : null;
         const title = String(hit?.title ?? "").replace(/\*+/g, "").trim();
-        if (!url || !title || !hostBelongs(url, firm.domain)) continue;
+        if (!url || !title || !readableTitle(title) || !hostBelongs(url, firm.domain)) continue;
         const dated = Date.parse(hit?.date ?? "") || Date.parse(hit?.last_updated ?? "");
         if (dated && Date.now() - dated > MAX_AGE_MS) continue;
         const dedupe = title.toLowerCase();
@@ -163,6 +164,7 @@ export function mergeThoughtBoard(
   const seen = new Set<string>();
   const merged: ThoughtItem[] = [];
   for (const item of [...incoming, ...(existing?.items ?? [])]) {
+    if (!readableTitle(item.title)) continue;
     const keys = [item.url.toLowerCase(), `${item.firm}|${item.title.toLowerCase()}`];
     if (keys.some((k) => seen.has(k))) continue;
     keys.forEach((k) => seen.add(k));

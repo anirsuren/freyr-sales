@@ -16,6 +16,7 @@ import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton
 import { ManageCompaniesButton } from "@/components/market-intel/ManageCompaniesButton";
 import {
   cardFromSummary,
+  personPostsInPageWindow,
   type FeedCompanySummary,
   type FeedMeta,
   type PersonSummary,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/marketIntelTracking";
 import type { WatchState } from "@/components/market-intel/WatchStatus";
 import type { Division } from "@/lib/offeringMaterials";
+import { displayPersonName } from "@/lib/personName";
 
 /**
  * THE LIVE DASHBOARD: real mode only, every number on it comes from scraped
@@ -81,6 +83,14 @@ export function LiveMarketIntelDashboard({
     .filter((company) => registry.has(company.id) && !registry.get(company.id)?.onboarding && inGroup(company.id) && myIds.has(company.id))
     .map((summary) => ({ ...cardFromSummary(summary), logoUrl: registry.get(summary.id)?.logoUrl || summary.logoUrl || null }))
     .sort((a, b) => b.itemsInWindow - a.itemsInWindow);
+  // The dashboard clock describes the companies visible on this dashboard.
+  // Meta.updatedAt also moves for the M&A/thought boards, which made a page
+  // with one customer say "Updated 36 min ago" above a 51-minute-old card.
+  const visibleUpdatedAt = cards
+    .map((card) => card.fetchedAt)
+    .filter((at) => Number.isFinite(Date.parse(at)))
+    .sort()
+    .pop() ?? meta.updatedAt;
 
   const pending = tracking.companies.filter(
     (c) => (c.onboarding || !summaries[c.id]) && inGroup(c.id) && myIds.has(c.id)
@@ -101,10 +111,11 @@ export function LiveMarketIntelDashboard({
     for (const person of tracking.people) {
       (peopleByCompany[person.companyId] ??= []).push({
         id: person.id,
-        name: person.name,
+        name: displayPersonName(person.name),
         role: person.role,
         photoUrl: person.photoUrl,
-        posts: people[person.id]?.posts ?? 0,
+        /* The same 3 months the company page counts (Sep 13 loop). */
+        posts: personPostsInPageWindow(people[person.id]),
       });
     }
   }
@@ -125,7 +136,7 @@ export function LiveMarketIntelDashboard({
         active={group === "competitor" ? "competitors" : "customers"}
         action={
           <span className="flex flex-wrap items-center gap-2.5">
-            <RefreshChip updatedAt={meta.updatedAt} />
+            <RefreshChip updatedAt={visibleUpdatedAt} />
             <ManageCompaniesButton group={group} />
             <TrackCompanyButton group={group} canTrack={canTrack} />
           </span>

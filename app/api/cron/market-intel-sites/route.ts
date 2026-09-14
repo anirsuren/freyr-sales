@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runSiteUpdatesRefresh } from "@/lib/marketIntelRefresh";
 import { canManageOfferings } from "@/lib/role";
+import { marketIntelAutomaticCollectionEnabled } from "@/lib/marketIntelAutomation";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-/** Shared daily website batch. Safe to call repeatedly: companies already
- * collected in the 06:00 UTC cycle are skipped. Saves after each company. */
+/** Daily website batch. Safe to call repeatedly: a source collected within
+ * the preceding 24 hours is skipped. Saves after each company. */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const secret = process.env.CRON_SECRET;
@@ -15,8 +16,18 @@ export async function GET(req: NextRequest) {
     req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   const authorised = secret ? given === secret : false;
 
-  if (!authorised && !(await canManageOfferings())) {
+  const admin = await canManageOfferings();
+  if (!authorised && !admin) {
     return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  }
+
+  // A CRON_SECRET may be shared between environments. It cannot override the
+  // dev kill switch. An authenticated admin can still run this manually.
+  if (!marketIntelAutomaticCollectionEnabled() && !admin) {
+    return NextResponse.json({
+      ran: false,
+      reason: "Automatic Market Intel collection is disabled in this environment.",
+    });
   }
 
   const summary = await runSiteUpdatesRefresh({

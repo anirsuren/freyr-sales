@@ -9,6 +9,7 @@ import { getRole } from "@/lib/role";
 import { canAccessModule } from "@/lib/moduleAccess";
 import { readOpportunities } from "@/lib/opportunities";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
+import { readMarketIntelSummaries } from "@/lib/marketIntelFeed";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,7 @@ export async function GET(req: Request) {
     label: string;
     sublabel: string;
     href: string;
+    logoUrl?: string | null;
   }[] = [];
 
   /* A CUSTOMER ID FINDS ITS CUSTOMER (Manoj, Sep 10). */
@@ -102,7 +104,10 @@ export async function GET(req: Request) {
      are ignored, so "tuv" finds TÜV. Ahead of offerings, whose descriptions
      match broad words and would fill the twelve slots first. */
   if (canSee("/market-intel")) {
-    const tracking = await readMarketIntelTracking().catch(() => null);
+    const [tracking, summaries] = await Promise.all([
+      readMarketIntelTracking().catch(() => null),
+      readMarketIntelSummaries().catch(() => null),
+    ]);
     const fold = (text: string) => text.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const needle = fold(q);
     for (const c of tracking?.companies ?? []) {
@@ -113,6 +118,7 @@ export async function GET(req: Request) {
         label: c.name,
         sublabel: [c.group === "competitor" ? "Competitor" : "Customer", divisions.join(", ")].filter(Boolean).join(" · "),
         href: `/market-intel/${c.id}`,
+        logoUrl: summaries?.companies?.[c.id]?.logoUrl ?? (c as { logoUrl?: string | null }).logoUrl ?? null,
       });
     }
   }

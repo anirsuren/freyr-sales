@@ -86,6 +86,7 @@ td['cpu']=repo['cpu']
 td['memory']=repo['memory']
 env={e['name']:e['value'] for e in c.get('environment',[])}
 env['APP_VERSION']='$FULLSHA'
+env['MARKET_INTEL_AUTO_COLLECTION_ENABLED']='1'
 c['environment']=[{'name':k,'value':v} for k,v in env.items()]
 for k in ('taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy'):
     td.pop(k,None)

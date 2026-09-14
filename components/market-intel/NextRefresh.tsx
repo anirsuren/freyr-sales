@@ -10,7 +10,7 @@ import {
   Loader2,
   Users,
 } from "lucide-react";
-import { MARKET_INTEL_REFRESH_MS, nextMarketIntelCycle, marketIntelCycleStart } from "@/lib/marketIntelCadence";
+import { nextMarketIntelCycle } from "@/lib/marketIntelCadence";
 import { cn } from "@/lib/utils";
 
 /**
@@ -19,9 +19,6 @@ import { cn } from "@/lib/utils";
  * cycle is, and the shared-by-everyone note. Times render in the viewer's own
  * timezone — the server runs on UTC in production.
  */
-/* ONCE A DAY (Anir, Sep 11: "it's supposed to be once a day"): the runner's own
-   clock, STALE_AFTER_MS in lib/marketIntelRefresh.ts. */
-const REFRESH_EVERY_MS = MARKET_INTEL_REFRESH_MS;
 
 function clock(ms: number): string {
   return new Date(ms).toLocaleTimeString("en-US", {
@@ -110,9 +107,13 @@ export function RefreshChip({
     );
   }
 
-  const next = nextMarketIntelCycle(now);
+  const next = nextMarketIntelCycle(last, now);
   const due = next <= now;
-  const pct = Math.min(100, Math.round(((now - marketIntelCycleStart(now)) / REFRESH_EVERY_MS) * 100));
+  /* THE BAR RUNS FROM THE LAST REFRESH TO THE NEXT ONE (Sep 13 loop). It used to
+     start at the day's batch time, so eight minutes after a 5:14 PM refresh the
+     "Refreshed 5:14 PM" end sat at the far left while "you're here" read 64%. */
+  const span = Math.max(1, next - Math.min(last, now));
+  const pct = Math.min(100, Math.max(0, Math.round(((now - Math.min(last, now)) / span) * 100)));
 
   return (
     <div ref={anchorRef} className="relative">
@@ -216,8 +217,8 @@ export function RefreshChip({
               strokeWidth={2.2}
               className="mt-0.5 shrink-0 text-blue-primary"
             />
-            Everyone sees the same live feed. News, company websites, LinkedIn posts
-            and the M&amp;A board follow the same daily refresh schedule.
+            Everyone sees the same live feed. Each news, website and LinkedIn
+            source refreshes once every 24 hours.
           </p>
         </div>, document.body
       )}

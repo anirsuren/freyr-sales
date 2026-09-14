@@ -59,6 +59,7 @@ import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
 import { cn } from "@/lib/utils";
 import { SIGNAL_META, type ItemLabel, type SignalId } from "@/lib/marketIntelSignals";
 import { groupStories, type StoryGroup, type StoryInput } from "@/lib/marketIntelStories";
+import { clipText, outletName, titleFromUrl } from "@/lib/marketIntelText";
 import {
   isRelevantCompanyItem,
   type BriefingPost,
@@ -120,6 +121,17 @@ type StoryRemoval = {
   title: string;
   items: { url: string; personId?: string }[];
 };
+
+/* ONE NAME PER SOURCE (Sep 13 loop). A company's own site read "TCS.COM" on one
+   story and "TCS" on the next. Their own site always shows its address; an
+   outlet shows its name (outletName, shared with the cards). */
+function siteSourceLabel(url: string, fallback: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./i, "");
+  } catch {
+    return fallback;
+  }
+}
 
 export function LiveCompanyBriefing({
   briefing,
@@ -207,7 +219,7 @@ export function LiveCompanyBriefing({
     ...briefing.posts.map<Item>((p) => ({
       key: p.url,
       kind: p.by ? "people" : "company",
-      title: p.text.split("\n")[0].slice(0, 160) || "View post on LinkedIn",
+      title: clipText(p.text.split("\n")[0], 160) || "View post on LinkedIn",
       body: p.text,
       date: p.date,
       url: p.url,
@@ -220,7 +232,7 @@ export function LiveCompanyBriefing({
     ...briefing.news.map<Item>((n) => ({
       key: n.url,
       kind: "news",
-      title: n.title,
+      title: n.title || titleFromUrl(n.url),
       body: n.summary ?? null,
       date: n.published,
       url: n.url,
@@ -232,7 +244,7 @@ export function LiveCompanyBriefing({
     ...(briefing.site ?? []).map<Item>((n) => ({
       key: n.url,
       kind: "site",
-      title: n.title,
+      title: n.title || titleFromUrl(n.url),
       body: n.summary ?? null,
       date: n.published,
       url: n.url,
@@ -248,6 +260,18 @@ export function LiveCompanyBriefing({
     .sort((a, b) => (a.kind === "site" ? -1 : 0) - (b.kind === "site" ? -1 : 0))
     .filter((item, index, all) => all.findIndex((other) => other.url === item.url) === index)
     .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0));
+
+  /* THE RAIL COUNTS THE PAGE'S WINDOW (Sep 13 loop). Each person's badge
+     counted every post kept, up to 120 days, beside a People posts chip that
+     counts the past 3 months: GSK's rail added up to 36 against a chip of 15,
+     and Bayer's Daljit showed 30 posts with none of them on the page. */
+  const railCutoff = Date.now() - 90 * 86_400_000;
+  const railPosts: Record<string, FeedPost[]> = Object.fromEntries(
+    Object.entries(personPosts).map(([id, posts]) => [
+      id,
+      posts.filter((post) => !post.date || Date.parse(post.date) > railCutoff),
+    ])
+  );
 
   const concerns = (i: Item) =>
     !relevantOnly || isRelevantCompanyItem(briefing.group, i);
@@ -387,7 +411,7 @@ export function LiveCompanyBriefing({
                     title={source.title}
                     className="group inline-flex max-w-full items-center gap-1.5 rounded py-1 text-[11px] leading-4 text-blue-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
                   >
-                    <span className="min-w-0 [overflow-wrap:anywhere]">{source.sourceLabel.replace(/^www\./, "")}</span>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">{outletName(source.sourceLabel, source.url)}</span>
                     <ExternalLink size={10} className="shrink-0 opacity-50 transition-opacity group-hover:opacity-100" />
                   </a>
                 </li>
@@ -518,15 +542,15 @@ export function LiveCompanyBriefing({
                company's own statement are different claims. */
             <>
               <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-orange)]">
-                <Globe2 size={10.5} strokeWidth={2.2} /> {article.source}
+                <Globe2 size={10.5} strokeWidth={2.2} /> {siteSourceLabel(article.url, article.source)}
               </span>
               <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                 Published by them
               </span>
             </>
           ) : (
-            <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-teal-deep)]">
-              <Newspaper size={10.5} strokeWidth={2.2} /> {article.source}
+            <span title={article.source} className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-teal-deep)]">
+              <Newspaper size={10.5} strokeWidth={2.2} /> {outletName(article.source, article.url)}
             </span>
           )}
           <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
@@ -541,7 +565,7 @@ export function LiveCompanyBriefing({
             rel="noreferrer"
             className="inline-flex items-start gap-1 text-blue-primary hover:underline"
           >
-            <span>{article.title}</span>
+            <span>{item.title}</span>
             <ExternalLink size={11} strokeWidth={2.2} className="mt-1 shrink-0" />
           </a>
         </h3>
@@ -637,6 +661,7 @@ export function LiveCompanyBriefing({
             companyName={briefing.name}
             onMyPage={onMyPage}
             starred={starred}
+            group={briefing.group}
           />
           {isAdmin && (
             <CompanyAdminControls
@@ -798,7 +823,7 @@ export function LiveCompanyBriefing({
                           role="menuitemradio"
                           aria-checked={on}
                           aria-label={view}
-                          title={view}
+                          title={view === "rows" ? "List" : view === "tiles" ? "Tiles" : "Table"}
                           onClick={() => {
                             chooseNewsView(view);
                             setViewOpen(false);
@@ -871,7 +896,7 @@ export function LiveCompanyBriefing({
                             : (LinkedInIcon as unknown as LucideIcon);
                       let domain = "";
                       try { domain = new URL(item.url).hostname.replace(/^www\./, ""); } catch {}
-                      const sourceName = rowKind === "post" ? "LinkedIn" : rowKind === "site" ? domain || item.sourceLabel : item.sourceLabel || domain;
+                      const sourceName = rowKind === "post" ? "LinkedIn" : rowKind === "site" ? domain || item.sourceLabel : outletName(item.sourceLabel, item.url) || domain;
                       return (
                         <tr key={index} className="group/story transition-colors hover:bg-surface">
                           <td className="px-4 py-3 align-top">
@@ -915,7 +940,8 @@ export function LiveCompanyBriefing({
                             suppressHydrationWarning
                           >
                             <span className="flex items-start justify-between gap-2">
-                              <span>{fmtDate(item.date)}</span>
+                              {/* One line: "Sep 13, 2026 ·" used to break away from its time. */}
+                              <span className="whitespace-nowrap">{fmtDate(item.date)}</span>
                               {removeStoryButton(group)}
                             </span>
                           </td>
@@ -957,7 +983,9 @@ export function LiveCompanyBriefing({
             inert={!detailsOpen}
             className={cn("min-w-0 overflow-hidden rounded-l-2xl border-l border-border-light bg-white shadow-[-4px_0_16px_-12px_rgba(0,0,0,0.18)] motion-safe:transition-[opacity,transform,max-height] motion-safe:duration-300 motion-safe:ease-in-out", detailsOpen ? "max-h-[calc(100vh-6rem)] translate-x-0 opacity-100" : "pointer-events-none max-h-0 translate-x-4 opacity-0")}
           >
-          <div className="max-h-[calc(100vh-6rem)] min-h-[min(600px,calc(100vh-6rem))] space-y-4 overflow-y-auto overscroll-contain p-4">
+          {/* The panel hugs what it holds (Sep 13 loop): a fixed 600px floor left a
+              tall empty white box under a quiet company's one activity card. */}
+          <div className="max-h-[calc(100vh-6rem)] space-y-4 overflow-y-auto overscroll-contain p-4">
           <div className="flex items-center justify-between gap-2">
             <h2 className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Company details</h2>
             <button type="button" onClick={() => setDetailsView("closed")} aria-label="Hide company details" aria-expanded={true} aria-controls="company-details-panel" className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-medium text-text-secondary hover:bg-surface hover:text-blue-primary"><PanelRightClose size={14} className="shrink-0" />Hide</button>
@@ -994,7 +1022,7 @@ export function LiveCompanyBriefing({
                   Nobody yet.{canWrite ? " Add the senior people whose posts you want in this feed, with the plus above." : ""}
                 </p>
               ) : (
-                <TrackedPeopleList people={extraPeople} personPosts={personPosts} />
+                <TrackedPeopleList people={extraPeople} personPosts={railPosts} />
               )}
             </Card>
           )}

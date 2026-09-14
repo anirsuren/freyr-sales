@@ -1,4 +1,5 @@
 import { armCompanyOnboarding } from "./marketIntelOnboarding";
+import { marketIntelAutomaticCollectionEnabled } from "./marketIntelAutomation";
 /**
  * MARKET INTEL RUNS ITSELF (Anir, Aug 11: "I'm gonna close my laptop... it
  * has to just run by itself"). The refresh used to fire only from page
@@ -17,11 +18,21 @@ import { armCompanyOnboarding } from "./marketIntelOnboarding";
  */
 const ARMED_KEY = "__MI_SELF_REFRESH_ARMED__";
 const LOGGED_KEY = "__MI_SELF_REFRESH_FIRST_LOGGED__";
+const DISABLED_LOGGED_KEY = "__MI_SELF_REFRESH_DISABLED_LOGGED__";
 const CHECK_MS = 30 * 60 * 1000;
 
 export function armMarketIntelSelfRefresh(): void {
+  // A company explicitly added in dev still completes its first collection.
+  // This worker handles only those user-requested onboarding jobs.
   armCompanyOnboarding();
   const g = globalThis as Record<string, unknown>;
+  if (!marketIntelAutomaticCollectionEnabled()) {
+    if (!g[DISABLED_LOGGED_KEY]) {
+      g[DISABLED_LOGGED_KEY] = true;
+      console.log("[market-intel] recurring refresh disabled in this environment");
+    }
+    return;
+  }
   if (g[ARMED_KEY]) return;
   g[ARMED_KEY] = true;
 
@@ -57,16 +68,24 @@ export function armMarketIntelSelfRefresh(): void {
  * that never got that far, and every company in the feed had never once been
  * scanned.
  *
- * ONCE A DAY FALLS OUT OF THE PARTS. All companies share the 06:00 UTC daily
- * cycle, so a tick only visits sources not yet collected in that cycle; each tick spends at most
+ * ONCE A DAY FALLS OUT OF THE PARTS. A tick only visits sources whose previous
+ * successful collection is at least 24 hours old; each tick spends at most
  * a few minutes and writes as it goes, so the list is covered across ticks
  * rather than in one long run that can die halfway.
  */
 const SITE_ARMED_KEY = "__MI_SITE_SCAN_ARMED__";
+const SITE_DISABLED_LOGGED_KEY = "__MI_SITE_SCAN_DISABLED_LOGGED__";
 const SITE_CHECK_MS = 20 * 60 * 1000;
 
 export function armSiteUpdatesScan(): void {
   const g = globalThis as Record<string, unknown>;
+  if (!marketIntelAutomaticCollectionEnabled()) {
+    if (!g[SITE_DISABLED_LOGGED_KEY]) {
+      g[SITE_DISABLED_LOGGED_KEY] = true;
+      console.log("[market-intel] recurring website scan disabled in this environment");
+    }
+    return;
+  }
   if (g[SITE_ARMED_KEY]) return;
   g[SITE_ARMED_KEY] = true;
 

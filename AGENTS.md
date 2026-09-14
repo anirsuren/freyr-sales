@@ -194,6 +194,18 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 13 Market Intel cadence and environment isolation:** Development keeps
+  its full QA database but recurring news, website and LinkedIn collection is
+  fail-closed on the dev/localhost hostnames. Manual company onboarding and
+  authenticated admin refreshes remain available. The production promotion
+  script explicitly enables recurring collection. Source freshness now uses a
+  rolling 24-hour window instead of the shared 06:00 UTC boundary, and the
+  dashboard refresh clock derives from its visible companies rather than
+  unrelated M&A/feed metadata. Production was audited read-only: all 76 active
+  companies (34 customers, 42 competitors) have renderable summaries; 21 are
+  currently more than 24 hours stale, confirming the existing throughput lag.
+  Typecheck, targeted cadence/environment tests and production build pass.
+
 - **Sep12 Premier Research AI website test:** Generic Firecrawl URL inventory →
   AI ID selection → exact-page scrape/date check is wired into the shared website
   collector. Chrome submission completed; repaired feed has 147 posts, 4 external

@@ -71,6 +71,8 @@ function CollectionStatus({ company: c }: { company: ManagedCompany }) {
 
 const LinkedInGlyph = LinkedInIcon as unknown as LucideIcon;
 
+const plural = (count: number) => `${count} ${count === 1 ? "company" : "companies"}`;
+
 type Show = "all" | "mine" | "starred" | "inactive";
 
 /** Not being collected: added later, and on nobody's list. */
@@ -551,10 +553,11 @@ export function ManageCompaniesPanel({
         </div>
       </div>
 
-      <div className="sticky bottom-4 z-20 mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white py-3 pl-4 pr-20 shadow-lg" aria-live="polite">
+      <div className="sticky bottom-4 z-20 mr-[76px] mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white px-4 py-3 shadow-lg" aria-live="polite">
         <span className="mr-auto text-[13px] font-medium text-text-secondary">
-          {dirty ? `${rows.filter((c) => c.group === group && mine.has(c.id)).length} companies selected · Unsaved changes`
-            : `Now tracking ${rows.filter((c) => c.group === group && saved.mine.has(c.id)).length} companies`}
+          {/* "1 companies" read wrong on the first tick (Sep 13 loop). */}
+          {dirty ? `${plural(rows.filter((c) => c.group === group && mine.has(c.id)).length)} selected · Unsaved changes`
+            : `Now tracking ${plural(rows.filter((c) => c.group === group && saved.mine.has(c.id)).length)}`}
         </span>
         {dirty && <button type="button" disabled={saving} onClick={() => adopt([...saved.mine], [...saved.stars])}
           className="rounded-full px-4 py-2 text-[13px] font-semibold text-text-secondary hover:bg-surface disabled:opacity-50">Discard changes</button>}
@@ -585,7 +588,7 @@ export function ManageCompaniesPanel({
             )}
           </>
         }
-        detail="It leaves every list, and everything collected for it goes too."
+        detail="This can't be undone."
         confirmLabel="Delete for everyone"
       />
     </>

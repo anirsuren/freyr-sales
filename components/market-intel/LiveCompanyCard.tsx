@@ -23,6 +23,7 @@ import type { CompanyCard } from "@/lib/marketIntelFeed";
 import type { Division } from "@/lib/offeringMaterials";
 import { cn } from "@/lib/utils";
 import { safeHref } from "@/lib/safeUrl";
+import { outletName } from "@/lib/marketIntelText";
 
 /**
  * One company on the live dashboard. The bottom line is a ticker (Anir,
@@ -184,6 +185,10 @@ export function LiveCompanyCard({
         />
       </div>
 
+      {/* ALL FOUR COUNTS, ALWAYS, ON ONE LINE (Anir, Sep 11: "where it says posts
+          news from them and signals, it has to be on full point one line, no
+          matter what keep consistent"). A zero keeps its place; a missing chip
+          used to spread the other three apart on some cards and not others. */}
       <div className="mt-3 flex items-center justify-between gap-1 whitespace-nowrap pb-1 [&>span]:shrink-0 [&_svg]:shrink-0">
         <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
           <LinkedInIcon size={10.5} />
@@ -193,12 +198,10 @@ export function LiveCompanyCard({
           <Newspaper size={10.5} strokeWidth={2.2} />
           {card.counts.news} news
         </span>
-        {card.counts.site > 0 && (
-          <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-orange)] tnum">
-            <Globe2 size={10.5} strokeWidth={2.2} />
-            {card.counts.site} from them
-          </span>
-        )}
+        <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-orange)] tnum">
+          <Globe2 size={10.5} strokeWidth={2.2} />
+          {card.counts.site} from them
+        </span>
         <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-violet-soft)] tnum">
           <Radar size={10.5} strokeWidth={2.2} />
           {card.signalTotal} {card.signalTotal === 1 ? "signal" : "signals"}
@@ -219,7 +222,7 @@ export function LiveCompanyCard({
             className="mi-ticker-in pr-12 text-[12px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden"
           >
             <span className="font-semibold text-text-primary">
-              {story.source}:
+              {outletName(story.source, story.url)}:
             </span>{" "}
             {safeHref(story.url) ? <a href={safeHref(story.url) as string} target="_blank" rel="noreferrer" className="text-inherit no-underline transition-colors hover:text-blue-primary hover:underline hover:decoration-blue-primary/30 hover:underline-offset-2 focus-visible:text-blue-primary focus-visible:underline focus-visible:underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
               {story.title}
@@ -328,7 +331,7 @@ export function LiveCompanyCard({
             <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#0F766E]" />
             <span className="min-w-0">
               <span className="font-semibold text-text-primary">
-                {item.source}:
+                {outletName(item.source, item.url)}:
               </span>{" "}
               {safeHref(item.url) ? <a href={safeHref(item.url) as string} target="_blank" rel="noreferrer" className="text-text-secondary no-underline transition-colors hover:text-blue-primary hover:underline hover:decoration-blue-primary/30 hover:underline-offset-2 focus-visible:text-blue-primary focus-visible:underline focus-visible:underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
                 {item.title}

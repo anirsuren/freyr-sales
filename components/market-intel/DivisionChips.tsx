@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, PenLine } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
@@ -142,6 +142,12 @@ export function DivisionEditor({
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  /* WHAT WAS SAVED SHOWS AT ONCE (Sep 13 loop). The chips waited for the page to
+     reload, and a second edit in that gap opened with the old divisions and saved
+     a change twice. The editor keeps the saved answer itself and follows the
+     server whenever the page does reload. */
+  const [current, setCurrent] = useState<Division[]>(divisions);
+  useEffect(() => setCurrent(divisions), [divisions]);
   const [draft, setDraft] = useState<Division[]>(divisions);
   const [busy, setBusy] = useState(false);
 
@@ -164,6 +170,7 @@ export function DivisionEditor({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Could not save.");
       toast(`${companyName} is tagged ${draft.join(", ")}.`);
+      setCurrent(draft);
       setOpen(false);
       router.refresh();
     } catch (caught) {
@@ -179,8 +186,8 @@ export function DivisionEditor({
   return (
     <>
       <span className="flex items-center gap-1.5">
-        {divisions.length > 0 ? (
-          <DivisionChips divisions={divisions} size="md" />
+        {current.length > 0 ? (
+          <DivisionChips divisions={current} size="md" />
         ) : (
           <span className="rounded-full border border-dashed border-border-light px-2 py-0.5 text-[11px] font-medium text-text-tertiary">
             No division yet
@@ -190,7 +197,7 @@ export function DivisionEditor({
           <button
             type="button"
             onClick={() => {
-              setDraft(divisions);
+              setDraft(current);
               setOpen(true);
             }}
             aria-label={`Edit ${companyName}'s divisions`}
@@ -239,8 +246,8 @@ export function DivisionEditor({
             disabled={
               busy ||
               draft.length === 0 ||
-              (draft.length === divisions.length &&
-                draft.every((d) => divisions.includes(d)))
+              (draft.length === current.length &&
+                draft.every((d) => current.includes(d)))
             }
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
