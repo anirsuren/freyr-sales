@@ -194,6 +194,20 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 14 Suren product sequence and account-planning definition:** Finish
+  Customers, Opportunities, Offerings, and Solutioning (including the request
+  flow and the connections among those records) for production first. Finalize
+  Goal Tracking next. Build Account Planning after that. Leads is a lower
+  priority and can come near the end. A production release is ready only when
+  every item Anir explicitly requested for that release is complete. Account
+  Planning is the plan assigned to a sales rep for an account: which offerings
+  to sell, which strategies to pitch, which exact documents to use, how much
+  revenue to win and by when, the key contacts, the leadership relationships
+  to develop, and the people who can introduce those contacts. For the top 50
+  accounts, including existing customers and target customers, it must show who
+  to approach, the contact/reporting structure, and the senior decision-maker
+  the rep needs to reach.
+
 - **Sep 14 deviations attention layout:** The Mock-mode invalid/deviated
   records section now opens with a compact diagnostic heading and separates
   record problems from owner rankings into two quiet summary bands. “Deviating

@@ -126,3 +126,27 @@ That takes the decision away from him and hands him a fait accompli in prod.
 3. Did he say yes to **this** push?
 
 Any doubt on 1 or 2 → report and ask. No yes on 3 → do not push.
+
+## 7. Suren's product sequence and Account Planning definition (Sep 14, 2026)
+
+Finish Customers, Opportunities, Offerings, and Solutioning, including the
+request flow and the connections among those records, for production first.
+Finalize Goal Tracking next. Build Account Planning after that. Leads is a
+lower priority and can come near the end. A production release is ready only
+when every item Anir explicitly requested for that release is complete.
+
+Account Planning is the plan assigned to a sales rep for an account. It must
+cover:
+
+- which offerings the rep needs to sell;
+- which strategies the rep needs to pitch;
+- which exact documents the rep needs to use for the pitch;
+- how much revenue the account should produce and by when;
+- the key contacts in the account;
+- the key leadership relationships to develop; and
+- who can introduce or bring in those key contacts.
+
+For the top 50 accounts, including existing customers and companies Freyr wants
+to turn into customers, the plan must also show who to approach, how the
+contact and reporting structure fits together, and the senior decision-maker
+the rep needs to reach.
