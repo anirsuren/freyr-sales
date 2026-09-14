@@ -756,15 +756,15 @@ export function LeadsModule({
                                   Lead details
                                 </span>
                                 <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
-                                  <span>
+                                  <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Email</span>
                                     {lead.email ? (
-                                      <a href={`mailto:${lead.email}`} onClick={(event) => event.stopPropagation()} className="text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                      <a href={`mailto:${lead.email}`} onClick={(event) => event.stopPropagation()} className="mt-0.5 block min-w-0 break-words text-[12.5px] font-semibold leading-snug text-blue-primary [overflow-wrap:anywhere] hover:underline">
                                         {lead.email}
                                       </a>
                                     ) : <span className="text-[12.5px] text-text-tertiary">—</span>}
                                   </span>
-                                  <span>
+                                  <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Phone</span>
                                     {lead.phone ? (
                                       <a href={`tel:${lead.phone}`} onClick={(event) => event.stopPropagation()} className="text-[12.5px] font-semibold text-blue-primary hover:underline">
@@ -772,15 +772,15 @@ export function LeadsModule({
                                       </a>
                                     ) : <span className="text-[12.5px] text-text-tertiary">—</span>}
                                   </span>
-                                  <span>
+                                  <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Country</span>
                                     <span className="text-[12.5px] font-semibold text-text-primary">{lead.country || "—"}</span>
                                   </span>
-                                  <span>
+                                  <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Source</span>
                                     <span className="text-[12.5px] font-semibold text-text-primary">{lead.source}</span>
                                   </span>
-                                  <span>
+                                  <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Account match</span>
                                     {linkedCustomer ? (
                                       <Link href={`/customers/${linkedCustomer.id}`} onClick={(event) => event.stopPropagation()} className="text-[12.5px] font-semibold text-blue-primary hover:underline">
@@ -788,7 +788,7 @@ export function LeadsModule({
                                       </Link>
                                     ) : <span className="text-[12.5px] text-text-tertiary">Not matched yet</span>}
                                   </span>
-                                  <span>
+                                  <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Owner</span>
                                     {lead.owner ? (
                                       <Link href={`/analytics/reps/${repSlug(lead.owner)}`} onClick={(event) => event.stopPropagation()} className="text-[12.5px] font-semibold text-blue-primary hover:underline">
