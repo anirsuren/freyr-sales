@@ -612,22 +612,34 @@ export function OfferingOverviewMain({
                     .map((line) => line.end_date)
                     .filter((date): date is string => Boolean(date))
                     .sort()[0];
+                  const hasCommercialDetails = customer.lines.length > 0;
                   const hover = (
                     <div>
                       <div className="flex items-center gap-2.5">
                         <CompanyLogo name={customer.name} className="h-9 w-9 shrink-0 text-[9px]" />
-                        <div className="min-w-0">
-                          <p className="text-[13.5px] font-semibold text-text-primary">{customer.name}</p>
-                          <p className="text-[11px] text-text-tertiary">
-                            {formatMoney(customer.revenue)} · {customer.licenses} licensed seats
-                          </p>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13.5px] font-semibold text-text-primary">{customer.name}</p>
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                            <Check size={11} strokeWidth={2.4} />
+                            Using this offering
+                          </span>
                         </div>
                       </div>
-                      <div className="mt-3 border-t border-border-light pt-2.5">
-                        <p className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                          Commercial lines
-                        </p>
-                        {customer.lines.length > 0 ? (
+                      {hasCommercialDetails ? (
+                        <div className="mt-3 border-t border-border-light pt-2.5">
+                          <div className="mb-2.5 grid grid-cols-2 gap-2">
+                            <div className="rounded-lg bg-surface px-2.5 py-2">
+                              <p className="text-[9px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Revenue</p>
+                              <p className="mt-0.5 text-[13px] font-semibold text-text-primary tnum">{formatMoney(customer.revenue)}</p>
+                            </div>
+                            <div className="rounded-lg bg-surface px-2.5 py-2">
+                              <p className="text-[9px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Licensed seats</p>
+                              <p className="mt-0.5 text-[13px] font-semibold text-text-primary tnum">{customer.licenses || "—"}</p>
+                            </div>
+                          </div>
+                          <p className="mb-2 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                            Commercial lines
+                          </p>
                           <div className="space-y-2">
                             {customer.lines.map((line) => (
                               <div key={line.id} className="flex items-start justify-between gap-3 text-[11.5px]">
@@ -646,14 +658,31 @@ export function OfferingOverviewMain({
                               </div>
                             ))}
                           </div>
-                        ) : (
-                          <p className="text-[11.5px] text-text-tertiary">Marked in use; commercial terms have not been entered.</p>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 flex items-start gap-2.5 rounded-lg bg-surface px-3 py-2.5">
+                          <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+                            <ReceiptText size={13} strokeWidth={2} />
+                          </span>
+                          <div>
+                            <p className="text-[11.5px] font-semibold text-text-primary">Commercial details not added</p>
+                            <p className="mt-0.5 text-[10.5px] leading-snug text-text-tertiary">
+                              Revenue, licensed seats, and renewal dates will appear here once recorded.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      <Link
+                        href={`/customers/${customer.id}?tab=offerings`}
+                        className="mt-2.5 flex items-center justify-between border-t border-border-light pt-2.5 text-[11px] font-semibold text-blue-primary"
+                      >
+                        Open customer account
+                        <ChevronRight size={14} strokeWidth={2} />
+                      </Link>
                     </div>
                   );
                   return (
-                    <HoverCard key={customer.id} side="top" width={310} content={hover}>
+                    <HoverCard key={customer.id} anchor="cursor" width={292} content={hover}>
                       <Link
                         href={`/customers/${customer.id}?tab=offerings`}
                         // Same reason as the header bar above: the row wash has
