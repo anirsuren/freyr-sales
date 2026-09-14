@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, Building2, CalendarDays, CircleDashed, Users } from "lucide-react";
+import { ArrowLeft, Building2, CalendarDays, CircleDashed, Clock3, Users } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { DocumentDrop, landedDocs, type StagedDoc } from "@/components/ui/DocumentDrop";
 import { FormRoom } from "@/components/ui/FormRoom";
@@ -79,7 +79,16 @@ export function NewMeetingDialog({
   const [type, setType] = useState<string>(
     meeting ? String(meeting.type) : MEETING_TYPES[0]
   );
-  const [meetingAt, setMeetingAt] = useState(meeting?.meetingAt ?? "");
+  const [meetingDate, setMeetingDate] = useState(
+    (meeting?.meetingAt ?? "").slice(0, 10)
+  );
+  const [meetingTime, setMeetingTime] = useState(() => {
+    const match = (meeting?.meetingAt ?? "").match(/T(\d{2}:\d{2})/);
+    return match?.[1] ?? "";
+  });
+  const meetingAt = meetingDate
+    ? `${meetingDate}${meetingTime ? `T${meetingTime}` : ""}`
+    : "";
   const [customerId, setCustomerId] = useState(
     meeting?.customerId ??
       customers.find((c) => c.name === meeting?.customer)?.id ??
@@ -290,7 +299,7 @@ export function NewMeetingDialog({
    * as it is. So an unchanged date on an existing meeting is left alone.
    */
   const dateIsNew = !meeting || meetingAt !== (meeting.meetingAt ?? "");
-  const pastDate = !!meetingAt && dateIsNew && meetingAt < todayISO();
+  const pastDate = !!meetingDate && dateIsNew && meetingDate < todayISO();
 
   const ready = title.trim() && customerId && meetingAt && !pastDate;
 
@@ -387,17 +396,27 @@ export function NewMeetingDialog({
                 }))}
               />
             </Field>
-            <Field label="When is it">
-              <Input
-                type="date"
-                value={meetingAt}
-                /* The picker greys out the past too, but the words above are
-                   what actually answers it: on its own, `min` makes the browser
-                   swallow the click and the dialog just sits there. */
-                min={meeting ? undefined : todayISO()}
-                onChange={(e) => setMeetingAt(e.target.value)}
-              />
-            </Field>
+            <div className="grid grid-cols-[minmax(0,1fr)_150px] gap-2">
+              <Field label="Date">
+                <Input
+                  type="date"
+                  value={meetingDate}
+                  min={meeting ? undefined : todayISO()}
+                  onChange={(e) => setMeetingDate(e.target.value)}
+                />
+              </Field>
+              <Field label="Time (optional)">
+                <div className="relative">
+                  <Clock3 size={14} strokeWidth={2} className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-text-tertiary" />
+                  <Input
+                    type="time"
+                    value={meetingTime}
+                    onChange={(e) => setMeetingTime(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </Field>
+            </div>
           </div>
         </FormRoom>
 
@@ -423,6 +442,9 @@ export function NewMeetingDialog({
                    into a meeting it does not belong to. */
                 setContactIds([]);
                 setOpportunityIds([]);
+                setGuestNames([]);
+                setAddedContacts([]);
+                setAddedDeals([]);
               }}
               /* SAY WHAT IS BEHIND EACH ONE BEFORE IT IS PICKED (Suren,
                  Aug 28: "if I click on a company and I want to see how many
@@ -520,6 +542,7 @@ export function NewMeetingDialog({
                       );
                     }}
                     onCreate={(name) => void addContact(name)}
+                    createLabel="Create new contact"
                     placeholder="Pick or type their attendees…"
                     
                     emptyLabel="Nobody saved here yet. Type a name to add them."
@@ -563,6 +586,7 @@ export function NewMeetingDialog({
                       )
                     }
                     onCreate={(name) => void addDeal(name)}
+                    createLabel="Start a new deal"
                     placeholder="Pick or type a deal…"
                     emptyLabel="No deals on this account yet. Type a name to start one."
                   />
@@ -655,10 +679,10 @@ export function NewMeetingDialog({
       {/* ITS OWN LINE, ALWAYS THE SAME HEIGHT, so Cancel and Create never
           shift as the reason comes and goes (Anir, Sep 7: "you can't be moving
           around the cancel button either"). */}
-      <p className="mt-4 min-h-[18px] text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
-        {meetingProblem}
-      </p>
-      <div className="mt-1.5 flex items-center justify-end gap-2">
+      <div className="mt-4 flex min-h-[40px] items-center justify-end gap-2">
+        <p className="mr-1 min-w-0 text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+          {meetingProblem}
+        </p>
         <button
           type="button"
           onClick={onClose}
@@ -685,13 +709,17 @@ export function NewMeetingDialog({
                 contactIds,
                 contactNames: [
                   ...contactIds
-                    .map((id) => contacts.find((c) => c.id === id)?.name)
+                    .map((id) =>
+                      [...contacts, ...addedContacts].find((c) => c.id === id)?.name
+                    )
                     .filter(Boolean),
                   ...guestNames,
                 ],
                 opportunityIds,
                 opportunityLabels: opportunityIds
-                  .map((id) => opportunities.find((o) => o.id === id)?.label)
+                  .map((id) =>
+                    [...opportunities, ...addedDeals].find((o) => o.id === id)?.label
+                  )
                   .filter(Boolean),
                 attendees,
                 presenters,

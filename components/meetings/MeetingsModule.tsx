@@ -25,7 +25,8 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
 import { useStoredView } from "@/lib/useStoredView";
 import { MEETING_ROOM_PATH, type MeetingRoom } from "@/lib/meetingRooms";
-import {cn, formatDate, todayISO} from "@/lib/utils";
+import {cn, formatDate, formatTime, todayISO} from "@/lib/utils";
+import { repSlug } from "@/lib/team";
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
 import { meetingTypeMeta } from "@/components/meetings/meetingTypeMeta";
 import { SolutioningTabs } from "@/components/solutioning/SolutioningTabs";
@@ -72,6 +73,7 @@ export type OpportunityOption = {
  */
 function MeetingPanel({
   m,
+  contacts,
   /**
    * ONE ARROW PER MEETING (Anir, Sep 6: "why do you have two arrows here? Fix
    * it. Look at the right side.").
@@ -86,6 +88,7 @@ function MeetingPanel({
   ownArrow = true,
 }: {
   m: Meeting;
+  contacts: ContactOption[];
   ownArrow?: boolean;
 }) {
   return (
@@ -132,12 +135,15 @@ function MeetingPanel({
                                 <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                                   Ran it
                                 </span>
-                                <span className="mt-1.5 flex items-center gap-1.5">
+                                <Link
+                                  href={`/analytics/reps/${repSlug(m.owner)}`}
+                                  className="mt-1.5 flex w-fit items-center gap-1.5 rounded-md hover:text-blue-primary hover:underline"
+                                >
                                   <Avatar name={m.owner} className="h-[20px] w-[20px] text-[7px]" />
                                   <span className="truncate text-[12.5px] text-text-primary">
                                     {m.owner}
                                   </span>
-                                </span>
+                                </Link>
                                 <span className="mt-3 block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                                   From {m.customer}
                                 </span>
@@ -147,14 +153,28 @@ function MeetingPanel({
                                   </p>
                                 ) : (
                                   <ul className="mt-1.5 space-y-1">
-                                    {m.contactNames.map((n) => (
-                                      <li key={n} className="flex items-center gap-1.5">
-                                        <Avatar name={n} className="h-[20px] w-[20px] text-[7px]" />
-                                        <span className="truncate text-[12.5px] text-text-primary">
-                                          {n}
-                                        </span>
-                                      </li>
-                                    ))}
+                                    {m.contactNames.map((n, index) => {
+                                      const id = m.contactIds[index] ?? contacts.find(
+                                        (contact) => contact.name === n && contact.customerId === m.customerId
+                                      )?.id;
+                                      const content = (
+                                        <>
+                                          <Avatar name={n} className="h-[20px] w-[20px] text-[7px]" />
+                                          <span className="truncate text-[12.5px] text-text-primary">{n}</span>
+                                        </>
+                                      );
+                                      return (
+                                        <li key={`${n}-${index}`}>
+                                          {id ? (
+                                            <Link href={`/contacts/${id}`} className="flex w-fit items-center gap-1.5 rounded-md hover:text-blue-primary hover:underline">
+                                              {content}
+                                            </Link>
+                                          ) : (
+                                            <span className="flex items-center gap-1.5">{content}</span>
+                                          )}
+                                        </li>
+                                      );
+                                    })}
                                   </ul>
                                 )}
                               </div>
@@ -382,7 +402,7 @@ export function MeetingsModule({
             onChange={pickView}
             options={
               [
-              { key: "table", label: "Table", icon: Rows3 },
+              { key: "table", label: "List", icon: Rows3 },
               { key: "split", label: "Split", icon: PanelsTopLeft },
               ] as const
             }
@@ -517,6 +537,7 @@ export function MeetingsModule({
                             <span className="min-w-0 truncate">{m.customer}</span>
                             <span className="shrink-0 tnum">
                               · <DateText value={m.meetingAt} />
+                              {formatTime(m.meetingAt) ? ` · ${formatTime(m.meetingAt)}` : ""}
                             </span>
                           </span>
                           {/* WHAT KIND OF MEETING IT WAS — the same chip the
@@ -578,6 +599,7 @@ export function MeetingsModule({
                     </span>
                     <span className="mt-0.5 block truncate text-[11.5px] text-text-secondary tnum">
                       {picked.customer} · <DateText value={picked.meetingAt} />
+                      {formatTime(picked.meetingAt) ? ` · ${formatTime(picked.meetingAt)}` : ""}
                     </span>
                   </span>
                   <Link
@@ -590,7 +612,7 @@ export function MeetingsModule({
                   </Link>
                 </div>
                 <div className="px-4 py-4">
-                  <MeetingPanel m={picked} ownArrow={false} />
+                  <MeetingPanel m={picked} contacts={contacts} ownArrow={false} />
                 </div>
               </>
             ) : (
@@ -632,11 +654,11 @@ export function MeetingsModule({
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => toggleRow(m.id)}
+                        onClick={() => router.push(`/meetings/${m.id}`)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            toggleRow(m.id);
+                            router.push(`/meetings/${m.id}`);
                           }
                         }}
                         className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-surface/60"
@@ -678,12 +700,34 @@ export function MeetingsModule({
                             })()}
                           </span>
                           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] text-text-secondary">
-                            <span>{m.customer}</span>
+                            {m.customerId ? (
+                              <Link
+                                href={`/customers/${m.customerId}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="hover:text-blue-primary hover:underline"
+                              >
+                                {m.customer}
+                              </Link>
+                            ) : (
+                              <span>{m.customer}</span>
+                            )}
                             {m.opportunityLabels.length > 0 && (
                               <>
                                 <span aria-hidden="true">·</span>
-                                <span className="truncate">
-                                  {m.opportunityLabels.join(", ")}
+                                <span className="flex min-w-0 flex-wrap gap-x-1">
+                                  {m.opportunityLabels.map((label, index) => {
+                                    const id = m.opportunityIds[index];
+                                    return id ? (
+                                      <Link
+                                        key={`${id}-${label}`}
+                                        href={`/opportunities/${id}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="truncate hover:text-blue-primary hover:underline"
+                                      >
+                                        {label}{index < m.opportunityLabels.length - 1 ? "," : ""}
+                                      </Link>
+                                    ) : <span key={`${label}-${index}`}>{label}</span>;
+                                  })}
                                 </span>
                               </>
                             )}
@@ -691,7 +735,15 @@ export function MeetingsModule({
                         </span>
                         <span className="hidden shrink-0 items-center gap-1.5 sm:flex">
                           {m.presenters.slice(0, 3).map((p) => (
-                            <Avatar key={p} name={p} className="h-6 w-6 text-[8px]" />
+                            <Link
+                              key={p}
+                              href={`/analytics/reps/${repSlug(p)}`}
+                              title={p}
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded-full transition-transform hover:scale-105"
+                            >
+                              <Avatar name={p} className="h-6 w-6 text-[8px]" />
+                            </Link>
                           ))}
                           {m.presenters.length > 3 && (
                             <span className="text-[11px] text-text-tertiary tnum">
@@ -699,12 +751,22 @@ export function MeetingsModule({
                             </span>
                           )}
                         </span>
-                        <span className="w-[96px] shrink-0 text-[12.5px] font-semibold tnum text-text-primary">
-                          <DateText value={m.meetingAt} />
+                        <span className="w-[112px] shrink-0 text-[12.5px] font-semibold tnum text-text-primary">
+                          <span className="block"><DateText value={m.meetingAt} /></span>
+                          {formatTime(m.meetingAt) && (
+                            <span className="mt-0.5 block text-[11px] font-medium text-text-secondary">
+                              {formatTime(m.meetingAt)}
+                            </span>
+                          )}
                         </span>
-                        <span
-                          aria-hidden="true"
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary"
+                        <button
+                          type="button"
+                          aria-label={openIds.has(m.id) ? "Collapse meeting details" : "Expand meeting details"}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleRow(m.id);
+                          }}
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                         >
                           <ChevronDown
                             size={15}
@@ -714,12 +776,12 @@ export function MeetingsModule({
                               openIds.has(m.id) && "rotate-180"
                             )}
                           />
-                        </span>
+                        </button>
                       </div>
                       {openIds.has(m.id) && (
                         <div className="bg-surface px-4 pb-4 pl-7 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]">
                           <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white px-4 py-4">
-                            <MeetingPanel m={m} />
+                            <MeetingPanel m={m} contacts={contacts} />
                           </div>
                         </div>
                       )}

@@ -144,6 +144,7 @@ function DropdownPicker({
   onToggle,
   placeholder,
   onCreate,
+  createLabel,
   emptyLabel,
   ariaLabel,
   single = false,
@@ -166,6 +167,8 @@ function DropdownPicker({
    * Given, a typed name that matches nothing offers itself as a row.
    */
   onCreate?: (label: string) => void;
+  /** Always-visible explanation of how to add a missing option. */
+  createLabel?: string;
   emptyLabel: string;
   ariaLabel?: string;
   /** One pick closes the menu; the trigger shows the pick, not chips. */
@@ -185,6 +188,7 @@ function DropdownPicker({
   const [level, setLevel] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
   const q = query.trim().toLowerCase();
@@ -282,7 +286,7 @@ function DropdownPicker({
 
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: MouseEvent) => {
+    const onDoc = (e: PointerEvent) => {
       const target = e.target as Node;
       if (
         ref.current &&
@@ -325,12 +329,12 @@ function DropdownPicker({
       if (!rect) return;
       setMenuStyle(() => sideStyle(rect));
     };
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc, true);
     document.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("pointerdown", onDoc, true);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
@@ -443,6 +447,7 @@ function DropdownPicker({
               <div className="flex items-center gap-1.5 rounded-md bg-surface px-2 py-1.5">
                 <Search size={13} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
                 <input
+                  ref={searchRef}
                   autoFocus
                   value={query}
                   onChange={(e) => {
@@ -468,6 +473,18 @@ function DropdownPicker({
                 />
               </div>
             </div>
+
+            {onCreate && createLabel && !query.trim() && (
+              <button
+                type="button"
+                onClick={() => searchRef.current?.focus()}
+                className="mb-0.5 flex w-full cursor-text items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-light"
+              >
+                <Plus size={14} strokeWidth={2.4} className="shrink-0" />
+                <span className="min-w-0 flex-1">{createLabel}</span>
+                <span className="text-[11px] font-normal text-text-tertiary">Type a name above</span>
+              </button>
+            )}
 
             {/* The typed name, when it is nobody already on the list. Sits
                 above the hits so it is reachable on an empty list too. */}
@@ -609,6 +626,7 @@ export function MultiPicker({
   onToggle,
   placeholder,
   onCreate,
+  createLabel,
   emptyLabel,
   variant = "inline",
   ariaLabel,
@@ -622,6 +640,8 @@ export function MultiPicker({
   placeholder: string;
   /** Dropdown variant only: offer a typed name that matches nothing. */
   onCreate?: (label: string) => void;
+  /** Dropdown variant only: expose creation before the user starts typing. */
+  createLabel?: string;
   emptyLabel: string;
   /** "dropdown" = closed ColorSelect-style trigger + floating grouped menu. */
   variant?: "inline" | "dropdown";
@@ -659,6 +679,7 @@ export function MultiPicker({
         onToggle={onToggle}
         placeholder={placeholder}
         onCreate={onCreate}
+        createLabel={createLabel}
         emptyLabel={emptyLabel}
         ariaLabel={ariaLabel}
         single={single}

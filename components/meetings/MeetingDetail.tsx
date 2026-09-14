@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowLeft,
   Briefcase,
@@ -29,7 +30,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Textarea } from "@/components/ui/Textarea";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
 import { type Meeting, type MeetingDoc, type MeetingNoteKind } from "@/lib/meetings";
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
@@ -47,6 +48,7 @@ import {
 } from "@/components/solutioning/recordActions";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { repSlug } from "@/lib/team";
 
 /**
  * ONE MEETING.
@@ -244,6 +246,7 @@ export function MeetingDetail({
             </span>
             <span className="text-[12.5px] text-text-secondary">
               <DateText value={m.meetingAt} />
+              {formatTime(m.meetingAt) ? ` · ${formatTime(m.meetingAt)}` : ""}
             </span>
           </div>
         </div>
@@ -527,41 +530,76 @@ export function MeetingDetail({
             <div className="divide-y divide-border-light">
               <div className="pb-3">
                 <WhoLabel icon={UserCog} text="Ran the meeting" />
-                <PeopleRow names={[m.owner].filter(Boolean)} empty="Nobody named." />
+                <PeopleRow
+                  names={[m.owner].filter(Boolean)}
+                  empty="Nobody named."
+                  hrefForName={(name) => `/analytics/reps/${repSlug(name)}`}
+                />
               </div>
               <div className="py-3">
                 <WhoLabel icon={Presentation} text="Presented" />
-                <PeopleRow names={m.presenters} empty="Nobody named as presenter." />
+                <PeopleRow
+                  names={m.presenters}
+                  empty="Nobody named as presenter."
+                  hrefForName={(name) => `/analytics/reps/${repSlug(name)}`}
+                />
               </div>
               <div className="py-3">
                 <WhoLabel icon={Users} text="Also there from Freyr" />
-                <PeopleRow names={m.attendees} empty="Nobody else recorded." />
+                <PeopleRow
+                  names={m.attendees}
+                  empty="Nobody else recorded."
+                  hrefForName={(name) => `/analytics/reps/${repSlug(name)}`}
+                />
               </div>
               <div className="pt-3">
                 <WhoLabel logoName={m.customer} text={`From ${m.customer}`} />
-                <PeopleRow names={m.contactNames} empty="No contacts recorded." />
+                <PeopleRow
+                  names={m.contactNames}
+                  empty="No contacts recorded."
+                  hrefForName={(name, index) => {
+                    const id = m.contactIds[index] ?? contacts.find(
+                      (contact) => contact.name === name && contact.customerId === m.customerId
+                    )?.id;
+                    return id ? `/contacts/${id}` : null;
+                  }}
+                />
               </div>
             </div>
           </SectionCard>
 
           <SectionCard title="What it is against" icon={Building2}>
-            <div className="flex items-center gap-2">
+            <Link
+              href={m.customerId ? `/customers/${m.customerId}` : "/customers"}
+              className="flex w-fit items-center gap-2 rounded-md hover:text-blue-primary hover:underline"
+            >
               <CompanyLogo name={m.customer} className="h-7 w-7 shrink-0 text-[9px]" />
               <span className="text-[13px] font-semibold text-text-primary">
                 {m.customer}
               </span>
-            </div>
+            </Link>
             {m.opportunityLabels.length > 0 ? (
               <ul className="mt-2 space-y-1.5">
-                {m.opportunityLabels.map((label) => (
-                  <li
-                    key={label}
-                    className="flex items-center gap-2 text-[12.5px] text-text-secondary"
-                  >
-                    <Briefcase size={13} strokeWidth={2} className="shrink-0 text-blue-primary" />
-                    {label}
-                  </li>
-                ))}
+                {m.opportunityLabels.map((label, index) => {
+                  const id = m.opportunityIds[index];
+                  const content = (
+                    <>
+                      <Briefcase size={13} strokeWidth={2} className="shrink-0 text-blue-primary" />
+                      {label}
+                    </>
+                  );
+                  return (
+                    <li key={`${label}-${index}`} className="text-[12.5px] text-text-secondary">
+                      {id ? (
+                        <Link href={`/opportunities/${id}`} className="flex w-fit items-center gap-2 hover:text-blue-primary hover:underline">
+                          {content}
+                        </Link>
+                      ) : (
+                        <span className="flex items-center gap-2">{content}</span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className="mt-2 text-[12px] text-text-tertiary">
@@ -1020,7 +1058,15 @@ function WhoLabel({
  */
 const FACES_SHOWN = 6;
 
-function PeopleRow({ names, empty }: { names: string[]; empty: string }) {
+function PeopleRow({
+  names,
+  empty,
+  hrefForName,
+}: {
+  names: string[];
+  empty: string;
+  hrefForName?: (name: string, index: number) => string | null;
+}) {
   const [all, setAll] = useState(false);
   if (names.length === 0)
     return <p className="mt-1 text-[12px] text-text-tertiary">{empty}</p>;
@@ -1036,12 +1082,26 @@ function PeopleRow({ names, empty }: { names: string[]; empty: string }) {
           all && "max-h-[220px] overflow-y-auto pr-1"
         )}
       >
-        {list.map((n) => (
-          <li key={n} className="inline-flex items-center gap-1.5">
-            <Avatar name={n} className="h-[22px] w-[22px] text-[8px]" />
-            <span className="text-[12.5px] text-text-primary">{n}</span>
-          </li>
-        ))}
+        {list.map((n, index) => {
+          const content = (
+            <>
+              <Avatar name={n} className="h-[22px] w-[22px] text-[8px]" />
+              <span className="text-[12.5px] text-text-primary">{n}</span>
+            </>
+          );
+          const href = hrefForName?.(n, index);
+          return (
+            <li key={`${n}-${index}`}>
+              {href ? (
+                <Link href={href} className="inline-flex items-center gap-1.5 rounded-md hover:text-blue-primary hover:underline">
+                  {content}
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-1.5">{content}</span>
+              )}
+            </li>
+          );
+        })}
       </ul>
       {extra > 0 && (
         <button

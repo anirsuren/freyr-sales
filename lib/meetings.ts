@@ -113,8 +113,7 @@ export type Meeting = {
   title: string;
   type: MeetingType | string;
   status: MeetingStatus;
-  /** The day it is held. ISO date, because a meeting belongs to a day on a
-   *  calendar before it belongs to a minute. */
+  /** ISO local date, optionally followed by a local time (`YYYY-MM-DDTHH:mm`). */
   meetingAt: string;
   customerId?: string;
   customer: string;
