@@ -66,6 +66,7 @@ import {
   REQUEST_PRIORITIES,
 } from "@/lib/solutioning";
 import { DateText } from "@/components/ui/DateText";
+import { repSlug } from "@/lib/team";
 
 /* Priority is the one place a red/amber/green scale IS the meaning — it is a
    ranking of urgency, not an identity. */
@@ -786,10 +787,13 @@ export function RequestDetail({
       </div>
       <p className="rise-in mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-text-tertiary">
         Requested by
-        <span className="inline-flex items-center gap-1 font-semibold text-text-secondary">
+        <Link
+          href={`/analytics/reps/${repSlug(r.requestedBy)}`}
+          className="inline-flex items-center gap-1 font-semibold text-text-secondary hover:text-blue-primary hover:underline"
+        >
           <Avatar name={r.requestedBy} className="h-[16px] w-[16px] text-[6px]" />
           {r.requestedBy}
-        </span>
+        </Link>
         <span suppressHydrationWarning>on {stampedAt(r.requestedAt)}</span>
       </p>
 
@@ -860,10 +864,21 @@ export function RequestDetail({
                 description="The customer, and the opportunities and contacts this is for."
               />
               <div className="mt-4 space-y-2.5 pl-11">
-                <p className="flex items-center gap-2 text-[13.5px] font-semibold text-text-primary">
-                  <CompanyLogo name={r.customer} className="h-6 w-6 text-[8px]" />
-                  {r.customer}
-                </p>
+                {r.customerId ? (
+                  <Link
+                    href={`/customers/${r.customerId}`}
+                    className="group/customer flex w-fit items-center gap-2 text-[13.5px] font-semibold text-text-primary"
+                  >
+                    <CompanyLogo name={r.customer} className="h-6 w-6 text-[8px]" />
+                    <span className="group-hover/customer:text-blue-primary group-hover/customer:underline">{r.customer}</span>
+                    <ArrowUpRight size={13} className="text-text-tertiary" />
+                  </Link>
+                ) : (
+                  <p className="flex items-center gap-2 text-[13.5px] font-semibold text-text-primary">
+                    <CompanyLogo name={r.customer} className="h-6 w-6 text-[8px]" />
+                    {r.customer}
+                  </p>
+                )}
                 {r.opportunityLabels.length > 0 && (
                   /* THE DEAL IS ONE CLICK AWAY. It was a chip that named the
                      deal and went nowhere (Anir, Sep 7: "how can I go to the
@@ -901,15 +916,29 @@ export function RequestDetail({
                 )}
                 {r.contactNames.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
-                    {r.contactNames.map((name) => (
-                      <span
-                        key={name}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-primary"
-                      >
-                        <Avatar name={name} className="h-[16px] w-[16px] text-[6px]" />
-                        {name}
-                      </span>
-                    ))}
+                    {r.contactNames.map((name, i) => {
+                      const contactId = r.contactIds[i];
+                      const inner = (
+                        <>
+                          <Avatar name={name} className="h-[16px] w-[16px] text-[6px]" />
+                          {name}
+                          {contactId && <ArrowUpRight size={11} className="opacity-60" />}
+                        </>
+                      );
+                      return contactId ? (
+                        <Link
+                          key={`${contactId}-${name}`}
+                          href={`/contacts/${contactId}`}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-primary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                        >
+                          {inner}
+                        </Link>
+                      ) : (
+                        <span key={name} className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-primary">
+                          {inner}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
                 {r.opportunityLabels.length + r.contactNames.length === 0 && (
@@ -1137,10 +1166,13 @@ export function RequestDetail({
           <div key={`rail-${tab}`} className="tab-panel tab-panel-stagger space-y-4">
             <SectionCard title="Owner" icon={UserRound}>
               {r.owner ? (
-                <div className="flex items-center gap-2.5">
+                <Link
+                  href={`/analytics/reps/${repSlug(r.owner)}`}
+                  className="group/owner flex items-center gap-2.5"
+                >
                   <Avatar name={r.owner} className="h-9 w-9 text-[11px]" />
                   <span className="min-w-0">
-                    <span className="block text-[13.5px] font-semibold text-text-primary">
+                    <span className="block text-[13.5px] font-semibold text-text-primary group-hover/owner:text-blue-primary group-hover/owner:underline">
                       {r.owner}
                     </span>
                     {r.pickedUpAt && (
@@ -1149,7 +1181,7 @@ export function RequestDetail({
                       </span>
                     )}
                   </span>
-                </div>
+                </Link>
               ) : (
                 <p className="flex items-center gap-1.5 text-[12.5px] text-text-tertiary">
                   <CircleDashed size={14} strokeWidth={2} />

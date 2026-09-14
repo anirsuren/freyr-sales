@@ -60,6 +60,7 @@ import {
 import { KIND_META, KindChip, STATUS_META, StatusPill } from "./bits";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { repSlug } from "@/lib/team";
 
 /**
  * THE SOLUTIONING ROOM (Suren, Aug 24). Sales creates requests here or from a
@@ -1036,17 +1037,21 @@ function RequestRow({
         )}
       </td>
       <td className="px-4 py-3.5">
-        <span className="flex min-w-0 items-center gap-1.5">
+        <Link
+          href={`/analytics/reps/${repSlug(r.requestedBy)}`}
+          onClick={(event) => event.stopPropagation()}
+          className="group/person flex min-w-0 items-center gap-1.5"
+        >
           <Avatar name={r.requestedBy} className="h-5 w-5 shrink-0 text-[7px]" />
           <span className="min-w-0">
-            <span className="block truncate text-[12px] text-text-primary">
+            <span className="block truncate text-[12px] text-text-primary transition-colors group-hover/person:text-blue-primary group-hover/person:underline">
               {r.requestedBy}
             </span>
             <span className="block text-[10.5px] text-text-tertiary">
               <DateText value={r.requestedAt} />
             </span>
           </span>
-        </span>
+        </Link>
       </td>
       <td className="px-4 py-3.5">
         {r.neededBy ? (
@@ -1073,12 +1078,16 @@ function RequestRow({
       </td>
       <td className="px-4 py-3.5">
         {r.owner ? (
-          <span className="flex min-w-0 items-center gap-1.5">
+          <Link
+            href={`/analytics/reps/${repSlug(r.owner)}`}
+            onClick={(event) => event.stopPropagation()}
+            className="group/person flex min-w-0 items-center gap-1.5"
+          >
             <Avatar name={r.owner} className="h-5 w-5 shrink-0 text-[7px]" />
-            <span className="min-w-0 break-words text-[12px] text-text-primary">
+            <span className="min-w-0 break-words text-[12px] text-text-primary transition-colors group-hover/person:text-blue-primary group-hover/person:underline">
               {r.owner}
             </span>
-          </span>
+          </Link>
         ) : fulfiller && r.status !== "completed" ? (
           <button
             type="button"
@@ -1250,16 +1259,33 @@ function RequestPanel({
                     What it is for
                   </span>
                   {r.opportunityLabels.length + r.contactNames.length === 0 ? (
-                    <p className="mt-1.5 text-[12.5px] text-text-tertiary">
-                      The customer itself
-                    </p>
+                    r.customerId ? (
+                      <Link
+                        href={`/customers/${r.customerId}`}
+                        className="mt-1.5 flex w-fit items-center gap-1.5 text-[12.5px] text-text-secondary hover:text-blue-primary hover:underline"
+                      >
+                        <CompanyLogo name={r.customer} className="h-[18px] w-[18px] shrink-0 text-[6px]" />
+                        {r.customer}
+                        <ArrowUpRight size={12} className="opacity-60" />
+                      </Link>
+                    ) : (
+                      <p className="mt-1.5 text-[12.5px] text-text-tertiary">The customer itself</p>
+                    )
                   ) : (
                     <div className="mt-1.5 space-y-1.5">
-                      {r.opportunityLabels.map((label) => (
-                        <p
-                          key={label}
-                          className="flex items-start gap-1.5 text-[12.5px] text-text-secondary"
+                      {r.customerId && (
+                        <Link
+                          href={`/customers/${r.customerId}`}
+                          className="group/entity flex items-center gap-1.5 text-[12.5px] text-text-secondary"
                         >
+                          <CompanyLogo name={r.customer} className="h-[18px] w-[18px] shrink-0 text-[6px]" />
+                          <span className="group-hover/entity:text-blue-primary group-hover/entity:underline">{r.customer}</span>
+                        </Link>
+                      )}
+                      {r.opportunityLabels.map((label, index) => {
+                        const opportunityId = r.opportunityIds[index];
+                        const content = (
+                          <>
                           <Briefcase
                             size={13}
                             strokeWidth={2}
@@ -1267,20 +1293,45 @@ function RequestPanel({
                             className="mt-0.5 shrink-0 text-text-tertiary"
                           />
                           <span className="min-w-0">{label}</span>
-                        </p>
-                      ))}
-                      {r.contactNames.map((name) => (
-                        <p
-                          key={name}
-                          className="flex items-center gap-1.5 text-[12.5px] text-text-secondary"
-                        >
+                          {opportunityId && <ArrowUpRight size={12} className="shrink-0 opacity-60" />}
+                          </>
+                        );
+                        return opportunityId ? (
+                          <Link
+                            key={`${opportunityId}-${label}`}
+                            href={`/opportunities/${opportunityId}`}
+                            className="group/entity flex items-start gap-1.5 text-[12.5px] text-text-secondary hover:text-blue-primary hover:underline"
+                          >
+                            {content}
+                          </Link>
+                        ) : (
+                          <p key={label} className="flex items-start gap-1.5 text-[12.5px] text-text-secondary">{content}</p>
+                        );
+                      })}
+                      {r.contactNames.map((name, index) => {
+                        const contactId = r.contactIds[index];
+                        const content = (
+                          <>
                           <Avatar
                             name={name}
                             className="h-[18px] w-[18px] shrink-0 text-[7px]"
                           />
                           {name}
-                        </p>
-                      ))}
+                          {contactId && <ArrowUpRight size={12} className="shrink-0 opacity-60" />}
+                          </>
+                        );
+                        return contactId ? (
+                          <Link
+                            key={`${contactId}-${name}`}
+                            href={`/contacts/${contactId}`}
+                            className="flex items-center gap-1.5 text-[12.5px] text-text-secondary hover:text-blue-primary hover:underline"
+                          >
+                            {content}
+                          </Link>
+                        ) : (
+                          <p key={name} className="flex items-center gap-1.5 text-[12.5px] text-text-secondary">{content}</p>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1293,18 +1344,30 @@ function RequestPanel({
                       Nothing added yet
                     </p>
                   ) : (
-                    <div className="mt-1.5 space-y-1">
-                      {DOC_TAB_WORDS.map(([key, word]) => {
-                        const n = r.docs.filter((d) => d.category === key).length;
-                        if (n === 0) return null;
+                    <div className="mt-1.5 max-h-[150px] overflow-y-auto rounded-lg border border-border-light bg-surface/30">
+                      {r.docs.map((doc) => {
+                        const inner = (
+                          <>
+                            <FileText size={13} strokeWidth={2} className="shrink-0 text-blue-primary" />
+                            <span className="min-w-0 flex-1 truncate">{doc.name}</span>
+                            <span className="shrink-0 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                              {DOC_TAB_WORDS.find(([key]) => key === doc.category)?.[1]?.replace(" document", "") ?? doc.category}
+                            </span>
+                            <ArrowUpRight size={12} className="shrink-0 text-text-tertiary" />
+                          </>
+                        );
+                        const rowClass = "flex items-center gap-2 border-b border-border-light px-2.5 py-2 text-[12px] text-text-secondary transition-colors last:border-0 hover:bg-blue-light hover:text-blue-primary";
+                        if (doc.url && !doc.docsPath && !doc.ref) {
+                          return <a key={doc.id} href={doc.url} target="_blank" rel="noreferrer" className={rowClass}>{inner}</a>;
+                        }
                         return (
-                          <p
-                            key={key}
-                            className="text-[12.5px] text-text-secondary tnum"
+                          <Link
+                            key={doc.id}
+                            href={doc.docsPath || doc.ref ? `/solutioning/${r.id}/documents/${doc.id}` : `/solutioning/${r.id}`}
+                            className={rowClass}
                           >
-                            {n} {word}
-                            {n === 1 ? "" : "s"}
-                          </p>
+                            {inner}
+                          </Link>
                         );
                       })}
                     </div>
@@ -1381,7 +1444,7 @@ function RequestPanel({
                                   name={a.by}
                                   className="h-[14px] w-[14px] shrink-0 text-[6px]"
                                 />
-                                <span className="min-w-0 truncate">{a.by}</span>
+                                <Link href={`/analytics/reps/${repSlug(a.by)}`} className="min-w-0 truncate hover:text-blue-primary hover:underline">{a.by}</Link>
                                 <span className="whitespace-nowrap tnum">
                                   · <DateText value={a.at} /> ·{" "}
                                   {new Date(a.at).toLocaleTimeString([], {
