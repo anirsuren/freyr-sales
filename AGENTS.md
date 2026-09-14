@@ -208,6 +208,22 @@ what was written back, `deleted-test-customers.json`).
   to approach, the contact/reporting structure, and the senior decision-maker
   the rep needs to reach.
 
+- **Sep 14 Suren roadmap continuation:** Account Planning is not a separate
+  module or page in the main navigation. Every customer gets its account plan
+  inside that customer's page. Ship the clean transactional foundation first
+  so it can replace KonnectCo, then gather feedback and add sophistication,
+  governance, and AI on top of trustworthy data. The longer-term product must
+  become sales intelligence: recommend what to pitch to a specific contact;
+  generate the presentation, proposal, and supporting materials for that
+  person; and recommend the best customer accounts for an offering. Use Freyr
+  Fusion's existing AI-native platform capabilities rather than rebuilding
+  them in isolation. Add language capabilities later for teams such as Korea,
+  while English remains the primary language. A later mobile experience should
+  let a rep record a meeting, generate notes, extract outcomes, and create or
+  update opportunities automatically from the transcript. Suren's sequence is
+  base version production-ready → rollout → feedback from customers and Freyr
+  users → governed iteration across the 1–2 year roadmap.
+
 - **Sep 14 deviations attention layout:** The Mock-mode invalid/deviated
   records section now opens with a compact diagnostic heading and separates
   record problems from owner rankings into two quiet summary bands. “Deviating

@@ -150,3 +150,28 @@ For the top 50 accounts, including existing customers and companies Freyr wants
 to turn into customers, the plan must also show who to approach, how the
 contact and reporting structure fits together, and the senior decision-maker
 the rep needs to reach.
+
+Account Planning is not a separate module or top-level page. Every customer
+has its account plan inside that customer's page.
+
+The longer-term sequence is:
+
+1. Make the clean transactional foundation production-ready and roll it out so
+   it can replace KonnectCo.
+2. Gather feedback from customers and Freyr users.
+3. Add sophistication with clear governance around releases and deployment.
+4. Build AI on top of the clean business data so the product becomes a sales
+   intelligence application, not only a sales system.
+
+The intelligence roadmap should recommend what to pitch to a particular
+contact, generate the presentation/proposal/supporting materials for that
+person, and identify the best customer accounts for a given offering. Prefer
+Freyr Fusion's existing AI-native platform capabilities when implementing
+these features.
+
+Later platform work includes language support for teams such as Korea, with
+English remaining the primary language, and a mobile experience for sales reps.
+The mobile meeting flow should record a meeting, generate notes, extract its
+outcomes, and automatically create or update opportunities from the transcript.
+Treat this as a 1–2 year product roadmap after the base release, not as scope to
+add before the transactional foundation is ready.
