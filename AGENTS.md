@@ -194,6 +194,20 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 14 released-surface identity and navigation sweep:** The same entity
+  treatment now applies across the pages available in Real mode. Contract
+  owners, goal-credit recipients and actual update authors show their own
+  Avatar and link to the rep profile; the footer no longer places an owner’s
+  face beside a different updater’s name. Customer-list owner previews,
+  opportunity meeting owners and child solutioning owners now carry the same
+  avatar/profile treatment. Goal claims show the customer logo and link to the
+  exact customer when an id exists. Missing portraits fall back to initials;
+  another person’s face is never borrowed. The stale Aug 25 Future-level test
+  now reflects Suren’s Sep 1 removal of Future as an opportunity level.
+  Typecheck, 56 focused business-rule tests and the production build pass.
+  Targeted lint has no errors (existing warnings remain). Per Anir’s request,
+  no browser automation or screenshot pass was run. Local, not deployed.
+
 - **Sep 14 Suren product sequence and account-planning definition:** Finish
   Customers, Opportunities, Offerings, and Solutioning (including the request
   flow and the connections among those records) for production first. Finalize

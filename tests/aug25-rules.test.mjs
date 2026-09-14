@@ -46,9 +46,11 @@ test("revenue type is read off the confidence bar", () => {
   assert.equal(revenueTypeFromConfidence(NaN), "Pipeline");
 });
 
-test("Future is about WHEN the money lands, not how likely it is", () => {
-  assert.equal(revenueTypeFromConfidence(99, true), "Future");
-  assert.equal(effectiveRevenueType({ level: "Future", confidence: 99 }), "Future");
+test("the retired Future level cannot override confidence", () => {
+  // Suren retired Future on Sep 1. When revenue lands is represented by the
+  // estimated sign date; the confidence bar alone determines this label.
+  assert.equal(revenueTypeFromConfidence(99), "Go get");
+  assert.equal(effectiveRevenueType({ level: "Pipeline", confidence: 99 }), "Go get");
 });
 
 test("an existing deal's word is corrected by its own number", () => {

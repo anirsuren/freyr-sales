@@ -963,24 +963,44 @@ export function RequestDetail({
                 />
                 <div className="mt-4 space-y-2 pl-11">
                   {children_.map((c) => (
-                    <Link
+                    <div
                       key={c.id}
-                      href={`/solutioning/${c.id}`}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-border-light bg-white px-3.5 py-2.5 transition-colors hover:border-blue-primary"
+                      className="group flex items-center justify-between gap-3 rounded-lg border border-border-light bg-white px-3.5 py-2.5 transition-colors hover:border-blue-primary"
                     >
                       <span className="min-w-0">
-                        <span className="block truncate text-[13px] font-semibold text-text-primary">
+                        <Link
+                          href={`/solutioning/${c.id}`}
+                          className="block truncate text-[13px] font-semibold text-text-primary group-hover:text-blue-primary"
+                        >
                           {c.title}
-                        </span>
-                        <span className="tnum block text-[11.5px] text-text-tertiary">
-                          {c.ref}
-                          {c.owner ? ` · ${c.owner}` : " · nobody on it yet"}
+                        </Link>
+                        <span className="tnum mt-1 flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
+                          <span>{c.ref}</span>
+                          <span aria-hidden="true">·</span>
+                          {c.owner ? (
+                            <Link
+                              href={`/analytics/reps/${repSlug(c.owner)}`}
+                              className="inline-flex min-w-0 items-center gap-1 text-text-secondary hover:text-blue-primary hover:underline"
+                            >
+                              <Avatar
+                                name={c.owner}
+                                className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                                tooltip={`Owner: ${c.owner}`}
+                              />
+                              <span className="truncate">{c.owner}</span>
+                            </Link>
+                          ) : (
+                            <span>nobody on it yet</span>
+                          )}
                         </span>
                       </span>
-                      <span className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary">
+                      <Link
+                        href={`/solutioning/${c.id}`}
+                        className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary group-hover:text-blue-primary"
+                      >
                         {c.deliverableStatus ?? c.status.replace(/_/g, " ")}
-                      </span>
-                    </Link>
+                      </Link>
+                    </div>
                   ))}
                 </div>
               </section>

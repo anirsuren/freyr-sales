@@ -36,6 +36,7 @@ import type { AccrualPlan } from "@/lib/revenueAccrualsShared";
 import { BAND_ICON_MAP, Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/components/customers/Customer360";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { Avatar } from "@/components/ui/Avatar";
 import { StatTile } from "@/components/ui/StatTile";
 import {
   effectiveRevenueType,
@@ -48,6 +49,7 @@ import {
 } from "@/lib/opportunitiesShared";
 import { cn, formatDayLabel } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { repSlug } from "@/lib/team";
 
 /**
  * THE OPPORTUNITY PAGE.
@@ -771,8 +773,22 @@ export function OpportunityDetail({
                       >
                         {m.title}
                       </Link>
-                      <span className="text-[11.5px] text-text-tertiary tnum">
-                        {m.ref} · {m.owner} · {m.meetingAt?.slice(0, 10)}
+                      <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-tertiary tnum">
+                        <span>{m.ref}</span>
+                        <span aria-hidden="true">·</span>
+                        <Link
+                          href={`/analytics/reps/${repSlug(m.owner)}`}
+                          className="inline-flex items-center gap-1 text-text-secondary hover:text-blue-primary hover:underline"
+                        >
+                          <Avatar
+                            name={m.owner}
+                            className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                            tooltip={`Meeting owner: ${m.owner}`}
+                          />
+                          {m.owner}
+                        </Link>
+                        <span aria-hidden="true">·</span>
+                        <span>{m.meetingAt?.slice(0, 10)}</span>
                       </span>
                     </li>
                   ))}

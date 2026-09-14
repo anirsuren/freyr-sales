@@ -50,6 +50,7 @@ import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import type { Customer } from "@/lib/types";
 import type { TipItem } from "@/components/charts/Charts";
 import { geographyWithFlag } from "@/lib/countryFlags";
+import { repSlug } from "@/lib/team";
 
 type EnrichedCustomer = Customer & {
   contact_count: number;
@@ -790,7 +791,17 @@ export function CustomersBrowser({
                   {c.owner && (
                     <div className="flex justify-between gap-3">
                       <span className="text-text-tertiary">Owner</span>
-                      <span className="font-medium text-text-primary truncate">{c.owner}</span>
+                      <Link
+                        href={`/analytics/reps/${repSlug(c.owner)}`}
+                        className="inline-flex min-w-0 items-center gap-1.5 font-medium text-text-primary hover:text-blue-primary hover:underline"
+                      >
+                        <Avatar
+                          name={c.owner}
+                          className="h-5 w-5 shrink-0 text-[7px]"
+                          tooltip={`Owner: ${c.owner}`}
+                        />
+                        <span className="truncate">{c.owner}</span>
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -816,10 +827,14 @@ export function CustomersBrowser({
         {!(grouping && groupBy === "owner") && (
         <td className="px-5 py-4 text-[13px] whitespace-nowrap">
           {c.owner ? (
-            <span className="inline-flex items-center gap-2">
+            <Link
+              href={`/analytics/reps/${repSlug(c.owner)}`}
+              onClick={(event) => event.stopPropagation()}
+              className="inline-flex items-center gap-2 text-text-primary hover:text-blue-primary hover:underline"
+            >
               <Avatar name={c.owner} className="h-6 w-6 text-[10px]" />
-              <span className="text-text-primary">{c.owner}</span>
-            </span>
+              <span>{c.owner}</span>
+            </Link>
           ) : (
             <span className="text-text-tertiary">Unassigned</span>
           )}

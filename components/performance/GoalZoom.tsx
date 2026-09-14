@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowLeft,
   Briefcase,
@@ -2252,9 +2253,28 @@ export function GoalZoom({
                     )}
                   </div>
                   {a.customer && (
-                    <p className="mt-1 pl-8 text-[11px] text-text-secondary">
-                      {a.customer}
-                    </p>
+                    <div className="mt-1 pl-8 text-[11px] text-text-secondary">
+                      {a.customerId ? (
+                        <Link
+                          href={`/customers/${a.customerId}`}
+                          className="inline-flex items-center gap-1.5 hover:text-blue-primary hover:underline"
+                        >
+                          <CompanyLogo
+                            name={a.customer}
+                            className="h-[18px] w-[18px] shrink-0 text-[6px]"
+                          />
+                          {a.customer}
+                        </Link>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5">
+                          <CompanyLogo
+                            name={a.customer}
+                            className="h-[18px] w-[18px] shrink-0 text-[6px]"
+                          />
+                          {a.customer}
+                        </span>
+                      )}
+                    </div>
                   )}
                   {a.evidence?.length ? (
                     <div className="mt-1 flex flex-wrap gap-1.5 pl-8">
