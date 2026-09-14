@@ -62,6 +62,7 @@ import {
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { withCommas } from "@/lib/currency";
+import { repSlug } from "@/lib/team";
 
 /**
  * CONTRACTS (Suren, Aug 25): "where we are logically closing."
@@ -1006,15 +1007,14 @@ export function ContractsModule({
                         value is already reported by its chip in the line
                         above. */}
                     {(() => {
-                      const facts: [string, string][] = [];
-                      if (c.startDate) facts.push(["Starts", formatDate(c.startDate)]);
-                      if (c.endDate) facts.push(["Ends", formatDate(c.endDate)]);
-                      if (c.signedOn) facts.push(["Signed", formatDate(c.signedOn)]);
-                      if (c.owner) facts.push(["Owner", c.owner]);
-                      if (facts.length === 0) return null;
+                      const dateFacts: [string, string][] = [];
+                      if (c.startDate) dateFacts.push(["Starts", formatDate(c.startDate)]);
+                      if (c.endDate) dateFacts.push(["Ends", formatDate(c.endDate)]);
+                      if (c.signedOn) dateFacts.push(["Signed", formatDate(c.signedOn)]);
+                      if (dateFacts.length === 0 && !c.owner) return null;
                       return (
                         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[12.5px] sm:grid-cols-4">
-                          {facts.map(([label, value]) => (
+                          {dateFacts.map(([label, value]) => (
                             <span key={label}>
                               <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                                 {label}
@@ -1024,6 +1024,24 @@ export function ContractsModule({
                               </span>
                             </span>
                           ))}
+                          {c.owner && (
+                            <span>
+                              <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                Owner
+                              </span>
+                              <Link
+                                href={`/analytics/reps/${repSlug(c.owner)}`}
+                                className="mt-0.5 inline-flex min-w-0 items-center gap-1.5 font-semibold text-blue-primary hover:underline"
+                              >
+                                <Avatar
+                                  name={c.owner}
+                                  className="h-5 w-5 shrink-0 text-[7px]"
+                                  tooltip={`Owner: ${c.owner}`}
+                                />
+                                <span className="truncate">{c.owner}</span>
+                              </Link>
+                            </span>
+                          )}
                         </div>
                       );
                     })()}
@@ -1039,8 +1057,22 @@ export function ContractsModule({
                           {formatMoney(c.value)} counted towards{" "}
                           {goalName.get(c.goalLink.goalId) ?? "a goal"}
                         </span>
-                        <span className="font-medium opacity-80">
-                          for {c.goalLink.person || c.owner || "the owner"}
+                        <span className="inline-flex items-center gap-1.5 font-medium opacity-80">
+                          for
+                          {c.goalLink.person || c.owner ? (
+                            <Link
+                              href={`/analytics/reps/${repSlug(c.goalLink.person || c.owner || "")}`}
+                              className="inline-flex items-center gap-1 hover:underline"
+                            >
+                              <Avatar
+                                name={c.goalLink.person || c.owner || ""}
+                                className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                              />
+                              {c.goalLink.person || c.owner}
+                            </Link>
+                          ) : (
+                            "the owner"
+                          )}
                           {c.goalLink.postedAt
                             ? ` · posted ${formatDate(c.goalLink.postedAt)}`
                             : ""}
@@ -1203,25 +1235,27 @@ export function ContractsModule({
                         the meter above it. */}
                     <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-light pt-3">
                       <span className="flex min-w-0 items-center gap-2 text-[12px] text-text-secondary">
-                        {c.owner ? (
-                          <>
-                            <Avatar name={c.owner} className="h-6 w-6 shrink-0 text-[8px]" />
-                            <span className="min-w-0">
-                              <span className="block truncate font-semibold text-text-primary">
-                                {c.owner}
-                              </span>
-                              <span className="block text-[11px] text-text-tertiary">
-                                {c.updatedBy === c.owner ? "Updated" : `Updated by ${c.updatedBy}`}{" "}
-                                <DateText value={c.updatedAt} />
-                              </span>
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-[11.5px] text-text-tertiary">
-                            Updated by <b className="text-text-secondary">{c.updatedBy}</b>{" "}
-                            <DateText value={c.updatedAt} />
+                        <Avatar
+                          name={c.updatedBy || "Unknown"}
+                          className="h-6 w-6 shrink-0 text-[8px]"
+                          tooltip={`Last updated by ${c.updatedBy || "Unknown"}`}
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-[10.5px] text-text-tertiary">
+                            Last updated by
                           </span>
-                        )}
+                          {c.updatedBy && c.updatedBy !== "Unknown" ? (
+                            <Link
+                              href={`/analytics/reps/${repSlug(c.updatedBy)}`}
+                              className="truncate font-semibold text-text-primary hover:text-blue-primary hover:underline"
+                            >
+                              {c.updatedBy}
+                            </Link>
+                          ) : (
+                            <span className="font-semibold text-text-secondary">Unknown</span>
+                          )}{" "}
+                          <DateText value={c.updatedAt} />
+                        </span>
                       </span>
 
                       <span className="flex flex-wrap items-center gap-1.5">
