@@ -7,8 +7,10 @@ import {
   CheckCircle2,
   ChevronDown,
   ClipboardList,
+  Mail,
   Pencil,
   Clock3,
+  Phone,
   Plus,
   Download,
   Trash2,
@@ -24,6 +26,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
 import {
   countryOptions,
+  countryFlag,
   dialOptions,
   joinPhone,
   splitPhone,
@@ -759,40 +762,52 @@ export function LeadsModule({
                                   <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Email</span>
                                     {lead.email ? (
-                                      <a href={`mailto:${lead.email}`} onClick={(event) => event.stopPropagation()} className="mt-0.5 block min-w-0 break-words text-[12.5px] font-semibold leading-snug text-blue-primary [overflow-wrap:anywhere] hover:underline">
-                                        {lead.email}
+                                      <a href={`mailto:${lead.email}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-w-0 items-start gap-1.5 text-[12.5px] font-semibold leading-snug text-blue-primary hover:underline">
+                                        <Mail size={16} strokeWidth={1.9} className="mt-px shrink-0 text-text-tertiary" aria-hidden="true" />
+                                        <span className="min-w-0 break-words [overflow-wrap:anywhere]">{lead.email}</span>
                                       </a>
                                     ) : <span className="text-[12.5px] text-text-tertiary">—</span>}
                                   </span>
                                   <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Phone</span>
                                     {lead.phone ? (
-                                      <a href={`tel:${lead.phone}`} onClick={(event) => event.stopPropagation()} className="text-[12.5px] font-semibold text-blue-primary hover:underline">
-                                        {formatPhoneNumber(lead.phone)}
+                                      <a href={`tel:${lead.phone}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                        <Phone size={16} strokeWidth={1.9} className="shrink-0 text-text-tertiary" aria-hidden="true" />
+                                        <span className="min-w-0">{formatPhoneNumber(lead.phone)}</span>
                                       </a>
                                     ) : <span className="text-[12.5px] text-text-tertiary">—</span>}
                                   </span>
                                   <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Country</span>
-                                    <span className="text-[12.5px] font-semibold text-text-primary">{lead.country || "—"}</span>
+                                    {lead.country ? (
+                                      <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
+                                        <span className="text-[17px] leading-none" role="img" aria-label={`${lead.country} flag`}>{countryFlag(lead.country)}</span>
+                                        <span className="min-w-0 truncate">{lead.country}</span>
+                                      </span>
+                                    ) : <span className="text-[12.5px] text-text-tertiary">—</span>}
                                   </span>
                                   <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Source</span>
-                                    <span className="text-[12.5px] font-semibold text-text-primary">{lead.source}</span>
+                                    <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
+                                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: leadSourceColor(lead.source) }} aria-hidden="true" />
+                                      <span className="min-w-0 truncate">{lead.source}</span>
+                                    </span>
                                   </span>
                                   <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Account match</span>
                                     {linkedCustomer ? (
-                                      <Link href={`/customers/${linkedCustomer.id}`} onClick={(event) => event.stopPropagation()} className="text-[12.5px] font-semibold text-blue-primary hover:underline">
-                                        {linkedCustomer.name}
+                                      <Link href={`/customers/${linkedCustomer.id}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                        <CompanyLogo name={linkedCustomer.name} className="h-5 w-5 shrink-0 rounded-md text-[7px]" />
+                                        <span className="min-w-0 truncate">{linkedCustomer.name}</span>
                                       </Link>
                                     ) : <span className="text-[12.5px] text-text-tertiary">Not matched yet</span>}
                                   </span>
                                   <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Owner</span>
                                     {lead.owner ? (
-                                      <Link href={`/analytics/reps/${repSlug(lead.owner)}`} onClick={(event) => event.stopPropagation()} className="text-[12.5px] font-semibold text-blue-primary hover:underline">
-                                        {lead.owner}
+                                      <Link href={`/analytics/reps/${repSlug(lead.owner)}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                        <Avatar name={lead.owner} className="h-5 w-5 shrink-0 text-[7px]" />
+                                        <span className="min-w-0 truncate">{lead.owner}</span>
                                       </Link>
                                     ) : <span className="text-[12.5px] text-text-tertiary">Unassigned</span>}
                                   </span>
