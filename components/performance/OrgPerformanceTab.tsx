@@ -577,7 +577,7 @@ export function OrgPerformanceTab({
                     {i === 6 ? (
                       /* EXPAND EVERYTHING AT ONCE, from the head of the column
                          the per-row buttons live in. */
-                      <span className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5">
                         <span>{col.h}</span>
                         <button
                           type="button"
@@ -601,7 +601,7 @@ export function OrgPerformanceTab({
                             <ChevronsUpDown size={13.5} strokeWidth={2.2} />
                           )}
                         </button>
-                      </span>
+                      </div>
                     ) : (
                       <span className="flex items-center gap-1">
                         {col.h}
@@ -1539,6 +1539,21 @@ function GoalRows({
           .sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
           .slice(0, 6)
       : [];
+  const latestLevelEntry = recentLevelEntries[0] ?? null;
+  /* A level goal is a recurring snapshot rather than a running total. Once
+     the newest reading is more than a month old, the history needs to say so
+     instead of leaving the reader to compare six dates in their head. Date-
+     only values are anchored at noon so timezone conversion cannot turn the
+     5th into the 4th. */
+  const latestLevelAgeDays = latestLevelEntry
+    ? Math.floor(
+        (Date.now() -
+          new Date(`${latestLevelEntry.date.slice(0, 10)}T12:00:00`).getTime()) /
+          86_400_000
+      )
+    : null;
+  const levelReportIsStale =
+    latestLevelAgeDays !== null && latestLevelAgeDays > 35;
 
   return (
     <Fragment>
@@ -2262,33 +2277,56 @@ function GoalRows({
               {goal.subgoals.length === 0 ? (
                 goal.measure === "level" ? (
                   <div className="rounded-xl border border-border-light bg-white p-3.5">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                      Latest reported values
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                          Recent monthly results
+                        </p>
+                        <InfoHint text="These are snapshots for a level-based goal. Each card shows the result, the date it applies to, and who reported it. The newest result becomes the current level; these values are not added together." />
+                      </span>
+                      {latestLevelEntry && (
+                        <span className="flex items-center gap-2 text-[10.5px] text-text-tertiary">
+                          <span>
+                            Last reported <DateText value={latestLevelEntry.date} />
+                          </span>
+                          {levelReportIsStale && (
+                            <span className="rounded-full bg-orange-50 px-2 py-0.5 font-semibold text-orange-700">
+                              Update due
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </div>
                     {recentLevelEntries.length === 0 ? (
                       <p className="mt-2 text-[12.5px] text-text-secondary">
                         Nothing reported yet — log the first value.
                       </p>
                     ) : (
-                      <div className="mt-2 flex flex-wrap gap-2">
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
                         {recentLevelEntries.map((e) => (
-                          <span
+                          <div
                             key={e.id}
-                            className="flex items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-1.5"
+                            className="min-w-0 rounded-lg border border-border-light bg-[var(--surface)] px-2.5 py-2"
                           >
-                            <span className="text-[13px] font-bold text-text-primary tnum">
-                              {fmtAmount(goal.unit, e.amount)}
+                            <span className="flex items-baseline justify-between gap-2">
+                              <span className="text-[14px] font-bold text-text-primary tnum">
+                                {fmtAmount(goal.unit, e.amount)}
+                              </span>
+                              <span className="whitespace-nowrap text-[10.5px] text-text-tertiary">
+                                {/* DateText preserves date-only values in the
+                                    reader's timezone; see the note above. */}
+                                <DateText value={e.date} />
+                              </span>
                             </span>
-                            <span className="text-[10.5px] text-text-tertiary">
-                              {/* formatDate, not new Date(...).toLocaleDateString.
-                                  These entries carry a bare yyyy-mm-dd, which
-                                  `new Date` reads as UTC midnight, so a result
-                                  logged on the 5th displayed as "Sep 4" for
-                                  anybody west of UTC. Same shape, right day. */}
-                              <DateText value={e.date} />{" "}
-                              · {e.person.split(" ")[0]}
+                            <span className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-secondary">
+                              <Avatar
+                                name={e.person}
+                                tooltip={`Reported by ${e.person}`}
+                                className="h-4 w-4 shrink-0 text-[7px]"
+                              />
+                              <span className="truncate">Reported by {e.person}</span>
                             </span>
-                          </span>
+                          </div>
                         ))}
                       </div>
                     )}
