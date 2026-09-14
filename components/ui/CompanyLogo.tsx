@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 // A branded company mark: a rounded-square with the company's initials on a
@@ -212,8 +215,9 @@ export function CompanyLogo({
       .join("") || "?";
   const [a, b] = pick(name);
   const resolved = src || logoFor(name);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
-  if (resolved) {
+  if (resolved && failedSrc !== resolved) {
     // Every logo file — generated mark or real brand mark — is a square tile
     // with its padding already composed in, so this is one branch: fill the
     // rounded square exactly like the initials mark it replaces. Fitting a
@@ -224,6 +228,7 @@ export function CompanyLogo({
       <img
         src={resolved}
         alt={name}
+        onError={() => setFailedSrc(resolved)}
         className={cn("rounded-xl object-cover shrink-0", className)}
       />
     );

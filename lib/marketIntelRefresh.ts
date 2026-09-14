@@ -27,7 +27,7 @@ import {
 import { MARKET_INTEL_REFRESH_MS, collectedInCurrentCycle } from "./marketIntelCadence";
 import { marketIntelAutomaticCollectionEnabled } from "./marketIntelAutomation";
 import { findSiteLogo, storeCompanyLogo } from "./companyLogos";
-import { mirrorPhoto } from "./miPhotos";
+import { isLinkedInImageUrl, mirrorPhoto } from "./miPhotos";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
 import {
   CLASSIFY_BATCH,
@@ -280,7 +280,7 @@ async function scrapeCompanyPosts(
         ? {
             name: author.name,
             followerCount: author.follower_count ?? null,
-            logoUrl: (await mirrorPhoto(author.logo_url ?? "")) || null,
+            logoUrl: (await mirrorPhoto(author.logo_url ?? "", { fallbackToSource: false })) || null,
           }
         : null,
       slug,
@@ -1248,14 +1248,28 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
 async function saveFeedCompany(feed: MarketIntelFeed, id: string): Promise<void> {
   const company = feed.companies[id];
   if (!company) return;
+  /* Signed LinkedIn image URLs expire. Preserve them in our bucket or clear
+     them so a dead-but-nonempty URL cannot block the official-site fallback. */
+  if (company.author?.logoUrl && isLinkedInImageUrl(company.author.logoUrl)) {
+    company.author.logoUrl =
+      (await mirrorPhoto(company.author.logoUrl, { fallbackToSource: false })) || null;
+  }
+  if (company.logoUrl && isLinkedInImageUrl(company.logoUrl)) {
+    company.logoUrl =
+      (await mirrorPhoto(company.logoUrl, { fallbackToSource: false })) || null;
+  }
   if (!company.author?.logoUrl && !company.logoUrl &&
       Date.now() - Date.parse(company.logoCheckedAt || "1970-01-01") >= MARKET_INTEL_REFRESH_MS) {
     company.logoCheckedAt = new Date().toISOString();
     try {
       const tracking = await readRow(TRACKING_ROW);
       const source = tracking?.companies?.find((c: TrackedCompany) => c.id === id);
-      if (source?.logoUrl) company.logoUrl = source.logoUrl;
-      else {
+      if (source?.logoUrl) {
+        company.logoUrl = isLinkedInImageUrl(source.logoUrl)
+          ? (await mirrorPhoto(source.logoUrl, { fallbackToSource: false })) || null
+          : source.logoUrl;
+      }
+      if (!company.logoUrl) {
         const domain = normalizeSiteDomain(source?.scrape?.site || source?.website);
         const image = domain ? await findSiteLogo(domain) : null;
         if (image) company.logoUrl = await storeCompanyLogo(id, image);

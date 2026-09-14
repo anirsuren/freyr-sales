@@ -194,6 +194,17 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 14 durable company-logo repair:** LinkedIn company logos now use the
+  same non-expiring Supabase mirror as profile photos, with browser-like image
+  request headers. A failed mirror clears the temporary CDN address so the
+  official website fallback can run instead of treating an expired 403 URL as
+  a valid logo. Official-site discovery now tries `www` when the bare domain
+  has no DNS record and accepts an explicitly labelled header brand logo.
+  CompanyLogo falls back to initials if any stored image still fails at render
+  time. Alkem production data was backed up and repaired with its official-site
+  logo; the stored Supabase image returns 200 and its malformed LinkedIn slug
+  was corrected. Code is local and not deployed.
+
 - **Sep 13 Market Intel cadence and environment isolation:** Development keeps
   its full QA database but recurring news, website and LinkedIn collection is
   fail-closed on the dev/localhost hostnames. Manual company onboarding and

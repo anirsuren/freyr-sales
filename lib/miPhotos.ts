@@ -28,9 +28,15 @@ import { createHash } from "crypto";
 export const MI_PHOTO_BUCKET = "market-intel-photos";
 
 /** Only these are worth mirroring; anything else is already ours or is junk. */
-function needsMirror(url: string): boolean {
+export function isLinkedInImageUrl(url: string): boolean {
   return /^https?:\/\/[^/]*licdn\.com\//i.test(url);
 }
+
+function needsMirror(url: string): boolean {
+  return isLinkedInImageUrl(url);
+}
+
+type MirrorPhotoOptions = { fallbackToSource?: boolean };
 
 /**
  * A stable name for the picture.
@@ -57,15 +63,19 @@ function admin(): SupabaseClient | null {
 /**
  * Mirror one picture and hand back a URL that will still work next month.
  *
- * Returns the ORIGINAL url on any failure. A face that loads today from
- * LinkedIn is better than no face at all, and the next refresh tries again —
- * never let a mirroring problem cost a picture that currently works.
+ * People keep the ORIGINAL url on failure because a currently loading face is
+ * useful. Company callers opt out of that fallback so an expiring CDN string
+ * cannot prevent their official-site logo from being used instead.
  */
-export async function mirrorPhoto(url: string | null | undefined): Promise<string> {
+export async function mirrorPhoto(
+  url: string | null | undefined,
+  options: MirrorPhotoOptions = {}
+): Promise<string> {
   const src = String(url ?? "").trim();
   if (!src || !needsMirror(src)) return src;
+  const failed = () => options.fallbackToSource === false ? "" : src;
   const db = admin();
-  if (!db) return src;
+  if (!db) return failed();
 
   const key = keyFor(src);
   const store = db.storage.from(MI_PHOTO_BUCKET);
@@ -79,23 +89,29 @@ export async function mirrorPhoto(url: string | null | undefined): Promise<strin
   if (found?.some((f) => f.name === name)) return publicUrl;
 
   try {
-    const res = await fetch(src, { signal: AbortSignal.timeout(20_000) });
+    const res = await fetch(src, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/126 Safari/537.36",
+        Accept: "image/avif,image/webp,image/png,image/jpeg,image/*,*/*;q=0.8",
+      },
+      signal: AbortSignal.timeout(20_000),
+    });
     /* An expired link 403s. Nothing to mirror and nothing to be done about it
        here — the refresh that fetched a fresh URL is what fixes those. */
-    if (!res.ok) return src;
+    if (!res.ok) return failed();
     const type = res.headers.get("content-type") ?? "image/jpeg";
-    if (!type.startsWith("image/")) return src;
+    if (!type.startsWith("image/")) return failed();
     const bytes = Buffer.from(await res.arrayBuffer());
-    if (!bytes.length || bytes.length > 5_000_000) return src;
+    if (!bytes.length || bytes.length > 5_000_000) return failed();
     const { error } = await store.upload(key, bytes, {
       contentType: type,
       upsert: true,
       cacheControl: "31536000",
     });
-    if (error) return src;
+    if (error) return failed();
     return publicUrl;
   } catch {
-    return src;
+    return failed();
   }
 }
 

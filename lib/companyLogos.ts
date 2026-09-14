@@ -59,6 +59,7 @@ function iconsDeclared(html: string, base: string, label = ""): { url: string; s
     found.push({ url, score: declared || (rel.includes("apple-touch-icon") ? 180 : svg ? 150 : 32) });
   }
   for (const tag of html.match(/<img\b[^>]*>/gi) ?? []) {
+    const alt = /\balt\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1] ?? "";
     const identity = tag.match(/\b(?:alt|class|id)\s*=\s*["']([^"']+)["']/gi)?.join(" ") ?? "";
     const src = /\b(?:src|data-src)\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1];
     if (!src || (!/logo/i.test(identity) && !/(?:^|\/)logo[._-]/i.test(src))) continue;
@@ -67,7 +68,9 @@ function iconsDeclared(html: string, base: string, label = ""): { url: string; s
        carousel. An image only counts when its file or alt text carries the
        company's own name, and never from a customer, partner or award strip. */
     const squashed = `${src} ${identity}`.toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (!label || !squashed.includes(label)) continue;
+    const genericHeaderLogo = /^(?:brand\s+)?logo$/i.test(alt.trim()) &&
+      /(?:^|\/)(?:brand[-_])?logo(?:[._?/-]|$)/i.test(src);
+    if ((!label || !squashed.includes(label)) && !genericHeaderLogo) continue;
     if (/carousel|client|customer|partner|award|badge|certif|trust|testimonial/i.test(`${src} ${identity}`)) continue;
     try {
       const url = new URL(decodeHref(src), base).toString();
@@ -167,18 +170,23 @@ export async function logoLooksUsable(png: Buffer): Promise<boolean> {
 export async function findSiteLogo(domain: string): Promise<LogoImage | null> {
   let html = "";
   let base = `https://${domain}/`;
-  try {
-    const res = await fetch(base, {
-      headers: { "User-Agent": UA, Accept: "text/html", "Accept-Language": "en" },
-      redirect: "follow",
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (res.ok) {
-      html = (await res.text()).slice(0, 400_000);
-      base = res.url || base;
+  const homepages = [base];
+  if (!domain.toLowerCase().startsWith("www.")) homepages.push(`https://www.${domain}/`);
+  for (const homepage of homepages) {
+    try {
+      const res = await fetch(homepage, {
+        headers: { "User-Agent": UA, Accept: "text/html", "Accept-Language": "en" },
+        redirect: "follow",
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (res.ok) {
+        html = (await res.text()).slice(0, 400_000);
+        base = res.url || homepage;
+        break;
+      }
+    } catch {
+      /* Some official sites only publish DNS for www. */
     }
-  } catch {
-    /* a site that turns servers away still keeps icons at the usual paths */
   }
   let origin = `https://${domain}`;
   try {
