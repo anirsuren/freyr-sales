@@ -1753,9 +1753,9 @@ export function RequestDetail({
           open
           onClose={() => setEditing(false)}
           title={`Edit ${r.ref}`}
-          size="default"
+          size="wide"
         >
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
                 Priority
@@ -1789,7 +1789,7 @@ export function RequestDetail({
                 className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
               />
             </label>
-            <div className="flex items-center justify-end gap-2 pt-1">
+            <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4 sm:col-span-2">
               <button
                 type="button"
                 onClick={() => setEditing(false)}
@@ -2369,7 +2369,7 @@ function AddDocForm({
           <div className="flex items-center gap-3">
             <span className="h-px flex-1 bg-border-light" />
             <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-              or point at one we already have
+              or reuse an existing document
             </span>
             <span className="h-px flex-1 bg-border-light" />
           </div>
@@ -2381,61 +2381,68 @@ function AddDocForm({
               description="Documents built on another request show up here. There are none on any other request so far."
             />
           ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <ColorSelect
-            value={refRequestId}
-            onChange={(v) => {
-              setRefRequestId(v);
-              setRefDocId("");
-            }}
-            ariaLabel="Which request is it on"
-            minWidth={220}
-            searchable
-            inlineDescription
-            options={[
-              ...(refRequestId
-                ? []
-                : [{ value: "", label: "Pick the request", color: "#64748B", icon: CircleDashed }]),
-              /* HOW MANY DOCUMENTS ARE BEHIND EACH ONE, before it is picked
-                 (Suren, Aug 28: "do that everywhere else this could be helpful
-                 where the next step is dependent on the first dropdown having
-                 data"). The picker beside this one is filled from this choice. */
-              ...linkables.map((l) => ({
-                value: l.id,
-                label: `${l.ref} · ${l.title}`,
-                color: "#0D9488",
-                icon: Link2,
-                description: `${l.docs.length} ${
-                  l.docs.length === 1 ? "document" : "documents"
-                }`,
-                descriptionAccent: l.docs.length > 0,
-              })),
-            ]}
-          />
-          <ColorSelect
-            value={refDocId}
-            onChange={setRefDocId}
-            ariaLabel="Which document"
-            minWidth={200}
-            options={[
-              ...(refDocId
-                ? []
-                : [
-                    {
-                      value: "",
-                      label: home ? "Pick the document" : "Pick the request first",
-                      color: "#64748B",
-                      icon: CircleDashed,
-                    },
-                  ]),
-              ...(home?.docs ?? []).map((d) => ({
-                value: d.id,
-                label: `${d.name} v${d.version}`,
-                color: "var(--ink-bright-blue)",
-                icon: FileText,
-              })),
-            ]}
-          />
+        <div className="space-y-3 rounded-xl border border-border-light bg-surface/40 p-4">
+          <Field label="1. Choose the request that has the document">
+            <ColorSelect
+              value={refRequestId}
+              onChange={(v) => {
+                setRefRequestId(v);
+                setRefDocId("");
+              }}
+              ariaLabel="Choose the request that has the document"
+              className="w-full"
+              minWidth={320}
+              searchable
+              inlineDescription
+              options={[
+                ...(refRequestId
+                  ? []
+                  : [{ value: "", label: "Choose a request", color: "#64748B", icon: CircleDashed }]),
+                /* The title is the useful identifier here. The internal ref is
+                   already available on the request page and made these picker
+                   rows too long to scan. */
+                ...linkables.map((l) => ({
+                  value: l.id,
+                  label: l.title,
+                  color: "#0D9488",
+                  icon: Link2,
+                  description: `${l.docs.length} ${
+                    l.docs.length === 1 ? "document available" : "documents available"
+                  }`,
+                  descriptionAccent: l.docs.length > 0,
+                })),
+              ]}
+            />
+          </Field>
+          <Field label="2. Choose the document to link">
+            <ColorSelect
+              value={refDocId}
+              onChange={setRefDocId}
+              ariaLabel="Choose the document to link"
+              className="w-full"
+              minWidth={320}
+              searchable
+              options={[
+                ...(refDocId
+                  ? []
+                  : [
+                      {
+                        value: "",
+                        label: home ? "Choose a document" : "Choose a request above first",
+                        color: "#64748B",
+                        icon: CircleDashed,
+                      },
+                    ]),
+                ...(home?.docs ?? []).map((d) => ({
+                  value: d.id,
+                  label: d.name,
+                  description: `Version ${d.version}`,
+                  color: "var(--ink-bright-blue)",
+                  icon: FileText,
+                })),
+              ]}
+            />
+          </Field>
           {/* LOOK AT IT BEFORE YOU LINK IT (Anir, Aug 28: "if I choose that
               document I should be able to like open it or something lol"). Two
               dropdowns and a note asked you to vouch for a file by its
@@ -2447,7 +2454,7 @@ function AddDocForm({
               href={solutioningDownloadUrl(refRequestId, picked.id)}
               target="_blank"
               rel="noreferrer"
-              className="col-span-full inline-flex items-center gap-2 rounded-lg border border-border-light bg-surface/50 px-3 py-2 text-[12.5px] transition-colors hover:border-blue-subtle hover:bg-blue-light/20 sm:w-fit"
+              className="inline-flex items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-2 text-[12.5px] transition-colors hover:border-blue-subtle hover:bg-blue-light/20 sm:w-fit"
             >
               <FileText size={14} strokeWidth={2} className="shrink-0 text-blue-primary" />
               <span className="min-w-0 truncate font-semibold text-text-primary">
@@ -2463,7 +2470,7 @@ function AddDocForm({
                "Open it" on one of those sent the reader to a 404 — found in
                the browser, Aug 28, on the first document I tried. Say what
                it is instead of offering a door that does not open. */
-            <span className="col-span-full inline-flex items-center gap-2 rounded-lg border border-border-light bg-surface/50 px-3 py-2 text-[12.5px] sm:w-fit">
+            <span className="inline-flex items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-2 text-[12.5px] sm:w-fit">
               <FileText size={14} strokeWidth={2} className="shrink-0 text-text-tertiary" />
               <span className="min-w-0 truncate font-semibold text-text-primary">
                 {picked.name} v{picked.version}

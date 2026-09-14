@@ -156,7 +156,7 @@ const pad = (n: number) => String(n).padStart(3, "0");
  * one, and each store sweeps rows of older generations out before laying the
  * new floor. Rows a person added by hand carry no fill prefix and survive.
  */
-export const FILL_GENERATION = 4;
+export const FILL_GENERATION = 5;
 const FP = `fill${FILL_GENERATION}-`;
 
 /** A generated row from an OLDER floor: swept on the next top-up. */
@@ -636,8 +636,10 @@ export function mockFillSolutioning(): SolutionRequest[] {
         ...(kind === "meeting"
           ? { meetingAt: day(5 + ((a.i + k) % 30)), attendees: [a.owner, owner] }
           : {}),
-        /* Documents, so opening one lands on the four tabs with something on
-           them rather than four empty shelves. */
+        /* Every shelf is populated. Mock mode is the product walkthrough, so
+           opening any generated request must show the whole document flow:
+           source material, active work, the customer-ready output and the
+           analysis that explains what happened. */
         docs: [
           {
             id: `${FP}sd-${pad(p)}-${k + 1}-1`,
@@ -646,24 +648,47 @@ export function mockFillSolutioning(): SolutionRequest[] {
             version: 1,
             docsPath: sampleDocPath(at([...DOC_FILES], a.i + k)),
             fileName: at([...DOC_FILES], a.i + k),
+            assignedTo: owner,
             addedBy: a.owner,
             addedAt: requestedAt,
+            note: "Customer brief and source requirements for this request.",
           },
-          ...(k % 2 === 0
-            ? [
-                {
-                  id: `${FP}sd-${pad(p)}-${k + 1}-2`,
-                  category: "working" as const,
-                  name: `${offering} response draft`,
-                  version: 1,
-                  docsPath: sampleDocPath(at([...DOC_FILES], a.i + k + 2)),
-                  fileName: at([...DOC_FILES], a.i + k + 2),
-                  assignedTo: owner,
-                  addedBy: owner,
-                  addedAt: iso(-(2 + ((a.i + k) % 20))),
-                },
-              ]
-            : []),
+          {
+            id: `${FP}sd-${pad(p)}-${k + 1}-2`,
+            category: "working",
+            name: `${offering} response draft`,
+            version: 2,
+            docsPath: sampleDocPath(at([...DOC_FILES], a.i + k + 2)),
+            fileName: at([...DOC_FILES], a.i + k + 2),
+            assignedTo: owner,
+            addedBy: owner,
+            addedAt: iso(-(2 + ((a.i + k) % 20))),
+            note: "Current working version with the latest scope and review comments.",
+          },
+          {
+            id: `${FP}sd-${pad(p)}-${k + 1}-3`,
+            category: "final",
+            name: `${a.company} ${kind === "presentation" ? "presentation" : "response"}`,
+            version: 3,
+            docsPath: sampleDocPath(at([...DOC_FILES], a.i + k + 4)),
+            fileName: at([...DOC_FILES], a.i + k + 4),
+            assignedTo: owner,
+            addedBy: owner,
+            addedAt: iso(-(1 + ((a.i + k) % 12))),
+            note: "Customer-ready deliverable approved for the next conversation.",
+          },
+          {
+            id: `${FP}sd-${pad(p)}-${k + 1}-4`,
+            category: "analysis",
+            name: `${a.company} response analysis`,
+            version: 1,
+            docsPath: sampleDocPath(at([...DOC_FILES], a.i + k + 6)),
+            fileName: at([...DOC_FILES], a.i + k + 6),
+            assignedTo: a.third,
+            addedBy: a.third,
+            addedAt: iso(-((a.i + k) % 10)),
+            note: "Decision criteria, open risks and recommended follow-up captured after review.",
+          },
         ],
         activity: [
           { at: requestedAt, by: a.owner, what: `Raised this ${isRequest ? "request" : type}` },
