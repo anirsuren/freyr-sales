@@ -39,7 +39,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyFan } from "@/components/ui/CompanyFan";
 import { EvidenceInline, EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
 import { EvidencePicker } from "./EvidencePicker";
-import { SegmentBrackets } from "./bits";
+import { SegmentValues } from "./bits";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { cn, formatDate } from "@/lib/utils";
@@ -2205,9 +2205,9 @@ export function ClaimReviewDialog({
                 percentage floating on the right. Every other bar in the
                 module is read the same way — $0 pinned at the left end, the
                 target pinned at the right end where the target actually is,
-                and a bracket under each segment naming the money it measures.
-                This one now is too, from the same SegmentBrackets component,
-                so it cannot drift from them again.
+                and the value of each coloured segment immediately underneath.
+                This one now uses the same SegmentValues component, so it
+                cannot drift from them again.
 
                 Solid green is signed off; the stripe is this claim in its own
                 status colour. "% there" counts verified money only — the one
@@ -2325,7 +2325,7 @@ export function ClaimReviewDialog({
                       />
                     )}
                   </span>
-                  <SegmentBrackets
+                  <SegmentValues
                     unit={goal.unit}
                     parts={[
                       {
@@ -2342,7 +2342,7 @@ export function ClaimReviewDialog({
                       },
                     ]}
                   />
-                  {/* The brackets carry the figures; this names them, so a
+                  {/* The values carry the figures; this names them, so a
                       reader never has to match a colour to a meaning. */}
                   <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[10.5px] text-text-tertiary">
                     {verifiedOthers > 0 && (

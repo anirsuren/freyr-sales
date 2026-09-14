@@ -1144,7 +1144,7 @@ export function GoalZoom({
               );
             }
             return (
-              <div className="space-y-1">
+              <div className="overflow-hidden rounded-lg border border-border-light bg-white divide-y divide-border-light">
                 {entries.map((a) => {
                   const opp = a.opportunityId
                     ? opportunities.find((o) => o.id === a.opportunityId)
@@ -1163,7 +1163,7 @@ export function GoalZoom({
                           setOpenResult(a);
                         }
                       }}
-                      className="flex cursor-pointer flex-col gap-1 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--blue-primary)]"
+                      className="flex cursor-pointer flex-col gap-1 px-2.5 py-2.5 text-left transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--blue-primary)]"
                     >
                       <span className="flex items-center gap-2">
                         {indent && (

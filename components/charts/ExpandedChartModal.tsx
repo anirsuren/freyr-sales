@@ -201,14 +201,14 @@ export function ExpandedChartControl({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 border-b border-border-light px-1 py-3">
-            <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">
+          <div className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto border-b border-border-light px-1 py-3">
+            <span className="mr-1 shrink-0 text-[10.5px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">
               Show
             </span>
             <div
               role="group"
               aria-label={`Visible chart ${itemNoun}`}
-              className="flex max-h-[120px] flex-wrap gap-2 overflow-y-auto pr-1"
+              className="flex w-max flex-nowrap gap-2 pr-1"
             >
               <button
                 type="button"
@@ -619,7 +619,7 @@ export function ExpandedChartModal({
             bars={chart.legendBars}
             pill={chart.legendPills}
             showValues={chart.legendValues}
-            className="w-full"
+            className={chart.legendBars === false ? "w-fit max-w-full" : "w-full"}
           />
         </div>
       </div>

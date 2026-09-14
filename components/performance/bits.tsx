@@ -784,86 +784,41 @@ export function GroupPill({
  * off, the pale part is claimed and still waiting, and the marker is the
  * calendar: where this would have to stand today to be on time.
  */
-/**
- * WHERE EACH NUMBER STARTS AND STOPS (Anir, Aug 20: "what does 80k + 120k
- * mean? ... Show a line: this is 80k, this is 120k. Like a vertical line, then
- * a horizontal line, and then a vertical line").
- *
- * The header pill said "$80K +$120K" and left you to work out which part of the
- * bar was which. This measures them: a bracket under each segment, exactly as
- * wide as the segment, with its own amount underneath in its own colour.
- */
-export function SegmentBrackets({
+/** The values represented by the coloured sections of a progress track. */
+export function SegmentValues({
   parts,
   unit,
 }: {
   parts: { key: string; value: number; pct: number; color: string }[];
   unit: GoalUnit;
 }) {
-  let cursor = 0;
-  const shown = parts.flatMap((p) => {
-    const start = cursor;
-    cursor += p.pct;
-    return p.pct > 0.5 && p.value > 0
-      ? [{ ...p, start, center: start + p.pct / 2 }]
-      : [];
-  });
-  /* ONE SEGMENT STILL DESERVES ITS LABEL (Anir, Aug 20: "it doesn't even show
-     me anything now" — a group with nothing verified and $250K sent back drew
-     a bar with no bracket at all, so the only number near it was a $0).
-     Two brackets exist to tell segments apart; one bracket still says what the
-     bar is made of, which is the whole job. */
+  const shown = parts.filter((p) => p.pct > 0.5 && p.value > 0);
   if (shown.length < 1) return null;
-  const labelPos = (center: number): React.CSSProperties => {
-    if (center <= 14) return { left: 0 };
-    if (center >= 86) return { right: 0 };
-    return { left: `${center}%`, transform: "translateX(-50%)" };
-  };
   return (
-    <div className="mt-1 w-full" aria-hidden="true">
-      <div className="relative h-[5px] w-full">
-        {/* THE TICKS POINT AT THE BAR (Anir, Aug 20: "do it the opposite
-            way. The vertical lines should be pointing towards the bar").
-            Drawn with the rule on top, the bracket opened downwards and
-            read as a tray under the label instead of a measurement of the
-            segment above it. Rule on the bottom, ticks rising to meet the
-            bar they measure. */}
-        {shown.map((p) => (
+    /* VALUES ARE A NORMAL ROW, NEVER ABSOLUTELY POSITIONED. Positioning each
+       number under the centre of a tiny segment made adjacent values collide;
+       moving them to separate vertical lanes made a two-part total read like a
+       broken list. A compact, non-wrapping row keeps the amounts side by side
+       at every zoom level. The coloured stroke is the key for the segment; the
+       bar itself already shows where that segment begins and ends. */
+    <div
+      className="mt-1.5 flex w-full flex-nowrap items-center gap-4 overflow-x-auto pb-0.5"
+      aria-hidden="true"
+    >
+      {shown.map((p) => (
+        <span key={p.key} className="inline-flex shrink-0 items-center gap-1.5">
           <span
-            key={p.key}
-            className="absolute bottom-0 h-[5px] rounded-b-[2px] border-x-[1.5px] border-b-[1.5px]"
-            style={{
-              left: `${p.start}%`,
-              width: `${p.pct}%`,
-              borderColor: p.color,
-            }}
+            className="h-3 w-1 rounded-full"
+            style={{ background: p.color }}
           />
-        ))}
-      </div>
-      {/* EACH VALUE OWNS A LANE. Letting labels overrun narrow segments fixed
-          truncation but allowed adjacent values to merge into one fake number
-          (32 and 20 became "3220"). A separate vertical lane for every
-          segment makes overlap impossible at every panel width and for every
-          number length, while the bracket above still points to the exact
-          section of the track. */}
-      <div
-        className="relative mt-[3px] w-full"
-        style={{ height: `${shown.length * 14}px` }}
-      >
-        {shown.map((p, index) => (
           <span
-            key={p.key}
-            className="absolute whitespace-nowrap text-[10px] font-bold leading-[12px] tnum"
-            style={{
-              ...labelPos(p.center),
-              top: `${index * 14}px`,
-              color: p.color,
-            }}
+            className="whitespace-nowrap text-[10px] font-bold leading-none tnum"
+            style={{ color: p.color }}
           >
             {fmtAmount(unit, p.value)}
           </span>
-        ))}
-      </div>
+        </span>
+      ))}
     </div>
   );
 }
@@ -1185,7 +1140,7 @@ export function PaceTimeline({
                 and makes the brackets line up with the stripes exactly. */}
             <div className="block">
               <span className="block w-full">
-                <SegmentBrackets
+                <SegmentValues
                   unit={unit}
                   parts={[
                     {
