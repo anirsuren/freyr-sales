@@ -887,7 +887,9 @@ export function RequestDetail({
                      plain chip rather than becoming a broken link. */
                   <div className="flex flex-wrap gap-1.5">
                     {r.opportunityLabels.map((label, i) => {
-                      const id = r.opportunityIds?.[i];
+                      /* Linked only when names and ids line up one to one. */
+                      const id =
+                        r.opportunityIds?.length === r.opportunityLabels.length ? r.opportunityIds[i] : undefined;
                       const inner = (
                         <>
                           <ListChecks size={12} strokeWidth={2} />
@@ -917,7 +919,9 @@ export function RequestDetail({
                 {r.contactNames.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {r.contactNames.map((name, i) => {
-                      const contactId = r.contactIds[i];
+                      /* Linked only when names and ids line up one to one. */
+                      const contactId =
+                        r.contactIds.length === r.contactNames.length ? r.contactIds[i] : undefined;
                       const inner = (
                         <>
                           <Avatar name={name} className="h-[16px] w-[16px] text-[6px]" />

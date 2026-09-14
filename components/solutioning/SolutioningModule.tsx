@@ -1283,7 +1283,9 @@ function RequestPanel({
                         </Link>
                       )}
                       {r.opportunityLabels.map((label, index) => {
-                        const opportunityId = r.opportunityIds[index];
+                        /* Linked only when names and ids line up one to one. */
+                        const opportunityId =
+                          r.opportunityIds.length === r.opportunityLabels.length ? r.opportunityIds[index] : undefined;
                         const content = (
                           <>
                           <Briefcase
@@ -1309,7 +1311,8 @@ function RequestPanel({
                         );
                       })}
                       {r.contactNames.map((name, index) => {
-                        const contactId = r.contactIds[index];
+                        const contactId =
+                          r.contactIds.length === r.contactNames.length ? r.contactIds[index] : undefined;
                         const content = (
                           <>
                           <Avatar
@@ -2257,7 +2260,10 @@ export function NewRequestDialog({
               <div className="mt-1.5">
                 <ColorSelect
                   value={customerId}
-                  onChange={setCustomerId}
+                  onChange={(nextCustomerId) => {
+                    if (nextCustomerId !== customerId) setOppIds([]);
+                    setCustomerId(nextCustomerId);
+                  }}
                   ariaLabel="Customer"
                   minWidth={220}
                   searchable
@@ -2605,6 +2611,12 @@ export function NewRequestDialog({
               onClick={async () => {
                 if (!kind || !customer) return;
                 setSaving(true);
+                /* Ids and names travel as pairs, so the request page can link
+                   each name to its own record: a deal made in this form, or one
+                   no longer on this account, used to shift every later name
+                   onto the wrong id. */
+                const pickedDeals = oppIds.flatMap((id) => customerOpps.filter((o) => o.id === id).slice(0, 1));
+                const pickedContacts = contactIds.flatMap((id) => contacts.filter((c) => c.id === id).slice(0, 1));
                 const ok = await onCreate({
                   kind,
                   subtype:
@@ -2617,16 +2629,10 @@ export function NewRequestDialog({
                   details: details.trim() || undefined,
                   customerId: customer.id,
                   customer: customer.name,
-                  opportunityIds: oppIds,
-                  opportunityLabels: oppIds
-                    .map(
-                      (id) => opportunities.find((o) => o.id === id)?.label ?? ""
-                    )
-                    .filter(Boolean),
-                  contactIds,
-                  contactNames: contactIds
-                    .map((id) => contacts.find((c) => c.id === id)?.name ?? "")
-                    .filter(Boolean),
+                  opportunityIds: pickedDeals.map((o) => o.id),
+                  opportunityLabels: pickedDeals.map((o) => o.label),
+                  contactIds: pickedContacts.map((c) => c.id),
+                  contactNames: pickedContacts.map((c) => c.name),
                   neededBy: neededBy || undefined,
                   meetingAt: meetingAt || undefined,
                   attendees: attendees.length ? attendees : undefined,

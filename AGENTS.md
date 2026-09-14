@@ -688,3 +688,6 @@ the "heavy traffic" front door.
 
 ### Sep 14: meeting form and record navigation
 Completed locally, not deployed: New Meeting stores an optional local time beside the required date and shows it on meeting lists and details without changing existing date-only rows. The list view is labelled accurately; unused row space opens the meeting while the chevron expands it. Customer, opportunity, contact, owner, and Freyr attendee names link to their records on meeting surfaces. The attendee picker now exposes "Create new contact" before typing, and every shared MultiPicker closes on captured outside pointer input. Meeting footer validation sits immediately left of Cancel. Mock writes remain isolated by `getDataMode()`/`getDb()` and the `meetings:mock` store row. Typecheck and production build pass; no deployment.
+
+### Sep 14: solution request relationship integrity
+Switching the customer in New Solution Request now clears the prior account's selected opportunities immediately, and submission filters the final opportunity/contact pairs against the currently visible records. Request panels only link labels to records when their parallel name/id lists have the same length, so ambiguous legacy data stays readable without opening an unrelated record. Typecheck, rules tests, and the production build pass; verified through code and CLI only at the user's request.
