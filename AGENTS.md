@@ -194,6 +194,12 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 14 deviations attention layout:** The Mock-mode invalid/deviated
+  records section now opens with a compact diagnostic heading and separates
+  record problems from owner rankings into two quiet summary bands. “Deviating
+  most” is now the clearer “Most deviations,” and the visible-result count has
+  its own stable position. Local change, not deployed.
+
 - **Sep 14 lead-dialog validation placement:** New/Edit lead validation now
   lives in the right-aligned footer action row, immediately left of Cancel,
   instead of occupying a separate line above the buttons. The message can wrap

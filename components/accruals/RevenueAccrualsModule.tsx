@@ -354,6 +354,8 @@ function DeviationsTable({
     () => rows.filter((r) => r.accrualStatus === "Inactive").length,
     [rows]
   );
+  const invalidOnly =
+    validityFilter.length === 1 && validityFilter[0] === "Invalid";
 
   if (!rows.length && invalidAll.length === 0) {
     return (
@@ -371,18 +373,40 @@ function DeviationsTable({
 
   return (
     <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-          <UserPen size={15} strokeWidth={2} className="text-[var(--ink-violet-soft)]" />
-          {validityFilter.length === 1 && validityFilter[0] === "Invalid"
-            ? "Invalid records"
-            : "Deviated records"}
-          <span className="rounded-full bg-surface px-2 py-0.5 text-[11.5px] font-semibold text-text-secondary">
-            {shown.length}
-            {shown.length !== rows.length ? ` of ${rows.length}` : ""}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+              invalidOnly
+                ? "bg-[rgba(220,38,38,0.08)] text-[color:var(--status-red)]"
+                : "bg-[rgba(124,58,237,0.08)] text-[color:var(--ink-violet-soft)]"
+            )}
+          >
+            {invalidOnly ? (
+              <AlertTriangle size={17} strokeWidth={2.2} />
+            ) : (
+              <UserPen size={17} strokeWidth={2} />
+            )}
           </span>
-        </h2>
-
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-semibold leading-tight text-text-primary">
+              {invalidOnly ? "Invalid records" : "Deviated records"}
+            </h2>
+            <p className="mt-1 text-[12px] leading-tight text-text-tertiary">
+              {invalidOnly
+                ? "Records that need correction before reporting."
+                : "Review changed plans and the owners with the most movement."}
+            </p>
+          </div>
+        </div>
+        <span className="inline-flex h-7 items-center rounded-full bg-surface px-2.5 text-[11.5px] font-semibold text-text-secondary">
+          <span className="tnum text-text-primary">{shown.length}</span>
+          <span className="mx-1">shown</span>
+          {shown.length !== rows.length && (
+            <span className="tnum text-text-tertiary">of {rows.length}</span>
+          )}
+        </span>
       </div>
 
       {/* THE ANSWER BEFORE THE ROWS. See the note above `byOwner`: the table
@@ -405,13 +429,25 @@ function DeviationsTable({
           when it is on, and pressing an on chip clears it. `aria-pressed`
           says the same thing to a screen reader that the fill says to an eye. */}
       {(byOwner.length > 0 || inactiveCount > 0 || invalidAll.length > 0) && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div
+          className={cn(
+            "mt-4 grid gap-3",
+            byOwner.length > 0 && (inactiveCount > 0 || invalidAll.length > 0)
+              ? "lg:grid-cols-[minmax(280px,0.8fr)_minmax(420px,1.2fr)]"
+              : "grid-cols-1"
+          )}
+        >
           {/* THE INVALID ENTRIES, one press away (Manoj, Sep 10). Same chip
               shape as the others, and pressing it again shows everything. */}
-          {invalidAll.length > 0 &&
-            (() => {
-              const on = validityFilter.length === 1 && validityFilter[0] === "Invalid";
-              return (
+          {(invalidAll.length > 0 || inactiveCount > 0) && (
+            <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-border-light bg-surface/55 px-3 py-2.5">
+              <span className="mr-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                Needs attention
+              </span>
+              {invalidAll.length > 0 &&
+                (() => {
+                  const on = invalidOnly;
+                  return (
                 <button
                   type="button"
                   aria-pressed={on}
@@ -433,12 +469,12 @@ function DeviationsTable({
                   <span>invalid</span>
                   {on && <X size={13} strokeWidth={2.6} className="ml-0.5" />}
                 </button>
-              );
-            })()}
-          {inactiveCount > 0 &&
-            (() => {
-              const on = statusFilter.includes("Inactive");
-              return (
+                  );
+                })()}
+              {inactiveCount > 0 &&
+                (() => {
+                  const on = statusFilter.includes("Inactive");
+                  return (
                 <button
                   type="button"
                   aria-pressed={on}
@@ -462,19 +498,15 @@ function DeviationsTable({
                   <span>expired unsigned</span>
                   {on && <X size={13} strokeWidth={2.6} className="ml-0.5" />}
                 </button>
-              );
-            })()}
+                  );
+                })()}
+            </div>
+          )}
 
           {byOwner.length > 0 && (
-            <>
-              {(inactiveCount > 0 || invalidAll.length > 0) && (
-                <span
-                  aria-hidden
-                  className="h-5 w-px shrink-0 bg-border-light"
-                />
-              )}
-              <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                Deviating most
+            <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-[rgba(124,58,237,0.16)] bg-[rgba(124,58,237,0.035)] px-3 py-2.5">
+              <span className="mr-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                Most deviations
               </span>
               {byOwner.map(([who, n]) => {
                 const on = ownerFilter.includes(who);
@@ -524,7 +556,7 @@ function DeviationsTable({
                   </button>
                 );
               })}
-            </>
+            </div>
           )}
         </div>
       )}
