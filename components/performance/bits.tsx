@@ -800,44 +800,70 @@ export function SegmentBrackets({
   parts: { key: string; value: number; pct: number; color: string }[];
   unit: GoalUnit;
 }) {
-  const shown = parts.filter((p) => p.pct > 0.5 && p.value > 0);
+  let cursor = 0;
+  const shown = parts.flatMap((p) => {
+    const start = cursor;
+    cursor += p.pct;
+    return p.pct > 0.5 && p.value > 0
+      ? [{ ...p, start, center: start + p.pct / 2 }]
+      : [];
+  });
   /* ONE SEGMENT STILL DESERVES ITS LABEL (Anir, Aug 20: "it doesn't even show
      me anything now" — a group with nothing verified and $250K sent back drew
      a bar with no bracket at all, so the only number near it was a $0).
      Two brackets exist to tell segments apart; one bracket still says what the
      bar is made of, which is the whole job. */
   if (shown.length < 1) return null;
+  const labelPos = (center: number): React.CSSProperties => {
+    if (center <= 14) return { left: 0 };
+    if (center >= 86) return { right: 0 };
+    return { left: `${center}%`, transform: "translateX(-50%)" };
+  };
   return (
-    <div className="mt-1 flex w-full items-start" aria-hidden="true">
-      {shown.map((p) => (
-        <span
-          key={p.key}
-          className="min-w-0 shrink-0 px-[1.5px]"
-          style={{ width: `${p.pct}%` }}
-        >
-          {/* THE TICKS POINT AT THE BAR (Anir, Aug 20: "do it the opposite
-              way. The vertical lines should be pointing towards the bar").
-              Drawn with the rule on top, the bracket opened downwards and
-              read as a tray under the label instead of a measurement of the
-              segment above it. Rule on the bottom, ticks rising to meet the
-              bar they measure. */}
+    <div className="mt-1 w-full" aria-hidden="true">
+      <div className="relative h-[5px] w-full">
+        {/* THE TICKS POINT AT THE BAR (Anir, Aug 20: "do it the opposite
+            way. The vertical lines should be pointing towards the bar").
+            Drawn with the rule on top, the bracket opened downwards and
+            read as a tray under the label instead of a measurement of the
+            segment above it. Rule on the bottom, ticks rising to meet the
+            bar they measure. */}
+        {shown.map((p) => (
           <span
-            className="block h-[5px] rounded-b-[2px] border-x-[1.5px] border-b-[1.5px]"
-            style={{ borderColor: p.color }}
+            key={p.key}
+            className="absolute bottom-0 h-[5px] rounded-b-[2px] border-x-[1.5px] border-b-[1.5px]"
+            style={{
+              left: `${p.start}%`,
+              width: `${p.pct}%`,
+              borderColor: p.color,
+            }}
           />
-          {/* A TRUNCATED AMOUNT IS NOT AN AMOUNT. The label was clipped to
-              its segment's share of the bar, so a narrow slice printed "$8…"
-              — the one thing the bracket exists to say. It stays on one line
-              and is allowed to overrun its slice: centred on the bracket it
-              measures, so it still reads as belonging to it. */}
+        ))}
+      </div>
+      {/* EACH VALUE OWNS A LANE. Letting labels overrun narrow segments fixed
+          truncation but allowed adjacent values to merge into one fake number
+          (32 and 20 became "3220"). A separate vertical lane for every
+          segment makes overlap impossible at every panel width and for every
+          number length, while the bracket above still points to the exact
+          section of the track. */}
+      <div
+        className="relative mt-[3px] w-full"
+        style={{ height: `${shown.length * 14}px` }}
+      >
+        {shown.map((p, index) => (
           <span
-            className="mt-[3px] block overflow-visible whitespace-nowrap text-center text-[10px] font-bold tnum"
-            style={{ color: p.color }}
+            key={p.key}
+            className="absolute whitespace-nowrap text-[10px] font-bold leading-[12px] tnum"
+            style={{
+              ...labelPos(p.center),
+              top: `${index * 14}px`,
+              color: p.color,
+            }}
           >
             {fmtAmount(unit, p.value)}
           </span>
-        </span>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
