@@ -22,9 +22,11 @@ import { cn } from "@/lib/utils";
 export function ScrollHint({
   children,
   className,
+  containerClassName,
 }: {
   children: React.ReactNode;
   className?: string;
+  containerClassName?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [more, setMore] = useState(false);
@@ -48,7 +50,7 @@ export function ScrollHint({
   }, [children]);
 
   return (
-    <div className="relative">
+    <div className={cn("relative", containerClassName)}>
       <div ref={ref} className={cn("overflow-y-auto", className)}>
         {children}
       </div>
@@ -58,7 +60,7 @@ export function ScrollHint({
       <span
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 h-8 rounded-t-lg bg-gradient-to-b from-white to-transparent transition-opacity",
+          "pointer-events-none absolute inset-x-0 top-0 h-5 rounded-t-lg bg-gradient-to-b from-white to-transparent transition-opacity",
           atTop ? "opacity-0" : "opacity-100"
         )}
       />
@@ -66,7 +68,7 @@ export function ScrollHint({
       <span
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 h-8 rounded-b-lg bg-gradient-to-t from-white/95 via-white/55 to-transparent transition-opacity",
+          "pointer-events-none absolute inset-x-0 bottom-0 h-5 rounded-b-lg bg-gradient-to-t from-white/90 via-white/35 to-transparent transition-opacity",
           more ? "opacity-100" : "opacity-0"
         )}
       />

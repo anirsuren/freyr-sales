@@ -1509,15 +1509,16 @@ export function RequestDetail({
         open={commenting}
         onClose={() => setCommenting(false)}
         title="Add a comment"
-        /* THE FRAME DOES NOT MOVE. Staging files used to grow the pop-up and
-           re-centre it under the cursor (Sep 7 test loop). The body is one
-           fixed height with the footer parked at its foot; the attachment
-           list scrolls inside once it is taller than three rows. */
-        bodyClassName="min-h-[440px] max-h-[440px] flex flex-col"
+        size="wide"
+        /* THE FRAME DOES NOT MOVE. The larger canvas opens ready for a real
+           handoff note; staged files scroll inside instead of changing the
+           dialog's size or position. */
+        bodyClassName="min-h-[500px] max-h-[500px] flex flex-col"
       >
         <Textarea
-          rows={5}
+          rows={9}
           autoFocus
+          className="min-h-[270px] rounded-xl bg-white p-4 text-[14px] leading-relaxed"
           value={comment}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
             setComment(e.target.value)

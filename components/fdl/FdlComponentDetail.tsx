@@ -1,10 +1,11 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateEcho } from "@/components/ui/DateEcho";
 import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
+import { useStickyValue } from "@/lib/useStickyValue";
 import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
 import { RoadmapFollowButton } from "@/components/notifications/RoadmapFollowButton";
@@ -100,8 +101,60 @@ import { tint } from "@/lib/tint";
 const FIELD =
   "w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary";
 
+const VERSION_PANEL_DEFAULT = 330;
+const VERSION_PANEL_MIN = 230;
+const VERSION_PANEL_MAX = 620;
+
 function slug(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function VersionAttachmentRow({
+  file,
+  feature,
+  onOpen,
+}: {
+  file: FdlFeatureAttachment;
+  feature: string;
+  onOpen: () => void;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = file.kind === "image" && Boolean(file.url) && !imageFailed;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group flex w-full cursor-pointer items-center gap-3 px-1 py-2.5 text-left transition-colors hover:bg-blue-light/40"
+      title={`Open ${file.name}`}
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-light bg-surface">
+        {showImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={file.url}
+            alt=""
+            onError={() => setImageFailed(true)}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <FileText size={17} strokeWidth={1.8} className="text-text-tertiary" />
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+          {file.name}
+        </span>
+        <span className="block truncate text-[10.5px] text-text-tertiary">
+          Attached to {feature}
+        </span>
+      </span>
+      <ChevronRight
+        size={14}
+        className="shrink-0 text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary"
+      />
+    </button>
+  );
 }
 
 /**
@@ -368,6 +421,42 @@ export function FdlComponentDetail({
   // exactly what you do not want when comparing two releases (Anir, Aug 9:
   // "why is it closing the other dropdown when I open one?").
   const [openVersions, setOpenVersions] = useState<Set<string>>(new Set());
+  const [versionPanelHeight, setVersionPanelHeight] = useStickyValue(
+    "freyr.fdl.versionPanelHeight",
+    VERSION_PANEL_DEFAULT
+  );
+  const versionPanelDragFrom = useRef<{ y: number; height: number } | null>(null);
+  const [resizingVersionPanel, setResizingVersionPanel] = useState(false);
+  const onVersionPanelResize = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      versionPanelDragFrom.current = {
+        y: event.clientY,
+        height: versionPanelHeight,
+      };
+      setResizingVersionPanel(true);
+
+      const onMove = (moveEvent: PointerEvent) => {
+        const start = versionPanelDragFrom.current;
+        if (!start) return;
+        setVersionPanelHeight(
+          Math.max(
+            VERSION_PANEL_MIN,
+            Math.min(VERSION_PANEL_MAX, start.height + moveEvent.clientY - start.y)
+          )
+        );
+      };
+      const onUp = () => {
+        versionPanelDragFrom.current = null;
+        setResizingVersionPanel(false);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [setVersionPanelHeight, versionPanelHeight]
+  );
   const toggleVersion = (id: string) =>
     setOpenVersions((prev) => {
       const next = new Set(prev);
@@ -386,6 +475,7 @@ export function FdlComponentDetail({
 
   const [addingCustomers, setAddingCustomers] = useState(false);
   const [pickedCustomers, setPickedCustomers] = useState<string[]>([]);
+  const [customerQuery, setCustomerQuery] = useState("");
   /**
    * WHICH VERSION THE NEW CUSTOMER LANDS ON. It used to be hard-wired to the
    * current release, so adding someone while reading V1.04 filed them under
@@ -396,6 +486,7 @@ export function FdlComponentDetail({
   const [addingRelease, setAddingRelease] = useState<string>("");
   function openAddCustomers(releaseId?: string) {
     setPickedCustomers([]);
+    setCustomerQuery("");
     setAddingRelease(
       releaseId ??
         component.releases.find((release) => release.current)?.id ??
@@ -421,6 +512,9 @@ export function FdlComponentDetail({
 
   const connected = customers.filter((customer) => customer.connected);
   const unconnected = customers.filter((customer) => !customer.connected);
+  const matchingUnconnected = unconnected.filter((customer) =>
+    customer.name.toLowerCase().includes(customerQuery.trim().toLowerCase())
+  );
   /** The customer list after the version filter. Empty filter means all. */
   const shownCustomers = customerVersions.length
     ? connected.filter(
@@ -1233,18 +1327,20 @@ export function FdlComponentDetail({
                           or ten customers or whatever"). Five marks and a +N
                           make you do arithmetic to answer "how many"; the line
                           underneath just says it. */}
-                      <span className="ml-4 hidden shrink-0 flex-col items-start lg:flex">
-                        <CustomerDots
-                          people={versionCustomers}
-                          max={5}
-                          size={34}
-                          note={() => `On ${withV(release.version)}`}
-                        />
-                        <span className="mt-0.5 pl-1 text-[10.5px] font-medium text-text-tertiary tnum">
-                          {versionCustomers.length}{" "}
-                          {versionCustomers.length === 1 ? "customer" : "customers"}
+                      {!versionsModalOpen && (
+                        <span className="ml-4 hidden shrink-0 flex-col items-start lg:flex">
+                          <CustomerDots
+                            people={versionCustomers}
+                            max={5}
+                            size={34}
+                            note={() => `On ${withV(release.version)}`}
+                          />
+                          <span className="mt-0.5 pl-1 text-[10.5px] font-medium text-text-tertiary tnum">
+                            {versionCustomers.length}{" "}
+                            {versionCustomers.length === 1 ? "customer" : "customers"}
+                          </span>
                         </span>
-                      </span>
+                      )}
                       {/* THE BAR IS A FIXED 72px, NOT A STRETCH (Anir, Aug 9:
                           "it's just too big, each one should be a set amount
                           and it doesn't need to be that long, you can easily
@@ -1261,7 +1357,8 @@ export function FdlComponentDetail({
                           what changed was a paragraph competing with a number,
                           and pinning the bar right meant its length told you
                           nothing until you found its end. */}
-                      <span className="ml-5 hidden min-w-0 flex-1 items-center lg:flex">
+                      {!versionsModalOpen && (
+                        <span className="ml-5 hidden min-w-0 flex-1 items-center lg:flex">
                         {/* THE BAR RIDES WITH THE VERSION (Anir, Aug 9: "the
                             progress bar should go right after"). Pinned to the
                             far edge it belonged to nothing you were reading. */}
@@ -1381,7 +1478,8 @@ export function FdlComponentDetail({
                             </span>
                           </HoverCard>
                         )}
-                      </span>
+                        </span>
+                      )}
                     </div>
                     <span className="ml-auto flex shrink-0 items-center gap-1.5">
                       {/* SAYING A VERSION HAS SHIPPED (Anir, Aug 9: "if I want
@@ -1491,76 +1589,41 @@ export function FdlComponentDetail({
                   </div>
 
                   {open && (
-                    <div className="menu-in border-t border-border-light bg-surface/50 px-3.5 py-3.5">
-                      {/* THREE PANELS, EQUAL HEIGHT (Anir, Aug 9: "there's a
-                          lot of empty space here, like above features and then
-                          below features... if there's an image or something, it
-                          should show up for each version"). Two panels left a
-                          short list stranded beside a tall one; a third column
-                          takes the width AND answers the question the panel
-                          could not: what is actually attached to this release. */}
-                      <div className="grid items-stretch gap-3 md:grid-cols-3">
-                        <div className="flex flex-col rounded-xl border border-border-light bg-white p-3.5">
-                          <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    <div
+                      className="menu-in relative border-t border-border-light bg-surface/50 px-3.5 py-3.5"
+                      style={{ height: versionPanelHeight }}
+                    >
+                      <div className="grid h-full min-h-0 items-stretch gap-3 md:grid-cols-3">
+                        <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border-light bg-white p-3.5">
+                          <p className="mb-2.5 flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             <ListChecks size={12} strokeWidth={2.2} className="text-blue-primary" />
-                            What is in{" "}
-                            <VersionPill
-                              version={release.version}
-                              status={release.status}
-                              current={release.current}
-                            />
-                            <span className="ml-auto font-bold tnum">
-                              {versionFeatures.length}
-                            </span>
+                            What is in <VersionPill version={release.version} status={release.status} current={release.current} />
+                            <span className="ml-auto font-bold tnum">{versionFeatures.length}</span>
                           </p>
                           {versionFeatures.length === 0 ? (
-                            <p className="text-[12.5px] text-text-secondary">
-                              No features are ticked for this version yet.
-                            </p>
+                            <p className="text-[12.5px] text-text-secondary">No features are ticked for this version yet.</p>
                           ) : (
-                            <ScrollHint className="max-h-[220px] pr-1">
-                            <ul className="space-y-1.5">
-                              {versionFeatures.map((feature) => (
-                                <li
-                                  key={feature.id}
-                                  className="flex items-start gap-2 text-[12.5px] leading-snug text-text-secondary"
-                                >
-                                  <Check
-                                    size={12}
-                                    strokeWidth={2.6}
-                                    className="mt-[3px] shrink-0 text-[color:var(--ink-green)]"
-                                  />
-                                  <span>
-                                    {feature.fid && (
-                                      <span className="mr-1 font-semibold text-text-primary tnum">
-                                        {feature.fid}
-                                      </span>
-                                    )}
-                                    {feature.name}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
+                            <ScrollHint containerClassName="min-h-0 flex-1" className="h-full pr-1">
+                              <ul className="divide-y divide-border-light">
+                                {versionFeatures.map((feature) => (
+                                  <li key={feature.id} className="flex items-start gap-2 py-2 text-[12.5px] leading-snug text-text-secondary">
+                                    <Check size={12} strokeWidth={2.6} className="mt-[3px] shrink-0 text-[color:var(--ink-green)]" />
+                                    <span className="line-clamp-2">
+                                      {feature.fid && <span className="mr-1 font-semibold text-blue-primary tnum">{feature.fid}</span>}
+                                      {feature.name}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
                             </ScrollHint>
                           )}
                         </div>
-                        <div className="flex flex-col rounded-xl border border-border-light bg-white p-3.5">
-                          <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+
+                        <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border-light bg-white p-3.5">
+                          <p className="mb-2.5 flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             <Building2 size={12} strokeWidth={2.2} className="text-blue-primary" />
-                            Customers on{" "}
-                            <VersionPill
-                              version={release.version}
-                              status={release.status}
-                              current={release.current}
-                            />
-                            <span className="ml-auto font-bold tnum">
-                              {versionCustomers.length}
-                            </span>
-                            {/* THE PLUS SITS WITH THE HEADING (Anir, Aug 9:
-                                "the add customer thing should be at the top
-                                right, it should just be a blue plus, simple").
-                                A full-width dashed button under the list read
-                                as another row in it. */}
+                            Customers on <VersionPill version={release.version} status={release.status} current={release.current} />
+                            <span className="ml-auto font-bold tnum">{versionCustomers.length}</span>
                             {canEdit && unconnected.length > 0 && (
                               <button
                                 type="button"
@@ -1574,112 +1637,46 @@ export function FdlComponentDetail({
                             )}
                           </p>
                           {versionCustomers.length === 0 ? (
-                            <p className="text-[12.5px] text-text-secondary">
-                              Nobody is recorded on this version yet.
-                            </p>
+                            <p className="text-[12.5px] text-text-secondary">Nobody is recorded on this version yet.</p>
                           ) : (
-                            <ScrollHint className="max-h-[240px] pr-1">
-                            <ul className="space-y-1">
-                              {versionCustomers.map((customer) => {
-                                // THREE MORE FACTS PER ROW (Anir, Aug 9: "give
-                                // me three other data points on that row to take
-                                // up some space, it's okay to make the row
-                                // thicker"). A logo and a name alone made the
-                                // panel a list of links; these say where the
-                                // account actually stands on this component.
-                                const theirNext = releases.find(
-                                  (r) => r.id === customer.nextReleaseId
-                                );
-                                const newest = releases[releases.length - 1];
-                                const isLatest = newest?.id === release.id;
-                                return (
-                                  <li key={customer.id}>
-                                    <Link
-                                      href={`/customers/${customer.id}?tab=components`}
-                                      className="flex items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-blue-light"
-                                    >
-                                      <CompanyLogo
-                                        name={customer.name}
-                                        className="h-6 w-6 shrink-0"
-                                      />
-                                      <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-[12.5px] font-semibold text-text-primary">
-                                          {customer.name}
-                                        </span>
-                                        <span className="flex flex-wrap items-center gap-x-1.5 text-[10.5px] text-text-tertiary">
-                                          <span className="whitespace-nowrap">
-                                            On{" "}
-                                            <VersionPill
-                                              version={release.version}
-                                              status={release.status}
-                                              current={release.current}
-                                              className="px-1.5 py-0 text-[10px]"
-                                            />
-                                          </span>
-                                          <span aria-hidden="true">·</span>
-                                          <span className="whitespace-nowrap">
-                                            {theirNext
-                                              ? `Moving to ${withV(theirNext.version)}`
-                                              : "No move planned"}
+                            <ScrollHint containerClassName="min-h-0 flex-1" className="h-full pr-1">
+                              <ul className="divide-y divide-border-light">
+                                {versionCustomers.map((customer) => {
+                                  const theirNext = releases.find((r) => r.id === customer.nextReleaseId);
+                                  const newest = releases[releases.length - 1];
+                                  const isLatest = newest?.id === release.id;
+                                  return (
+                                    <li key={customer.id}>
+                                      <Link href={`/customers/${customer.id}?tab=components`} className="flex items-center gap-2 px-1 py-2.5 transition-colors hover:bg-blue-light">
+                                        <CompanyLogo name={customer.name} className="h-7 w-7 shrink-0" />
+                                        <span className="min-w-0 flex-1">
+                                          <span className="block truncate text-[12.5px] font-semibold text-text-primary">{customer.name}</span>
+                                          <span className="block truncate text-[10.5px] text-text-tertiary">
+                                            {theirNext ? `Moving to ${withV(theirNext.version)}` : "No move planned"}
                                           </span>
                                         </span>
-                                      </span>
-                                      <span
-                                        className="shrink-0 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.03em]"
-                                        style={
-                                          isLatest
-                                            ? {
-                                                color: "var(--ink-green)",
-                                                background: "rgba(26,122,53,0.1)",
-                                              }
-                                            : {
-                                                color: "var(--ink-magenta)",
-                                                background: "rgba(180,49,143,0.1)",
-                                              }
-                                        }
-                                      >
-                                        {isLatest ? "Newest" : "Behind"}
-                                      </span>
-                                    </Link>
-                                  </li>
-                                );
-                              })}
-                            </ul>
+                                        <span
+                                          className="shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.03em]"
+                                          style={isLatest ? { color: "var(--ink-green)", background: "rgba(26,122,53,0.1)" } : { color: "var(--ink-magenta)", background: "rgba(180,49,143,0.1)" }}
+                                        >
+                                          {isLatest ? "Newest" : "Behind"}
+                                        </span>
+                                      </Link>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
                             </ScrollHint>
                           )}
                         </div>
-                        {/* WHAT IS ATTACHED TO THIS RELEASE. Files live on
-                            features, so a version's paperwork is the union of
-                            the files on the features it carries. */}
-                        <div className="flex flex-col rounded-xl border border-border-light bg-white p-3.5">
-                          <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+
+                        <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border-light bg-white p-3.5">
+                          <p className="mb-2.5 flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                             <Paperclip size={12} strokeWidth={2.2} className="text-blue-primary" />
-                            Files in{" "}
-                            <VersionPill
-                              version={release.version}
-                              status={release.status}
-                              current={release.current}
-                            />
-                            <span className="ml-auto font-bold tnum">
-                              {versionAttachments.length}
-                            </span>
-                            {/* Same blue plus as Add customer beside it, so on
-                                this panel a plus always means add. */}
-                            {/* THE BUTTON IS ALWAYS THERE, AND SAYS WHY WHEN IT
-                                CANNOT WORK (Anir, Aug 9: "you have to clearly
-                                say why you're not letting me have a file here...
-                                show the button, grey it out if you need to, and
-                                then when I hover over it, it'll tell me why").
-                                Hiding it made a missing capability look like a
-                                missing feature. */}
+                            Files in <VersionPill version={release.version} status={release.status} current={release.current} />
+                            <span className="ml-auto font-bold tnum">{versionAttachments.length}</span>
                             {canEdit && (
-                              <Tooltip
-                                label={
-                                  versionFeatures.length === 0
-                                    ? "Add a feature to this version first. Files pin to a feature, not to the version itself, so there is nothing here to attach one to yet."
-                                    : `Add a file to ${withV(release.version)}`
-                                }
-                              >
+                              <Tooltip label={versionFeatures.length === 0 ? "Add a feature to this version first. Files are attached to features." : `Add a file to ${withV(release.version)}`}>
                                 <button
                                   type="button"
                                   onClick={() => setFilesForRelease(release.id)}
@@ -1693,47 +1690,33 @@ export function FdlComponentDetail({
                             )}
                           </p>
                           {versionAttachments.length === 0 ? (
-                            <p className="text-[12.5px] text-text-secondary">
-                              No document or picture is attached to anything in
-                              this version yet.
-                            </p>
+                            <p className="text-[12.5px] text-text-secondary">No files are attached to features in this version yet.</p>
                           ) : (
-                            <ScrollHint className="max-h-[240px] pr-1">
-                              <ul className="grid grid-cols-2 gap-2">
+                            <ScrollHint containerClassName="min-h-0 flex-1" className="h-full pr-1">
+                              <ul className="divide-y divide-border-light">
                                 {versionAttachments.map(({ file, feature }) => (
                                   <li key={file.id}>
-                                    <button
-                                      type="button"
-                                      onClick={() => setPreviewing(file)}
-                                      title={`${file.name}. On ${feature}`}
-                                      className="w-full cursor-pointer overflow-hidden rounded-lg border border-border-light text-left transition-colors hover:border-blue-subtle"
-                                    >
-                                      {file.kind === "image" ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img
-                                          src={file.url}
-                                          alt={file.name}
-                                          className="h-16 w-full bg-surface object-cover"
-                                        />
-                                      ) : (
-                                        <span className="flex h-16 w-full items-center justify-center bg-surface">
-                                          <FileText
-                                            size={18}
-                                            strokeWidth={1.8}
-                                            className="text-text-tertiary"
-                                          />
-                                        </span>
-                                      )}
-                                      <span className="block truncate px-1.5 py-1 text-[10.5px] text-text-secondary">
-                                        {file.name}
-                                      </span>
-                                    </button>
+                                    <VersionAttachmentRow file={file} feature={feature} onOpen={() => setPreviewing(file)} />
                                   </li>
                                 ))}
                               </ul>
                             </ScrollHint>
                           )}
                         </div>
+                      </div>
+
+                      <div
+                        role="separator"
+                        aria-orientation="horizontal"
+                        aria-label="Resize version details"
+                        onPointerDown={onVersionPanelResize}
+                        onDoubleClick={() => setVersionPanelHeight(VERSION_PANEL_DEFAULT)}
+                        className={cn(
+                          "group/resize absolute inset-x-0 bottom-0 z-20 h-3 cursor-ns-resize touch-none",
+                          resizingVersionPanel && "bg-blue-light/40"
+                        )}
+                      >
+                        <span className="absolute bottom-1 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-border opacity-0 transition-opacity group-hover/resize:opacity-100" />
                       </div>
                     </div>
                   )}
@@ -3420,15 +3403,22 @@ export function FdlComponentDetail({
             : [];
           return (
             <div className="space-y-3">
-              <p className="text-[12.5px] text-text-secondary">
-                A file is pinned to a feature, so it travels with every version
-                that carries that feature. Pick the one this belongs to.
-              </p>
-              <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+              <div className="flex items-start gap-3 rounded-xl border border-blue-subtle bg-blue-light/40 p-3.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-primary shadow-sm">
+                  <Paperclip size={16} strokeWidth={2.2} />
+                </span>
+                <div>
+                  <p className="text-[13px] font-semibold text-text-primary">Choose the feature this file supports</p>
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-text-secondary">
+                    The file will appear with this feature in every version that includes it.
+                  </p>
+                </div>
+              </div>
+              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {choices.map((feature) => (
                   <li key={feature.id} className="min-w-0">
                     <label
-                      className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors ${
+                      className={`group flex min-h-[84px] cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 transition-colors ${
                         uploading
                           ? "cursor-wait opacity-60"
                           : "border-border-light hover:border-blue-subtle hover:bg-blue-light/30"
@@ -3443,13 +3433,11 @@ export function FdlComponentDetail({
                           void attachToFeature(feature.id, event.target.files)
                         }
                       />
-                      <Paperclip
-                        size={13}
-                        strokeWidth={2.2}
-                        className="shrink-0 text-blue-primary"
-                      />
-                      <span className="min-w-0">
-                        <span className="block text-[13px] font-semibold text-text-primary">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface text-blue-primary transition-colors group-hover:bg-white">
+                        <FileText size={16} strokeWidth={2} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="line-clamp-2 text-[13px] font-semibold leading-snug text-text-primary">
                           {feature.fid ? `${feature.fid} ` : ""}
                           {feature.name}
                         </span>
@@ -3458,6 +3446,7 @@ export function FdlComponentDetail({
                           {(feature.attachments ?? []).length === 1 ? "" : "s"} so far
                         </span>
                       </span>
+                      <Plus size={15} strokeWidth={2.4} className="shrink-0 text-blue-primary" />
                     </label>
                   </li>
                 ))}
@@ -3638,9 +3627,18 @@ export function FdlComponentDetail({
               You can change this later on their own page.
             </p>
           </div>
+          <PrioritySearchInput
+            value={customerQuery}
+            onChange={setCustomerQuery}
+            placeholder="Search customers…"
+            ariaLabel="Search customers"
+            grow
+            className="w-full"
+          />
+          {matchingUnconnected.length > 0 ? (
           <ScrollHint className="max-h-72">
           <ul className="space-y-1.5">
-            {unconnected.map((customer) => {
+            {matchingUnconnected.map((customer) => {
               const active = pickedCustomers.includes(customer.id);
               return (
                 <li key={customer.id}>
@@ -3678,6 +3676,11 @@ export function FdlComponentDetail({
             })}
           </ul>
           </ScrollHint>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-[12.5px] text-text-secondary">
+              No customers match “{customerQuery.trim()}”.
+            </div>
+          )}
           <div className="flex justify-end">
             <Button type="submit" disabled={!pickedCustomers.length} loading={busy}>
               <Plus size={14} strokeWidth={2.2} /> Add customer

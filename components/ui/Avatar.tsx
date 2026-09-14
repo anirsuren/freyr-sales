@@ -83,28 +83,9 @@ const PHOTOS: Record<string, string> = {
   "mark miller": "/avatars/mark-miller.png",
   "priya nair": "/avatars/priya-nair.png",
   "diego alvarez": "/avatars/diego-alvarez.png",
-  // The mock sales-floor names were de-identified in July, but the generated
-  // portraits were (correctly) kept as static assets. Keep the name-to-image
-  // bridge here so every Team, Forecast, Analytics, hover-card, and picker
-  // avatar resolves through the same source of truth instead of falling back
-  // to initials. The file names intentionally retain their original synthetic
-  // identities; they are implementation details and are never shown in UI.
-  "walter hensley": "/avatars/suren-dheen.png",
-  "gordon ashby": "/avatars/diego-alvarez.png",
-  "margaret whitfield": "/avatars/priya-nair.png",
-  "eleanor rutherford": "/avatars/elena-rossi.png",
-  "marcus bramwell": "/avatars/marcus-chen.png",
-  "sylvia ashcroft": "/avatars/sofia-almeida.png",
-  "audrey kingsley": "/avatars/aisha-khan.png",
-  "thomas beckett": "/avatars/tomas-becker.png",
-  "nancy caldwell": "/avatars/nina-kowalski.png",
-  "russell pemberton": "/avatars/rajesh-patel.png",
-  "grace lockwood": "/avatars/grace-liu.png",
-  "yvonne thatcher": "/avatars/yuki-tanaka.png",
-  "oliver hastings": "/avatars/omar-haddad.png",
-  "clara middleton": "/avatars/clara-mendez.png",
-  "victor prescott": "/avatars/viktor-petrov.png",
-  "leonard stanton": "/avatars/leo-santos.png",
+  // A mock name only receives a portrait when the asset was created for that
+  // exact identity. Reusing another person's face is misleading; an honest
+  // initials badge is the fallback until that person's own portrait exists.
   // Full sales floor (the SALES_TEAM roster) — generated headshots.
   "viktor petrov": "/avatars/viktor-petrov.png",
   "grace liu": "/avatars/grace-liu.png",
