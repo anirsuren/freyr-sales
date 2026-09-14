@@ -10,7 +10,6 @@ import {
 } from "react";
 import {
   Check,
-  Crosshair,
   Layers3,
   Maximize2,
   Rows3,
@@ -157,19 +156,19 @@ export function ExpandedChartControl({
         size="chart"
       >
         <div className="px-2 pb-2">
-          <div className="flex flex-col gap-3 border-b border-border-light px-1 pb-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
+          <div className="flex flex-col gap-3 border-b border-border-light px-1 pb-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
               {subtitle && (
                 <p className="max-w-3xl text-[13px] leading-relaxed text-text-secondary">
                   {subtitle}
                 </p>
               )}
-              <p
-                className="mt-1 text-[11.5px] text-text-tertiary"
+              <span
+                className="inline-flex rounded-full bg-surface px-2 py-1 text-[10.5px] font-semibold text-text-tertiary"
                 aria-live="polite"
               >
-                {shownKeys.length} of {keys.length} {itemNoun} shown
-              </p>
+                {shownKeys.length} of {keys.length} visible
+              </span>
             </div>
 
             <div
@@ -179,8 +178,8 @@ export function ExpandedChartControl({
             >
               {(
                 [
-                  ["combined", "Combined", Layers3],
-                  ["split", "Split", Rows3],
+                  ["combined", "Together", Layers3],
+                  ["split", "Separate", Rows3],
                 ] as const
               ).map(([value, label, Icon]) => (
                 <button
@@ -202,35 +201,28 @@ export function ExpandedChartControl({
             </div>
           </div>
 
-          <div className="border-b border-border-light px-1 py-4">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">
-                Visible {itemNoun}
-              </p>
-              <p className="hidden text-[11px] text-text-tertiary sm:block">
-                Toggle a {itemNoun === "slices" ? "slice" : "series"} or focus
-                it to show it alone.
-              </p>
-            </div>
-
+          <div className="flex flex-wrap items-center gap-2 border-b border-border-light px-1 py-3">
+            <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">
+              Show
+            </span>
             <div
               role="group"
               aria-label={`Visible chart ${itemNoun}`}
-              className="flex max-h-[132px] flex-wrap gap-2 overflow-y-auto pr-1"
+              className="flex max-h-[120px] flex-wrap gap-2 overflow-y-auto pr-1"
             >
               <button
                 type="button"
                 aria-pressed={allShown}
                 onClick={showAll}
                 className={cn(
-                  "inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border px-3 text-[12px] font-semibold transition-[border-color,background-color,box-shadow]",
+                  "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[11.5px] font-semibold transition-[border-color,background-color,box-shadow]",
                   allShown
                     ? "border-blue-primary/40 bg-blue-light text-blue-primary shadow-[0_0_0_2px_rgba(0,113,227,0.07)]"
                     : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"
                 )}
               >
                 <Layers3 size={14} strokeWidth={2} />
-                Show all
+                All
                 {allShown && <Check size={13} strokeWidth={2.4} />}
               </button>
 
@@ -239,7 +231,7 @@ export function ExpandedChartControl({
                 return (
                   <span
                     key={item.key}
-                    className="inline-flex h-9 overflow-hidden rounded-xl border"
+                    className="inline-flex h-8 overflow-hidden rounded-lg border"
                     style={{
                       borderColor: visible ? `${tint(item.color, 45)}` : undefined,
                       background: visible ? tint(item.color, 8) : undefined,
@@ -251,7 +243,7 @@ export function ExpandedChartControl({
                       aria-checked={visible}
                       onClick={() => toggle(item.key)}
                       className={cn(
-                        "inline-flex min-w-0 cursor-pointer items-center gap-2 px-2.5 text-[12px] font-semibold text-text-primary",
+                        "inline-flex min-w-0 cursor-pointer items-center gap-1.5 px-2.5 text-[11.5px] font-semibold text-text-primary",
                         !visible && "bg-surface text-text-tertiary"
                       )}
                     >
@@ -283,9 +275,9 @@ export function ExpandedChartControl({
                       onClick={() => showOnly(item.key)}
                       aria-label={`Show only ${item.label}`}
                       title={`Show only ${item.label}`}
-                      className="flex w-8 shrink-0 cursor-pointer items-center justify-center border-l border-inherit text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary/30"
+                      className="flex shrink-0 cursor-pointer items-center justify-center border-l border-inherit px-2 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary/30"
                     >
-                      <Crosshair size={13} strokeWidth={2} />
+                      Only
                     </button>
                   </span>
                 );
@@ -597,32 +589,39 @@ export function ExpandedChartModal({
     const allShown = segments.length === chart.segments.length;
     const syncId = `${donutSyncId}-${visible.join("-")}`;
     return (
-      <div className="flex min-h-[350px] flex-col items-center justify-center gap-7 md:flex-row">
-        <DonutChart
-          segments={segments}
-          size={250}
-          thickness={25}
-          centerLabel={
-            allShown && chart.centerLabel
-              ? chart.centerLabel
-              : formatValue(chart.format, shownTotal)
-          }
-          centerSub={
-            allShown && chart.centerSub ? chart.centerSub : "shown"
-          }
-          format={chart.format}
-          syncId={syncId}
-        />
-        <DonutLegend
-          items={segments}
-          total={shownTotal}
-          format={chart.format}
-          syncId={syncId}
-          bars={chart.legendBars}
-          pill={chart.legendPills}
-          showValues={chart.legendValues}
-          className="w-full max-w-[520px]"
-        />
+      <div className="grid min-h-[350px] w-full grid-cols-1 items-stretch md:grid-cols-[minmax(300px,.9fr)_minmax(380px,1.1fr)]">
+        <div className="flex items-center justify-center p-6">
+          <DonutChart
+            segments={segments}
+            size={280}
+            thickness={25}
+            centerLabel={
+              allShown && chart.centerLabel
+                ? chart.centerLabel
+                : formatValue(chart.format, shownTotal)
+            }
+            centerSub={
+              allShown && chart.centerSub ? chart.centerSub : "shown"
+            }
+            format={chart.format}
+            syncId={syncId}
+          />
+        </div>
+        <div className="flex min-w-0 flex-col justify-center border-t border-border-light p-7 md:border-l md:border-t-0">
+          <p className="mb-4 text-[10.5px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">
+            Breakdown
+          </p>
+          <DonutLegend
+            items={segments}
+            total={shownTotal}
+            format={chart.format}
+            syncId={syncId}
+            bars={chart.legendBars}
+            pill={chart.legendPills}
+            showValues={chart.legendValues}
+            className="w-full"
+          />
+        </div>
       </div>
     );
   }
