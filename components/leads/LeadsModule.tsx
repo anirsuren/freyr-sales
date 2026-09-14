@@ -69,6 +69,7 @@ import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { LeadAnalytics } from "@/components/leads/LeadAnalytics";
+import { LeadPersonInsights } from "@/components/leads/LeadPersonInsights";
 import { repSlug } from "@/lib/team";
 
 type CustomerOption = { id: string; name: string };
@@ -820,7 +821,9 @@ export function LeadsModule({
                                 )}
                               </div>
 
-                              <div className="p-4">
+                              <div>
+                                <LeadPersonInsights lead={lead} accountMatched={Boolean(linkedCustomer)} />
+                                <div className="p-4">
                                 <div className="flex items-center justify-between gap-3">
                                   <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                                     Lead journey
@@ -854,6 +857,7 @@ export function LeadsModule({
                                       </Link>
                                     )}
                                   </div>
+                                </div>
                                 </div>
                               </div>
                             </div>
