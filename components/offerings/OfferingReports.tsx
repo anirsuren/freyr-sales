@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
-import { HoverCard } from "@/components/ui/HoverCard";
 import {
   AreaChart,
   BarChart,
@@ -46,6 +45,35 @@ type ReportLine = {
   customer: string;
   line: OfferingRevenueLine;
 };
+
+type AccountSlice = {
+  label: string;
+  value: number;
+  color: string;
+  tip?: TipItem[];
+};
+
+/**
+ * Account charts have to keep their shape when an offering grows from three
+ * customers to thirty. Keep the five accounts that materially drive the chart
+ * visible and combine the long tail into one honest slice; its hover still
+ * carries every underlying account record.
+ */
+function compactAccountSlices(slices: AccountSlice[], limit = 5): AccountSlice[] {
+  const ranked = slices.filter((slice) => slice.value > 0).sort((a, b) => b.value - a.value);
+  if (ranked.length <= limit + 1) return ranked;
+  const leaders = ranked.slice(0, limit);
+  const remainder = ranked.slice(limit);
+  return [
+    ...leaders,
+    {
+      label: `Other ${remainder.length} accounts`,
+      value: remainder.reduce((sum, slice) => sum + slice.value, 0),
+      color: VIZ.sky,
+      tip: remainder.flatMap((slice) => slice.tip || []),
+    },
+  ];
+}
 
 function isActive(line: OfferingRevenueLine, at: Date) {
   const time = at.getTime();
@@ -234,7 +262,9 @@ export function OfferingReports({
         sub: `${formatDate(line.start_date)} to ${formatDate(line.end_date)}`,
         value: `${line.num_licenses} seats · ${formatMoney(line.amount)}`,
       })),
-    }));
+    }))
+    .sort((a, b) => b.value - a.value);
+  const seatDisplaySegments = compactAccountSlices(seatSegments);
   const noSeatAccounts = customerSummaries.filter((c) => c.licenses === 0);
 
   // Renewal exposure, by month: how much contracted value reaches its end
@@ -304,21 +334,26 @@ export function OfferingReports({
 
   // Revenue split as a donut (Suren: a table alone isn't a picture) — one
   // slice per customer, hover shows the account's seats + commercial lines.
-  const revenueSegments = customerSummaries.map((customer) => ({
-    label: customer.name,
-    value: customer.revenue,
-    color: customer.color,
-    tip: [
-      {
-        logo: customer.name,
-        name: customer.name,
-        sub: `${customer.licenses || 0} seats · ${customer.lines.length} ${
-          customer.lines.length === 1 ? "line" : "lines"
-        }`,
-        value: formatMoney(customer.revenue),
-      },
-    ] as TipItem[],
-  }));
+  const revenueSegments = customerSummaries
+    .filter((customer) => customer.revenue > 0)
+    .map((customer) => ({
+      label: customer.name,
+      value: customer.revenue,
+      color: customer.color,
+      tip: [
+        {
+          logo: customer.name,
+          name: customer.name,
+          sub: `${customer.licenses || 0} seats · ${customer.lines.length} ${
+            customer.lines.length === 1 ? "line" : "lines"
+          }`,
+          value: formatMoney(customer.revenue),
+        },
+      ] as TipItem[],
+    }))
+    .sort((a, b) => b.value - a.value);
+  const revenueDisplaySegments = compactAccountSlices(revenueSegments);
+  const noRevenueAccounts = customerSummaries.filter((customer) => customer.revenue === 0);
 
   return (
     <div className="mt-6 space-y-4">
@@ -368,7 +403,7 @@ export function OfferingReports({
             the right of the pie chart"). The left track is `max-content` with a
             440px floor so a long account name in the legend widens the panel
             instead of ever being clipped by the card's overflow-hidden. */}
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(440px,max-content)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 xl:grid-cols-2">
         {/* LEFT — the split as a picture: donut with its legend BESIDE it
             (Suren: labels to the right of the pie). */}
         <div className="flex h-full flex-col border-b xl:border-b-0 xl:border-r border-border-light px-5 py-4">
@@ -402,12 +437,12 @@ export function OfferingReports({
               underneath (Suren: "a lot of empty space below"). At zero the ring
               still draws — one neutral segment — so the frame of the report is
               visible before the first dollar lands. */}
-          <div className="flex flex-1 items-center gap-2.5">
+          <div className="grid min-h-[190px] flex-1 grid-cols-[132px_minmax(0,1fr)] items-center gap-5">
             <DonutChart
               syncId="offering-revenue"
               segments={
-                revenueSegments.length > 0
-                  ? revenueSegments
+                revenueDisplaySegments.length > 0
+                  ? revenueDisplaySegments
                   : [{ label: "No revenue yet", value: 1, color: "var(--border-light)" }]
               }
               size={132}
@@ -427,13 +462,19 @@ export function OfferingReports({
                   truncated; the `auto` label track then sizes to the whole
                   name and the panel above widens to hold it. */}
               <DonutLegend
-                items={revenueSegments}
+                items={revenueDisplaySegments}
                 format="money"
                 syncId="offering-revenue"
                 pill
                 bars={false}
                 className="[&_span]:whitespace-nowrap"
               />
+              {noRevenueAccounts.length > 0 && (
+                <p className="mt-3 flex items-center gap-1.5 text-[10.5px] leading-snug text-text-tertiary">
+                  <CircleSlash size={12} strokeWidth={1.9} className="shrink-0" />
+                  {noRevenueAccounts.length} {noRevenueAccounts.length === 1 ? "account has" : "accounts have"} no booked revenue
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -480,10 +521,10 @@ export function OfferingReports({
               </p>
             </div>
           ) : (
-            <div className="flex flex-1 items-center gap-2.5">
+            <div className="grid min-h-[190px] flex-1 grid-cols-[132px_minmax(0,1fr)] items-center gap-5">
               <DonutChart
                 syncId="offering-seats"
-                segments={seatSegments}
+                segments={seatDisplaySegments}
                 size={132}
                 thickness={10}
                 centerLabel={String(report.totalLicenses)}
@@ -491,15 +532,16 @@ export function OfferingReports({
               />
               <div className="min-w-0 flex-1">
                 <DonutLegend
-                  items={seatSegments}
+                  items={seatDisplaySegments}
                   syncId="offering-seats"
                   pill
                   bars={false}
                   className="[&_span]:whitespace-nowrap"
                 />
                 {noSeatAccounts.length > 0 && (
-                  <p className="mt-2 text-[10.5px] leading-snug text-text-tertiary">
-                    No seats: {noSeatAccounts.map((c) => c.name).join(", ")} (project/service revenue only).
+                  <p className="mt-3 flex items-center gap-1.5 text-[10.5px] leading-snug text-text-tertiary">
+                    <CircleSlash size={12} strokeWidth={1.9} className="shrink-0" />
+                    {noSeatAccounts.length} {noSeatAccounts.length === 1 ? "account uses" : "accounts use"} project/service contracts without seats
                   </p>
                 )}
               </div>
