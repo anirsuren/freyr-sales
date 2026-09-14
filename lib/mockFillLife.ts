@@ -126,16 +126,9 @@ const DOC_FILES = [
 /**
  * HOW MUCH WORK EACH ACCOUNT CARRIES.
  *
- * Anir asked for variety, not a uniform three deals on all of them: "some
- * accounts should be busy, some quiet, a few genuinely empty, because an
- * empty state is a real state and he needs to see it too." Each cycle has a
- * different length so they do not line up: an account that is quiet on deals
- * is not automatically quiet on everything, and the combinations do not
- * repeat until far past the 70 names.
- *
- * The zeros are deliberate, and they are placed so that none of them lands on
- * pair index 70. That is cust-fill-140, the account he was looking at when he
- * reported this, and it has to read full on every tab.
+ * Deal and lead counts retain believable busy-versus-quiet variety. Connected
+ * records are generated per deal because every opportunity detail page must
+ * demonstrate every released tab, including later deals on a busy account.
  */
 /* NO ZEROS ANY MORE (Anir, Sep 4, on Belmara Sciences reading 0 across six
    tabs: "make sure on every page u have enough data on all of these. it cant
@@ -144,15 +137,10 @@ const DOC_FILES = [
    the newer instruction wins. Variety survives as busy-versus-quiet (7 deals
    against 2), never as empty.
 
-   SOLUTIONING is 4 or more everywhere, deliberately: the generator deals its
-   rows across four shelves in rotation (request, submission, presentation,
-   meeting ask) and the customer page gives each shelf its OWN tab, so any
-   count under four leaves some tab reading 0 on that account. */
+   Solutioning now creates all four shelves per deal; meetings create past and
+   upcoming context per deal; contracts create one lifecycle record per deal. */
 const DEALS = [5, 3, 6, 4, 7, 3, 5, 2, 6, 4, 7];
-const CONTRACTS = [3, 1, 2, 1, 3, 1, 2, 2, 1];
 const LEADS = [3, 1, 1, 2, 1, 3, 2];
-const MEETINGS = [4, 1, 4, 2, 2, 3, 3, 5];
-const SOLUTIONING = [5, 4, 6, 4, 5, 4, 7, 4, 6, 4];
 
 const at = <T,>(list: T[], n: number): T => list[((n % list.length) + list.length) % list.length]!;
 const pad = (n: number) => String(n).padStart(3, "0");
@@ -168,7 +156,7 @@ const pad = (n: number) => String(n).padStart(3, "0");
  * one, and each store sweeps rows of older generations out before laying the
  * new floor. Rows a person added by hand carry no fill prefix and survive.
  */
-export const FILL_GENERATION = 3;
+export const FILL_GENERATION = 4;
 const FP = `fill${FILL_GENERATION}-`;
 
 /** A generated row from an OLDER floor: swept on the next top-up. */
@@ -342,14 +330,12 @@ export function mockFillContracts(): Contract[] {
   const out: Contract[] = [];
   for (const p of names()) {
     const a = profile(p);
-    const count = at(CONTRACTS, a.i);
     const deals = dealRefs(p);
-    for (let k = 0; k < count; k += 1) {
-      /* A contract closes something this account was actually being sold. */
-      /* Coverage starts at the account's FIRST deal and walks down, so the
-         deal at the top of the list is never the one with nothing behind it
-         (Anir, Sep 2: "down every rabbit hole"). */
-      const deal = deals.length ? deals[k % deals.length]! : null;
+    /* Every mock opportunity must demonstrate its Contracts tab. A mix of
+       Draft, Signed and Ready for delivery still shows lifecycle variety; an
+       entirely empty tab only demonstrates missing sample relationships. */
+    for (let k = 0; k < deals.length; k += 1) {
+      const deal = deals[k]!;
       const offering = deal ? deal.offering : a.offering(k);
       const value = deal ? deal.value : a.money(k + 3);
       const status = at(["Signed", "Ready for delivery", "Signed", "Draft"], a.i + k) as
@@ -464,17 +450,15 @@ export function mockFillMeetings(): Meeting[] {
   const out: Meeting[] = [];
   for (const p of names()) {
     const a = profile(p);
-    const count = at(MEETINGS, a.i);
     const deals = dealRefs(p);
-    for (let k = 0; k < count; k += 1) {
-      /* Coverage starts at the account's FIRST deal and walks down, so the
-         deal at the top of the list is never the one with nothing behind it
-         (Anir, Sep 2: "down every rabbit hole"). */
-      const deal = deals.length ? deals[k % deals.length]! : null;
+    /* Two meetings per deal give every detail page both history and a next
+       engagement instead of leaving later opportunities with an empty tab. */
+    for (let k = 0; k < deals.length * 2; k += 1) {
+      const deal = deals[Math.floor(k / 2)]!;
       /* Two people from the account, both real contacts on it. */
       const c1 = a.contact(k);
       const c2 = a.contact(k + 2);
-      const held = k % 3 !== 0;
+      const held = k % 2 === 0;
       const when = held ? -(4 + ((a.i * 3 + k) % 70)) : 6 + ((a.i + k) % 45);
       const owner = k % 2 === 0 ? a.owner : a.second;
       const presenter = k % 2 === 0 ? a.second : a.third;
@@ -578,18 +562,16 @@ export function mockFillSolutioning(): SolutionRequest[] {
   const out: SolutionRequest[] = [];
   for (const p of names()) {
     const a = profile(p);
-    const count = at(SOLUTIONING, a.i);
     const deals = dealRefs(p);
-    for (let k = 0; k < count; k += 1) {
-      /* Coverage starts at the account's FIRST deal and walks down, so the
-         deal at the top of the list is never the one with nothing behind it
-         (Anir, Sep 2: "down every rabbit hole"). */
-      const deal = deals.length ? deals[k % deals.length]! : null;
+    /* Four records per deal, one for every shelf rendered on an opportunity:
+       solution request, submission, presentation and meeting request. */
+    for (let k = 0; k < deals.length * 4; k += 1) {
+      const deal = deals[Math.floor(k / 4)]!;
       const c1 = a.contact(k + 1);
       /* All four shelves get filled: a request, the submission it became, a
          presentation, and an ask for a meeting. Each is a separate object,
          which is the distinction Suren drew on Aug 26. */
-      const shelf = (a.i + k) % 4;
+      const shelf = k % 4;
       const isRequest = shelf === 0 || shelf === 3;
       const kind = (shelf === 3 ? "meeting" : shelf === 2 ? "presentation" : "submission") as
         SolutionRequest["kind"];
@@ -715,9 +697,6 @@ export function mockFillRecordTeams(): Record<string, RecordTeam> {
   for (let account = 1; account <= FILL_ACCOUNTS; account += 1) {
     const p = fillPairIndex(account);
     const a = profile(p);
-    /* A handful stay unassigned on purpose: "nobody has been put on this yet"
-       is a real state and he needs to see how it reads. */
-    if (a.i % 17 === 5) continue;
     teams[`customer:${fillCustomerId(account)}`] = {
       owner: a.owner,
       members: [a.second, a.third, at(SALES, a.i * 3 + 11)].filter(
@@ -732,15 +711,15 @@ export function mockFillRecordTeams(): Record<string, RecordTeam> {
   for (const p of names()) {
     const a = profile(p);
     for (let k = 0; k < at(DEALS, a.i); k += 1) {
-      teams[`opportunity:fill-opp-${pad(p)}-${k + 1}`] = {
+      teams[`opportunity:${FP}opp-${pad(p)}-${k + 1}`] = {
         owner: k % 3 === 0 ? a.owner : k % 3 === 1 ? a.second : a.third,
         members: [a.owner, a.second].filter((m, idx, all) => all.indexOf(m) === idx),
         updatedBy: a.owner,
         updatedAt: iso(-(20 + ((a.i + k) % 40))),
       };
     }
-    for (let k = 0; k < at(CONTRACTS, a.i); k += 1) {
-      teams[`contract:fill-ct-${pad(p)}-${k + 1}`] = {
+    for (let k = 0; k < at(DEALS, a.i); k += 1) {
+      teams[`contract:${FP}ct-${pad(p)}-${k + 1}`] = {
         owner: a.owner,
         members: [a.third],
         updatedBy: a.owner,

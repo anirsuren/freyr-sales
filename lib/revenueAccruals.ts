@@ -47,9 +47,11 @@ const ROW_ID = "revenue-accruals";
  *
  * 1 = the four `acc-sample-*` plans (and the one-off script that wrote
  *     `mockgen-acc-*` rows beside them).
- * 2 = a plan per mock deal, with version histories and five frozen sheets.
+ * 2 = a plan for most mock deals, with version histories and frozen sheets.
+ * 3 = a populated plan for every mock deal, so every opportunity demonstrates
+ *     its Revenue accruals tab instead of leaving arbitrary records blank.
  */
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 /** Every id the seed has ever minted, across both generations, plus the rows
  *  the standalone fill script wrote. A plan matching this is the seed's to
@@ -539,18 +541,16 @@ type SeedDeal = {
 };
 
 /**
- * BUILD ONE PLAN, OR DECIDE THIS DEAL HAS NONE.
+ * BUILD ONE POPULATED PLAN FOR EVERY MOCK DEAL.
  *
- * Not every deal gets one, on purpose. "Deals with money but no plan" is a
- * real state and the section of the page that says so has to have something in
- * it, or the demo shows a workspace where nobody is ever behind.
+ * Empty states remain part of the real product, but Mock is the walkthrough:
+ * every opportunity has to demonstrate the schedule, splits, history and
+ * status users will see after their workspace is populated.
  */
 function seedPlan(deal: SeedDeal, now: string): AccrualPlan | null {
   const h = seedHash(deal.id);
   const bucket = h % 100;
   if (deal.value <= 0) return null;
-  /* About a seventh of the pipeline has nobody's numbers on it yet. */
-  if (bucket < 15) return null;
 
   const signMonth = deal.estSignDate ? monthKey(deal.estSignDate) : "";
   /* MONTHS THAT ARE PLAUSIBLE AGAINST THE DEAL. Revenue starts accruing the
@@ -559,15 +559,10 @@ function seedPlan(deal: SeedDeal, now: string): AccrualPlan | null {
   const start = signMonth || monthsFrom("2026-10", 6)[h % 6];
   const months = [3, 4, 6, 6, 9, 12, 12, 18][(h >>> 3) % 8];
 
-  /* A LAID-OUT PLAN WITH NO FIGURES IN IT — Suren's "non filled": "nobody has
-     entered accruals against it". Its contract value is left at zero because a
-     plan claiming a figure it has not spread would be flagged as not adding
-     up, which is a different complaint than nobody having filled it in. */
-  const emptyRecord = bucket < 20;
-  const value = emptyRecord ? 0 : deal.value;
+  const value = deal.value;
   const original = seedSplit(
     spreadEvenly(value, start, months),
-    emptyRecord ? 0 : (h >>> 6) % 3
+    (h >>> 6) % 3
   );
 
   /* THE SIGN DATE THE PLAN WAS BUILT AGAINST. Usually the deal's own, so the
@@ -575,7 +570,7 @@ function seedPlan(deal: SeedDeal, now: string): AccrualPlan | null {
      since, which is exactly the case Suren asked to be caught ("if somebody
      comes in and changes the contract sign date, then his whole plan is
      wrong"). */
-  const dateMoved = !emptyRecord && h % 11 === 0 && !!deal.estSignDate;
+  const dateMoved = h % 11 === 0 && !!deal.estSignDate;
   const signDateAtPlan = deal.estSignDate
     ? dateMoved
       ? monthKeyOf(
@@ -600,7 +595,7 @@ function seedPlan(deal: SeedDeal, now: string): AccrualPlan | null {
      some were re-planned once, a few twice, and a few were caught by the
      signing-date sweep. Everything below appends — version 1 keeps the figures
      it always had, which is the only reason a variance exists to report. */
-  const story = emptyRecord ? 0 : (h >>> 11) % 100;
+  const story = (h >>> 11) % 100;
   const closeMonthPassed = !!signMonth && signMonth < "2026-09";
 
   if (story >= 55 && story < 90) {
@@ -647,7 +642,7 @@ function seedPlan(deal: SeedDeal, now: string): AccrualPlan | null {
      demo, because almost every deal in the mock pipeline signs in the future.
      Most of the handful whose date really has gone by have been swept, which
      is what a workspace where somebody presses the button looks like. */
-  const swept = !emptyRecord && (h >>> 25) % 5 < 3;
+  const swept = (h >>> 25) % 5 < 3;
   if (swept && closeMonthPassed && deal.status !== "Won" && deal.status !== "Lost") {
     versions.push({
       version: versions.length + 1,

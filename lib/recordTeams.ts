@@ -1,7 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { getDataMode } from "./dataMode";
 import { hasSupabase } from "./env";
-import { mockFillRecordTeams } from "./mockFillLife";
+import {
+  hasMockFillRows,
+  isStaleFillRow,
+  mockFillRecordTeams,
+} from "./mockFillLife";
 
 /**
  * WHO OWNS A RECORD, AND WHO ELSE IS ON IT.
@@ -171,7 +175,11 @@ async function writeRow(state: RecordTeamsState): Promise<void> {
 async function topUpMockFill(): Promise<RecordTeamsState> {
   return withWrite(async () => {
     const base = normalize(await readRowRaw().catch(() => null));
-    if (Object.keys(base.teams).some((k) => k.includes("fill-"))) return base;
+    const recordId = (key: string) => key.slice(key.indexOf(":") + 1);
+    base.teams = Object.fromEntries(
+      Object.entries(base.teams).filter(([key]) => !isStaleFillRow(recordId(key)))
+    );
+    if (hasMockFillRows(Object.keys(base.teams).map(recordId))) return base;
     const generated = mockFillRecordTeams();
     if (Object.keys(generated).length === 0) return base;
     /* Anything already stored wins, so this can only ever fill in blanks. */
@@ -186,7 +194,10 @@ export async function readRecordTeams(): Promise<RecordTeamsState> {
     .then(normalize)
     .catch(() => structuredClone(EMPTY_RECORD_TEAMS));
   if (getDataMode() !== "mock") return state;
-  if (Object.keys(state.teams).some((k) => k.includes("fill-"))) return state;
+  const ids = Object.keys(state.teams).map((key) =>
+    key.slice(key.indexOf(":") + 1)
+  );
+  if (hasMockFillRows(ids)) return state;
   return topUpMockFill().catch(() => state);
 }
 
