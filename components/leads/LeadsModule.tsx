@@ -841,7 +841,16 @@ export function LeadsModule({
                                     <span className="relative z-10 block h-4 w-4 rounded-full border-[4px] bg-white" style={{ borderColor: leadStatusColor(lead.status) }} />
                                     <p className="mt-2 text-[12px] font-semibold" style={{ color: leadStatusColor(lead.status) }}>{lead.status}</p>
                                     <p className="mt-0.5 text-[10.5px] text-text-tertiary tnum">{formatDateTime(lead.updatedAt)}</p>
-                                    <p className="mt-0.5 truncate text-[10.5px] text-text-secondary">moved by {lead.updatedBy}</p>
+                                    <Link
+                                      href={`/analytics/reps/${repSlug(lead.updatedBy)}`}
+                                      onClick={(event) => event.stopPropagation()}
+                                      className="group/mover mt-1 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-secondary"
+                                    >
+                                      <Avatar name={lead.updatedBy} className="h-5 w-5 shrink-0 text-[7px]" />
+                                      <span className="truncate transition-colors group-hover/mover:text-blue-primary group-hover/mover:underline">
+                                        moved by {lead.updatedBy}
+                                      </span>
+                                    </Link>
                                   </div>
                                   <div className="relative min-w-0">
                                     <span className={cn("relative z-10 block h-4 w-4 rounded-full border-[4px] bg-white", lead.status !== "Converted" && "border-border")} style={lead.status === "Converted" ? { borderColor: "#16A34A" } : undefined} />
