@@ -1126,16 +1126,21 @@ export function LeadsModule({
               Add lead was live on an empty form and save() answered with a
               toast for each missing field in turn, so finding out what a lead
               needs took four presses. Same four conditions save() enforces —
-              it stays as the backstop — named one at a time, on their own
-              fixed-height line so the buttons never move. */}
-          <p className="mt-4 min-h-[18px] text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
-            {leadProblem}
-          </p>
-          <div className="mt-1.5 flex items-center justify-end gap-2">
+              it stays as the backstop — named one at a time. Validation belongs
+              inside the action row, immediately before Cancel, so the footer
+              reads as one right-aligned decision instead of a loose message
+              floating above the controls (Anir, Sep 14). */}
+          <div className="mt-4 flex min-h-9 items-center justify-end gap-2">
+            <p
+              aria-live="polite"
+              className="min-w-0 max-w-[560px] text-right text-[12.5px] font-semibold leading-4 text-[color:var(--ink-orange)]"
+            >
+              {leadProblem}
+            </p>
             <button
               type="button"
               onClick={() => setEditing(null)}
-              className="rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
+              className="shrink-0 rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
             >
               Cancel
             </button>
@@ -1144,7 +1149,7 @@ export function LeadsModule({
               disabled={busy || !!leadProblem}
               title={leadProblem ?? undefined}
               onClick={save}
-              className="rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="shrink-0 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               {editing.id ? "Save changes" : "Add lead"}
             </button>

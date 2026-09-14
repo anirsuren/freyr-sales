@@ -194,6 +194,11 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 14 lead-dialog validation placement:** New/Edit lead validation now
+  lives in the right-aligned footer action row, immediately left of Cancel,
+  instead of occupying a separate line above the buttons. The message can wrap
+  while both actions keep their size. Local change, not deployed.
+
 - **Sep 14 durable company-logo repair:** LinkedIn company logos now use the
   same non-expiring Supabase mirror as profile photos, with browser-like image
   request headers. A failed mirror clears the temporary CDN address so the
