@@ -642,6 +642,20 @@ export function buildPlanDeviation(
  */
 export type TabAccrualStatus = "Active" | "Deviated" | "Inactive";
 
+/**
+ * One semantic palette for the accrual state everywhere it appears.
+ *
+ * A deviation is a changed plan that may still be valid, so it uses violet's
+ * review/change meaning. Red remains reserved for invalid records that need a
+ * correction. Inactive is amber because it has stalled and needs attention;
+ * active work remains teal.
+ */
+export const TAB_ACCRUAL_STATUS_COLOR: Record<TabAccrualStatus, string> = {
+  Active: "var(--ink-teal-deep)",
+  Deviated: "var(--ink-violet-soft)",
+  Inactive: "var(--ink-amber)",
+};
+
 export function tabAccrualStatus(
   summary: Pick<PlanDeviationSummary, "status" | "deviated">
 ): TabAccrualStatus {

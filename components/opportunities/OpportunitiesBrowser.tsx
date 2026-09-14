@@ -114,6 +114,7 @@ import {
   sumEstimates,
   type EstimateMeasure,
   signDateOf,
+  statusColor,
 } from "@/lib/opportunitiesShared";
 import { MultiPicker } from "@/components/ui/MultiPicker";
 import {
@@ -172,19 +173,6 @@ const STATUS_ICON: Record<string, LucideIcon> = {
 const REVENUE_TYPE_META: Record<string, { color: string; icon: LucideIcon }> = {
   ARR: { color: "var(--ink-teal-deep)", icon: Repeat },
   OTS: { color: "var(--ink-orange)", icon: Zap },
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  Qualify: "#0891B2",
-  Pilot: "#5E5CE6",
-  Propose: "var(--ink-bright-blue)",
-  "Submitted to client": "var(--ink-violet-soft)",
-  /* Deep indigo: the last sales step before delivery owns it. Not green —
-     green is Won, and drafting a contract is not the same as signing one. */
-  "Under review": "var(--ink-magenta)",
-  "On hold": "#8E98A8",
-  Won: "#16A34A",
-  Lost: "#DC2626",
 };
 
 /**
@@ -1768,8 +1756,8 @@ export function OpportunitiesBrowser({
                             <span
                               className="whitespace-nowrap rounded-full px-2.5 py-1 text-[11.5px] font-bold"
                               style={{
-                                background: tint(STATUS_COLOR[o.status], 9),
-                                color: STATUS_COLOR[o.status],
+                                background: tint(statusColor(o.status), 9),
+                                color: statusColor(o.status),
                               }}
                             >
                               {o.status}
@@ -1961,8 +1949,8 @@ export function OpportunitiesBrowser({
                                         <span
                                           className="rounded-full px-2 py-0.5 text-[10.5px] font-bold"
                                           style={{
-                                            background: tint(STATUS_COLOR[line.status], 9),
-                                            color: STATUS_COLOR[line.status],
+                                            background: tint(statusColor(line.status), 9),
+                                            color: statusColor(line.status),
                                           }}
                                         >
                                           {line.status}
@@ -2385,7 +2373,7 @@ export function OpportunitiesBrowser({
                 options: OPPORTUNITY_STATUSES.map((st) => ({
                   value: st,
                   label: st,
-                  color: STATUS_COLOR[st],
+                  color: statusColor(st),
                 })),
               },
               {
@@ -3204,7 +3192,7 @@ export function OpportunitiesBrowser({
                     ...OPPORTUNITY_STATUSES.map((st) => ({
                       value: st,
                       label: st,
-                      color: STATUS_COLOR[st],
+                      color: statusColor(st),
                       icon: STATUS_ICON[st],
                     })),
                   ]}

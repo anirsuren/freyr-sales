@@ -16,6 +16,7 @@ import {
   signDateOf,
   OPPORTUNITY_LEVELS,
   OPPORTUNITY_STATUSES,
+  statusColor,
   type Opportunity,
 } from "@/lib/opportunitiesShared";
 import { useEffect, useMemo, useState } from "react";
@@ -68,6 +69,7 @@ import {
   monthLabel,
   planTotal,
   tabAccrualStatus,
+  TAB_ACCRUAL_STATUS_COLOR,
   type AccrualPlan,
   type RevenueAccrualsState,
   type TabAccrualStatus,
@@ -152,17 +154,6 @@ const LEVEL_COLOR: Record<string, string> = {
   "Go get": "var(--ink-magenta)",
   "High confidence": "var(--ink-teal-deep)",
 };
-const STATUS_COLOR: Record<string, string> = {
-  Qualify: "#0891B2",
-  Pilot: "#5E5CE6",
-  Propose: "var(--ink-bright-blue)",
-  "Submitted to client": "var(--ink-violet-soft)",
-  "Under review": "var(--ink-magenta)",
-  "On hold": "#8E98A8",
-  Won: "#16A34A",
-  Lost: "#DC2626",
-};
-
 /** The closure band a deal falls in, the same calendar quarters the
  *  Opportunities filter offers, read off the same `signDateOf`. */
 function closureBandOf(deal: Opportunity | undefined): string {
@@ -318,12 +309,6 @@ function DeviationsTable({
     () => [...new Set(rows.map((r) => r.dealStatus || "Not set"))].sort(),
     [rows]
   );
-
-  const STATUS_COLOR: Record<TabAccrualStatus, string> = {
-    Active: "var(--ink-teal-deep)",
-    Deviated: "var(--ink-violet-soft)",
-    Inactive: "var(--ink-amber)",
-  };
 
   /**
    * WHO IS DEVIATING A LOT, AND WHAT NEEDS A HUMAN.
@@ -593,7 +578,7 @@ function DeviationsTable({
               options: (["Active", "Deviated", "Inactive"] as const).map((v) => ({
                 value: v,
                 label: v,
-                color: STATUS_COLOR[v],
+                color: TAB_ACCRUAL_STATUS_COLOR[v],
               })),
             },
             {
@@ -720,8 +705,8 @@ function DeviationsTable({
                   <span
                     className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold"
                     style={{
-                      background: tint(STATUS_COLOR[r.accrualStatus], 9),
-                      color: STATUS_COLOR[r.accrualStatus],
+                      background: tint(TAB_ACCRUAL_STATUS_COLOR[r.accrualStatus], 9),
+                      color: TAB_ACCRUAL_STATUS_COLOR[r.accrualStatus],
                     }}
                   >
                     {r.accrualStatus}
@@ -1702,7 +1687,7 @@ export function RevenueAccrualsModule({
                 options: OPPORTUNITY_STATUSES.map((st) => ({
                   value: st,
                   label: st,
-                  color: STATUS_COLOR[st],
+                  color: statusColor(st),
                 })),
               },
               {

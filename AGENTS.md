@@ -622,6 +622,9 @@ Caidya: 140 Firecrawl pages, 31 recent official updates now saved and visible in
 ### Sep 12: onboarding recovery evidence
 See `docs/qa/market-intel-onboarding-2026-09-12.md`. Veristat completed after checkpoint/actor recovery (34 posts, 26 news, 12 website updates). Six focused tests and typecheck passed. Final ready-state and fresh-company Chrome verification remain unpassed because the browser connection failed; do not describe this as a completed enterprise audit.
 
+### Sep 14: sales status colour consistency
+Completed locally, not deployed: the Mock-mode deviations section has a compact diagnostic header with separate attention and owner-ranking bands. The sales status audit keeps `Deviated` violet because a changed accrual can still be valid; `Invalid`, `Lost`, `Cancelled`, and `Disqualified` retain red for actual failure states. Opportunities and revenue accruals now read opportunity colours from `lib/opportunitiesShared.ts`, and accrual states read one shared palette from `lib/revenueAccrualsShared.ts`, removing component-local copies that could drift. Typecheck passes; browser screenshot verification was unavailable because the existing Chrome CUA tab timed out.
+
 ## 10. Meeting knowledge (Jul 30 stakeholder meeting, fully transcribed)
 
 Frames + transcript were analyzed second-by-second in a prior session.
