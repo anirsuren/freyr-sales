@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { AreaChart, BarChart, DonutChart, VIZ_SERIES, type TipItem } from "@/components/charts/Charts";
+import { AreaChart, DonutChart, type TipItem } from "@/components/charts/Charts";
 import { Card } from "@/components/ui/Card";
 import { InfoHint } from "@/components/ui/InfoHint";
 import {
@@ -63,22 +63,19 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
       };
     }).filter((segment) => segment.value > 0);
 
-    const sourceBars = LEAD_SOURCES.map((source, index) => {
+    const sourceBars = LEAD_SOURCES.map((source) => {
       const records = leads.filter((lead) => lead.source === source);
       const converted = records.filter((lead) => lead.status === "Converted").length;
       return {
         label: source,
         value: records.length,
-        color: leadSourceColor(source) || VIZ_SERIES[index % VIZ_SERIES.length],
-        caption: `${converted} converted`,
-        tipNote: `${percentage(converted, records.length)}% reached an opportunity`,
-        tip: records.map((lead) => ({
-          avatar: lead.name,
-          name: lead.company,
-          sub: `${lead.name} · ${lead.status}`,
-        })),
+        converted,
+        conversionRate: percentage(converted, records.length),
+        color: leadSourceColor(source),
       };
-    }).filter((bar) => bar.value > 0);
+    })
+      .filter((bar) => bar.value > 0)
+      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
 
     return {
       latest,
@@ -99,6 +96,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
   }, [leads]);
 
   if (!data) return null;
+  const maxSourceValue = Math.max(...data.sourceBars.map((bar) => bar.value), 1);
 
   return (
     <Card className="mt-4 overflow-hidden p-0">
@@ -170,23 +168,41 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
         <section className="min-w-0 px-5 pb-5 pt-4">
           <div className="flex items-center gap-1">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              Leads by source
+              Source performance
             </h3>
-            <InfoHint text="Bar height is lead volume. The caption under each source shows how many of those leads became opportunities." />
+            <InfoHint text="Bar length is lead volume. The aligned figures show total leads and how many reached an opportunity. Every value comes from the lead records in this workspace." />
           </div>
-          <p className="mt-1 text-[11.5px] text-text-secondary">
-            Volume at rest; conversion detail on hover.
-          </p>
-          <div className="mt-3">
-            <BarChart
-              data={data.sourceBars}
-              height={210}
-              format="number"
-              unit="leads"
-              tipRecordsLabel="Leads from this source"
-              hideFullHeightGhost
-              maxBarWidth={54}
-            />
+          <div className="mt-3 grid grid-cols-[96px_minmax(90px,1fr)_132px] items-center gap-3 border-b border-border-light pb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+            <span>Source</span>
+            <span>Volume</span>
+            <span className="text-right">Leads · converted</span>
+          </div>
+          <div className="mt-2 space-y-2.5">
+            {data.sourceBars.map((bar) => (
+              <div
+                key={bar.label}
+                className="grid grid-cols-[96px_minmax(90px,1fr)_132px] items-center gap-3"
+                title={`${bar.label}: ${bar.value} leads, ${bar.converted} converted (${bar.conversionRate}%)`}
+              >
+                <span className="truncate text-[11.5px] font-medium text-text-secondary">
+                  {bar.label}
+                </span>
+                <span className="relative h-2.5 overflow-hidden rounded-full bg-surface">
+                  <span
+                    className="absolute inset-y-0 left-0 rounded-full"
+                    style={{
+                      width: `${Math.max(5, (bar.value / maxSourceValue) * 100)}%`,
+                      background: bar.color,
+                    }}
+                  />
+                </span>
+                <span className="whitespace-nowrap text-right text-[11px] text-text-secondary tnum">
+                  <strong className="font-semibold text-text-primary">{bar.value}</strong>
+                  <span className="mx-1 text-text-tertiary">·</span>
+                  <span style={{ color: bar.color }}>{bar.converted} converted</span>
+                </span>
+              </div>
+            ))}
           </div>
         </section>
       </div>
