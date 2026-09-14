@@ -86,7 +86,7 @@ export function LeadPersonInsights({
           centerLabel={`${completeness}%`}
           centerSub="captured"
           size={108}
-          thickness={14}
+          thickness={10}
           format="number"
         />
 
