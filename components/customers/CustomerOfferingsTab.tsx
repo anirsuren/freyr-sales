@@ -5,7 +5,7 @@ import { fmtMoney } from "@/lib/currency";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Layers, CheckCircle2, Sparkles, ExternalLink, X, Package, DollarSign, Plus, Trash2, ChevronDown, ChevronUp, Paperclip, CalendarClock, Briefcase, Wrench, KeyRound, type LucideIcon } from "lucide-react";
+import { Layers, CheckCircle2, Sparkles, ExternalLink, X, Package, DollarSign, Plus, Trash2, ChevronDown, ChevronUp, Paperclip, CalendarClock, Briefcase, Wrench, KeyRound, Search, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { DateEcho } from "@/components/ui/DateEcho";
 import { Button } from "@/components/ui/Button";
@@ -21,7 +21,6 @@ import {
   statusCounts,
   type ActivityMasterState,
 } from "@/lib/activityMasterShared";
-import { Avatar } from "@/components/ui/Avatar";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
@@ -29,7 +28,6 @@ import { DonutChart, type TipItem } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { VIZ } from "@/components/charts/palette";
 import { formatMoney } from "@/lib/pipeline";
-import { formatDate } from "@/lib/utils";
 import { REVENUE_TYPES, REVENUE_TYPE_META } from "@/lib/revenue";
 import {
   ACCESS_LEVEL_META,
@@ -581,12 +579,29 @@ export function CustomerOfferingsTab({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set<string>()
   );
+  const [offeringQuery, setOfferingQuery] = useState("");
 
   const inUseIds = useMemo(() => new Set(inUse.map((o) => o.id)), [inUse]);
   const toPitch = useMemo(
     () => applicable.filter((o) => !inUseIds.has(o.id)),
     [applicable, inUseIds]
   );
+  const normalizedOfferingQuery = offeringQuery.trim().toLowerCase();
+  const matchesOfferingQuery = (offering: TabOffering) =>
+    !normalizedOfferingQuery ||
+    [
+      offering.name,
+      offering.category,
+      offering.type,
+      offering.availability,
+      offering.description,
+      ...offering.materials.flatMap((material) => [material.label, material.kind]),
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedOfferingQuery);
+  const visibleInUse = inUse.filter(matchesOfferingQuery);
+  const visibleToPitch = toPitch.filter(matchesOfferingQuery);
 
   useEffect(() => setSelectedType(customerType || ""), [customerType]);
 
@@ -774,190 +789,195 @@ export function CustomerOfferingsTab({
     o: TabOffering;
     using: boolean;
   }) => {
-    const expanded = !using || expandedIds.has(o.id);
+    const expanded = expandedIds.has(o.id);
     return (
-    <Card className="p-5" data-testid={`cust-offering-${o.id}`}>
-      <div className="flex items-start justify-between gap-3">
-        {/* No glyph beside the offering name (Anir, Sep 2: "can you just
-            remove these icons from all the offering names? They're not really
-            needed"). */}
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link
-              href={`/offerings/${o.id}`}
-              className="text-[15px] font-semibold text-text-primary hover:text-blue-primary"
+      <Card
+        className="overflow-hidden border border-border p-0 shadow-[0_2px_10px_rgba(15,23,42,0.05)]"
+        data-testid={`cust-offering-${o.id}`}
+      >
+        <div
+          className={`flex items-start justify-between gap-3 bg-surface/60 px-5 py-4 ${
+            expanded ? "border-b border-border-light" : ""
+          }`}
+        >
+          {/* No glyph beside the offering name (Anir, Sep 2: "can you just
+              remove these icons from all the offering names? They're not really
+              needed"). */}
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/offerings/${o.id}`}
+                  className="text-[15px] font-semibold text-text-primary hover:text-blue-primary"
+                >
+                  {o.name}
+                </Link>
+                {o.availability && (
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${
+                      /current|now|available/i.test(o.availability)
+                        ? "text-success bg-success/10"
+                        : "text-warning bg-warning/10"
+                    }`}
+                  >
+                    {o.availability}
+                  </span>
+                )}
+                {using && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                    style={{
+                      background: "rgba(34,197,94,0.14)",
+                      color: "#16A34A",
+                    }}
+                  >
+                    <CheckCircle2 size={12} strokeWidth={2.2} />
+                    In use
+                  </span>
+                )}
+              </div>
+              {(o.category || o.type) && (
+                <p className="mt-0.5 text-[12px] text-text-tertiary">
+                  {[o.category, o.type].filter(Boolean).join(" · ")}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              onClick={() => toggleInUse(o.id, !using)}
+              disabled={busyId === o.id}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-50 ${
+                using
+                  ? "border-error/30 text-error hover:bg-error/10"
+                  : "border-border-light text-success hover:bg-success/10"
+              }`}
             >
-              {o.name}
-            </Link>
-            {o.availability && (
-              <span
-                className={`text-[11px] font-medium rounded-md px-2 py-0.5 ${
-                  /current|now|available/i.test(o.availability)
-                    ? "text-success bg-success/10"
-                    : "text-warning bg-warning/10"
-                }`}
-              >
-                {o.availability}
-              </span>
-            )}
-            {using && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                style={{ background: "rgba(34,197,94,0.14)", color: "#16A34A" }}
-              >
-                <CheckCircle2 size={12} strokeWidth={2.2} />
-                In use
-              </span>
-            )}
-          </div>
-          {(o.category || o.type) && (
-            <p className="text-[12px] text-text-tertiary mt-0.5">
-              {[o.category, o.type].filter(Boolean).join(" · ")}
-            </p>
-          )}
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {using && (
+              {using ? (
+                <>
+                  <X size={13} strokeWidth={2.2} />
+                  {busyId === o.id ? "…" : "Not using anymore"}
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={13} strokeWidth={2} />
+                  {busyId === o.id ? "…" : "Mark as already using"}
+                </>
+              )}
+            </button>
             <button
               type="button"
               onClick={() => toggleExpanded(o.id)}
               aria-label={expanded ? `Collapse ${o.name}` : `Expand ${o.name}`}
               title={expanded ? "Collapse offering" : "Expand offering"}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border-light text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/50 hover:text-blue-primary"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/50 hover:text-blue-primary"
             >
               {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </button>
-          )}
-          <button
-            onClick={() => toggleInUse(o.id, !using)}
-            disabled={busyId === o.id}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-50 ${
-              using
-                ? "border-error/30 text-error hover:bg-error/10"
-                : "border-border-light text-success hover:bg-success/10"
-            }`}
-          >
-            {using ? (
-              <>
-                <X size={13} strokeWidth={2.2} />
-                {busyId === o.id ? "…" : "Not using anymore"}
-              </>
-            ) : (
-              <>
-                <CheckCircle2 size={13} strokeWidth={2} />
-                {busyId === o.id ? "…" : "Mark as already using"}
-              </>
+          </div>
+        </div>
+
+        {expanded && (
+          <div className="px-5 pb-5">
+            {o.description && (
+              /* pl-12 lined this up under the offering's icon tile; the tile is
+                 gone (Anir, Sep 2), so the paragraph starts at the card edge. */
+              <p className="mt-2.5 line-clamp-3 whitespace-pre-line text-[13px] leading-relaxed text-text-secondary">
+                {o.description}
+              </p>
             )}
-          </button>
-        </div>
-      </div>
 
-      {expanded && o.description && (
-        /* pl-12 lined this up under the offering's icon tile; the tile is
-           gone (Anir, Sep 2), so the paragraph starts at the card edge. */
-        <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-line line-clamp-3 mt-2.5">
-          {o.description}
-        </p>
-      )}
+            {/* Revenue on this offering — only for the ones they're actually using
+                (Suren, Jul 5: revenue type / amount / licenses / dates / notes). */}
+            {using && (
+              <RevenueSection
+                lines={linesForOffering(o.id)}
+                onSave={(lines) => saveLines(o.id, lines)}
+              />
+            )}
 
-      {/* Revenue on this offering — only for the ones they're actually using
-          (Suren, Jul 5: revenue type / amount / licenses / dates / notes). */}
-      {using && expanded && (
-        <RevenueSection
-          lines={linesForOffering(o.id)}
-          onSave={(lines) => saveLines(o.id, lines)}
-        />
-      )}
+            {/* Activities remain inside their offering instead of blending into the
+                next card. The header chevron and the page-level expand controls make
+                the collapsed detail explicit. */}
+            {using && (
+              <OfferingActivities
+                customerId={customerId}
+                versions={activitiesForOffering(o.id)}
+                onSave={(versions, touched, prevStatus) =>
+                  void saveActivities(o.id, versions, touched, prevStatus)
+                }
+              />
+            )}
 
-      {/* ACTIVITIES LIVE WHERE THE OFFERING DOES (Suren, Aug 8): the customer
-          gets an offering, and the activity history for that offering sits
-          right under it — with one row marked current for the heat map.
-          NOT behind the card's expander: in-use cards start collapsed, so
-          the Add activity button was invisible until you happened to open one
-          (Anir, Aug 8: "I still cannot see a button to add an activity"). */}
-      {using && (
-        <OfferingActivities
-          customerId={customerId}
-          versions={activitiesForOffering(o.id)}
-          onSave={(versions, touched, prevStatus) =>
-            void saveActivities(o.id, versions, touched, prevStatus)
-          }
-        />
-      )}
-
-      {expanded && (using || o.materials.length > 0) && (
-      <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-border-light">
-        <div className="min-w-0 flex-1">
-          {(using || o.materials.length > 0) && (
-          <>
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-            Sales Materials ({o.materials.length})
-          </p>
-          {o.materials.length === 0 ? (
-            <p className="text-[12px] text-text-tertiary">
-              None yet. Add them on the offering page and they show up here.
-            </p>
-          ) : (
-            /* One material per row. Two-up packed the titles, the format and
-               the CR-3 pills into half a card each and read as clutter (Anir,
-               Jul 26: "the sales material just looks horrible… it shouldn't be
-               a row with two; it should just be one row with one"). A full-width
-               row gives the title room, puts the format glyph up front, and
-               parks the tags on the right edge where they line up down the list. */
-            <div className="flex flex-col gap-1.5">
-              {o.materials.map((m) => {
-                const kind = asMaterialKind(m.kindKey);
-                const Icon = kind ? MATERIAL_ICON[kind] : Paperclip;
-                const tone = kind ? MATERIAL_COLOR[kind] : "#4F46E5";
-                return (
-                  <a
-                    key={m.id}
-                    href={m.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex min-w-0 items-center gap-2.5 rounded-lg border border-border-light bg-surface px-2.5 py-2 transition-colors hover:border-blue-subtle hover:bg-white"
-                  >
-                    {/* Format glyph in the format's own colour — a video, a deck
-                        and a case study are told apart before you read a word. */}
-                    <span
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white"
-                      style={{ backgroundColor: tone }}
-                    >
-                      <Icon size={13} strokeWidth={2} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[12.5px] font-semibold leading-snug text-text-primary group-hover:text-blue-primary">
-                        {m.label}
-                      </span>
-                      <span
-                        className="block text-[11px] font-medium leading-tight"
-                        style={{ color: tone }}
-                      >
-                        {m.kind}
-                      </span>
-                    </span>
-                    <MaterialTagPills
-                      journeyStage={m.journeyStage}
-                      accessLevel={m.accessLevel}
-                    />
-                    <ExternalLink
-                      size={12}
-                      strokeWidth={1.8}
-                      className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
-                    />
-                  </a>
-                );
-              })}
-            </div>
-          )}
-          </>
-          )}
-        </div>
-      </div>
-      )}
-    </Card>
+            {(using || o.materials.length > 0) && (
+              <div className="mt-3 flex items-center justify-between gap-3 border-t border-border-light pt-3">
+                <div className="min-w-0 flex-1">
+                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                    Sales Materials ({o.materials.length})
+                  </p>
+                  {o.materials.length === 0 ? (
+                    <p className="text-[12px] text-text-tertiary">
+                      None yet. Add them on the offering page and they show up here.
+                    </p>
+                  ) : (
+                    /* One material per row. Two-up packed the titles, the format and
+                       the CR-3 pills into half a card each and read as clutter (Anir,
+                       Jul 26: "the sales material just looks horrible… it shouldn't be
+                       a row with two; it should just be one row with one"). A full-width
+                       row gives the title room, puts the format glyph up front, and
+                       parks the tags on the right edge where they line up down the list. */
+                    <div className="flex flex-col gap-1.5">
+                      {o.materials.map((m) => {
+                        const kind = asMaterialKind(m.kindKey);
+                        const Icon = kind ? MATERIAL_ICON[kind] : Paperclip;
+                        const tone = kind ? MATERIAL_COLOR[kind] : "#4F46E5";
+                        return (
+                          <a
+                            key={m.id}
+                            href={m.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group flex min-w-0 items-center gap-2.5 rounded-lg border border-border-light bg-surface px-2.5 py-2 transition-colors hover:border-blue-subtle hover:bg-white"
+                          >
+                            {/* Format glyph in the format's own colour — a video, a deck
+                                and a case study are told apart before you read a word. */}
+                            <span
+                              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white"
+                              style={{ backgroundColor: tone }}
+                            >
+                              <Icon size={13} strokeWidth={2} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[12.5px] font-semibold leading-snug text-text-primary group-hover:text-blue-primary">
+                                {m.label}
+                              </span>
+                              <span
+                                className="block text-[11px] font-medium leading-tight"
+                                style={{ color: tone }}
+                              >
+                                {m.kind}
+                              </span>
+                            </span>
+                            <MaterialTagPills
+                              journeyStage={m.journeyStage}
+                              accessLevel={m.accessLevel}
+                            />
+                            <ExternalLink
+                              size={12}
+                              strokeWidth={1.8}
+                              className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+                            />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
     );
   };
 
@@ -1091,56 +1111,119 @@ export function CustomerOfferingsTab({
   const adoptionPct = applicable.length
     ? Math.round((inUse.length / applicable.length) * 100)
     : 0;
+  const allVisibleOpen =
+    visibleInUse.length > 0 &&
+    visibleInUse.every((offering) => expandedIds.has(offering.id));
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] text-text-secondary">
-            <span className="font-semibold text-text-primary tnum">
-              {applicable.length}
-            </span>{" "}
-            {applicable.length === 1 ? "offering applies" : "offerings apply"} to{" "}
-            <span className="font-semibold text-text-primary">
-              {customerType}
-            </span>
-            {inUse.length > 0 && (
-              <>
-                {" "}
-                · already using{" "}
-                <span className="font-semibold text-text-primary tnum">
-                  {inUse.length}
-                </span>{" "}
-                <span className="text-text-tertiary tnum">({adoptionPct}%)</span>
-              </>
+      <div className="rounded-xl border border-border-light bg-white p-4 shadow-[0_1px_4px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] text-text-secondary">
+              <span className="font-semibold text-text-primary tnum">
+                {applicable.length}
+              </span>{" "}
+              {applicable.length === 1 ? "offering applies" : "offerings apply"} to{" "}
+              <span className="font-semibold text-text-primary">
+                {customerType}
+              </span>
+              {inUse.length > 0 && (
+                <>
+                  {" "}
+                  · already using{" "}
+                  <span className="font-semibold text-text-primary tnum">
+                    {inUse.length}
+                  </span>{" "}
+                  <span className="text-text-tertiary tnum">({adoptionPct}%)</span>
+                </>
+              )}
+            </p>
+            {/* adoption at a glance — green = using, the rest is whitespace to sell */}
+            {applicable.length > 0 && (
+              <div className="mt-1.5 h-1.5 max-w-[420px] overflow-hidden rounded-full bg-surface">
+                <div
+                  className="h-full rounded-full bg-success"
+                  style={{
+                    width: `${Math.max(adoptionPct, inUse.length > 0 ? 3 : 0)}%`,
+                  }}
+                />
+              </div>
             )}
-          </p>
-          {/* adoption at a glance — green = using, the rest is whitespace to sell */}
-          {applicable.length > 0 && (
-            <div className="h-1.5 rounded-full bg-surface overflow-hidden mt-1.5 max-w-[420px]">
-              <div
-                className="h-full rounded-full bg-success"
-                style={{ width: `${Math.max(adoptionPct, inUse.length > 0 ? 3 : 0)}%` }}
-              />
-            </div>
-          )}
+          </div>
+          <div className="flex shrink-0 items-center justify-end gap-1.5 text-[12px] text-text-tertiary">
+            <span className="inline-flex items-center gap-1">
+              Segment
+              <InfoHint text="What kind of company this is, meaning its industry and its size, like Biologics or mid-size. It decides which offerings apply to them, shown below. Change it if the wrong one was picked." />
+            </span>
+            <ColorSelect
+              ariaLabel="Change customer segment"
+              value={selectedType}
+              onChange={saveType}
+              options={segmentOptions}
+              minWidth={250}
+              className={savingType ? "pointer-events-none opacity-60" : undefined}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
-          <span className="inline-flex items-center gap-1">
-            Segment
-            <InfoHint text="What kind of company this is, meaning its industry and its size, like Biologics or mid-size. It decides which offerings apply to them, shown below. Change it if the wrong one was picked." />
-          </span>
-          <ColorSelect
-            ariaLabel="Change customer segment"
-            value={selectedType}
-            onChange={saveType}
-            options={segmentOptions}
-            minWidth={250}
-            className={savingType ? "pointer-events-none opacity-60" : undefined}
-          />
+        <div className="mt-4 flex flex-col gap-2 border-t border-border-light pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-surface px-3 focus-within:border-blue-primary focus-within:bg-white focus-within:shadow-input-focus sm:max-w-[520px]">
+            <Search size={15} strokeWidth={2} className="shrink-0 text-text-tertiary" />
+            <input
+              value={offeringQuery}
+              onChange={(event) => setOfferingQuery(event.target.value)}
+              placeholder="Search offerings, categories, or materials…"
+              aria-label="Search customer offerings"
+              className="min-w-0 flex-1 bg-transparent text-[13px] text-text-primary outline-none placeholder:text-text-tertiary"
+            />
+          </label>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setExpandedIds(
+                  (current) =>
+                    new Set([
+                      ...current,
+                      ...visibleInUse.map((offering) => offering.id),
+                    ])
+                )
+              }
+              disabled={visibleInUse.length === 0 || allVisibleOpen}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:cursor-default disabled:opacity-40"
+            >
+              <ChevronDown size={14} strokeWidth={2.2} />
+              Expand all
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setExpandedIds((current) => {
+                  const next = new Set(current);
+                  visibleInUse.forEach((offering) => next.delete(offering.id));
+                  return next;
+                })
+              }
+              disabled={visibleInUse.every((offering) => !expandedIds.has(offering.id))}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:cursor-default disabled:opacity-40"
+            >
+              <ChevronUp size={14} strokeWidth={2.2} />
+              Collapse all
+            </button>
+          </div>
         </div>
       </div>
 
-      {inUse.length > 0 && (
+      {normalizedOfferingQuery &&
+        visibleInUse.length === 0 &&
+        visibleToPitch.length === 0 && (
+          <EmptyState
+            icon={Search}
+            title={`No offerings match “${offeringQuery.trim()}”`}
+            description="Try an offering name, category, type, or sales material."
+          />
+        )}
+
+      {visibleInUse.length > 0 && (
         <section>
           <h3 className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
             <CheckCircle2
@@ -1149,41 +1232,50 @@ export function CustomerOfferingsTab({
               className="text-success"
             />
             Already using
-            <span className="text-text-primary tnum">({inUse.length})</span>
+            <span className="text-text-primary tnum">
+              ({visibleInUse.length}
+              {normalizedOfferingQuery ? ` of ${inUse.length}` : ""})
+            </span>
           </h3>
-          <div className="space-y-3">
-            {inUse.map((o) => (
+          <div className="space-y-4">
+            {visibleInUse.map((o) => (
               <OfferingCard key={o.id} o={o} using />
             ))}
           </div>
         </section>
       )}
 
-      <section>
-        <h3 className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
-          <Sparkles size={14} strokeWidth={2} className="text-blue-primary" />
-          Applicable offerings
-          <span className="text-text-primary tnum">({toPitch.length})</span>
-        </h3>
-        {applicable.length === 0 ? (
-          <EmptyState
-            icon={Package}
-            title={`Nothing in the catalogue is for ${customerType} yet`}
-            description="Open an offering and add this customer type to it. Everything that applies then shows up here."
-          />
-        ) : toPitch.length === 0 ? (
-          <p className="text-[13px] text-text-secondary">
-            They are already using everything that applies to them. There is
-            nothing left to pitch.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch stagger">
-            {toPitch.map((o) => (
-              <PitchCard key={o.id} o={o} />
-            ))}
-          </div>
-        )}
-      </section>
+      {(!normalizedOfferingQuery || visibleToPitch.length > 0) && (
+        <section>
+          <h3 className="mb-2.5 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+            <Sparkles size={14} strokeWidth={2} className="text-blue-primary" />
+            Applicable offerings
+            <span className="text-text-primary tnum">
+              ({visibleToPitch.length}
+              {normalizedOfferingQuery ? ` of ${toPitch.length}` : ""})
+            </span>
+          </h3>
+          {applicable.length === 0 ? (
+            <EmptyState
+              icon={Package}
+              title={`Nothing in the catalogue is for ${customerType} yet`}
+              description="Open an offering and add this customer type to it. Everything that applies then shows up here."
+            />
+          ) : visibleToPitch.length === 0 ? (
+            <p className="text-[13px] text-text-secondary">
+              {normalizedOfferingQuery
+                ? "No applicable offerings match this search."
+                : "They are already using everything that applies to them. There is nothing left to pitch."}
+            </p>
+          ) : (
+            <div className="stagger grid grid-cols-1 items-stretch gap-3 lg:grid-cols-2">
+              {visibleToPitch.map((o) => (
+                <PitchCard key={o.id} o={o} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
       {goalPrompt && goalBridge && (() => {
         const entry = masterFor(goalBridge.master, goalPrompt.activity);
         if (!entry) return null;
