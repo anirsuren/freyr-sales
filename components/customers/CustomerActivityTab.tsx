@@ -2,7 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ChevronRight, Plus, Package, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronRight,
+  ChevronsDown,
+  ChevronsUp,
+  Plus,
+  Package,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -51,6 +61,7 @@ export function CustomerActivityTab({
   /** Offerings the reader has folded shut. Open is the default, because a
    *  collapsed-by-default list hides the thing the tab exists to show. */
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
   function toggleOffering(id: string) {
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -181,6 +192,34 @@ export function CustomerActivityTab({
   }
 
   const started = state.filter((u) => byId.has(u.offering_id));
+  const needle = query.trim().toLowerCase();
+  const visibleStarted = started.filter((u) => {
+    if (!needle) return true;
+    const offering = byId.get(u.offering_id);
+    const activityText = (u.engagement_versions || [])
+      .map(
+        (version) =>
+          `${version.activity} ${version.activity_description ?? ""} ${version.status}`
+      )
+      .join(" ");
+    return `${offering?.name ?? ""} ${offering?.category ?? ""} ${activityText}`
+      .toLowerCase()
+      .includes(needle);
+  });
+  const allVisibleOpen =
+    visibleStarted.length > 0 &&
+    visibleStarted.every((u) => !collapsed.has(u.offering_id));
+
+  function toggleAllVisible() {
+    setCollapsed((previous) => {
+      const next = new Set(previous);
+      for (const usage of visibleStarted) {
+        if (allVisibleOpen) next.add(usage.offering_id);
+        else next.delete(usage.offering_id);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="space-y-5">
@@ -189,7 +228,7 @@ export function CustomerActivityTab({
           <div>
             <h2 className="flex items-center gap-2 text-[16px] font-semibold text-text-primary">
               Offering activity
-              <InfoHint text={"There are five kinds of activity: Lead, Opportunity, Pilot, Contract and Delivery.\nEach one is either Initiated, Under progress or Completed.\nOne activity per offering is marked Current, and that is the one the Coverage heat map shows."} />
+              <InfoHint text={"There are five kinds of activity: Lead, Opportunity, Pilot, Contract and Delivery.\nEach one is either Initiated, Under progress or Completed."} />
             </h2>
             <p className="mt-0.5 text-[12.5px] text-text-secondary">
               {total > 0
@@ -205,6 +244,44 @@ export function CustomerActivityTab({
             </Button>
           )}
         </div>
+
+        {started.length > 0 && (
+          <div className="mt-4 flex items-center gap-2">
+            <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-white px-3 py-2.5 shadow-sm focus-within:border-blue-subtle focus-within:ring-2 focus-within:ring-blue-light">
+              <Search size={15} className="shrink-0 text-text-tertiary" />
+              <input
+                aria-label="Search offerings or activities"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search offerings or activities..."
+                className="min-w-0 flex-1 bg-transparent text-[13px] text-text-primary outline-none placeholder:text-text-tertiary"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Clear search"
+                  className="text-text-tertiary hover:text-text-primary"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </label>
+            <Button
+              variant="secondary"
+              onClick={toggleAllVisible}
+              disabled={visibleStarted.length === 0}
+              className="shrink-0"
+            >
+              {allVisibleOpen ? (
+                <ChevronsUp size={14} />
+              ) : (
+                <ChevronsDown size={14} />
+              )}
+              {allVisibleOpen ? "Collapse all" : "Expand all"}
+            </Button>
+          </div>
+        )}
 
         {started.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-border bg-white px-6 py-10 text-center">
@@ -227,7 +304,7 @@ export function CustomerActivityTab({
           </div>
         ) : (
           <div className="mt-4 space-y-3">
-            {[...started]
+            {[...visibleStarted]
               .sort(
                 (a, b) =>
                   (b.engagement_versions?.length || 0) -
@@ -263,13 +340,6 @@ export function CustomerActivityTab({
                         open ? "entry-card__head mb-2 pb-2.5" : "pb-0"
                       }`}
                     >
-                      <ChevronRight
-                        size={15}
-                        strokeWidth={2.2}
-                        className={`shrink-0 text-text-tertiary transition-transform duration-200 ${
-                          open ? "rotate-90" : ""
-                        }`}
-                      />
 {/* No glyph beside the offering name (Anir, Sep 2: "can you just
                           remove these icons from all the offering names?
                           They're not really needed"). */}
@@ -325,6 +395,13 @@ export function CustomerActivityTab({
                           <Trash2 size={14} strokeWidth={2.1} />
                         </span>
                       )}
+                      <ChevronRight
+                        size={15}
+                        strokeWidth={2.2}
+                        className={`shrink-0 text-text-tertiary transition-transform duration-200 ${
+                          open ? "rotate-90" : ""
+                        }`}
+                      />
                     </button>
                     {open && (
                       <div className="tab-panel">
@@ -340,6 +417,11 @@ export function CustomerActivityTab({
                   </div>
                 );
               })}
+            {visibleStarted.length === 0 && (
+              <div className="rounded-xl border border-dashed border-border bg-white px-5 py-8 text-center text-[13px] text-text-secondary">
+                No offerings or activities match “{query.trim()}”.
+              </div>
+            )}
           </div>
         )}
       </section>

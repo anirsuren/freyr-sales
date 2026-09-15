@@ -760,3 +760,6 @@ The customer Offerings tab starts with a compact “Customer offerings” toolba
 
 ### Sep 15: interaction logging has a full working dialog
 The customer “Log an interaction” dialog uses a 760px workspace with roomier body padding, a full-width responsive type selector, and a seven-row interaction summary. Follow-up fields and actions retain the existing workflow and remain responsive on narrow screens. Completed locally, not deployed.
+
+### Sep 15: customer activity history is searchable and attributable
+The customer Activity tab has one search field and one stateful Expand all / Collapse all control for its offering groups. Each group keeps a top-right fold control. Every activity row shows its original logged date, time, and workspace member; new writes derive that member from the authenticated request, while legacy records without attribution say so honestly. Mock histories carry varied deterministic authors and timestamps. The Coverage heat-map explanation lives behind the Current-column question mark instead of repeating beneath every offering table. Completed locally, not deployed.

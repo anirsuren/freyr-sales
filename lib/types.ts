@@ -205,6 +205,10 @@ export interface CustomerOfferingEngagementVersion {
   }[];
   created_at: string;
   updated_at: string;
+  /** Workspace member who originally logged the activity. */
+  created_by?: string | null;
+  /** Workspace member who most recently changed the activity. */
+  updated_by?: string | null;
 }
 
 // How Freyr earns on an in-use offering (Suren: "revenue type — annual,

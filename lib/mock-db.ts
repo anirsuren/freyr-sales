@@ -450,9 +450,20 @@ function seed(): MockStore {
       contract: "Commercials agreed; legal reviewing the order form.",
       delivery: "Rolled out to the regulatory team and in daily use.",
     };
+    const AUTHORS = [
+      "Anir Suren",
+      "Audrey Kingsley",
+      "Thomas Beckett",
+      "Grace Lockwood",
+      "Eleanor Rutherford",
+    ];
     return LADDER.slice(0, reached).map((activity, index) => {
       const last = index === reached - 1;
       const started = day((reached - index) * 45 + roll(20));
+      const recordedAt = `${started}T${String(9 + roll(8)).padStart(2, "0")}:${
+        roll(2) ? "30" : "00"
+      }:00.000Z`;
+      const author = AUTHORS[roll(AUTHORS.length)];
       const status = last
         ? (["initiated", "under_progress", "under_progress"] as const)[roll(3)]
         : ("completed" as const);
@@ -479,8 +490,10 @@ function seed(): MockStore {
         opportunity_ids: [],
         proposal_ids: [],
         contract_ids: [],
-        created_at: new Date(NOW).toISOString(),
-        updated_at: new Date(NOW).toISOString(),
+        created_at: recordedAt,
+        updated_at: recordedAt,
+        created_by: author,
+        updated_by: author,
       };
     });
   }
@@ -1234,7 +1247,7 @@ function seed(): MockStore {
    offerings (Anir, Sep 4: "it cant say 0. then whats the point of mock mode").
    Same rule as 6 and 7: the store is a cached file, so a seed change that is
    not accompanied by a bump reaches nobody. */
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 

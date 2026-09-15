@@ -22,7 +22,6 @@ import {
   Sparkles,
   Target,
   Trash2,
-  X,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -50,6 +49,9 @@ import type {
 import {formatDate, todayISO} from "@/lib/utils";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { LocalTime } from "@/components/ui/LocalTime";
+import { Avatar } from "@/components/ui/Avatar";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { withCommas } from "@/lib/currency";
 
 /**
@@ -194,6 +196,7 @@ export function OfferingActivities({
    *  editor as soon as the group renders, once. */
   startAdding?: boolean;
   onStartedAdding?: () => void;}) {
+  const currentUser = useCurrentUser();
   /** null = closed; "" = adding; otherwise the id being edited. */
   const [editing, setEditing] = useState<string | null>(null);
   /** The activity document currently open in the in-app viewer. */
@@ -225,8 +228,6 @@ export function OfferingActivities({
   const [docs, setDocs] = useState<StagedDoc[]>([]);
 
   const ordered = [...versions].sort((a, b) => b.version - a.version);
-  const current = versions.find((v) => v.linked) || null;
-
   /* The customer tab's offering picker chose this group: open the add form
      the moment it mounts, once, and hand the flag back so a re-render does
      not reopen it after the person cancels. */
@@ -310,6 +311,8 @@ export function OfferingActivities({
       contract_ids: existing?.contract_ids ?? [],
       created_at: existing?.created_at ?? now,
       updated_at: now,
+      created_by: existing?.created_by ?? currentUser.name,
+      updated_by: currentUser.name,
     };
     const next = existing
       ? versions.map((v) => (v.id === record.id ? record : v))
@@ -397,17 +400,23 @@ export function OfferingActivities({
              it invents a scrollbar for a table that already fits (Anir, Aug 9:
              "it looks like you don't even need the horizontal scroll on the
              table, you're fitting it properly"). */}
-          <table className="w-full min-w-[860px] table-fixed border-collapse text-left">
+          <table className="w-full min-w-[1080px] table-fixed border-collapse text-left">
             <thead>
               <tr className="border-b border-border-light text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
                 <th className="w-[132px] py-2 pr-3 font-bold">Activity</th>
                 <th className="w-[300px] py-2 pr-3 font-bold">Details</th>
                 <th className="w-[136px] py-2 pr-3 font-bold">Status</th>
-                <th className="w-[184px] py-2 pr-3 font-bold">Dates</th>
+                <th className="w-[184px] py-2 pr-3 font-bold">Activity dates</th>
+                <th className="w-[190px] py-2 pr-3 font-bold">Logged</th>
                 <th className="w-[104px] py-2 pr-3 font-bold">Value</th>
                 {/* Anir, Sep 4: "There should be a column for documents." */}
                 <th className="w-[150px] py-2 pr-3 font-bold">Documents</th>
-                <th className="w-[140px] py-2 pr-2 font-bold">Current</th>
+                <th className="w-[140px] py-2 pr-2 font-bold">
+                  <span className="flex items-center gap-1.5">
+                    Current
+                    <InfoHint text="The activity marked Current is the one shown for this offering in the Coverage heat map." />
+                  </span>
+                </th>
                 {/* A NAMED COLUMN, NOT A FLOATING BUTTON (Anir, Aug 13: "this
                     seems like a weird place to have the plus sign… and then
                     there should be an actions column"). The pencil and the bin
@@ -482,6 +491,25 @@ export function OfferingActivities({
                         </>
                       ) : (
                         <span className="text-text-tertiary">No dates yet</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      <LocalTime
+                        value={version.created_at}
+                        className="block whitespace-nowrap text-[11.5px] font-medium text-text-secondary tnum"
+                      />
+                      {version.created_by ? (
+                        <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[11.5px] text-text-secondary">
+                          <Avatar
+                            name={version.created_by}
+                            className="h-5 w-5 shrink-0 text-[8px]"
+                          />
+                          <span className="truncate">{version.created_by}</span>
+                        </span>
+                      ) : (
+                        <span className="mt-1 block text-[11px] text-text-tertiary">
+                          Person not recorded
+                        </span>
                       )}
                     </td>
                     <td className="whitespace-nowrap py-2.5 pr-3 text-[12px] font-semibold text-text-primary tnum">
@@ -580,16 +608,6 @@ export function OfferingActivities({
           </table>
         </div>
         </div>
-      )}
-
-      {current && (
-        <p className="mt-2 text-[11px] text-text-tertiary">
-          The heat map shows{" "}
-          <span className="font-semibold text-text-secondary">
-            {CUSTOMER_OFFERING_ACTIVITIES[current.activity].label}
-          </span>{" "}
-          for this offering.
-        </p>
       )}
 
       <Modal

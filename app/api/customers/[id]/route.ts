@@ -151,7 +151,17 @@ function sanitizeEngagementVersion(version: any, linked = false) {
     created_at: version?.created_at
       ? String(version.created_at)
       : new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    updated_at: version?.updated_at
+      ? String(version.updated_at)
+      : new Date().toISOString(),
+    created_by:
+      typeof version?.created_by === "string" && version.created_by.trim()
+        ? version.created_by.trim().slice(0, 160)
+        : null,
+    updated_by:
+      typeof version?.updated_by === "string" && version.updated_by.trim()
+        ? version.updated_by.trim().slice(0, 160)
+        : null,
   };
 }
 
@@ -393,13 +403,42 @@ export async function PATCH(
     patch.offering_usage = body.offering_usage
       .map((u: any) => {
         let linkedVersionSeen = false;
+        const previousUsage = (customer.offering_usage || []).find(
+          (item) => item.offering_id === String(u?.offering_id || "")
+        );
+        const previousVersions = new Map(
+          (previousUsage?.engagement_versions || []).map((version) => [
+            version.id,
+            version,
+          ])
+        );
         const engagementVersions = Array.isArray(u?.engagement_versions)
           ? u.engagement_versions
               .map((version: any) => {
                 const requestedLinked = version?.linked === true;
                 const linked = requestedLinked && !linkedVersionSeen;
                 if (linked) linkedVersionSeen = true;
-                return sanitizeEngagementVersion(version, linked);
+                const previous = previousVersions.get(String(version?.id || ""));
+                const clean = sanitizeEngagementVersion(version, linked);
+                return {
+                  ...clean,
+                  // Browser-supplied names never become audit attribution.
+                  // Legacy rows stay unattributed instead of being assigned
+                  // to the next person who edits the account.
+                  created_by: previous
+                    ? previous.created_by ?? null
+                    : actorName,
+                  updated_by:
+                    previous?.updated_at === clean.updated_at
+                      ? previous.updated_by ?? null
+                      : actorName,
+                  created_at:
+                    previous?.created_at ?? new Date().toISOString(),
+                  updated_at:
+                    previous?.updated_at === clean.updated_at
+                      ? previous.updated_at
+                      : new Date().toISOString(),
+                };
               })
               .sort((a: any, b: any) => b.version - a.version)
           : [];
@@ -710,4 +749,3 @@ export async function DELETE(
   await removeCustomerProfile(id).catch(() => undefined);
   return NextResponse.json({ ok: true });
 }
-
