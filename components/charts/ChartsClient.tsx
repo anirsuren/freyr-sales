@@ -244,8 +244,8 @@ function tipIsLong(items?: TipItem[]): boolean {
 }
 
 // Hover state for one chart: which index is lit, where its tip is anchored, and
-// — for tips the user is allowed to reach — a grace timer so the card survives
-// the trip from the chart into the card.
+// — for tips the user is allowed to reach — a zero-delay handoff timer so the
+// card can receive mouse-enter before it closes.
 /** Every graph tooltip in this app waits this long before it opens. No chart
  *  gets to opt out, and there is no user setting for it any more (Anir, Jul 28:
  *  "we need it where it's 0.5 seconds on every single graph. There should not
@@ -334,23 +334,21 @@ function useChartHover() {
     setAnchor(at);
   }
 
-  /** Close now (plain tips) or after `graceMs` (reachable tips). */
+  /** Close on the next browser task. With a zero delay this is visually
+   * immediate; an interactive popup entered by the same pointer movement can
+   * still cancel the pending task. */
   const close = useCallback(
     (graceMs = 0) => {
       keepOpen();
       stopOpening();
-      // The dot leaves with the cursor either way; only the card lingers.
+      // The dot leaves with the cursor immediately; the card gets one event
+      // handoff so its own mouse-enter can keep it mounted.
       setActive(null);
-      if (graceMs <= 0) {
-        setCard(null);
-        setAnchor(null);
-        return;
-      }
       closeTimer.current = setTimeout(() => {
         closeTimer.current = null;
         setCard(null);
         setAnchor(null);
-      }, graceMs);
+      }, Math.max(0, graceMs));
     },
     [keepOpen, stopOpening, setCard]
   );

@@ -26,13 +26,9 @@ export const HOVER_DELAY_MS = 1000;
 export const HOVER_HINT_DELAY_MS = 250;
 
 /**
- * How long a rich hover popup remains available after the pointer leaves its
- * trigger. The popup cancels this timer as soon as the pointer reaches it, so
- * this is a forgiving corridor for moving across charts and rows rather than
- * a delay once the user has actually left both surfaces.
- *
- * Keep this shared. A mix of 90-140ms close timers made the same movement work
- * on one page and fail on another, especially when the popup opened above the
- * trigger and the pointer had farther to travel.
+ * Rich hover popups close as soon as the pointer leaves them. Zero still runs
+ * through a timer in the shared components: that one browser-task handoff is
+ * not a visible grace period, but it lets a popup cancel closure when the same
+ * pointer movement lands directly on its own interactive surface.
  */
-export const HOVER_CLOSE_GRACE_MS = 350;
+export const HOVER_CLOSE_GRACE_MS = 0;

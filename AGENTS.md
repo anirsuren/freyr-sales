@@ -194,6 +194,12 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 15 immediate hover dismissal:** Rich hover cards and chart record tips
+  no longer linger for 350ms after the pointer leaves. The shared close delay
+  is zero; closure uses one browser-task handoff so moving directly onto an
+  interactive popup can still keep it open, while moving elsewhere dismisses
+  it visually immediately. Local only; not deployed.
+
 - **Sep 15 meeting picker creation and deduplication:** The meeting editor's
   customer picker collapses duplicate account records by normalized name while
   preserving the selected id and combining linked deal/contact context. An

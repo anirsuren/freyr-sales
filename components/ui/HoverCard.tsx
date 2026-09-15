@@ -14,8 +14,9 @@ import {
 // NEVER be clipped: the popover renders in a body portal at a fixed position,
 // so `overflow-hidden` ancestors (table cards, grids) can't cut it off — the
 // exact bug the team-roster popup hit ("Engaged" clipped to "d"). Same cure as
-// the chart tooltips (#146). A small close delay + the popover's own hover
-// handlers keep it open while the cursor crosses the gap.
+// the chart tooltips (#146). The portal includes its visual gap inside its own
+// hover surface, so a zero-delay timer can close immediately everywhere else
+// while its own mouse-enter cancels a direct handoff from the trigger.
 export function HoverCard({
   children,
   content,
