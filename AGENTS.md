@@ -195,8 +195,9 @@ what was written back, `deleted-test-customers.json`).
 ## 9. Current state — Jul 31, 2026
 
 - **Sep 15 lead source drill-down:** Every Source performance row on Leads is
-  now a full clickable target with consistently left-aligned lead and converted
-  counts. It opens a large searchable dialog with source totals plus each
+  now a full clickable target. Its source and volume bar share one column, while
+  Total leads and Became opportunities are separate, consistently left-aligned
+  facts with the conversion rate shown beside the latter. It opens a large searchable dialog with source totals plus each
   person, company, status, owner, request, intake time, last movement, and links
   to matched customers, owners, and converted opportunities. The dialog uses
   the same underlying records in Mock and Real mode. Local only; not deployed.

@@ -204,10 +204,10 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
             </h3>
             <InfoHint text="Bar length is lead volume. The aligned figures show total leads and how many reached an opportunity. Every value comes from the lead records in this workspace." />
           </div>
-          <div className="mt-3 grid grid-cols-[96px_minmax(90px,1fr)_146px_14px] items-center gap-3 border-b border-border-light pb-1.5 text-left text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-            <span>Source</span>
-            <span>Volume</span>
-            <span>Leads · converted</span>
+          <div className="mt-3 grid grid-cols-[minmax(150px,1fr)_72px_154px_14px] items-end gap-3 border-b border-border-light pb-1.5 text-left text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+            <span>Source &amp; volume</span>
+            <span>Total leads</span>
+            <span>Became opportunities</span>
             <span aria-hidden="true" />
           </div>
           <div className="mt-1.5 space-y-0.5">
@@ -220,25 +220,33 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                   setSourceDetail(bar.label);
                 }}
                 aria-label={`Open all ${bar.value} ${bar.label} leads`}
-                className="group grid w-full grid-cols-[96px_minmax(90px,1fr)_146px_14px] items-center gap-3 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
+                className="group grid w-full grid-cols-[minmax(150px,1fr)_72px_154px_14px] items-center gap-3 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
                 title={`${bar.label}: ${bar.value} leads, ${bar.converted} converted (${bar.conversionRate}%)`}
               >
-                <span className="truncate text-[11.5px] font-medium text-text-secondary">
-                  {bar.label}
+                <span className="min-w-0">
+                  <span className="block truncate text-[11.5px] font-medium text-text-secondary">
+                    {bar.label}
+                  </span>
+                  <span className="relative mt-1.5 block h-2 overflow-hidden rounded-full bg-surface">
+                    <span
+                      className="absolute inset-y-0 left-0 rounded-full"
+                      style={{
+                        width: `${Math.max(5, (bar.value / maxSourceValue) * 100)}%`,
+                        background: bar.color,
+                      }}
+                    />
+                  </span>
                 </span>
-                <span className="relative h-2.5 overflow-hidden rounded-full bg-surface">
-                  <span
-                    className="absolute inset-y-0 left-0 rounded-full"
-                    style={{
-                      width: `${Math.max(5, (bar.value / maxSourceValue) * 100)}%`,
-                      background: bar.color,
-                    }}
-                  />
-                </span>
-                <span className="whitespace-nowrap text-left text-[11px] text-text-secondary tnum">
-                  <strong className="font-semibold text-text-primary">{bar.value}</strong>
-                  <span className="mx-1 text-text-tertiary">·</span>
-                  <span style={{ color: bar.color }}>{bar.converted} converted</span>
+                <strong className="text-[12px] font-semibold text-text-primary tnum">
+                  {bar.value}
+                </strong>
+                <span className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap text-left tnum">
+                  <strong className="text-[12px] font-semibold" style={{ color: bar.color }}>
+                    {bar.converted}
+                  </strong>
+                  <span className="text-[10.5px] text-text-tertiary">
+                    {bar.conversionRate}% of leads
+                  </span>
                 </span>
                 <ChevronRight
                   size={14}
