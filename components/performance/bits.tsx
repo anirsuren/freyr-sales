@@ -784,7 +784,10 @@ export function GroupPill({
  * off, the pale part is claimed and still waiting, and the marker is the
  * calendar: where this would have to stand today to be on time.
  */
-/** The values represented by the coloured sections of a progress track. */
+/**
+ * Bracket each coloured section of a progress track and label its value.
+ * Labels share one row when they fit; only actual collisions add a lane.
+ */
 export function SegmentValues({
   parts,
   unit,
@@ -792,33 +795,91 @@ export function SegmentValues({
   parts: { key: string; value: number; pct: number; color: string }[];
   unit: GoalUnit;
 }) {
-  const shown = parts.filter((p) => p.pct > 0.5 && p.value > 0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [trackWidth, setTrackWidth] = useState(320);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const measure = () => setTrackWidth(root.getBoundingClientRect().width || 320);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, []);
+
+  let cursor = 0;
+  const shown = parts.flatMap((part) => {
+    const start = cursor;
+    cursor += part.pct;
+    return part.pct > 0.5 && part.value > 0
+      ? [{
+          ...part,
+          start,
+          center: start + part.pct / 2,
+          label: fmtAmount(unit, part.value),
+        }]
+      : [];
+  });
   if (shown.length < 1) return null;
+
+  const laneRightEdges: number[] = [];
+  const labels = shown.map((part) => {
+    const labelWidth = Math.max(14, part.label.length * 6.2);
+    const half = labelWidth / 2;
+    const center = Math.min(
+      Math.max((part.center / 100) * trackWidth, half),
+      Math.max(half, trackWidth - half)
+    );
+    const left = center - half;
+    const right = center + half;
+    let lane = laneRightEdges.findIndex((edge) => left >= edge + 6);
+    if (lane < 0) {
+      lane = laneRightEdges.length;
+      laneRightEdges.push(right);
+    } else {
+      laneRightEdges[lane] = right;
+    }
+    return { ...part, centerPx: center, lane };
+  });
+  const laneCount = Math.max(...labels.map((part) => part.lane)) + 1;
+
   return (
-    /* VALUES ARE A NORMAL ROW, NEVER ABSOLUTELY POSITIONED. Positioning each
-       number under the centre of a tiny segment made adjacent values collide;
-       moving them to separate vertical lanes made a two-part total read like a
-       broken list. A compact, non-wrapping row keeps the amounts side by side
-       at every zoom level. The coloured stroke is the key for the segment; the
-       bar itself already shows where that segment begins and ends. */
-    <div
-      className="mt-1.5 flex w-full flex-nowrap items-center gap-4 overflow-x-auto pb-0.5"
-      aria-hidden="true"
-    >
-      {shown.map((p) => (
-        <span key={p.key} className="inline-flex shrink-0 items-center gap-1.5">
+    <div ref={rootRef} className="mt-1 w-full" aria-hidden="true">
+      <div className="relative h-[5px] w-full">
+        {shown.map((part) => (
           <span
-            className="h-3 w-1 rounded-full"
-            style={{ background: p.color }}
+            key={part.key}
+            className="absolute bottom-0 h-[5px] rounded-b-[2px] border-x-[1.5px] border-b-[1.5px]"
+            style={{
+              left: `${part.start}%`,
+              width: `${part.pct}%`,
+              borderColor: part.color,
+            }}
           />
+        ))}
+      </div>
+      <div
+        className="relative mt-[3px] w-full"
+        style={{ height: `${laneCount * 14}px` }}
+      >
+        {labels.map((part) => (
           <span
+            key={part.key}
             className="whitespace-nowrap text-[10px] font-bold leading-none tnum"
-            style={{ color: p.color }}
+            style={{
+              position: "absolute",
+              left: part.centerPx,
+              top: part.lane * 14,
+              transform: "translateX(-50%)",
+              color: part.color,
+            }}
           >
-            {fmtAmount(unit, p.value)}
+            {part.label}
           </span>
-        </span>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

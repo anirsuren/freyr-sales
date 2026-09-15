@@ -739,3 +739,6 @@ The latest six entries in an expanded person or group goal use the same compact 
 
 ### Sep 14: month bars explain their stacked status sections
 The Month by month chart in expanded person and group goals shows a Status breakdown on hover: Verified, Waiting to be verified, and Sent back, with the amount and share for each nonzero section. It does not show generic share-of-year or rank statistics for these bars.
+
+### Sep 15: goal segments keep their measurement brackets
+Progress tracks in the organization → group → person drill-down retain a coloured bracket under every nonzero section, showing exactly where that section starts and ends. Section values share one horizontal row whenever their rendered labels fit; only labels that would collide move to another lane. Do not replace the brackets with detached legend strokes. Completed locally, not deployed.
