@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Folder, Search } from "lucide-react";
-import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
+import { HOVER_CLOSE_GRACE_MS, HOVER_DELAY_MS } from "@/lib/hoverPreferences";
 import {
   MATERIAL_FORMAT_META,
   MATERIAL_ICON,
@@ -36,7 +36,7 @@ const MAX_VISIBLE_ROWS = 6;
 const ROW_HEIGHT = 38;
 const PANEL_WIDTH = 300;
 /** Grace while the pointer crosses the gap between card and panel. */
-const CLOSE_DELAY_MS = 140;
+const CLOSE_DELAY_MS = HOVER_CLOSE_GRACE_MS;
 /**
  * Deliberate hover, not a passing cursor. Sweeping across a twelve-card grid
  * used to fire a panel per card. Originally half a second, raised to the

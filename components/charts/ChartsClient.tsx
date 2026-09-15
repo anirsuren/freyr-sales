@@ -33,6 +33,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { VIZ } from "./palette";
 import { tint } from "@/lib/tint";
+import { HOVER_CLOSE_GRACE_MS } from "@/lib/hoverPreferences";
 
 // Series icons for tooltips + legends, keyed by SHORT STRINGS so server
 // components can request one (Suren: "put an icon instead of just a purple
@@ -225,14 +226,10 @@ function PointGuide({ left, color }: { left: string; color: string }) {
  * so it can be walked INTO (Suren: "let them hover over the pop-up itself and
  * scroll through").
  *
- * 170ms felt like the card was hanging on after you had clearly left (Anir,
- * Aug 20: "when im going off the progress bar it has to go immediately theres
- * like a delay now"). 90ms is still longer than the gap between two mousemove
- * events, so walking from the bar onto the card keeps working, but letting go
- * reads as instant. Cursor-into-card cancels it either way — the timer is only
- * ever the fallback.
+ * Cursor-into-card cancels the shared timer. Once the pointer leaves both
+ * surfaces the pending close is allowed to finish.
  */
-const TIP_CLOSE_GRACE_MS = 90;
+const TIP_CLOSE_GRACE_MS = HOVER_CLOSE_GRACE_MS;
 
 /** Any tip with records must be reachable. Even a two-row popup contains links
  *  and details a reader may want to inspect, so its lifetime cannot depend on

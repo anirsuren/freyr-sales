@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import { HOVER_DELAY_MS, HOVER_HINT_DELAY_MS } from "@/lib/hoverPreferences";
+import {
+  HOVER_CLOSE_GRACE_MS,
+  HOVER_DELAY_MS,
+  HOVER_HINT_DELAY_MS,
+} from "@/lib/hoverPreferences";
 
 // A hover popover that STAYS OPEN while the cursor is over the popover itself
 // (Suren: "when I hover onto the pop-up it shouldn't disappear"), and that can
@@ -148,7 +152,7 @@ export function HoverCard({
   function scheduleHide() {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setPos(null), 110);
+    hideTimer.current = setTimeout(() => setPos(null), HOVER_CLOSE_GRACE_MS);
   }
 
   function onBlur(event: React.FocusEvent<HTMLDivElement>) {

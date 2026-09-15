@@ -75,7 +75,7 @@ test("every generated deal opens into populated downstream work", () => {
 
   assert.ok(leads.length >= 100);
   for (const opportunity of opportunities) {
-    assert.ok(opportunity.lines.length >= 1, `${opportunity.id}: offering lines`);
+    assert.ok((opportunity.lines?.length ?? 0) >= 1, `${opportunity.id}: offering lines`);
     assert.ok(contracts.some((row) => row.opportunityId === opportunity.id), `${opportunity.id}: contract`);
     assert.ok(meetings.some((row) => row.opportunityIds.includes(opportunity.id)), `${opportunity.id}: meeting`);
     const requests = solutioning.filter((row) => row.opportunityIds.includes(opportunity.id));

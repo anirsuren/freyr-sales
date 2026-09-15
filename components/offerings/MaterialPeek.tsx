@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Check, Copy, Loader2 } from "lucide-react";
-import { HOVER_DELAY_MS } from "@/lib/hoverPreferences";
+import { HOVER_CLOSE_GRACE_MS, HOVER_DELAY_MS } from "@/lib/hoverPreferences";
 import { materialFormat, type OfferingMaterial } from "@/lib/offeringMaterials";
 
 /**
@@ -28,7 +28,7 @@ import { materialFormat, type OfferingMaterial } from "@/lib/offeringMaterials";
 const OPEN_DELAY_MS = HOVER_DELAY_MS;
 /** A card that is already rendered reopens almost immediately. */
 const REOPEN_DELAY_MS = 120;
-const CLOSE_DELAY_MS = 140;
+const CLOSE_DELAY_MS = HOVER_CLOSE_GRACE_MS;
 const PANEL_WIDTH = 560;
 const FRAME_HEIGHT = 420;
 
