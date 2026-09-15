@@ -902,9 +902,14 @@ export function ColorSelect({
                     {o.badge}
                   </span>
                 )}
-                {on && (
-                  <Check size={15} strokeWidth={2.6} className="shrink-0" style={{ color: accent }} />
-                )}
+                {/* Reserve the selection column on every row. Rendering this
+                    space only for the active option narrowed its label/badge
+                    row and made the whole line jump sideways when selected. */}
+                <span className="grid h-5 w-5 shrink-0 place-items-center" aria-hidden="true">
+                  {on && (
+                    <Check size={15} strokeWidth={2.6} style={{ color: accent }} />
+                  )}
+                </span>
                 {o.href && <OpenInNewTab href={o.href} label={o.label} />}
               </button>
               </Fragment>
