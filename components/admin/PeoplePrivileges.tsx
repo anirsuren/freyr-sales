@@ -9,9 +9,12 @@ import { cn } from "@/lib/utils";
 import {
   VIEW_ALL,
   privilegeColor,
-  privilegesForPerson,
   type PrivilegeState,
 } from "@/lib/privileges";
+import {
+  privilegesForMember,
+  type PrivilegeMember,
+} from "@/lib/memberPrivilegeBindings";
 
 /**
  * WHICH PRIVILEGES EACH PERSON HOLDS.
@@ -62,6 +65,7 @@ export function PeoplePrivileges() {
   /* Asked before, not recovered from after: nothing on any page says "this
      person lost BD Owner yesterday". */
   const [pending, setPending] = useState<{
+    personId: string;
     person: string;
     privId: string;
     privLabel: string;
@@ -159,7 +163,7 @@ export function PeoplePrivileges() {
 
   const applyPending = () => {
     if (!pending) return;
-    const { person, privId, to } = pending;
+    const { personId, person, privId, to } = pending;
     setPending(null);
     /* Reuse an existing key that differs only in case, so one person cannot
        end up with two rows in the store. */
@@ -167,14 +171,23 @@ export function PeoplePrivileges() {
       Object.keys(state.peoplePrivileges).find(
         (n) => n.trim().toLowerCase() === person.trim().toLowerCase()
       ) ?? person;
-    const current = new Set(state.peoplePrivileges[key] ?? []);
+    const current = new Set(
+      privilegesForMember(state, personId, privilegeDirectory)
+    );
     if (to) current.add(privId);
     else current.delete(privId);
 
     const next = { ...state.peoplePrivileges };
     if (current.size) next[key] = [...current];
     else delete next[key];
-    void save({ ...state, peoplePrivileges: next });
+    const memberPrivileges = { ...state.memberPrivileges };
+    if (current.size) memberPrivileges[personId] = [...current];
+    else memberPrivileges[personId] = [];
+    void save({
+      ...state,
+      peoplePrivileges: next,
+      memberPrivileges,
+    });
   };
 
   const privColor = (id: string) => privilegeColor(id);
@@ -185,6 +198,11 @@ export function PeoplePrivileges() {
         `${p.name} ${p.email ?? ""}`.toLowerCase().includes(needle)
       )
     : people;
+  const privilegeDirectory: PrivilegeMember[] = people.map((person) => ({
+    id: person.id,
+    display_name: person.name,
+    active: person.active !== false,
+  }));
 
   return (
     <div>
@@ -225,14 +243,29 @@ export function PeoplePrivileges() {
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-        <table className="w-full min-w-[1100px] border-collapse text-left">
+        <table className="w-full min-w-[1380px] table-fixed border-collapse text-left">
+          <colgroup>
+            <col className="w-[300px]" />
+            {state.privileges.map((privilege) => (
+              <col
+                key={privilege.id}
+                className={
+                  privilege.id.startsWith("sol_")
+                    ? "w-[150px]"
+                    : privilege.id.startsWith("delivery_")
+                      ? "w-[130px]"
+                      : "w-[105px]"
+                }
+              />
+            ))}
+          </colgroup>
           <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
             <tr>
               <th className="sticky left-0 z-10 bg-surface px-4 py-3 align-bottom">
                 Person
               </th>
               {state.privileges.map((p) => (
-                <th key={p.id} className="px-3 py-3 align-bottom">
+                <th key={p.id} className="px-2 py-3 text-center align-bottom">
                   <span className="whitespace-nowrap">{p.label}</span>
                 </th>
               ))}
@@ -240,7 +273,13 @@ export function PeoplePrivileges() {
           </thead>
           <tbody className="divide-y divide-border-light">
             {shownPeople.map((person) => {
-              const held = new Set(privilegesForPerson(state, person.name));
+              const held = new Set(
+                privilegesForMember(
+                  state,
+                  person.id,
+                  privilegeDirectory,
+                )
+              );
               return (
                 <tr key={person.id}>
                   <td className="sticky left-0 z-10 bg-white px-4 py-2.5 align-middle">
@@ -262,7 +301,7 @@ export function PeoplePrivileges() {
                   {state.privileges.map((p) => {
                     const on = held.has(p.id);
                     return (
-                      <td key={p.id} className="px-3 py-2.5 align-middle">
+                      <td key={p.id} className="px-2 py-2.5 text-center align-middle">
                         <button
                           type="button"
                           role="checkbox"
@@ -270,6 +309,7 @@ export function PeoplePrivileges() {
                           aria-label={`${p.label} for ${person.name}`}
                           onClick={() =>
                             setPending({
+                              personId: person.id,
                               person: person.name,
                               privId: p.id,
                               privLabel: p.label,
