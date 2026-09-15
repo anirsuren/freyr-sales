@@ -37,7 +37,7 @@ import {
 import { currencyMeta } from "@/lib/currency";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyFan } from "@/components/ui/CompanyFan";
-import { EvidenceInline, EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
+import { EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
 import { EvidencePicker } from "./EvidencePicker";
 import { SegmentValues } from "./bits";
 import { Card } from "@/components/ui/Card";
@@ -1571,50 +1571,91 @@ export function MyEntriesCard({
           const a = state.actuals.find((x) => x.id === editFor);
           if (!a) return null;
           const goal = state.goals.find((g) => g.id === a.goalId);
+          const fixing = awaitingTheirFix(a);
+          const amountInvalid =
+            draft.amount.trim() !== "" &&
+            parseAmountInput(draft.amount) === null;
           return (
             <Modal
               open
               onClose={() => setEditFor(null)}
-              title={awaitingTheirFix(a) ? "Fix this result" : "Edit this result"}
-              size="wide"
+              title={fixing ? "Fix and resubmit result" : "Edit result"}
+              size="workflow"
+              bodyClassName="!p-0"
             >
-              <p className="text-[12.5px] text-text-secondary">
-                {goal?.name ?? "This goal"} · logged{" "}
-                {stamp(a.addedAt).label ?? formatDate(a.date)}
-                {stamp(a.addedAt).time ? ` at ${stamp(a.addedAt).time}` : ""}.
-                {awaitingTheirFix(a)
-                  ? ` ${a.sentBackBy ?? "Your group owner"} sees it again as soon as you send it.`
-                  : ""}
-              </p>
-              {/* The rejection note travels WITH the form. Fixing a claim
-                  without the reason in front of you is guesswork. */}
-              {a.managerNote && (
-                <div className="mt-3 rounded-xl border border-[color:#DC2626] bg-[color:#DC26260D] px-3.5 py-3">
-                  <span className="flex items-center gap-2 text-[12.5px] font-bold text-[color:var(--status-red)]">
-                    <AlertCircle size={14} strokeWidth={2.4} />
-                    Sent back
-                    {a.sentBackBy ? " by" : ""}
-                    {a.sentBackBy && (
-                      <span className="inline-flex items-center gap-1.5 font-semibold text-text-primary">
-                        <Avatar
-                          name={a.sentBackBy}
-                          className="h-[18px] w-[18px] text-[8px]"
-                        />
-                        {a.sentBackBy}
+              <div className="border-b border-border-light bg-surface/70 px-6 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary">
+                      Result being corrected
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {goalChip(state, a.goalId)}
+                      <span className="text-[12px] text-text-secondary">
+                        Logged {stamp(a.addedAt).label ?? formatDate(a.date)}
+                        {stamp(a.addedAt).time ? ` at ${stamp(a.addedAt).time}` : ""}
                       </span>
-                    )}
-                  </span>
-                  <span className="mt-1 block text-[12.5px] text-text-secondary">
-                    <b className="text-text-primary">Their note: </b>
-                    <i>&ldquo;{a.managerNote}&rdquo;</i>
-                  </span>
+                    </div>
+                  </div>
+                  {fixing && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:#FDECEC] px-3 py-1.5 text-[11.5px] font-bold text-[color:var(--status-red)]">
+                      <AlertCircle size={13} strokeWidth={2.5} />
+                      Needs correction
+                    </span>
+                  )}
                 </div>
-              )}
-              <div className="mt-3.5 grid gap-3 sm:grid-cols-3">
-                <label className="block">
-                  <span className="mb-1 block text-[11.5px] font-semibold text-text-secondary">
-                    Amount
-                  </span>
+              </div>
+
+              <div className="space-y-5 px-6 py-5">
+                {/* The rejection note travels WITH the form. Fixing a claim
+                    without the reason in front of you is guesswork. */}
+                {a.managerNote && (
+                  <section className="overflow-hidden rounded-2xl border border-[color:#F3B2B2] bg-[color:#FFF8F8]">
+                    <div className="flex items-center gap-2 border-b border-[color:#F7D1D1] px-4 py-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:#FDE5E5] text-[color:var(--status-red)]">
+                        <AlertCircle size={16} strokeWidth={2.4} />
+                      </span>
+                      <div className="min-w-0">
+                        <span className="block text-[10.5px] font-bold uppercase tracking-[0.07em] text-[color:var(--status-red)]">
+                          Why it was sent back
+                        </span>
+                        {a.sentBackBy && (
+                          <span className="mt-0.5 inline-flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
+                            <Avatar
+                              name={a.sentBackBy}
+                              className="h-[18px] w-[18px] text-[8px]"
+                            />
+                            {a.sentBackBy}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <blockquote className="px-4 py-3.5 text-[14px] leading-6 text-text-primary">
+                      &ldquo;{a.managerNote}&rdquo;
+                    </blockquote>
+                  </section>
+                )}
+
+                <section className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.03)]">
+                  <div className="mb-4 flex items-start gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+                      <PenLine size={15} strokeWidth={2.2} />
+                    </span>
+                    <div>
+                      <h3 className="text-[13.5px] font-bold text-text-primary">
+                        Corrected result
+                      </h3>
+                      <p className="mt-0.5 text-[11.5px] text-text-secondary">
+                        Update the result and the date it actually happened.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
+                        Amount
+                      </span>
                   {/* THE AMOUNT CARRIES ITS CURRENCY HERE TOO (Anir, Aug 20:
                       "Literally everywhere where that number is, it has to be
                       there"). The log form has worn the symbol since Aug 15;
@@ -1635,15 +1676,26 @@ export function MyEntriesCard({
                       autoFocus
                       value={draft.amount}
                       placeholder="0"
+                      aria-invalid={amountInvalid}
                       onChange={(e) =>
                         setDraft((d) => ({ ...d, amount: e.target.value }))
                       }
-                      className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none focus:border-blue-subtle tnum"
+                      className={cn(
+                        "h-11 w-full rounded-xl border bg-white pl-9 pr-3 text-[14px] outline-none transition-shadow focus:ring-2 tnum",
+                        amountInvalid
+                          ? "border-error focus:border-error focus:ring-error/10"
+                          : "border-border-light focus:border-blue-primary focus:ring-blue-primary/10"
+                      )}
                     />
                   </span>
+                  {amountInvalid && (
+                    <span className="mt-1 block text-[11px] font-semibold text-error">
+                      Enter a valid number.
+                    </span>
+                  )}
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-[11.5px] font-semibold text-text-secondary">
+                  <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
                     Date
                   </span>
                   <input
@@ -1652,12 +1704,12 @@ export function MyEntriesCard({
                     onChange={(e) =>
                       setDraft((d) => ({ ...d, date: e.target.value }))
                     }
-                    className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
+                    className="h-11 w-full rounded-xl border border-border-light bg-white px-3 text-[14px] outline-none transition-shadow focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
                   />
                   <DateEcho value={draft.date} />
                 </label>
-                <label className="block">
-                  <span className="mb-1 block text-[11.5px] font-semibold text-text-secondary">
+                <label className="block sm:col-span-2">
+                  <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
                     Customer
                   </span>
                   <input
@@ -1666,10 +1718,11 @@ export function MyEntriesCard({
                     onChange={(e) =>
                       setDraft((d) => ({ ...d, customer: e.target.value }))
                     }
-                    className="h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
+                    className="h-11 w-full rounded-xl border border-border-light bg-white px-3 text-[14px] outline-none transition-shadow focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
                   />
                 </label>
-              </div>
+                  </div>
+                </section>
               {/* THE PROOF, ON THE FORM THAT ANSWERS THE REJECTION (Anir,
                   Aug 20: "do they have to upload a doc here or no"). They
                   could not — and "attach the contract" is the commonest thing
@@ -1678,18 +1731,41 @@ export function MyEntriesCard({
                   not add it. */}
               {/* The picker draws its own label and hint — saying "Evidence"
                   above it printed the word twice (Anir, Aug 20). */}
-              <div className="mt-3">
-                <EvidencePicker
-                  value={draftEvidence}
-                  onChange={setDraftEvidence}
-                  onUploadingChange={setUploadingEvidence}
-                />
+                <section className="rounded-2xl border border-border-light bg-surface/45 p-4">
+                  <div className="mb-3 flex items-start gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-blue-primary shadow-sm ring-1 ring-border-light">
+                      <Paperclip size={15} strokeWidth={2.2} />
+                    </span>
+                    <div>
+                      <h3 className="text-[13.5px] font-bold text-text-primary">
+                        Supporting evidence
+                      </h3>
+                      <p className="mt-0.5 text-[11.5px] text-text-secondary">
+                        Keep the existing proof or attach the corrected file.
+                      </p>
+                    </div>
+                  </div>
+                  <EvidencePicker
+                    value={draftEvidence}
+                    onChange={setDraftEvidence}
+                    onUploadingChange={setUploadingEvidence}
+                    showLabel={false}
+                    roomy
+                  />
+                </section>
               </div>
-              <div className="mt-4 flex justify-end gap-2">
+
+              <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-border-light bg-surface/95 px-6 py-4 backdrop-blur-sm">
+                <p className="max-w-[460px] text-[11.5px] leading-5 text-text-secondary">
+                  {fixing
+                    ? `${a.sentBackBy ?? "Your group owner"} will be notified and can verify the corrected result.`
+                    : "Saving updates this result immediately."}
+                </p>
+                <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setEditFor(null)}
-                  className="cursor-pointer rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                  className="h-10 cursor-pointer rounded-xl border border-border-light bg-white px-4 text-[13px] font-semibold text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
                 >
                   Cancel
                 </button>
@@ -1708,8 +1784,7 @@ export function MyEntriesCard({
                        this used to fall back to `parsed ?? a.amount`, so a
                        rep fixing a rejected $120K who typed "125kk" silently
                        RESUBMITTED the $120K the owner had just refused. */
-                    (draft.amount.trim() !== "" &&
-                      parseAmountInput(draft.amount) === null)
+                    amountInvalid
                   }
                   onClick={async () => {
                     const parsed = parseAmountInput(draft.amount);
@@ -1730,20 +1805,21 @@ export function MyEntriesCard({
                           : {}),
                         evidence: draftEvidence,
                       },
-                      awaitingTheirFix(a)
+                      fixing
                         ? "Sent back up for verification"
                         : "Entry updated"
                     );
                     if (okDone) setEditFor(null);
                   }}
-                  className="cursor-pointer rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                  className="h-10 cursor-pointer rounded-xl bg-blue-primary px-5 text-[13px] font-bold text-white shadow-[0_6px_16px_rgba(0,113,227,0.18)] transition-all hover:-translate-y-px hover:shadow-[0_8px_20px_rgba(0,113,227,0.24)] disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
                 >
                   {uploadingEvidence
                     ? "Waiting for the upload…"
-                    : awaitingTheirFix(a)
+                    : fixing
                       ? "Send it back for verification"
                       : "Save changes"}
                 </button>
+                </div>
               </div>
             </Modal>
           );
@@ -1767,7 +1843,6 @@ export function VerifyQueueCard({
   meName: string;
   busy: boolean;
 }) {
-  const [note, setNote] = useState("");
   /**
    * ONE WAY IN: REVIEW IT, THEN DECIDE (Anir, Aug 16: "it should just be a
    * view button, and then it brings up a pop-up, and then I can decline it or
@@ -1779,7 +1854,6 @@ export function VerifyQueueCard({
    * read first now, in full, and both answers live in the same dialog.
    */
   const [reviewId, setReviewId] = useState<string | null>(null);
-  const [sendingBack, setSendingBack] = useState(false);
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
   /** Twenty claims used to be twenty clicks (Anir, Aug 15: "so many features
    *  people would need that just don't exist"). Customers has select-many;
@@ -2096,8 +2170,6 @@ export function VerifyQueueCard({
                           type="button"
                           onClick={() => {
                             setReviewId(a.id);
-                            setSendingBack(false);
-                            setNote("");
                           }}
                           className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[rgba(0,113,227,0.28)] bg-white px-3 py-1.5 text-[12.5px] font-bold text-blue-primary transition-all hover:bg-blue-light active:scale-[0.97]"
                         >

@@ -29,12 +29,18 @@ export function EvidencePicker({
   onChange,
   onUploadingChange,
   max = 5,
+  showLabel = true,
+  roomy = false,
 }: {
   value: EvidenceFile[];
   onChange: (next: EvidenceFile[]) => void;
   /** So a form can refuse to submit while a file is still in flight. */
   onUploadingChange?: (busy: boolean) => void;
   max?: number;
+  /** A surrounding form section can supply the heading itself. */
+  showLabel?: boolean;
+  /** Gives correction dialogs a visible attachment workspace. */
+  roomy?: boolean;
 }) {
   const [uploading, setBusy] = useState(false);
   /** One row per file being sent, so a big contract shows a moving bar rather
@@ -235,11 +241,19 @@ export function EvidencePicker({
 
   return (
     <div>
-      <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-        Evidence
-        <InfoHint text={"The proof behind the number. A signed contract, an SOW, or the opportunity summary.\nThe group owner opens it before saying yes, and a money claim cannot be sent without one."} />
-      </label>
-      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+      {showLabel && (
+        <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
+          Evidence
+          <InfoHint text={"The proof behind the number. A signed contract, an SOW, or the opportunity summary.\nThe group owner opens it before saying yes, and a money claim cannot be sent without one."} />
+        </label>
+      )}
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-2",
+          showLabel && "mt-1.5",
+          roomy && "min-h-[88px] rounded-xl border border-dashed border-border-strong/70 bg-white p-4"
+        )}
+      >
         {value.map((e, i) => (
           <span
             key={e.url}
@@ -260,7 +274,12 @@ export function EvidencePicker({
           type="button"
           disabled={uploading || value.length >= max}
           onClick={() => evidenceInputRef.current?.click()}
-          className="cursor-pointer rounded-full border border-border-light bg-white px-3 py-1.5 text-[11.5px] font-semibold text-text-secondary transition-colors hover:text-blue-primary disabled:opacity-50"
+          className={cn(
+            "cursor-pointer border border-border-light bg-white font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:opacity-50",
+            roomy
+              ? "rounded-xl px-4 py-2.5 text-[12.5px] shadow-sm"
+              : "rounded-full px-3 py-1.5 text-[11.5px]"
+          )}
         >
           {uploading ? "Uploading…" : "＋ Attach a file"}
         </button>
