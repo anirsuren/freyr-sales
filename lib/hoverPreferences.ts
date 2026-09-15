@@ -26,9 +26,8 @@ export const HOVER_DELAY_MS = 1000;
 export const HOVER_HINT_DELAY_MS = 250;
 
 /**
- * Rich hover popups close as soon as the pointer leaves them. Zero still runs
- * through a timer in the shared components: that one browser-task handoff is
- * not a visible grace period, but it lets a popup cancel closure when the same
- * pointer movement lands directly on its own interactive surface.
+ * Ordinary rich hover popups close as soon as the pointer leaves them. Chart
+ * record cards use their own short physical handoff because they are portalled
+ * away from the graph and must be entered to scroll.
  */
 export const HOVER_CLOSE_GRACE_MS = 0;

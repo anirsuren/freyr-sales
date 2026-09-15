@@ -82,9 +82,10 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
         value: records.length,
         color: leadStatusColor(status),
         tip: records.map((lead) => ({
+          logo: lead.company,
           avatar: lead.name,
           name: lead.company,
-          sub: lead.name,
+          stage: lead.status,
         })),
       };
     }).filter((segment) => segment.value > 0);
@@ -110,9 +111,10 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
       tips: weekly.map((week) =>
         week.leads.map(
           (lead): TipItem => ({
+            logo: lead.company,
             avatar: lead.name,
             name: lead.company,
-            sub: `${lead.name} · ${lead.status}`,
+            stage: lead.status,
           })
         )
       ),
@@ -313,7 +315,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
               <Maximize2 size={14} strokeWidth={2.1} aria-hidden="true" />
             </button>
           </div>
-          <div className="mt-3 grid grid-cols-[minmax(150px,1fr)_72px_154px_14px] items-end gap-3 border-b border-border-light pb-1.5 text-left text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+          <div className="mt-3 grid grid-cols-[minmax(150px,1fr)_72px_154px_14px] items-end gap-3 border-b border-border-light px-1.5 pb-1.5 text-left text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             <span>Source &amp; volume</span>
             <span>Total leads</span>
             <span>Became opportunities</span>
@@ -328,27 +330,16 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                   openSourceWorkspace(bar.label);
                 }}
                 aria-label={`Open all ${bar.value} ${bar.label} leads`}
-                className="group grid w-full grid-cols-[minmax(150px,1fr)_72px_154px_14px] items-center gap-3 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
+                className="group grid w-full grid-cols-[minmax(150px,1fr)_72px_154px_14px] grid-rows-[auto_8px] items-center gap-x-3 gap-y-1.5 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
                 title={`${bar.label}: ${bar.value} leads, ${bar.converted} converted (${bar.conversionRate}%)`}
               >
-                <span className="min-w-0">
-                  <span className="block truncate text-[11.5px] font-medium text-text-secondary">
-                    {bar.label}
-                  </span>
-                  <span className="relative mt-1.5 block h-2 overflow-hidden rounded-full bg-surface">
-                    <span
-                      className="absolute inset-y-0 left-0 rounded-full"
-                      style={{
-                        width: `${Math.max(5, (bar.value / maxSourceValue) * 100)}%`,
-                        background: bar.color,
-                      }}
-                    />
-                  </span>
+                <span className="col-start-1 row-start-1 block min-w-0 truncate text-[11.5px] font-medium leading-5 text-text-secondary">
+                  {bar.label}
                 </span>
-                <strong className="text-[12px] font-semibold text-text-primary tnum">
+                <strong className="col-start-2 row-start-1 self-center text-[12px] font-semibold leading-5 text-text-primary tnum">
                   {bar.value}
                 </strong>
-                <span className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap text-left tnum">
+                <span className="col-start-3 row-start-1 flex min-w-0 self-center items-baseline gap-1.5 whitespace-nowrap text-left leading-5 tnum">
                   <strong className="text-[12px] font-semibold" style={{ color: bar.color }}>
                     {bar.converted}
                   </strong>
@@ -359,9 +350,18 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 <ChevronRight
                   size={14}
                   strokeWidth={2.2}
-                  className="text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary"
+                  className="col-start-4 row-start-1 self-center text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary"
                   aria-hidden="true"
                 />
+                <span className="relative col-start-1 row-start-2 block h-2 overflow-hidden rounded-full bg-surface">
+                  <span
+                    className="absolute inset-y-0 left-0 rounded-full"
+                    style={{
+                      width: `${Math.max(5, (bar.value / maxSourceValue) * 100)}%`,
+                      background: bar.color,
+                    }}
+                  />
+                </span>
               </button>
             ))}
           </div>

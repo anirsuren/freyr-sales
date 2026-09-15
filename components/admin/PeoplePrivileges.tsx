@@ -243,19 +243,13 @@ export function PeoplePrivileges() {
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-        <table className="w-full min-w-[1380px] table-fixed border-collapse text-left">
+        <table className="w-full min-w-[1340px] table-fixed border-collapse text-left">
           <colgroup>
-            <col className="w-[300px]" />
+            <col style={{ width: 260 }} />
             {state.privileges.map((privilege) => (
               <col
                 key={privilege.id}
-                className={
-                  privilege.id.startsWith("sol_")
-                    ? "w-[150px]"
-                    : privilege.id.startsWith("delivery_")
-                      ? "w-[130px]"
-                      : "w-[105px]"
-                }
+                style={{ width: 108 }}
               />
             ))}
           </colgroup>
@@ -265,8 +259,12 @@ export function PeoplePrivileges() {
                 Person
               </th>
               {state.privileges.map((p) => (
-                <th key={p.id} className="px-2 py-3 text-center align-bottom">
-                  <span className="whitespace-nowrap">{p.label}</span>
+                <th key={p.id} className="px-1 py-3 text-center align-bottom">
+                  <span className="flex min-h-7 flex-col items-center justify-end whitespace-normal text-center leading-[1.15]">
+                    {p.label.split(" ").map((word, index) => (
+                      <span key={`${p.id}-${index}`}>{word}</span>
+                    ))}
+                  </span>
                 </th>
               ))}
             </tr>
@@ -301,7 +299,7 @@ export function PeoplePrivileges() {
                   {state.privileges.map((p) => {
                     const on = held.has(p.id);
                     return (
-                      <td key={p.id} className="px-2 py-2.5 text-center align-middle">
+                      <td key={p.id} className="px-1 py-2.5 text-center align-middle">
                         <button
                           type="button"
                           role="checkbox"

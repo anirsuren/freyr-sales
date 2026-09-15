@@ -495,10 +495,10 @@ function RowDialog({
     <Modal open={open} onClose={onCancel} title={title} size="wide" stacked>
       <div className="space-y-4">
         {children}
-        <p className="min-h-[18px] text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
-          {problem}
-        </p>
-        <div className="flex items-center justify-end gap-3 border-t border-border-light pt-4">
+        <div className="flex min-h-9 flex-wrap items-center justify-end gap-3 border-t border-border-light pt-4">
+          <p className="text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+            {problem}
+          </p>
           <button
             type="button"
             onClick={onCancel}

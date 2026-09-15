@@ -109,8 +109,8 @@ opportunities say what is actually true:</p>
 <p>Thank you for your time today. As promised, here is the material we talked
 through:</p>
 <ul>
-  <li>[document name]: [one line on what it covers]</li>
-  <li>[document name]: [one line on what it covers]</li>
+  <li>[first document name]: [what the first document covers]</li>
+  <li>[second document name]: [what the second document covers]</li>
 </ul>
 <p>[One line on the next step you agreed, and when.]</p>
 <p>Any questions in the meantime, reply here and I will pick it up.</p>

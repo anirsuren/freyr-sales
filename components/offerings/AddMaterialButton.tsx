@@ -1945,11 +1945,10 @@ export function AddMaterialButton({
             )}
           </div>
 
-          {/* Its own line, fixed height, so Cancel and Add material stay put. */}
-          <p className="min-h-[18px] pt-1 text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
-            {addProblem}
-          </p>
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex min-h-9 flex-wrap items-center justify-end gap-2">
+            <p className="mr-1 text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+              {addProblem}
+            </p>
             <button
               onClick={() => { reset(); setOpen(false); }}
               className="cursor-pointer text-[13px] font-medium px-3.5 py-2 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors"

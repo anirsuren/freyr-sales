@@ -20,18 +20,18 @@ const STYLE: Record<
     icon: LucideIcon;
   }
 > = {
-  // Availability must remain distinct from adoption: “In use” owns the filled
-  // green treatment, while this status uses an outlined white field.
+  // Availability must remain distinct from adoption: “In use” owns the
+  // stronger filled treatment, while availability uses a much softer green.
   available: {
-    // Availability is informational, not the same state as “In use”. A white
-    // field with a dark green mark stays readable beside the filled green
-    // adoption badge and avoids low-contrast green text on green.
-    bg: "#FFFFFF",
+    // Keep the dark, readable green text the user approved and restore the
+    // light green field behind it. The low-contrast bright-green-on-green pair
+    // was the problem, not the presence of a green background.
+    bg: "#EEF8F1",
     color: "#166534",
-    border: "rgba(22,101,52,0.34)",
-    darkBg: "rgba(15,23,42,0.72)",
+    border: "rgba(22,101,52,0.22)",
+    darkBg: "rgba(74,222,128,0.12)",
     darkColor: "#4ADE80",
-    darkBorder: "rgba(74,222,128,0.42)",
+    darkBorder: "rgba(74,222,128,0.28)",
     icon: CircleCheck,
   },
   upcoming: {

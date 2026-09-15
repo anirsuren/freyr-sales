@@ -34,9 +34,7 @@ export function LeadPersonInsights({
     { label: "Country", complete: Boolean(lead.country?.trim()) },
     { label: "Matched customer", complete: accountMatched },
   ];
-  const captured = checks.filter((check) => check.complete).length;
   const missingChecks = checks.filter((check) => !check.complete);
-  const completeness = Math.round((captured / checks.length) * 100);
   const age = leadAgeDays(lead);
   const open = isOpenLead(lead);
   const overdueBy = open ? Math.max(0, age - FOLLOW_UP_DAYS) : 0;
@@ -50,19 +48,16 @@ export function LeadPersonInsights({
     <section className="rounded-xl border border-border-light bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Lead readiness</span>
-            <InfoHint text="Checks whether six useful details are recorded. It is a completeness check, not an AI score." />
-          </div>
-          <p className="mt-1 text-[13.5px] font-semibold text-text-primary">
-            {captured} of {checks.length} useful details recorded
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Lead follow-up</span>
+          <p className="mt-1 text-[12px] text-text-secondary">
+            {open ? "What needs attention before this lead moves forward" : "The final state and any remaining record details"}
           </p>
         </div>
-        <span className="rounded-full bg-blue-light px-2.5 py-1 text-[11px] font-bold text-blue-primary tnum">{completeness}%</span>
-      </div>
-
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-border-light" aria-label={`${completeness}% of useful lead details recorded`}>
-        <div className="h-full rounded-full bg-blue-primary transition-[width]" style={{ width: `${completeness}%` }} />
+        {missingChecks.length > 0 && (
+          <span className="rounded-full bg-[rgba(194,65,12,0.08)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--ink-orange)] tnum">
+            {missingChecks.length} {missingChecks.length === 1 ? "detail" : "details"} missing
+          </span>
+        )}
       </div>
 
       {missingChecks.length > 0 ? (
@@ -70,7 +65,7 @@ export function LeadPersonInsights({
           <div className="flex items-center justify-between gap-3">
             <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[color:var(--ink-orange)]">
               <AlertCircle size={13} strokeWidth={2.2} />
-              {missingChecks.length} {missingChecks.length === 1 ? "detail needs" : "details need"} attention
+              Add the missing {missingChecks.length === 1 ? "detail" : "details"}
             </p>
             {onEdit && (
               <button
@@ -92,7 +87,7 @@ export function LeadPersonInsights({
         </div>
       ) : (
         <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#15803D]">
-          <CheckCircle2 size={13} strokeWidth={2.3} /> All useful details are present
+          <CheckCircle2 size={13} strokeWidth={2.3} /> Contact and qualification details complete
         </p>
       )}
 
@@ -117,11 +112,11 @@ export function LeadPersonInsights({
 
         <div className="rounded-lg border border-border-light bg-[var(--surface)] p-3">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-            <Target size={12} strokeWidth={2.2} /> Next step
+            <Target size={12} strokeWidth={2.2} /> Recommended action
             <InfoHint text="A practical next step based on the lead's current status." />
           </div>
           <p className="mt-2 text-[13px] font-semibold leading-snug text-blue-primary">{recommendedAction(lead)}</p>
-          <p className="mt-1 text-[10.5px] text-text-tertiary">Based on the current {lead.status.toLowerCase()} status.</p>
+          <p className="mt-1 text-[10.5px] text-text-tertiary">Suggested from the current {lead.status.toLowerCase()} status.</p>
         </div>
       </div>
     </section>

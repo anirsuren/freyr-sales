@@ -33,6 +33,9 @@ import {
   SIGNAL_META,
   miDateLabel,
   miFreshMinutes,
+  miNewsUrl,
+  miPostUrl,
+  miSignalUrl,
   type MiCompany,
   type MiSignalKind,
 } from "@/lib/marketIntelMock";
@@ -51,22 +54,12 @@ import { tint } from "@/lib/tint";
  */
 
 
-const SOURCE_HOME: Record<string, string> = {
-  Reuters: "https://www.reuters.com",
-  "Fierce Pharma": "https://www.fiercepharma.com",
-  "Fierce Biotech": "https://www.fiercebiotech.com",
-  "Endpoints News": "https://endpts.com",
-  PharmaTimes: "https://www.pharmatimes.com",
-  BioSpace: "https://www.biospace.com",
-  "Regulatory Focus": "https://www.raps.org",
-};
-
 type Lens = "all" | "linkedin" | "news";
 
 type FeedItem =
-  | { kind: "post"; daysAgo: number; personId: string; text: string; reactions: number; comments: number }
-  | { kind: "news"; daysAgo: number; source: string; headline: string; summary: string }
-  | { kind: "signal"; daysAgo: number; signal: MiSignalKind; title: string; detail: string; why: string };
+  | { kind: "post"; daysAgo: number; personId: string; text: string; reactions: number; comments: number; url?: string }
+  | { kind: "news"; daysAgo: number; source: string; headline: string; summary: string; url?: string }
+  | { kind: "signal"; daysAgo: number; signal: MiSignalKind; title: string; detail: string; why: string; url?: string };
 
 // How the news blurbs read: full cards, a scannable grid, or a table (Anir,
 // Aug 11: "a tiles view, a rows view, and maybe even a table view").
@@ -105,6 +98,7 @@ export function CompanyIntel({
       title: s.title,
       detail: s.detail,
       why: s.why,
+      url: s.url,
     })),
   ].sort((a, b) => a.daysAgo - b.daysAgo);
 
@@ -295,7 +289,7 @@ export function CompanyIntel({
                           </td>
                           <td className="px-4 py-3 align-top">
                             <a
-                              href={SOURCE_HOME[item.source] || "#"}
+                              href={miNewsUrl(item)}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
@@ -312,7 +306,14 @@ export function CompanyIntel({
               [...company.news]
                 .sort((a, b) => a.daysAgo - b.daysAgo)
                 .map((item, index) => (
-                  <Card key={index} className="flex flex-col p-4">
+                  <a
+                    key={index}
+                    href={miNewsUrl(item)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-primary"
+                  >
+                  <Card className="flex h-full cursor-pointer flex-col p-4 transition-all group-hover:-translate-y-0.5 group-hover:border-blue-subtle group-hover:shadow-lg">
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-teal-deep)]">
                         <Newspaper size={10.5} strokeWidth={2.2} /> {item.source}
@@ -324,22 +325,25 @@ export function CompanyIntel({
                     <h3 className="mt-1.5 flex-1 text-[13.5px] font-semibold leading-snug text-text-primary">
                       {item.headline}
                     </h3>
-                    <a
-                      href={SOURCE_HOME[item.source] || "#"}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
-                    >
+                    <span className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary group-hover:underline">
                       Read the article <ExternalLink size={11} strokeWidth={2.2} />
-                    </a>
+                    </span>
                   </Card>
+                  </a>
                 ))
             ) : (
               shown.map((item, index) => {
               if (item.kind === "post") {
                 const person = personById.get(item.personId);
                 return (
-                  <Card key={`p-${index}`} className="p-4">
+                  <a
+                    key={`p-${index}`}
+                    href={miPostUrl(company, item)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-primary"
+                  >
+                  <Card className="cursor-pointer p-4 transition-all group-hover:-translate-y-0.5 group-hover:border-blue-subtle group-hover:shadow-lg">
                     <div className="flex items-start gap-3">
                       <Avatar name={person?.name || "Unknown"} className="h-9 w-9 shrink-0 text-[11px]" />
                       <div className="min-w-0 flex-1">
@@ -361,18 +365,26 @@ export function CompanyIntel({
                           <span className="flex items-center gap-1 tnum">
                             <MessageSquare size={12} strokeWidth={2} /> {item.comments}
                           </span>
-                          <span className="ml-auto flex items-center gap-1 text-[color:var(--ink-bright-blue)]">
+                          <span className="ml-auto flex items-center gap-1 text-[color:var(--ink-bright-blue)] group-hover:underline">
                             <LinkedInIcon size={12} /> LinkedIn
                           </span>
                         </p>
                       </div>
                     </div>
                   </Card>
+                  </a>
                 );
               }
               if (item.kind === "news") {
                 return (
-                  <Card key={`n-${index}`} className="p-4">
+                  <a
+                    key={`n-${index}`}
+                    href={miNewsUrl(item)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-primary"
+                  >
+                  <Card className="cursor-pointer p-4 transition-all group-hover:-translate-y-0.5 group-hover:border-blue-subtle group-hover:shadow-lg">
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-teal-deep)]">
                         <Newspaper size={10.5} strokeWidth={2.2} /> {item.source}
@@ -387,23 +399,25 @@ export function CompanyIntel({
                     <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
                       {item.summary}
                     </p>
-                    <a
-                      href={SOURCE_HOME[item.source] || "#"}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline"
-                    >
+                    <span className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary group-hover:underline">
                       Read the article <ExternalLink size={11} strokeWidth={2.2} />
-                    </a>
+                    </span>
                   </Card>
+                  </a>
                 );
               }
               const meta = SIGNAL_META[item.signal];
               const SIcon = meta.icon;
               return (
-                <Card
+                <a
                   key={`s-${index}`}
-                  className="border-l-[3px] p-4"
+                  href={miSignalUrl(company, item)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-primary"
+                >
+                <Card
+                  className="cursor-pointer border-l-[3px] p-4 transition-all group-hover:-translate-y-0.5 group-hover:border-blue-subtle group-hover:shadow-lg"
                   style={{ borderLeftColor: meta.color }}
                 >
                   <p className="flex flex-wrap items-center gap-2">
@@ -427,7 +441,11 @@ export function CompanyIntel({
                     <span className="font-semibold text-text-primary">Why it matters: </span>
                     {item.why}
                   </p>
+                  <span className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary group-hover:underline">
+                    View source <ExternalLink size={11} strokeWidth={2.2} />
+                  </span>
                 </Card>
+                </a>
               );
               })
             )}

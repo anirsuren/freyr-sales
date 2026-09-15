@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
-import { emailFromAddress, sendTransactionalEmail } from "@/lib/email";
+import {
+  emailFromAddress,
+  sendTransactionalEmail,
+  type EmailAttachment,
+} from "@/lib/email";
 import { emailShell } from "@/lib/mailer";
 import {
   htmlToPlainText,
@@ -29,6 +33,47 @@ export const dynamic = "force-dynamic";
 
 function refuse(error: string, status: number) {
   return NextResponse.json({ ok: false, error }, { status });
+}
+
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const BLOCKED_ATTACHMENT = /\.(ade|adp|app|bat|chm|cmd|com|cpl|exe|hta|ins|isp|jar|js|jse|lib|lnk|mde|msc|msi|msp|mst|pif|scr|sct|shb|sys|vb|vbe|vbs|vxd|wsc|wsf|wsh)$/i;
+
+function readAttachments(raw: unknown):
+  | { attachments: EmailAttachment[]; metadata: { name: string; size: number; contentType?: string }[] }
+  | { error: string } {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return { attachments: [], metadata: [] };
+  }
+  if (raw.length > MAX_ATTACHMENTS) {
+    return { error: `Attach up to ${MAX_ATTACHMENTS} files.` };
+  }
+  const attachments: EmailAttachment[] = [];
+  const metadata: { name: string; size: number; contentType?: string }[] = [];
+  let total = 0;
+  for (const entry of raw) {
+    const item = (entry ?? {}) as Record<string, unknown>;
+    const filename = String(item.filename ?? "")
+      .replace(/[\r\n\\/]/g, " ")
+      .trim()
+      .slice(0, 180);
+    const content = String(item.content ?? "").replace(/\s/g, "");
+    const contentType = String(item.contentType ?? "").trim().slice(0, 120);
+    if (!filename || !content || !/^[A-Za-z0-9+/]*={0,2}$/.test(content)) {
+      return { error: "One of the attachments could not be read." };
+    }
+    if (BLOCKED_ATTACHMENT.test(filename)) {
+      return { error: `${filename} is not a supported email attachment.` };
+    }
+    const size = Buffer.from(content, "base64").byteLength;
+    total += size;
+    if (!size || total > MAX_ATTACHMENT_BYTES) {
+      return { error: "Attachments must total 8 MB or less." };
+    }
+    attachments.push({ filename, content, ...(contentType ? { contentType } : {}) });
+    metadata.push({ name: filename, size, ...(contentType ? { contentType } : {}) });
+  }
+  return { attachments, metadata };
 }
 
 async function requireAdmin(req: NextRequest) {
@@ -89,6 +134,9 @@ export async function POST(req: NextRequest) {
   const cc = parseAddresses(String(body.cc ?? ""));
   const bcc = parseAddresses(String(body.bcc ?? ""));
   const replyToParsed = parseAddresses(String(body.replyTo ?? ""));
+  const attachmentResult = readAttachments(body.attachments);
+  if ("error" in attachmentResult) return refuse(attachmentResult.error, 400);
+  const { attachments, metadata: attachmentMetadata } = attachmentResult;
 
   if (!to.valid.length) {
     return refuse(
@@ -123,6 +171,7 @@ export async function POST(req: NextRequest) {
       subject,
       body: text,
       ...(sendHtml ? { html: sendHtml } : {}),
+      ...(attachmentMetadata.length ? { attachments: attachmentMetadata } : {}),
       sentBy: me.name,
       ...(me.email ? { sentByEmail: me.email } : {}),
       status: "simulated",
@@ -147,6 +196,7 @@ export async function POST(req: NextRequest) {
     subject,
     body: text,
     ...(sendHtml ? { html: sendHtml } : {}),
+    ...(attachments.length ? { attachments } : {}),
   });
 
   const record = await recordAdminEmail({
@@ -157,6 +207,7 @@ export async function POST(req: NextRequest) {
     subject,
     body: text,
     ...(html ? { html } : {}),
+    ...(attachmentMetadata.length ? { attachments: attachmentMetadata } : {}),
     sentBy: me.name,
     ...(me.email ? { sentByEmail: me.email } : {}),
     status: result.ok ? "sent" : "failed",

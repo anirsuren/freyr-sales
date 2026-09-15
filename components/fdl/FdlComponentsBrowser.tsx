@@ -579,14 +579,14 @@ export function FdlComponentsBrowser({
                 <Link
                   key={component.id}
                   href={`/components/${component.id}`}
-                  className="group flex flex-col gap-3 rounded-xl border border-border-light bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg"
+                  className="group flex h-full flex-col rounded-xl border border-border-light bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg"
                 >
                   {/* Same anatomy as an offering tile (Anir, Aug 8: "fdl
                       should really look pretty similar to the offerings
                       page"): branded icon tile, the type as a coloured
                       eyebrow, the name as the headline, chevron on the right. */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex h-[52px] items-start justify-between gap-2">
+                    <div className="flex min-w-0 items-start gap-2.5">
                       {agentIn(component.name) ? (
                         <AgentAvatar name={component.name} size={36} />
                       ) : (
@@ -604,7 +604,7 @@ export function FdlComponentsBrowser({
                           {component.type}
                         </p>
                         <h3 className="flex items-center gap-1.5 text-[16px] font-semibold leading-snug tracking-[-0.01em] text-text-primary">
-                          <span className="min-w-0">{component.name}</span>
+                          <span className="line-clamp-2 min-w-0">{component.name}</span>
                           {notifying(component.id) && (
                             <Tooltip
                               label={
@@ -630,7 +630,7 @@ export function FdlComponentsBrowser({
                       className="shrink-0 text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary"
                     />
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="mt-3 flex min-h-6 flex-wrap items-start gap-1.5">
                     {current ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(26,122,53,0.25)] bg-[rgba(26,122,53,0.08)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-green)]">
                         <CircleCheck size={11} strokeWidth={2.2} /> Current {withV(current)}
@@ -641,34 +641,50 @@ export function FdlComponentsBrowser({
                       </span>
                     )}
                   </div>
-                  <div className="mt-auto space-y-1 border-t border-border-light pt-3">
-                    <p className="text-[12px] text-text-secondary">
-                      {component.releases.length}{" "}
-                      {component.releases.length === 1 ? "version" : "versions"}
-                      {" · "}
-                      {component.features.length}{" "}
-                      {component.features.length === 1 ? "feature" : "features"}
-                    </p>
+                  <div className="mt-3 border-t border-border-light pt-3">
+                    <div className="grid grid-cols-2 divide-x divide-border-light rounded-lg border border-border-light bg-surface/60">
+                      <div className="px-3 py-2">
+                        <p className="text-[15px] font-semibold leading-none text-text-primary tnum">
+                          {component.releases.length}
+                        </p>
+                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                          {component.releases.length === 1 ? "Version" : "Versions"}
+                        </p>
+                      </div>
+                      <div className="px-3 py-2">
+                        <p className="text-[15px] font-semibold leading-none text-text-primary tnum">
+                          {component.features.length}
+                        </p>
+                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                          {component.features.length === 1 ? "Feature" : "Features"}
+                        </p>
+                      </div>
+                    </div>
                     {/* The offerings this component ships in, each wearing its
                         own mark rather than a grey "In: Freya.Register" run-on
                         (Anir, Aug 9: "same thing here on each FDL component in
                         the tiles view"). Same ServiceTag as the table, so a
                         component reads the same whichever view you are in. */}
-                    {homes.length > 0 ? (
-                      <span className="flex flex-wrap items-center gap-1">
-                        {homes.map((home) => (
-                          <ServiceTag
-                            key={home}
-                            name={home}
-                            className="text-[11px]"
-                          />
-                        ))}
-                      </span>
-                    ) : (
-                      <p className="text-[11.5px] text-text-tertiary">
-                        Not connected to an offering yet.
+                    <div className="mt-3">
+                      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                        Included in
                       </p>
-                    )}
+                      {homes.length > 0 ? (
+                        <span className="flex flex-wrap items-center gap-1">
+                          {homes.map((home) => (
+                            <ServiceTag
+                              key={home}
+                              name={home}
+                              className="text-[11px]"
+                            />
+                          ))}
+                        </span>
+                      ) : (
+                        <p className="text-[11.5px] text-text-tertiary">
+                          Not connected to an offering yet.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </Link>
               );

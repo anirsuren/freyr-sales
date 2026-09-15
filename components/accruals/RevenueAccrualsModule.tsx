@@ -884,6 +884,9 @@ export function RevenueAccrualsModule({
   const [tab, setTab] = useState<"plans" | "deviation">(() =>
     embeddedTab ?? (params.get("tab") === "deviation" ? "deviation" : "plans")
   );
+  const [deviationView, setDeviationView] = useState<
+    "records" | "months" | "sources"
+  >("records");
   /* INSIDE OPPORTUNITIES THE OUTER TAB DECIDES (Manoj, Sep 10). */
   useEffect(() => {
     if (embeddedTab) setTab(embeddedTab);
@@ -2247,20 +2250,49 @@ export function RevenueAccrualsModule({
         </div>
       ) : (
         <div key="deviation" className="tab-panel mt-4 space-y-4">
+          <div
+            role="tablist"
+            aria-label="Deviation view"
+            className="flex flex-wrap items-center gap-1 rounded-xl border border-border-light bg-surface p-1.5 shadow-card"
+          >
+            {(
+              [
+                ["records", "Deviated records"],
+                ["months", "What each month says now"],
+                ["sources", "Where the gap came from"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={deviationView === key}
+                onClick={() => setDeviationView(key)}
+                className={cn(
+                  "min-h-9 cursor-pointer rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors",
+                  deviationView === key
+                    ? "bg-white text-blue-primary shadow-[0_1px_3px_rgba(16,24,40,0.10)]"
+                    : "text-text-secondary hover:bg-white/70 hover:text-text-primary"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {/* MANOJ'S TABLE FIRST, and outside the snapshot gate. His question
               — which records have been deviated, by whom, how many times — has
               nothing to do with whether a month has been frozen. The
               month-on-month comparison below IS a diff against a snapshot, so
               it keeps its own empty state. */}
-          <DeviationsTable
-            plans={state.plans}
-            deals={deals}
-            opportunities={opportunities}
-            /* Straight into the planner on that deal, the same door the
-               table rows and the pencil use. */
-            onOpen={(plan) => setPlanning({ dealId: plan.opportunityId })}
-          />
-          {!deviation.againstMonth ? (
+          {deviationView === "records" && (
+            <DeviationsTable
+              plans={state.plans}
+              deals={deals}
+              opportunities={opportunities}
+              onOpen={(plan) => setPlanning({ dealId: plan.opportunityId })}
+            />
+          )}
+          {deviationView !== "records" && !deviation.againstMonth ? (
             /* THE MONTH YOU JUST FROZE IS NOT "NO SHEET". The comparison reads
                an EARLIER month's sheet, so the first freeze has nothing to
                compare against yet; the old copy told the person who had just
@@ -2279,12 +2311,13 @@ export function RevenueAccrualsModule({
                   : "Freeze a month once and every later change is measured against it: which months moved, and which deals moved them. Freezing at the end of each month is what makes the month-on-month gap possible."
               }
             />
-          ) : (
+          ) : deviationView !== "records" ? (
             <>
+              {deviationView === "months" && (
               <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
                 <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
                   <CalendarRange size={15} strokeWidth={2} className="text-blue-primary" />
-                  What each month says now, against {monthLabel(deviation.againstMonth)}
+                  What each month says now, against {monthLabel(deviation.againstMonth!)}
                   <InfoHint text="The frozen sheet is what every plan said when the month was closed. This compares today's plans against it, so a month that lost money shows the amount and the deals that caused it." />
                 </h2>
                 <p className="mt-0.5 text-[12.5px] text-text-secondary">
@@ -2344,147 +2377,115 @@ export function RevenueAccrualsModule({
                   </table>
                 </div>
               </section>
+              )}
 
-              <section className="mt-3 rounded-xl border border-border-light bg-white p-5 shadow-card">
+              {deviationView === "sources" && (
+              <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
                 <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
                   <AlertTriangle size={15} strokeWidth={2} style={{ color: AMBER }} />
                   Where the gap came from
                   <InfoHint text="A total that fell tells you nothing you can act on. These are the deals whose plans changed since the sheet was frozen, biggest movement first, with the months that moved." />
                 </h2>
+                <p className="mt-1 text-[12.5px] text-text-secondary">
+                  Each card is one opportunity. It compares the frozen plan with today so you can
+                  see which month lost money and where it went.
+                </p>
                 {deviation.byDeal.length === 0 ? (
                   <p className="mt-2 text-[13px] text-text-secondary">
                     Nothing has moved since that sheet was frozen.
                   </p>
-                ) : (() => {
-                  /* THE BIGGEST SINGLE MONTH ANYWHERE IN THIS SECTION, so
-                     every deal's bars are drawn to ONE scale and a tall bar
-                     means more money than a short bar wherever you look. A
-                     per-deal scale would have made a $2K month on one deal
-                     look the same size as a $20K month on the next. */
-                  const monthMax = deviation.byDeal.reduce(
-                    (n, d) =>
-                      d.months.reduce((m, x) => Math.max(m, Math.abs(x.delta)), n),
-                    0
-                  ) || 1;
-                  return (
-                  <div className="mt-2 divide-y divide-border-light">
-                    {deviation.byDeal.map((d) => (
-                      <div key={d.opportunityId} className="py-3" data-deviation-deal={d.opportunityId}>
-                        <div className="flex items-center gap-2.5">
-                          <CompanyLogo name={d.customer} className="h-7 w-7 shrink-0" />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13px] font-semibold text-text-primary">
-                              {d.opportunityName}
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {deviation.byDeal.map((d) => {
+                      const monthsLosingMoney = d.months.filter((month) => month.delta < 0);
+                      const monthsGainingMoney = d.months.filter((month) => month.delta > 0);
+                      return (
+                        <article
+                          key={d.opportunityId}
+                          className="rounded-xl border border-border-light bg-surface/40 p-4"
+                          data-deviation-deal={d.opportunityId}
+                        >
+                          <div className="flex flex-wrap items-start gap-3">
+                            <CompanyLogo name={d.customer} className="h-9 w-9 shrink-0" />
+                            <div className="min-w-[220px] flex-1">
+                              <Link
+                                href={`/opportunities/${d.opportunityId}`}
+                                className="text-[13.5px] font-semibold text-text-primary hover:text-blue-primary hover:underline"
+                              >
+                                {d.opportunityName}
+                              </Link>
+                              <p className="mt-0.5 text-[12px] text-text-secondary">{d.customer}</p>
+                              <p className="mt-2 text-[12.5px] text-text-secondary">
+                                {d.slipped && monthsLosingMoney.length > 0 && monthsGainingMoney.length > 0
+                                  ? `${formatMoney(d.movement)} moved from ${monthsLosingMoney
+                                      .map((month) => monthLabel(month.month))
+                                      .join(", ")} to ${monthsGainingMoney
+                                      .map((month) => monthLabel(month.month))
+                                      .join(", ")}.`
+                                  : `The plan is ${formatMoney(Math.abs(d.delta))} ${
+                                      d.delta >= 0 ? "higher" : "lower"
+                                    } than the frozen sheet.`}
+                              </p>
+                            </div>
+                            <span
+                              className="shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-bold tnum"
+                              style={{
+                                background:
+                                  d.slipped || d.delta < 0
+                                    ? "rgba(180,83,9,0.10)"
+                                    : "rgba(22,163,74,0.10)",
+                                color: d.slipped || d.delta < 0 ? AMBER : "#16A34A",
+                              }}
+                            >
+                              {d.slipped
+                                ? `${formatMoney(d.movement)} moved later`
+                                : `${d.delta >= 0 ? "+" : "-"}${formatMoney(Math.abs(d.delta))}`}
                             </span>
-                            <span className="block truncate text-[12px] text-text-secondary">
-                              {d.customer}
-                            </span>
-                          </span>
-                          {/* A SLIP IS NOT "NOTHING HAPPENED". Money that moved
-                              from one month to the next nets to zero, and that
-                              is precisely the case worth surfacing: "how many
-                              opportunities we thought will close in July are
-                              not closed in July and are now spilling into
-                              August". It gets its own word rather than a
-                              green +$0. */}
-                          <span
-                            className="shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-bold tnum"
-                            style={{
-                              background: d.slipped
-                                ? "rgba(180,83,9,0.10)"
-                                : d.delta < 0
-                                  ? "rgba(180,83,9,0.10)"
-                                  : "rgba(22,163,74,0.10)",
-                              color: d.slipped || d.delta < 0 ? AMBER : "#16A34A",
-                            }}
-                          >
-                            {d.slipped
-                              ? `${formatMoney(d.movement)} slipped`
-                              : `${d.delta >= 0 ? "+" : "-"}${formatMoney(Math.abs(d.delta))}`}
-                          </span>
-                        </div>
-                        {/* THE MONTHS AS A CHART, NOT A SENTENCE (Anir, Sep 8:
-                            "think visual, meaning charts, graphs, visuals").
+                          </div>
 
-                            They were a wrap of text chips — "Oct 2026 -$20K"
-                            beside "Nov 2026 +$20K" — which is the single most
-                            important fact on this screen written in the form
-                            least likely to be read. A slip is a shape: money
-                            leaves one month and lands in the next, and two
-                            bars of equal size on opposite sides of a line say
-                            that instantly where two chips never did.
-
-                            Every bar is anchored to the centre line by an
-                            explicit bottom/top of 50% inside a fixed-height
-                            box, so nothing floats. */}
-                        {d.months.length > 0 && (
-                          <div className="mt-2 overflow-x-auto pl-[38px]">
-                            <div className="flex items-end gap-1.5 pb-0.5">
-                              {d.months.map((m) => {
-                                const up = m.delta > 0;
-                                const tone = up ? "#16A34A" : AMBER;
-                                /* A floor of 5px so a month that moved a
-                                   little still draws something. Zero-height
-                                   bars read as "nothing happened here", which
-                                   is a different fact. */
-                                const h = Math.max(
-                                  5,
-                                  Math.round((24 * Math.abs(m.delta)) / monthMax)
-                                );
-                                return (
-                                  <div
-                                    key={m.month}
-                                    title={`${monthLabel(m.month)}: ${up ? "+" : "-"}${formatMoney(Math.abs(m.delta))}`}
-                                    className="flex w-[58px] shrink-0 flex-col items-center"
-                                  >
-                                    {/* THE FIGURE KEEPS ITS OWN ROW rather than
-                                        riding the tip of its bar. At the tip it
-                                        read better in principle and clipped in
-                                        practice: a tall bar plus a label needs
-                                        more than half the strip, so "+$17K" lost
-                                        its top edge and "-$20K" landed on the
-                                        month underneath it. In a fixed row every
-                                        figure sits on one line across the whole
-                                        strip, and the bar below still says which
-                                        way the money went. */}
-                                    <span
-                                      className="text-[10.5px] font-bold tnum"
-                                      style={{ color: tone }}
-                                    >
-                                      {up ? "+" : "-"}
-                                      {formatMoney(Math.abs(m.delta))}
+                          <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2 pl-12">
+                            {d.months.map((month) => {
+                              const increased = month.delta > 0;
+                              return (
+                                <div
+                                  key={month.month}
+                                  className="rounded-lg border border-border-light bg-white px-3 py-2.5"
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-[12px] font-semibold text-text-primary">
+                                      {monthLabel(month.month)}
                                     </span>
-                                    <div className="relative mt-1 h-[54px] w-full">
-                                      <div
-                                        className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-text-tertiary"
-                                        style={{ opacity: 0.3 }}
-                                      />
-                                      <div
-                                        className="absolute left-1/2 w-[15px] -translate-x-1/2 rounded-[3px]"
-                                        style={
-                                          up
-                                            ? { bottom: "50%", height: h, background: tone }
-                                            : { top: "50%", height: h, background: tone }
-                                        }
-                                      />
-                                    </div>
-                                    <span className="mt-1.5 whitespace-nowrap text-[10.5px] text-text-tertiary">
-                                      {monthLabel(m.month)}
+                                    <span
+                                      className="text-[12px] font-bold tnum"
+                                      style={{ color: increased ? "#16A34A" : AMBER }}
+                                    >
+                                      {increased ? "+" : "-"}
+                                      {formatMoney(Math.abs(month.delta))}
                                     </span>
                                   </div>
-                                );
-                              })}
-                            </div>
+                                  <div className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-text-secondary tnum">
+                                    <span>{formatMoney(month.was)}</span>
+                                    <span aria-hidden="true">→</span>
+                                    <strong className="font-semibold text-text-primary">
+                                      {formatMoney(month.now)}
+                                    </strong>
+                                  </div>
+                                  <div className="mt-0.5 text-[10px] text-text-tertiary">
+                                    Frozen plan → today
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                        )}
-                      </div>
-                    ))}
+                        </article>
+                      );
+                    })}
                   </div>
-                  );
-                })()}
+                )}
               </section>
+              )}
             </>
-          )}
+          ) : null}
         </div>
       )}
 

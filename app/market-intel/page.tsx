@@ -41,6 +41,7 @@ import {
   MI_WATCHLIST,
   miDateLabel,
   miFreshMinutes,
+  miNewsUrl,
   miTotals,
 } from "@/lib/marketIntelMock";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
@@ -195,11 +196,18 @@ export default async function MarketIntelPage({
           const up = company.momentum >= 0;
           const fresh = miFreshMinutes(company.id);
           return (
-            <Link
+            <article
               key={company.id}
-              href={`/market-intel/${company.id}`}
-              className="group block rounded-xl border border-border-light bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]"
+              className="group relative block cursor-pointer rounded-xl border border-border-light bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]"
             >
+              <Link
+                href={`/market-intel/${company.id}`}
+                aria-label={`Open ${company.name} intelligence`}
+                className="absolute inset-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-primary"
+              >
+                <span className="sr-only">Open {company.name} intelligence</span>
+              </Link>
+              <div className="pointer-events-none relative z-[1]">
               <div className="flex items-start justify-between gap-3">
                 <span className="flex min-w-0 items-center gap-2.5">
                   <CompanyLogo
@@ -266,10 +274,17 @@ export default async function MarketIntelPage({
 
               {latestNews && (
                 <p className="mt-3 border-t border-border-light pt-2.5 text-[12px] leading-snug text-text-secondary">
-                  <span className="font-semibold text-text-primary">
-                    {latestNews.source}:
-                  </span>{" "}
-                  {latestNews.headline}
+                  <a
+                    href={miNewsUrl(latestNews)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="pointer-events-auto relative z-[2] text-inherit no-underline transition-colors hover:text-blue-primary hover:underline hover:underline-offset-2 focus-visible:text-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+                  >
+                    <span className="font-semibold text-text-primary">
+                      {latestNews.source}:
+                    </span>{" "}
+                    {latestNews.headline}
+                  </a>
                   <span className="text-text-tertiary">
                     {" "}
                     · {miDateLabel(latestNews.daysAgo)}
@@ -281,7 +296,8 @@ export default async function MarketIntelPage({
                 <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#1A7A35]" />
                 Updated {fresh} min ago
               </p>
-            </Link>
+              </div>
+            </article>
           );
         })}
 

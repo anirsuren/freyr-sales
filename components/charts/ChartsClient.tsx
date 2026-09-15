@@ -33,7 +33,6 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { VIZ } from "./palette";
 import { tint } from "@/lib/tint";
-import { HOVER_CLOSE_GRACE_MS } from "@/lib/hoverPreferences";
 
 // Series icons for tooltips + legends, keyed by SHORT STRINGS so server
 // components can request one (Suren: "put an icon instead of just a purple
@@ -117,6 +116,14 @@ function elementAnchor(element: Element, x: number, y: number): ChartAnchor {
  *  four of them made the card taller than the chart it belonged to (Suren, Jul
  *  27: "this pop-up is very, very big… obviously I would like to scroll"). */
 const TIP_INLINE_ROWS = 3;
+/**
+ * A chart and its portalled record card are separate DOM surfaces. Give the
+ * pointer enough time to cross the small visual gap between them, then let the
+ * card cancel closure as soon as it is entered. The global hover policy can
+ * close ordinary popovers immediately; chart record cards need this physical
+ * handoff because they are designed to be entered and scrolled.
+ */
+const CHART_TIP_HANDOFF_MS = 180;
 /** Hard ceiling on the record list, so a reachable tip always reads as a
  *  tooltip and never as a panel. ~3 rows, then it scrolls. Shared by every
  *  chart so the bar tip and the line tip beside it feel like one component. */
@@ -221,16 +228,6 @@ function PointGuide({ left, color }: { left: string; color: string }) {
     />
   );
 }
-/**
- * Grace period the tip stays open after the cursor leaves the chart element,
- * so it can be walked INTO (Suren: "let them hover over the pop-up itself and
- * scroll through").
- *
- * Cursor-into-card cancels the shared timer. Once the pointer leaves both
- * surfaces the pending close is allowed to finish.
- */
-const TIP_CLOSE_GRACE_MS = HOVER_CLOSE_GRACE_MS;
-
 /** Any tip with records must be reachable. Even a two-row popup contains links
  *  and details a reader may want to inspect, so its lifetime cannot depend on
  *  whether the list happens to be long enough to scroll. */
@@ -454,7 +451,7 @@ function PortalTip({
   // (HoverCard's trick), so the card never closes under the user's hand. The
   // painted card lands in exactly the same place either way — only where the
   // gap "belongs" changes — so plain tips keep their existing geometry.
-  const bridge = interactive ? 10 : 0;
+  const bridge = interactive ? 12 : 0;
   const anchorElement = anchor.element;
   /**
    * The box the card must clear. `data-chart-root` marks the whole CARD where
@@ -522,12 +519,13 @@ function PortalTip({
   return createPortal(
     <div
       role="tooltip"
-      // The positioned shell stays inert on purpose: it is the marker the
-      // verify suite uses to find a chart tip, and an inert shell can never
-      // swallow a click meant for the page underneath. A reachable tip re-opts
-      // in on the card INSIDE it — `pointer-events` is inherited, and a
-      // descendant is always free to turn it back on.
-      className="fixed z-[9999] pointer-events-none"
+      // Interactive record cards own their whole positioned box, including
+      // the invisible bridge to the chart. That keeps hit-testing continuous
+      // while the cursor crosses into the card. Number-only tips stay inert.
+      className={cn(
+        "fixed z-[9999]",
+        interactive ? "pointer-events-auto" : "pointer-events-none"
+      )}
       style={{
         left,
         top,
@@ -542,11 +540,13 @@ function PortalTip({
           interactive && "pointer-events-auto",
           // pt/pb (not mt/mb) so the gap to the chart is INSIDE this hoverable
           // box — the cursor never crosses a dead margin on its way in.
-          bridge > 0 && (placement === "top" ? "pb-2.5" : "pt-2.5")
+          bridge > 0 && (placement === "top" ? "pb-3" : "pt-3")
         )}
         style={{ maxHeight }}
-        onMouseEnter={interactive ? onEnter : undefined}
-        onMouseLeave={interactive ? onLeave : undefined}
+        onPointerEnter={interactive ? onEnter : undefined}
+        onPointerLeave={interactive ? onLeave : undefined}
+        onFocus={interactive ? onEnter : undefined}
+        onBlur={interactive ? onLeave : undefined}
       >
         {/* THE WHOLE CARD SCROLLS (Anir, Aug 19: "the container for this
             scroll thing shouldn't be in that. it should be in the entire
@@ -558,9 +558,16 @@ function PortalTip({
             list needed. One scroll box, the card itself. */}
         <div
           className={cn(
-            "chart-tip chart-tip-side flex min-h-0 flex-col overflow-y-auto text-left"
+            "chart-tip chart-tip-side flex min-h-0 flex-col overflow-y-auto overscroll-contain text-left"
           )}
-          style={{ whiteSpace: "normal", width: "100%" }}
+          style={{
+            whiteSpace: "normal",
+            width: "100%",
+            maxHeight: Math.max(48, maxHeight - bridge),
+            scrollbarGutter: "stable",
+          }}
+          tabIndex={interactive ? 0 : undefined}
+          onWheelCapture={interactive ? (event) => event.stopPropagation() : undefined}
         >
           {children}
         </div>
@@ -877,10 +884,19 @@ function TipBreakdown({
           // next to the person's name, and then you can leave the company
           // there"). Overlapping the two stuck the face onto the company label.
           const mark = t.logo ? (
-            <CompanyLogo name={t.logo} className="h-[22px] w-[22px] shrink-0 text-[8px]" />
+            <CompanyLogo
+              name={t.logo}
+              className={cn(
+                "shrink-0",
+                showPerson
+                  ? "h-[30px] w-[30px] text-[10px]"
+                  : "h-[22px] w-[22px] text-[8px]"
+              )}
+            />
           ) : t.avatar ? (
             <Avatar name={t.avatar} className="h-[22px] w-[22px] shrink-0 text-[8px]" />
           ) : null;
+          const markIndent = showPerson ? 38 : TIP_MARK_INDENT;
           const hasDetail =
             showPerson || tags.length > 0 || !!t.service || parsed.lines.length > 0;
           return (
@@ -924,7 +940,7 @@ function TipBreakdown({
               {t.bar && (
                 <div
                   className="mt-1.5 flex items-center gap-2"
-                  style={mark ? { paddingLeft: TIP_MARK_INDENT } : undefined}
+                  style={mark ? { paddingLeft: markIndent } : undefined}
                 >
                   <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface)]">
                     <span
@@ -953,7 +969,7 @@ function TipBreakdown({
                 // one clean rail down the row.
                 <div
                   className="mt-1 flex flex-col gap-1"
-                  style={mark ? { paddingLeft: TIP_MARK_INDENT } : undefined}
+                  style={mark ? { paddingLeft: markIndent } : undefined}
                 >
                   {showPerson && (
                     // One line, always. A human's name broken mid-way across
@@ -961,7 +977,7 @@ function TipBreakdown({
                     // really bad"), so the name is nowrap and anything that
                     // used to trail it after a "·" drops to the line below.
                     <span className="flex min-w-0 items-center gap-1.5">
-                      <Avatar name={t.avatar!} className="h-[15px] w-[15px] shrink-0 text-[6px]" />
+                      <Avatar name={t.avatar!} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
                       <span className="whitespace-nowrap text-[11px] font-medium text-text-secondary">
                         {t.avatar}
                       </span>
@@ -1422,7 +1438,7 @@ export function AreaChart({
       className={cn("relative w-full cursor-pointer", className)}
       style={{ height }}
       onMouseMove={onMove}
-      onMouseLeave={() => closeTip(tipInteractive ? TIP_CLOSE_GRACE_MS : 0)}
+      onMouseLeave={() => closeTip(tipInteractive ? CHART_TIP_HANDOFF_MS : 0)}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
@@ -1551,7 +1567,7 @@ export function AreaChart({
           nearPoint
           interactive={tipInteractive}
           onEnter={keepOpen}
-          onLeave={() => closeTip(TIP_CLOSE_GRACE_MS)}
+          onLeave={() => closeTip(CHART_TIP_HANDOFF_MS)}
         >
           <TipHeader
             color={color}
@@ -1785,7 +1801,7 @@ export function DonutChart({
                 }}
                 onMouseMove={(e) => moveTip(tipAnchor(e))}
                 onMouseLeave={() => {
-                  closeTip(tipHasRecords(s.tip) ? TIP_CLOSE_GRACE_MS : 0);
+                  closeTip(tipHasRecords(s.tip) ? CHART_TIP_HANDOFF_MS : 0);
                   if (syncId) donutSyncBroadcast(syncId, null);
                 }}
                 style={{
@@ -1831,7 +1847,7 @@ export function DonutChart({
           wide
           interactive={tipInteractive}
           onEnter={keepOpen}
-          onLeave={() => closeTip(TIP_CLOSE_GRACE_MS)}
+          onLeave={() => closeTip(CHART_TIP_HANDOFF_MS)}
         >
           <TipHeader
             icon={segments[hover].icon}
@@ -2311,7 +2327,7 @@ export function BarChart({
                 nearPoint
                 interactive={barInteractive}
                 onEnter={keepOpen}
-                onLeave={() => closeTip(TIP_CLOSE_GRACE_MS)}
+                onLeave={() => closeTip(CHART_TIP_HANDOFF_MS)}
               >
                 <TipHeader
                   icon={d.icon}
@@ -2372,7 +2388,7 @@ export function BarChart({
                 moveTip(barLabelAnchor(e.currentTarget) ?? pointerAnchor(e))
               }
               onMouseLeave={() => {
-                closeTip(barInteractive ? TIP_CLOSE_GRACE_MS : 0);
+                closeTip(barInteractive ? CHART_TIP_HANDOFF_MS : 0);
                 if (syncId) donutSyncBroadcast(syncId, null);
               }}
               className="relative flex min-h-0 w-full flex-1 items-end justify-center px-1.5"
@@ -2642,7 +2658,7 @@ export function LineChart({
     <div
       className={cn("relative w-full cursor-pointer", className)}
       onMouseMove={onMove}
-      onMouseLeave={() => closeTip(tipInteractive ? TIP_CLOSE_GRACE_MS : 0)}
+      onMouseLeave={() => closeTip(tipInteractive ? CHART_TIP_HANDOFF_MS : 0)}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
@@ -2747,7 +2763,7 @@ export function LineChart({
               wide
               interactive={tipInteractive}
               onEnter={keepOpen}
-              onLeave={() => closeTip(TIP_CLOSE_GRACE_MS)}
+              onLeave={() => closeTip(CHART_TIP_HANDOFF_MS)}
             >
               {series.length === 1 ? (
                 <div className="shrink-0">
@@ -2890,7 +2906,7 @@ export function Sparkline({
       onMouseMove={interactive ? onMove : undefined}
       onMouseLeave={
         interactive
-          ? () => closeTip(tipReachable ? TIP_CLOSE_GRACE_MS : 0)
+          ? () => closeTip(tipReachable ? CHART_TIP_HANDOFF_MS : 0)
           : undefined
       }
     >
@@ -2934,7 +2950,7 @@ export function Sparkline({
           wide
           interactive={tipReachable}
           onEnter={keepOpen}
-          onLeave={() => closeTip(TIP_CLOSE_GRACE_MS)}
+          onLeave={() => closeTip(CHART_TIP_HANDOFF_MS)}
         >
           <div className="shrink-0">
             <TipHeader
@@ -3073,7 +3089,7 @@ export function DonutLegend({
             onMouseMove={it.tip?.length ? (e) => moveTip(pointerAnchor(e)) : undefined}
             onMouseLeave={() => {
               if (syncId) donutSyncBroadcast(syncId, null);
-              if (it.tip?.length) closeTip(TIP_CLOSE_GRACE_MS);
+              if (it.tip?.length) closeTip(CHART_TIP_HANDOFF_MS);
             }}
             className={cn(
               // Always the pointer cursor — these rows are hover-interactive
@@ -3147,7 +3163,7 @@ export function DonutLegend({
           wide
           interactive={tipHasRecords(items[hover].tip)}
           onEnter={keepOpen}
-          onLeave={() => closeTip(TIP_CLOSE_GRACE_MS)}
+          onLeave={() => closeTip(CHART_TIP_HANDOFF_MS)}
         >
           <TipHeader
             icon={items[hover].icon}

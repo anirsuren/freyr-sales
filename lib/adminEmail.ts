@@ -33,6 +33,8 @@ export type AdminEmailRecord = {
   body: string;
   /** The formatted body as it was sent, when the writer used the format bar. */
   html?: string;
+  /** Attachment metadata only. Raw file bytes are never retained in the log. */
+  attachments?: { name: string; size: number; contentType?: string }[];
   sentBy: string;
   sentByEmail?: string;
   sentAt: string;
@@ -89,6 +91,19 @@ function normalize(raw: unknown): AdminEmailState {
           subject: String(r.subject ?? ""),
           body: String(r.body ?? ""),
           ...(r.html ? { html: String(r.html) } : {}),
+          ...(Array.isArray(r.attachments)
+            ? {
+                attachments: r.attachments
+                  .map((attachment) => ({
+                    name: String(attachment?.name ?? "").trim(),
+                    size: Math.max(0, Number(attachment?.size) || 0),
+                    ...(attachment?.contentType
+                      ? { contentType: String(attachment.contentType) }
+                      : {}),
+                  }))
+                  .filter((attachment) => attachment.name),
+              }
+            : {}),
           sentBy: String(r.sentBy ?? "Somebody"),
           ...(r.sentByEmail ? { sentByEmail: String(r.sentByEmail) } : {}),
           sentAt: String(r.sentAt ?? new Date().toISOString()),

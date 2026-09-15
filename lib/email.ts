@@ -14,6 +14,7 @@ export type EmailAttachment = {
   filename: string;
   /** Base64-encoded file contents, without a data-URL prefix. */
   content: string;
+  contentType?: string;
 };
 
 /** Both providers take a list; callers may pass one address or many. */
@@ -104,6 +105,17 @@ async function sendWithConfiguredProvider(input: {
     subject: input.subject,
     text: input.body,
     ...(input.html ? { html: input.html } : {}),
+    ...(input.attachments?.length
+      ? {
+          attachments: input.attachments.map((attachment) => ({
+            filename: attachment.filename,
+            content: attachment.content,
+            ...(attachment.contentType
+              ? { contentType: attachment.contentType }
+              : {}),
+          })),
+        }
+      : {}),
   });
   if (viaSes.ok) return { ok: true, channel: "ses" };
   // A real refusal from SES is the answer; only "no credentials here" falls on.
@@ -151,7 +163,12 @@ async function sendWithConfiguredProvider(input: {
             }
           : {}),
         ...(input.attachments?.length
-          ? { attachments: input.attachments }
+          ? {
+              attachments: input.attachments.map(({ filename, content }) => ({
+                filename,
+                content,
+              })),
+            }
           : {}),
       }),
       signal: AbortSignal.timeout(8000),

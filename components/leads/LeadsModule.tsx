@@ -8,13 +8,16 @@ import {
   ChevronDown,
   ClipboardList,
   Mail,
+  MapPin,
   Pencil,
   Clock3,
   Phone,
+  RadioTower,
   Plus,
   Download,
   Trash2,
   UserPlus,
+  UserRound,
   Users,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -775,25 +778,23 @@ export function LeadsModule({
                                 </div>
                                 <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
                                   <span className="min-w-0">
-                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Email</span>
+                                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"><Mail size={12} strokeWidth={2} aria-hidden="true" /> Email</span>
                                     {lead.email ? (
-                                      <a href={`mailto:${lead.email}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-w-0 items-start gap-1.5 text-[12.5px] font-semibold leading-snug text-blue-primary hover:underline">
-                                        <Mail size={16} strokeWidth={1.9} className="mt-px shrink-0 text-text-tertiary" aria-hidden="true" />
+                                      <a href={`mailto:${lead.email}`} onClick={(event) => event.stopPropagation()} className="mt-1 block min-w-0 text-[12.5px] font-semibold leading-snug text-blue-primary hover:underline">
                                         <span className="min-w-0 break-words [overflow-wrap:anywhere]">{lead.email}</span>
                                       </a>
                                     ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not added</span>}
                                   </span>
                                   <span className="min-w-0">
-                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Phone</span>
+                                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"><Phone size={12} strokeWidth={2} aria-hidden="true" /> Phone</span>
                                     {lead.phone ? (
-                                      <a href={`tel:${lead.phone}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
-                                        <Phone size={16} strokeWidth={1.9} className="shrink-0 text-text-tertiary" aria-hidden="true" />
+                                      <a href={`tel:${lead.phone}`} onClick={(event) => event.stopPropagation()} className="mt-1 block min-w-0 text-[12.5px] font-semibold text-blue-primary hover:underline">
                                         <span className="min-w-0">{formatPhoneNumber(lead.phone)}</span>
                                       </a>
                                     ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not added</span>}
                                   </span>
                                   <span className="min-w-0">
-                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Country</span>
+                                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"><MapPin size={12} strokeWidth={2} aria-hidden="true" /> Country</span>
                                     {lead.country ? (
                                       <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
                                         <span className="text-[17px] leading-none" role="img" aria-label={`${lead.country} flag`}>{countryFlag(lead.country)}</span>
@@ -802,7 +803,7 @@ export function LeadsModule({
                                     ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not added</span>}
                                   </span>
                                   <span className="min-w-0">
-                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Source</span>
+                                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"><RadioTower size={12} strokeWidth={2} aria-hidden="true" /> Source</span>
                                     <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
                                       <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: leadSourceColor(lead.source) }} aria-hidden="true" />
                                       <span className="min-w-0 truncate">{lead.source}</span>
@@ -818,7 +819,7 @@ export function LeadsModule({
                                     ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not matched</span>}
                                   </span>
                                   <span className="min-w-0">
-                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Owner</span>
+                                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"><UserRound size={12} strokeWidth={2} aria-hidden="true" /> Owner</span>
                                     {lead.owner ? (
                                       <Link href={`/analytics/reps/${repSlug(lead.owner)}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
                                         <Avatar name={lead.owner} className="h-5 w-5 shrink-0 text-[7px]" />

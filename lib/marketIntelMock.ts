@@ -33,6 +33,9 @@ export type MiPost = {
   text: string;
   reactions: number;
   comments: number;
+  /** Real feeds carry the source URL. Sample rows may omit it and use the
+   * deterministic LinkedIn search destination below. */
+  url?: string;
 };
 
 export type MiNews = {
@@ -40,6 +43,9 @@ export type MiNews = {
   source: string;
   headline: string;
   summary: string;
+  /** Real feeds carry the article URL. Sample rows fall back to the named
+   * publisher so the interaction never disappears in Mock-mode. */
+  url?: string;
 };
 
 export type MiSignal = {
@@ -48,6 +54,7 @@ export type MiSignal = {
   title: string;
   detail: string;
   why: string;
+  url?: string;
 };
 
 export type MiCompany = {
@@ -86,6 +93,46 @@ export function miFreshMinutes(id: string): number {
   let h = 0;
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) % 997;
   return 4 + (h % 43);
+}
+
+const MI_SOURCE_HOME: Record<string, string> = {
+  Reuters: "https://www.reuters.com",
+  "Fierce Pharma": "https://www.fiercepharma.com",
+  "Fierce Biotech": "https://www.fiercebiotech.com",
+  "Endpoints News": "https://endpts.com",
+  PharmaTimes: "https://www.pharmatimes.com",
+  BioSpace: "https://www.biospace.com",
+  "Regulatory Focus": "https://www.raps.org",
+};
+
+/** Mock-mode keeps the same outbound-link affordances as the real feed. A
+ * sample item without its own URL lands on the named publisher or a useful
+ * search rather than turning into dead text. */
+export function miNewsUrl(item: MiNews): string {
+  return (
+    item.url ||
+    MI_SOURCE_HOME[item.source] ||
+    `https://www.google.com/search?q=${encodeURIComponent(`${item.source} ${item.headline}`)}`
+  );
+}
+
+export function miPostUrl(company: Pick<MiCompany, "name">, item: MiPost): string {
+  return (
+    item.url ||
+    `https://www.linkedin.com/search/results/content/?keywords=${encodeURIComponent(
+      `${company.name} ${item.text.slice(0, 80)}`
+    )}`
+  );
+}
+
+export function miSignalUrl(
+  company: Pick<MiCompany, "name">,
+  item: Pick<MiSignal, "title" | "url">
+): string {
+  return (
+    item.url ||
+    `https://www.google.com/search?q=${encodeURIComponent(`${company.name} ${item.title}`)}`
+  );
 }
 
 /**

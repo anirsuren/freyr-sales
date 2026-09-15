@@ -1,20 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
   AlertCircle,
   X,
   AlertTriangle,
+  Braces,
+  CalendarDays,
   CalendarClock,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clock3,
-  Eye,
   FlaskConical,
   Mail,
+  Link2,
+  Paperclip,
   Send,
+  Trash2,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -23,7 +27,7 @@ import { emailShell } from "@/lib/emailShell";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
 import { Avatar } from "@/components/ui/Avatar";
-import { cn, formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { AdminEmailRecord } from "@/lib/adminEmail";
 import { RichTextBox } from "./RichTextBox";
 import { OwnerDigestPicker } from "./OwnerDigestPicker";
@@ -115,6 +119,115 @@ type WorkspacePerson = {
   role?: string;
   active?: boolean;
 };
+
+type ComposerAttachment = {
+  id: string;
+  filename: string;
+  content: string;
+  contentType?: string;
+  size: number;
+};
+
+type TemplateVariable = {
+  key: string;
+  label: string;
+  kind: "date" | "link" | "text";
+};
+
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const TEMPLATE_TOKEN = /\[([^\[\]]{1,120})\]/g;
+
+function templateVariables(subject: string, html: string): TemplateVariable[] {
+  const found = new Map<string, TemplateVariable>();
+  for (const source of [subject, html]) {
+    for (const match of source.matchAll(TEMPLATE_TOKEN)) {
+      const label = match[1].trim();
+      const key = label.toLowerCase();
+      if (!label || found.has(key)) continue;
+      found.set(key, {
+        key,
+        label,
+        kind: /\blink\b/i.test(label)
+          ? "link"
+          : /^(day|date)$/i.test(label)
+            ? "date"
+            : "text",
+      });
+    }
+  }
+  return [...found.values()];
+}
+
+function displayTemplateValue(variable: TemplateVariable, raw: string): string {
+  if (variable.kind !== "date" || !raw) return raw.trim();
+  const date = new Date(`${raw}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return raw.trim();
+  return date.toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function validTemplateValue(variable: TemplateVariable, raw: string): boolean {
+  const value = raw.trim();
+  if (!value) return false;
+  if (variable.kind !== "link") return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function resolveTemplate(
+  source: string,
+  variables: TemplateVariable[],
+  values: Record<string, string>,
+  html: boolean
+): string {
+  const byKey = new Map(variables.map((variable) => [variable.key, variable]));
+  return source.replace(TEMPLATE_TOKEN, (token, rawLabel: string) => {
+    const variable = byKey.get(rawLabel.trim().toLowerCase());
+    if (!variable) return token;
+    const value = displayTemplateValue(variable, values[variable.key] ?? "");
+    return value ? (html ? escapeHtml(value) : value) : token;
+  });
+}
+
+function readableBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function attachmentFromFile(file: File): Promise<ComposerAttachment> {
+  const content = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+    reader.onload = () => resolve(String(reader.result ?? "").split(",")[1] ?? "");
+    reader.readAsDataURL(file);
+  });
+  if (!content) throw new Error(`Could not read ${file.name}.`);
+  return {
+    id: `${file.name}-${file.size}-${file.lastModified}`,
+    filename: file.name,
+    content,
+    ...(file.type ? { contentType: file.type } : {}),
+    size: file.size,
+  };
+}
 
 /** The addresses in a comma / semicolon / newline separated field. */
 /**
@@ -492,11 +605,30 @@ export function EmailComposer() {
   const [people, setPeople] = useState<WorkspacePerson[]>([]);
   /** Outlook's red exclamation mark, off by default. */
   const [important, setImportant] = useState(false);
+  const [templateActive, setTemplateActive] = useState(false);
+  const [templateValues, setTemplateValues] = useState<Record<string, string>>({});
+  const [attachments, setAttachments] = useState<ComposerAttachment[]>([]);
+  const attachmentInput = useRef<HTMLInputElement>(null);
   /** Send is a two-press action: nobody mails a customer by mis-clicking. */
   const [confirming, setConfirming] = useState(false);
   const [openRecord, setOpenRecord] = useState<string | null>(null);
   /** Search over the sent log (Anir, Aug 27: "search bars for the emails"). */
   const [logQuery, setLogQuery] = useState("");
+  const variables = useMemo(
+    () => (templateActive ? templateVariables(subject, body) : []),
+    [templateActive, subject, body]
+  );
+  const missingVariable = variables.find(
+    (variable) => !templateValues[variable.key]?.trim()
+  );
+  const invalidVariable = variables.find(
+    (variable) =>
+      !!templateValues[variable.key]?.trim() &&
+      !validTemplateValue(variable, templateValues[variable.key])
+  );
+  const subjectPreview = variables.length
+    ? resolveTemplate(subject, variables, templateValues, false)
+    : subject;
 
   const load = useCallback(async () => {
     try {
@@ -554,7 +686,12 @@ export function EmailComposer() {
   /* An empty contenteditable still holds "<br>" or "<p></p>", so a message is
      "written" only when it carries actual words. */
   const wordsInBody = body.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
-  const ready = !!to.trim() && !!subject.trim() && !!wordsInBody;
+  const ready =
+    !!to.trim() &&
+    !!subject.trim() &&
+    !!wordsInBody &&
+    !missingVariable &&
+    !invalidVariable;
   /** Why Send is waiting. It was disabled and silent, so an unfinished email
    *  looked like a broken button (Anir's standing rule: give the reason). */
   const sendProblem: string | null = !to.trim()
@@ -563,6 +700,10 @@ export function EmailComposer() {
       ? "Give it a subject."
       : !wordsInBody
         ? "Write the message."
+        : missingVariable
+          ? `Fill in “${missingVariable.label}”.`
+          : invalidVariable
+            ? `Use a full web address for “${invalidVariable.label}”.`
         : null;
 
   async function send() {
@@ -571,7 +712,22 @@ export function EmailComposer() {
       const res = await fetch("/api/admin/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, cc, bcc, replyTo, subject, html: body, important }),
+        body: JSON.stringify({
+          to,
+          cc,
+          bcc,
+          replyTo,
+          subject: subjectPreview,
+          html: variables.length
+            ? resolveTemplate(body, variables, templateValues, true)
+            : body,
+          important,
+          attachments: attachments.map(({ filename, content, contentType }) => ({
+            filename,
+            content,
+            ...(contentType ? { contentType } : {}),
+          })),
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -593,6 +749,9 @@ export function EmailComposer() {
       setReplyTo("");
       setSubject("");
       setBody("");
+      setAttachments([]);
+      setTemplateActive(false);
+      setTemplateValues({});
       setConfirming(false);
       await load();
     } catch {
@@ -643,6 +802,10 @@ export function EmailComposer() {
                 setTo(draft.to);
                 setSubject(draft.subject);
                 setBody(draft.html);
+                setTemplateValues({});
+                setTemplateActive(
+                  templateVariables(draft.subject, draft.html).length > 0
+                );
                 setConfirming(false);
                 /* AND OPEN THE FORM (Anir, Aug 30: "if I click the draft and I
                    click one of these people but I have the dropdown closed, it
@@ -773,15 +936,96 @@ export function EmailComposer() {
               onChange={(e) => setSubject(e.target.value)}
               placeholder="What this email is about"
               aria-label="Subject"
-              className={FIELD}
+              className={`${FIELD} font-medium`}
             />
           </div>
+
+          {variables.length > 0 && (
+            <section className="rounded-xl border border-blue-subtle/70 bg-blue-light/25 p-3.5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <span className="flex min-w-0 items-start gap-2.5">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-blue-primary shadow-sm">
+                    <Braces size={15} strokeWidth={2.2} />
+                  </span>
+                  <span>
+                    <span className="block text-[13px] font-semibold text-text-primary">
+                      Fill in the template details
+                    </span>
+                    <span className="block text-[11.5px] leading-snug text-text-secondary">
+                      Set each bracketed value once, then apply it to the subject and message.
+                    </span>
+                  </span>
+                </span>
+                <span className="rounded-full border border-blue-subtle bg-white px-2 py-1 text-[10.5px] font-semibold text-blue-primary tnum">
+                  {variables.length} {variables.length === 1 ? "detail" : "details"}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                {variables.map((variable) => (
+                  <label key={variable.key} className="block min-w-0">
+                    <span className="mb-1.5 flex min-w-0 items-center gap-2">
+                      {variable.kind === "date" ? (
+                        <CalendarDays size={13} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
+                      ) : variable.kind === "link" ? (
+                        <Link2 size={13} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
+                      ) : (
+                        <Braces size={13} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
+                      )}
+                      <span className="truncate text-[11px] font-bold uppercase tracking-[0.045em] text-text-secondary">
+                        {variable.label}
+                      </span>
+                      <span className="ml-auto shrink-0 rounded bg-white px-1.5 py-0.5 font-mono text-[9.5px] text-blue-primary">
+                        [{variable.label}]
+                      </span>
+                    </span>
+                    <input
+                      type={variable.kind === "date" ? "date" : variable.kind === "link" ? "url" : "text"}
+                      value={templateValues[variable.key] ?? ""}
+                      onChange={(event) =>
+                        setTemplateValues((current) => ({
+                          ...current,
+                          [variable.key]: event.target.value,
+                        }))
+                      }
+                      placeholder={
+                        variable.kind === "link"
+                          ? "https://…"
+                          : `Enter ${variable.label.toLowerCase()}`
+                      }
+                      className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-t border-blue-subtle/50 pt-3">
+                <span className="min-w-0 text-[11.5px] text-text-secondary">
+                  <b className="font-semibold text-text-primary">Subject preview:</b>{" "}
+                  {subjectPreview}
+                </span>
+                <button
+                  type="button"
+                  disabled={!!missingVariable || !!invalidVariable}
+                  onClick={() => {
+                    setSubject(resolveTemplate(subject, variables, templateValues, false));
+                    setBody(resolveTemplate(body, variables, templateValues, true));
+                    setTemplateActive(false);
+                    setTemplateValues({});
+                    toast("Template details added to the email.");
+                  }}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-blue-hover disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Braces size={13} strokeWidth={2.3} />
+                  Apply to email
+                </button>
+              </div>
+            </section>
+          )}
 
           <div>
             {/* THE FORMAT BAR SARAS ASKED FOR (Aug 25: "a format bar for the
                 message to be added though — Bold, Italics, Underline, Font,
                 Font Size, Font Colour, Highlights, bullets, indentation"). */}
-            <Label hint="Bold, italics, underline, font and size, colour, highlight, bullets and indentation. The formatting carries into the email; a plain-text copy goes with it for clients that refuse HTML.">
+            <Label hint="Formatting, alignment and hyperlinks carry into the email. A plain-text copy goes with it for clients that refuse HTML.">
               Message
             </Label>
             <RichTextBox
@@ -790,6 +1034,32 @@ export function EmailComposer() {
               ariaLabel="Message"
               placeholder="Write it the way you would in your mail client."
             />
+            {attachments.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2" aria-label="Email attachments">
+                {attachments.map((attachment) => (
+                  <span
+                    key={attachment.id}
+                    className="inline-flex max-w-full items-center gap-2 rounded-lg border border-border-light bg-surface/60 py-1.5 pl-2.5 pr-1.5 text-[12px]"
+                  >
+                    <Paperclip size={13} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
+                    <span className="max-w-[280px] truncate font-medium text-text-primary" title={attachment.filename}>
+                      {attachment.filename}
+                    </span>
+                    <span className="shrink-0 text-text-tertiary tnum">
+                      {readableBytes(attachment.size)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setAttachments((current) => current.filter((item) => item.id !== attachment.id))}
+                      aria-label={`Remove ${attachment.filename}`}
+                      className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-white hover:text-error"
+                    >
+                      <Trash2 size={13} strokeWidth={2.2} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -798,10 +1068,54 @@ export function EmailComposer() {
             really separating much"). With the count and the important toggle
             moved up to the fields they describe, this row is one button, and a
             hairline above a single button separates nothing. */}
-        <p className="mt-4 min-h-[18px] text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
-          {sendProblem}
-        </p>
-        <div className="mt-1.5 flex flex-wrap items-center justify-end gap-3">
+        <div className="mt-4 flex min-h-9 flex-wrap items-center justify-between gap-3">
+          <input
+            ref={attachmentInput}
+            type="file"
+            multiple
+            className="hidden"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.png,.jpg,.jpeg,.webp,.zip"
+            onChange={async (event) => {
+              const files = Array.from(event.target.files ?? []);
+              event.target.value = "";
+              if (!files.length) return;
+              if (attachments.length + files.length > 5) {
+                toast("Attach up to 5 files.", "error");
+                return;
+              }
+              const total = attachments.reduce((sum, item) => sum + item.size, 0) + files.reduce((sum, file) => sum + file.size, 0);
+              if (total > MAX_ATTACHMENT_BYTES) {
+                toast("Attachments must total 8 MB or less.", "error");
+                return;
+              }
+              try {
+                const next = await Promise.all(files.map(attachmentFromFile));
+                setAttachments((current) => {
+                  const seen = new Set(current.map((item) => item.id));
+                  return [...current, ...next.filter((item) => !seen.has(item.id))];
+                });
+              } catch (error) {
+                toast(error instanceof Error ? error.message : "That file could not be attached.", "error");
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => attachmentInput.current?.click()}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+          >
+            <Paperclip size={14} strokeWidth={2.2} />
+            Attach files
+            {attachments.length > 0 && (
+              <span className="rounded-full bg-blue-light px-1.5 py-0.5 text-[10.5px] text-blue-primary tnum">
+                {attachments.length}
+              </span>
+            )}
+          </button>
+          <div className="ml-auto flex min-h-9 flex-wrap items-center justify-end gap-3">
+            <p className="text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+              {sendProblem}
+            </p>
           {/* STILL TWO PRESSES, NOW AS A POP-UP (Anir, Aug 27: "make the
               send button, like the confirmation thing, a pop-up instead of
               whatever you have right now"). The inline swap made the whole
@@ -865,7 +1179,10 @@ export function EmailComposer() {
                     </span>
                     <span className="mt-2 block text-[12.5px] text-text-secondary">
                       {recipients} {recipients === 1 ? "person" : "people"}
-                      {important ? ", marked important" : ""}.
+                      {important ? ", marked important" : ""}
+                      {attachments.length
+                        ? `, with ${attachments.length} ${attachments.length === 1 ? "attachment" : "attachments"}`
+                        : ""}.
                     </span>
                   </>
                 );
@@ -878,6 +1195,7 @@ export function EmailComposer() {
             }
             confirmLabel={live ? "Yes, send it" : "Yes, simulate it"}
           />
+          </div>
         </div>
         {/* No "still needed" narration (Anir, Aug 27: "you don't have to
             say this"). The disabled Send button already carries the answer,
@@ -948,18 +1266,6 @@ export function EmailComposer() {
                 >
                   {mail.when}
                 </span>
-                {/* SHOW IT, DO NOT DESCRIBE IT (Anir, Aug 30: "I should be
-                    able to SEE what they look like"). The mark says the card
-                    opens something; the card is what you press. Built by the
-                    same functions the cron routes send with, so the preview
-                    cannot drift from what lands in somebody's inbox. Nothing
-                    is sent by looking. */}
-                <Eye
-                  size={14}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                  className="ml-auto shrink-0 text-text-tertiary"
-                />
               </div>
               <p className="mt-1.5 text-[12.5px] leading-snug text-text-secondary">
                 {mail.what} Goes to {mail.who}.
@@ -1332,6 +1638,28 @@ export function EmailComposer() {
                                 {e.replyTo ? ` · replies to ${e.replyTo}` : ""}
                               </span>
                             </div>
+                            {e.attachments?.length ? (
+                              <div className="flex items-start gap-2">
+                                <span className="w-[38px] shrink-0 pt-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                                  Files
+                                </span>
+                                <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                  {e.attachments.map((attachment) => (
+                                    <span
+                                      key={`${attachment.name}-${attachment.size}`}
+                                      title={attachment.name}
+                                      className="inline-flex max-w-[300px] items-center gap-1.5 rounded-full border border-border-light bg-white px-2.5 py-1 text-[11.5px] text-text-primary"
+                                    >
+                                      <Paperclip size={11} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
+                                      <span className="truncate">{attachment.name}</span>
+                                      <span className="shrink-0 text-text-tertiary tnum">
+                                        {readableBytes(attachment.size)}
+                                      </span>
+                                    </span>
+                                  ))}
+                                </span>
+                              </div>
+                            ) : null}
                           </div>
                         );
                       })()}

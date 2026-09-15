@@ -764,7 +764,7 @@ The People Performance panel for claims a manager sent back uses aligned Number,
 Every signed-in page viewed with the Mock-mode cookie keeps `/mock-mode` in its browser URL across links, smart-back navigation, refreshes, bookmarks, old history entries, and query/tab cleanup. All app-level history replacement uses the shared mode-aware helper and preserves Next's browser-history state instead of erasing it. Navigation trails compare canonical routes so the prefix cannot create duplicate or false back entries. Offering records name the actual back destination: an offering opened from an FDL component says “All FDL Components,” while an offering opened from the catalogue says “All offerings.” Completed locally, not deployed.
 
 ### Sep 15: customer offerings use customer language
-The customer Offerings tab starts with a compact “Customer offerings” toolbar showing counts in use and available to add. “Segment” is labelled “Customer type,” and applicability copy uses plain catalogue language. Search and a single stateful Expand all / Collapse all control share the toolbar. Offering availability uses the shared outlined white badge with dark green text, while the filled green “In use” badge remains the adoption state. Completed locally, not deployed.
+The customer Offerings tab starts with a compact “Customer offerings” toolbar showing counts in use and available to add. “Segment” is labelled “Customer type,” and applicability copy uses plain catalogue language. Search and a single stateful Expand all / Collapse all control share the toolbar. Offering availability uses the shared soft green badge with dark green text, while the stronger filled green “In use” badge remains the adoption state. Completed locally, not deployed.
 
 ### Sep 15: interaction logging has a full working dialog
 The customer “Log an interaction” dialog uses a 760px workspace with roomier body padding, a full-width responsive type selector, and a seven-row interaction summary. Follow-up fields and actions retain the existing workflow and remain responsive on narrow screens. Completed locally, not deployed.
@@ -798,3 +798,40 @@ The Leads analytics band stacks intake and current status in one left column bes
 
 ### Sep 15: expanded lead rows use one clear hierarchy
 Expanded lead rows keep the request summary and primary workflow action in the header, then place Contact & account beside Lead readiness. Missing data uses plain “Not added” labels and an Edit lead action instead of empty dashes and a decorative completeness donut. Follow-up timing and the recommended next step are compact cards inside readiness. The lead journey spans the full row as three equal, connected stages and does not require sideways scrolling on desktop. Completed locally, not deployed.
+
+### Sep 15: lead source rows use one baseline
+Source Performance uses the same four-column grid and horizontal inset for its heading and every row. The source name, total, converted count, percentage, and chevron occupy the first row; the volume bar has its own second row. Numeric cells no longer sit halfway between the source label and its bar. Completed locally, not deployed.
+
+### Sep 15: deviation analysis is selectable and explicit
+Opportunities → Deviations opens on the simple Deviated records table. What each month says now and Where the gap came from are separate selectable views rather than two long sections appended below it. Gap cards name the opportunity and customer, state where slipped money moved, and show frozen-plan-to-today amounts for every changed month instead of unexplained positive and negative mini bars. Completed locally, not deployed.
+
+### Sep 15: solution request folds and documents match sales materials
+Clicking unused space on a Solution request row expands or collapses its inline details; its title remains the direct link to the full page. Submission subtype text such as Proposal sits below the title and cannot be squeezed into a clipped metadata fragment. In table and split details, document names use the shared Sales Materials hover preview and open in the shared document modal, with a separate open-on-own-page action. What it is for keeps its linked names without redundant arrow glyphs. Completed locally, not deployed.
+
+### Sep 15: member matrix fits its privilege headings
+The Team members matrix uses explicit fixed column widths instead of allowing long privilege names to enlarge the table past its visible desktop container. Multiword headings stack cleanly and remain centered over their checkboxes, so Delivery, Admin, and View all stay visible without a hidden horizontal offset. Completed locally, not deployed.
+
+### Sep 15: automated-email cards need no view icon
+Each scheduled automated-email card already opens its live preview when clicked. Do not add an eye or separate preview glyph to the row; the duplicate affordance adds noise without adding an action. Completed locally, not deployed.
+
+Mock-mode Market Intel keeps the same link behavior as the live feed. Every company card opens its in-app briefing; its visible latest article opens the sample publisher destination. Inside the sample briefing, post, article, and signal cards are complete clickable targets with deterministic external fallbacks when the illustrative record has no source URL. Completed locally, not deployed.
+
+Lead chart hover rows carry two separate identities: a prominent company logo beside the company name, then the person’s own avatar beside the person’s name. Lead status is a status chip rather than flat text attached to the person. This applies to both weekly-intake points and the current-status donut. Completed locally, not deployed.
+
+### Sep 15: chart record popups remain reachable and scrollable
+Every chart type uses the shared portalled tooltip surface. Record popups keep a short pointer handoff from graph to card, include the visual gap in their hit area, constrain the whole card to the viewport, and contain wheel scrolling inside the card. The card remains open while hovered or keyboard-focused, so long record lists can be read to the end without scrolling the page underneath. Completed locally, not deployed.
+
+### Sep 15: lead journey is one continuous timeline
+Expanded leads show Received, Current status, and Outcome on one connected rail instead of three separate cards. Completed movement uses a solid connector, an undecided outcome uses a dashed continuation, the current state carries its canonical status colour, and every date and person stays attached to the milestone it describes. Completed locally, not deployed.
+
+### Sep 15: expanded lead facts use direct labels and actions
+Email, phone, country, source, and owner place their semantic icon beside the field label; identity marks such as a company logo, person avatar, country flag, and source colour stay with the value. Account match has no redundant label icon. The former Lead readiness score is replaced by a plain Next action summary, missing-detail count, follow-up timing, and recommended action. Completed locally, not deployed.
+
+### Sep 15: form validation stays in the action row
+Action-blocking validation belongs immediately to the left of the action it explains, in the same footer row. Do not reserve a separate validation row above form actions; the empty line wastes vertical space and separates the explanation from the disabled control. Applied to email sending, new Solution requests, offering roadmap edits, and Sales Material uploads. Completed locally, not deployed.
+
+### Sep 15: the admin email composer sends complete messages
+The rich-text toolbar supports undo, redo, emphasis, strikethrough, fonts, colours, highlighting, lists, indentation, alignment, hyperlinks, unlinking, and clearing formatting. Adding a hyperlink opens a focused text-and-address dialog and inserts a normal HTML anchor that survives the email payload. Admins can attach up to five common business files with an 8 MB combined limit; SES and the fallback provider both receive the bytes, while the sent log retains only filenames, sizes, and content types. Completed locally, not deployed.
+
+### Sep 15: template placeholders are editable fields
+Loading an admin email template with bracketed values opens a dedicated Template details panel between Subject and Message. Each unique placeholder becomes a labelled text, date, or full-link field, with the original token shown beside it and a live subject preview below. Send explains the first missing or invalid value and stays unavailable until all details are valid. “Apply to email” replaces every occurrence in both subject and HTML message, so the sender can review the final words before sending; Send also resolves completed values if they have not pressed Apply. Repeated material placeholders have distinct first and second document fields. Completed locally, not deployed.

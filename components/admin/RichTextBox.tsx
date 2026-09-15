@@ -2,19 +2,29 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   Bold,
   Highlighter,
   Indent,
   Italic,
+  Link2,
   List,
   ListOrdered,
   Outdent,
   Palette,
+  Redo2,
   RemoveFormatting,
+  Strikethrough,
   Type,
   Underline,
+  Undo2,
+  Unlink2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 
 /**
  * A FORMAT BAR FOR THE MESSAGE (Saras, Aug 25, on the email composer: "This is
@@ -80,6 +90,9 @@ export function RichTextBox({
   /** What WE last emitted, so a parent echo does not reset the caret. */
   const mine = useRef<string>("");
   const [openMenu, setOpenMenu] = useState<null | "ink" | "mark">(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkText, setLinkText] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
   /**
    * WHAT WAS SELECTED WHEN THE MENU OPENED.
    *
@@ -140,6 +153,58 @@ export function RichTextBox({
     document.execCommand(command, false, arg);
     if (wantsCss) document.execCommand("styleWithCSS", false, "false");
     setOpenMenu(null);
+    emit();
+  };
+
+  const openLink = () => {
+    remember();
+    if (!saved.current && ref.current) {
+      const range = document.createRange();
+      range.selectNodeContents(ref.current);
+      range.collapse(false);
+      saved.current = range;
+    }
+    const selection = window.getSelection();
+    const selected =
+      selection && selection.rangeCount && ref.current?.contains(selection.anchorNode)
+        ? selection.toString()
+        : "";
+    setLinkText(selected);
+    setLinkUrl("");
+    setLinkOpen(true);
+  };
+
+  const normalizedLink = () => {
+    const raw = linkUrl.trim();
+    if (!raw) return "";
+    const candidate = /^(https?:\/\/|mailto:)/i.test(raw) ? raw : `https://${raw}`;
+    try {
+      const url = new URL(candidate);
+      return ["http:", "https:", "mailto:"].includes(url.protocol) ? candidate : "";
+    } catch {
+      return "";
+    }
+  };
+
+  const applyLink = () => {
+    const href = normalizedLink();
+    const label = linkText.trim();
+    if (!href || !label || !saved.current || !ref.current) return;
+    const range = saved.current;
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    anchor.textContent = label;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    range.deleteContents();
+    range.insertNode(anchor);
+    const selection = window.getSelection();
+    range.setStartAfter(anchor);
+    range.collapse(true);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    ref.current.focus();
+    setLinkOpen(false);
     emit();
   };
 
@@ -218,7 +283,18 @@ export function RichTextBox({
 
   return (
     <div className="overflow-hidden rounded-lg border border-border-light bg-white focus-within:border-blue-primary">
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-border-light bg-surface/60 px-1.5 py-1.5">
+      <div
+        role="toolbar"
+        aria-label="Email formatting"
+        className="flex flex-wrap items-center gap-0.5 border-b border-border-light bg-surface/60 px-1.5 py-1.5"
+      >
+        <Btn onPress={() => run("undo")} title="Undo">
+          <Undo2 size={14} strokeWidth={2.2} />
+        </Btn>
+        <Btn onPress={() => run("redo")} title="Redo">
+          <Redo2 size={14} strokeWidth={2.2} />
+        </Btn>
+        <span className="mx-1 h-5 w-px bg-border-light" />
         <Btn onPress={() => run("bold")} title="Bold">
           <Bold size={14} strokeWidth={2.4} />
         </Btn>
@@ -227,6 +303,9 @@ export function RichTextBox({
         </Btn>
         <Btn onPress={() => run("underline")} title="Underline">
           <Underline size={14} strokeWidth={2.4} />
+        </Btn>
+        <Btn onPress={() => run("strikeThrough")} title="Strikethrough">
+          <Strikethrough size={14} strokeWidth={2.2} />
         </Btn>
         <span className="mx-1 h-5 w-px bg-border-light" />
         {select("Font", FONTS, "fontName")}
@@ -272,6 +351,22 @@ export function RichTextBox({
           <Outdent size={14} strokeWidth={2.2} />
         </Btn>
         <span className="mx-1 h-5 w-px bg-border-light" />
+        <Btn onPress={() => run("justifyLeft")} title="Align left">
+          <AlignLeft size={14} strokeWidth={2.2} />
+        </Btn>
+        <Btn onPress={() => run("justifyCenter")} title="Align centre">
+          <AlignCenter size={14} strokeWidth={2.2} />
+        </Btn>
+        <Btn onPress={() => run("justifyRight")} title="Align right">
+          <AlignRight size={14} strokeWidth={2.2} />
+        </Btn>
+        <span className="mx-1 h-5 w-px bg-border-light" />
+        <Btn onPress={openLink} title="Add link">
+          <Link2 size={14} strokeWidth={2.2} />
+        </Btn>
+        <Btn onPress={() => run("unlink")} title="Remove link">
+          <Unlink2 size={14} strokeWidth={2.2} />
+        </Btn>
         <Btn
           onPress={() => {
             run("removeFormat");
@@ -301,11 +396,63 @@ export function RichTextBox({
         style={{ minHeight }}
         className={cn(
           "freyr-richtext w-full overflow-y-auto px-3 py-2.5 text-[13px] leading-relaxed text-text-primary outline-none",
+          "[&_a]:font-medium [&_a]:text-blue-primary [&_a]:underline [&_a]:underline-offset-2",
           "[&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-6 [&_ol]:pl-6",
           "[&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3",
           "[&:empty]:before:text-text-tertiary [&:empty]:before:content-[attr(data-placeholder)]"
         )}
       />
+      <Modal
+        open={linkOpen}
+        onClose={() => setLinkOpen(false)}
+        title="Add a hyperlink"
+        stacked
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            applyLink();
+          }}
+          className="space-y-4"
+        >
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              Text to display
+            </span>
+            <input
+              autoFocus
+              value={linkText}
+              onChange={(event) => setLinkText(event.target.value)}
+              placeholder="Open your opportunities"
+              className="w-full rounded-lg border border-border-light bg-white px-3 py-2.5 text-[14px] text-text-primary outline-none focus:border-blue-primary"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              Link address
+            </span>
+            <input
+              value={linkUrl}
+              onChange={(event) => setLinkUrl(event.target.value)}
+              placeholder="https://…"
+              inputMode="url"
+              className="w-full rounded-lg border border-border-light bg-white px-3 py-2.5 text-[14px] text-text-primary outline-none focus:border-blue-primary"
+            />
+            <span className="mt-1.5 block text-[12px] text-text-tertiary">
+              Web addresses and mailto links are supported.
+            </span>
+          </label>
+          <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4">
+            <Button type="button" variant="secondary" onClick={() => setLinkOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!linkText.trim() || !normalizedLink()}>
+              <Link2 size={14} strokeWidth={2.2} />
+              Add link
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

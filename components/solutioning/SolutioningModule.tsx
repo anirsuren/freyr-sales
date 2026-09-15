@@ -42,6 +42,8 @@ import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Avatar } from "@/components/ui/Avatar";
+import { DocumentPeek } from "@/components/ui/DocumentPeek";
+import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { timelineMark } from "@/components/solutioning/RequestDetail";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
@@ -54,9 +56,11 @@ import { stampedAt } from "@/lib/performanceShared";
 import {
   SUBMISSION_TYPES,
   type SolutioningKind,
+  type SolutionDoc,
   type SolutioningState,
   type SolutionRequest,
 } from "@/lib/solutioning";
+import { formatFromFilename, type OfferingMaterial } from "@/lib/offeringMaterials";
 import { KIND_META, KindChip, STATUS_META, StatusPill } from "./bits";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
@@ -632,6 +636,11 @@ export function SolutioningModule({
                     <span className="mt-0.5 block truncate text-[12.5px] font-semibold text-text-primary">
                       {r.title}
                     </span>
+                    {r.subtype && (
+                      <span className="mt-0.5 block truncate text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                        {r.subtype}
+                      </span>
+                    )}
                     <span className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-text-tertiary">
                       <span className="min-w-0 truncate">{r.customer}</span>
                       {overdue && (
@@ -677,6 +686,11 @@ export function SolutioningModule({
                     <span className="mt-0.5 block truncate text-[14px] font-semibold text-text-primary">
                       {picked.title}
                     </span>
+                    {picked.subtype && (
+                      <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                        {picked.subtype}
+                      </span>
+                    )}
                   </span>
                   {/* THE SAME ACTIONS THE TABLE HAS (Anir, Sep 1: "this goes
                       for all the pages, but on split view I need to have all
@@ -902,7 +916,6 @@ function RequestRow({
   /** Absent when this person may not delete this row — see the note above. */
   onDelete?: () => void;
 }) {
-  const router = useRouter();
   const requestHref = `/solutioning/${r.id}${room === "requests" ? "" : `?tab=${room}`}`;
   const overdue =
     r.neededBy && r.status !== "completed"
@@ -923,13 +936,13 @@ function RequestRow({
           .join(" · ");
   return (
     <>
-    {/* Empty row space opens the primary record. Entity links and controls
-        keep their own destinations; the chevron alone opens the inline
-        breakdown. */}
+    {/* Empty row space toggles the inline breakdown. The request title is the
+        direct route to the full page; entity links and controls keep their
+        own destinations. */}
     <tr
       onClick={(event) => {
         if ((event.target as Element).closest("a,button,input,select,textarea,[role='button']")) return;
-        router.push(requestHref);
+        onToggle();
       }}
       /* THE RAIL RUNS THE WHOLE WAY (Anir, Aug 25: "the blue thing has to
          extend all the way"). The deal table lights the OPEN row itself — same
@@ -968,11 +981,6 @@ function RequestRow({
               {r.ref}
             </span>
             <KindChip kind={r.kind} size="sm" iconOnly={hideKindLabel} />
-            {r.subtype && (
-              <span className="truncate text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                {r.subtype}
-              </span>
-            )}
           </span>
           {/* NO HOVER ARROW BESIDE THE TITLE (Anir, Aug 26: "there's an arrow
               here that feels like a screenshot, I don't want that, it looks
@@ -982,6 +990,11 @@ function RequestRow({
           <span className="mt-1 block break-words text-[13.5px] font-semibold text-text-primary transition-colors group-hover/request:text-blue-primary group-hover/request:underline">
             {r.title}
           </span>
+          {r.subtype && (
+            <span className="mt-1 block text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+              {r.subtype}
+            </span>
+          )}
         </Link>
       </td>
       <td className="px-4 py-3.5">
@@ -1202,6 +1215,21 @@ function RequestRow({
  * thing rather than two drawings of it (Anir, Aug 30: "you probably want to
  * have the table and the split view too on all the solutioning ones").
  */
+function requestDocumentMaterial(doc: SolutionDoc): OfferingMaterial {
+  return {
+    id: doc.id,
+    kind: formatFromFilename(doc.fileName || doc.name),
+    label: doc.name,
+    url: doc.url ?? "",
+    ...(doc.docsPath ? { docsPath: doc.docsPath } : {}),
+  };
+}
+
+const requestDocumentDownloadUrl = (requestId: string, docId: string) =>
+  `/api/solutioning/download?requestId=${encodeURIComponent(
+    requestId
+  )}&docId=${encodeURIComponent(docId)}`;
+
 function RequestPanel({
   r,
   room,
@@ -1222,7 +1250,9 @@ function RequestPanel({
   chromeless?: boolean;
   onBack?: () => void;
 }) {
+  const [viewingDocument, setViewingDocument] = useState<SolutionDoc | null>(null);
   return (
+    <>
     <div className="relative grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_300px]">
       {/* NO ARROW IN HERE. It used to hang off this panel's top-right
           corner, which in a table row lands beside "Latest activity" and reads
@@ -1266,7 +1296,6 @@ function RequestPanel({
                       >
                         <CompanyLogo name={r.customer} className="h-[18px] w-[18px] shrink-0 text-[6px]" />
                         {r.customer}
-                        <ArrowUpRight size={12} className="opacity-60" />
                       </Link>
                     ) : (
                       <p className="mt-1.5 text-[12.5px] text-text-tertiary">The customer itself</p>
@@ -1295,7 +1324,6 @@ function RequestPanel({
                             className="mt-0.5 shrink-0 text-text-tertiary"
                           />
                           <span className="min-w-0">{label}</span>
-                          {opportunityId && <ArrowUpRight size={12} className="shrink-0 opacity-60" />}
                           </>
                         );
                         return opportunityId ? (
@@ -1320,7 +1348,6 @@ function RequestPanel({
                             className="h-[18px] w-[18px] shrink-0 text-[7px]"
                           />
                           {name}
-                          {contactId && <ArrowUpRight size={12} className="shrink-0 opacity-60" />}
                           </>
                         );
                         return contactId ? (
@@ -1347,30 +1374,73 @@ function RequestPanel({
                       Nothing added yet
                     </p>
                   ) : (
-                    <div className="mt-1.5 max-h-[150px] overflow-y-auto rounded-lg border border-border-light bg-surface/30">
+                    <div className="mt-1.5 grid max-h-[210px] grid-cols-1 gap-2 overflow-y-auto pr-1">
                       {r.docs.map((doc) => {
-                        const inner = (
-                          <>
-                            <FileText size={13} strokeWidth={2} className="shrink-0 text-blue-primary" />
-                            <span className="min-w-0 flex-1 truncate">{doc.name}</span>
-                            <span className="shrink-0 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                              {DOC_TAB_WORDS.find(([key]) => key === doc.category)?.[1]?.replace(" document", "") ?? doc.category}
-                            </span>
-                            <ArrowUpRight size={12} className="shrink-0 text-text-tertiary" />
-                          </>
+                        const isFile = Boolean(doc.docsPath || doc.ref);
+                        const previewPage = `/solutioning/${encodeURIComponent(
+                          r.id
+                        )}/documents/${encodeURIComponent(doc.id)}`;
+                        const name = isFile ? (
+                          <MaterialPeek
+                            material={requestDocumentMaterial(doc)}
+                            previewUrl={`${previewPage}?embed=1`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setViewingDocument(doc)}
+                              className="min-w-0 cursor-pointer truncate text-left text-[12.5px] font-semibold text-text-primary underline-offset-2 hover:text-blue-primary hover:underline"
+                            >
+                              {doc.name}
+                            </button>
+                          </MaterialPeek>
+                        ) : (
+                          <span className="min-w-0 truncate text-[12.5px] font-semibold text-text-primary">
+                            {doc.name}
+                          </span>
                         );
-                        const rowClass = "flex items-center gap-2 border-b border-border-light px-2.5 py-2 text-[12px] text-text-secondary transition-colors last:border-0 hover:bg-blue-light hover:text-blue-primary";
                         if (doc.url && !doc.docsPath && !doc.ref) {
-                          return <a key={doc.id} href={doc.url} target="_blank" rel="noreferrer" className={rowClass}>{inner}</a>;
+                          return (
+                            <a
+                              key={doc.id}
+                              href={doc.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="group flex min-w-0 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2.5 transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                            >
+                              <FileText size={14} strokeWidth={2} className="shrink-0 text-blue-primary" />
+                              <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                                {doc.name}
+                              </span>
+                              <ArrowUpRight size={13} className="shrink-0 text-text-tertiary" />
+                            </a>
+                          );
                         }
                         return (
-                          <Link
+                          <div
                             key={doc.id}
-                            href={doc.docsPath || doc.ref ? `/solutioning/${r.id}/documents/${doc.id}` : `/solutioning/${r.id}`}
-                            className={rowClass}
+                            className="flex min-w-0 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2.5"
                           >
-                            {inner}
-                          </Link>
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+                              <FileText size={14} strokeWidth={2} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="flex min-w-0">{name}</span>
+                              <span className="mt-0.5 block truncate text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                                {DOC_TAB_WORDS.find(([key]) => key === doc.category)?.[1] ?? doc.category}
+                              </span>
+                            </span>
+                            {isFile && (
+                              <Link
+                                href={previewPage}
+                                target="_blank"
+                                aria-label={`Open ${doc.name} on its own page`}
+                                title="Open on its own page"
+                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
+                              >
+                                <ArrowUpRight size={13} strokeWidth={2.2} />
+                              </Link>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -1465,6 +1535,20 @@ function RequestPanel({
                 </div>
               </div>
     </div>
+    {viewingDocument && (
+      <DocumentPeek
+        name={viewingDocument.name}
+        fileName={viewingDocument.fileName ?? viewingDocument.name}
+        contextName={r.customer || "This request"}
+        previewUrl={`${requestDocumentDownloadUrl(r.id, viewingDocument.id)}&view=1`}
+        serverPreviewUrl={`/api/solutioning/preview?requestId=${encodeURIComponent(
+          r.id
+        )}&docId=${encodeURIComponent(viewingDocument.id)}`}
+        downloadUrl={requestDocumentDownloadUrl(r.id, viewingDocument.id)}
+        onClose={() => setViewingDocument(null)}
+      />
+    )}
+    </>
   );
 }
 
@@ -2591,12 +2675,6 @@ export function NewRequestDialog({
             </div>
           </div>
 
-          {/* THE REASON ON ITS OWN LINE, always the same height, so Back and
-              the submit button never shift as it comes and goes (Anir, Sep 7:
-              "you can't be moving around the cancel button either"). */}
-          <p className="min-h-[18px] pt-1 text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
-            {savingProblem}
-          </p>
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <button
               type="button"
@@ -2605,10 +2683,14 @@ export function NewRequestDialog({
             >
               Back
             </button>
-            <button
-              type="button"
-              disabled={!canSave || saving}
-              onClick={async () => {
+            <div className="flex min-h-9 flex-wrap items-center justify-end gap-3">
+              <p className="text-right text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
+                {savingProblem}
+              </p>
+              <button
+                type="button"
+                disabled={!canSave || saving}
+                onClick={async () => {
                 if (!kind || !customer) return;
                 setSaving(true);
                 /* Ids and names travel as pairs, so the request page can link
@@ -2649,17 +2731,18 @@ export function NewRequestDialog({
                 });
                 if (!ok) setSaving(false);
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Plus size={14} strokeWidth={2.4} />
-              {uploading
-                ? "Uploading…"
-                : saving
-                ? "Creating…"
-                : directKind
-                  ? `Create the ${KIND_META[directKind].label.toLowerCase()}`
-                  : "Create the request"}
-            </button>
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Plus size={14} strokeWidth={2.4} />
+                {uploading
+                  ? "Uploading…"
+                  : saving
+                  ? "Creating…"
+                  : directKind
+                    ? `Create the ${KIND_META[directKind].label.toLowerCase()}`
+                    : "Create the request"}
+              </button>
+            </div>
           </div>
         </div>
       )}

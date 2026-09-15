@@ -99,6 +99,11 @@ export async function sendViaSes(message: {
   subject: string;
   text: string;
   html?: string;
+  attachments?: {
+    filename: string;
+    content: string;
+    contentType?: string;
+  }[];
   /** Extra MIME headers, e.g. the three that make Outlook draw its red "!". */
   headers?: Record<string, string>;
 }): Promise<SesResult> {
@@ -139,6 +144,18 @@ export async function sendViaSes(message: {
                   Headers: Object.entries(message.headers).map(
                     ([Name, Value]) => ({ Name, Value })
                   ),
+                }
+              : {}),
+            ...(message.attachments?.length
+              ? {
+                  Attachments: message.attachments.map((attachment) => ({
+                    RawContent: Buffer.from(attachment.content, "base64"),
+                    FileName: attachment.filename,
+                    ContentDisposition: "ATTACHMENT" as const,
+                    ...(attachment.contentType
+                      ? { ContentType: attachment.contentType }
+                      : {}),
+                  })),
                 }
               : {}),
           },
