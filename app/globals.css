@@ -411,7 +411,7 @@ html.dark body {
 .availability-pill {
   color: var(--availability-color);
   background-color: var(--availability-bg);
-  border: 1px solid transparent;
+  border: 1px solid var(--availability-border, transparent);
 }
 .dark .availability-pill {
   color: var(--availability-color-dark) !important;

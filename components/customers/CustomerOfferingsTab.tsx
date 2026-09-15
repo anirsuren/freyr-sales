@@ -47,6 +47,7 @@ import type {
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 
 // One colour + glyph per revenue type — the same accents the offering report's
 // header chips use, so a type reads identically wherever it appears.
@@ -138,7 +139,7 @@ export function segmentColor(type: string): string {
 // badge, so one concept wore two colours depending on which card you looked at.
 function segmentParts(type: string) {
   const [family, ...sizeParts] = type.split(/\s+-\s+/);
-  const size = sizeParts.join(" - ") || "Segment";
+  const size = sizeParts.join(" - ") || "Size not set";
   const key = size.toLowerCase();
   const tier = key.includes("small") ? "small" : key.includes("large") ? "large" : "mid";
   const meta = SIZE_TIER_META[tier];
@@ -728,7 +729,7 @@ export function CustomerOfferingsTab({
       });
       const data = await res.json();
       if (data.ok) {
-        toast(`Classified as ${type}: here's everything that applies.`);
+        toast(`Customer type changed to ${type}.`);
         router.refresh();
       } else {
         setSelectedType(previous);
@@ -813,15 +814,7 @@ export function CustomerOfferingsTab({
                   {o.name}
                 </Link>
                 {o.availability && (
-                  <span
-                    className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${
-                      /current|now|available/i.test(o.availability)
-                        ? "text-success bg-success/10"
-                        : "text-warning bg-warning/10"
-                    }`}
-                  >
-                    {o.availability}
-                  </span>
+                  <AvailabilityPill value={o.availability} size="sm" />
                 )}
                 {using && (
                   <span
@@ -1001,15 +994,7 @@ export function CustomerOfferingsTab({
           </Link>
           <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
             {o.availability && (
-              <span
-                className={`text-[10.5px] font-medium rounded px-1.5 py-0.5 ${
-                  /current|now|available/i.test(o.availability)
-                    ? "text-success bg-success/10"
-                    : "text-warning bg-warning/10"
-                }`}
-              >
-                {o.availability}
-              </span>
+              <AvailabilityPill value={o.availability} size="sm" />
             )}
             {(o.category || o.type) && (
               <span className="min-w-0 text-[11.5px] text-text-tertiary break-words">
@@ -1055,9 +1040,8 @@ export function CustomerOfferingsTab({
           What type of customer is this?
         </h2>
         <p className="text-[13.5px] text-text-secondary leading-relaxed max-w-[520px] mx-auto mt-2 mb-6">
-          Pick the segment. It is the same list your offerings use. As soon as
-          you pick one, every offering that applies to this company shows up
-          here with its description and its sales materials.
+          Pick the customer type. We use it to show the catalogue items that
+          fit this company, alongside anything the customer already uses.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-left">
           {typeOptions.map((t) => {
@@ -1108,55 +1092,31 @@ export function CustomerOfferingsTab({
   }
 
   // ---------------------------------------------------------- classified view
-  const adoptionPct = applicable.length
-    ? Math.round((inUse.length / applicable.length) * 100)
-    : 0;
   const allVisibleOpen =
     visibleInUse.length > 0 &&
     visibleInUse.every((offering) => expandedIds.has(offering.id));
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-border-light bg-white p-4 shadow-[0_1px_4px_rgba(15,23,42,0.04)]">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="overflow-hidden rounded-xl border border-border-light bg-surface/45">
+        <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] text-text-secondary">
-              <span className="font-semibold text-text-primary tnum">
-                {applicable.length}
-              </span>{" "}
-              {applicable.length === 1 ? "offering applies" : "offerings apply"} to{" "}
-              <span className="font-semibold text-text-primary">
-                {customerType}
-              </span>
-              {inUse.length > 0 && (
-                <>
-                  {" "}
-                  · already using{" "}
-                  <span className="font-semibold text-text-primary tnum">
-                    {inUse.length}
-                  </span>{" "}
-                  <span className="text-text-tertiary tnum">({adoptionPct}%)</span>
-                </>
-              )}
+            <h2 className="text-[14px] font-semibold text-text-primary">
+              Customer offerings
+            </h2>
+            <p className="mt-0.5 text-[12.5px] text-text-secondary">
+              <span className="font-semibold text-text-primary tnum">{inUse.length}</span>{" "}
+              in use ·{" "}
+              <span className="font-semibold text-text-primary tnum">{toPitch.length}</span>{" "}
+              available to add
             </p>
-            {/* adoption at a glance — green = using, the rest is whitespace to sell */}
-            {applicable.length > 0 && (
-              <div className="mt-1.5 h-1.5 max-w-[420px] overflow-hidden rounded-full bg-surface">
-                <div
-                  className="h-full rounded-full bg-success"
-                  style={{
-                    width: `${Math.max(adoptionPct, inUse.length > 0 ? 3 : 0)}%`,
-                  }}
-                />
-              </div>
-            )}
           </div>
-          <div className="flex shrink-0 items-center justify-end gap-1.5 text-[12px] text-text-tertiary">
-            <span className="inline-flex items-center gap-1">
-              Segment
-              <InfoHint text="What kind of company this is, meaning its industry and its size, like Biologics or mid-size. It decides which offerings apply to them, shown below. Change it if the wrong one was picked." />
+          <div className="flex shrink-0 items-center justify-end gap-2 text-[12px] text-text-secondary">
+            <span className="inline-flex items-center gap-1 font-medium">
+              Customer type
+              <InfoHint text="The company's industry and size. We use it to show relevant offerings from the catalogue. Change it here if the customer was classified incorrectly." />
             </span>
             <ColorSelect
-              ariaLabel="Change customer segment"
+              ariaLabel="Change customer type"
               value={selectedType}
               onChange={saveType}
               options={segmentOptions}
@@ -1165,8 +1125,8 @@ export function CustomerOfferingsTab({
             />
           </div>
         </div>
-        <div className="mt-4 flex flex-col gap-2 border-t border-border-light pt-3 sm:flex-row sm:items-center sm:justify-between">
-          <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-surface px-3 focus-within:border-blue-primary focus-within:bg-white focus-within:shadow-input-focus sm:max-w-[520px]">
+        <div className="flex flex-col gap-2 border-t border-border-light bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-3 focus-within:border-blue-primary focus-within:shadow-input-focus sm:max-w-[520px]">
             <Search size={15} strokeWidth={2} className="shrink-0 text-text-tertiary" />
             <input
               value={offeringQuery}
@@ -1176,40 +1136,28 @@ export function CustomerOfferingsTab({
               className="min-w-0 flex-1 bg-transparent text-[13px] text-text-primary outline-none placeholder:text-text-tertiary"
             />
           </label>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                setExpandedIds(
-                  (current) =>
-                    new Set([
-                      ...current,
-                      ...visibleInUse.map((offering) => offering.id),
-                    ])
-                )
-              }
-              disabled={visibleInUse.length === 0 || allVisibleOpen}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:cursor-default disabled:opacity-40"
-            >
-              <ChevronDown size={14} strokeWidth={2.2} />
-              Expand all
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setExpandedIds((current) => {
-                  const next = new Set(current);
-                  visibleInUse.forEach((offering) => next.delete(offering.id));
-                  return next;
-                })
-              }
-              disabled={visibleInUse.every((offering) => !expandedIds.has(offering.id))}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:cursor-default disabled:opacity-40"
-            >
+          <button
+            type="button"
+            onClick={() =>
+              setExpandedIds((current) => {
+                const next = new Set(current);
+                visibleInUse.forEach((offering) => {
+                  if (allVisibleOpen) next.delete(offering.id);
+                  else next.add(offering.id);
+                });
+                return next;
+              })
+            }
+            disabled={visibleInUse.length === 0}
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:cursor-default disabled:opacity-40"
+          >
+            {allVisibleOpen ? (
               <ChevronUp size={14} strokeWidth={2.2} />
-              Collapse all
-            </button>
-          </div>
+            ) : (
+              <ChevronDown size={14} strokeWidth={2.2} />
+            )}
+            {allVisibleOpen ? "Collapse all" : "Expand all"}
+          </button>
         </div>
       </div>
 
@@ -1231,7 +1179,7 @@ export function CustomerOfferingsTab({
               strokeWidth={2}
               className="text-success"
             />
-            Already using
+            Already in use
             <span className="text-text-primary tnum">
               ({visibleInUse.length}
               {normalizedOfferingQuery ? ` of ${inUse.length}` : ""})
@@ -1249,7 +1197,7 @@ export function CustomerOfferingsTab({
         <section>
           <h3 className="mb-2.5 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
             <Sparkles size={14} strokeWidth={2} className="text-blue-primary" />
-            Applicable offerings
+            Available to add
             <span className="text-text-primary tnum">
               ({visibleToPitch.length}
               {normalizedOfferingQuery ? ` of ${toPitch.length}` : ""})
@@ -1258,14 +1206,14 @@ export function CustomerOfferingsTab({
           {applicable.length === 0 ? (
             <EmptyState
               icon={Package}
-              title={`Nothing in the catalogue is for ${customerType} yet`}
-              description="Open an offering and add this customer type to it. Everything that applies then shows up here."
+              title={`No catalogue offerings match ${customerType} yet`}
+              description="Add this customer type to an offering to make it available here."
             />
           ) : visibleToPitch.length === 0 ? (
             <p className="text-[13px] text-text-secondary">
               {normalizedOfferingQuery
-                ? "No applicable offerings match this search."
-                : "They are already using everything that applies to them. There is nothing left to pitch."}
+                ? "No available offerings match this search."
+                : "This customer already uses every offering available for its customer type."}
             </p>
           ) : (
             <div className="stagger grid grid-cols-1 items-stretch gap-3 lg:grid-cols-2">

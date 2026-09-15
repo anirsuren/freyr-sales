@@ -13,19 +13,23 @@ const STYLE: Record<
   {
     bg: string;
     color: string;
+    border: string;
     darkBg: string;
     darkColor: string;
     darkBorder: string;
     icon: LucideIcon;
   }
 > = {
-  // Same pair as the HEALTHY badge — Suren, Jul 28: "that green is very
-  // unpleasant, hard to see. What you have in healthy is good, put that for
-  // currently available and in use."
+  // Availability must remain distinct from adoption: “In use” owns the filled
+  // green treatment, while this status uses an outlined white field.
   available: {
-    bg: "rgba(34,197,94,0.14)",
-    color: "#16A34A",
-    darkBg: "rgba(34,197,94,0.18)",
+    // Availability is informational, not the same state as “In use”. A white
+    // field with a dark green mark stays readable beside the filled green
+    // adoption badge and avoids low-contrast green text on green.
+    bg: "#FFFFFF",
+    color: "#166534",
+    border: "rgba(22,101,52,0.34)",
+    darkBg: "rgba(15,23,42,0.72)",
     darkColor: "#4ADE80",
     darkBorder: "rgba(74,222,128,0.42)",
     icon: CircleCheck,
@@ -33,6 +37,7 @@ const STYLE: Record<
   upcoming: {
     bg: "rgba(255,159,10,0.16)",
     color: "#7A4A00",
+    border: "transparent",
     darkBg: "rgba(249,115,22,0.18)",
     darkColor: "#FDBA74",
     darkBorder: "rgba(253,186,116,0.42)",
@@ -41,6 +46,7 @@ const STYLE: Record<
   tbd: {
     bg: "rgba(79,70,229,0.12)",
     color: "#4338CA",
+    border: "transparent",
     darkBg: "rgba(99,102,241,0.2)",
     darkColor: "#A5B4FC",
     darkBorder: "rgba(165,180,252,0.42)",
@@ -90,6 +96,7 @@ export function AvailabilityPill({
           {
             "--availability-bg": s.bg,
             "--availability-color": s.color,
+            "--availability-border": s.border,
             "--availability-bg-dark": s.darkBg,
             "--availability-color-dark": s.darkColor,
             "--availability-border-dark": s.darkBorder,

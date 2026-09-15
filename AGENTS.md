@@ -754,3 +754,6 @@ The People Performance panel for claims a manager sent back uses aligned Number,
 
 ### Sep 15: Mock-mode is an address invariant
 Every signed-in page viewed with the Mock-mode cookie keeps `/mock-mode` in its browser URL across links, smart-back navigation, refreshes, bookmarks, old history entries, and query/tab cleanup. All app-level history replacement uses the shared mode-aware helper and preserves Next's browser-history state instead of erasing it. Navigation trails compare canonical routes so the prefix cannot create duplicate or false back entries. Offering records name the actual back destination: an offering opened from an FDL component says “All FDL Components,” while an offering opened from the catalogue says “All offerings.” Completed locally, not deployed.
+
+### Sep 15: customer offerings use customer language
+The customer Offerings tab starts with a compact “Customer offerings” toolbar showing counts in use and available to add. “Segment” is labelled “Customer type,” and applicability copy uses plain catalogue language. Search and a single stateful Expand all / Collapse all control share the toolbar. Offering availability uses the shared outlined white badge with dark green text, while the filled green “In use” badge remains the adoption state. Completed locally, not deployed.
