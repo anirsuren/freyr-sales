@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ChevronRight, Search } from "lucide-react";
+import { ArrowUpRight, ChevronRight, Maximize2, Search } from "lucide-react";
 import { AreaChart, DonutChart, type TipItem } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { LocalTime } from "@/components/ui/LocalTime";
@@ -34,7 +36,20 @@ function percentage(part: number, whole: number) {
 }
 
 export function LeadAnalytics({ leads }: { leads: Lead[] }) {
-  const [sourceDetail, setSourceDetail] = useState<LeadSource | null>(null);
+  const [sourceWorkspaceOpen, setSourceWorkspaceOpen] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<LeadSource | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [ownerFilter, setOwnerFilter] = useState<string>("all");
+  const [sourceSort, setSourceSort] = useState<
+    | "newest"
+    | "oldest"
+    | "recently_moved"
+    | "stale"
+    | "name"
+    | "company"
+    | "status"
+    | "owner"
+  >("newest");
   const [sourceQuery, setSourceQuery] = useState("");
   const data = useMemo(() => {
     const dated = leads
@@ -108,12 +123,22 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
 
   if (!data) return null;
   const maxSourceValue = Math.max(...data.sourceBars.map((bar) => bar.value), 1);
-  const sourceLeads = sourceDetail
-    ? leads.filter((lead) => lead.source === sourceDetail)
-    : [];
+  const sourceLeads =
+    sourceFilter === "all"
+      ? leads
+      : leads.filter((lead) => lead.source === sourceFilter);
   const sourceNeedle = sourceQuery.trim().toLowerCase();
-  const matchingSourceLeads = sourceNeedle
-    ? sourceLeads.filter((lead) =>
+  const matchingSourceLeads = sourceLeads
+    .filter(
+      (lead) =>
+        statusFilter === "all" || lead.status === statusFilter
+    )
+    .filter(
+      (lead) => ownerFilter === "all" || (lead.owner || "Unassigned") === ownerFilter
+    )
+    .filter(
+      (lead) =>
+        !sourceNeedle ||
         [
           lead.name,
           lead.company,
@@ -123,12 +148,47 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
           lead.interest,
           lead.ref,
         ].some((value) => value?.toLowerCase().includes(sourceNeedle))
-      )
-    : sourceLeads;
+    )
+    .sort((a, b) => {
+      if (sourceSort === "oldest") {
+        return Date.parse(a.createdAt) - Date.parse(b.createdAt);
+      }
+      if (sourceSort === "name") return a.name.localeCompare(b.name);
+      if (sourceSort === "company") return a.company.localeCompare(b.company);
+      if (sourceSort === "status") return a.status.localeCompare(b.status);
+      if (sourceSort === "owner") {
+        return (a.owner || "Unassigned").localeCompare(b.owner || "Unassigned");
+      }
+      if (sourceSort === "recently_moved") {
+        return (
+          Date.parse(b.updatedAt || b.createdAt) -
+          Date.parse(a.updatedAt || a.createdAt)
+        );
+      }
+      if (sourceSort === "stale") {
+        return (
+          Date.parse(a.updatedAt || a.createdAt) -
+          Date.parse(b.updatedAt || b.createdAt)
+        );
+      }
+      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+    });
   const sourceConverted = sourceLeads.filter((lead) => lead.status === "Converted").length;
-  const sourceOpen = sourceLeads.filter((lead) =>
+  const sourceStillOpen = sourceLeads.filter((lead) =>
     lead.status !== "Converted" && lead.status !== "Disqualified"
   ).length;
+  const sourceOwners = Array.from(
+    new Set(leads.map((lead) => lead.owner || "Unassigned"))
+  ).sort((a, b) => a.localeCompare(b));
+
+  function openSourceWorkspace(source: LeadSource | "all") {
+    setSourceFilter(source);
+    setStatusFilter("all");
+    setOwnerFilter("all");
+    setSourceSort("newest");
+    setSourceQuery("");
+    setSourceWorkspaceOpen(true);
+  }
 
   return (
     <Card className="mt-4 overflow-hidden p-0">
@@ -144,13 +204,31 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 divide-y divide-border-light xl:grid-cols-[1.35fr_.8fr_1.15fr] xl:divide-x xl:divide-y-0">
+      <div className="grid grid-cols-1 divide-y divide-border-light xl:grid-cols-[1.05fr_.72fr_1.55fr] xl:divide-x xl:divide-y-0">
         <section className="min-w-0 px-5 pb-6 pt-4">
-          <div className="flex items-center gap-1">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              New leads · last 12 weeks
-            </h3>
-            <InfoHint text="Each point is the exact number of leads received in that seven-day period. The window ends on the newest lead in this workspace." />
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-1">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                New leads · last 12 weeks
+              </h3>
+              <InfoHint text="Each point is the exact number of leads received in that seven-day period. The window ends on the newest lead in this workspace." />
+            </div>
+            <ExpandedChartModal
+              title="New leads · last 12 weeks"
+              subtitle="Weekly lead intake ending on the newest lead in this workspace."
+              triggerLabel="Expand lead intake"
+              chart={{
+                kind: "area",
+                id: "lead-intake",
+                label: "New leads",
+                color: "#0071E3",
+                data: data.series,
+                xLabels: data.labels,
+                pointTips: data.tips,
+                format: "number",
+                unit: "leads",
+              }}
+            />
           </div>
           <p className="mt-1 text-[22px] font-bold text-text-primary tnum">
             {data.series.reduce((sum, value) => sum + value, 0)}
@@ -170,11 +248,27 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
         </section>
 
         <section className="min-w-0 px-5 pb-5 pt-4">
-          <div className="flex items-center gap-1">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              Where they sit now
-            </h3>
-            <InfoHint text="Current lead status. This does not pretend to be stage history: the lead record stores its current stage, not every previous stage change." />
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-1">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                Where they sit now
+              </h3>
+              <InfoHint text="Current lead status. This does not pretend to be stage history: the lead record stores its current stage, not every previous stage change." />
+            </div>
+            <ExpandedChartModal
+              title="Where leads sit now"
+              subtitle="Current lead status across this workspace."
+              triggerLabel="Expand lead status"
+              chart={{
+                kind: "donut",
+                segments: data.statusSegments,
+                centerLabel: String(leads.length),
+                centerSub: "leads",
+                format: "number",
+                legendBars: true,
+                legendValues: true,
+              }}
+            />
           </div>
           <div className="mt-4 flex justify-center">
             <DonutChart
@@ -198,11 +292,22 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
         </section>
 
         <section className="min-w-0 px-5 pb-5 pt-4">
-          <div className="flex items-center gap-1">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              Source performance
-            </h3>
-            <InfoHint text="Bar length is lead volume. The aligned figures show total leads and how many reached an opportunity. Every value comes from the lead records in this workspace." />
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-1">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                Source performance
+              </h3>
+              <InfoHint text="Bar length is lead volume. The aligned figures show total leads and how many reached an opportunity. Every value comes from the lead records in this workspace." />
+            </div>
+            <button
+              type="button"
+              onClick={() => openSourceWorkspace("all")}
+              aria-label="Expand Source Performance"
+              title="Expand Source Performance"
+              className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-white text-text-primary shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+            >
+              <Maximize2 size={14} strokeWidth={2.1} aria-hidden="true" />
+            </button>
           </div>
           <div className="mt-3 grid grid-cols-[minmax(150px,1fr)_72px_154px_14px] items-end gap-3 border-b border-border-light pb-1.5 text-left text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             <span>Source &amp; volume</span>
@@ -216,8 +321,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 type="button"
                 key={bar.label}
                 onClick={() => {
-                  setSourceQuery("");
-                  setSourceDetail(bar.label);
+                  openSourceWorkspace(bar.label);
                 }}
                 aria-label={`Open all ${bar.value} ${bar.label} leads`}
                 className="group grid w-full grid-cols-[minmax(150px,1fr)_72px_154px_14px] items-center gap-3 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
@@ -261,9 +365,9 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
       </div>
 
       <Modal
-        open={!!sourceDetail}
-        onClose={() => setSourceDetail(null)}
-        title={sourceDetail ? `${sourceDetail} leads` : "Source leads"}
+        open={sourceWorkspaceOpen}
+        onClose={() => setSourceWorkspaceOpen(false)}
+        title={sourceFilter === "all" ? "Source performance" : `${sourceFilter} leads`}
         titleAfter={
           <span className="rounded-full bg-blue-light px-2 py-0.5 text-[11px] font-bold text-blue-primary tnum">
             {sourceLeads.length}
@@ -271,13 +375,14 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
         }
         size="chart"
         tall
+        dialogClassName="!max-w-[min(1500px,96vw)]"
         bodyClassName="flex flex-col !p-0"
       >
         <div className="shrink-0 border-b border-border-light bg-white p-4">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               ["Total leads", sourceLeads.length],
-              ["Still open", sourceOpen],
+              ["Still open", sourceStillOpen],
               ["Converted", sourceConverted],
               ["Conversion", `${percentage(sourceConverted, sourceLeads.length)}%`],
             ].map(([label, value]) => (
@@ -291,22 +396,111 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
               </div>
             ))}
           </div>
-          <label className="relative mt-3 block">
-            <Search
-              size={16}
-              strokeWidth={2}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
-              aria-hidden="true"
+          <div className="mt-3 grid gap-2 xl:grid-cols-[minmax(280px,1fr)_190px_180px_210px_180px]">
+            <label className="relative block min-w-0">
+              <Search
+                size={16}
+                strokeWidth={2}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+                aria-hidden="true"
+              />
+              <input
+                value={sourceQuery}
+                onChange={(event) => setSourceQuery(event.target.value)}
+                placeholder="Search leads, companies, owners, or requests…"
+                aria-label="Search source performance leads"
+                autoFocus
+                className="h-10 w-full rounded-xl border border-border-light bg-surface pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary focus:bg-white"
+              />
+            </label>
+            <ColorSelect
+              value={sourceFilter}
+              onChange={(value) => setSourceFilter(value as LeadSource | "all")}
+              ariaLabel="Filter by source"
+              fill
+              collapsible={false}
+              searchable
+              options={[
+                { value: "all", label: "All sources", color: "#0071E3" },
+                ...data.sourceBars.map((bar) => ({
+                  value: bar.label,
+                  label: bar.label,
+                  color: bar.color,
+                  badge: String(bar.value),
+                })),
+              ]}
             />
-            <input
-              value={sourceQuery}
-              onChange={(event) => setSourceQuery(event.target.value)}
-              placeholder={`Search ${sourceDetail ?? "source"} leads...`}
-              aria-label={`Search ${sourceDetail ?? "source"} leads`}
-              autoFocus
-              className="h-10 w-full rounded-xl border border-border-light bg-surface pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary focus:bg-white"
+            <ColorSelect
+              value={statusFilter}
+              onChange={setStatusFilter}
+              ariaLabel="Filter by status"
+              fill
+              collapsible={false}
+              searchable
+              options={[
+                { value: "all", label: "All statuses", color: "#0071E3" },
+                ...LEAD_STATUSES.map((status) => ({
+                  value: status,
+                  label: status,
+                  color: leadStatusColor(status),
+                })),
+              ]}
             />
-          </label>
+            <ColorSelect
+              value={ownerFilter}
+              onChange={setOwnerFilter}
+              ariaLabel="Filter by owner"
+              fill
+              collapsible={false}
+              searchable
+              options={[
+                { value: "all", label: "All owners", color: "#0071E3" },
+                ...sourceOwners.map((owner) => ({
+                  value: owner,
+                  label: owner,
+                  avatarName: owner === "Unassigned" ? undefined : owner,
+                  color: owner === "Unassigned" ? "#8E98A8" : undefined,
+                })),
+              ]}
+            />
+            <ColorSelect
+              value={sourceSort}
+              onChange={(value) =>
+                setSourceSort(value as typeof sourceSort)
+              }
+              ariaLabel="Sort source leads"
+              fill
+              collapsible={false}
+              options={[
+                { value: "newest", label: "Newest first", color: "#0071E3" },
+                { value: "oldest", label: "Oldest first", color: "#0071E3" },
+                { value: "recently_moved", label: "Recently moved", color: "#0071E3" },
+                { value: "stale", label: "Stalest first", color: "#C2410C" },
+                { value: "name", label: "Lead name", color: "#0071E3" },
+                { value: "company", label: "Company", color: "#0071E3" },
+                { value: "status", label: "Status", color: "#0071E3" },
+                { value: "owner", label: "Owner", color: "#0071E3" },
+              ]}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-text-tertiary">
+            <span>
+              Showing {matchingSourceLeads.length} of {sourceLeads.length} leads
+            </span>
+            {(sourceQuery || statusFilter !== "all" || ownerFilter !== "all") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSourceQuery("");
+                  setStatusFilter("all");
+                  setOwnerFilter("all");
+                }}
+                className="cursor-pointer font-semibold text-blue-primary hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto">

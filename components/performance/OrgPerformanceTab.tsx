@@ -70,6 +70,7 @@ import {
   donutSyncBroadcast,
   useDonutSync,
 } from "@/components/charts/Charts";
+import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { PerformanceExport } from "./PerformanceExport";
 import { VerifyGoalModal, type VerifyScope } from "./VerifyGoalModal";
@@ -487,6 +488,49 @@ export function OrgPerformanceTab({
       "lagging"
   ).length;
   const verifiedCount = shown.filter((g) => g.verified).length;
+  const goalProgressBars = sorted.map((goal) => {
+    const verified = verifiedValue(state, goal);
+    return {
+      id: goal.id,
+      label: goal.name,
+      value: goal.target > 0 ? pctMet(verified, goal.target) : 0,
+      color: typeMeta(goal.type).color,
+      caption: `${fmtAmount(goal.unit, verified, goal.currency)} of ${fmtAmount(goal.unit, goal.target, goal.currency)}`,
+    };
+  });
+  const paceSegments = ([
+    "met",
+    "ahead",
+    "ontrack",
+    "lagging",
+    "unscheduled",
+    "unset",
+  ] as const)
+    .map((key) => ({
+      id: key,
+      label: PACE_LABEL[key],
+      color: PACE_COLOR[key],
+      value: withValue.filter(
+        (entry) =>
+          paceVerdict(
+            entry.verified,
+            entry.goal.target,
+            entry.goal.year,
+            entry.goal.measure,
+            undefined,
+            milestoneByNow(entry.goal)
+          ) === key
+      ).length,
+    }))
+    .filter((segment) => segment.value > 0);
+  const expandedBarTitle =
+    typeof words?.barTitle === "string"
+      ? words.barTitle
+      : "How far along each goal is";
+  const expandedDonutTitle =
+    typeof words?.donutTitle === "string"
+      ? words.donutTitle
+      : "Where the goals stand";
   /**
    * ONLY COUNT WHAT CAN BE SIGNED OFF (Anir, Aug 23: "we verified two things,
    * then down here it didn't say that — it asked me to verify again").
@@ -717,10 +761,23 @@ export function OrgPerformanceTab({
               own bottom edge. -mx-5 with a matching fillCard runs the bars to
               the card's left and right edges. */}
           <Card className="flex flex-col p-5" data-chart-root>
-            <p className="flex items-center gap-1 text-[13px] font-semibold text-text-primary">
-              {words?.barTitle ?? "How far along each goal is"}
-              <InfoHint text="Each bar is one tracked goal: how much of its annual target is achieved so far. Hover a bar to see the subgoals behind it." />
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <p className="flex items-center gap-1 text-[13px] font-semibold text-text-primary">
+                {words?.barTitle ?? "How far along each goal is"}
+                <InfoHint text="Each bar is one tracked goal: how much of its annual target is achieved so far. Hover a bar to see the subgoals behind it." />
+              </p>
+              <ExpandedChartModal
+                title={expandedBarTitle}
+                subtitle="Progress against the annual target for every goal currently shown."
+                triggerLabel="Expand goal progress"
+                chart={{
+                  kind: "bar",
+                  data: goalProgressBars,
+                  format: "percent",
+                  unit: "% met",
+                }}
+              />
+            </div>
             {/* -mb-5 as well as -mx-5: the card's bottom padding was holding the
                 scroller 20px off the card's edge, so the scrollbar floated
                 above it (Anir, Aug 15: "the scrollbar has to be at the very
@@ -1039,10 +1096,26 @@ export function OrgPerformanceTab({
             )}
           </Card>
           <Card className="p-5">
-            <p className="flex items-center gap-1 text-[13px] font-semibold text-text-primary">
-              {words?.donutTitle ?? "Where the goals stand"}
-              <InfoHint text="Every tracked goal, judged against where the calendar says it should be by today." />
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <p className="flex items-center gap-1 text-[13px] font-semibold text-text-primary">
+                {words?.donutTitle ?? "Where the goals stand"}
+                <InfoHint text="Every tracked goal, judged against where the calendar says it should be by today." />
+              </p>
+              <ExpandedChartModal
+                title={expandedDonutTitle}
+                subtitle="Every tracked goal, judged against where the calendar says it should be today."
+                triggerLabel="Expand goal pace"
+                chart={{
+                  kind: "donut",
+                  segments: paceSegments,
+                  centerLabel: String(shown.length),
+                  centerSub: shown.length === 1 ? noun.replace(/s$/, "") : noun,
+                  format: "number",
+                  legendBars: true,
+                  legendValues: true,
+                }}
+              />
+            </div>
             <div className="mx-auto mt-3 flex w-full max-w-[420px] items-center justify-center gap-6">
               <DonutChart
                 size={140}
@@ -1050,45 +1123,13 @@ export function OrgPerformanceTab({
                 syncId="perf-pace"
                 centerLabel={String(shown.length)}
                 centerSub={shown.length === 1 ? noun.replace(/s$/, "") : noun}
-                segments={(["met", "ahead", "ontrack", "lagging", "unscheduled", "unset"] as const)
-                  .map((k) => ({
-                    label: PACE_LABEL[k],
-                    color: PACE_COLOR[k],
-                    value: withValue.filter(
-                      (x) =>
-                        paceVerdict(
-                          x.verified,
-                          x.goal.target,
-                          x.goal.year,
-                          x.goal.measure,
-                          undefined,
-                          milestoneByNow(x.goal)
-                        ) === k
-                    ).length,
-                  }))
-                  .filter((s) => s.value > 0)}
+                segments={paceSegments}
               />
               <DonutLegend
                 className="min-w-0 flex-1 max-w-[230px]"
                 syncId="perf-pace"
                 total={shown.length}
-                items={(["met", "ahead", "ontrack", "lagging", "unscheduled", "unset"] as const)
-                  .map((k) => ({
-                    label: PACE_LABEL[k],
-                    color: PACE_COLOR[k],
-                    value: withValue.filter(
-                      (x) =>
-                        paceVerdict(
-                          x.verified,
-                          x.goal.target,
-                          x.goal.year,
-                          x.goal.measure,
-                          undefined,
-                          milestoneByNow(x.goal)
-                        ) === k
-                    ).length,
-                  }))
-                  .filter((s) => s.value > 0)}
+                items={paceSegments}
               />
             </div>
           </Card>
