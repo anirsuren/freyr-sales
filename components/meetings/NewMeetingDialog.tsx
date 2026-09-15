@@ -230,10 +230,6 @@ export function NewMeetingDialog({
   const [presenters, setPresenters] = useState<string[]>(
     meeting?.presenters ?? []
   );
-  /* A presenter or attendee may be known for this meeting before their app
-     account exists. Keep those typed names on this meeting without pretending
-     they are directory members. */
-  const [addedMemberNames, setAddedMemberNames] = useState<string[]>([]);
   const [owner, setOwner] = useState(meeting?.owner ?? meName);
   const [opportunityIds, setOpportunityIds] = useState<string[]>(
     meeting?.opportunityIds ?? (prefillOpportunityId ? [prefillOpportunityId] : [])
@@ -321,29 +317,17 @@ export function NewMeetingDialog({
       ),
     [customerAliasIds, customerId, opportunities]
   );
+  /* Internal attendees are identities, not labels. They must come from the
+     workspace directory so their email, permissions and access stay attached
+     to the invited account. Existing historical names remain displayable when
+     editing, but this form cannot invent a new team member. */
   const memberChoices = useMemo(
     () =>
-      [...new Set([meName, ...members, ...presenters, ...attendees, ...addedMemberNames])]
+      [...new Set([...members, ...presenters, ...attendees])]
         .map((name) => name.trim())
         .filter(Boolean),
-    [addedMemberNames, attendees, meName, members, presenters]
+    [attendees, members, presenters]
   );
-
-  const addMemberTo = (name: string, role: "presenter" | "attendee") => {
-    const clean = name.trim();
-    if (!clean) return;
-    setAddedMemberNames((current) =>
-      current.some((item) => item.toLowerCase() === clean.toLowerCase())
-        ? current
-        : [...current, clean]
-    );
-    const put = role === "presenter" ? setPresenters : setAttendees;
-    put((current) =>
-      current.some((item) => item.toLowerCase() === clean.toLowerCase())
-        ? current
-        : [...current, clean]
-    );
-  };
 
   /**
    * A MEETING YOU ARE PLANNING CANNOT ALREADY HAVE HAPPENED.
@@ -719,10 +703,8 @@ export function NewMeetingDialog({
                   cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
                 )
               }
-              onCreate={(name) => addMemberTo(name, "presenter")}
-              createLabel="Add someone presenting"
               placeholder="Who is presenting…"
-              emptyLabel="Nobody in the directory yet."
+              emptyLabel="Nobody is in the workspace directory yet. Invite them from Team first."
             />
           </Field>
           </div>
@@ -737,10 +719,8 @@ export function NewMeetingDialog({
                     cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
                   )
                 }
-                onCreate={(name) => addMemberTo(name, "attendee")}
-                createLabel="Add someone attending"
                 placeholder="Who else is going…"
-                emptyLabel="Nobody in the directory yet."
+                emptyLabel="Nobody is in the workspace directory yet. Invite them from Team first."
               />
             </Field>
           </div>

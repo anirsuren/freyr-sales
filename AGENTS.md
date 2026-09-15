@@ -198,9 +198,11 @@ what was written back, `deleted-test-customers.json`).
   customer picker collapses duplicate account records by normalized name while
   preserving the selected id and combining linked deal/contact context. An
   always-visible Add customer action opens the complete customer form in the
-  current data mode. Presenter and attendee pickers likewise expose visible
-  add actions for meeting-local names. The same editor serves Mock and Real.
-  Local only; not deployed.
+  current data mode. Customer contacts and deal shells may still be created in
+  context. Internal presenters and attendees remain directory-only because a
+  team member must be invited with an email and workspace access; the meeting
+  form never invents one as a free-text name. The same editor serves Mock and
+  Real. Local only; not deployed.
 
 - **Sep 15 customer opportunity table:** The Customer 360 Opportunities band
   gives the opportunity name less width and up to two lines, reserving enough
