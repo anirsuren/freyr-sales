@@ -1048,8 +1048,8 @@ export function MaterialViewer({
           )}
 
           {status === "error" && (
-            <p className="flex items-start gap-2 py-8 text-[13px] text-text-secondary">
-              <FileWarning size={16} className="mt-0.5 shrink-0 text-[color:var(--ink-orange)]" />
+            <p className="flex h-full min-h-[420px] items-center justify-center gap-2 p-8 text-center text-[13px] text-text-secondary">
+              <FileWarning size={16} className="shrink-0 text-[color:var(--ink-orange)]" />
               {message}
             </p>
           )}

@@ -654,11 +654,12 @@ export function MeetingsModule({
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => router.push(`/meetings/${m.id}`)}
+                        aria-expanded={openIds.has(m.id)}
+                        onClick={() => toggleRow(m.id)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            router.push(`/meetings/${m.id}`);
+                            toggleRow(m.id);
                           }
                         }}
                         className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-surface/60"
@@ -681,6 +682,7 @@ export function MeetingsModule({
                             <Link
                               href={`/meetings/${m.id}`}
                               onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
                               className="truncate text-[13.5px] font-semibold text-text-primary hover:text-blue-primary hover:underline"
                             >
                               {m.title}
@@ -704,6 +706,7 @@ export function MeetingsModule({
                               <Link
                                 href={`/customers/${m.customerId}`}
                                 onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
                                 className="hover:text-blue-primary hover:underline"
                               >
                                 {m.customer}
@@ -722,6 +725,7 @@ export function MeetingsModule({
                                         key={`${id}-${label}`}
                                         href={`/opportunities/${id}`}
                                         onClick={(e) => e.stopPropagation()}
+                                        onKeyDown={(e) => e.stopPropagation()}
                                         className="truncate hover:text-blue-primary hover:underline"
                                       >
                                         {label}{index < m.opportunityLabels.length - 1 ? "," : ""}
@@ -740,6 +744,7 @@ export function MeetingsModule({
                               href={`/analytics/reps/${repSlug(p)}`}
                               title={p}
                               onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
                               className="rounded-full transition-transform hover:scale-105"
                             >
                               <Avatar name={p} className="h-6 w-6 text-[8px]" />
@@ -766,6 +771,7 @@ export function MeetingsModule({
                             e.stopPropagation();
                             toggleRow(m.id);
                           }}
+                          onKeyDown={(e) => e.stopPropagation()}
                           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"
                         >
                           <ChevronDown

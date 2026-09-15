@@ -23,6 +23,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { SmartBack } from "@/components/ui/BackButton";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -163,6 +164,8 @@ export function MeetingDetail({
   const [transcribing, setTranscribing] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [docOpen, setDocOpen] = useState(false);
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docLabel, setDocLabel] = useState("");
   /* THE SAME VIEWER THE SALES MATERIALS USE (Anir, Aug 28: "you're gonna have
      to do it in another viewer, just like you have on sales materials.
      Literally copy it... whenever there are files, bro, you have to do this
@@ -201,6 +204,62 @@ export function MeetingDetail({
       return false;
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function uploadDocument() {
+    if (!docFile || !docLabel.trim()) return;
+    setUploading(true);
+    setUploadPct(0);
+    setUploadError(null);
+    try {
+      const body = new FormData();
+      body.append("file", docFile);
+      const data = await new Promise<{
+        ok?: boolean;
+        error?: string;
+        docsPath?: string;
+        fileName?: string;
+      } | null>((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(
+          "POST",
+          `/api/meetings/upload?meetingId=${encodeURIComponent(m.id)}`
+        );
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setUploadPct(Math.round((event.loaded / event.total) * 100));
+          }
+        };
+        xhr.onload = () => {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch {
+            resolve(null);
+          }
+        };
+        xhr.onerror = () => resolve(null);
+        xhr.send(body);
+      });
+      if (!data?.ok || !data.docsPath) {
+        setUploadError(data?.error || "That file did not upload.");
+        return;
+      }
+      if (
+        await post({
+          op: "add-doc",
+          label: docLabel.trim(),
+          docsPath: data.docsPath,
+        })
+      ) {
+        setDocOpen(false);
+        setDocFile(null);
+        setDocLabel("");
+      }
+    } catch {
+      setUploadError("That file did not upload.");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -301,7 +360,6 @@ export function MeetingDetail({
               type="button"
               onClick={() => setConfirmDelete(true)}
               aria-label="Delete this meeting"
-              title="Delete this meeting"
               className={RECORD_ACTION_DELETE}
             >
               <Trash2 size={RECORD_ACTION_DELETE_ICON} strokeWidth={2} />
@@ -313,7 +371,12 @@ export function MeetingDetail({
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4">
           <SectionCard
-            title="The write-up"
+            title={
+              <span className="inline-flex items-center gap-1.5">
+                The write-up
+                <InfoHint text="Briefs, transcripts, outcomes and comments saved as part of this meeting record." />
+              </span>
+            }
             icon={FileText}
             /* ADDING IS A BUTTON, THEN A POPUP (Anir, Aug 28: "this is so
                ugly, I hate when you do this. Adding should never be just like
@@ -336,17 +399,12 @@ export function MeetingDetail({
               />
             }
           >
-            <p className="text-[12.5px] text-text-secondary">
-              A brief before it, a transcript or an outcome after. Anything
-              written here is part of the meeting record.
-            </p>
-
             {m.notes.length === 0 ? (
-              <p className="mt-3 py-6 text-center text-[12.5px] text-text-secondary">
+              <p className="py-6 text-center text-[12.5px] text-text-secondary">
                 Nothing written down yet.
               </p>
             ) : (
-              <ul className="mt-3 space-y-2.5">
+              <ul className="space-y-2.5">
                 {[...m.notes].reverse().map((n) => {
                   const meta = NOTE_META[n.kind];
                   const Icon = meta.icon;
@@ -396,7 +454,12 @@ export function MeetingDetail({
               drop zone is a second way of doing the one thing this card does,
               and it sat where the files themselves should be. */}
           <SectionCard
-            title="Documents"
+            title={
+              <span className="inline-flex items-center gap-1.5">
+                Documents
+                <InfoHint text="The deck that was shown and any file handed over during the meeting." />
+              </span>
+            }
             icon={FileText}
             action={
               <AddSquare
@@ -404,25 +467,24 @@ export function MeetingDetail({
                 busy={uploading}
                 onClick={() => {
                   setUploadError(null);
+                  setDocFile(null);
+                  setDocLabel("");
                   setDocOpen(true);
                 }}
               />
             }
           >
-            <p className="text-[12.5px] text-text-secondary">
-              The deck that was shown, and anything handed over.
-            </p>
             {uploadError && (
-              <p className="mt-2 text-[11.5px] font-medium text-[color:var(--status-red)]">
+              <p className="mb-2 text-[11.5px] font-medium text-[color:var(--status-red)]">
                 {uploadError}
               </p>
             )}
             {m.docs.length === 0 ? (
-              <p className="mt-3 py-6 text-center text-[12.5px] text-text-secondary">
+              <p className="py-6 text-center text-[12.5px] text-text-secondary">
                 No documents yet. Use the plus button above to add one.
               </p>
             ) : (
-              <ul className="mt-3 divide-y divide-border-light overflow-hidden rounded-lg border border-border-light">
+              <ul className="divide-y divide-border-light overflow-hidden rounded-lg border border-border-light">
                 {m.docs.map((d) => (
                   <li key={d.id} className="flex items-center gap-2.5 px-3 py-2.5">
                     <FileText size={15} strokeWidth={2} className="shrink-0 text-blue-primary" />
@@ -784,17 +846,23 @@ export function MeetingDetail({
       {/* ADD A DOCUMENT — the deck, the one-pager, whatever was handed over. */}
       <Modal
         open={docOpen}
-        onClose={() => setDocOpen(false)}
+        onClose={() => {
+          if (uploading) return;
+          setDocOpen(false);
+          setDocFile(null);
+          setDocLabel("");
+          setUploadError(null);
+        }}
         title="Add a document"
         size="wide"
+        titleAfter={
+          <InfoHint text="Choose the file first, then give it the name people should see on this meeting." />
+        }
       >
-        <div>
-          <p className="text-[12.5px] text-text-secondary">
-            The deck that was shown, the one-pager, whatever was in the room.
-          </p>
+        <div className="space-y-4">
           <label
             className={cn(
-              "mt-3 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-3 py-10 text-center transition-colors",
+              "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-3 py-9 text-center transition-colors",
               "border-border-light hover:border-blue-subtle hover:bg-blue-light/20",
               uploading && "pointer-events-none opacity-60"
             )}
@@ -803,90 +871,82 @@ export function MeetingDetail({
               type="file"
               className="hidden"
               disabled={uploading}
-              onChange={async (e) => {
+              onChange={(e) => {
                 const chosen = e.target.files?.[0];
                 e.target.value = "";
                 if (!chosen) return;
-                setUploading(true);
-                setUploadPct(0);
+                setDocFile(chosen);
+                setDocLabel(chosen.name.replace(/\.[^.]+$/, ""));
                 setUploadError(null);
-                try {
-                  const body = new FormData();
-                  body.append("file", chosen);
-                  /* XHR RATHER THAN FETCH, FOR THE ONE THING FETCH CANNOT DO
-                     (Anir, Aug 28: "I need to see a progress bar or
-                     something"). fetch has no upload-progress event, so a
-                     40MB deck showed the word "Uploading…" and nothing else —
-                     indistinguishable from a hung request. */
-                  const data = await new Promise<{
-                    ok?: boolean;
-                    error?: string;
-                    docsPath?: string;
-                    fileName?: string;
-                  } | null>((resolve) => {
-                    const xhr = new XMLHttpRequest();
-                    xhr.open(
-                      "POST",
-                      `/api/meetings/upload?meetingId=${encodeURIComponent(m.id)}`
-                    );
-                    xhr.upload.onprogress = (e) => {
-                      if (e.lengthComputable)
-                        setUploadPct(Math.round((e.loaded / e.total) * 100));
-                    };
-                    xhr.onload = () => {
-                      try {
-                        resolve(JSON.parse(xhr.responseText));
-                      } catch {
-                        resolve(null);
-                      }
-                    };
-                    xhr.onerror = () => resolve(null);
-                    xhr.send(body);
-                  });
-                  if (!data?.ok) {
-                    setUploadError(data?.error || "That file did not upload.");
-                    return;
-                  }
-                  if (
-                    await post({
-                      op: "add-doc",
-                      label: data.fileName,
-                      docsPath: data.docsPath,
-                    })
-                  )
-                    setDocOpen(false);
-                } catch {
-                  setUploadError("That file did not upload.");
-                } finally {
-                  setUploading(false);
-                }
               }}
             />
             <Upload size={20} strokeWidth={2} className="text-blue-primary" />
             <span className="mt-1 text-[13.5px] font-semibold text-text-primary">
-              {uploading ? `Uploading… ${uploadPct}%` : "Choose a file"}
+              {docFile ? docFile.name : "Choose a file"}
             </span>
-            {uploading ? (
-              <span
-                aria-hidden="true"
-                className="mt-2 block h-1.5 w-48 overflow-hidden rounded-full bg-border-light"
-              >
+            <span className="text-[11.5px] text-text-tertiary">
+              {docFile ? "Choose again to replace this file" : "PDF, Word, Excel, PowerPoint or ZIP"}
+            </span>
+          </label>
+          {docFile && (
+            <label className="block">
+              <span className="mb-1 block text-[12px] font-semibold text-text-primary">
+                Document name
+              </span>
+              <input
+                autoFocus
+                value={docLabel}
+                onChange={(event) => setDocLabel(event.target.value)}
+                placeholder="Name people will see"
+                className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-[13px] text-text-primary outline-none focus:border-blue-subtle focus:ring-2 focus:ring-blue-light"
+              />
+              <span className="mt-1 block text-[11.5px] text-text-tertiary">
+                Original file: {docFile.name}
+              </span>
+            </label>
+          )}
+          {uploading && (
+            <div>
+              <div className="mb-1 flex items-center justify-between text-[11.5px] font-medium text-text-secondary">
+                <span>Uploading document</span>
+                <span className="tnum">{uploadPct}%</span>
+              </div>
+              <span className="block h-1.5 overflow-hidden rounded-full bg-border-light">
                 <span
                   className="block h-full rounded-full bg-blue-primary transition-[width] duration-200"
                   style={{ width: `${uploadPct}%` }}
                 />
               </span>
-            ) : (
-              <span className="text-[11.5px] text-text-tertiary">
-                It is stored against this meeting and anyone on it can open it
-              </span>
-            )}
-          </label>
+            </div>
+          )}
           {uploadError && (
-            <p className="mt-2 text-[11.5px] font-medium text-[color:var(--status-red)]">
+            <p className="text-[11.5px] font-medium text-[color:var(--status-red)]">
               {uploadError}
             </p>
           )}
+          <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4">
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => {
+                setDocOpen(false);
+                setDocFile(null);
+                setDocLabel("");
+                setUploadError(null);
+              }}
+              className="rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={uploading || busy || !docFile || !docLabel.trim()}
+              onClick={() => void uploadDocument()}
+              className="rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {uploading ? "Uploading…" : "Add document"}
+            </button>
+          </div>
         </div>
       </Modal>
 
@@ -949,8 +1009,8 @@ export function MeetingDetail({
 
       <ConfirmDialog
         open={confirmDelete}
-        title={`Delete "${m.title}"?`}
-        body={`${m.ref} and everything written on it will be removed. This cannot be undone.`}
+        title="Delete this meeting?"
+        body={<><span className="font-semibold">{m.title}</span> ({m.ref}) and everything written on it will be removed. This cannot be undone.</>}
         confirmLabel="Delete it"
         tone="destructive"
         onClose={() => setConfirmDelete(false)}
