@@ -756,35 +756,80 @@ export function SentBackWatchCard({
           </span>
         </span>
       </div>
-      {expanded && <ul className="divide-y divide-border-light">
-        {waiting.map((a) => {
-          const goal = state.goals.find((g) => g.id === a.goalId);
-          return (
-            <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3">
-              <b className="shrink-0 text-[16px] font-bold text-text-primary tnum">
-                {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
-              </b>
-              <span className="min-w-0 text-[12.5px] font-semibold text-text-primary">
-                {goal?.name ?? "Goal removed"}
-              </span>
-              <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-text-secondary">
-                <Avatar name={a.person} className="h-5 w-5 shrink-0 text-[7px]" />
-                {a.person}
-              </span>
-              {a.sentBackAt && (
-                <span className="shrink-0 text-[11.5px] text-text-tertiary">
-                  sent back {stampedAt(a.sentBackAt)}
-                </span>
-              )}
-              {a.managerNote && (
-                <span className="min-w-0 basis-full text-[12px] text-text-secondary">
-                  You wrote: <i>&ldquo;{a.managerNote}&rdquo;</i>
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>}
+      {expanded && (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1260px] table-fixed border-collapse">
+            <colgroup>
+              <col className="w-14" />
+              <col className="w-[120px]" />
+              <col className="w-[300px]" />
+              <col className="w-[150px]" />
+              <col className="w-[220px]" />
+              <col className="w-[220px]" />
+              <col />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
+                <th className="px-4 py-2.5">#</th>
+                <th className="px-4 py-2.5">Result</th>
+                <th className="px-4 py-2.5">Goal</th>
+                <th className="px-4 py-2.5">Customer</th>
+                <th className="px-4 py-2.5">Waiting on</th>
+                <th className="px-4 py-2.5">Sent back</th>
+                <th className="px-4 py-2.5">Your note</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-light">
+              {waiting.map((a, index) => {
+                const goal = state.goals.find((g) => g.id === a.goalId);
+                return (
+                  <tr key={a.id} className="align-middle transition-colors hover:bg-surface/70">
+                    <td className="px-4 py-3.5 text-[13px] font-bold text-text-tertiary tnum">
+                      {index + 1}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-[14px] font-bold text-text-primary tnum">
+                      {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {goal ? goalChip(state, goal.id) : (
+                        <span className="text-[12.5px] text-text-tertiary">Goal removed</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <CustomerCell customer={a.customer} customerId={a.customerId} />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <Avatar name={a.person} className="h-8 w-8 shrink-0 text-[10px]" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13px] font-semibold text-text-primary">
+                            {a.person}
+                          </span>
+                          <span className="mt-0.5 block text-[10.5px] font-semibold text-[color:var(--ink-amber)]">
+                            Their move
+                          </span>
+                        </span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-[12.5px] text-text-secondary tnum">
+                      {a.sentBackAt ? stampedAt(a.sentBackAt) : "Not recorded"}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {a.managerNote ? (
+                        <span className="block rounded-lg bg-[rgba(180,83,9,0.06)] px-2.5 py-2 text-[12px] leading-4 text-text-secondary">
+                          &ldquo;{a.managerNote}&rdquo;
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-text-tertiary">No note</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Card>
   );
 }

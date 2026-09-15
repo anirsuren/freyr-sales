@@ -745,3 +745,6 @@ Progress tracks in the organization → group → person drill-down retain a col
 
 ### Sep 15: People Performance action panels fold without disappearing
 The sent-back, verification, and waiting-on-someone action panels each keep a persistent header and count while independently hiding or revealing their rows. The verification queue uses explicit table columns, reserves enough width for Goal, and wraps long goal badges instead of clipping their names. Completed locally, not deployed.
+
+### Sep 15: sent-back claims use the action-queue table pattern
+The People Performance panel for claims a manager sent back uses aligned Number, Result, Goal, Customer, Waiting on, Sent back, and Your note columns. People retain their avatars and a clear “Their move” state; manager notes use a compact highlighted field instead of a repeated run-on sentence beneath every claim. The panel remains independently collapsible. Completed locally, not deployed.
