@@ -757,3 +757,6 @@ Every signed-in page viewed with the Mock-mode cookie keeps `/mock-mode` in its 
 
 ### Sep 15: customer offerings use customer language
 The customer Offerings tab starts with a compact “Customer offerings” toolbar showing counts in use and available to add. “Segment” is labelled “Customer type,” and applicability copy uses plain catalogue language. Search and a single stateful Expand all / Collapse all control share the toolbar. Offering availability uses the shared outlined white badge with dark green text, while the filled green “In use” badge remains the adoption state. Completed locally, not deployed.
+
+### Sep 15: interaction logging has a full working dialog
+The customer “Log an interaction” dialog uses a 760px workspace with roomier body padding, a full-width responsive type selector, and a seven-row interaction summary. Follow-up fields and actions retain the existing workflow and remain responsive on narrow screens. Completed locally, not deployed.

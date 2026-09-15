@@ -3012,6 +3012,8 @@ export function CustomerTabs({
         open={noteModalOpen}
         onClose={() => setNoteModalOpen(false)}
         title="Log an interaction"
+        dialogClassName="!max-w-[760px]"
+        bodyClassName="px-7 py-6"
       >
         {/* THE APP'S OWN FORM, NOT A PRIVATE DIALECT (Anir, Sep 4, showing
             this dialog a second time: "did you just completely ignore me?").
@@ -3022,7 +3024,7 @@ export function CustomerTabs({
             as New contract now, top to bottom. */}
         <div className="space-y-3.5">
           <Field label="Type">
-            <div className="inline-flex rounded-lg bg-surface p-1 flex-wrap gap-1">
+            <div className="grid w-full grid-cols-2 gap-1 rounded-lg bg-surface p-1 sm:grid-cols-4">
               {NOTE_KINDS.map((k) => {
                 const KIcon = k.icon;
                 const on = noteKind === k.key;
@@ -3031,7 +3033,7 @@ export function CustomerTabs({
                     key={k.key}
                     onClick={() => setNoteKind(k.key)}
                     className={cn(
-                      "inline-flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-1.5 rounded-md transition-colors",
+                      "inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-[12.5px] font-medium transition-colors",
                       on
                         ? "bg-white text-blue-primary font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
                         : "text-text-secondary hover:text-text-primary"
@@ -3057,7 +3059,7 @@ export function CustomerTabs({
                   ? "Meeting notes and decisions…"
                   : "Internal context…"
               }
-              rows={4}
+              rows={7}
               autoFocus
               /* The Input component's own look, at textarea height. */
               className="w-full min-w-0 rounded-md border border-border bg-surface px-3.5 py-2.5 text-[15px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-focus resize-y"
