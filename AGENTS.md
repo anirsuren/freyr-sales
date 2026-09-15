@@ -194,6 +194,14 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 15 Market Intel daily spending gate:** Automatic production collection
+  now has one coordinated 06:00 UTC window per day. News and website work run
+  inside that window, a unique database claim prevents another ECS instance or
+  restart from opening a second window that UTC day, and page views no longer
+  schedule paid refreshes. The former 20-minute and 30-minute polling timers
+  are removed. Focused scheduler tests and TypeScript pass. Authorized for
+  immediate development and production deployment.
+
 - **Sep 14 released-surface identity and navigation sweep:** The same entity
   treatment now applies across the pages available in Real mode. Contract
   owners, goal-credit recipients and actual update authors show their own

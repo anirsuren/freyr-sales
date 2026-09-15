@@ -1,113 +1,73 @@
 import { armCompanyOnboarding } from "./marketIntelOnboarding";
-import { marketIntelAutomaticCollectionEnabled } from "./marketIntelAutomation";
-/**
- * MARKET INTEL RUNS ITSELF (Anir, Aug 11: "I'm gonna close my laptop... it
- * has to just run by itself"). The refresh used to fire only from page
- * visits, so a quiet day meant a stale feed.
- *
- * This lives OUTSIDE instrumentation.ts on purpose: instrumentation compiles
- * for the edge runtime too, and even a dynamic import that leads to
- * lib/claude drags node:fs into the edge bundle and breaks the dev build
- * (the exact hazard instrumentation.ts documents). This module is imported
- * only by Node-runtime code — the health endpoint, which the load balancer
- * pings continuously in production — so the timer arms seconds after every
- * server boot with no edge exposure.
- *
- * The runner itself no-ops as "fresh" between the daily runs and
- * takes a database lock, so many server instances never double-run.
- */
-const ARMED_KEY = "__MI_SELF_REFRESH_ARMED__";
-const LOGGED_KEY = "__MI_SELF_REFRESH_FIRST_LOGGED__";
-const DISABLED_LOGGED_KEY = "__MI_SELF_REFRESH_DISABLED_LOGGED__";
-const CHECK_MS = 30 * 60 * 1000;
+import {
+  claimAutomaticMarketIntelCycle,
+  marketIntelAutomaticCollectionEnabled,
+  millisecondsUntilNextMarketIntelRun,
+} from "./marketIntelAutomation";
 
-export function armMarketIntelSelfRefresh(): void {
-  // A company explicitly added in dev still completes its first collection.
-  // This worker handles only those user-requested onboarding jobs.
+/**
+ * Production has one coordinated Market Intel collection window per day.
+ * The health endpoint only arms this scheduler; it never starts a collection.
+ * A durable daily claim prevents another container or restart from spending in
+ * the same UTC day. Explicit user-requested onboarding remains independent.
+ */
+const ARMED_KEY = "__MI_DAILY_REFRESH_ARMED__";
+const DISABLED_LOGGED_KEY = "__MI_DAILY_REFRESH_DISABLED_LOGGED__";
+
+async function runDailyMarketIntelCycle(): Promise<void> {
+  const startedAt = new Date();
+  if (!(await claimAutomaticMarketIntelCycle(startedAt))) {
+    console.log("[market-intel] daily collection already claimed; skipping");
+    return;
+  }
+
+  try {
+    const { runMarketIntelRefresh, runSiteUpdatesRefresh } = await import(
+      "./marketIntelRefresh"
+    );
+    const news = await runMarketIntelRefresh();
+    const sites = await runSiteUpdatesRefresh();
+    console.log(
+      `[market-intel] daily collection finished: ${JSON.stringify({ news, sites })}`,
+    );
+  } catch (error) {
+    console.error("[market-intel] daily collection failed:", error);
+  }
+}
+
+function armDailyMarketIntelCycle(): void {
+  // Only explicit company onboarding uses its own worker outside the daily run.
   armCompanyOnboarding();
   const g = globalThis as Record<string, unknown>;
   if (!marketIntelAutomaticCollectionEnabled()) {
     if (!g[DISABLED_LOGGED_KEY]) {
       g[DISABLED_LOGGED_KEY] = true;
-      console.log("[market-intel] recurring refresh disabled in this environment");
+      console.log("[market-intel] daily collection disabled in this environment");
     }
     return;
   }
   if (g[ARMED_KEY]) return;
   g[ARMED_KEY] = true;
 
-  const tick = async () => {
-    try {
-      const { runMarketIntelRefresh } = await import("./marketIntelRefresh");
-      const result = await runMarketIntelRefresh();
-      if (result.ran || !g[LOGGED_KEY]) {
-        g[LOGGED_KEY] = true;
-        console.log(
-          `[market-intel] self-refresh check: ${JSON.stringify(result)}`
-        );
-      }
-    } catch (error) {
-      console.error("[market-intel] self-refresh failed:", error);
-    }
+  const scheduleNext = () => {
+    const delay = millisecondsUntilNextMarketIntelRun();
+    const timer = setTimeout(async () => {
+      await runDailyMarketIntelCycle();
+      scheduleNext();
+    }, delay);
+    timer.unref();
+    console.log(
+      `[market-intel] next daily collection scheduled in ${Math.round(delay / 60_000)} minutes`,
+    );
   };
 
-  setInterval(tick, CHECK_MS);
-  setTimeout(tick, 90 * 1000);
-  console.log(
-    "[market-intel] self-refresh armed: staleness checked every 30 minutes"
-  );
+  scheduleNext();
 }
 
-/**
- * THE WEBSITE SCAN RUNS ITSELF TOO.
- *
- * Same shape as the refresh above and for the same reason — there is no
- * external scheduler in this deployment, the app arms its own timers on boot.
- * A SECOND timer rather than more work inside the first, because that is the
- * whole bug being fixed: the website pass used to be the last thing in a queue
- * that never got that far, and every company in the feed had never once been
- * scanned.
- *
- * ONCE A DAY FALLS OUT OF THE PARTS. A tick only visits sources whose previous
- * successful collection is at least 24 hours old; each tick spends at most
- * a few minutes and writes as it goes, so the list is covered across ticks
- * rather than in one long run that can die halfway.
- */
-const SITE_ARMED_KEY = "__MI_SITE_SCAN_ARMED__";
-const SITE_DISABLED_LOGGED_KEY = "__MI_SITE_SCAN_DISABLED_LOGGED__";
-const SITE_CHECK_MS = 20 * 60 * 1000;
+export function armMarketIntelSelfRefresh(): void {
+  armDailyMarketIntelCycle();
+}
 
 export function armSiteUpdatesScan(): void {
-  const g = globalThis as Record<string, unknown>;
-  if (!marketIntelAutomaticCollectionEnabled()) {
-    if (!g[SITE_DISABLED_LOGGED_KEY]) {
-      g[SITE_DISABLED_LOGGED_KEY] = true;
-      console.log("[market-intel] recurring website scan disabled in this environment");
-    }
-    return;
-  }
-  if (g[SITE_ARMED_KEY]) return;
-  g[SITE_ARMED_KEY] = true;
-
-  const tick = async () => {
-    try {
-      const { runSiteUpdatesRefresh } = await import("./marketIntelRefresh");
-      const result = await runSiteUpdatesRefresh();
-      if (result.scanned > 0) {
-        console.log(
-          `[market-intel] website scan: ${JSON.stringify(result)}`
-        );
-      }
-    } catch (error) {
-      console.error("[market-intel] website scan failed:", error);
-    }
-  };
-
-  setInterval(tick, SITE_CHECK_MS);
-  /* Offset from the news refresh's 90s so a cold boot does not fire both at
-     once and have them queue behind each other on the same Perplexity key. */
-  setTimeout(tick, 150 * 1000);
-  console.log(
-    "[market-intel] website scan armed: due companies checked every 20 minutes"
-  );
+  armDailyMarketIntelCycle();
 }

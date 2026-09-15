@@ -11,7 +11,6 @@ import { requestMarketIntelSearch } from "./marketIntelSearch";
 import { linkedInIdentifier, companyFeedAuthor } from "./marketIntelLinks";
 import { DuplicateCompanyError, findCompanyDuplicate, companyDomain } from "./marketIntelDuplicates";
 import { dedupeCompanyNews, isNewsIndex, companyNewsQuery, filterCompanyNews, publishedDate, readCompanyNewsSearch, readGoogleNews, websiteConfirmsLinkedIn } from "./companyWebsiteNews";
-import { after } from "next/server";
 import type { CompanySource } from "./marketIntelSources";
 import {
   cleanSourceLabel,
@@ -25,7 +24,6 @@ import {
   readMarketIntelSummaries,
 } from "./marketIntelFeed";
 import { MARKET_INTEL_REFRESH_MS, collectedInCurrentCycle } from "./marketIntelCadence";
-import { marketIntelAutomaticCollectionEnabled } from "./marketIntelAutomation";
 import { findSiteLogo, storeCompanyLogo } from "./companyLogos";
 import { isLinkedInImageUrl, mirrorPhoto } from "./miPhotos";
 import type { FeedCompany, FeedNews, FeedPost, MarketIntelFeed } from "./marketIntelFeed";
@@ -60,10 +58,8 @@ import type { Division } from "./offeringMaterials";
  * imagine all 100 people clicking it at the same time"). Nobody clicks
  * anything:
  *
- * - Any live-mode visit to Market Intel checks the feed's age; past 24 hours,
- *   the request schedules ONE background refresh via after(). A lock row in
- *   the database makes sure a hundred simultaneous visitors produce exactly
- *   one run — everyone else just reads.
+ * - Production has one coordinated automatic collection window per UTC day.
+ *   Page views only read the stored feed and never start paid collection.
  * - Adding a company or person kicks a small targeted scrape immediately, so
  *   the first briefing shows up in minutes rather than a day.
  *
@@ -1672,28 +1668,12 @@ export async function addPersonByLink(
   return person;
 }
 
-/**
- * Called from live-mode page renders: if the feed has gone stale, one
- * background refresh is scheduled after the response goes out. The lock makes
- * simultaneous visitors harmless.
- */
-let lastScheduledCheck = 0;
+/** Page renders may arm explicit onboarding work, but never paid refreshes. */
 export function maybeScheduleMarketIntelRefresh(
   _feed: { updatedAt: string | null } | null
 ): void {
   armCompanyOnboarding();
-  // Page views must never turn development into a paid background collector.
-  if (!marketIntelAutomaticCollectionEnabled()) return;
   void _feed;
-  // The database lock protects all instances; throttle page-triggered checks
-  // locally while the runner checks each company's own daily timestamps.
-  if (Date.now() - lastScheduledCheck < 30 * 60_000) return;
-  lastScheduledCheck = Date.now();
-  after(() =>
-    runMarketIntelRefresh().catch((error) =>
-      console.error("[market-intel] scheduled refresh failed:", error)
-    )
-  );
 }
 
 /**

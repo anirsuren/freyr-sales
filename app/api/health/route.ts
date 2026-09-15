@@ -12,8 +12,8 @@ import { configuredAuthOrigin } from "@/lib/authOrigin";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  // Health checks hit this constantly, so the self-refresh timer is armed
-  // seconds after every boot without touching the edge-compiled boot hook.
+  // Health checks arm one daily collection schedule after every boot. They do
+  // not run collection; the durable UTC-day claim prevents duplicate spending.
   armMarketIntelSelfRefresh();
   armSiteUpdatesScan();
   // Same reasoning, and the only scheduler available to us: the deploy PAT

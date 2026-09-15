@@ -40,3 +40,57 @@ export function marketIntelAutomaticCollectionEnabled(
   if (explicit) return ["1", "true", "yes", "on"].includes(explicit);
   return hosts.includes("freyrsales.freyrapps.com");
 }
+
+/** One automatic collection window per UTC day, shared by every app instance. */
+export const MARKET_INTEL_DAILY_RUN_HOUR_UTC = 6;
+
+export function marketIntelAutomaticCycleId(now = new Date()): string {
+  return `market-intel:auto-cycle:${now.toISOString().slice(0, 10)}`;
+}
+
+/** Milliseconds until the next 06:00 UTC collection window. */
+export function millisecondsUntilNextMarketIntelRun(
+  nowMs = Date.now(),
+  hourUtc = MARKET_INTEL_DAILY_RUN_HOUR_UTC,
+): number {
+  const now = new Date(nowMs);
+  const next = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    hourUtc,
+  );
+  return (next > nowMs ? next : next + 24 * 60 * 60 * 1000) - nowMs;
+}
+
+/**
+ * Claim today's automatic run before touching a paid provider. The unique row
+ * makes simultaneous ECS tasks and later container restarts share one window.
+ * Failure is fail-closed: no durable claim means no automatic provider calls.
+ */
+export async function claimAutomaticMarketIntelCycle(
+  now = new Date(),
+): Promise<boolean> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return false;
+
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const { error } = await createClient(url, key)
+      .from("offering_catalog_state")
+      .insert({
+        id: marketIntelAutomaticCycleId(now),
+        catalog: { startedAt: now.toISOString(), cadence: "daily" },
+      });
+    if (!error) return true;
+    if (error.code === "23505") return false;
+    console.error(`[market-intel] daily claim failed: ${error.message}`);
+    return false;
+  } catch (error) {
+    console.error(
+      `[market-intel] daily claim failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return false;
+  }
+}
