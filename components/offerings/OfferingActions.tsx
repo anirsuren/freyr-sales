@@ -164,6 +164,7 @@ export function OfferingActions({
             {/* Anchored, not inline — opening it must never move the page. */}
             <div ref={wrapRef} className="relative">
               <button
+                type="button"
                 onClick={() => (open ? close() : setOpen(true))}
                 aria-haspopup="dialog"
                 aria-expanded={open}
@@ -174,7 +175,7 @@ export function OfferingActions({
                     : "border-border bg-white text-text-primary hover:bg-surface"
                 )}
               >
-                {open ? <X size={14} strokeWidth={2} /> : <Plus size={14} strokeWidth={2} />}
+                <Plus size={14} strokeWidth={2} />
                 Add to a customer
               </button>
 
@@ -207,6 +208,14 @@ export function OfferingActions({
                           aria-label="Search customers"
                           className="menu-in h-11 flex-1 bg-transparent text-[13.5px] text-text-primary outline-none placeholder:text-text-tertiary focus:shadow-none"
                         />
+                        <button
+                          type="button"
+                          onClick={close}
+                          aria-label="Close customer picker"
+                          className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
+                        >
+                          <X size={14} strokeWidth={2} />
+                        </button>
                       </div>
 
                       <div

@@ -748,3 +748,6 @@ The sent-back, verification, and waiting-on-someone action panels each keep a pe
 
 ### Sep 15: sent-back claims use the action-queue table pattern
 The People Performance panel for claims a manager sent back uses aligned Number, Result, Goal, Customer, Waiting on, Sent back, and Your note columns. People retain their avatars and a clear “Their move” state; manager notes use a compact highlighted field instead of a repeated run-on sentence beneath every claim. The panel remains independently collapsible. Completed locally, not deployed.
+
+### Sep 15: offering customer picker stays above the page
+“Add to a customer” keeps its plus icon while open and places the close action inside the customer picker. The offering header owns a higher stacking layer so the anchored picker renders cleanly above tabs and report cards instead of letting later animated sections cut through it. Completed locally, not deployed.

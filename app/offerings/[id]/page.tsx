@@ -463,7 +463,7 @@ export default async function OfferingDetailPage({
       </SmartBack>
 
       {/* Header: identity on the left, primary actions on the right */}
-      <div className="rise-in flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+      <div className="rise-in relative z-50 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
         <div className="min-w-0">
           {/* NO GLYPH BESIDE THE NAME (Anir, Sep 2: "can you just remove
               these icons from all the offering names? They're not really
