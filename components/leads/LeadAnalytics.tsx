@@ -1,16 +1,25 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowUpRight, ChevronRight, Search } from "lucide-react";
 import { AreaChart, DonutChart, type TipItem } from "@/components/charts/Charts";
+import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { LocalTime } from "@/components/ui/LocalTime";
+import { Modal } from "@/components/ui/Modal";
 import {
   LEAD_SOURCES,
   LEAD_STATUSES,
   leadSourceColor,
   leadStatusColor,
   type Lead,
+  type LeadSource,
 } from "@/lib/leadsShared";
+import { repSlug } from "@/lib/team";
+import { tint } from "@/lib/tint";
 
 const DAY = 86_400_000;
 const WEEK = DAY * 7;
@@ -25,6 +34,8 @@ function percentage(part: number, whole: number) {
 }
 
 export function LeadAnalytics({ leads }: { leads: Lead[] }) {
+  const [sourceDetail, setSourceDetail] = useState<LeadSource | null>(null);
+  const [sourceQuery, setSourceQuery] = useState("");
   const data = useMemo(() => {
     const dated = leads
       .map((lead) => ({ lead, time: Date.parse(lead.createdAt) }))
@@ -97,6 +108,27 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
 
   if (!data) return null;
   const maxSourceValue = Math.max(...data.sourceBars.map((bar) => bar.value), 1);
+  const sourceLeads = sourceDetail
+    ? leads.filter((lead) => lead.source === sourceDetail)
+    : [];
+  const sourceNeedle = sourceQuery.trim().toLowerCase();
+  const matchingSourceLeads = sourceNeedle
+    ? sourceLeads.filter((lead) =>
+        [
+          lead.name,
+          lead.company,
+          lead.title,
+          lead.status,
+          lead.owner,
+          lead.interest,
+          lead.ref,
+        ].some((value) => value?.toLowerCase().includes(sourceNeedle))
+      )
+    : sourceLeads;
+  const sourceConverted = sourceLeads.filter((lead) => lead.status === "Converted").length;
+  const sourceOpen = sourceLeads.filter((lead) =>
+    lead.status !== "Converted" && lead.status !== "Disqualified"
+  ).length;
 
   return (
     <Card className="mt-4 overflow-hidden p-0">
@@ -172,16 +204,23 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
             </h3>
             <InfoHint text="Bar length is lead volume. The aligned figures show total leads and how many reached an opportunity. Every value comes from the lead records in this workspace." />
           </div>
-          <div className="mt-3 grid grid-cols-[96px_minmax(90px,1fr)_132px] items-center gap-3 border-b border-border-light pb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+          <div className="mt-3 grid grid-cols-[96px_minmax(90px,1fr)_146px_14px] items-center gap-3 border-b border-border-light pb-1.5 text-left text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             <span>Source</span>
             <span>Volume</span>
-            <span className="text-right">Leads · converted</span>
+            <span>Leads · converted</span>
+            <span aria-hidden="true" />
           </div>
-          <div className="mt-2 space-y-2.5">
+          <div className="mt-1.5 space-y-0.5">
             {data.sourceBars.map((bar) => (
-              <div
+              <button
+                type="button"
                 key={bar.label}
-                className="grid grid-cols-[96px_minmax(90px,1fr)_132px] items-center gap-3"
+                onClick={() => {
+                  setSourceQuery("");
+                  setSourceDetail(bar.label);
+                }}
+                aria-label={`Open all ${bar.value} ${bar.label} leads`}
+                className="group grid w-full grid-cols-[96px_minmax(90px,1fr)_146px_14px] items-center gap-3 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
                 title={`${bar.label}: ${bar.value} leads, ${bar.converted} converted (${bar.conversionRate}%)`}
               >
                 <span className="truncate text-[11.5px] font-medium text-text-secondary">
@@ -196,16 +235,168 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                     }}
                   />
                 </span>
-                <span className="whitespace-nowrap text-right text-[11px] text-text-secondary tnum">
+                <span className="whitespace-nowrap text-left text-[11px] text-text-secondary tnum">
                   <strong className="font-semibold text-text-primary">{bar.value}</strong>
                   <span className="mx-1 text-text-tertiary">·</span>
                   <span style={{ color: bar.color }}>{bar.converted} converted</span>
                 </span>
-              </div>
+                <ChevronRight
+                  size={14}
+                  strokeWidth={2.2}
+                  className="text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary"
+                  aria-hidden="true"
+                />
+              </button>
             ))}
           </div>
         </section>
       </div>
+
+      <Modal
+        open={!!sourceDetail}
+        onClose={() => setSourceDetail(null)}
+        title={sourceDetail ? `${sourceDetail} leads` : "Source leads"}
+        titleAfter={
+          <span className="rounded-full bg-blue-light px-2 py-0.5 text-[11px] font-bold text-blue-primary tnum">
+            {sourceLeads.length}
+          </span>
+        }
+        size="chart"
+        tall
+        bodyClassName="flex flex-col !p-0"
+      >
+        <div className="shrink-0 border-b border-border-light bg-white p-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              ["Total leads", sourceLeads.length],
+              ["Still open", sourceOpen],
+              ["Converted", sourceConverted],
+              ["Conversion", `${percentage(sourceConverted, sourceLeads.length)}%`],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-border-light bg-surface/55 px-3 py-2.5">
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  {label}
+                </span>
+                <strong className="mt-0.5 block text-[18px] font-bold text-text-primary tnum">
+                  {value}
+                </strong>
+              </div>
+            ))}
+          </div>
+          <label className="relative mt-3 block">
+            <Search
+              size={16}
+              strokeWidth={2}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+              aria-hidden="true"
+            />
+            <input
+              value={sourceQuery}
+              onChange={(event) => setSourceQuery(event.target.value)}
+              placeholder={`Search ${sourceDetail ?? "source"} leads...`}
+              aria-label={`Search ${sourceDetail ?? "source"} leads`}
+              autoFocus
+              className="h-10 w-full rounded-xl border border-border-light bg-surface pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary focus:bg-white"
+            />
+          </label>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto">
+          {matchingSourceLeads.length ? (
+            <table className="w-full min-w-[1120px] table-fixed text-left">
+              <thead className="sticky top-0 z-10 bg-surface shadow-[0_1px_0_var(--border-light)]">
+                <tr className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:px-4 [&>th]:py-2.5">
+                  <th className="w-[18%]">Lead</th>
+                  <th className="w-[17%]">Company</th>
+                  <th className="w-[12%]">Status</th>
+                  <th className="w-[14%]">Owner</th>
+                  <th className="w-[21%]">What they asked about</th>
+                  <th className="w-[9%]">Came in</th>
+                  <th className="w-[9%]">Last moved</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-light">
+                {matchingSourceLeads.map((lead) => {
+                  const statusColor = leadStatusColor(lead.status);
+                  return (
+                    <tr key={lead.id} className="align-top transition-colors hover:bg-surface/60 [&>td]:px-4 [&>td]:py-3">
+                      <td>
+                        <span className="flex min-w-0 items-start gap-2.5">
+                          <Avatar name={lead.name} initialsOnly className="h-8 w-8 shrink-0 text-[9px]" />
+                          <span className="min-w-0">
+                            <span className="block truncate text-[12.5px] font-semibold text-text-primary">{lead.name}</span>
+                            <span className="mt-0.5 block truncate text-[11px] text-text-tertiary">{lead.title || lead.ref}</span>
+                          </span>
+                        </span>
+                      </td>
+                      <td>
+                        {lead.customerId ? (
+                          <Link href={`/customers/${lead.customerId}`} className="group/company flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary hover:text-blue-primary">
+                            <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
+                            <span className="min-w-0 truncate group-hover/company:underline">{lead.company}</span>
+                            <ArrowUpRight size={13} className="shrink-0 opacity-0 transition-opacity group-hover/company:opacity-100" aria-hidden="true" />
+                          </Link>
+                        ) : (
+                          <span className="flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary">
+                            <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
+                            <span className="min-w-0 truncate">{lead.company}</span>
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <span
+                          className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                          style={{ background: tint(statusColor, 9), color: statusColor }}
+                        >
+                          {lead.status}
+                        </span>
+                        {lead.disqualifiedReason ? (
+                          <span className="mt-1.5 block line-clamp-2 text-[10.5px] leading-4 text-text-tertiary" title={lead.disqualifiedReason}>
+                            {lead.disqualifiedReason}
+                          </span>
+                        ) : null}
+                        {lead.convertedOpportunityId ? (
+                          <Link href={`/opportunities/${lead.convertedOpportunityId}`} className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-semibold text-blue-primary hover:underline">
+                            Open opportunity <ArrowUpRight size={11} aria-hidden="true" />
+                          </Link>
+                        ) : null}
+                      </td>
+                      <td>
+                        {lead.owner ? (
+                          <Link href={`/analytics/reps/${repSlug(lead.owner)}`} className="group/owner flex min-w-0 items-center gap-2 text-[12px] text-text-secondary hover:text-blue-primary">
+                            <Avatar name={lead.owner} className="h-6 w-6 shrink-0 text-[8px]" />
+                            <span className="min-w-0 truncate group-hover/owner:underline">{lead.owner}</span>
+                          </Link>
+                        ) : (
+                          <span className="text-[11.5px] text-text-tertiary">Unassigned</span>
+                        )}
+                      </td>
+                      <td>
+                        <p className="line-clamp-3 text-[11.5px] leading-[1.45] text-text-secondary" title={lead.interest || undefined}>
+                          {lead.interest || "No request recorded"}
+                        </p>
+                      </td>
+                      <td className="text-[11px] leading-4 text-text-secondary tnum">
+                        <LocalTime value={lead.createdAt} />
+                      </td>
+                      <td className="text-[11px] leading-4 text-text-secondary tnum">
+                        <LocalTime value={lead.updatedAt || lead.createdAt} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <div className="flex min-h-56 items-center justify-center px-6 text-center">
+              <div>
+                <p className="text-[13px] font-semibold text-text-primary">No matching leads</p>
+                <p className="mt-1 text-[12px] text-text-secondary">Try a different person, company, status, or owner.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </Card>
   );
 }
