@@ -31,7 +31,13 @@ import { requireModuleAccess, moduleCreateRefusal, moduleWriteRefusal } from "@/
 import { listWorkspaceAccess } from "@/lib/accessStore";
 
 
-export async function CustomersScreen({ tab }: { tab: CustomerRouteTab }) {
+export async function CustomersScreen({
+  tab,
+  initialAddCustomer = false,
+}: {
+  tab: CustomerRouteTab;
+  initialAddCustomer?: boolean;
+}) {
   await requireModuleAccess("/customers");
   const db = getDb();
   const customers = await db.customers.list();
@@ -227,6 +233,7 @@ export async function CustomersScreen({ tab }: { tab: CustomerRouteTab }) {
           viewer: await currentUserForCustomers()
             .then((u) => ({ name: u.name, role: u.role }))
             .catch(() => ({ name: "", role: "" })),
+          initialAddOpen: initialAddCustomer,
         }}
         targets={targets}
         groups={groups}

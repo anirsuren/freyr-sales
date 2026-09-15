@@ -194,6 +194,14 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 15 meeting picker creation and deduplication:** The meeting editor's
+  customer picker collapses duplicate account records by normalized name while
+  preserving the selected id and combining linked deal/contact context. An
+  always-visible Add customer action opens the complete customer form in the
+  current data mode. Presenter and attendee pickers likewise expose visible
+  add actions for meeting-local names. The same editor serves Mock and Real.
+  Local only; not deployed.
+
 - **Sep 15 customer opportunity table:** The Customer 360 Opportunities band
   gives the opportunity name less width and up to two lines, reserving enough
   room for one-line Stage and Expected to sign values. Stage and Status now

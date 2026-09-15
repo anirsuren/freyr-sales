@@ -188,6 +188,7 @@ export function CustomersBrowser({
   profiles = {},
   bdMembers = [],
   viewer = { name: "", role: "" },
+  initialAddOpen = false,
 }: {
   customers: EnrichedCustomer[];
   includeDemoTeam: boolean;
@@ -204,6 +205,8 @@ export function CustomersBrowser({
   bdMembers?: { id: string | null; name: string; role: string }[];
   /** Who is looking, for the owner rule in Add customer. */
   viewer?: { name: string; role: string };
+  /** Deep links from record pickers open the complete customer form. */
+  initialAddOpen?: boolean;
 }) {
   const { toast } = useToast();
   const router = useRouter();
@@ -342,7 +345,7 @@ export function CustomersBrowser({
   // Adding accounts — both doors go through the SAME approved importer
   // (/api/import/crm): the CSV picker sends the file as-is, "Add customer"
   // sends a one-row CSV. One pipeline, one dedupe/skip behaviour.
-  const [addOpen, setAddOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(initialAddOpen);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 

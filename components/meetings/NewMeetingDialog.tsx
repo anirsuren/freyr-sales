@@ -230,6 +230,10 @@ export function NewMeetingDialog({
   const [presenters, setPresenters] = useState<string[]>(
     meeting?.presenters ?? []
   );
+  /* A presenter or attendee may be known for this meeting before their app
+     account exists. Keep those typed names on this meeting without pretending
+     they are directory members. */
+  const [addedMemberNames, setAddedMemberNames] = useState<string[]>([]);
   const [owner, setOwner] = useState(meeting?.owner ?? meName);
   const [opportunityIds, setOpportunityIds] = useState<string[]>(
     meeting?.opportunityIds ?? (prefillOpportunityId ? [prefillOpportunityId] : [])
@@ -257,30 +261,89 @@ export function NewMeetingDialog({
    */
   const NAME_ID = "name:";
   const pickableCustomers = useMemo(() => {
-    if (!prefillCustomerName?.trim()) return customers;
-    const has = customers.some(
-      (c) => c.name.trim().toLowerCase() === prefillCustomerName.trim().toLowerCase()
-    );
-    if (has) return customers;
-    return [
-      { id: `${NAME_ID}${prefillCustomerName}`, name: prefillCustomerName },
-      ...customers,
-    ];
-  }, [customers, prefillCustomerName]);
+    const candidates = [...customers];
+    const prefill = prefillCustomerName?.trim();
+    if (
+      prefill &&
+      !candidates.some((c) => c.name.trim().toLowerCase() === prefill.toLowerCase())
+    ) {
+      candidates.unshift({ id: `${NAME_ID}${prefill}`, name: prefill });
+    }
+
+    /* Mock imports can carry the same account more than once under different
+       ids. One company gets one row. If this meeting already points at one of
+       the duplicates, retain that id; otherwise prefer the record with the
+       most linked data so selecting the visible row is useful. */
+    const byName = new Map<string, CustomerOption>();
+    const score = (id: string) =>
+      contacts.filter((c) => c.customerId === id).length +
+      opportunities.filter((o) => o.customerId === id).length;
+    for (const candidate of candidates) {
+      const key = candidate.name.trim().toLowerCase().replace(/\s+/g, " ");
+      const current = byName.get(key);
+      if (
+        !current ||
+        candidate.id === customerId ||
+        (current.id !== customerId && score(candidate.id) > score(current.id))
+      ) {
+        byName.set(key, candidate);
+      }
+    }
+    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [contacts, customerId, customers, opportunities, prefillCustomerName]);
 
   const customer = pickableCustomers.find((c) => c.id === customerId);
+  const customerAliasIds = useMemo(() => {
+    const name = customer?.name.trim().toLowerCase().replace(/\s+/g, " ");
+    if (!name) return new Set<string>();
+    return new Set(
+      customers
+        .filter((c) => c.name.trim().toLowerCase().replace(/\s+/g, " ") === name)
+        .map((c) => c.id)
+        .concat(customerId)
+    );
+  }, [customer, customerId, customers]);
 
   /* Only this account's people and deals: a meeting with GSK has no use for
      Takeda's contacts, and a picker holding every contact in the book is a
      picker nobody can find anything in. */
   const theirContacts = useMemo(
-    () => contacts.filter((c) => !customerId || c.customerId === customerId),
-    [contacts, customerId]
+    () =>
+      contacts.filter(
+        (c) => !customerId || (!!c.customerId && customerAliasIds.has(c.customerId))
+      ),
+    [contacts, customerAliasIds, customerId]
   );
   const theirDeals = useMemo(
-    () => opportunities.filter((o) => !customerId || o.customerId === customerId),
-    [opportunities, customerId]
+    () =>
+      opportunities.filter(
+        (o) => !customerId || (!!o.customerId && customerAliasIds.has(o.customerId))
+      ),
+    [customerAliasIds, customerId, opportunities]
   );
+  const memberChoices = useMemo(
+    () =>
+      [...new Set([meName, ...members, ...presenters, ...attendees, ...addedMemberNames])]
+        .map((name) => name.trim())
+        .filter(Boolean),
+    [addedMemberNames, attendees, meName, members, presenters]
+  );
+
+  const addMemberTo = (name: string, role: "presenter" | "attendee") => {
+    const clean = name.trim();
+    if (!clean) return;
+    setAddedMemberNames((current) =>
+      current.some((item) => item.toLowerCase() === clean.toLowerCase())
+        ? current
+        : [...current, clean]
+    );
+    const put = role === "presenter" ? setPresenters : setAttendees;
+    put((current) =>
+      current.some((item) => item.toLowerCase() === clean.toLowerCase())
+        ? current
+        : [...current, clean]
+    );
+  };
 
   /**
    * A MEETING YOU ARE PLANNING CANNOT ALREADY HAVE HAPPENED.
@@ -435,6 +498,13 @@ export function NewMeetingDialog({
               searchable
               inlineDescription
               className="w-full"
+              createLabel="Add a customer"
+              onCreate={() => {
+                const prefix = window.location.pathname.startsWith("/mock-mode")
+                  ? "/mock-mode"
+                  : "";
+                window.open(`${prefix}/customers?add=1`, "_blank", "noopener,noreferrer");
+              }}
               onChange={(v) => {
                 setCustomerId(v);
                 /* Their people and their deals both change with the account,
@@ -476,11 +546,18 @@ export function NewMeetingDialog({
                       },
                     ]),
                 ...pickableCustomers.map((c) => {
+                const aliases = customers
+                  .filter(
+                    (candidate) =>
+                      candidate.name.trim().toLowerCase().replace(/\s+/g, " ") ===
+                      c.name.trim().toLowerCase().replace(/\s+/g, " ")
+                  )
+                  .map((candidate) => candidate.id);
                 const deals = opportunities.filter(
-                  (o) => o.customerId === c.id
+                  (o) => !!o.customerId && aliases.includes(o.customerId)
                 ).length;
                 const people = contacts.filter(
-                  (x) => x.customerId === c.id
+                  (x) => !!x.customerId && aliases.includes(x.customerId)
                 ).length;
                 const parts = [
                   deals ? `${deals} ${deals === 1 ? "deal" : "deals"}` : null,
@@ -635,13 +712,15 @@ export function NewMeetingDialog({
           <Field label="Presenting">
             <MultiPicker
               variant="dropdown"
-              options={members.map((m) => ({ id: m, label: m, avatarName: m }))}
+              options={memberChoices.map((m) => ({ id: m, label: m, avatarName: m }))}
               selected={presenters}
               onToggle={(id) =>
                 setPresenters((cur) =>
                   cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
                 )
               }
+              onCreate={(name) => addMemberTo(name, "presenter")}
+              createLabel="Add someone presenting"
               placeholder="Who is presenting…"
               emptyLabel="Nobody in the directory yet."
             />
@@ -651,13 +730,15 @@ export function NewMeetingDialog({
             <Field label="Also attending from Freyr">
               <MultiPicker
                 variant="dropdown"
-                options={members.map((m) => ({ id: m, label: m, avatarName: m }))}
+                options={memberChoices.map((m) => ({ id: m, label: m, avatarName: m }))}
                 selected={attendees}
                 onToggle={(id) =>
                   setAttendees((cur) =>
                     cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
                   )
                 }
+                onCreate={(name) => addMemberTo(name, "attendee")}
+                createLabel="Add someone attending"
                 placeholder="Who else is going…"
                 emptyLabel="Nobody in the directory yet."
               />

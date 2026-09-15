@@ -8,6 +8,11 @@ export const dynamic = "force-dynamic";
  * bare visit lands (Anir, Aug 30: "when I go to customers make sure I land up
  * on the customers page not targets").
  */
-export default async function CustomersPage() {
-  return <CustomersScreen tab="customers" />;
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ add?: string }>;
+}) {
+  const query = await searchParams;
+  return <CustomersScreen tab="customers" initialAddCustomer={query.add === "1"} />;
 }

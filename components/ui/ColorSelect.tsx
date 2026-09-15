@@ -266,6 +266,8 @@ export function ColorSelect({
   dense = false,
   autoOpen = false,
   searchable: forceSearchable,
+  createLabel,
+  onCreate,
 }: {
   value: string;
   options: ColorOption[];
@@ -314,6 +316,10 @@ export function ColorSelect({
    * Enter beats reading eight rows.
    */
   searchable?: boolean;
+  /** A permanent action at the top of the menu, for creating a missing
+   *  record without first typing a query that cannot match. */
+  createLabel?: string;
+  onCreate?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
@@ -733,7 +739,11 @@ export function ColorSelect({
           )}
           style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
         >
-          {searchable && (
+          {(searchable || (onCreate && createLabel)) && (
+            /* Search and creation are one sticky header. Keeping the creation
+               row in a second sticky layer made their offsets compete while
+               the long account list scrolled. The whole control block now
+               moves as one surface and always stays visible. */
             /* The search bar has to cover the panel's own top padding, or
                rows scroll through the strip above it and you can read an
                option straight through the search box (Anir, Aug 15: "I can
@@ -748,37 +758,57 @@ export function ColorSelect({
                   : "-top-1.5 -mx-1.5 -mt-1.5 p-1.5"
               )}
             >
-              <div className="flex items-center gap-1.5 rounded-md bg-surface px-2 py-1.5">
-                <Search size={13} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
-                <input
-                  autoFocus
-                  value={menuQuery}
-                  onChange={(e) => setMenuQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key !== "Enter") return;
-                    e.preventDefault();
-                    /* THE PICK IS CONSUMED HERE AND GOES NO FURTHER.
-                       TopBar has a global "Enter opens the command palette"
-                       shortcut, guarded by "is the user typing?". Committing
-                       a pick closes this menu, which unmounts the very input
-                       that made the guard true — so by the time the window
-                       listener ran, focus had fallen back to <body>, the
-                       guard passed, and the palette threw a full-screen
-                       backdrop over the page. Every click afterwards hit the
-                       backdrop and the app looked frozen. React attaches at
-                       the root, below window, so the native event has to be
-                       stopped explicitly. */
-                    e.stopPropagation();
-                    e.nativeEvent?.stopImmediatePropagation?.();
-                    if (!enterPick) return;
-                    onChange(enterPick.value);
+              {searchable && (
+                <div className="flex items-center gap-1.5 rounded-md bg-surface px-2 py-1.5">
+                  <Search size={13} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
+                  <input
+                    autoFocus
+                    value={menuQuery}
+                    onChange={(e) => setMenuQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      /* THE PICK IS CONSUMED HERE AND GOES NO FURTHER.
+                         TopBar has a global "Enter opens the command palette"
+                         shortcut, guarded by "is the user typing?". Committing
+                         a pick closes this menu, which unmounts the very input
+                         that made the guard true — so by the time the window
+                         listener ran, focus had fallen back to <body>, the
+                         guard passed, and the palette threw a full-screen
+                         backdrop over the page. Every click afterwards hit the
+                         backdrop and the app looked frozen. React attaches at
+                         the root, below window, so the native event has to be
+                         stopped explicitly. */
+                      e.stopPropagation();
+                      e.nativeEvent?.stopImmediatePropagation?.();
+                      if (!enterPick) return;
+                      onChange(enterPick.value);
+                      setOpen(false);
+                    }}
+                    placeholder="Search…"
+                    aria-label={`Search ${ariaLabel || "options"}`}
+                    className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
+                  />
+                </div>
+              )}
+              {onCreate && createLabel && (
+                <button
+                  type="button"
+                  onClick={() => {
                     setOpen(false);
+                    onCreate();
                   }}
-                  placeholder="Search…"
-                  aria-label={`Search ${ariaLabel || "options"}`}
-                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
-                />
-              </div>
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold text-blue-primary transition-colors hover:bg-blue-light/50",
+                    searchable && "mt-1"
+                  )}
+                >
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-primary text-white">
+                    <Plus size={12} strokeWidth={2.6} />
+                  </span>
+                  {createLabel}
+                </button>
+              )}
             </div>
           )}
           {visibleOptions.map((o, rowIndex) => {
