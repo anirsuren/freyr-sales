@@ -25,6 +25,7 @@ import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
    one. */
 import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
 import { useToast } from "@/components/ui/Toast";
+import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 /* THE ACCRUAL PLANNER ITSELF, not a link to it (Suren, Sep 1: "it's just that
    same screen shows up here"). The Revenue accruals module mounts this exact
    component; so does the Revenue accruals tab below. */
@@ -179,7 +180,7 @@ export function OpportunityDetail({
     const url = new URL(window.location.href);
     if (next === "overview") url.searchParams.delete("tab");
     else url.searchParams.set("tab", next);
-    window.history.replaceState(null, "", url.toString());
+    replaceAppBrowserUrl(url);
   };
   const [editing, setEditing] = useState(false);
   /**

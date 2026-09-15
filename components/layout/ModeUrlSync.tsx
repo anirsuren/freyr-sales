@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  addMockModePrefix,
+  isMockModePath,
+  stripMockModePrefix,
+} from "@/lib/modeUrl";
 
 /**
  * THE ADDRESS BAR SAYS WHICH WORKSPACE YOU ARE LOOKING AT.
@@ -31,14 +36,13 @@ import { usePathname } from "next/navigation";
  * data and the page would quietly serve real.
  */
 
-const PREFIX = "/mock-mode";
-
 /** Pages that must never wear it: you are not signed in yet, so there is no
  *  workspace to be in a mode of. */
 function skip(pathname: string): boolean {
   return (
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth") ||
+    pathname.startsWith("/access-pending") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next")
   );
@@ -49,24 +53,79 @@ export function ModeUrlSync({ mode }: { mode: "mock" | "live" }) {
      that renders the shell behind a Suspense boundary, and the query is
      already on window.location where this runs. */
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const here = window.location.pathname;
     if (skip(here)) return;
 
-    const hasPrefix = here === PREFIX || here.startsWith(`${PREFIX}/`);
-    const suffix = window.location.search;
+    const hasPrefix = isMockModePath(here);
+    const suffix = `${window.location.search}${window.location.hash}`;
 
     if (mode === "mock" && !hasPrefix) {
-      window.history.replaceState(null, "", `${PREFIX}${here}${suffix}`);
+      // Next keeps its own routing marker in history.state. Replacing it with
+      // null made later Back/Link navigations lose their route bookkeeping,
+      // which is how a component-originated offering could fall onto a bare
+      // live-mode URL. Change only the visible URL and retain that state.
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${addMockModePrefix(here)}${suffix}`
+      );
       return;
     }
     if (mode === "live" && hasPrefix) {
-      const bare = here.slice(PREFIX.length) || "/";
-      window.history.replaceState(null, "", `${bare}${suffix}`);
+      const bare = stripMockModePrefix(here);
+      window.history.replaceState(window.history.state, "", `${bare}${suffix}`);
     }
   }, [pathname, mode]);
+
+  /**
+   * KEEP THE LABEL THROUGH LINKS, rather than repairing it a frame later.
+   *
+   * A rewritten Next route can report its underlying bare pathname while a
+   * Link still owns the browser URL. Relying on the effect above alone meant
+   * a link occasionally committed `/components` or `/offerings/...` and the
+   * next server render interpreted that as Real mode. Capture same-origin
+   * app links while Mock-mode is active and give the router the labelled URL
+   * up front. Modified clicks, downloads and new tabs keep native behavior.
+   */
+  useEffect(() => {
+    if (mode !== "mock") return;
+    const keepMockPrefix = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest<HTMLAnchorElement>("a[href]");
+      if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+
+      const destination = new URL(anchor.href, window.location.href);
+      if (destination.origin !== window.location.origin) return;
+      if (skip(destination.pathname)) return;
+      if (
+        isMockModePath(destination.pathname)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      router.push(
+        `${addMockModePrefix(destination.pathname)}${destination.search}${destination.hash}`
+      );
+    };
+    document.addEventListener("click", keepMockPrefix, true);
+    return () => document.removeEventListener("click", keepMockPrefix, true);
+  }, [mode, router]);
 
   /**
    * ARRIVING ON A PREFIXED URL WITH THE COOKIE SAYING OTHERWISE — a pasted
@@ -79,7 +138,7 @@ export function ModeUrlSync({ mode }: { mode: "mock" | "live" }) {
     if (typeof window === "undefined") return;
     const here = window.location.pathname;
     if (skip(here)) return;
-    const hasPrefix = here === PREFIX || here.startsWith(`${PREFIX}/`);
+    const hasPrefix = isMockModePath(here);
     if (!hasPrefix || mode === "mock") return;
 
     let cancelled = false;

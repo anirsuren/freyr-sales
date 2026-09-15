@@ -10,6 +10,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { canAccessModule } from "@/lib/moduleAccess";
+import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 import {
   ChevronDown,
   Check,
@@ -396,7 +397,7 @@ export function PerformanceModule({
     setLogOpen(true);
     // Scrubbed synchronously: router.replace raced the modal opening and the
     // params survived, so refresh re-opened a half-done claim.
-    window.history.replaceState(null, "", `/performance/${tab}`);
+    replaceAppBrowserUrl(`/performance/${tab}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 

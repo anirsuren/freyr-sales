@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { CheckCircle2, Loader2, LockKeyhole } from "lucide-react";
+import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 
 type State = "checking" | "code" | "verifying" | "ready" | "saving" | "invalid" | "saved";
 
@@ -66,7 +67,7 @@ export function ResetPasswordScreen({
     const codeParam = query.get("code");
 
     // Recovery credentials never remain in browser history or copied URLs.
-    window.history.replaceState(null, "", "/auth/reset-password");
+    replaceAppBrowserUrl("/auth/reset-password");
 
     async function establishRecoverySession() {
       try {

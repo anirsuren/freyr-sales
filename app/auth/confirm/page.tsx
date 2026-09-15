@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 
 /**
  * Where the account-confirmation email lands. Supabase verifies the link and
@@ -26,7 +27,7 @@ export default function ConfirmLandingPage() {
 
     // Strip the tokens from the address bar immediately — they should not
     // survive into history entries or a copied URL.
-    window.history.replaceState(null, "", "/auth/confirm");
+    replaceAppBrowserUrl("/auth/confirm");
 
     async function run() {
       if (!accessToken) {

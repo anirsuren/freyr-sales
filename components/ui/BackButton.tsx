@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { askBeforeLeaving } from "@/lib/unsavedGuard";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import {
+  addMockModePrefix,
+  isMockModePath,
+  stripMockModePrefix,
+} from "@/lib/modeUrl";
 
 /**
  * EVERY BACK ARROW RETURNS TO WHERE YOU ACTUALLY CAME FROM (Anir, Aug 13:
@@ -32,10 +37,33 @@ const STACK_KEY = "freyr.navStack";
 const BACK_FLAG = "freyr.navBack";
 const STACK_MAX = 30;
 
+/** The route stack stores one canonical path. `/mock-mode` describes the data
+ * view; it is not a second page and must never make one screen look like two
+ * history entries. */
+function canonicalLocation(value: string): string {
+  return stripMockModePrefix(value);
+}
+
+function sameLocation(a: string, b: string): boolean {
+  return canonicalLocation(a) === canonicalLocation(b);
+}
+
+/** Back targets recorded before or after the rewrite are canonical bare
+ * routes. Dress them for the mode visible in this tab before navigating. */
+function targetForCurrentMode(value: string): string {
+  const target = canonicalLocation(value);
+  const here = window.location.pathname;
+  return isMockModePath(here) ? addMockModePrefix(target) : target;
+}
+
 function readStack(): string[] {
   try {
     const raw = JSON.parse(sessionStorage.getItem(STACK_KEY) || "[]");
-    return Array.isArray(raw) ? raw.filter((s) => typeof s === "string") : [];
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((s): s is string => typeof s === "string")
+      .map(canonicalLocation)
+      .filter((s, index, all) => index === 0 || s !== all[index - 1]);
   } catch {
     return [];
   }
@@ -56,7 +84,8 @@ export function NavHistoryTracker() {
   const search = searchParams?.toString() ?? "";
 
   useEffect(() => {
-    const here = search ? `${pathname}?${search}` : pathname;
+    const canonicalPathname = canonicalLocation(pathname);
+    const here = search ? `${canonicalPathname}?${search}` : canonicalPathname;
     try {
       const stack = readStack();
       const wentBack = sessionStorage.getItem(BACK_FLAG) === "1";
@@ -68,7 +97,7 @@ export function NavHistoryTracker() {
       }
       const top = stack[stack.length - 1];
       if (top === here) return;
-      if (top && top.split("?")[0] === pathname) {
+      if (top && top.split("?")[0] === canonicalPathname) {
         // Same page, different query: a filter or tab changed, not a place.
         stack[stack.length - 1] = here;
       } else {
@@ -98,11 +127,15 @@ export function useBackTrail(): string | null {
   const [prev, setPrev] = useState<string | null>(null);
   useEffect(() => {
     try {
-      const here = window.location.pathname + window.location.search;
+      const here = canonicalLocation(
+        window.location.pathname + window.location.search
+      );
       const stack = readStack();
       const candidate =
-        stack[stack.length - 1] === here ? stack[stack.length - 2] : stack[stack.length - 1];
-      setPrev(candidate && candidate !== here ? candidate : null);
+        sameLocation(stack[stack.length - 1] || "", here)
+          ? stack[stack.length - 2]
+          : stack[stack.length - 1];
+      setPrev(candidate && !sameLocation(candidate, here) ? candidate : null);
     } catch {
       setPrev(null);
     }
@@ -112,7 +145,7 @@ export function useBackTrail(): string | null {
 
 /** The plain name of the section a path belongs to, for "Back to …". */
 export function sectionLabelFor(path: string): string | null {
-  const p = path.split("?")[0];
+  const p = canonicalLocation(path).split("?")[0];
   const table: [string, string][] = [
     ["/revenue-accruals", "Revenue Accruals"],
     ["/opportunities", "Opportunities"],
@@ -156,21 +189,23 @@ export function SmartBack({
   };
   const go = () => {
     try {
-      const here = window.location.pathname + window.location.search;
+      const here = canonicalLocation(
+        window.location.pathname + window.location.search
+      );
       const stack = readStack();
       const prev =
-        stack[stack.length - 1] === here
+        sameLocation(stack[stack.length - 1] || "", here)
           ? stack[stack.length - 2]
           : stack[stack.length - 1];
-      if (prev && prev !== here) {
+      if (prev && !sameLocation(prev, here)) {
         sessionStorage.setItem(BACK_FLAG, "1");
-        router.push(prev);
+        router.push(targetForCurrentMode(prev));
         return;
       }
     } catch {
       /* fall through to the fallback */
     }
-    router.push(fallback);
+    router.push(targetForCurrentMode(fallback));
   };
   return (
     <button

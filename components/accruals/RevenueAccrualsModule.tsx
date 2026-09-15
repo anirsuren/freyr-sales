@@ -2,6 +2,7 @@
 
 import { SlotPortal } from "@/components/ui/SlotPortal";
 import { OPPORTUNITY_ACTIONS_SLOT } from "@/lib/opportunityTabs";
+import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 
 import { useStickyValue } from "@/lib/useStickyValue";
 import {
@@ -901,7 +902,7 @@ export function RevenueAccrualsModule({
       const qs = next.toString();
       const url = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
       if (url !== `${window.location.pathname}${window.location.search}`) {
-        window.history.replaceState(null, "", url);
+        replaceAppBrowserUrl(url);
       }
     }, 250);
     return () => clearTimeout(t);

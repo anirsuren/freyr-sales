@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
 import { friendlyAuthError } from "@/lib/authErrors";
+import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 
 /**
  * Email-first sign-in. A colleague never has to decide whether they are
@@ -119,7 +120,7 @@ export function SupabaseLoginForm({
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const strayToken = hash.get("access_token");
     if (strayToken) {
-      window.history.replaceState(null, "", window.location.pathname);
+      replaceAppBrowserUrl(window.location.pathname);
       setBusy(true);
       establishSession(strayToken).catch((caught) => {
         setBusy(false);

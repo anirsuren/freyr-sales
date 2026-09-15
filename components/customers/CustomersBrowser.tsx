@@ -25,6 +25,7 @@ import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 import { SearchX, Download, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload, Building2, Users, LayoutList, Table2, Layers, UserRound, CircleSlash, History } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -427,7 +428,7 @@ export function CustomersBrowser({
     setOrDelete("group", groupBy, "none");
     url.searchParams.delete("page");
     setOrDelete("per_page", Number.isFinite(perPage) ? String(perPage) : "all", "all");
-    window.history.replaceState(null, "", url.toString());
+    replaceAppBrowserUrl(url);
   }, [
     currentUser.id,
     loadedListUserId,

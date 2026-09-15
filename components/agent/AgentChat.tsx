@@ -1,5 +1,6 @@
 "use client";
 import { normalizeAgentLinks, readableLinkLabel } from "@/lib/agentAnswerPresentation";
+import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 
 import { useEffect, useId, useRef, useState, useCallback, useMemo, type ReactNode } from "react";
 import Link from "next/link";
@@ -989,7 +990,7 @@ export function AgentChat({
     offeringRouteConsumed.current = key;
     setActiveId(null);
     setPendingOffering(initialOffering);
-    window.history.replaceState(null, "", "/agent");
+    replaceAppBrowserUrl("/agent");
   }, [currentUser.id, initialOffering, loadedStorageKey, storageKey]);
 
   // Global-search Enter and the offering-page AI hand-off land here with
@@ -1006,7 +1007,7 @@ export function AgentChat({
       newConversation: true,
       offering: initialOffering ?? null,
     });
-    window.history.replaceState(null, "", "/agent");
+    replaceAppBrowserUrl("/agent");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id, initialAsk, initialOffering, loadedStorageKey, storageKey]);
 

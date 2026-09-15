@@ -751,3 +751,6 @@ The People Performance panel for claims a manager sent back uses aligned Number,
 
 ### Sep 15: offering customer picker stays above the page
 “Add to a customer” keeps its plus icon while open and places the close action inside the customer picker. The offering header owns a higher stacking layer so the anchored picker renders cleanly above tabs and report cards instead of letting later animated sections cut through it. Completed locally, not deployed.
+
+### Sep 15: Mock-mode is an address invariant
+Every signed-in page viewed with the Mock-mode cookie keeps `/mock-mode` in its browser URL across links, smart-back navigation, refreshes, bookmarks, old history entries, and query/tab cleanup. All app-level history replacement uses the shared mode-aware helper and preserves Next's browser-history state instead of erasing it. Navigation trails compare canonical routes so the prefix cannot create duplicate or false back entries. Offering records name the actual back destination: an offering opened from an FDL component says “All FDL Components,” while an offering opened from the catalogue says “All offerings.” Completed locally, not deployed.

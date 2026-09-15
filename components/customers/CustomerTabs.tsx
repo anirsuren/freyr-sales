@@ -12,6 +12,7 @@ import Link from "next/link";
 import { DateEcho } from "@/components/ui/DateEcho";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 import {
   Pin,
   Newspaper,
@@ -308,7 +309,7 @@ export function CustomerTabs({
     try {
       const url = new URL(window.location.href);
       url.searchParams.set("tab", key);
-      window.history.replaceState(null, "", url.toString());
+      replaceAppBrowserUrl(url);
     } catch {}
   };
   // Deep-link support (?tab=offerings etc.) — read after mount via

@@ -280,6 +280,40 @@ export async function middleware(request: NextRequest) {
       return leaveMockMode(NextResponse.next());
     }
   }
+
+  /**
+   * A MOCK COOKIE AND A BARE PAGE URL MAY NEVER DISAGREE.
+   *
+   * Client links are guarded by ModeUrlSync, but bookmarks, refreshes and old
+   * history entries enter through middleware. If that tab is still using the
+   * mock workspace, make the address say so before rendering the page. Only
+   * top-level HTML navigations redirect; RSC fetches, APIs and assets retain
+   * their normal internal paths.
+   */
+  const acceptsHtml = request.headers.get("accept")?.includes("text/html") ?? false;
+  const isDocumentNavigation =
+    (request.method === "GET" || request.method === "HEAD") &&
+    (request.headers.get("sec-fetch-dest") === "document" ||
+      (acceptsHtml &&
+        !request.headers.has("rsc") &&
+        !request.headers.has("next-router-state-tree")));
+  const mockCookieIsActive =
+    process.env.DATA_MODE_LOCKED !== "1" &&
+    request.cookies.get(DATA_MODE_COOKIE)?.value === "mock";
+  if (
+    mockCookieIsActive &&
+    isDocumentNavigation &&
+    rawPathname === pathname &&
+    !isPublicPath(pathname) &&
+    !pathname.startsWith("/_next") &&
+    !/\.[a-z0-9]+$/i.test(pathname)
+  ) {
+    const labelled = new URL(request.url);
+    labelled.pathname = `/mock-mode${pathname === "/" ? "" : pathname}`;
+    const response = NextResponse.redirect(labelled);
+    securityHeaders(response, requestId);
+    return response;
+  }
   const authMode = process.env.AUTH_MODE;
   const recognizedAuthMode =
     authMode === "entra" ||
