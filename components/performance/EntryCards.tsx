@@ -1,10 +1,8 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
-import { DateEcho } from "@/components/ui/DateEcho";
 import {
   CalendarCheck2,
-  Building2,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -48,6 +46,7 @@ import type { RunOp } from "./PerformanceModule";
 import { typeMeta, GroupPill } from "./bits";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 
 /**
  * THE EVIDENCE-AND-VERIFICATION SURFACES (Suren, Aug 13).
@@ -1008,7 +1007,16 @@ export function MyEntriesCard({
   const [dropFor, setDropFor] = useState<string | null>(null);
   /** Fixing a typo used to mean delete and re-enter, losing the upload. */
   const [editFor, setEditFor] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ amount: "", date: "", customer: "" });
+  const [draft, setDraft] = useState({
+    amount: "",
+    date: "",
+    customer: "",
+    customerId: "",
+  });
+  const [customerOptions, setCustomerOptions] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [customersLoading, setCustomersLoading] = useState(false);
   /** The proof, edited alongside the numbers — the commonest reason a claim
    *  comes back is that it arrived without one. */
   const [draftEvidence, setDraftEvidence] = useState<
@@ -1032,11 +1040,42 @@ export function MyEntriesCard({
         amount: String(entry.amount),
         date: entry.date,
         customer: entry.customer ?? "",
+        customerId: entry.customerId ?? "",
       });
       setDraftEvidence(entry.evidence ?? []);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusEntry]);
+  useEffect(() => {
+    if (!editFor) return;
+    const controller = new AbortController();
+    setCustomersLoading(true);
+    fetch("/api/customers", { cache: "no-store", signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Customer list unavailable");
+        return response.json();
+      })
+      .then((data: { customers?: { id?: string; company_name?: string }[] }) => {
+        setCustomerOptions(
+          (data.customers ?? [])
+            .map((customer) => ({
+              id: String(customer.id ?? ""),
+              name: String(customer.company_name ?? "").trim(),
+            }))
+            .filter((customer) => customer.id && customer.name)
+            .sort((a, b) => a.name.localeCompare(b.name))
+        );
+      })
+      .catch((error: unknown) => {
+        if ((error as { name?: string })?.name !== "AbortError") {
+          setCustomerOptions([]);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCustomersLoading(false);
+      });
+    return () => controller.abort();
+  }, [editFor]);
   /**
    * A LOCK NEEDS AN UNDO (bug, Aug 15). Verifying pulls the row out of the
    * queue, and the queue was the only place Send back lived — so a claim
@@ -1258,6 +1297,7 @@ export function MyEntriesCard({
                                     amount: String(a.amount),
                                     date: a.date,
                                     customer: a.customer ?? "",
+                                    customerId: a.customerId ?? "",
                                   });
                                   setDraftEvidence(a.evidence ?? []);
                                 }
@@ -1309,6 +1349,7 @@ export function MyEntriesCard({
                                     amount: String(a.amount),
                                     date: a.date,
                                     customer: a.customer ?? "",
+                                    customerId: a.customerId ?? "",
                                   });
                                   setDraftEvidence(a.evidence ?? []);
                                 }}
@@ -1589,6 +1630,9 @@ export function MyEntriesCard({
           const amountInvalid =
             draft.amount.trim() !== "" &&
             parseAmountInput(draft.amount) === null;
+          const customerInOptions = customerOptions.some(
+            (customer) => customer.id === draft.customerId
+          );
           return (
             <Modal
               open
@@ -1721,33 +1765,63 @@ export function MyEntriesCard({
                     }
                     className="h-11 w-full rounded-xl border border-border-light bg-white px-3 text-[14px] outline-none transition-shadow focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
                   />
-                  <DateEcho value={draft.date} />
                 </label>
-                <label className="block sm:col-span-2">
+                <div className="block sm:col-span-2">
                   <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
                     Customer account
                   </span>
-                  <span className="relative block">
-                    <Building2
-                      size={18}
-                      strokeWidth={2}
-                      aria-hidden="true"
-                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-blue-primary"
-                    />
-                    <input
-                      value={draft.customer}
-                      placeholder="Search or enter the customer name"
-                      aria-label="Customer account"
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, customer: e.target.value }))
-                      }
-                      className="h-14 w-full rounded-xl border border-border-light bg-white pl-12 pr-4 text-[16px] font-medium text-text-primary outline-none transition-shadow placeholder:font-normal placeholder:text-text-tertiary focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
-                    />
-                  </span>
-                  <span className="mt-1.5 block text-[11px] text-text-tertiary">
-                    Choose the account this result belongs to.
-                  </span>
-                </label>
+                  <ColorSelect
+                    value={
+                      customerInOptions
+                        ? draft.customerId
+                        : draft.customer
+                          ? "__current"
+                          : ""
+                    }
+                    ariaLabel="Customer account"
+                    searchable
+                    collapsible={false}
+                    fill
+                    minWidth={0}
+                    className="w-full [&_button[aria-haspopup='listbox']]:!h-14 [&_button[aria-haspopup='listbox']]:!rounded-xl [&_button[aria-haspopup='listbox']]:!px-4 [&_button[aria-haspopup='listbox']]:!text-[16px]"
+                    onChange={(value) => {
+                      if (value === "__current") return;
+                      const selected = customerOptions.find(
+                        (customer) => customer.id === value
+                      );
+                      setDraft((current) => ({
+                        ...current,
+                        customer: selected?.name ?? "",
+                        customerId: selected?.id ?? "",
+                      }));
+                    }}
+                    options={[
+                      {
+                        value: "",
+                        label: customersLoading
+                          ? "Loading customers…"
+                          : "Pick a customer…",
+                        color: "#C7CDD6",
+                      },
+                      ...(draft.customer &&
+                      !customerInOptions
+                        ? [
+                            {
+                              value: "__current",
+                              label: draft.customer,
+                              logoName: draft.customer,
+                            },
+                          ]
+                        : []),
+                      ...customerOptions.map((customer) => ({
+                        value: customer.id,
+                        label: customer.name,
+                        logoName: customer.name,
+                        href: `/customers/${encodeURIComponent(customer.id)}`,
+                      })),
+                    ]}
+                  />
+                </div>
                   </div>
                 </section>
               {/* THE PROOF, ON THE FORM THAT ANSWERS THE REJECTION (Anir,
@@ -1827,9 +1901,7 @@ export function MyEntriesCard({
                            customer AND customerId together, so sending the
                            name without the id unlinked the account on every
                            save — even one that only swapped the file. */
-                        ...(draft.customer.trim() === (a.customer ?? "").trim()
-                          ? { customerId: a.customerId }
-                          : {}),
+                        customerId: draft.customerId || undefined,
                         evidence: draftEvidence,
                       },
                       fixing

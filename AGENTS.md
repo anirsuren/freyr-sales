@@ -789,3 +789,6 @@ People Performance verification tables call the column Evidence, reserve enough 
 
 ### Sep 15: correction dialog gives customer selection room
 The People Performance Fix-result dialog has an explicit 1100px desktop width. Customer account occupies its own full-width row with a 56px input, account icon, readable 16px text, and the complete “Search or enter the customer name” prompt, followed by a short explanation of what belongs there. Completed locally, not deployed.
+
+### Sep 15: correction customer is an account picker
+The People Performance correction dialog loads the permitted customer catalogue and uses the shared searchable company dropdown, with company marks and record links, in its full-width customer row. Selecting an account persists both its name and stable customer ID; a legacy customer remains visible if it is no longer in the catalogue. The date control no longer repeats the same formatted date underneath itself. Completed locally, not deployed.
