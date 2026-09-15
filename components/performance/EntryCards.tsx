@@ -64,7 +64,7 @@ function goalChip(state: PerformanceState, goalId: string) {
   const meta = typeMeta(goal.type);
   return (
     <span
-      className="inline-flex max-w-[240px] items-center gap-1 truncate rounded-full px-2.5 py-1 text-[12px] font-semibold"
+      className="inline-flex max-w-[340px] items-center gap-1 whitespace-normal rounded-xl px-2.5 py-1 text-[12px] font-semibold leading-4"
       style={{ background: tint(meta.color, 10), color: meta.color }}
     >
       {goal.name}
@@ -690,6 +690,7 @@ export function SentBackWatchCard({
   state: PerformanceState;
   meName: string;
 }) {
+  const [expanded, setExpanded] = useState(true);
   const waiting = state.actuals
     .filter(
       (a) =>
@@ -722,6 +723,19 @@ export function SentBackWatchCard({
         className="absolute inset-y-0 left-0 w-[5px] bg-[color:#B45309]"
       />
       <div className="flex items-start gap-2 border-b border-[rgba(180,83,9,0.2)] bg-[rgba(180,83,9,0.06)] px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setExpanded((open) => !open)}
+          aria-expanded={expanded}
+          aria-label={expanded ? "Hide sent-back claims" : "Show sent-back claims"}
+          className="mt-px flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-[color:var(--ink-amber)] transition-colors hover:bg-[rgba(180,83,9,0.1)]"
+        >
+          <ChevronDown
+            size={15}
+            strokeWidth={2.4}
+            className={cn("transition-transform", !expanded && "-rotate-90")}
+          />
+        </button>
         <RotateCcw
           size={16}
           strokeWidth={2.4}
@@ -742,7 +756,7 @@ export function SentBackWatchCard({
           </span>
         </span>
       </div>
-      <ul className="divide-y divide-border-light">
+      {expanded && <ul className="divide-y divide-border-light">
         {waiting.map((a) => {
           const goal = state.goals.find((g) => g.id === a.goalId);
           return (
@@ -770,7 +784,7 @@ export function SentBackWatchCard({
             </li>
           );
         })}
-      </ul>
+      </ul>}
     </Card>
   );
 }
@@ -786,6 +800,7 @@ export function SentBackCard({
   isMe: boolean;
   onFix: (entryId: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(true);
   const rejected = state.actuals
     .filter(
       (a) =>
@@ -802,6 +817,19 @@ export function SentBackCard({
         className="absolute inset-y-0 left-0 w-[5px] bg-[color:#DC2626]"
       />
       <div className="flex items-start gap-2 border-b border-[rgba(220,38,38,0.25)] bg-[rgba(220,38,38,0.07)] px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setExpanded((open) => !open)}
+          aria-expanded={expanded}
+          aria-label={expanded ? "Hide claims needing a fix" : "Show claims needing a fix"}
+          className="mt-px flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-[color:var(--ink-red)] transition-colors hover:bg-[rgba(220,38,38,0.1)]"
+        >
+          <ChevronDown
+            size={15}
+            strokeWidth={2.4}
+            className={cn("transition-transform", !expanded && "-rotate-90")}
+          />
+        </button>
         <AlertCircle
           size={16}
           strokeWidth={2.4}
@@ -821,7 +849,7 @@ export function SentBackCard({
           </span>
         </span>
       </div>
-      <ul className="divide-y divide-border-light">
+      {expanded && <ul className="divide-y divide-border-light">
         {rejected.map((a) => {
           const goal = state.goals.find((g) => g.id === a.goalId);
           return (
@@ -886,7 +914,7 @@ export function SentBackCard({
             </li>
           );
         })}
-      </ul>
+      </ul>}
     </Card>
   );
 }
@@ -1713,6 +1741,7 @@ export function VerifyQueueCard({
    *  this is the same idiom on the queue. */
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const heads = headedGroups(state, meName);
   if (heads.length === 0) return null;
   const queue = verificationQueue(state, meName);
@@ -1758,6 +1787,19 @@ export function VerifyQueueCard({
             : "border-border-light"
         )}
       >
+        <button
+          type="button"
+          onClick={() => setExpanded((open) => !open)}
+          aria-expanded={expanded}
+          aria-label={expanded ? "Hide verification requests" : "Show verification requests"}
+          className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-[color:var(--ink-amber)] transition-colors hover:bg-[rgba(217,119,6,0.1)]"
+        >
+          <ChevronDown
+            size={15}
+            strokeWidth={2.4}
+            className={cn("transition-transform", !expanded && "-rotate-90")}
+          />
+        </button>
         {pending && (
           <AlertCircle
             size={16}
@@ -1857,7 +1899,7 @@ export function VerifyQueueCard({
         </span>
         )}
       </div>
-      {queue.length === 0 ? (
+      {expanded && (queue.length === 0 ? (
         (() => {
           /* AN EMPTY QUEUE IS NOT ALWAYS AN EMPTY DESK. Claims this reader
              sent back left the queue on purpose — they wait on the person who
@@ -1888,7 +1930,18 @@ export function VerifyQueueCard({
            column rhythm as Logged results below it, so the two read as one
            system. */
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] border-collapse">
+          <table className="w-full min-w-[1280px] table-fixed border-collapse">
+            <colgroup>
+              <col className="w-12" />
+              <col className="w-14" />
+              <col className="w-[210px]" />
+              <col className="w-[350px]" />
+              <col className="w-[110px]" />
+              <col className="w-[150px]" />
+              <col className="w-[210px]" />
+              <col className="w-[120px]" />
+              <col className="w-[120px]" />
+            </colgroup>
             <thead>
               <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
                 <th className="w-9 p-0">
@@ -2013,7 +2066,7 @@ export function VerifyQueueCard({
             </tbody>
           </table>
         </div>
-      )}
+      ))}
       {confirmBulk && (() => {
         const chosen = queue.filter((q) => picked.has(q.id));
         /* The bulk confirm adds ONLY like with like (Aug 23 audit): this

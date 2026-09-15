@@ -742,3 +742,6 @@ The Month by month chart in expanded person and group goals shows a Status break
 
 ### Sep 15: goal segments keep their measurement brackets
 Progress tracks in the organization → group → person drill-down retain a coloured bracket under every nonzero section, showing exactly where that section starts and ends. Section values share one horizontal row whenever their rendered labels fit; only labels that would collide move to another lane. Do not replace the brackets with detached legend strokes. Completed locally, not deployed.
+
+### Sep 15: People Performance action panels fold without disappearing
+The sent-back, verification, and waiting-on-someone action panels each keep a persistent header and count while independently hiding or revealing their rows. The verification queue uses explicit table columns, reserves enough width for Goal, and wraps long goal badges instead of clipping their names. Completed locally, not deployed.
