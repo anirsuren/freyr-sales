@@ -194,6 +194,12 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 15 customer opportunity table:** The Customer 360 Opportunities band
+  gives the opportunity name less width and up to two lines, reserving enough
+  room for one-line Stage and Expected to sign values. Stage and Status now
+  use their lifecycle color plus distinct icons; status may wrap inside its
+  controlled column. Local only; not deployed.
+
 - **Sep 15 FDL company overflow dialog:** The overlapping customer marks used
   on component versions and feature rows keep their quick hover previews, but
   clicking `+N` now opens a fixed, searchable dialog with every company in a

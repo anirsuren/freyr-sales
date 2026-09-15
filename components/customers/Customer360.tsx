@@ -12,6 +12,16 @@ import {
   Inbox,
   Goal,
   Package,
+  Workflow,
+  Crosshair,
+  TrendingUp,
+  Search,
+  FlaskConical,
+  Send,
+  Hourglass,
+  PauseCircle,
+  Trophy,
+  CircleSlash,
   Presentation,
   Target,
   UserPlus,
@@ -55,6 +65,30 @@ import {
 import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { statusColor } from "@/lib/opportunitiesShared";
+
+const OPPORTUNITY_LEVEL_COLOR: Record<string, string> = {
+  Pipeline: "var(--ink-bright-blue)",
+  "Go get": "var(--ink-magenta)",
+  "High confidence": "var(--ink-teal-deep)",
+};
+
+const OPPORTUNITY_LEVEL_ICON: Record<string, LucideIcon> = {
+  Pipeline: Workflow,
+  "Go get": Crosshair,
+  "High confidence": TrendingUp,
+};
+
+const OPPORTUNITY_STATUS_ICON: Record<string, LucideIcon> = {
+  Qualify: Search,
+  Pilot: FlaskConical,
+  Propose: FileText,
+  "Submitted to client": Send,
+  "Under review": Hourglass,
+  "On hold": PauseCircle,
+  Won: Trophy,
+  Lost: CircleSlash,
+};
 
 /**
  * THE WHOLE ACCOUNT, IN ONE SHOT (Suren, Aug 25).
@@ -249,6 +283,8 @@ export function Customer360({
   const cols = (active?.columns ?? []).filter((c) =>
     active?.items.some((i) => !!i.cells?.[c.key])
   );
+  const customerOpportunityTable =
+    active?.key === "opportunities" && cols.some((column) => column.key === "signs");
 
   return (
     <section
@@ -683,7 +719,29 @@ export function Customer360({
                     A team has no value and no date; a contract has both. Drawing
                     every column for every band gave a table of em-dashes, which
                     is the opposite of "look how full those rows are". */}
-                <table className="w-full min-w-[480px] border-collapse text-left">
+                <table
+                  className={cn(
+                    "w-full min-w-[480px] border-collapse text-left",
+                    customerOpportunityTable && "table-fixed min-w-[920px]"
+                  )}
+                >
+                  {customerOpportunityTable && (
+                    /* THE NAME MAY USE TWO LINES; THE FACTS GET THE WIDTH.
+                       The opportunity column previously took nearly half the
+                       table, forcing High confidence, Expected to sign and
+                       their headers to stack. These percentages describe the
+                       actual seven-column customer opportunity table and keep
+                       its scanning columns on one line. */
+                    <colgroup>
+                      <col style={{ width: "32%" }} />
+                      <col style={{ width: "12%" }} />
+                      <col style={{ width: "11%" }} />
+                      <col style={{ width: "10%" }} />
+                      <col style={{ width: "15%" }} />
+                      <col style={{ width: "12%" }} />
+                      <col style={{ width: "8%" }} />
+                    </colgroup>
+                  )}
                   <thead>
                     <tr className="border-b border-border-light">
                       <th className="pb-2 pr-4 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
@@ -696,7 +754,7 @@ export function Customer360({
                         ? cols.map((c) => (
                             <th
                               key={c.key}
-                              className="pb-2 pr-4 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
+                              className="whitespace-nowrap pb-2 pr-4 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
                             >
                               {c.label}
                             </th>
@@ -760,12 +818,24 @@ export function Customer360({
                               {item.href ? (
                                 <Link
                                   href={item.href}
-                                  className="block truncate text-[13.5px] font-semibold text-text-primary hover:text-blue-primary"
+                                  className={cn(
+                                    "block text-[13.5px] font-semibold text-text-primary hover:text-blue-primary",
+                                    customerOpportunityTable
+                                      ? "line-clamp-2 break-words leading-[1.25]"
+                                      : "truncate"
+                                  )}
                                 >
                                   {item.title}
                                 </Link>
                               ) : (
-                                <span className="block truncate text-[13.5px] font-semibold text-text-primary">
+                                <span
+                                  className={cn(
+                                    "block text-[13.5px] font-semibold text-text-primary",
+                                    customerOpportunityTable
+                                      ? "line-clamp-2 break-words leading-[1.25]"
+                                      : "truncate"
+                                  )}
+                                >
                                   {item.title}
                                 </span>
                               )}
@@ -786,12 +856,45 @@ export function Customer360({
                                  portrait of nobody. */
                               const named =
                                 v !== "—" && v !== "·" && v.toLowerCase() !== "unassigned";
+                              const opportunityStage =
+                                active.key === "opportunities" && c.key === "level";
+                              const opportunityStatus =
+                                active.key === "opportunities" && c.key === "status";
+                              const identityColor = opportunityStage
+                                ? OPPORTUNITY_LEVEL_COLOR[v] ?? "#8E98A8"
+                                : opportunityStatus
+                                  ? statusColor(v)
+                                  : null;
+                              const IdentityIcon = opportunityStage
+                                ? OPPORTUNITY_LEVEL_ICON[v] ?? Workflow
+                                : opportunityStatus
+                                  ? OPPORTUNITY_STATUS_ICON[v] ?? Hourglass
+                                  : null;
                               return (
                                 <td
                                   key={c.key}
                                   className="py-3 pr-4 text-left text-[12.5px] text-text-secondary"
                                 >
-                                  {c.kind === "person" && named ? (
+                                  {IdentityIcon && identityColor ? (
+                                    <span
+                                      className={cn(
+                                        "inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold",
+                                        opportunityStage && "whitespace-nowrap",
+                                        opportunityStatus && "leading-[1.15]"
+                                      )}
+                                      style={{
+                                        color: identityColor,
+                                        background: tint(identityColor, 9),
+                                      }}
+                                    >
+                                      <IdentityIcon
+                                        size={11}
+                                        strokeWidth={2.3}
+                                        className="shrink-0"
+                                      />
+                                      <span>{v}</span>
+                                    </span>
+                                  ) : c.kind === "person" && named ? (
                                     <span className="flex min-w-0 items-center gap-1.5">
                                       <Avatar
                                         name={v}
@@ -808,7 +911,9 @@ export function Customer360({
                                       <span className="truncate">{v}</span>
                                     </span>
                                   ) : (
-                                    v
+                                    <span className={c.key === "signs" ? "whitespace-nowrap" : undefined}>
+                                      {v}
+                                    </span>
                                   )}
                                 </td>
                               );
