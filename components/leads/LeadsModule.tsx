@@ -754,11 +754,25 @@ export function LeadsModule({
                               ) : null}
                             </div>
 
-                            <div className="grid grid-cols-1 divide-y divide-border-light lg:grid-cols-[1.1fr_.9fr] lg:divide-x lg:divide-y-0">
-                              <div className="p-4">
-                                <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                                  Lead details
-                                </span>
+                            <div className="grid grid-cols-1 gap-3 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(460px,.9fr)]">
+                              <section className="rounded-xl border border-border-light bg-white p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                                    Contact & account
+                                  </span>
+                                  {canWrite && (
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        openEditor(lead);
+                                      }}
+                                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-blue-primary hover:bg-blue-light"
+                                    >
+                                      <Pencil size={12} strokeWidth={2.2} /> Edit details
+                                    </button>
+                                  )}
+                                </div>
                                 <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
                                   <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Email</span>
@@ -767,7 +781,7 @@ export function LeadsModule({
                                         <Mail size={16} strokeWidth={1.9} className="mt-px shrink-0 text-text-tertiary" aria-hidden="true" />
                                         <span className="min-w-0 break-words [overflow-wrap:anywhere]">{lead.email}</span>
                                       </a>
-                                    ) : <span className="text-[12.5px] text-text-tertiary">—</span>}
+                                    ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not added</span>}
                                   </span>
                                   <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Phone</span>
@@ -776,7 +790,7 @@ export function LeadsModule({
                                         <Phone size={16} strokeWidth={1.9} className="shrink-0 text-text-tertiary" aria-hidden="true" />
                                         <span className="min-w-0">{formatPhoneNumber(lead.phone)}</span>
                                       </a>
-                                    ) : <span className="text-[12.5px] text-text-tertiary">—</span>}
+                                    ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not added</span>}
                                   </span>
                                   <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Country</span>
@@ -785,7 +799,7 @@ export function LeadsModule({
                                         <span className="text-[17px] leading-none" role="img" aria-label={`${lead.country} flag`}>{countryFlag(lead.country)}</span>
                                         <span className="min-w-0 truncate">{lead.country}</span>
                                       </span>
-                                    ) : <span className="text-[12.5px] text-text-tertiary">—</span>}
+                                    ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not added</span>}
                                   </span>
                                   <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Source</span>
@@ -801,7 +815,7 @@ export function LeadsModule({
                                         <CompanyLogo name={linkedCustomer.name} className="h-5 w-5 shrink-0 rounded-md text-[7px]" />
                                         <span className="min-w-0 truncate">{linkedCustomer.name}</span>
                                       </Link>
-                                    ) : <span className="text-[12.5px] text-text-tertiary">Not matched yet</span>}
+                                    ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not matched</span>}
                                   </span>
                                   <span className="min-w-0">
                                     <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Owner</span>
@@ -810,7 +824,7 @@ export function LeadsModule({
                                         <Avatar name={lead.owner} className="h-5 w-5 shrink-0 text-[7px]" />
                                         <span className="min-w-0 truncate">{lead.owner}</span>
                                       </Link>
-                                    ) : <span className="text-[12.5px] text-text-tertiary">Unassigned</span>}
+                                    ) : <span className="mt-1 block text-[12px] text-text-tertiary">Unassigned</span>}
                                   </span>
                                 </div>
 
@@ -827,13 +841,16 @@ export function LeadsModule({
                                     <p className="mt-1 text-[12.5px] font-medium leading-relaxed text-text-secondary">{lead.disqualifiedReason}</p>
                                   </div>
                                 )}
-                              </div>
+                              </section>
 
-                              <div>
-                                <LeadPersonInsights lead={lead} accountMatched={Boolean(linkedCustomer)} />
-                                <LeadJourney lead={lead} />
-                              </div>
+                              <LeadPersonInsights
+                                lead={lead}
+                                accountMatched={Boolean(linkedCustomer)}
+                                onEdit={canWrite ? () => openEditor(lead) : undefined}
+                              />
                             </div>
+
+                            <LeadJourney lead={lead} />
 
                           </div>
                         </td>
