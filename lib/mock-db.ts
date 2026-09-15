@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { SALES_TEAM } from "./salesTeam";
-import { OFFERING_CATALOGUE_ORDER } from "./offeringCatalogue";
+import {
+  MOCK_OFFERING_CATALOGUE,
+} from "./offeringCatalogue";
 import {
   FILL_ACCOUNTS,
   FILL_FIRST,
@@ -89,7 +91,12 @@ function demoComponentLinks(accountId: string) {
   const n = Number(accountId.replace(/\D/g, "")) || 1;
   const pick = (offset: number) =>
     DEMO_ESTATE_IDS[(n * 3 + offset) % DEMO_ESTATE_IDS.length]!;
-  const ids = Array.from(new Set([pick(0), pick(5), pick(9), ...(n % 2 ? [pick(11)] : [])]));
+  const wanted = 8 + (n % 3);
+  const ids: string[] = [];
+  for (let i = 0; ids.length < wanted && i < DEMO_ESTATE_IDS.length; i += 1) {
+    const id = pick(i * 7);
+    if (!ids.includes(id)) ids.push(id);
+  }
   return ids.map((component_id, index) => ({
     component_id,
     /* -r1 always exists; a computed -r2/-r3 did not on the many showroom
@@ -355,9 +362,7 @@ function seed(): MockStore {
   const DEMO_ACCOUNTS = specs.map((x) => `cust-${x.id}`);
   // The seeded catalogue, in order. Sourced from the same single list the
   // offering icons use, so it cannot drift out of sync with the catalogue.
-  const DEMO_OFFERING_IDS = OFFERING_CATALOGUE_ORDER.map(
-    (_, i) => `of-${String(i + 1).padStart(3, "0")}`
-  );
+  const DEMO_OFFERING_IDS = MOCK_OFFERING_CATALOGUE.map((offering) => offering.id);
   function seedCommercials(offeringId: string) {
     // Stable pseudo-random from the id: same catalog, same book, every time.
     let h = 0;
@@ -817,16 +822,43 @@ function seed(): MockStore {
          he actually clicks through read "Activity 0" while the hand-written
          demo cast read full. Same generator the demo cast uses, two or three
          catalogue offerings per account, cycled so neighbours differ. */
-      offering_usage: Array.from({ length: 2 + (i % 2) }, (_, k) => {
+      offering_usage: Array.from({ length: 5 + (i % 3) }, (_, k) => {
         const oid = DEMO_OFFERING_IDS[(i + k * 3) % DEMO_OFFERING_IDS.length]!;
+        const revenueType = (["license", "annual_service", "project", "annual"] as const)[
+          (i + k) % 4
+        ];
+        const seats = revenueType === "license" ? 18 + ((i * 7 + k * 11) % 83) : null;
+        const amount =
+          revenueType === "license"
+            ? (seats ?? 0) * (6_000 + ((i + k) % 5) * 1_000)
+            : 70_000 + ((i * 41 + k * 67) % 36) * 10_000;
+        const started = new Date(NOW);
+        started.setUTCMonth(started.getUTCMonth() - (1 + ((i + k) % 10)), 1);
+        const ends = new Date(started);
+        ends.setUTCMonth(ends.getUTCMonth() + 12, 1);
         return {
           offering_id: oid,
-          revenue_lines: [],
+          revenue_lines: [
+            {
+              id: `rev-${cid}-${oid}-1`,
+              revenue_type: revenueType,
+              amount,
+              num_licenses: seats,
+              start_date: started.toISOString().slice(0, 10),
+              end_date: ends.toISOString().slice(0, 10),
+              description:
+                revenueType === "license"
+                  ? "Annual licences for the regulatory team."
+                  : revenueType === "project"
+                    ? "Implementation and migration project."
+                    : "Ongoing regulatory delivery and support.",
+            },
+          ],
           engagement_versions: demoActivities(cid, oid),
         };
       }),
       offerings_in_use: Array.from(
-        { length: 2 + (i % 2) },
+        { length: 5 + (i % 3) },
         (_, k) => DEMO_OFFERING_IDS[(i + k * 3) % DEMO_OFFERING_IDS.length]!
       ),
     } as (typeof customers)[number]);
@@ -1043,11 +1075,126 @@ function seed(): MockStore {
     } as (typeof agentRuns)[number]);
   }
 
-  // Every showroom account — hand-written or generated — runs a software
-  // estate, so the Digital components tab is never empty in Mock.
-  for (const customer of customers) {
-    if (!customer.digital_components?.length) {
-      customer.digital_components = demoComponentLinks(customer.id);
+  // EVERY CUSTOMER PAGE HAS A COMPLETE WALKTHROUGH. The hand-written first
+  // dozen used to escape the long-tail generator, leaving several with no
+  // offerings, one contact, and a three-component estate. Apply the same
+  // minimums to every account after all seed sources have been merged.
+  for (const [customerIndex, customer] of customers.entries()) {
+    const componentLinks = demoComponentLinks(customer.id);
+    const componentIds = new Set((customer.digital_components ?? []).map((link) => link.component_id));
+    customer.digital_components = [
+      ...(customer.digital_components ?? []),
+      ...componentLinks.filter((link) => !componentIds.has(link.component_id)),
+    ];
+
+    const existingUsage = customer.offering_usage ?? [];
+    const usageIds = new Set(existingUsage.map((usage) => usage.offering_id));
+    const usageTarget = 6 + (customerIndex % 3);
+    for (let offset = 0; existingUsage.length < usageTarget; offset += 1) {
+      const offering = MOCK_OFFERING_CATALOGUE[
+        (customerIndex * 5 + offset * 7) % MOCK_OFFERING_CATALOGUE.length
+      ]!;
+      if (usageIds.has(offering.id)) continue;
+      usageIds.add(offering.id);
+      const seats = 20 + ((customerIndex * 11 + offset * 13) % 90);
+      const start = new Date(NOW);
+      start.setUTCMonth(start.getUTCMonth() - (2 + ((customerIndex + offset) % 9)), 1);
+      const end = new Date(start);
+      end.setUTCMonth(end.getUTCMonth() + 12, 1);
+      existingUsage.push({
+        offering_id: offering.id,
+        revenue_lines: [
+          {
+            id: `rev-${customer.id}-${offering.id}-base`,
+            revenue_type: offset % 3 === 0 ? "license" : offset % 3 === 1 ? "annual_service" : "project",
+            amount: offset % 3 === 0 ? seats * 8_000 : 90_000 + ((customerIndex + offset) % 18) * 15_000,
+            num_licenses: offset % 3 === 0 ? seats : null,
+            start_date: start.toISOString().slice(0, 10),
+            end_date: end.toISOString().slice(0, 10),
+            description: offset % 3 === 0
+              ? "Annual licences for the regulatory team."
+              : "Implementation and ongoing regulatory delivery.",
+          },
+        ],
+        engagement_versions: demoActivities(customer.id, offering.id),
+      });
+    }
+    customer.offering_usage = existingUsage;
+    customer.offerings_in_use = Array.from(
+      new Set([...(customer.offerings_in_use ?? []), ...existingUsage.map((usage) => usage.offering_id)])
+    );
+
+    const customerContacts = contacts.filter((contact) => contact.customer_id === customer.id);
+    for (let slot = customerContacts.length; slot < 5; slot += 1) {
+      const first = at(FILL_FIRST, customerIndex * 5 + slot);
+      const last = at(FILL_LAST, customerIndex * 7 + slot * 3);
+      const [title, bucket] = at(FILL_TITLES, customerIndex + slot);
+      const id = `cont-${customer.id}-extra-${slot + 1}`;
+      contacts.push({
+        id,
+        customer_id: customer.id,
+        full_name: `${first} ${last}`,
+        email: `${first.toLowerCase()}.${last.toLowerCase()}@${slug(customer.company_name)}.com`,
+        linkedin_url: `https://linkedin.com/in/${first.toLowerCase()}-${last.toLowerCase()}`,
+        phone: mockPhone(id),
+        job_title: title,
+        role_bucket: bucket,
+        career_summary: `${title} responsible for regulatory delivery at ${customer.company_name}.`,
+        enrichment_summary: "Key stakeholder for evaluation, implementation and rollout.",
+        raw_linkedin_data: {
+          about: `${title} at ${customer.company_name}.`,
+          experience: [{ title, company: customer.company_name, duration: "Present" }],
+          skills: ["Regulatory Strategy", "Operations", "Compliance"],
+        },
+        created_at: isoAt(35 + slot, id),
+        last_enriched_at: isoAt(4 + slot, id),
+      });
+    }
+
+    const allCustomerContacts = contacts.filter((contact) => contact.customer_id === customer.id);
+    const customerSessions = pitchSessions.filter((session) => session.customer_id === customer.id);
+    while (customerSessions.length < 2) {
+      const slot = customerSessions.length;
+      const contact = allCustomerContacts[slot % allCustomerContacts.length]!;
+      const session: PitchSession = {
+        id: `sess-${customer.id}-base-${slot + 1}`,
+        customer_id: customer.id,
+        contact_id: contact.id,
+        kb_version: 1,
+        recommended_services: MOCK_MATCHING_OUTPUT.recommended_services,
+        pitch_email: MOCK_PITCHES.pitch_email,
+        pitch_5min_script: MOCK_PITCHES.pitch_5min_script,
+        pitch_call_script: MOCK_PITCHES.pitch_call_script,
+        additional_context: "Prepared for the next account conversation using the latest customer context.",
+        review_status: at(["approved", "in_review", "draft", "changes_requested"] as const, customerIndex + slot),
+        reviewed_at: (customerIndex + slot) % 4 === 0 ? isoAt(3 + slot, customer.id) : null,
+        created_at: isoAt(12 + customerIndex % 45 + slot * 9, `${customer.id}-session-${slot}`),
+      };
+      pitchSessions.push(session);
+      customerSessions.push(session);
+    }
+
+    const customerInteractions = interactions.filter((interaction) => interaction.customer_id === customer.id);
+    while (customerInteractions.length < 3) {
+      const slot = customerInteractions.length;
+      const session = customerSessions[slot % customerSessions.length]!;
+      const outcome = at(
+        ["in_progress", "interested", "meeting_booked", "no_response"] as Outcome[],
+        customerIndex + slot
+      );
+      const interaction: Interaction = {
+        id: `int-${customer.id}-base-${slot + 1}`,
+        pitch_session_id: session.id,
+        customer_id: customer.id,
+        contact_id: session.contact_id,
+        outcome,
+        notes: at(FILL_NOTES, customerIndex + slot),
+        follow_up_date: iso(-(4 + ((customerIndex + slot) % 20))).slice(0, 10),
+        logged_by: at(SALES_TEAM, customerIndex + slot),
+        created_at: isoAt(2 + slot * 6 + customerIndex % 24, `${customer.id}-interaction-${slot}`),
+      };
+      interactions.push(interaction);
+      customerInteractions.push(interaction);
     }
   }
 
@@ -1087,7 +1234,7 @@ function seed(): MockStore {
    offerings (Anir, Sep 4: "it cant say 0. then whats the point of mock mode").
    Same rule as 6 and 7: the store is a cached file, so a seed change that is
    not accompanied by a bump reaches nobody. */
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 

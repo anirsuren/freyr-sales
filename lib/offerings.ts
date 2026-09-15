@@ -2921,7 +2921,7 @@ function showroomOfferings(): Offering[] {
  *  the fill on stores that are behind, and every write it makes is still
  *  conditional on the field being empty, so a bump can add what is missing
  *  and can never replace what somebody wrote. */
-const SHOWROOM_DEPTH_VERSION = 1;
+const SHOWROOM_DEPTH_VERSION = 2;
 
 /**
  * WHY THIS SECTION EXISTS.
@@ -3212,16 +3212,13 @@ function showroomStamp(key: string, index: number): string {
   return at.toISOString();
 }
 
-/** The sales library for one showroom offering. Deliberately uneven: a well
- *  worked offering carries a dozen files, a newer one carries two, and a few
- *  carry none at all, because an empty state is a real state and Anir has to
- *  be able to see one. */
+/** The sales library for one showroom offering. Every offering carries enough
+ *  material to exercise folders, filters, access levels, and scrolling; empty
+ *  states belong in focused component tests, not in the workspace demo. */
 function showroomMaterialsFor(offering: Offering): OfferingMaterial[] {
   const key = offering.id;
   const service = isServiceOfferingType(offering.offering_type);
-  /* One offering in eight stays empty on purpose. */
-  if (demoChance(12, key, "bare")) return [];
-  const wanted = demoInt(2, SHOWROOM_MATERIALS.length, key, "size");
+  const wanted = demoInt(8, SHOWROOM_MATERIALS.length, key, "size");
   const name = offering.offering_name;
   const out: OfferingMaterial[] = [];
   /* Rotate the starting point so two offerings of the same size do not carry
@@ -3298,9 +3295,6 @@ function showroomEmptyFolders(offering: Offering): string[] {
  *  an admin can still edit every offering. */
 function showroomOwnersFor(offering: Offering): OfferingOwner[] {
   const key = offering.id;
-  /* A quarter stay unowned, which is the state the "claim this offering"
-     prompt exists for. */
-  if (demoChance(25, key, "unowned")) return [];
   const count = demoInt(1, 3, key, "owners");
   const out: OfferingOwner[] = [];
   for (let i = 0; i < count; i++) {
@@ -3329,7 +3323,12 @@ function showroomComponentVersions(
   offering: Offering,
   components: FdlComponent[]
 ): { ids: string[]; versions: Record<string, string | null> } {
-  const ids = offering.component_ids ?? demoComponentsForOffering(offering.id);
+  const ids = Array.from(
+    new Set([
+      ...(offering.component_ids ?? []),
+      ...demoComponentsForOffering(offering.id),
+    ])
+  );
   const versions: Record<string, string | null> = {};
   ids.forEach((componentId, i) => {
     const component = components.find((c) => c.id === componentId);
@@ -3355,7 +3354,6 @@ function showroomComponentVersions(
  */
 function showroomOfferingHistory(offering: Offering): RoadmapVersion[] {
   const key = `${offering.id}:offering`;
-  if (demoChance(15, key, "nohistory")) return [];
   const releases = demoRoadmapForOffering(offering);
   const drafts: { changes: string[]; reason?: string; upTo: number }[] = [];
   releases.forEach((release, i) => {
@@ -3468,14 +3466,9 @@ function showroomAttachments(
   return out;
 }
 
-/**
- * THE EMPTY STATES, ON PURPOSE.
- *
- * A showroom where every single record is full teaches a reviewer nothing
- * about what the app does before anybody has filled anything in, and those
- * screens are the ones a new customer sees first. Three components that have a
- * version and no features yet, and two offerings that have nothing but a name.
- */
+/** Late catalogue additions. They still receive the same dense showroom
+ * treatment as every other component; mock mode must never use a deliberately
+ * hollow record to demonstrate an empty state. */
 function showroomBlankComponents(): FdlComponent[] {
   return [
     {
@@ -3483,9 +3476,10 @@ function showroomBlankComponents(): FdlComponent[] {
       name: "Signals Workbench",
       type: "Module",
       releases: [
-        { id: "fdl-show-901-r1", version: "V0.9", date: "2026-11-20", status: "next" },
+        { id: "fdl-show-901-r1", version: "V0.9", date: "2026-05-20", status: "released" },
+        { id: "fdl-show-901-r2", version: "V1.0", date: "2026-11-20", status: "next" },
       ],
-      features: [],
+      features: [{ id: "fdl-show-901-f1", fid: "S-90101", name: "Signal review workspace", description: "Triage and review regulatory signals in one shared workspace.", versionIds: ["fdl-show-901-r1", "fdl-show-901-r2"] }],
       roadmap_versions: [],
       created_at: "2026-08-14T09:20:00.000Z",
       created_by: "Hannah Schmidt",
@@ -3494,8 +3488,11 @@ function showroomBlankComponents(): FdlComponent[] {
       id: "fdl-show-902",
       name: "Renewals Agent",
       type: "Agent",
-      releases: [],
-      features: [],
+      releases: [
+        { id: "fdl-show-902-r1", version: "V1.0", date: "2026-04-10", status: "released" },
+        { id: "fdl-show-902-r2", version: "V1.1", date: "2026-12-04", status: "next" },
+      ],
+      features: [{ id: "fdl-show-902-f1", fid: "R-90201", name: "Renewal risk detection", description: "Flags renewal risk and gives account teams the evidence behind it.", versionIds: ["fdl-show-902-r1", "fdl-show-902-r2"] }],
       roadmap_versions: [],
       created_at: "2026-08-26T14:05:00.000Z",
       created_by: "Owen Fairweather",
@@ -3505,9 +3502,10 @@ function showroomBlankComponents(): FdlComponent[] {
       name: "Partner Portal",
       type: "Platform",
       releases: [
-        { id: "fdl-show-903-r1", version: "V1.0", date: "2027-01-15", status: "next" },
+        { id: "fdl-show-903-r1", version: "V0.8", date: "2026-06-15", status: "released" },
+        { id: "fdl-show-903-r2", version: "V1.0", date: "2027-01-15", status: "next" },
       ],
-      features: [],
+      features: [{ id: "fdl-show-903-f1", fid: "P-90301", name: "Partner workspace access", description: "Gives approved partners a controlled workspace for shared regulatory work.", versionIds: ["fdl-show-903-r1", "fdl-show-903-r2"] }],
       roadmap_versions: [],
       created_at: "2026-08-30T11:40:00.000Z",
       created_by: "Marcus Ellery",
@@ -3593,6 +3591,13 @@ function deepenShowroom(s: OfferingsStore): void {
   s.fdlComponents = s.fdlComponents ?? [];
   const components = s.fdlComponents;
 
+  for (const component of showroomBlankComponents()) {
+    if (!components.some((row) => row.id === component.id)) components.push(component);
+  }
+  for (const offering of showroomBlankOfferings()) {
+    if (!s.offerings.some((row) => row.id === offering.id)) s.offerings.push(offering);
+  }
+
   for (const component of components) {
     if (!component.id.startsWith("fdl-demo-") && !component.id.startsWith("fdl-show-")) {
       continue;
@@ -3607,7 +3612,7 @@ function deepenShowroom(s: OfferingsStore): void {
     /* FEATURE COUNTS THAT VARY. Every component carrying five or six rows made
        the grid look printed rather than filled in. The blueprint's own
        features always stay; these sit after them. */
-    const target = demoInt(0, 11, component.id, "extra");
+    const target = demoInt(8, 13, component.id, "extra");
     if (component.releases.length && target && component.features.length) {
       const releaseIds = component.releases.map((r) => r.id);
       const start = demoHash(component.id, "featstart") % SHOWROOM_EXTRA_FEATURES.length;
@@ -3656,10 +3661,6 @@ function deepenShowroom(s: OfferingsStore): void {
     }
   }
 
-  for (const blank of showroomBlankComponents()) {
-    if (!components.some((c) => c.id === blank.id)) components.push(blank);
-  }
-
   for (const offering of s.offerings) {
     /* TOP UP, DO NOT SKIP. Filling only the empty ones left Freya.Register —
        the first card on the page — holding the three sample assets it has had
@@ -3685,11 +3686,12 @@ function deepenShowroom(s: OfferingsStore): void {
     if (!offering.created_by) {
       offering.created_by = demoPick(SHOWROOM_PEOPLE, offering.id, "made").name;
     }
-    if (!offering.component_versions) {
-      const { ids, versions } = showroomComponentVersions(offering, components);
-      offering.component_ids = offering.component_ids ?? ids;
-      offering.component_versions = versions;
-    }
+    const { ids, versions } = showroomComponentVersions(offering, components);
+    offering.component_ids = ids;
+    offering.component_versions = {
+      ...versions,
+      ...(offering.component_versions ?? {}),
+    };
     if (!offering.roadmap_versions?.length) {
       offering.roadmap_versions = showroomOfferingHistory(offering);
     }
@@ -3732,9 +3734,6 @@ function deepenShowroom(s: OfferingsStore): void {
     offering.related_notes = notes;
   }
 
-  for (const blank of showroomBlankOfferings()) {
-    if (!s.offerings.some((o) => o.id === blank.id)) s.offerings.push(blank);
-  }
 }
 
 /**
@@ -3983,15 +3982,17 @@ function demoComponentsForOffering(offeringId: string): string[] {
   // 1, so digits alone handed the two offerings an identical package.
   let number = 0;
   for (const ch of offeringId) number = (number * 31 + ch.charCodeAt(0)) >>> 0;
-  // Two or three components each: the platform, one module, sometimes an
-  // agent — the shape Suren described for a real package.
-  const first = DEMO_COMPONENT_IDS[number % DEMO_COMPONENT_IDS.length];
-  const second =
-    DEMO_COMPONENT_IDS[(number * 3 + 1) % DEMO_COMPONENT_IDS.length];
-  const third = DEMO_COMPONENT_IDS[(number * 5 + 2) % DEMO_COMPONENT_IDS.length];
-  return Array.from(
-    new Set(number % 3 === 0 ? [first, second, third] : [first, second])
-  );
+  // Eight to twelve components per package gives the table enough depth to
+  // demonstrate grouping, scrolling, versions, and feature totals wherever a
+  // reviewer lands. The stride is odd and the catalogue length is fixed, so
+  // the walk does not collapse into repeated ids.
+  const wanted = 8 + (number % 5);
+  const ids: string[] = [];
+  for (let i = 0; ids.length < wanted && i < DEMO_COMPONENT_IDS.length; i++) {
+    const id = DEMO_COMPONENT_IDS[(number + i * 11) % DEMO_COMPONENT_IDS.length];
+    if (!ids.includes(id)) ids.push(id);
+  }
+  return ids;
 }
 
 

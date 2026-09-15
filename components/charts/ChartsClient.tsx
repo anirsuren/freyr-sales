@@ -2784,18 +2784,18 @@ export function LineChart({
                   </p>
                   {/* One plate, one row per series — the same "mark, name,
                       number" rhythm the breakdown rows below use. */}
-                  <div className="mt-2 space-y-1 rounded-lg bg-surface px-2.5 py-2">
+                  <div className="mt-2 space-y-1.5 rounded-lg bg-surface px-2.5 py-2">
                     {series.map((s) => (
                       <span
                         key={s.label}
-                        className="flex items-center gap-2 whitespace-nowrap text-[11.5px]"
+                        className="grid grid-cols-[10px_minmax(0,1fr)_auto] items-start gap-2 text-[11.5px]"
                       >
                         <span
                           className="h-2.5 w-2.5 shrink-0 rounded-sm"
                           style={{ background: s.color }}
                         />
-                        <span className="min-w-0 flex-1 text-text-secondary">{s.label}</span>
-                        <span className="shrink-0 font-semibold text-text-primary tnum">
+                        <span className="min-w-0 break-words leading-[1.3] text-text-secondary">{s.label}</span>
+                        <span className="font-semibold leading-[1.3] text-text-primary tnum">
                           {fmt(format, s.points[hi] ?? 0)}
                           {unit ? ` ${unit}` : ""}
                         </span>

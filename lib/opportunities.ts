@@ -20,6 +20,7 @@ import {
   type OpportunitiesState,
 } from "./opportunitiesShared";
 import { todayISO } from "@/lib/utils";
+import { MOCK_OFFERING_CATALOGUE } from "./offeringCatalogue";
 
 /**
  * OPPORTUNITIES — storage and operations.
@@ -31,6 +32,14 @@ import { todayISO } from "@/lib/utils";
  */
 
 const ROW_ID = "opportunities";
+
+function mockOfferingId(label: string | undefined): string | undefined {
+  const key = label?.trim().toLocaleLowerCase();
+  if (!key) return undefined;
+  return MOCK_OFFERING_CATALOGUE.find(
+    (offering) => offering.name.toLocaleLowerCase() === key
+  )?.id;
+}
 
 function activeRowId(): string {
   try {
@@ -405,8 +414,10 @@ function seededMock(): OpportunitiesState {
     const key = `${r.customer.trim().toLowerCase()}::${(r.offering ?? "").trim().toLowerCase()}`;
     const needsSuffix = (dupKey.get(key) ?? 0) > 1 && r.revenueType;
     const baseName = r.offering ? `${r.offering}. ${r.customer}` : r.customer;
+    const offeringId = mockOfferingId(r.offering);
     const line: OpportunityLine = {
       id: `seed-line-${n}-1`,
+      offeringId,
       offeringLabel: r.offering || undefined,
       revenueType: normalizeRevenueType(r.revenueType),
       value: r.value ?? 0,
@@ -420,7 +431,7 @@ function seededMock(): OpportunitiesState {
       externalId: r.externalId ?? undefined,
       name: needsSuffix ? `${baseName} (${r.revenueType})` : baseName,
       customer: r.customer,
-      offeringIds: [],
+      offeringIds: offeringId ? [offeringId] : [],
       offeringLabels: r.offering ? [r.offering] : [],
       lines: [line],
       level: normalizeLevel(r.level),
@@ -504,15 +515,17 @@ function seededMock(): OpportunitiesState {
   ];
   demoDeals.forEach((d, i) => {
     const k = i + 1;
+    const offeringId = mockOfferingId(d.offering);
     opportunities.push({
       id: `demo-opp-${k}`,
       name: `${d.offering}. ${d.customer}`,
       customer: d.customer,
-      offeringIds: [],
+      offeringIds: offeringId ? [offeringId] : [],
       offeringLabels: [d.offering],
       lines: [
         {
           id: `demo-line-${k}-1`,
+          offeringId,
           offeringLabel: d.offering,
           revenueType: normalizeRevenueType("OTS"),
           value: d.value,

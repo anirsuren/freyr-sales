@@ -22,6 +22,7 @@ import type { Lead } from "./leadsShared";
 import type { Meeting } from "./meetings";
 import type { SolutionRequest } from "./solutioning";
 import type { RecordTeam } from "./recordTeams";
+import { MOCK_OFFERING_CATALOGUE } from "./offeringCatalogue";
 
 /**
  * A WORKING LIFE FOR THE 140 GENERATED MOCK ACCOUNTS.
@@ -84,15 +85,7 @@ const SALES = SALES_TEAM;
  * catalogue order so a contract and the deal it closed name the same kind of
  * thing the Offerings module knows about.
  */
-const OFFERINGS = [
-  "Freya.Label", "Freya.Submit", "Freya.Register", "Freya.Artwork",
-  "Freya.Docs", "Freya.Intelligence", "Freya.RTQ", "Freya.Agents",
-  "Publishing", "Submissions Planning & Management", "Label Management",
-  "Artwork Management", "Regulatory Affairs Strategy", "Local Regulatory Affairs",
-  "Post-Approval Regulatory Affairs", "Regulatory Intelligence Services",
-  "Pharmacovigilance", "Medical Writing - Clinical",
-  "Compliance, Audit and Validation", "RIMS Data Services",
-];
+const OFFERINGS = MOCK_OFFERING_CATALOGUE;
 
 const DEAL_STATUSES = [
   "Qualify", "Pilot", "Propose", "Submitted to client", "Under review",
@@ -156,7 +149,7 @@ const pad = (n: number) => String(n).padStart(3, "0");
  * one, and each store sweeps rows of older generations out before laying the
  * new floor. Rows a person added by hand carry no fill prefix and survive.
  */
-export const FILL_GENERATION = 5;
+export const FILL_GENERATION = 6;
 const FP = `fill${FILL_GENERATION}-`;
 
 /** A generated row from an OLDER floor: swept on the next top-up. */
@@ -205,7 +198,8 @@ function profile(p: number) {
     second: at(SALES, i * 5 + 3),
     third: at(SALES, i * 7 + 9),
     contact: (slot: number) => mockFillContact(p, slot % 5),
-    offering: (k: number) => at(OFFERINGS, i * 3 + k),
+    offering: (k: number) => at(OFFERINGS, i * 3 + k).name,
+    offeringId: (k: number) => at(OFFERINGS, i * 3 + k).id,
     /* Rounded to the nearest thousand, like every other figure in the app. */
     money: (k: number) =>
       Math.round((base + ((i * 37 + k * 91) % spread)) / 1000) * 1000,
@@ -229,6 +223,7 @@ export function mockFillOpportunities(): Opportunity[] {
     const count = at(DEALS, a.i);
     for (let k = 0; k < count; k += 1) {
       const offering = a.offering(k);
+      const offeringId = a.offeringId(k);
       const value = a.money(k);
       const confidence = at(CONFIDENCE, a.i + k);
       const signs = day(30 + ((a.i * 11 + k * 23) % 400));
@@ -239,11 +234,12 @@ export function mockFillOpportunities(): Opportunity[] {
         name: `${offering}. ${a.company}`,
         customer: a.company,
         customerId: a.customerId,
-        offeringIds: [],
+        offeringIds: [offeringId],
         offeringLabels: [offering],
         lines: [
           {
             id: `${FP}line-${pad(p)}-${k + 1}`,
+            offeringId,
             offeringLabel: offering,
             revenueType: normalizeRevenueType(k % 2 === 0 ? "OTS" : "ARR"),
             value,

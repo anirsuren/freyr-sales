@@ -40,6 +40,51 @@ export const OFFERING_CATALOGUE_ORDER: string[] = [
   "Compliance, Audit and Validation",
   "Medical & Scientific Communication",
   "RIMS Data Services",
+  "Agent.Via",
+  "Agent.Ria",
+];
+
+/** Additional catalogue rows that exist only in the mock showroom. Kept in
+ * this zero-import module so every mock generator can attach customers, deals,
+ * contracts, and activity to the same offering names and ids. */
+export const MOCK_SHOWROOM_OFFERING_ORDER: string[] = [
+  "Freya.Register for Devices",
+  "Freya.Register for Consumer Products",
+  "Freya.Portfolio",
+  "Freya.Register + Mia + Cia",
+  "Freya.Submit for Small Filers",
+  "Freya.Publish",
+  "Freya.Archive",
+  "Dossier Remediation",
+  "Freya.Intelligence for Devices",
+  "Freya.Horizon",
+  "Regulatory Intelligence Managed Service",
+  "Freya.Label for Generics",
+  "Freya.Artwork + Via",
+  "ePI and Structured Content",
+  "Artwork Studio Managed Service",
+  "Freya Fusion Enterprise",
+  "Freya Fusion Starter",
+  "Agent.Cia",
+  "Agent.Fia",
+  "Freya Fusion + Add-on Agent Pack",
+  "Market Entry Strategy",
+  "Clinical Trial Applications",
+  "Pharmacovigilance Operations",
+  "Compliance and Audit Readiness",
+];
+
+export const MOCK_OFFERING_CATALOGUE: { id: string; name: string }[] = [
+  ...OFFERING_CATALOGUE_ORDER.map((name, index) => ({
+    id: `of-${String(index + 1).padStart(3, "0")}`,
+    name,
+  })),
+  ...MOCK_SHOWROOM_OFFERING_ORDER.map((name, index) => ({
+    id: `of-show-${String(index + 1).padStart(3, "0")}`,
+    name,
+  })),
+  { id: "of-show-901", name: "Freya.Signals" },
+  { id: "of-show-902", name: "Renewals Managed Service" },
 ];
 
 /** The market that means "everywhere". */

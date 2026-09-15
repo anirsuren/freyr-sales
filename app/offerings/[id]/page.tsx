@@ -241,13 +241,28 @@ export default async function OfferingDetailPage({
       ).opportunities
         .filter((deal: OpportunityRecord) => {
           if ((deal.offeringIds ?? []).includes(raw.id)) return true;
-          return (deal.lines ?? []).some((l) => l.offeringId === raw.id);
+          const offeringName = raw.offering_name.trim().toLocaleLowerCase();
+          if (
+            (deal.offeringLabels ?? []).some(
+              (label) => label.trim().toLocaleLowerCase() === offeringName
+            )
+          ) return true;
+          return (deal.lines ?? []).some(
+            (line) =>
+              line.offeringId === raw.id ||
+              line.offeringLabel?.trim().toLocaleLowerCase() === offeringName
+          );
         })
         .map((deal: OpportunityRecord) => {
           /* When the deal has a row for THIS offering, that row's own numbers
              are the truthful ones — a multi-row legacy deal's top-line value
              covers offerings this page is not about. */
-          const line = (deal.lines ?? []).find((l) => l.offeringId === raw.id);
+          const offeringName = raw.offering_name.trim().toLocaleLowerCase();
+          const line = (deal.lines ?? []).find(
+            (row) =>
+              row.offeringId === raw.id ||
+              row.offeringLabel?.trim().toLocaleLowerCase() === offeringName
+          );
           return {
             id: deal.id,
             name: deal.name,

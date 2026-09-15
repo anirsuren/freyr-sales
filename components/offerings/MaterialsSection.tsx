@@ -639,13 +639,6 @@ export function MaterialsSection({
         canonicalMaterialFolder(material),
     };
   });
-  // How many of the rows an OWNER is looking at are invisible to everyone
-  // else. Counted from the rows themselves, not from what the filter removed:
-  // for an owner nothing is removed, which is exactly when this line needs to
-  // be said out loud.
-  const hiddenTraining = canEdit
-    ? materials.filter((m) => !isSalesVisible(m)).length
-    : 0;
   const folders = useMemo(
     () => allFolders(mine, materialFolders, offeringType),
     [mine, materialFolders]
@@ -1021,13 +1014,6 @@ export function MaterialsSection({
                 </>
               )}
             </>
-          )}
-          {hiddenTraining > 0 && (
-            <span className="text-text-tertiary">
-              {" "}
-              · <span className="tnum">{hiddenTraining}</span> training{" "}
-              {hiddenTraining === 1 ? "file" : "files"} hidden from sales
-            </span>
           )}
         </p>
         {anyFilter && (

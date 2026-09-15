@@ -512,7 +512,7 @@ export default async function ReportsPage() {
                       <td className="px-5 py-3 text-[13px] font-semibold whitespace-nowrap">
                         <HoverCard
                           side="right"
-                          width={430}
+                          width={500}
                           delayMs={0}
                           content={
                             <div>
@@ -530,7 +530,7 @@ export default async function ReportsPage() {
                                   </p>
                                 </div>
                               </div>
-                              <div className="mt-3 grid grid-cols-[minmax(0,1fr)_120px] gap-4">
+                              <div className="mt-3 grid grid-cols-[minmax(0,1fr)_104px] gap-4">
                                 <div>
                                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                                     Revenue by customer
@@ -539,8 +539,8 @@ export default async function ReportsPage() {
                                     <div className="flex items-center gap-2.5">
                                       <DonutChart
                                         segments={insight.customerSegments}
-                                        size={82}
-                                        thickness={10}
+                                        size={76}
+                                        thickness={7}
                                         centerLabel={formatMoney(o.revenue)}
                                         centerSub="booked"
                                         format="money"
@@ -551,8 +551,9 @@ export default async function ReportsPage() {
                                         total={o.revenue}
                                         format="money"
                                         showValues={false}
+                                        bars={false}
                                         syncId={`report-offering-${o.offering_id}`}
-                                        className="min-w-0 text-[9.5px]"
+                                        className="min-w-0 flex-1 text-[9.5px]"
                                       />
                                     </div>
                                   ) : (
