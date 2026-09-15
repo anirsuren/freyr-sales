@@ -25,18 +25,18 @@ import type { RecordTeam } from "./recordTeams";
 import { MOCK_OFFERING_CATALOGUE } from "./offeringCatalogue";
 
 /**
- * A WORKING LIFE FOR THE 140 GENERATED MOCK ACCOUNTS.
+ * A WORKING LIFE FOR THE GENERATED MOCK ACCOUNTS.
  *
  * Anir, Sep 2, on /mock-mode/customers/cust-fill-140: "im in mock mode trying
  * to see how everything would look and ur making this so difficult for me.
  * like how many times do i have to say this we need to have mock data what is
  * wrong with you." Every tab on that account read zero.
  *
- * WHY IT READ ZERO. lib/mock-db generates 140 accounts with contacts, pitch
+ * WHY IT READ ZERO. lib/mock-db generates accounts with contacts, pitch
  * sessions and interactions, and that part was fine. The customer page's tabs
  * come from six OTHER stores, and each of those seeded only the hand-named
  * demo cast (Cortexa, Helix, Aether and about a dozen more). So a dozen
- * accounts looked full and the 140 he actually clicks through were empty.
+ * accounts looked full and the generated accounts he clicked were empty.
  *
  * Then, the same day: "i need there to be hundreds of data points in total
  * down every rabbit hole for every single page so in mock mode ppl can see
@@ -61,12 +61,8 @@ import { MOCK_OFFERING_CATALOGUE } from "./offeringCatalogue";
  * number, the way lib/mock-db does it. Two reads of a page must never
  * disagree and a reload must not reshuffle what he is looking at.
  *
- * ONE SET PER COMPANY NAME, NOT PER ACCOUNT. See lib/mockFillCast: the 140
- * accounts carry only 70 distinct names, and buildCustomer360 matches records
- * by id OR by name, so anything generated for account 1 also lands on account
- * 71. Generating both would show each account the union of its own work and
- * its twin's, with meetings naming people who are not on the account you are
- * looking at. Everything here is keyed by fillPairIndex.
+ * ONE SET PER COMPANY. See lib/mockFillCast: every generated account and
+ * person is unique, and all related stores derive from the same identifiers.
  *
  * INVENTED PEOPLE ONLY. Customer-side names come from lib/mockFillCast, which
  * is the same cast the contacts tab renders. Our side is the mock sales floor
@@ -127,13 +123,14 @@ const DOC_FILES = [
    tabs: "make sure on every page u have enough data on all of these. it cant
    say 0. then whats the point of mock mode"). The zeros were his OWN earlier
    ask — "a few genuinely empty, because an empty state is a real state" — and
-   the newer instruction wins. Variety survives as busy-versus-quiet (7 deals
-   against 2), never as empty.
+   the newer instruction wins. Variety survives as busy-versus-quiet (three
+   deals against one), never as empty.
 
-   Solutioning now creates all four shelves per deal; meetings create past and
-   upcoming context per deal; contracts create one lifecycle record per deal. */
-const DEALS = [5, 3, 6, 4, 7, 3, 5, 2, 6, 4, 7];
-const LEADS = [3, 1, 1, 2, 1, 3, 2];
+   Solutioning creates a request plus one downstream item per deal; meetings
+   create one useful engagement per deal; contracts create one lifecycle
+   record per deal. */
+const DEALS = [1, 2, 2, 3, 1, 2, 1, 2];
+const LEADS = [1, 2, 1, 2, 3, 1];
 
 const at = <T,>(list: T[], n: number): T => list[((n % list.length) + list.length) % list.length]!;
 const pad = (n: number) => String(n).padStart(3, "0");
@@ -149,7 +146,7 @@ const pad = (n: number) => String(n).padStart(3, "0");
  * one, and each store sweeps rows of older generations out before laying the
  * new floor. Rows a person added by hand carry no fill prefix and survive.
  */
-export const FILL_GENERATION = 6;
+export const FILL_GENERATION = 7;
 const FP = `fill${FILL_GENERATION}-`;
 
 /** A generated row from an OLDER floor: swept on the next top-up. */
@@ -176,6 +173,13 @@ const month = (offset: number) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 };
 
+/** First deal position for an account in the compact generated pipeline. */
+const dealOffset = (accountIndex: number) =>
+  Array.from({ length: accountIndex }, (_, index) => DEALS[index % DEALS.length]!).reduce(
+    (total, count) => total + count,
+    0
+  );
+
 /**
  * Everything the six generators need to agree about one company: who owns it,
  * what it buys, what its deals are worth, and who works there. Money follows
@@ -184,6 +188,7 @@ const month = (offset: number) => {
  */
 function profile(p: number) {
   const i = p - 1;
+  const offeringOffset = dealOffset(i);
   /* The size tier lib/mock-db put on the account, same arithmetic. */
   const size = ["small", "mid", "large"][i % 3]!;
   const base = size === "large" ? 320_000 : size === "mid" ? 120_000 : 40_000;
@@ -198,15 +203,17 @@ function profile(p: number) {
     second: at(SALES, i * 5 + 3),
     third: at(SALES, i * 7 + 9),
     contact: (slot: number) => mockFillContact(p, slot % 5),
-    offering: (k: number) => at(OFFERINGS, i * 3 + k).name,
-    offeringId: (k: number) => at(OFFERINGS, i * 3 + k).id,
+    /* Consecutive deal positions cover the whole catalogue once before they
+       repeat, so every offering page has a believable linked opportunity. */
+    offering: (k: number) => at(OFFERINGS, offeringOffset + k).name,
+    offeringId: (k: number) => at(OFFERINGS, offeringOffset + k).id,
     /* Rounded to the nearest thousand, like every other figure in the app. */
     money: (k: number) =>
       Math.round((base + ((i * 37 + k * 91) % spread)) / 1000) * 1000,
   };
 }
 
-/** Every distinct fill company, 1..70. */
+/** Every distinct generated company. */
 const names = () => Array.from({ length: FILL_NAMES }, (_, k) => k + 1);
 
 /* --------------------------------------------------------- opportunities */
@@ -447,14 +454,14 @@ export function mockFillMeetings(): Meeting[] {
   for (const p of names()) {
     const a = profile(p);
     const deals = dealRefs(p);
-    /* Two meetings per deal give every detail page both history and a next
-       engagement instead of leaving later opportunities with an empty tab. */
-    for (let k = 0; k < deals.length * 2; k += 1) {
-      const deal = deals[Math.floor(k / 2)]!;
+    /* One meeting per deal keeps every detail page populated without making a
+       modest pipeline imply hundreds of meetings. */
+    for (let k = 0; k < deals.length; k += 1) {
+      const deal = deals[k]!;
       /* Two people from the account, both real contacts on it. */
       const c1 = a.contact(k);
       const c2 = a.contact(k + 2);
-      const held = k % 2 === 0;
+      const held = (a.i + k) % 3 !== 0;
       const when = held ? -(4 + ((a.i * 3 + k) % 70)) : 6 + ((a.i + k) % 45);
       const owner = k % 2 === 0 ? a.owner : a.second;
       const presenter = k % 2 === 0 ? a.second : a.third;
@@ -559,15 +566,17 @@ export function mockFillSolutioning(): SolutionRequest[] {
   for (const p of names()) {
     const a = profile(p);
     const deals = dealRefs(p);
-    /* Four records per deal, one for every shelf rendered on an opportunity:
-       solution request, submission, presentation and meeting request. */
-    for (let k = 0; k < deals.length * 4; k += 1) {
-      const deal = deals[Math.floor(k / 4)]!;
+    /* A request plus one downstream item per deal keeps every opportunity
+       useful while the global list still covers submissions, presentations
+       and meeting support. Four synthetic records on every single deal made
+       the workspace four times larger than the pipeline justified. */
+    for (let k = 0; k < deals.length * 2; k += 1) {
+      const dealIndex = Math.floor(k / 2);
+      const deal = deals[dealIndex]!;
       const c1 = a.contact(k + 1);
-      /* All four shelves get filled: a request, the submission it became, a
-         presentation, and an ask for a meeting. Each is a separate object,
-         which is the distinction Suren drew on Aug 26. */
-      const shelf = k % 4;
+      /* The first row is the request. The connected row rotates across the
+         three downstream kinds so every global page has a healthy spread. */
+      const shelf = k % 2 === 0 ? 0 : 1 + ((a.i + dealIndex) % 3);
       const isRequest = shelf === 0 || shelf === 3;
       const kind = (shelf === 3 ? "meeting" : shelf === 2 ? "presentation" : "submission") as
         SolutionRequest["kind"];

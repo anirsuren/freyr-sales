@@ -7,6 +7,7 @@
 // app's seeded customers/deals/sessions. Campaigns a user creates at runtime
 // keep honest zeros until the channel connects.
 import { getDataMode } from "./dataMode";
+import { FILL_ACCOUNTS } from "./mockFillCast";
 
 export type CampaignStatus = "draft" | "queued" | "sent";
 export type CampaignObjective = "pipeline" | "awareness" | "event_follow_up" | "expansion";
@@ -172,7 +173,7 @@ function generatedCampaigns(d: (days: number) => string): Campaign[] {
   /* Recipients come from the generated contact book, so every name on a
      campaign opens a contact page that exists. */
   const contactAt = (k: number) =>
-    `cont-fill-${String((k % 140) + 1).padStart(3, "0")}-${(k % 5) + 1}`;
+    `cont-fill-${String((k % FILL_ACCOUNTS) + 1).padStart(3, "0")}-${(k % 5) + 1}`;
   const OWNERS = [
     "Walter Hensley", "Gordon Ashby", "Margaret Whitfield", "Mark Miller",
     "Eleanor Rutherford", "Marcus Bramwell", "Sylvia Ashcroft",
@@ -182,7 +183,7 @@ function generatedCampaigns(d: (days: number) => string): Campaign[] {
        where most of the history is behind you. */
     const status: CampaignStatus =
       i % 9 === 7 ? "queued" : i % 9 === 8 ? "draft" : "sent";
-    const size = 18 + ((i * 13) % 62);
+    const size = 8 + ((i * 7) % 17);
     const recipients = Array.from({ length: size }, (_, k) =>
       contactAt(i * 37 + k * 3)
     );

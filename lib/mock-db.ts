@@ -5,11 +5,10 @@ import {
 } from "./offeringCatalogue";
 import {
   FILL_ACCOUNTS,
-  FILL_FIRST,
-  FILL_LAST,
   FILL_STEMS,
   FILL_SUFFIX,
   mockFillContact,
+  mockPersonName,
 } from "./mockFillCast";
 import { dirname, join } from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -69,7 +68,7 @@ declare global {
  * pinned to the demo component/release ids seeded in lib/offerings.
  */
 /** Every showroom component an account can be running. The demo fourteen plus
- *  the showroom catalogue in lib/offerings — without the second set, 140
+ *  the showroom catalogue in lib/offerings — without the second set, all
  *  accounts shared fourteen components between them and every Digital
  *  components tab looked like the last one. */
 const DEMO_ESTATE_IDS = [
@@ -115,7 +114,7 @@ function demoComponentLinks(accountId: string) {
  *
  * The lists themselves now live in lib/mockFillCast, because the deal,
  * contract, lead, meeting and solutioning stores had to generate work against
- * these same 140 accounts and importing this module into each of them would
+ * these same generated accounts and importing this module into each of them would
  * have pulled the whole fs-backed store and the Anthropic SDK along with it.
  * Still one derivation; re-exported here so lib/voice keeps its import.
  */
@@ -733,7 +732,7 @@ function seed(): MockStore {
     "Freyr Agent", "Walter Hensley", "Gordon Ashby", "Margaret Whitfield",
     "Eleanor Rutherford", "Marcus Bramwell",
   ];
-  for (let i = 0; i < 72; i += 1) {
+  for (let i = 0; i < Math.floor(FILL_ACCOUNTS / 2); i += 1) {
     /* Every other generated account, so an enrolled account is a minority of
        the book rather than all of it — which is what makes the "candidates
        to enrol" count on the same page mean anything. */
@@ -799,8 +798,8 @@ function seed(): MockStore {
   const at = <T,>(list: T[], n: number): T => list[n % list.length]!;
   const fillSlug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
-  /* 140 accounts is roughly what a regional team carries, and it is enough for
-     a table to page, a group total to mean something and search to matter. */
+  /* A few dozen accounts are enough for paging, grouping and search without
+     multiplying every connected module into hundreds of synthetic rows. */
   for (let i = 0; i < FILL_ACCOUNTS; i += 1) {
     const n = i + 1;
     const company = `${at(FILL_STEMS, i)} ${at(FILL_SUFFIX, i * 3 + 1)}`;
@@ -831,11 +830,11 @@ function seed(): MockStore {
       analyzed_at: created,
       /* AN ACTIVITY LADDER ON EVERY FILL ACCOUNT (Anir, Sep 4: "it cant say
          0. then whats the point of mock mode"). The long tail carried no
-         offering_usage at all, so the Activity tab on all 140 of the accounts
+         offering_usage at all, so the Activity tab on all generated accounts
          he actually clicks through read "Activity 0" while the hand-written
          demo cast read full. Same generator the demo cast uses, two or three
          catalogue offerings per account, cycled so neighbours differ. */
-      offering_usage: Array.from({ length: 5 + (i % 3) }, (_, k) => {
+      offering_usage: Array.from({ length: 3 + (i % 3) }, (_, k) => {
         const oid = DEMO_OFFERING_IDS[(i + k * 3) % DEMO_OFFERING_IDS.length]!;
         const revenueType = (["license", "annual_service", "project", "annual"] as const)[
           (i + k) % 4
@@ -871,7 +870,7 @@ function seed(): MockStore {
         };
       }),
       offerings_in_use: Array.from(
-        { length: 5 + (i % 3) },
+        { length: 3 + (i % 3) },
         (_, k) => DEMO_OFFERING_IDS[(i + k * 3) % DEMO_OFFERING_IDS.length]!
       ),
     } as (typeof customers)[number]);
@@ -879,14 +878,13 @@ function seed(): MockStore {
     /* FIVE PEOPLE PER ACCOUNT. A contact list with one name on it cannot show
        who else is in the room, which is the whole point of the tab. */
     for (let k = 0; k < 5; k += 1) {
-      const first = at(FILL_FIRST, i * 5 + k);
-      const last = at(FILL_LAST, i * 7 + k * 3);
+      const person = mockFillContact(n, k);
       const [title, bucket] = at(FILL_TITLES, i + k);
       contacts.push({
-        id: `cont-fill-${String(n).padStart(3, "0")}-${k + 1}`,
+        id: person.id,
         customer_id: cid,
-        full_name: `${first} ${last}`,
-        email: `${first.toLowerCase()}.${last.toLowerCase()}@${fillSlug(company)}.example`,
+        full_name: person.name,
+        email: `${fillSlug(person.name)}@${fillSlug(company)}.example`,
         linkedin_url: null,
         phone: null,
         job_title: title,
@@ -962,7 +960,7 @@ function seed(): MockStore {
   /**
    * AND ACTIVITY AGAINST THEM.
    *
-   * The fill loop created 140 accounts and 94 drafts but logged NOTHING, so
+   * The fill loop created the account book and drafts but logged NOTHING, so
    * every generated deal sat in Prospect with no last-activity date and the
    * whole workspace ran on the ten hand-written interactions. That is what
    * made the dashboard's outcome mix a five-slice donut, the activity feed
@@ -1055,7 +1053,7 @@ function seed(): MockStore {
     ["autopilot", "mixed", "Autopilot cleared the queue", "Drafted the overnight queue and escalated the one that needed a decision."],
     ["plan", "handled", "Built the account plan", "Pulled the history, the offerings in play and the open risks into one plan."],
   ];
-  for (let i = 0; i < 46; i += 1) {
+  for (let i = 0; i < Math.ceil(FILL_ACCOUNTS / 2); i += 1) {
     /* Every third fill account, so the leaderboard spans a couple of dozen
        companies instead of one. */
     const n = i * 3 + 1;
@@ -1102,7 +1100,7 @@ function seed(): MockStore {
 
     const existingUsage = customer.offering_usage ?? [];
     const usageIds = new Set(existingUsage.map((usage) => usage.offering_id));
-    const usageTarget = 6 + (customerIndex % 3);
+    const usageTarget = 4 + (customerIndex % 2);
     for (let offset = 0; existingUsage.length < usageTarget; offset += 1) {
       const offering = MOCK_OFFERING_CATALOGUE[
         (customerIndex * 5 + offset * 7) % MOCK_OFFERING_CATALOGUE.length
@@ -1139,16 +1137,15 @@ function seed(): MockStore {
 
     const customerContacts = contacts.filter((contact) => contact.customer_id === customer.id);
     for (let slot = customerContacts.length; slot < 5; slot += 1) {
-      const first = at(FILL_FIRST, customerIndex * 5 + slot);
-      const last = at(FILL_LAST, customerIndex * 7 + slot * 3);
+      const fullName = mockPersonName(FILL_ACCOUNTS * 5 + customerIndex * 5 + slot);
       const [title, bucket] = at(FILL_TITLES, customerIndex + slot);
       const id = `cont-${customer.id}-extra-${slot + 1}`;
       contacts.push({
         id,
         customer_id: customer.id,
-        full_name: `${first} ${last}`,
-        email: `${first.toLowerCase()}.${last.toLowerCase()}@${slug(customer.company_name)}.com`,
-        linkedin_url: `https://linkedin.com/in/${first.toLowerCase()}-${last.toLowerCase()}`,
+        full_name: fullName,
+        email: `${slug(fullName)}@${slug(customer.company_name)}.com`,
+        linkedin_url: `https://linkedin.com/in/${slug(fullName)}`,
         phone: mockPhone(id),
         job_title: title,
         role_bucket: bucket,
@@ -1238,16 +1235,16 @@ function seed(): MockStore {
 // a snapshot written before that must be reseeded rather than loaded.
 /* Bumped when the seed changes shape or volume — the store is cached to disk
    under node_modules/.cache, so without this a new seed never runs and the
-   workspace stays at whatever it was first built as. Anir, Aug 31: the 140
-   generated accounts landed in the code and not one of them reached a page. */
+   workspace stays at whatever it was first built as. Anir, Aug 31: generated
+   accounts landed in the code and not one of them reached a page. */
 /* 7: the generated accounts now log activity, carry a review state on their
    drafts and have a run history behind them. Without a bump the cached store
-   keeps its silent 140 accounts and none of that reaches a page either. */
+   keeps its silent old accounts and none of that reaches a page either. */
 /* 9: every fill account carries an activity ladder on two or three catalogue
    offerings (Anir, Sep 4: "it cant say 0. then whats the point of mock mode").
    Same rule as 6 and 7: the store is a cached file, so a seed change that is
    not accompanied by a bump reaches nobody. */
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 

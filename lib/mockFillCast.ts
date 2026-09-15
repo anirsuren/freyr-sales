@@ -4,7 +4,7 @@
  * These arrays and the two derivations below used to sit inside lib/mock-db,
  * which is fine while the customer store is the only thing that needs them.
  * The moment the deal, contract, lead, meeting and solutioning stores had to
- * generate work against the same 140 accounts (Anir, Sep 2: "im in mock mode
+ * generate work against the same account book (Anir, Sep 2: "im in mock mode
  * trying to see how everything would look... we need to have mock data"), six
  * more modules needed the same names, and importing lib/mock-db into each of
  * them would have dragged the Anthropic SDK and the fs-backed store in behind
@@ -46,30 +46,22 @@ export const FILL_LAST = [
   "Doyle", "Nowak", "Fischer", "Almeida", "Kaur", "Nakamura", "Olsen", "Ruiz",
 ];
 
-/** How many generated accounts lib/mock-db puts behind the hand-written cast. */
-export const FILL_ACCOUNTS = 140;
+/**
+ * A realistic regional account book behind the twelve hand-written showrooms.
+ * Thirty-six makes customer search, grouping and pagination meaningful without
+ * turning every downstream module into hundreds or thousands of synthetic rows.
+ */
+export const FILL_ACCOUNTS = 36;
 
 /**
- * SEVENTY NAMES ACROSS ONE HUNDRED AND FORTY ACCOUNTS.
- *
- * The company name is `stem[i % 35]` + `suffix[(3i + 1) % 10]`, so it repeats
- * every lcm(35, 10) = 70 accounts: cust-fill-001 and cust-fill-071 are both
- * "Aventis Therapeutics". That is how lib/mock-db has always generated them.
- *
- * It matters here because buildCustomer360 matches a record to an account by
- * id OR by customer NAME, so anything generated for account 1 lands on
- * account 71 as well whatever id it carries. Generating a separate working
- * life for each of the 140 would therefore show every account the union of
- * its own rows and its twin's, with meetings naming contacts who are not on
- * the account you are looking at.
- *
- * So the work is generated once per NAME, keyed by this index, and both
- * accounts that share the name show that one set. Everything downstream keys
- * off `fillPairIndex`, never off the raw account number.
+ * ONE NAME PER ACCOUNT. The old 140-row generator repeated its 70 company
+ * names, so separate account records appeared to be duplicates and name-based
+ * joins combined their work. The current book is deliberately small enough
+ * for this derivation to remain unique.
  */
-export const FILL_NAMES = 70;
+export const FILL_NAMES = FILL_ACCOUNTS;
 
-/** Which of the 70 distinct companies an account is. 1-based, like the id. */
+/** Which distinct company an account is. 1-based, like the id. */
 export function fillPairIndex(account: number): number {
   return ((account - 1) % FILL_NAMES) + 1;
 }
@@ -87,12 +79,29 @@ export function fillCompany(account: number): string {
   return `${at(FILL_STEMS, i)} ${at(FILL_SUFFIX, i * 3 + 1)}`;
 }
 
+/**
+ * A globally unique invented person for each ordinal in the mock directory.
+ *
+ * The previous stride arithmetic produced only 150-ish combinations for 700+
+ * contacts, which is how six unrelated companies all acquired "Aisha Berg".
+ * A first/last Cartesian index gives 900 distinct base names. A deterministic
+ * middle initial also keeps these generated people distinct from the small
+ * hand-written showroom cast while still reading like ordinary names.
+ */
+export function mockPersonName(ordinal: number): string {
+  const safe = Math.max(0, Math.floor(ordinal));
+  const first = FILL_FIRST[safe % FILL_FIRST.length]!;
+  const last = FILL_LAST[Math.floor(safe / FILL_FIRST.length) % FILL_LAST.length]!;
+  const middle = String.fromCharCode(65 + ((safe * 7 + 11) % 26));
+  return `${first} ${middle}. ${last}`;
+}
+
 /** `account` is 1-based (cust-fill-001 is account 1); `slot` is 0-4. */
 export function mockFillContact(account: number, slot: number) {
-  const i = account - 1;
+  const ordinal = (account - 1) * 5 + slot;
   return {
     id: `cont-fill-${String(account).padStart(3, "0")}-${slot + 1}`,
-    name: `${at(FILL_FIRST, i * 5 + slot)} ${at(FILL_LAST, i * 7 + slot * 3)}`,
+    name: mockPersonName(ordinal),
     company: fillCompany(account),
   };
 }

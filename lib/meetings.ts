@@ -320,7 +320,7 @@ async function writeRow(state: MeetingsState): Promise<void> {
  * emptied on purpose stays empty.
  */
 /**
- * THE 140 GENERATED ACCOUNTS GET meetings, ONCE.
+ * THE GENERATED ACCOUNTS GET meetings, ONCE.
  *
  * Anir, Sep 2, on cust-fill-140: every tab read zero, because the samples
  * above only ever covered the hand-named demo cast. Appended rather than
@@ -666,7 +666,7 @@ export function groupMeetingsByPeriod(
  * of the originals — the moment somebody makes or edits a meeting of their
  * own, this stops touching anything.
  */
-const SAMPLE_VERSION = 5;
+const SAMPLE_VERSION = 6;
 
 function isStaleSeed(raw: unknown): boolean {
   const row = raw as { meetings?: unknown[]; sampleVersion?: number } | null;
@@ -918,10 +918,10 @@ function sampleMeetings(): MeetingsState {
    * only touch five deals, so every other opportunity read "Meetings 0" — the
    * one empty shelf again, just further down.
    *
-   * These are generated straight off the mock pipeline, so every deal has been
-   * met about: three held with an outcome and a comment, one still coming up.
-   * Deterministic from the row index, like everything else in mock, so two
-   * reads never disagree and a screenshot stays true.
+   * These are generated straight off the mock pipeline, so every deal has one
+   * relevant meeting. Most are completed and some are planned, which keeps
+   * both views populated without turning 76 opportunities into 304 meetings.
+   * Deterministic from the row index, like everything else in mock.
    */
   const TYPES: MeetingType[] = [
     "Discovery",
@@ -940,8 +940,8 @@ function sampleMeetings(): MeetingsState {
   SEED_OPPORTUNITIES.forEach((row, i) => {
     const dealId = `seed-opp-${i + 1}`;
     const offering = row.offering || "Regulatory services";
-    for (let k = 0; k < 4; k += 1) {
-      const held = k < 3;
+    for (let k = 0; k < 1; k += 1) {
+      const held = i % 4 !== 0;
       const owner = at(SELLERS, i + k);
       const solver = at(SOLVERS, i + k);
       ref += 1;

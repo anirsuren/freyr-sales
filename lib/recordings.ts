@@ -5,6 +5,7 @@
 // passes — matching the rest of the seeded data. Formatted in UTC by hand so the
 // string is identical on the server and the client (no hydration mismatch) and
 // independent of the viewer's timezone.
+import { FILL_ACCOUNTS, mockFillContact } from "./mockFillCast";
 const _MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -51,30 +52,16 @@ export interface Recording {
  * The hand-written recordings above stay: they carry real coaching notes and
  * quoted key moments, and they are what the analytics pages read when they
  * want something with substance in it. These fill the list out behind them so
- * a rep's recordings page looks like a quarter of calls rather than four.
+ * a rep's recordings page looks like a useful month of calls rather than four.
  *
  * Deterministic from the index — no randomness, no clock — so two reads agree
  * and a screenshot stays true. Invented accounts and invented people only.
  */
 function generatedRecordings(): Recording[] {
-  const COMPANIES = [
-    "Cortexa Biopharma", "Helix Biologics", "Aether Medical Devices",
-    "Quantum Oncology", "Northwind Biosciences", "NovaGene Therapeutics",
-    "Meridian Pharmaceuticals", "Orion Vaccines", "BioNex Therapeutics",
-    "Solvance Pharma", "Solara Consumer Health", "Baltic Bio",
-    "Ventura Health", "Adriatic Pharma", "Sakura Therapeutics",
-    "Altamira Labs", "Verdant Biosciences", "Kestrel Therapeutics",
-  ];
-  const PEOPLE: [string, string][] = [
-    ["Lena Vogt", "SVP Global Regulatory"],
-    ["Owen Bradley", "VP Regulatory Affairs"],
-    ["Priya Nair", "Director, RIM"],
-    ["Tomas Lindqvist", "Regulatory Manager"],
-    ["Ana Sousa", "Head of Submissions"],
-    ["Marco Bianchi", "Chief Medical Officer"],
-    ["Yuki Tanaka", "Regulatory Lead"],
-    ["Ruth Okafor", "Head of Labelling"],
-    ["Diego Moreno", "Programme Director"],
+  const CONTACT_TITLES = [
+    "SVP Global Regulatory", "VP Regulatory Affairs", "Director, RIM",
+    "Regulatory Manager", "Head of Submissions", "Chief Medical Officer",
+    "Regulatory Lead", "Head of Labelling", "Programme Director",
   ];
   const REPS = [
     "Walter Hensley", "Elena Rossi", "Marcus Chen", "Nina Kowalski",
@@ -91,9 +78,11 @@ function generatedRecordings(): Recording[] {
   const at = <T,>(list: T[], n: number): T => list[n % list.length]!;
 
   const out: Recording[] = [];
-  for (let i = 0; i < 96; i += 1) {
-    const company = at(COMPANIES, i);
-    const [contact, contactTitle] = at(PEOPLE, i * 3 + 1);
+  for (let i = 0; i < 48; i += 1) {
+    const generatedContact = mockFillContact((i % FILL_ACCOUNTS) + 1, Math.floor(i / FILL_ACCOUNTS));
+    const company = generatedContact.company;
+    const contact = generatedContact.name;
+    const contactTitle = at(CONTACT_TITLES, i * 3 + 1);
     const kind = at(KINDS, i);
     /* Scores spread across the band a real team lands in — a library where
        every call scores 88 teaches a coach nothing. */

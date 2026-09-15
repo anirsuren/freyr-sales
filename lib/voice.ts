@@ -7,7 +7,7 @@
 
 import { hasElevenLabs } from "./env";
 import { getDataMode } from "./dataMode";
-import { mockFillContact } from "./mock-db";
+import { FILL_ACCOUNTS, mockFillContact } from "./mockFillCast";
 import type { Contact, Customer } from "./types";
 import type { Offering } from "./offerings";
 import agentIds from "./voiceAgents.json";
@@ -184,7 +184,7 @@ function seedCalls(): VoiceCall[] {
    *
    * Two gaps the seed above leaves. First, every call belongs to one of nine
    * hand-written contacts, so /voice/contact/[id] was an empty page for the
-   * other seven hundred — including contacts that appear as campaign
+   * the rest of the generated directory — including campaign recipients —
    * recipients, which reads as a broken link rather than a quiet account.
    * Second, every seeded call is already `called`, so the "Calls queued" tile
    * was a hard zero and the part of the product that shows work waiting had
@@ -194,11 +194,11 @@ function seedCalls(): VoiceCall[] {
    * with the same shape as the calls above.
    */
   const tail: VoiceCall[] = [];
-  for (let i = 0; i < 96; i += 1) {
+  for (let i = 0; i < 48; i += 1) {
     /* Identity comes from the store's own derivation, not a parallel name
        list: the queue row prints contact_name but links to contact_id, so a
        guessed name would open a page showing somebody else. */
-    const person = mockFillContact((i % 140) + 1, i % 5);
+    const person = mockFillContact((i % FILL_ACCOUNTS) + 1, i % 5);
     const contact: [string, string, string] = [
       person.id,
       person.name,
