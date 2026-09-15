@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { setDataMode } from "../lib/dataMode";
 import { mockDb } from "../lib/mock-db";
 import {
+  FILL_GENERATION,
+  isStaleFillRow,
   mockFillContracts,
   mockFillLeads,
   mockFillMeetings,
@@ -35,6 +37,14 @@ test("every mock customer has enough connected data to exercise each account tab
     new Set(contacts.map((contact) => contact.full_name)).size,
     contacts.length,
     "every mock contact name is unique"
+  );
+  const givenNames = contacts.map((contact) =>
+    contact.full_name.replace(/^(?:Dr\.|Prof\.)\s+/, "").split(/\s+/)[0]
+  );
+  assert.equal(
+    new Set(givenNames).size,
+    givenNames.length,
+    "the mock directory does not cluster unrelated people under the same given name"
   );
   assert.equal(contacts.length, customers.length * 5, "five distinct contacts per account");
   assert.equal(sessions.length, customers.length * 2, "two pitch sessions per account");
@@ -116,6 +126,47 @@ test("every generated deal opens into populated downstream work", () => {
       );
     }
   }
+});
+
+test("customer identities stay canonical everywhere they are reused", async () => {
+  const [contacts, customers] = await Promise.all([
+    mockDb.contacts.list(),
+    mockDb.customers.list(),
+  ]);
+  const byId = new Map(contacts.map((contact) => [contact.id, contact]));
+  const companyKey = new Map(customers.map((customer) => [customer.company_name, customer.id]));
+  const companiesByName = new Map<string, Set<string>>();
+  const remember = (name: string, company: string) => {
+    const companies = companiesByName.get(name) ?? new Set<string>();
+    companies.add(company);
+    companiesByName.set(name, companies);
+  };
+
+  contacts.forEach((contact) => remember(contact.full_name, contact.customer_id));
+  mockFillLeads().forEach((lead) =>
+    remember(lead.name, lead.customerId ?? companyKey.get(lead.company) ?? lead.company)
+  );
+  mockFillMeetings().forEach((meeting) => {
+    meeting.contactIds.forEach((contactId, index) => {
+      const contact = byId.get(contactId);
+      assert.ok(contact, `${meeting.id}: linked meeting contact exists`);
+      assert.equal(meeting.contactNames[index], contact.full_name, `${meeting.id}: linked meeting name`);
+      assert.equal(contact.customer_id, meeting.customerId, `${meeting.id}: linked meeting company`);
+      remember(meeting.contactNames[index]!, meeting.customerId ?? meeting.customer);
+    });
+  });
+  RECORDINGS.filter((row) => row.id.startsWith("rec-gen-")).forEach((row) =>
+    remember(row.contact, companyKey.get(row.company) ?? row.company)
+  );
+  listVoiceQueue().filter((row) => row.id.startsWith("vc-tail-")).forEach((row) =>
+    remember(row.contact_name, companyKey.get(row.company) ?? row.company)
+  );
+
+  for (const [name, companies] of companiesByName) {
+    assert.equal(companies.size, 1, `${name} belongs to one mock company everywhere`);
+  }
+  assert.equal(isStaleFillRow(`fill${FILL_GENERATION - 1}-ld-001-1`), true);
+  assert.equal(isStaleFillRow(`fill${FILL_GENERATION}-ld-001-1`), false);
 });
 
 test("secondary mock lists stay useful without implausible volumes or duplicate people", () => {

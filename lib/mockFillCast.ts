@@ -33,10 +33,40 @@ export const FILL_SUFFIX = [
 ];
 
 export const FILL_FIRST = [
-  "Lena", "Owen", "Priya", "Tomas", "Ana", "Marco", "Yuki", "Ruth", "Hannah",
+  "Laurel", "Quentin", "Indira", "Teodor", "Alessa", "Marcello", "Ayumi", "Rudo", "Hannah",
   "Diego", "Farida", "Karl", "Meera", "Jonas", "Chiara", "Samuel", "Aisha",
   "Viktor", "Noor", "Erik", "Camila", "Ibrahim", "Sofia", "Liam", "Nadia",
-  "Pavel", "Zara", "Mateo", "Ingrid", "Rohan",
+  "Pavel", "Zara", "Mateo", "Ingrid", "Rohan", "Amara", "Nikhil", "Elena",
+  "Julian", "Maya", "Felix", "Layla", "Arjun", "Lucia", "Theo", "Salma",
+  "Dev", "Marta", "Kenji", "Leila", "Oscar", "Anika", "Hugo", "Mina",
+  "Rafael", "Sana", "Dario", "Nora", "Kiran", "Clara", "Jae", "Miriam",
+  "Leon", "Fatima", "Adrian", "Tara", "Sven", "Reina", "Aarav", "Helena",
+  "Emil", "Imani", "Bruno", "Neha", "Anton", "Marina", "Kofi", "Vivian",
+  "Ren", "Alina", "Malik", "Eva", "Nico", "Samira", "Bastien", "Deepa",
+  "Rowan", "Aya", "Gabriel", "Iris", "Hamza", "Luisa", "Marek", "Nia",
+  "Andre", "Kavya", "Silas", "Rina", "Dmitri", "Celeste", "Idris", "Maia",
+  "Henrik", "Amina", "Javier", "Tessa", "Akira", "Danica", "Elias", "Saira",
+  "Matias", "Keiko", "Zain", "Bianca", "Naveen", "Freya", "Louis", "Amira",
+  "Leandro", "Jasmine", "Ravi", "Elise", "Omar", "Greta", "Dante", "Anya",
+  "Micah", "Soraya", "Anders", "Lakshmi", "Caleb", "Yara", "Tiago", "Mira",
+  "Nolan", "Riya", "Casper", "Esme", "Bilal", "Valeria", "Haruto", "Celine",
+  "Adeel", "Linnea", "Martin", "Zoya", "Joel", "Noura", "Santiago", "Elina",
+  "Isaac", "Pari", "Milan", "Alba", "Tariq", "Leonie", "Ari", "Mila",
+  "Nils", "Ines", "Reza", "Chloe", "Boris", "Shreya", "David", "Naomi",
+  "Emre", "Adele", "Finn", "Rania", "Kabir", "Livia", "Adam", "Selin",
+  "Johan", "Nandini", "Leo", "Dalia", "Sameer", "Frida", "Max", "Maelle",
+  "Pedro", "Nina", "Ethan", "Rasha", "Mikhail", "Jia", "Victor", "Ava",
+  "Yusuf", "Lara", "Tobias", "Siya", "Cedric", "Aiko", "Ruben", "Maria",
+  "Ashwin", "Sabine", "Daniel", "Nahla", "Timo", "Isha", "Mauro", "Eleni",
+  "Mustafa", "Viola", "Lucas", "Mei", "Soren", "Pia", "Navid", "Carla",
+  "Gustav", "Aditi", "Simon", "Hiba", "Rico", "Natsumi", "Ben", "Yasmin",
+  "Alejandro", "Klara", "Tarun", "Joana", "Hassan", "Emilia", "Conrad", "Suki",
+  "Mohan", "Annika", "George", "Lina", "Rami", "Beatriz", "Quincy", "Poonam",
+  "Ivan", "Romy", "Sahil", "Teresa", "Nabil", "Maren", "Tom", "Ayla",
+  "Kristof", "Divya", "Paulo", "Nadine", "Evan", "Sahar", "Niklas", "Rosa",
+  "Mahdi", "Olivia", "Sebastian", "Anjali", "Xavier", "Malika", "Remy", "Cora",
+  "Veer", "Paulina", "Yosef", "Amelie", "Florian", "Khadija", "Gian", "Nerea",
+  "Rahul", "Sonja", "Colin", "Amani", "Jan", "Irene", "Wael", "Tatiana",
 ];
 
 export const FILL_LAST = [
@@ -84,16 +114,17 @@ export function fillCompany(account: number): string {
  *
  * The previous stride arithmetic produced only 150-ish combinations for 700+
  * contacts, which is how six unrelated companies all acquired "Aisha Berg".
- * A first/last Cartesian index gives 900 distinct base names. A deterministic
- * middle initial also keeps these generated people distinct from the small
- * hand-written showroom cast while still reading like ordinary names.
+ * The directory has more distinct given names than it has generated contact
+ * slots, so browsing or sorting never produces a wall of six Yukis or Aishas.
+ * The surname advances independently and the Cartesian fallback keeps future
+ * expansions unique if the directory ever grows beyond today's cast.
  */
 export function mockPersonName(ordinal: number): string {
   const safe = Math.max(0, Math.floor(ordinal));
   const first = FILL_FIRST[safe % FILL_FIRST.length]!;
-  const last = FILL_LAST[Math.floor(safe / FILL_FIRST.length) % FILL_LAST.length]!;
-  const middle = String.fromCharCode(65 + ((safe * 7 + 11) % 26));
-  return `${first} ${middle}. ${last}`;
+  const cycle = Math.floor(safe / FILL_FIRST.length);
+  const last = FILL_LAST[(safe * 7 + cycle * 11) % FILL_LAST.length]!;
+  return cycle === 0 ? `${first} ${last}` : `${first} ${String.fromCharCode(65 + (cycle % 26))}. ${last}`;
 }
 
 /** `account` is 1-based (cust-fill-001 is account 1); `slot` is 0-4. */

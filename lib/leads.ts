@@ -218,7 +218,7 @@ function sampleLeads(): LeadsState {
  * existed, not whenever it happens to be empty.
  */
 /**
- * THE 140 GENERATED ACCOUNTS GET leads, ONCE.
+ * THE GENERATED ACCOUNTS GET leads, ONCE.
  *
  * Anir, Sep 2, on cust-fill-140: every tab read zero, because the samples
  * above only ever covered the hand-named demo cast. The generated long tail

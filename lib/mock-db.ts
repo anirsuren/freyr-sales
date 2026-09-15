@@ -1244,7 +1244,7 @@ function seed(): MockStore {
    offerings (Anir, Sep 4: "it cant say 0. then whats the point of mock mode").
    Same rule as 6 and 7: the store is a cached file, so a seed change that is
    not accompanied by a bump reaches nobody. */
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 

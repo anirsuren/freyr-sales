@@ -204,8 +204,9 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 divide-y divide-border-light xl:grid-cols-[1.05fr_.72fr_1.55fr] xl:divide-x xl:divide-y-0">
-        <section className="min-w-0 px-5 pb-6 pt-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.08fr)_minmax(620px,1.2fr)]">
+        <div className="min-w-0 divide-y divide-border-light">
+        <section className="min-w-0 px-5 pb-5 pt-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-1">
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
@@ -234,13 +235,13 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
             {data.series.reduce((sum, value) => sum + value, 0)}
           </p>
           <p className="text-[11.5px] text-text-secondary">received during this window</p>
-          <div className="mt-5 pb-4">
+          <div className="mt-4 pb-2">
             <AreaChart
               id="lead-intake-area"
               data={data.series}
               xLabels={data.labels}
               pointTips={data.tips}
-              height={176}
+              height={196}
               format="number"
               unit="leads"
             />
@@ -270,28 +271,31 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
               }}
             />
           </div>
-          <div className="mt-4 flex justify-center">
-            <DonutChart
-              segments={data.statusSegments}
-              centerLabel={String(leads.length)}
-              centerSub="leads"
-              size={148}
-              thickness={17}
-              format="number"
-            />
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2">
-            {data.statusSegments.map((segment) => (
-              <div key={segment.label} className="flex min-w-0 items-center gap-2 text-[11.5px]">
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: segment.color }} />
-                <span className="truncate text-text-secondary">{segment.label}</span>
-                <span className="ml-auto font-semibold text-text-primary tnum">{segment.value}</span>
-              </div>
-            ))}
+          <div className="mt-3 grid items-center gap-5 sm:grid-cols-[150px_minmax(0,1fr)]">
+            <div className="flex justify-center">
+              <DonutChart
+                segments={data.statusSegments}
+                centerLabel={String(leads.length)}
+                centerSub="leads"
+                size={132}
+                thickness={15}
+                format="number"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">
+              {data.statusSegments.map((segment) => (
+                <div key={segment.label} className="flex min-w-0 items-center gap-2 text-[11.5px]">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: segment.color }} />
+                  <span className="truncate text-text-secondary">{segment.label}</span>
+                  <span className="ml-auto font-semibold text-text-primary tnum">{segment.value}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
+        </div>
 
-        <section className="min-w-0 px-5 pb-5 pt-4">
+        <section className="min-w-0 border-t border-border-light px-5 pb-5 pt-4 xl:border-l xl:border-t-0">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-1">
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">

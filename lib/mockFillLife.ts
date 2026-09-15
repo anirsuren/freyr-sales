@@ -146,7 +146,7 @@ const pad = (n: number) => String(n).padStart(3, "0");
  * one, and each store sweeps rows of older generations out before laying the
  * new floor. Rows a person added by hand carry no fill prefix and survive.
  */
-export const FILL_GENERATION = 7;
+export const FILL_GENERATION = 8;
 const FP = `fill${FILL_GENERATION}-`;
 
 /** A generated row from an OLDER floor: swept on the next top-up. */
