@@ -26,6 +26,7 @@ export function HoverCard({
   anchor = "trigger",
   clearAncestor,
   tightAbove,
+  suspended = false,
 }: {
   children: React.ReactNode;
   content: React.ReactNode;
@@ -52,6 +53,9 @@ export function HoverCard({
    *  governs the flip-below case, so the card never lands on the axis labels.
    *  Omit it and placement is unchanged for every other caller. */
   tightAbove?: number;
+  /** Keep the trigger mounted while a click opens a real dialog, but dismiss
+   *  this lightweight preview so it cannot sit above that dialog's portal. */
+  suspended?: boolean;
 }) {
   const [pos, setPos] = useState<{
     left: number;
@@ -124,6 +128,7 @@ export function HoverCard({
   }
 
   function show() {
+    if (suspended) return;
     // Two tiers only (Anir, Aug 8: "everything is either 1 second or 0.25
     // seconds"): graph surfaces (delayMs 0) get the fast quarter-second, every
     // other popup waits the full second. No user toggle exists any more.
@@ -138,6 +143,12 @@ export function HoverCard({
   // should scroll with it"). While open, re-anchor to the trigger on every
   // scroll/resize — capture phase catches nested scroll containers too.
   const open = pos != null;
+  useEffect(() => {
+    if (!suspended) return;
+    if (showTimer.current) clearTimeout(showTimer.current);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    setPos(null);
+  }, [suspended]);
   useEffect(() => {
     if (!open) return;
     const sync = () => place();
@@ -177,7 +188,7 @@ export function HoverCard({
       onBlurCapture={onBlur}
     >
       {children}
-      {pos != null &&
+      {pos != null && !suspended &&
         createPortal(
           <div
             role="tooltip"

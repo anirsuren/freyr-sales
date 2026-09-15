@@ -1334,6 +1334,7 @@ export function FdlComponentDetail({
                             max={5}
                             size={34}
                             note={() => `On ${withV(release.version)}`}
+                            modalTitle={`Companies on ${withV(release.version)}`}
                           />
                           <span className="mt-0.5 pl-1 text-[10.5px] font-medium text-text-tertiary tnum">
                             {versionCustomers.length}{" "}
@@ -2750,6 +2751,7 @@ export function FdlComponentDetail({
                         return (
                           <CustomerDots
                             people={on}
+                            modalTitle={`Companies with ${feature.name}`}
                             note={(person) => {
                               const c = connected.find((x) => x.id === person.id);
                               const rel = component.releases.find(

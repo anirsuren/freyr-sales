@@ -194,6 +194,12 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 15 FDL company overflow dialog:** The overlapping customer marks used
+  on component versions and feature rows keep their quick hover previews, but
+  clicking `+N` now opens a fixed, searchable dialog with every company in a
+  tidy two-column list. Every logo and dialog row links to that customer's
+  Digital components tab. Local only; not deployed.
+
 - **Sep 15 Market Intel daily spending gate:** Automatic production collection
   now has one coordinated 06:00 UTC window per day. News and website work run
   inside that window, a unique database claim prevents another ECS instance or

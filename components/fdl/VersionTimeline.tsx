@@ -719,6 +719,7 @@ export function VersionTimeline({
                       max={facesMax}
                       size={22}
                       reserveOpenWidth={false}
+                      modalTitle={`Companies on ${withV(release.version)}`}
                       note={() =>
                         release.status === "next"
                           ? `Waiting on ${withV(release.version)}`
