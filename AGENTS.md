@@ -783,3 +783,6 @@ The Team members matrix renders held privileges from each active member's stable
 
 ### Sep 15: Fix result is a full correction workspace
 The People Performance Fix action opens the 980px workflow dialog instead of the old compact form. It separates the result identity, reviewer feedback, corrected amount/date/customer, and supporting evidence into distinct sections. Customer has the full row, evidence has a roomy attachment surface, invalid amounts explain themselves inline, and the resubmission action stays visible in a sticky footer that states who gets notified. The same component retains ordinary Edit-result behavior. Typecheck and focused lint pass; the standalone goal-summary test remains unavailable under the current Node 24 ESM loader because its CommonJS `server-only` mock does not intercept the import. Completed locally, not deployed.
+
+### Sep 15: verification tables explain their evidence column
+People Performance verification tables call the column Evidence, reserve enough width for it, and render attachments as readable file names with their file type. Missing evidence says “No attachment” instead of rendering a stray period. Attachment controls retain their preview behavior and expose the complete original filename to assistive technology and on hover. Completed locally, not deployed.

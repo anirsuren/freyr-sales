@@ -81,11 +81,14 @@ function EvidenceLinks({
 }) {
   if (!entry.evidence?.length) {
     return (
-      <span className="text-[13px] text-text-tertiary">·</span>
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] text-text-tertiary">
+        <Paperclip size={12} strokeWidth={2} aria-hidden="true" />
+        No attachment
+      </span>
     );
   }
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+    <span className="flex min-w-0 flex-col items-start gap-1.5">
       {entry.evidence.map((e) => (
         <button
           key={e.url}
@@ -94,11 +97,21 @@ function EvidenceLinks({
             event.stopPropagation();
             onOpen?.({ name: e.name, url: e.url });
           }}
-          title={`Preview ${e.name}`}
-          className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[12px] font-semibold text-blue-primary transition-colors hover:bg-[rgba(0,113,227,0.14)]"
+          title={`Open ${e.name}`}
+          aria-label={`Open attachment ${e.name}`}
+          className="group inline-flex max-w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-[rgba(0,113,227,0.16)] bg-white px-2.5 py-1.5 text-left text-blue-primary transition-colors hover:border-[rgba(0,113,227,0.3)] hover:bg-blue-light"
         >
-          <Paperclip size={11} strokeWidth={2.4} />
-          <span className="max-w-[160px] truncate">{e.name}</span>
+          <Paperclip size={12} strokeWidth={2.4} className="shrink-0" aria-hidden="true" />
+          <span className="min-w-0">
+            <span className="block max-w-[150px] truncate text-[12px] font-semibold leading-4">
+              {e.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ")}
+            </span>
+            {e.name.includes(".") && (
+              <span className="block text-[9.5px] font-bold uppercase leading-3 tracking-[0.04em] text-text-tertiary">
+                {e.name.split(".").pop()}
+              </span>
+            )}
+          </span>
         </button>
       ))}
     </span>
@@ -1116,7 +1129,7 @@ export function MyEntriesCard({
                 <th className="px-4 py-2.5">Amount</th>
                 <th className="px-4 py-2.5">Customer</th>
                 <th className="px-4 py-2.5">Date</th>
-                <th className="px-4 py-2.5">Proof</th>
+                <th className="px-4 py-2.5">Evidence</th>
                 <th className="px-4 py-2.5">Status</th>
                 <th className="px-4 py-2.5 text-left">Actions</th>
               </tr>
@@ -2054,11 +2067,11 @@ export function VerifyQueueCard({
               <col className="w-12" />
               <col className="w-14" />
               <col className="w-[210px]" />
-              <col className="w-[350px]" />
+              <col className="w-[320px]" />
               <col className="w-[110px]" />
               <col className="w-[150px]" />
               <col className="w-[210px]" />
-              <col className="w-[120px]" />
+              <col className="w-[190px]" />
               <col className="w-[120px]" />
             </colgroup>
             <thead>
@@ -2090,7 +2103,7 @@ export function VerifyQueueCard({
                 <th className="px-4 py-2.5">Amount</th>
                 <th className="px-4 py-2.5">Customer</th>
                 <th className="px-4 py-2.5">Date</th>
-                <th className="px-4 py-2.5">Proof</th>
+                <th className="px-4 py-2.5">Evidence</th>
                 <th className="px-4 py-2.5">Your call</th>
               </tr>
             </thead>
