@@ -786,3 +786,6 @@ The People Performance Fix action opens the 980px workflow dialog instead of the
 
 ### Sep 15: verification tables explain their evidence column
 People Performance verification tables call the column Evidence, reserve enough width for it, and render attachments as readable file names with their file type. Missing evidence says “No attachment” instead of rendering a stray period. Attachment controls retain their preview behavior and expose the complete original filename to assistive technology and on hover. Completed locally, not deployed.
+
+### Sep 15: correction dialog gives customer selection room
+The People Performance Fix-result dialog has an explicit 1100px desktop width. Customer account occupies its own full-width row with a 56px input, account icon, readable 16px text, and the complete “Search or enter the customer name” prompt, followed by a short explanation of what belongs there. Completed locally, not deployed.

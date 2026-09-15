@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { DateEcho } from "@/components/ui/DateEcho";
 import {
   CalendarCheck2,
+  Building2,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -1594,6 +1595,7 @@ export function MyEntriesCard({
               onClose={() => setEditFor(null)}
               title={fixing ? "Fix and resubmit result" : "Edit result"}
               size="workflow"
+              dialogClassName="!max-w-[1100px]"
               bodyClassName="!p-0"
             >
               <div className="border-b border-border-light bg-surface/70 px-6 py-4">
@@ -1723,16 +1725,28 @@ export function MyEntriesCard({
                 </label>
                 <label className="block sm:col-span-2">
                   <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
-                    Customer
+                    Customer account
                   </span>
-                  <input
-                    value={draft.customer}
-                    placeholder="Which customer this was for"
-                    onChange={(e) =>
-                      setDraft((d) => ({ ...d, customer: e.target.value }))
-                    }
-                    className="h-11 w-full rounded-xl border border-border-light bg-white px-3 text-[14px] outline-none transition-shadow focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
-                  />
+                  <span className="relative block">
+                    <Building2
+                      size={18}
+                      strokeWidth={2}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-blue-primary"
+                    />
+                    <input
+                      value={draft.customer}
+                      placeholder="Search or enter the customer name"
+                      aria-label="Customer account"
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, customer: e.target.value }))
+                      }
+                      className="h-14 w-full rounded-xl border border-border-light bg-white pl-12 pr-4 text-[16px] font-medium text-text-primary outline-none transition-shadow placeholder:font-normal placeholder:text-text-tertiary focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
+                    />
+                  </span>
+                  <span className="mt-1.5 block text-[11px] text-text-tertiary">
+                    Choose the account this result belongs to.
+                  </span>
                 </label>
                   </div>
                 </section>
