@@ -2,6 +2,8 @@
 
 import {
   type CSSProperties,
+  type Dispatch,
+  type SetStateAction,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -83,6 +85,36 @@ function paddedRect(rect: DOMRect, viewport: Viewport): TourRect {
   };
 }
 
+function sameTourRect(previous: TourRect | null, next: TourRect | null): boolean {
+  if (previous === next) return true;
+  if (!previous || !next) return false;
+  return (
+    Math.abs(previous.top - next.top) < 0.5 &&
+    Math.abs(previous.right - next.right) < 0.5 &&
+    Math.abs(previous.bottom - next.bottom) < 0.5 &&
+    Math.abs(previous.left - next.left) < 0.5 &&
+    Math.abs(previous.width - next.width) < 0.5 &&
+    Math.abs(previous.height - next.height) < 0.5
+  );
+}
+
+function updateTourRect(
+  setter: Dispatch<SetStateAction<TourRect | null>>,
+  next: TourRect | null
+) {
+  setter((previous) => (sameTourRect(previous, next) ? previous : next));
+}
+
+function needsViewportScroll(rect: DOMRect, viewport: Viewport): boolean {
+  const safeMargin = 24;
+  return (
+    rect.top < safeMargin ||
+    rect.left < safeMargin ||
+    rect.bottom > viewport.height - safeMargin ||
+    rect.right > viewport.width - safeMargin
+  );
+}
+
 function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -125,7 +157,7 @@ function useNavIntroRect(
   const [rect, setRect] = useState<TourRect | null>(null);
   useEffect(() => {
     if (!active) {
-      setRect(null);
+      updateTourRect(setRect, null);
       return;
     }
     let cancelled = false;
@@ -141,10 +173,13 @@ function useNavIntroRect(
         }
       }
       if (!element) {
-        setRect(null);
+        updateTourRect(setRect, null);
         return;
       }
-      setRect(paddedRect(element.getBoundingClientRect(), viewport));
+      updateTourRect(
+        setRect,
+        paddedRect(element.getBoundingClientRect(), viewport)
+      );
       // Keep tracking: the sidebar can settle/scroll during the page load.
       raf = window.requestAnimationFrame(measure);
     };
@@ -177,6 +212,9 @@ function useTourTarget(
     let cancelled = false;
     let timer: number | undefined;
     let attempts = 0;
+    let currentMatch: HTMLElement | null = null;
+    let currentSelector: string | null = null;
+    let scrolledMatch: HTMLElement | null = null;
 
     const locate = () => {
       if (cancelled) return;
@@ -193,15 +231,27 @@ function useTourTarget(
 
       if (match) {
         const fallback = !!selector && FALLBACK_TARGETS.has(selector);
-        if (!fallback) {
+        const matchRect = match.getBoundingClientRect();
+        if (
+          !fallback &&
+          scrolledMatch !== match &&
+          needsViewportScroll(matchRect, viewport)
+        ) {
+          scrolledMatch = match;
           match.scrollIntoView({
             block: "center",
             inline: "nearest",
             behavior: "auto",
           });
         }
-        setTarget(match);
-        setMatchedSelector(selector);
+        if (currentMatch !== match) {
+          currentMatch = match;
+          setTarget(match);
+        }
+        if (currentSelector !== selector) {
+          currentSelector = selector;
+          setMatchedSelector(selector);
+        }
         return;
       }
 
@@ -218,8 +268,17 @@ function useTourTarget(
           document.querySelector<HTMLElement>(
             '[data-tour="page-content"], #main-content, main'
           ) || null;
-        setTarget(fallback);
-        setMatchedSelector(fallback ? '[data-tour="page-content"]' : null);
+        const fallbackSelector = fallback
+          ? '[data-tour="page-content"]'
+          : null;
+        if (currentMatch !== fallback) {
+          currentMatch = fallback;
+          setTarget(fallback);
+        }
+        if (currentSelector !== fallbackSelector) {
+          currentSelector = fallbackSelector;
+          setMatchedSelector(fallbackSelector);
+        }
       }
     };
 
@@ -250,10 +309,13 @@ function useTourTarget(
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
         if (!target.isConnected || !elementIsVisible(target)) {
-          setRect(null);
+          updateTourRect(setRect, null);
           return;
         }
-        setRect(paddedRect(target.getBoundingClientRect(), viewport));
+        updateTourRect(
+          setRect,
+          paddedRect(target.getBoundingClientRect(), viewport)
+        );
       });
     };
 
@@ -499,11 +561,17 @@ export function ProductTourOverlay({
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    const measure = () =>
-      setDialogSize({
+    const measure = () => {
+      const next = {
         width: dialog.offsetWidth || 408,
         height: dialog.offsetHeight || 288,
-      });
+      };
+      setDialogSize((previous) =>
+        previous.width === next.width && previous.height === next.height
+          ? previous
+          : next
+      );
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(dialog);
@@ -860,9 +928,7 @@ export function ProductTourOverlay({
         data-step-kind={stepKind}
         className={cn(
           "product-tour-card fixed z-[110] flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[20px] border border-white/20 bg-white text-text-primary shadow-[0_32px_90px_-18px_rgba(0,0,0,0.58),0_0_0_1px_rgba(0,113,227,0.24)] outline-none",
-          compact && "rounded-xl",
-          !reducedMotion &&
-            "transition-[top,left,bottom,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          compact && "rounded-xl"
         )}
         style={position}
       >
