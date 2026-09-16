@@ -127,6 +127,7 @@ export function ProductTourProvider({
   const loadInFlightRef = useRef(false);
   const hydratedRef = useRef(false);
   const requestIdRef = useRef(0);
+  const tourSessionRef = useRef(0);
   const loadFailuresRef = useRef(0);
 
   const steps = useMemo(
@@ -188,6 +189,7 @@ export function ProductTourProvider({
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   const patchOnboarding = useCallback(
     (action: OnboardingAction): Promise<OnboardingResponse> => {
+      const session = tourSessionRef.current;
       const save = async (): Promise<OnboardingResponse> => {
         const response = await fetch("/api/onboarding", {
           method: "PATCH",
@@ -210,7 +212,7 @@ export function ProductTourProvider({
         if (!isOnboardingResponse(body)) {
           throw new Error("The product tour returned an invalid response.");
         }
-        if (mountedRef.current) setSnapshot(body);
+        if (mountedRef.current && session === tourSessionRef.current) setSnapshot(body);
         return body;
       };
       const pending = saveQueue.current.catch(() => undefined).then(save);
@@ -226,6 +228,7 @@ export function ProductTourProvider({
         return;
       }
 
+      const session = ++tourSessionRef.current;
       hydratedRef.current = true;
       const reset =
         restart ||
@@ -249,18 +252,21 @@ export function ProductTourProvider({
       navigateTo(nextStep.route);
 
       try {
-        if (reset) await patchOnboarding({ action: "reset" });
-        const response = await patchOnboarding({
+        // Queue reset and first progress together so rapid Next clicks cannot
+        // insert a newer progress save before the initial step save.
+        const resetSave = reset ? patchOnboarding({ action: "reset" }) : Promise.resolve();
+        const progressSave = patchOnboarding({
           action: "progress",
           currentStep: nextStep.catalogIndex,
         });
+        const [, response] = await Promise.all([resetSave, progressSave]);
         // A concurrent tab may have completed or skipped after our reset/read.
         // The API treats that terminal state as authoritative.
-        if (mountedRef.current && isTerminalState(response.state)) {
+        if (mountedRef.current && session === tourSessionRef.current && isTerminalState(response.state)) {
           setActive(false);
         }
       } catch (cause) {
-        if (mountedRef.current) {
+        if (mountedRef.current && session === tourSessionRef.current) {
           setError(
             cause instanceof Error
               ? cause.message
@@ -268,7 +274,7 @@ export function ProductTourProvider({
           );
         }
       } finally {
-          if (mountedRef.current) setSaving(false);
+          if (mountedRef.current && session === tourSessionRef.current) setSaving(false);
       }
     },
     [navigateTo, patchOnboarding, snapshot, steps]
@@ -390,6 +396,7 @@ export function ProductTourProvider({
 
   const persistLocalStep = useCallback(
     async (nextLocalStep: number) => {
+      const session = tourSessionRef.current;
       if (steps.length === 0) return;
       const safeLocalStep = clamp(nextLocalStep, 0, steps.length - 1);
       const step = steps[safeLocalStep];
@@ -403,11 +410,11 @@ export function ProductTourProvider({
           action: "progress",
           currentStep: step.catalogIndex,
         });
-        if (mountedRef.current && isTerminalState(response.state)) {
+        if (mountedRef.current && session === tourSessionRef.current && isTerminalState(response.state)) {
           setActive(false);
         }
       } catch (cause) {
-        if (mountedRef.current) {
+        if (mountedRef.current && session === tourSessionRef.current) {
           setError(
             cause instanceof Error
               ? cause.message
@@ -415,7 +422,7 @@ export function ProductTourProvider({
           );
         }
       } finally {
-          if (mountedRef.current) setSaving(false);
+          if (mountedRef.current && session === tourSessionRef.current) setSaving(false);
       }
     },
     [navigateTo, patchOnboarding, steps]
@@ -424,6 +431,8 @@ export function ProductTourProvider({
   const finishTour = useCallback(async () => {
     const step = steps[localStep];
     if (!step) return;
+    const session = ++tourSessionRef.current;
+    setSnapshot(previous => previous ? { ...previous, state: { ...previous.state, status: "completed", currentStep: step.catalogIndex } } : previous);
     setPendingStep(null);
     setActive(false);
     setSaving(true);
@@ -434,7 +443,7 @@ export function ProductTourProvider({
         currentStep: step.catalogIndex,
       });
     } catch (cause) {
-      if (mountedRef.current) {
+      if (mountedRef.current && session === tourSessionRef.current) {
         setError(
           cause instanceof Error
             ? cause.message
@@ -442,13 +451,15 @@ export function ProductTourProvider({
         );
       }
     } finally {
-      if (mountedRef.current) setSaving(false);
+      if (mountedRef.current && session === tourSessionRef.current) setSaving(false);
     }
   }, [localStep, patchOnboarding, steps]);
 
   const skipTour = useCallback(async () => {
     const step = steps[localStep];
     if (!step) return;
+    const session = ++tourSessionRef.current;
+    setSnapshot(previous => previous ? { ...previous, state: { ...previous.state, status: "skipped", currentStep: step.catalogIndex } } : previous);
     setPendingStep(null);
     setActive(false);
     setSaving(true);
@@ -459,7 +470,7 @@ export function ProductTourProvider({
         currentStep: step.catalogIndex,
       });
     } catch (cause) {
-      if (mountedRef.current) {
+      if (mountedRef.current && session === tourSessionRef.current) {
         setError(
           cause instanceof Error
             ? cause.message
@@ -467,7 +478,7 @@ export function ProductTourProvider({
         );
       }
     } finally {
-      if (mountedRef.current) setSaving(false);
+      if (mountedRef.current && session === tourSessionRef.current) setSaving(false);
     }
   }, [localStep, patchOnboarding, steps]);
 

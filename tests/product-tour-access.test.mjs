@@ -53,3 +53,12 @@ test('an account without catalogue access starts global controls on its availabl
   assert.ok(steps.slice(0,4).every(s=>s.route==='/settings?tab=workspace'));
   assert.ok(!steps.some(s=>s.route==='/offerings'));
 });
+
+test('page overviews never fall back to a transient input or header', () => {
+  const steps = getProductTourSteps({role:'admin',offeringsOnly:false});
+  for (const step of steps.filter(step => step.targets[0] === '[data-tour="page-content"]')) {
+    assert.deepEqual(step.targets, ['[data-tour="page-content"]', '#main-content'], step.id);
+  }
+  const assistant = steps.find(step => step.id === 'agent-workspace');
+  assert.deepEqual(assistant.targets, ['[data-tour="page-content"]', '#main-content']);
+});

@@ -58,16 +58,15 @@ export default async function LoginPage() {
           never on the prod host. */}
       {isDevHome && (
         <div className="w-full max-w-[420px] rounded-xl border border-blue-subtle bg-blue-light px-4 py-3 text-center text-[12.5px] leading-relaxed text-blue-primary">
-          <b className="font-semibold">Freyr Sales has moved.</b>{" "}
-          Please use the new site from now on:{" "}
+          <b className="font-semibold">Development environment.</b>{" "}
+          For your production account, use{" "}
           <a
             href="https://freyrsales.freyrapps.com"
             className="font-semibold underline underline-offset-2"
           >
             freyrsales.freyrapps.com
           </a>
-          . Your account and all your data are already there. This address is
-          being retired.
+          . Development and production use separate accounts and data.
         </div>
       )}
       <Card className="max-h-[calc(100dvh-2rem)] w-full max-w-[420px] overflow-y-auto p-8">

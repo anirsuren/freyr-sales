@@ -80,11 +80,11 @@ export async function POST(request: NextRequest) {
   const client = adminClient();
 
   // No storage configured (or unreachable below): fall back to what we can
-  // decide from the address alone. Company domains are always activatable; the
-  // form still offers "already set a password?" so nobody is ever stuck.
+  // decide from the address alone. An unavailable lookup must not classify an existing
+  // user as new; start with password sign-in and keep account setup available.
   if (!client) {
     return json({
-      step: domainMember ? "activate" : "password",
+      step: "password",
       domainMember,
       name: null,
       degraded: true,
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     // to choose another"). Ask the auth store directly: if an auth account
     // already exists for this address, the password they set is the one we
     // want. Same information a sign-in attempt would reveal — nothing new
-    // leaks. Non-fatal on failure: worst case is the old behaviour.
+    // leaks. On failure, retain password sign-in rather than assuming a new account.
     try {
       const authUsers = await withDeadline(
         fetch(
@@ -133,10 +133,12 @@ export async function POST(request: NextRequest) {
             },
             cache: "no-store",
           }
-        ).then(
-          (r) =>
-            r.json() as Promise<{ users?: { email?: string | null }[] }>
-        )
+        ).then(async (r) => {
+          if (!r.ok) throw new Error("Account lookup unavailable");
+          const result = await r.json() as { users?: { email?: string | null }[] };
+          if (!Array.isArray(result.users)) throw new Error("Invalid account lookup response");
+          return result;
+        })
       );
       const hasAuthAccount = (authUsers.users ?? []).some(
         (u) => normalizeAuthEmail(u.email) === email
@@ -149,7 +151,8 @@ export async function POST(request: NextRequest) {
         });
       }
     } catch {
-      // Fall through to the invitation/domain decision below.
+      // An unavailable lookup is not evidence that this is a new account.
+      return json({ step: "password", domainMember, name: null, degraded: true });
     }
 
     if (domainMember) {
@@ -182,7 +185,7 @@ export async function POST(request: NextRequest) {
     // Storage hiccup must never lock the front door. Degrade to the same
     // address-only decision as the unconfigured case.
     return json({
-      step: domainMember ? "activate" : "password",
+      step: "password",
       domainMember,
       name: null,
       degraded: true,

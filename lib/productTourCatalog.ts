@@ -31,19 +31,10 @@ const ALL_ROLES: readonly WorkspaceRole[] = ["bd_member", "bd_owner", "admin"];
  *  page they cannot open. */
 const MANAGERS: readonly WorkspaceRole[] = ["bd_owner", "admin"];
 
-/**
- * Primary target first, then the page's own header, then the whole page. The
- * header is a real, meaningful frame — the title, the one-line explanation and
- * the page's main action — so a step never falls back to outlining the entire
- * screen unless the page genuinely has not rendered.
- */
-function pageTargets(primary: readonly string[] = []): readonly string[] {
-  return [
-    '[data-tour="page-content"]',
-    "#main-content",
-    ...primary,
-    '[data-tour="page-header"]',
-  ];
+/** Page overviews have one stable frame; never flash a smaller control while
+ * the destination mounts or animates. */
+function pageTargets(_primary: readonly string[] = []): readonly string[] {
+  return ['[data-tour="page-content"]', "#main-content"];
 }
 
 /**
