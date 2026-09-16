@@ -24,6 +24,11 @@ import {
   getProductTourSteps,
   localTourIndexForCatalogStep,
 } from "@/lib/productTourCatalog";
+import {
+  addMockModePrefix,
+  isMockModePath,
+  stripMockModePrefix,
+} from "@/lib/modeUrl";
 
 export {
   ONBOARDING_START_EVENT,
@@ -81,7 +86,8 @@ function isTerminalState(state: OnboardingState): boolean {
 function routeMatches(route: string, pathname: string): boolean {
   if (typeof window === "undefined") return false;
   const expected = new URL(route, window.location.origin);
-  if (expected.pathname !== pathname) return false;
+  const currentPath = stripMockModePrefix(pathname);
+  if (expected.pathname !== currentPath && !(expected.pathname === "/performance" && currentPath.startsWith("/performance/"))) return false;
   const current = new URLSearchParams(window.location.search);
   return Array.from(expected.searchParams.entries()).every(
     ([key, value]) => current.get(key) === value
@@ -111,14 +117,14 @@ export function ProductTourProvider({
   const [phase, setPhase] = useState<LoadPhase>("idle");
   const [snapshot, setSnapshot] = useState<OnboardingResponse | null>(null);
   const [active, setActive] = useState(false);
+  const [launching, setLaunching] = useState(false);
   const [localStep, setLocalStep] = useState(0);
+  const [pendingStep, setPendingStep] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [startRequest, setStartRequest] = useState<StartRequest | null>(null);
-  const [readyRoute, setReadyRoute] = useState<string | null>(null);
   const mountedRef = useRef(false);
   const loadInFlightRef = useRef(false);
-  const operationInFlightRef = useRef(false);
   const hydratedRef = useRef(false);
   const requestIdRef = useRef(0);
   const loadFailuresRef = useRef(0);
@@ -128,13 +134,20 @@ export function ProductTourProvider({
       getProductTourSteps({
         offeringsOnly,
         role: snapshot?.role,
+        allowedRoutes: snapshot?.tourRoutes,
       }),
-    [offeringsOnly, snapshot?.role]
+    [offeringsOnly, snapshot?.role, snapshot?.tourRoutes]
   );
 
   const navigateTo = useCallback(
     (route: string) => {
-      if (!routeMatches(route, pathname)) router.push(route);
+      if (routeMatches(route, pathname)) return;
+      const destination = new URL(route, window.location.origin);
+      const visiblePath = window.location.pathname;
+      const nextPath = isMockModePath(visiblePath)
+        ? addMockModePrefix(destination.pathname)
+        : destination.pathname;
+      router.push(`${nextPath}${destination.search}${destination.hash}`);
     },
     [pathname, router]
   );
@@ -146,6 +159,7 @@ export function ProductTourProvider({
     try {
       const response = await fetch("/api/onboarding", {
         method: "GET",
+        signal: AbortSignal.timeout(15000),
         credentials: "same-origin",
         cache: "no-store",
         headers: { Accept: "application/json" },
@@ -171,41 +185,47 @@ export function ProductTourProvider({
     }
   }, []);
 
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   const patchOnboarding = useCallback(
-    async (action: OnboardingAction): Promise<OnboardingResponse> => {
-      const response = await fetch("/api/onboarding", {
-        method: "PATCH",
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(action),
-      });
-      if (!response.ok) {
-        throw await responseError(
-          response,
-          "We could not save your tour progress."
-        );
-      }
-      const body: unknown = await response.json();
-      if (!isOnboardingResponse(body)) {
-        throw new Error("The product tour returned an invalid response.");
-      }
-      if (mountedRef.current) setSnapshot(body);
-      return body;
+    (action: OnboardingAction): Promise<OnboardingResponse> => {
+      const save = async (): Promise<OnboardingResponse> => {
+        const response = await fetch("/api/onboarding", {
+          method: "PATCH",
+          signal: AbortSignal.timeout(15000),
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(action),
+        });
+        if (!response.ok) {
+          throw await responseError(
+            response,
+            "We could not save your tour progress."
+          );
+        }
+        const body: unknown = await response.json();
+        if (!isOnboardingResponse(body)) {
+          throw new Error("The product tour returned an invalid response.");
+        }
+        if (mountedRef.current) setSnapshot(body);
+        return body;
+      };
+      const pending = saveQueue.current.catch(() => undefined).then(save);
+      saveQueue.current = pending;
+      return pending;
     },
     []
   );
 
   const beginTour = useCallback(
     async (restart = false) => {
-      if (!snapshot || steps.length === 0 || operationInFlightRef.current) {
+      if (!snapshot || steps.length === 0) {
         return;
       }
 
-      operationInFlightRef.current = true;
       hydratedRef.current = true;
       const reset =
         restart ||
@@ -220,7 +240,9 @@ export function ProductTourProvider({
           : 0;
       const nextStep = steps[nextLocalStep];
 
+      setPendingStep(null);
       setLocalStep(nextLocalStep);
+      setLaunching(true);
       setActive(true);
       setSaving(true);
       setError(null);
@@ -246,8 +268,7 @@ export function ProductTourProvider({
           );
         }
       } finally {
-        operationInFlightRef.current = false;
-        if (mountedRef.current) setSaving(false);
+          if (mountedRef.current) setSaving(false);
       }
     },
     [navigateTo, patchOnboarding, snapshot, steps]
@@ -299,6 +320,9 @@ export function ProductTourProvider({
   useEffect(() => {
     const handleStart = (event: Event) => {
       const detail = (event as CustomEvent<OnboardingStartDetail>).detail;
+      // Discard the previous tour before processing a new launch request.
+      setActive(false);
+      setPendingStep(null);
       requestIdRef.current += 1;
       loadFailuresRef.current = 0;
       setStartRequest({
@@ -337,29 +361,17 @@ export function ProductTourProvider({
         steps,
         snapshot.state.currentStep
       );
+      setPendingStep(null);
       setLocalStep(nextLocalStep);
+      setLaunching(true);
       setActive(true);
       navigateTo(steps[nextLocalStep].route);
       return;
     }
 
-    const lastAvailableCatalogIndex =
-      steps.reduce(
-        (highest, step) => Math.max(highest, step.catalogIndex),
-        steps[0].catalogIndex
-      );
-    if (
-      !offeringsOnly &&
-      snapshot.state.status === "completed" &&
-      snapshot.state.currentStep < lastAvailableCatalogIndex
-    ) {
-      // A user who completed the smaller Offerings release should still see
-      // newly available full-workspace features after the release expands.
-      hydratedRef.current = false;
-      void beginTour(true);
-      return;
-    }
-
+    // Completed tours stay completed. Catalog indexes identify features, not
+    // display positions, so comparing the final index to a maximum would
+    // restart the reordered tour on the next visit.
     if (autoStart && snapshot.state.status === "not_started") {
       hydratedRef.current = false;
       void beginTour(false);
@@ -376,20 +388,12 @@ export function ProductTourProvider({
     steps,
   ]);
 
-  // Browser navigation cannot strand an active tour on a different route.
-  useEffect(() => {
-    const step = steps[localStep];
-    if (active && step && !routeMatches(step.route, pathname)) {
-      navigateTo(step.route);
-    }
-  }, [active, localStep, navigateTo, pathname, steps]);
-
   const persistLocalStep = useCallback(
     async (nextLocalStep: number) => {
-      if (operationInFlightRef.current || steps.length === 0) return;
+      if (steps.length === 0) return;
       const safeLocalStep = clamp(nextLocalStep, 0, steps.length - 1);
       const step = steps[safeLocalStep];
-      operationInFlightRef.current = true;
+      setPendingStep(null);
       setLocalStep(safeLocalStep);
       setSaving(true);
       setError(null);
@@ -411,8 +415,7 @@ export function ProductTourProvider({
           );
         }
       } finally {
-        operationInFlightRef.current = false;
-        if (mountedRef.current) setSaving(false);
+          if (mountedRef.current) setSaving(false);
       }
     },
     [navigateTo, patchOnboarding, steps]
@@ -420,8 +423,9 @@ export function ProductTourProvider({
 
   const finishTour = useCallback(async () => {
     const step = steps[localStep];
-    if (!step || operationInFlightRef.current) return;
-    operationInFlightRef.current = true;
+    if (!step) return;
+    setPendingStep(null);
+    setActive(false);
     setSaving(true);
     setError(null);
     try {
@@ -429,7 +433,6 @@ export function ProductTourProvider({
         action: "complete",
         currentStep: step.catalogIndex,
       });
-      if (mountedRef.current) setActive(false);
     } catch (cause) {
       if (mountedRef.current) {
         setError(
@@ -439,15 +442,15 @@ export function ProductTourProvider({
         );
       }
     } finally {
-      operationInFlightRef.current = false;
       if (mountedRef.current) setSaving(false);
     }
   }, [localStep, patchOnboarding, steps]);
 
   const skipTour = useCallback(async () => {
     const step = steps[localStep];
-    if (!step || operationInFlightRef.current) return;
-    operationInFlightRef.current = true;
+    if (!step) return;
+    setPendingStep(null);
+    setActive(false);
     setSaving(true);
     setError(null);
     try {
@@ -455,7 +458,6 @@ export function ProductTourProvider({
         action: "skip",
         currentStep: step.catalogIndex,
       });
-      if (mountedRef.current) setActive(false);
     } catch (cause) {
       if (mountedRef.current) {
         setError(
@@ -465,7 +467,6 @@ export function ProductTourProvider({
         );
       }
     } finally {
-      operationInFlightRef.current = false;
       if (mountedRef.current) setSaving(false);
     }
   }, [localStep, patchOnboarding, steps]);
@@ -474,59 +475,61 @@ export function ProductTourProvider({
     void persistLocalStep(localStep);
   }, [localStep, persistLocalStep]);
 
-  const currentStep = steps[localStep];
-  const currentRoute = currentStep?.route || null;
-  const routeReady =
-    !!currentRoute &&
-    readyRoute === currentRoute &&
-    routeMatches(currentRoute, pathname);
+  const requestStep = (next: number) => {
+    const index = clamp(next, 0, steps.length - 1);
+    const destination = steps[index];
+    if (!destination) return;
+    if (!routeMatches(destination.route, pathname)) {
+      // Stay on the current page until the person confirms the highlighted
+      // destination. Only confirmation changes the URL or saved progress.
+      setPendingStep(index);
+    } else {
+      void persistLocalStep(index);
+    }
+  };
 
-  /**
-   * WARM THE NEXT SCREEN WHILE THEY READ THIS ONE (Anir, Aug 13: "it took like
-   * 10 seconds for the finished tour button to be allowed to be pressed").
-   *
-   * The button is not disabled — the tour is simply waiting for the next page
-   * to exist. Every page here is `force-dynamic`, and Settings is the heaviest
-   * one in the app, so pressing Next there meant a cold server render with the
-   * "Opening Settings…" card sitting on screen for as long as it took. A step
-   * takes several seconds to read; fetching the next route during that time
-   * costs nothing and usually means the page is already in hand on the click.
-   */
+  const currentStep = steps[localStep];
+  const displayedStep = pendingStep === null ? currentStep : steps[pendingStep];
+  const currentRoute = currentStep?.route || null;
+  // The URL is the source of truth. Keeping a second, cached "ready route"
+  // allowed the transition card to remain open even after the destination had
+  // visibly loaded (for example: "Opening Dashboard…" while already on
+  // /dashboard). A pathname change already re-renders this provider, so the
+  // current route can be checked directly.
+  const [, refreshLocation] = useState(0);
+  const routeReady = !!currentRoute && routeMatches(currentRoute, pathname);
+  useEffect(() => {
+    if (launching && routeReady) setLaunching(false);
+  }, [launching, routeReady]);
+  useEffect(() => {
+    if (!active || !currentRoute || routeReady) return;
+    // Query-only navigation does not change usePathname. Recheck until the
+    // requested Settings tab commits, then stop polling.
+    const timer = window.setInterval(() => refreshLocation(value => value + 1), 100);
+    return () => window.clearInterval(timer);
+  }, [active, currentRoute, routeReady]);
+
+  // Warm adjacent destinations while the current step is being read. Several
+  // introductory steps share one route; skip those instead of prefetching nothing.
+  // Resolve the URL exactly as navigateTo does, including the mock-mode prefix.
   useEffect(() => {
     if (!active) return;
-    const next = steps[localStep + 1];
-    if (!next || next.route === currentRoute) return;
-    try {
-      router.prefetch(next.route);
-    } catch {
-      // Prefetching is an optimisation; a failure must never block the tour.
+    const next = steps.slice(localStep + 1).find(step => step.route !== currentRoute);
+    const previous = steps.slice(0, localStep).reverse().find(step => step.route !== currentRoute);
+    const destinations = new Set([next?.route, previous?.route, pendingStep === null ? undefined : steps[pendingStep]?.route]);
+    for (const route of destinations) {
+      if (!route) continue;
+      const destination = new URL(route, window.location.origin);
+      const path = isMockModePath(window.location.pathname)
+        ? addMockModePrefix(destination.pathname)
+        : destination.pathname;
+      try {
+        router.prefetch(`${path}${destination.search}${destination.hash}`);
+      } catch {
+        // A failed prefetch must never block navigation.
+      }
     }
-  }, [active, currentRoute, localStep, router, steps]);
-
-  useEffect(() => {
-    if (!active || !currentRoute) {
-      setReadyRoute(null);
-      return;
-    }
-
-    let timer: number | undefined;
-    const markReadyWhenMatched = () => {
-      if (!routeMatches(currentRoute, pathname)) return false;
-      setReadyRoute(currentRoute);
-      if (timer) window.clearInterval(timer);
-      return true;
-    };
-
-    // `usePathname` covers normal page changes. A short-lived check also covers
-    // query-only destinations such as Settings tabs without introducing the
-    // root-level Suspense requirement of `useSearchParams`.
-    if (!markReadyWhenMatched()) {
-      timer = window.setInterval(markReadyWhenMatched, 50);
-    }
-    return () => {
-      if (timer) window.clearInterval(timer);
-    };
-  }, [active, currentRoute, pathname]);
+  }, [active, currentRoute, localStep, pendingStep, router, steps]);
 
   return (
     <>
@@ -538,20 +541,34 @@ export function ProductTourProvider({
         data-state={snapshot?.state.status || "unavailable"}
         data-load-failures={loadFailuresRef.current}
       />
-      {active && currentStep && (
+      {startRequest && phase === "error" && !active && (
+        <div role="alert" className="fixed bottom-6 right-6 z-[120] max-w-sm rounded-xl border border-red-200 bg-white p-4 shadow-xl">
+          <p className="text-sm text-text-primary">The tour could not load. Please try again.</p>
+          <button type="button" className="mt-3 font-semibold text-blue-primary" onClick={() => { loadFailuresRef.current = 0; setPhase("idle"); }}>Retry tour</button>
+        </div>
+      )}
+      {active && displayedStep && !startRequest && (!launching || routeReady) && (
         <ProductTourOverlay
-          step={currentStep}
-          currentStep={localStep}
+          step={displayedStep}
+          currentStep={pendingStep ?? localStep}
           totalSteps={steps.length}
           routeReady={routeReady}
+          awaitingNavigation={pendingStep !== null}
           saving={saving}
           error={error}
-          onBack={() => void persistLocalStep(localStep - 1)}
+          onBack={() => {
+            if (pendingStep !== null) setPendingStep(null);
+            else requestStep(localStep - 1);
+          }}
           onNext={() => {
-            if (localStep === steps.length - 1) {
+            if (pendingStep !== null) {
+              void persistLocalStep(pendingStep);
+            } else if (!routeReady) {
+              navigateTo(currentStep.route);
+            } else if (localStep === steps.length - 1) {
               void finishTour();
             } else {
-              void persistLocalStep(localStep + 1);
+              requestStep(localStep + 1);
             }
           }}
           onSkip={() => void skipTour()}

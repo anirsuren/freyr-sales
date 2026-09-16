@@ -560,7 +560,11 @@ export function AppShell({
         )}
         <ProductTourProvider
           offeringsOnly={offeringsOnly}
-          autoStart={approvalEnabled}
+          // Mock mode is a review workspace. Opening a pasted mock link must
+          // show the requested screen, not resume a saved first-use tour and
+          // immediately navigate somewhere else. The Help launcher still
+          // starts the walkthrough explicitly when somebody asks for it.
+          autoStart={approvalEnabled && dataMode !== "mock"}
         />
         <AutoTruncationTooltip />
       </ToastProvider>

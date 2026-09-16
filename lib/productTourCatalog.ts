@@ -1,4 +1,5 @@
-import type { WorkspaceRole } from "./accessControl";
+import { normalizeWorkspaceRole, type WorkspaceRole } from "./accessControl";
+import { canAccessModule } from "./moduleAccess";
 
 export type ProductTourPlacement = "auto" | "bottom" | "left" | "right" | "top";
 export type ProductTourStepKind = "feature" | "navigation" | "mode";
@@ -38,10 +39,10 @@ const MANAGERS: readonly WorkspaceRole[] = ["bd_owner", "admin"];
  */
 function pageTargets(primary: readonly string[] = []): readonly string[] {
   return [
-    ...primary,
-    '[data-tour="page-header"]',
     '[data-tour="page-content"]',
     "#main-content",
+    ...primary,
+    '[data-tour="page-header"]',
   ];
 }
 
@@ -76,8 +77,10 @@ function pageTargets(primary: readonly string[] = []): readonly string[] {
 const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
   {
     id: "top-search",
-    route: "/dashboard",
-    offeringsOnlyRoute: "/offerings",
+    // Global chrome exists on every module. Start on Offerings because every
+    // approved workspace user can open it, while custom access profiles may
+    // legitimately deny Dashboard and redirect it back here.
+    route: "/offerings",
     kind: "feature",
     pageName: "the app",
     eyebrow: "Top bar",
@@ -95,8 +98,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
   },
   {
     id: "account-menu",
-    route: "/dashboard",
-    offeringsOnlyRoute: "/offerings",
+    route: "/offerings",
     kind: "feature",
     pageName: "your account",
     eyebrow: "Top right",
@@ -110,8 +112,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
   },
   {
     id: "notifications-bell",
-    route: "/dashboard",
-    offeringsOnlyRoute: "/offerings",
+    route: "/offerings",
     kind: "feature",
     pageName: "notifications",
     eyebrow: "Top bar",
@@ -125,8 +126,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
   },
   {
     id: "sidebar-modules",
-    route: "/dashboard",
-    offeringsOnlyRoute: "/offerings",
+    route: "/offerings",
     kind: "navigation",
     pageName: "the menu",
     eyebrow: "Left side",
@@ -165,7 +165,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     description:
       "It has read the catalogue and the material uploaded to it. Ask what fits a customer, or what an offering actually does.",
     targets: pageTargets([
-      'textarea[placeholder^="Ask about an offering"]',
+      'textarea[aria-label="Message the agent"]',
       '[data-tour="agent-workspace"]',
     ]),
     roles: ALL_ROLES,
@@ -251,7 +251,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     eyebrow: "Market Intel",
     title: "What competitors are up to",
     description:
-      "Companies you track, what they post, and what gets written about them. Sample data for now, and every page says so.",
+      "Follow customers, competitors and market updates. Search and filter tracked companies, then open a briefing for posts, news and signals.",
     targets: pageTargets(['input[placeholder^="Search customers or people"]']),
     placement: "bottom",
     roles: MANAGERS,
@@ -287,7 +287,6 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
       '[data-tour="settings-product-tour"]',
       'a[href="/onboarding"]',
     ]),
-    nextLabel: "Finish tour",
     roles: ALL_ROLES,
     availableInOfferingsOnly: true,
   },
@@ -433,8 +432,16 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
   },
 ];
 
+const SOLUTIONING_TOUR_STEP: ProductTourStepDefinition = {
+  id: "solutioning-requests", route: "/solutioning", kind: "feature",
+  pageName: "Solutioning", eyebrow: "Solutioning", title: "Your solutioning requests",
+  description: "Find submissions, presentations and meetings here. Open a request to see the brief, documents and latest activity.",
+  targets: pageTargets(['input[placeholder^="Search solutioning"]']),
+  roles: ["admin", "sol_member"], availableInOfferingsOnly: true, placement: "bottom",
+};
+
 export const PRODUCT_TOUR_STEPS: readonly ProductTourStep[] =
-  PRODUCT_TOUR_STEP_DEFINITIONS.map((step, catalogIndex) => ({
+  [...PRODUCT_TOUR_STEP_DEFINITIONS, SOLUTIONING_TOUR_STEP].map((step, catalogIndex) => ({
     ...step,
     catalogIndex,
   }));
@@ -470,21 +477,40 @@ export function localTourIndexForCatalogStep(
   return nearestIndex;
 }
 
+// Display order is independent of persisted catalog indexes. Keep saved
+// progress attached to the same feature when the walkthrough is reorganized.
+const TOUR_DISPLAY_ORDER = [
+  "top-search", "account-menu", "notifications-bell", "sidebar-modules",
+  "offerings-browser", "components-browser", "agent-workspace", "market-intel",
+  "customers-browser", "contacts-browser", "solutioning-requests",
+  "pipeline-board", "forecast-summary", "sessions-browser", "sequences-timeline",
+  "campaigns-workflow", "voice-overview", "tasks-queue",
+  "performance-goals", "reports-revenue", "analytics-growth", "activity-feed",
+  "team-roster", "settings-mock-mode", "settings-replay",
+];
+
 export function getProductTourSteps({
   offeringsOnly,
   role,
+  allowedRoutes,
 }: {
   offeringsOnly: boolean;
   role: WorkspaceRole | null | undefined;
+  allowedRoutes?: readonly string[];
 }): ProductTourStep[] {
+  const normalizedRole = normalizeWorkspaceRole(role);
+  const canOpen = (route: string) => allowedRoutes
+    ? allowedRoutes.includes(route)
+    : !!normalizedRole && canAccessModule(route, normalizedRole);
+  const home = canOpen("/offerings") ? "/offerings" : canOpen("/solutioning") ? "/solutioning" : "/settings?tab=workspace";
   const filtered = PRODUCT_TOUR_STEPS.filter((step) => {
     if (offeringsOnly && !step.availableInOfferingsOnly) return false;
-    if (role && step.roles && !step.roles.includes(role)) return false;
-    return true;
+    if (step.catalogIndex < 4) return true;
+    return canOpen(step.route);
   }).map((step) => ({
     ...step,
     route:
-      offeringsOnly && step.offeringsOnlyRoute
+      step.catalogIndex < 4 ? home : offeringsOnly && step.offeringsOnlyRoute
         ? step.offeringsOnlyRoute
         : step.route,
   }));
@@ -495,7 +521,9 @@ export function getProductTourSteps({
    * stays on the same screen keeps the plain "Next"; only a real move earns
    * "Open Reports".
    */
+  filtered.sort((a, b) => TOUR_DISPLAY_ORDER.indexOf(a.id) - TOUR_DISPLAY_ORDER.indexOf(b.id));
   return filtered.map((step, index) => {
+    if (index === filtered.length - 1) return { ...step, nextLabel: "Finish tour" };
     if (step.nextLabel) return step;
     const next = filtered[index + 1];
     if (!next || next.route === step.route) return step;
@@ -528,7 +556,5 @@ export function navIntroSelectorsFor(route: string): readonly string[] {
   return [
     `[data-tour="nav-${slug}"]`,
     `[data-tour^="nav-${slug}"]`,
-    '[data-tour="sidebar"]',
   ];
 }
-

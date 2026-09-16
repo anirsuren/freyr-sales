@@ -471,9 +471,10 @@ export function PerformanceModule({
             {/* Inside Admin the selector is the Admin tab strip, one level up.
                 Two rows of pills stacked on each other is the "so much" Suren
                 was complaining about. */}
+            {chrome !== "admin" && visibleTabs.length === 1 && <div id="perf-header-person" />}
             <div className={cn(
               "inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-              chrome === "admin" && "hidden"
+              (chrome === "admin" || visibleTabs.length < 2) && "hidden"
             )}>
               {visibleTabs.map((key) => {
                 const r = ROOMS[key];
@@ -599,6 +600,7 @@ export function PerformanceModule({
           />
         ) : (
           <PeopleTab
+            headerIdentity={chrome !== "admin" && visibleTabs.length === 1}
             initialPerson={jumpPerson}
             state={state}
             live={live}

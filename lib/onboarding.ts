@@ -27,6 +27,8 @@ export type OnboardingState = {
 export type OnboardingResponse = {
   state: OnboardingState;
   role: WorkspaceRole;
+  /** Routes available through the same resolver as the page guards. */
+  tourRoutes?: string[];
 };
 
 export type OnboardingAction =

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useEscapeToClose } from "@/components/ui/useDismissable";
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -38,6 +39,7 @@ import type { RunOp } from "./PerformanceModule";
  * name, then that people name can come").
  */
 export function PeopleTab({
+  headerIdentity = false,
   focusGoalId = null,
   state,
   live,
@@ -50,6 +52,7 @@ export function PeopleTab({
   onEditSubgoal,
   initialPerson = null,
 }: {
+  headerIdentity?: boolean;
   /** Deep-linked goal, opened on arrival. */
   focusGoalId?: string | null;
   state: PerformanceState;
@@ -66,6 +69,10 @@ export function PeopleTab({
   initialPerson?: string | null;
 }) {
   const router = useRouter();
+  const [identitySlot, setIdentitySlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setIdentitySlot(headerIdentity ? document.getElementById("perf-header-person") : null);
+  }, [headerIdentity]);
   /**
    * ONLY THE PEOPLE YOU MAY LOOK AT (Anir, Aug 16: "Restrict"). Admins get the
    * whole workspace; everybody else gets themselves plus the groups they head.
@@ -309,6 +316,7 @@ export function PeopleTab({
 
   return (
     <div>
+      {identitySlot && createPortal(picker, identitySlot)}
       {/* The verification queue and this person's own entries stay: they are
           about claims, not goals, and the Org screen has no equivalent.
 
@@ -349,7 +357,7 @@ export function PeopleTab({
           onSetTarget: (g) => setShareGoal(g),
           goals: scoped.goals,
           noun: "goals",
-          picker,
+          picker: identitySlot ? null : picker,
           jumps,
           accent: "var(--ink-magenta)",
           exportLabel: `person-${person}`,

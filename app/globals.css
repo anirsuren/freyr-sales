@@ -816,21 +816,25 @@ select:focus-visible {
       0 0 0 4px rgba(0, 113, 227, 0.14);
   }
 }
+/* Keep the tour distinguishable even over a white spotlight. Override the
+   shared keyboard-focus shadow without removing keyboard focus elsewhere. */
+.product-tour-card,
+.product-tour-card:focus-visible {
+  border: 2px solid #70aaff;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.96),
+    0 22px 70px rgba(8, 15, 28, 0.48),
+    0 4px 16px rgba(8, 15, 28, 0.3);
+}
+/* Navigation must not fade the instructions or backdrop back in from zero.
+   Page animations remain intact; the measured spotlight follows their motion. */
 .product-tour-card {
-  animation: productTourCardIn 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
   isolation: isolate;
 }
-.product-tour-backdrop {
-  animation: productTourBackdropIn 0.22s ease-out both;
-}
-.product-tour-step-forward {
-  animation: productTourStepForward 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.product-tour-step-backward {
-  animation: productTourStepBackward 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
+.product-tour-backdrop,
+.product-tour-step-forward,
+.product-tour-step-backward,
 .product-tour-page-change {
-  animation: productTourPageChange 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: none;
 }
 .product-tour-focus-label {
   animation: productTourFocus 1.9s ease-in-out infinite;

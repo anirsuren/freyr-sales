@@ -3,6 +3,7 @@
 import { roleLabel } from "@/components/ui/RoleTag";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { requestProductTourStart } from "./productTourEvents";
 import {
   ArrowRight,
   CheckCircle2,
@@ -26,11 +27,12 @@ type OnboardingStatus =
   | "skipped";
 
 type OnboardingResponse = {
+  tourRoutes?: string[];
   state?: {
     status?: OnboardingStatus;
     currentStep?: number;
   };
-  role?: "bd_member" | "bd_owner" | "admin";
+  role?: "bd_member" | "bd_owner" | "admin" | "sol_member";
 };
 
 const CHAPTERS = [
@@ -94,8 +96,8 @@ export function OnboardingHub({
   const [status, setStatus] = useState<OnboardingStatus>("not_started");
   const [currentStep, setCurrentStep] = useState(0);
   const [role, setRole] = useState<OnboardingResponse["role"]>();
+  const [allowedRoutes, setAllowedRoutes] = useState<string[]>();
   const [loading, setLoading] = useState(true);
-  const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -104,6 +106,7 @@ export function OnboardingHub({
       cache: "no-store",
       credentials: "same-origin",
       headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(15000),
     })
       .then(async (response) => {
         if (!response.ok) return null;
@@ -114,6 +117,7 @@ export function OnboardingHub({
         setStatus(body.state.status || "not_started");
         setCurrentStep(Math.max(0, body.state.currentStep || 0));
         setRole(body.role);
+        setAllowedRoutes(body.tourRoutes);
       })
       .catch(() => {
         // The provider will surface a retry if persistence is temporarily
@@ -127,7 +131,7 @@ export function OnboardingHub({
 
   const replay = status === "completed" || status === "skipped";
   const chapters = offeringsOnly ? OFFERINGS_ONLY_CHAPTERS : CHAPTERS;
-  const tourSteps = getProductTourSteps({ offeringsOnly, role });
+  const tourSteps = getProductTourSteps({ offeringsOnly, role, allowedRoutes });
   const totalSteps = tourSteps.length;
   const localStep = localTourIndexForCatalogStep(tourSteps, currentStep);
   const progress =
@@ -151,60 +155,12 @@ export function OnboardingHub({
         ? "Take tour again"
         : "Start guided tour";
 
-  async function patchOnboarding(action: {
-    action: "progress" | "reset";
-    currentStep?: number;
-  }): Promise<void> {
-    const response = await fetch("/api/onboarding", {
-      method: "PATCH",
-      cache: "no-store",
-      credentials: "same-origin",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(action),
-    });
-    if (response.ok) return;
-
-    let message = "We could not start the product tour. Please try again.";
-    try {
-      const body = (await response.json()) as { error?: unknown };
-      if (typeof body.error === "string" && body.error.trim()) {
-        message = body.error;
-      }
-    } catch {
-      // Keep the useful fallback for empty and non-JSON responses.
-    }
-    throw new Error(message);
-  }
-
-  async function startTour() {
-    if (loading || launching || tourSteps.length === 0) return;
-    const nextLocalStep =
-      !replay && status === "in_progress" ? localStep : 0;
-    const nextStep = tourSteps[nextLocalStep] || tourSteps[0];
-
-    setLaunching(true);
+  function startTour() {
+    if (loading || tourSteps.length === 0) return;
     setLaunchError(null);
-    try {
-      if (replay) await patchOnboarding({ action: "reset" });
-      await patchOnboarding({
-        action: "progress",
-        currentStep: nextStep.catalogIndex,
-      });
-      // A full navigation gives the provider a clean post-login mount and
-      // makes the hub a reliable recovery path even after a transient load
-      // failure or a missed client event.
-      window.location.assign(nextStep.route);
-    } catch (cause) {
-      setLaunchError(
-        cause instanceof Error
-          ? cause.message
-          : "We could not start the product tour. Please try again."
-      );
-      setLaunching(false);
-    }
+    // The mounted provider owns navigation and progress. A second PATCH + full
+    // reload here raced its hydration and could leave this button stuck forever.
+    requestProductTourStart({ restart: replay });
   }
 
   return (
@@ -239,17 +195,15 @@ export function OnboardingHub({
                 type="button"
                 onClick={() => void startTour()}
                 aria-label={label}
-                disabled={loading || launching}
+                disabled={loading}
               >
                 {replay ? <RotateCcw size={17} /> : <Play size={17} />}
                 {loading
                   ? "Loading tour…"
-                  : launching
-                    ? "Starting tour…"
-                    : label}
+                  : label}
               </Button>
               <Link
-                href={offeringsOnly ? "/offerings" : "/dashboard"}
+                href={tourSteps[0]?.route || "/settings"}
                 className="inline-flex items-center gap-1.5 px-2 py-2.5 text-[13px] font-semibold text-blue-primary hover:underline"
               >
                 Go to {offeringsOnly ? "offerings" : "dashboard"}{" "}

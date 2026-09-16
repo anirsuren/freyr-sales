@@ -18,7 +18,6 @@ import {
   Check,
   Compass,
   Eye,
-  LoaderCircle,
   MousePointerClick,
   Navigation,
   RotateCcw,
@@ -162,6 +161,7 @@ function useNavIntroRect(
     }
     let cancelled = false;
     let raf = 0;
+    let scrolled: HTMLElement | null = null;
     const measure = () => {
       if (cancelled) return;
       let element: HTMLElement | null = null;
@@ -174,7 +174,12 @@ function useNavIntroRect(
       }
       if (!element) {
         updateTourRect(setRect, null);
+        raf = window.requestAnimationFrame(measure);
         return;
+      }
+      if (scrolled !== element && needsViewportScroll(element.getBoundingClientRect(), viewport)) {
+        scrolled = element;
+        element.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
       }
       updateTourRect(
         setRect,
@@ -201,7 +206,7 @@ function useTourTarget(
   const [matchedSelector, setMatchedSelector] = useState<string | null>(null);
   const [rect, setRect] = useState<TourRect | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled) {
       setTarget(null);
       setMatchedSelector(null);
@@ -282,7 +287,9 @@ function useTourTarget(
       }
     };
 
-    const frame = window.requestAnimationFrame(locate);
+    // Resolve existing targets before the first paint; otherwise the card
+    // flashes in its fallback position and jumps to the search bar.
+    locate();
     const observer = new MutationObserver(locate);
     const body = document.body;
     if (body) {
@@ -290,7 +297,7 @@ function useTourTarget(
     }
     return () => {
       cancelled = true;
-      window.cancelAnimationFrame(frame);
+
       if (timer) window.clearTimeout(timer);
       observer.disconnect();
       setTarget(null);
@@ -305,56 +312,48 @@ function useTourTarget(
     }
 
     let frame = 0;
+    let trackUntil = performance.now() + 1200;
     const measure = () => {
-      window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => {
-        if (!target.isConnected || !elementIsVisible(target)) {
-          updateTourRect(setRect, null);
-          return;
-        }
-        updateTourRect(
-          setRect,
-          paddedRect(target.getBoundingClientRect(), viewport)
-        );
-      });
+      frame = 0;
+      if (!target.isConnected || !elementIsVisible(target)) {
+        updateTourRect(setRect, null);
+        return;
+      }
+      updateTourRect(setRect, paddedRect(target.getBoundingClientRect(), viewport));
+      // CSS transforms do not trigger ResizeObserver. Follow every frame of
+      // the entrance animation instead of lagging behind it with another tween.
+      if (performance.now() < trackUntil) frame = requestAnimationFrame(measure);
     };
-
+    const followMotion = () => {
+      trackUntil = performance.now() + 1200;
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
     measure();
-    /**
-     * MEASURE AGAIN ONCE THE PAGE HAS SETTLED (Anir, Aug 13: "the rectangle in
-     * the second screenshot isn't even aligned properly. It's not centering").
-     *
-     * Locating a target calls scrollIntoView and then measures on the very
-     * next frame. The scroll has not finished by then, and neither have the
-     * page's own entrance animations (`rise-in`, `step-in`, the tab panels),
-     * so the box was drawn around where the element USED to be and then never
-     * corrected — nothing moved afterwards, so no scroll or resize event ever
-     * fired to fix it. These follow-up measurements catch the settled position.
-     */
-    const settle = [60, 180, 400, 700].map((delay) =>
-      window.setTimeout(measure, delay)
-    );
-    const resizeObserver = new ResizeObserver(measure);
+    const resizeObserver = new ResizeObserver(followMotion);
     resizeObserver.observe(target);
-    // The document itself changes height as content lands, which moves the
-    // target without resizing it.
-    const bodyObserver = new ResizeObserver(measure);
-    if (document.body) bodyObserver.observe(document.body);
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
+    if (document.body) resizeObserver.observe(document.body);
+    window.addEventListener("resize", followMotion);
+    window.addEventListener("scroll", followMotion, true);
+    const onAnimation = (event: Event) => {
+      const element = event.target;
+      if (element instanceof Element &&
+          (element === target || element.contains(target))) followMotion();
+    };
+    document.addEventListener("animationstart", onAnimation, true);
+    document.addEventListener("transitionrun", onAnimation, true);
     return () => {
-      window.cancelAnimationFrame(frame);
-      settle.forEach((id) => window.clearTimeout(id));
+      cancelAnimationFrame(frame);
       resizeObserver.disconnect();
-      bodyObserver.disconnect();
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", followMotion);
+      window.removeEventListener("scroll", followMotion, true);
+      document.removeEventListener("animationstart", onAnimation, true);
+      document.removeEventListener("transitionrun", onAnimation, true);
     };
   }, [target, viewport]);
 
   return {
     rect,
-    isFallback: !!matchedSelector && FALLBACK_TARGETS.has(matchedSelector),
+    isFallback: !!matchedSelector && FALLBACK_TARGETS.has(matchedSelector) && step.targets[0] !== matchedSelector,
   };
 }
 
@@ -377,9 +376,9 @@ function dialogPosition({
   placement: ProductTourStep["placement"];
   fallback: boolean;
 }): CSSProperties {
-  const margin = 16;
+  const margin = 48;
   const safe = 16;
-  const width = Math.min(dialogWidth || 408, viewport.width - safe * 2);
+  const width = Math.min(408, viewport.width - safe * 2);
   const height = dialogHeight || 270;
   const keepInsideViewport = (style: CSSProperties): CSSProperties => {
     const requestedTop =
@@ -481,6 +480,7 @@ export function ProductTourOverlay({
   currentStep,
   totalSteps,
   routeReady,
+  awaitingNavigation = false,
   saving,
   error,
   onBack,
@@ -492,6 +492,7 @@ export function ProductTourOverlay({
   currentStep: number;
   totalSteps: number;
   routeReady: boolean;
+  awaitingNavigation?: boolean;
   saving: boolean;
   error: string | null;
   onBack: () => void;
@@ -503,32 +504,12 @@ export function ProductTourOverlay({
   const viewport = useViewport();
   const reducedMotion = useReducedMotion();
   const compact = viewport.width < 720 || viewport.height < 560;
-  /**
-   * A GUARANTEED TRANSITION BEAT ON EVERY PAGE CHANGE (Anir, Sep 6: "when I
-   * went to Team, it didn't show up"). On a fast navigation routeReady is true
-   * almost instantly, so the "Opening…" card used to flash past — or never
-   * appear — and the person was teleported with no cue. Now every route
-   * change holds the transition for a moment, long enough to see WHICH
-   * sidebar entry is being opened (spotlit below), then continues by itself.
-   */
-  const [navBeat, setNavBeat] = useState(false);
-  const prevRouteRef = useRef<string | null>(null);
-  useEffect(() => {
-    const base = step.route.split("?")[0];
-    const prev = prevRouteRef.current;
-    prevRouteRef.current = base;
-    if (prev !== null && prev !== base) {
-      setNavBeat(true);
-      const timer = window.setTimeout(() => setNavBeat(false), 1500);
-      return () => window.clearTimeout(timer);
-    }
-    return;
-  }, [step.route]);
-  const transitioning = !routeReady || navBeat;
+  // A destination preview stays open until Next confirms the navigation.
+  const transitioning = awaitingNavigation || !routeReady;
   const { rect, isFallback } = useTourTarget(
     step,
     viewport,
-    routeReady && !navBeat
+    routeReady && !awaitingNavigation
   );
   const navRect = useNavIntroRect(step.route, transitioning, viewport);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -542,7 +523,7 @@ export function ProductTourOverlay({
   const stepKind = step.kind;
   const isNavigationStep = stepKind === "navigation";
   const isModeStep = stepKind === "mode";
-  const pageName = routeLabel(step.route);
+  const pageName = step.pageName || routeLabel(step.route);
   const stepDirection =
     stepMotion.step === currentStep
       ? stepMotion.direction
@@ -564,7 +545,9 @@ export function ProductTourOverlay({
     const measure = () => {
       const next = {
         width: dialog.offsetWidth || 408,
-        height: dialog.offsetHeight || 288,
+        height: Array.from(dialog.children).reduce(
+          (height, child) => height + (child as HTMLElement).scrollHeight, 4
+        ) || 288,
       };
       setDialogSize((previous) =>
         previous.width === next.width && previous.height === next.height
@@ -608,15 +591,17 @@ export function ProductTourOverlay({
         onSkip();
         return;
       }
-      if (routeReady && navBeat) {
-        // Impatient is fine: the same keys that advance simply end the beat.
-        if (event.key === "Enter" || event.key === "ArrowRight") {
-          event.preventDefault();
-          setNavBeat(false);
-        }
+      if (awaitingNavigation && !typing && event.key === "ArrowRight") {
+        event.preventDefault();
+        onNext();
         return;
       }
-      if (!routeReady) {
+      if (awaitingNavigation && !typing && event.key === "ArrowLeft") {
+        event.preventDefault();
+        onBack();
+        return;
+      }
+      if (!routeReady || awaitingNavigation) {
         if (event.key === "Tab") {
           const focusable = Array.from(
             dialog.querySelectorAll<HTMLElement>(
@@ -648,12 +633,12 @@ export function ProductTourOverlay({
       }
       if (!typing && event.key === "ArrowRight") {
         event.preventDefault();
-        if (!saving) onNext();
+        onNext();
         return;
       }
       if (!typing && event.key === "ArrowLeft") {
         event.preventDefault();
-        if (!saving && currentStep > 0) onBack();
+        if (currentStep > 0) onBack();
         return;
       }
       if (event.key !== "Tab") return;
@@ -678,7 +663,7 @@ export function ProductTourOverlay({
         first.focus();
       }
     },
-    [currentStep, navBeat, onBack, onNext, onSkip, routeReady, saving]
+    [currentStep, onBack, onNext, onSkip, routeReady, saving, awaitingNavigation]
   );
 
   useEffect(() => {
@@ -716,12 +701,15 @@ export function ProductTourOverlay({
 
   if (!mounted) return null;
 
+  // Retain the same destination card until navigation commits; never unmount
+  // the entire tour for the gap between routes. No extra loading screen.
   if (transitioning) {
     return createPortal(
       <>
         <div
           aria-hidden="true"
-          className="product-tour-backdrop fixed inset-0 z-[105] cursor-default bg-[rgba(8,15,28,0.66)]"
+          className="product-tour-backdrop fixed inset-0 z-[105] cursor-default"
+          style={{ background: navRect ? "transparent" : "rgba(8,15,28,0.66)" }}
           onMouseDown={(event) => event.preventDefault()}
         />
         {/* THE POINTER AT THE SIDEBAR (Anir: "show that we're clicking on
@@ -732,8 +720,9 @@ export function ProductTourOverlay({
           <>
             <div
               aria-hidden="true"
-              className="pointer-events-none fixed z-[106] rounded-xl border-2 border-blue-primary bg-blue-primary/10 shadow-[0_0_0_4px_rgba(0,113,227,0.25),0_10px_36px_rgba(0,71,171,0.45)]"
+              className="pointer-events-none fixed z-[106] rounded-xl border-2 border-blue-primary"
               style={{
+                boxShadow: "0 0 0 3px white, 0 0 0 9999px rgba(8,15,28,0.66)",
                 top: navRect.top,
                 left: navRect.left,
                 width: navRect.width,
@@ -761,7 +750,7 @@ export function ProductTourOverlay({
             ref={dialogRef}
             role="dialog"
             aria-modal="true"
-            aria-busy="true"
+            aria-busy={false}
             aria-labelledby="product-tour-transition-title"
             aria-describedby="product-tour-transition-description"
             tabIndex={-1}
@@ -789,7 +778,7 @@ export function ProductTourOverlay({
               <button
                 type="button"
                 onClick={onSkip}
-                disabled={saving}
+                disabled={false}
                 aria-label="Close and skip tour"
                 className="relative flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-white/[0.72] transition-colors hover:border-white/[0.15] hover:bg-white/10 hover:text-white disabled:opacity-50"
               >
@@ -798,52 +787,38 @@ export function ProductTourOverlay({
             </div>
             <div className="px-5 py-6 text-center">
               <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-primary/[0.15] bg-blue-light text-blue-primary">
-                <LoaderCircle
-                  size={21}
-                  strokeWidth={2.2}
-                  className={cn(!reducedMotion && "animate-spin")}
-                />
+                <Navigation size={21} strokeWidth={2.2} />
               </span>
               <h2
                 id="product-tour-transition-title"
                 className="mt-4 text-[19px] font-semibold tracking-[-0.02em] text-text-primary"
               >
-                Opening {pageName}…
+                Open {pageName}
               </h2>
               <p
                 id="product-tour-transition-description"
                 className="mt-1.5 text-[13px] leading-relaxed text-text-secondary"
               >
-                {navRect
-                  ? "From the highlighted spot in the menu on the left."
-                  : "Taking you to the next part of the walkthrough."}
+                {`Press Next to open ${pageName}${navRect ? " from the highlighted menu item" : ""}.`}
               </p>
-              <div
-                aria-hidden="true"
-                className="mx-auto mt-5 h-1.5 w-28 overflow-hidden rounded-full bg-blue-light"
-              >
-                <div
-                  className={cn(
-                    "h-full w-1/2 rounded-full bg-blue-primary",
-                    !reducedMotion && "animate-pulse"
-                  )}
-                />
-              </div>
+
             </div>
             <div className="flex justify-center border-t border-border-light bg-surface/60 px-5 py-3">
               <button
                 type="button"
                 onClick={onSkip}
-                disabled={saving}
+                disabled={false}
                 className="text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
               >
                 Skip tour
               </button>
+              <button type="button" onClick={onBack} disabled={!awaitingNavigation && currentStep === 0} className="ml-auto px-3 py-2 text-sm disabled:opacity-40">Back</button>
+              <button type="button" onClick={onNext} className="rounded-lg bg-blue-primary px-4 py-2 text-sm font-semibold text-white">Next</button>
             </div>
           </div>
         </div>
         <span className="sr-only" role="status" aria-live="polite">
-          Opening {pageName}. Please wait.
+          Press Next to open {pageName}.
         </span>
       </>,
       document.body
@@ -868,8 +843,7 @@ export function ProductTourOverlay({
           data-testid="product-tour-spotlight"
           className={cn(
             "product-tour-spotlight pointer-events-none fixed z-[106] rounded-xl border-2 border-blue-primary",
-            !reducedMotion &&
-              "transition-[top,left,width,height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            "will-change-[top,left,width,height]"
           )}
           style={{
             top: rect.top,
@@ -885,8 +859,7 @@ export function ProductTourOverlay({
           data-testid="product-tour-focus-label"
           className={cn(
             "pointer-events-none fixed z-[108] inline-flex h-7 items-center gap-1.5 rounded-full border border-white/60 bg-blue-primary px-2.5 text-[10.5px] font-semibold text-white shadow-[0_7px_22px_rgba(0,71,171,0.42)]",
-            !reducedMotion &&
-              "product-tour-focus-label transition-[top,left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            !reducedMotion && "product-tour-focus-label"
           )}
           style={{
             top:
@@ -993,7 +966,7 @@ export function ProductTourOverlay({
           <button
             type="button"
             onClick={onSkip}
-            disabled={saving}
+            disabled={false}
             aria-label="Close and skip tour"
             className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-transparent text-white/[0.72] transition-colors hover:border-white/[0.15] hover:bg-white/10 hover:text-white disabled:opacity-50"
           >
@@ -1053,7 +1026,7 @@ export function ProductTourOverlay({
                 <button
                   type="button"
                   onClick={onRetry}
-                  disabled={saving}
+                  disabled={false}
                   className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-red-700 hover:underline disabled:opacity-50"
                 >
                   <RotateCcw size={13} /> Retry
@@ -1074,7 +1047,7 @@ export function ProductTourOverlay({
           <button
             type="button"
             onClick={onSkip}
-            disabled={saving}
+            disabled={false}
             className="text-[12.5px] font-semibold text-text-secondary hover:text-text-primary disabled:opacity-50"
           >
             Skip tour
@@ -1084,7 +1057,7 @@ export function ProductTourOverlay({
               type="button"
               onClick={onBack}
               data-testid="product-tour-back"
-              disabled={saving || currentStep === 0}
+              disabled={currentStep === 0}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-[13px] font-semibold text-text-primary transition-[background-color,border-color,transform] hover:-translate-x-0.5 hover:border-text-tertiary hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-x-0"
             >
               <ArrowLeft size={14} /> Back
@@ -1093,7 +1066,7 @@ export function ProductTourOverlay({
               type="button"
               onClick={onNext}
               data-testid="product-tour-next"
-              disabled={saving}
+              disabled={false}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-blue-primary px-4 text-[13px] font-semibold text-white shadow-[0_6px_16px_rgba(0,113,227,0.24)] transition-[background-color,box-shadow,transform] hover:translate-x-0.5 hover:bg-blue-hover hover:shadow-[0_8px_20px_rgba(0,113,227,0.3)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-x-0"
             >
               {lastStep ? (

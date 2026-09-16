@@ -16,6 +16,18 @@ import {
 } from "@/lib/onboardingStore";
 import { authenticatedRequestPrincipal } from "@/lib/requestPrincipal";
 
+import { getRole } from "@/lib/role";
+import { viewerAccessMap } from "@/lib/viewerAccess";
+import { canAccessModuleWith } from "@/lib/moduleAccess";
+import { PRODUCT_TOUR_STEPS } from "@/lib/productTourCatalog";
+import type { OnboardingResponse } from "@/lib/onboarding";
+
+async function withTourAccess(response: OnboardingResponse) {
+  const [role, access] = await Promise.all([getRole(), viewerAccessMap()]);
+  const routes = [...new Set(PRODUCT_TOUR_STEPS.map((step) => step.route))];
+  return { ...response, role, tourRoutes: routes.filter((route) => canAccessModuleWith(route, role, access)) };
+}
+
 export const dynamic = "force-dynamic";
 
 function json(body: Record<string, unknown>, status = 200) {
@@ -69,7 +81,7 @@ export async function GET(request: NextRequest) {
   if ("response" in authorization) return authorization.response;
 
   try {
-    return json(await getOnboardingState(authorization.access));
+    return json(await withTourAccess(await getOnboardingState(authorization.access)));
   } catch (error) {
     return storeFailure(error);
   }
@@ -96,7 +108,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     return json(
-      await updateOnboardingState(authorization.access, action)
+      await withTourAccess(await updateOnboardingState(authorization.access, action))
     );
   } catch (error) {
     return storeFailure(error);

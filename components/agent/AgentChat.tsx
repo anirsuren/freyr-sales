@@ -1,5 +1,6 @@
 "use client";
 import { normalizeAgentLinks, readableLinkLabel } from "@/lib/agentAnswerPresentation";
+import { useTypewriter, trimStreamingLink } from "./useTypewriter";
 import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 
 import { useEffect, useId, useRef, useState, useCallback, useMemo, type ReactNode } from "react";
@@ -551,6 +552,20 @@ function MarkdownText({
   return <>{blocks}</>;
 }
 
+function TypedAgentReply({ text, active, entities, entityContext, onReveal }: {
+  text: string;
+  active: boolean;
+  entities: Entity[];
+  entityContext?: string[];
+  onReveal: () => void;
+}) {
+  const shown = useTypewriter(text, active);
+  useEffect(() => {
+    if (active) onReveal();
+  }, [shown, active, onReveal]);
+  return <MarkdownText text={trimStreamingLink(shown)} entities={entities} entityContext={entityContext} />;
+}
+
 function ThinkingDots() {
   return (
     <span className="flex items-center gap-1 py-0.5" aria-label="Thinking">
@@ -584,6 +599,11 @@ export function AgentChat({
   const [loadedStorageKey, setLoadedStorageKey] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
+  const [typingReply, setTypingReply] = useState<{ conversationId: string; ts: number } | null>(null);
+  // History opens immediately; only a reply received in this open chat types.
+  const activeConversationRef = useRef(activeId);
+  activeConversationRef.current = activeId;
+  useEffect(() => setTypingReply(null), [activeId, currentUser.id]);
   /**
    * WHICH conversation is waiting, not merely THAT one is.
    *
@@ -790,6 +810,13 @@ export function AgentChat({
     scrollToBottom();
   }, [active?.messages.length, sending, scrollToBottom]);
 
+  const followReply = useCallback(() => {
+    const area = scrollRef.current;
+    if (area && area.scrollHeight - area.scrollTop - area.clientHeight < 140) {
+      area.scrollTo({ top: area.scrollHeight });
+    }
+  }, []);
+
   const send = useCallback(
     async (
       raw: string,
@@ -908,6 +935,9 @@ export function AgentChat({
         if (!reply) throw new Error("empty reply");
         const nextSuggestions: string[] = Array.isArray(data.suggestions) ? data.suggestions.filter((s: unknown) => typeof s === "string").slice(0, 3) : [];
         const replyTs = Date.now();
+        if (activeConversationRef.current === id) {
+          setTypingReply({ conversationId: id, ts: replyTs });
+        }
         setConvos((prev) => {
           const next = prev.map((c) =>
             c.id === id
@@ -1196,13 +1226,13 @@ export function AgentChat({
               summary &&
               (summary.needsApproval > 0 || summary.cooling > 0 || summary.atRisk > 0) && (
                 <div
-                  className="flex flex-wrap justify-center gap-2 mt-6 rise-in"
+                  className="flex flex-nowrap gap-2 mt-6 max-w-full overflow-x-auto no-scrollbar py-1 rise-in"
                   style={{ animationDelay: "180ms" }}
                 >
                   {summary.needsApproval > 0 && (
                     <button
                       onClick={() => send("What's waiting for my approval?")}
-                      className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-3 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                      className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-3 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
                     >
                       {/* orange, not amber-500 — banned yellow as a status dot */}
                       <span className="w-1.5 h-1.5 rounded-full bg-orange-600" />
@@ -1212,7 +1242,7 @@ export function AgentChat({
                   {summary.cooling > 0 && (
                     <button
                       onClick={() => send("Which deals are cooling?")}
-                      className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-3 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                      className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-3 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-error" />
                       {summary.cooling} deal{summary.cooling === 1 ? "" : "s"} cooling
@@ -1221,7 +1251,7 @@ export function AgentChat({
                   {summary.atRisk > 0 && (
                     <button
                       onClick={() => send("Which accounts are at-risk?")}
-                      className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-3 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                      className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-3 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-error" />
                       {summary.atRisk} at-risk
@@ -1231,7 +1261,7 @@ export function AgentChat({
               )}
 
             <div
-              className="flex flex-wrap justify-center gap-2 mt-3 max-w-[640px] rise-in"
+              className="flex flex-nowrap gap-2 mt-3 w-full max-w-[640px] overflow-x-auto no-scrollbar py-1 rise-in"
               style={{ animationDelay: "240ms" }}
             >
               {(offeringContext
@@ -1243,7 +1273,7 @@ export function AgentChat({
                 <button
                   key={s}
                   onClick={() => send(s)}
-                  className="text-[13px] text-text-secondary border border-border-light rounded-full px-3.5 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                  className="shrink-0 whitespace-nowrap text-[13px] text-text-secondary border border-border-light rounded-full px-3.5 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
                 >
                   {s}
                 </button>
@@ -1293,7 +1323,13 @@ export function AgentChat({
                             </span>
                           </p>
                           <div className="text-[14px] text-text-primary leading-relaxed bg-surface border border-border-light rounded-2xl rounded-tl-md px-4 py-2.5">
-                            <MarkdownText text={msg.text} entities={entities} entityContext={msg.entityContext} />
+                            <TypedAgentReply
+                              text={msg.text}
+                              active={typingReply?.conversationId === active.id && typingReply.ts === msg.ts}
+                              entities={entities}
+                              entityContext={msg.entityContext}
+                              onReveal={followReply}
+                            />
                           </div>
                         </div>
                       </div>
@@ -1319,12 +1355,12 @@ export function AgentChat({
         <div className="relative z-10 shrink-0 px-3 sm:px-6 pb-4 pt-2 bg-gradient-to-t from-white via-white to-white/0">
           <div className="max-w-[760px] mx-auto">
             {active && active.messages.length > 0 && (active.messages.at(-1)?.suggestions?.length ?? 0) > 0 && !sending && (
-              <div key={active.messages.at(-1)?.ts} className="flex sm:flex-wrap gap-2 mb-3 overflow-x-auto sm:overflow-visible no-scrollbar py-1">
+              <div key={active.messages.at(-1)?.ts} className="flex flex-nowrap gap-2 mb-3 overflow-x-auto no-scrollbar py-1">
                 {active.messages.at(-1)?.suggestions?.slice(0, 3).map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
-                    className="shrink-0 sm:shrink whitespace-nowrap sm:whitespace-normal sm:text-left sm:max-w-full text-[12px] text-text-secondary border border-border-light bg-white rounded-full px-3.5 py-2 shadow-sm hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary transition-colors"
+                    className="shrink-0 whitespace-nowrap text-left text-[12px] text-text-secondary border border-border-light bg-white rounded-full px-3.5 py-2 shadow-sm hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary transition-colors"
                   >
                     {s}
                   </button>
