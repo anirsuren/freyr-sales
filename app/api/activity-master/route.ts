@@ -60,12 +60,6 @@ export async function POST(req: NextRequest) {
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
-  if (getDataMode() === "mock") {
-    return NextResponse.json(
-      { error: "Sample data is read-only. Switch to Real mode to change the master." },
-      { status: 403 }
-    );
-  }
   const me = await getCurrentUser();
   if (me.role !== "admin") {
     return NextResponse.json(

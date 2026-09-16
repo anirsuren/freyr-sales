@@ -1,3 +1,4 @@
+import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 import { usableRundown } from "./marketIntelRundown";
 import { dedupeMnaDeals } from "./marketIntelMnaDedupe";
 import { collectionPhase } from "./marketIntelCollectionStore";
@@ -129,8 +130,8 @@ const TRACKING_ROW = "market-intel:default";
 
 function hasEnv(): boolean {
   return !!(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    marketIntelDatabaseConfig().url &&
+    marketIntelDatabaseConfig().key
   );
 }
 
@@ -153,8 +154,8 @@ export async function loadProviderConfig(): Promise<void> {
 
 function client() {
   return require("@supabase/supabase-js").createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    marketIntelDatabaseConfig().url!,
+    marketIntelDatabaseConfig().key!,
     { global: { fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, cache: "no-store" }) } }
   );
 }

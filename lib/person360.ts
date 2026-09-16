@@ -232,7 +232,7 @@ export async function buildPerson360(
          the submissions and presentations they turn into — and no page
          carried them at all. "Now you should call it as solution request, not
          request; they call it solution request." */
-      ["solutionRequests", "Solution requests", "request", "var(--ink-bright-blue)"],
+      ["solutionRequests", "Solutioning requests", "request", "var(--ink-bright-blue)"],
       ["submissions", "Submissions", "submission", "var(--ink-violet-soft)"],
       ["presentations", "Presentations", "presentation", "var(--ink-teal-deep)"],
       /* Same collision as the customer page: a meeting ASKED FOR is not a

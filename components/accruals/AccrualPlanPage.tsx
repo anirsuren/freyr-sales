@@ -308,11 +308,7 @@ export function AccrualPlanPage({
         {/* Only the MOCK notice survives: "you cannot change this" is the
             access shield's job, and it does it on hover instead of holding
             header space on every visit. */}
-        {!canWrite && !live && (
-          <span className="rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-text-secondary">
-            Sample plan. Switch to Real mode to work the live numbers
-          </span>
-        )}
+
       </div>
 
       {/* ONE LINE, NOT THREE CARDS (Anir, Sep 1: "you can just significantly

@@ -103,13 +103,14 @@ export function MiTabs({
           haywire". The strip renders already-settled; only the keyed
           tab-panel below animates. */}
       <div className="relative z-40 mb-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="relative">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative max-w-full overflow-x-auto [scrollbar-width:none]">
           {/* The pills carry the page name, so the visible h1 would say it
               twice. Kept for screen readers and the document outline, exactly
               as Performance does it. */}
           <h1 className="sr-only">{current.label}</h1>
           <PageTabs
+            className="w-max !flex-nowrap [&>button]:shrink-0 [&>button]:whitespace-nowrap"
             tabs={TABS}
             active={current.key}
             pending={switching ? current.key : null}
@@ -122,7 +123,7 @@ export function MiTabs({
             }}
           />
         </div>
-        {action && <div className="shrink-0">{action}</div>}
+        {action && <div className="ml-auto max-w-full">{action}</div>}
         </div>
         <p className="mt-1 text-[13px] text-text-secondary">
           {current.subtitle}

@@ -352,6 +352,13 @@ function GroupDialog({
       onClose={onClose}
       title={group ? "Edit group" : "New customer group"}
       size="wide"
+      /* THE FRAME DOES NOT MOVE (Anir, Aug 31: "stop changing the dimensions
+         whenever I click on them. It has to stay the same"). Picking the first
+         account adds a row of chips, which grew the box by 21px and re-centred
+         it under the cursor mid-pick. A fixed height holds every state of this
+         form and the content scrolls inside it instead. */
+      tall
+      dialogClassName="h-[min(640px,calc(100vh-2rem))]"
     >
       <div>
         <Field label="What is this group called">

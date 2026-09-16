@@ -1,3 +1,4 @@
+import { getDataMode } from "@/lib/dataMode";
 import {
   enqueueCompany,
   armCompanyOnboarding,
@@ -141,6 +142,20 @@ export async function POST(req: NextRequest) {
     ...(user.email ? { email: user.email } : {}),
   };
   const body = (await req.json().catch(() => ({}))) ?? {};
+  if (getDataMode() === "mock" && ["company-link", "company-retry", "person-link"].includes(body?.kind)) {
+    try {
+      if (body.kind === "company-retry") return NextResponse.json({ok:true,status:"complete"});
+      if (body.kind === "person-link") {
+        const slug = String(body.linkedinUrl ?? "").split("/in/")[1]?.split(/[/?#]/)[0] ?? "Sample contact";
+        const person = await trackPerson({...body,name:body.name || slug.replace(/-/g," ")});
+        return NextResponse.json({ok:true,person});
+      }
+      const result = await trackCompany({...body,name:body.name || "Sample company"}, {addedBy,divisions:cleanDivisions(body.divisions)});
+      await setCompanyGroup(result.company.id, body.group === "competitor" ? "competitor" : "customer");
+      await setMarketIntelBookmark(scope,result.company.id,true);
+      return NextResponse.json({ok:true,company:result.company,status:"complete"});
+    } catch(error) { return NextResponse.json({error:error instanceof Error ? error.message : "Could not save."},{status:400}); }
+  }
   if (body?.kind === "company-link" || body?.kind === "company-retry") {
     try {
       let company;
@@ -210,7 +225,7 @@ export async function POST(req: NextRequest) {
       await setMarketIntelBookmark(scope, result.company.id, true);
       // The first briefing is collected right after this response goes out
       // (a few cents), so the page fills in minutes instead of a day.
-      after(() =>
+      if (getDataMode() === "live") after(() =>
         refreshTrackedCompanyNow(result.company).catch((error) =>
           console.error("[market-intel] first company scrape failed:", error),
         ),
@@ -219,7 +234,7 @@ export async function POST(req: NextRequest) {
     }
     if (body?.kind === "person") {
       const person = await trackPerson(body);
-      after(() =>
+      if (getDataMode() === "live") after(() =>
         refreshTrackedPersonNow(person).catch((error) =>
           console.error("[market-intel] first person scrape failed:", error),
         ),
@@ -304,7 +319,7 @@ export async function DELETE(req: NextRequest) {
           )
         )[id]?.length ?? 0;
       const gone = await deleteCompanyForGood(id);
-      await deleteFeedCompany(id, personIds).catch((error) =>
+      if (getDataMode() === "live") await deleteFeedCompany(id, personIds).catch((error) =>
         console.error("[market-intel] delete of feed rows failed:", error),
       );
       const lists = await forgetMarketIntelCompany(id).catch(() => 0);

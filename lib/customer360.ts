@@ -152,7 +152,7 @@ export async function buildCustomer360(
          the submissions and presentations they turn into — and no page
          carried them at all. "Now you should call it as solution request, not
          request; they call it solution request." */
-      ["solutionRequests", "Solution requests", "var(--ink-bright-blue)"],
+      ["solutionRequests", "Solutioning requests", "var(--ink-bright-blue)"],
       ["submissions", "Submissions", "var(--ink-violet-soft)"],
       ["presentations", "Presentations", "var(--ink-teal-deep)"],
       /* Named for what it is — somebody ASKED the Solutioning team for a

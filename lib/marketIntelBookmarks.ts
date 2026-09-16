@@ -1,3 +1,6 @@
+import { getDataMode } from "./dataMode";
+import { marketIntelMemberScope, sharedMarketIntelWorkspace, localMarketIntelMemberIds } from "./marketIntelMemberScope";
+import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 import "server-only";
 import { applyBookmarkChanges, type BookmarkChange } from "./marketIntelBookmarkChanges";
 
@@ -40,8 +43,8 @@ export function emptyBookmarks(): MarketIntelBookmarks {
 }
 
 function client() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = marketIntelDatabaseConfig(getDataMode()).url;
+  const key = marketIntelDatabaseConfig(getDataMode()).key;
   if (!url || !key) return null;
   return createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -67,6 +70,7 @@ function ids(value: unknown): string[] {
 export async function readMarketIntelBookmarks(
   scope: WorkspaceMemberScope
 ): Promise<MarketIntelBookmarks> {
+  scope = await marketIntelMemberScope(scope);
   const db = client();
   if (!db) return emptyBookmarks();
   const { data, error } = await db
@@ -75,6 +79,10 @@ export async function readMarketIntelBookmarks(
     .eq("id", rowId(scope))
     .maybeSingle();
   if (error) throw new Error(error.message);
+  if (!data && getDataMode() === "mock") {
+    const tracking = await (await import("./marketIntelTracking")).readMarketIntelTracking();
+    return writeBookmarks(scope, tracking.companies.map(c=>c.id), []);
+  }
   const catalog = data?.catalog as
     | { companyIds?: unknown; starredIds?: unknown; updatedAt?: unknown }
     | null;
@@ -93,6 +101,7 @@ export async function readMarketIntelBookmarks(
 export async function readWorkspaceMarketIntelBookmarks(
   workspaceId: string
 ): Promise<Map<string, string[]>> {
+  workspaceId = sharedMarketIntelWorkspace(workspaceId);
   const db = client();
   const out = new Map<string, string[]>();
   if (!db) return out;
@@ -179,6 +188,7 @@ export async function saveMarketIntelBookmarkChanges(
   scope: WorkspaceMemberScope,
   changes: BookmarkChange[]
 ): Promise<MarketIntelBookmarks> {
+  scope = await marketIntelMemberScope(scope);
   const db = client();
   if (!db) throw new Error("Your list is not configured.");
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -209,6 +219,7 @@ async function writeBookmarks(
   companyIds: string[],
   starredIds: string[]
 ): Promise<MarketIntelBookmarks> {
+  scope = await marketIntelMemberScope(scope);
   const db = client();
   if (!db) throw new Error("Your list is not configured.");
   const listSet = new Set(companyIds);
@@ -249,10 +260,11 @@ export async function readMarketIntelFollowers(): Promise<Record<string, string[
     .select("catalog")
     .like("id", "mi-bookmarks:%");
   if (error) throw new Error(error.message);
+  const memberIds = await localMarketIntelMemberIds();
   for (const row of data || []) {
     const catalog = row.catalog as { userId?: unknown; companyIds?: unknown } | null;
     if (typeof catalog?.userId !== "string") continue;
-    for (const id of ids(catalog.companyIds)) (out[id] ??= []).push(catalog.userId);
+    for (const id of ids(catalog.companyIds)) (out[id] ??= []).push(memberIds.get(catalog.userId) || catalog.userId);
   }
   return out;
 }

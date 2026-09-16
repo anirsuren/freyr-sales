@@ -119,7 +119,7 @@ export default async function PerformanceTabPage({
       routeTab={master ? allowed[0] : (raw as RouteTab)}
       routeMaster={master}
       initial={scoped}
-      live={live}
+      live={true}
       canLog={!(await moduleWriteRefusal("/performance"))}
       meName={me.name}
       isManager={manager}

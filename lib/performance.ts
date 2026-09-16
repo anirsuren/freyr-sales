@@ -441,7 +441,7 @@ export async function readPerformance(viewer?: string): Promise<PerformanceState
  * `gr-`. So a bigger seed can ship without stepping on work somebody did in
  * the demo.
  */
-const MOCK_SEED_VERSION = 1;
+const MOCK_SEED_VERSION = 2;
 const MOCK_SEED_ID = /^(mock-|bk-)/;
 
 async function mockState(): Promise<PerformanceState> {
@@ -2921,9 +2921,12 @@ function samplePerformance(viewer?: string): PerformanceState {
       "BlueSky Therapeutics", "Caldera Health", "Novara Medical", "Atlas Genomics",
     ];
     const evidencePacks = [
-      [{ name: "signed-MSA.pdf", url: "#" }],
-      [{ name: "SOW-countersigned.pdf", url: "#" }],
-      [{ name: "renewal-contract.pdf", url: "#" }, { name: "opportunity-summary.docx", url: "#" }],
+      [{ name: "q3-review-pack.pdf", url: "/sample-documents/q3-review-pack.pdf" }],
+      [{ name: "publishing-workflow-one-pager.pdf", url: "/sample-documents/publishing-workflow-one-pager.pdf" }],
+      [
+        { name: "cmc-writing-approach.pdf", url: "/sample-documents/cmc-writing-approach.pdf" },
+        { name: "eu-mdr-discovery-questions.docx", url: "/sample-documents/eu-mdr-discovery-questions.docx" },
+      ],
     ];
     const kinds = ["first contract", "adds a service", "renewal"];
     // Apr 2025 through Aug 2026: fills FY 2025-26 completely and the current

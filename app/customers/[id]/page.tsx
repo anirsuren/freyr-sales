@@ -12,7 +12,7 @@ import {
   Pencil, ClipboardList,
   FileText, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
-import { cardFromSummary, readMarketIntelSummaries } from "@/lib/marketIntelFeed";
+import { cardFromSummary, readMarketIntelSummaries } from "@/lib/marketIntelRead";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SizeBadge } from "@/components/ui/Badge";
 import { IndustryTag } from "@/components/ui/IndustryTag";

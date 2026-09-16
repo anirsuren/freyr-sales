@@ -16,9 +16,8 @@ import { tint } from "@/lib/tint";
  * again does too.
  *
  * ONE LINE THAT SCROLLS (Anir, Sep 11: "one scrollable horizontal line").
- * The chips never wrap. A mouse wheel over the bar moves it sideways until it
- * reaches an end, then the page scrolls as usual; a soft fade on either side
- * says there is more that way.
+ * The chips never wrap. Native horizontal gestures move the chips; vertical
+ * wheel gestures scroll the page. A soft fade on either side shows overflow.
  */
 export function SignalRow({
   group,
@@ -51,22 +50,11 @@ export function SignalRow({
   useEffect(() => {
     const row = rowRef.current;
     if (!row) return;
-    const onWheel = (event: WheelEvent) => {
-      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-      const max = row.scrollWidth - row.clientWidth;
-      if (max <= 0) return;
-      const next = Math.min(max, Math.max(0, row.scrollLeft + event.deltaY));
-      if (next === row.scrollLeft) return;
-      event.preventDefault();
-      row.scrollLeft = next;
-    };
     const onScroll = () => measure();
-    row.addEventListener("wheel", onWheel, { passive: false });
     row.addEventListener("scroll", onScroll, { passive: true });
     const observer = new ResizeObserver(onScroll);
     observer.observe(row);
     return () => {
-      row.removeEventListener("wheel", onWheel);
       row.removeEventListener("scroll", onScroll);
       observer.disconnect();
     };

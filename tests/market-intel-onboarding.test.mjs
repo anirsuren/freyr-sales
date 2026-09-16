@@ -166,7 +166,10 @@ test("queued onboarding survives independent reads, claims once, persists the br
     const beforeRecovery = sourceCalls;
     await runCompanyOnboarding();
     assert.equal(rows.get("market-intel:default").catalog.companies.find(x => x.id === c.id).onboarding, undefined);
-    assert.ok(sourceRequests.slice(beforeRecovery).every(url => ["www.google.com", "news.google.com"].includes(new URL(url).hostname) || (new URL(url).hostname === "queuedscience.test" && ["/", "/apple-touch-icon.png", "/favicon.ico"].includes(new URL(url).pathname))), `Only free discovery and logo probes may retry; completed paid phases are reused: ${sourceRequests.slice(beforeRecovery).join(", ")}`);
+    /* The logo probe reads the apex and, when a site only serves www, the www
+       host too (lib/companyLogos.ts). Both are free; every paid phase must
+       still come from the checkpoint. */
+    assert.ok(sourceRequests.slice(beforeRecovery).every(url => ["www.google.com", "news.google.com"].includes(new URL(url).hostname) || (["queuedscience.test", "www.queuedscience.test"].includes(new URL(url).hostname) && ["/", "/apple-touch-icon.png", "/favicon.ico"].includes(new URL(url).pathname))), `Only free discovery and logo probes may retry; completed paid phases are reused: ${sourceRequests.slice(beforeRecovery).join(", ")}`);
     // A company without checkpoints still reports a real source failure.
     for (const key of rows.keys()) if (key.startsWith("market-intel:collection:")) rows.delete(key);
     const recovered = rows.get("market-intel:default").catalog.companies.find(x => x.id === c.id);

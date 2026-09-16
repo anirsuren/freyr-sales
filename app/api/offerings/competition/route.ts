@@ -57,12 +57,6 @@ export async function POST(req: NextRequest) {
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
-  if (getDataMode() !== "live") {
-    return NextResponse.json(
-      { error: "Mock mode shows sample intel only. Switch to Real to add." },
-      { status: 400 }
-    );
-  }
   const me = await getCurrentUser();
   const addedBy = me.name || "Teammate";
   const body = (await req.json().catch(() => ({}))) ?? {};

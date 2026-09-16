@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { fmtMoney, type CurrencyCode } from "@/lib/currency";
 import Link from "next/link";
 import {
-  CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, Package, Pencil, Plus, Target } from "lucide-react";
+  CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, GitCompareArrows, Package, Pencil, Plus, Target } from "lucide-react";
 import { SmartBack, sectionLabelFor, useBackTrail } from "@/components/ui/BackButton";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -23,8 +23,6 @@ import { NewRequestDialog } from "@/components/solutioning/SolutioningModule";
    prefillOpportunityId since the day it was written — "opened from a deal, so
    it arrives already attached to that deal" — and had never been opened from
    one. */
-import { NewMeetingDialog } from "@/components/meetings/NewMeetingDialog";
-import { useToast } from "@/components/ui/Toast";
 import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 /* THE ACCRUAL PLANNER ITSELF, not a link to it (Suren, Sep 1: "it's just that
    same screen shows up here"). The Revenue accruals module mounts this exact
@@ -37,7 +35,6 @@ import type { AccrualPlan } from "@/lib/revenueAccrualsShared";
 import { BAND_ICON_MAP, Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/components/customers/Customer360";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { Avatar } from "@/components/ui/Avatar";
 import { StatTile } from "@/components/ui/StatTile";
 import {
   effectiveRevenueType,
@@ -50,7 +47,6 @@ import {
 } from "@/lib/opportunitiesShared";
 import { cn, formatDayLabel } from "@/lib/utils";
 import { tint } from "@/lib/tint";
-import { repSlug } from "@/lib/team";
 
 /**
  * THE OPPORTUNITY PAGE.
@@ -94,7 +90,6 @@ export function OpportunityDetail({
   mayChangeTeam = false,
   mayChangeOwner = false,
   customerId,
-  meetings,
 }: {
   /** What this person may do to THIS deal — the privilege map joined to who is
    *  on the account and on the deal. Decided on the server. */
@@ -200,7 +195,6 @@ export function OpportunityDetail({
       ? `Back to ${trailSection}`
       : "All opportunities";
   const router = useRouter();
-  const { toast } = useToast();
 
   /**
    * ONE FIELD AT A TIME, THROUGH THE SAME API THE FORM USES.
@@ -289,40 +283,6 @@ export function OpportunityDetail({
           onCreated={() => router.refresh()}
         />
       )}
-      {/* A MEETING, PLANNED FROM THE DEAL IT IS ABOUT.
-          The Meetings tab's Add button has always existed and has never worked:
-          it set `creating` to "meetings", which the block below explicitly
-          skips and nothing else answered, so the click did nothing. Same dialog
-          the Meetings module opens, same endpoint, with the deal and its
-          account already filled in — which is the one thing the module cannot
-          do for you. */}
-      {creating === "meetings" && createOptions && (
-        <NewMeetingDialog
-          meName={createOptions.meName}
-          members={createOptions.members}
-          customers={createOptions.customers}
-          contacts={createOptions.contacts}
-          opportunities={createOptions.opportunities}
-          prefillOpportunityId={deal.id}
-          prefillCustomerName={deal.customer}
-          onClose={() => setCreating(null)}
-          onCreate={async (input) => {
-            const res = await fetch("/api/meetings", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ op: "create", ...input }),
-            });
-            const data = await res.json().catch(() => null);
-            if (!res.ok || !data?.ok) {
-              toast(data?.error || "That didn't save.", "error");
-              return false;
-            }
-            setCreating(null);
-            router.refresh();
-            return true;
-          }}
-        />
-      )}
       {/* The TAB door opens a dialog of its own — there is no parent frame to
           be a page of. The Edit screen's sections render the same forms
           chromeless, inside the dialog already open. */}
@@ -331,7 +291,6 @@ export function OpportunityDetail({
           form. */}
       {creating &&
         creating !== "contracts" &&
-        creating !== "meetings" &&
         creating !== "revenueAccruals" &&
         createOptions && (
         <NewRequestDialog
@@ -760,42 +719,6 @@ export function OpportunityDetail({
             accrualPlan={accrual?.plan ?? null}
             onSave={saveField}
           >
-            {meetings.length > 0 && (
-              <section className="rounded-2xl border border-border-light bg-white p-5 shadow-card">
-                <h2 className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                  Meetings held against this deal
-                </h2>
-                <ul className="mt-2.5 space-y-2">
-                  {meetings.map((m) => (
-                    <li key={m.id}>
-                      <Link
-                        href={`/meetings/${m.id}`}
-                        className="block truncate text-[13px] font-semibold text-text-primary hover:text-blue-primary"
-                      >
-                        {m.title}
-                      </Link>
-                      <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-tertiary tnum">
-                        <span>{m.ref}</span>
-                        <span aria-hidden="true">·</span>
-                        <Link
-                          href={`/analytics/reps/${repSlug(m.owner)}`}
-                          className="inline-flex items-center gap-1 text-text-secondary hover:text-blue-primary hover:underline"
-                        >
-                          <Avatar
-                            name={m.owner}
-                            className="h-[18px] w-[18px] shrink-0 text-[7px]"
-                            tooltip={`Meeting owner: ${m.owner}`}
-                          />
-                          {m.owner}
-                        </Link>
-                        <span aria-hidden="true">·</span>
-                        <span>{m.meetingAt?.slice(0, 10)}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
           </DealOverviewEditor>
         ) : (
           <Customer360
@@ -834,21 +757,29 @@ export function OpportunityDetail({
                    only the editing door is gated, and it is gated on the
                    server's answer to the same question the API asks. */
                 b.key === "revenueAccruals" ? (
-                  accrual?.mayPlan ? (
-                    <button
-                      key={b.key}
-                      type="button"
-                      onClick={() => setPlanningAccrual(true)}
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
+                  <span key={b.key} className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/opportunities?tab=deviations&opportunity=${encodeURIComponent(deal.id)}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
                     >
-                      {b.count === 0 ? (
-                        <Plus size={13} strokeWidth={2.4} />
-                      ) : (
-                        <Pencil size={13} strokeWidth={2.4} />
-                      )}
-                      {b.count === 0 ? "Add accrual" : "Open the plan"}
-                    </button>
-                  ) : null
+                      <GitCompareArrows size={13} strokeWidth={2.2} />
+                      View deviations
+                    </Link>
+                    {accrual?.mayPlan ? (
+                      <button
+                        type="button"
+                        onClick={() => setPlanningAccrual(true)}
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
+                      >
+                        {accrual.plan ? (
+                          <Pencil size={13} strokeWidth={2.4} />
+                        ) : (
+                          <Plus size={13} strokeWidth={2.4} />
+                        )}
+                        {accrual.plan ? "Open the plan" : "Add accrual"}
+                      </button>
+                    ) : null}
+                  </span>
                 ) : (
                   <AddToBandButton
                     key={b.key}

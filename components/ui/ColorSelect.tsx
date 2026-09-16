@@ -260,6 +260,7 @@ export function ColorSelect({
   fill = false,
   ariaLabel,
   collapsible = true,
+  menuMinWidth,
   compactTrigger = false,
   inlineDescription = false,
   triggerLabel,
@@ -296,6 +297,14 @@ export function ColorSelect({
    * four rows where it could show eight.
    */
   inlineDescription?: boolean;
+  /**
+   * A floor for the MENU, not the trigger (Anir, Sep 15, on the Offering
+   * picker: "you can probably make this a little bigger… it's kinda thin").
+   * A quarter-width field gives a 405px list, and names like
+   * "Freya.intelligence + Agents" then wrap onto two lines. The menu still
+   * follows a wider field and still stops at MENU_MAX_WIDTH.
+   */
+  menuMinWidth?: number;
   /** Keep detailed descriptions in the menu while using a standard one-line trigger. */
   compactTrigger?: boolean;
   /** A shorter stable label for dense toolbars, while the menu keeps full option labels. */
@@ -333,7 +342,7 @@ export function ColorSelect({
     const t = window.setTimeout(() => {
       const rect = ref.current?.getBoundingClientRect();
       if (rect) {
-        const desiredWidth = menuWidthFor(rect.width, 240);
+        const desiredWidth = menuWidthFor(rect.width, Math.max(menuMinWidth ?? 0, 240));
         setMenuStyle(floatingMenuStyle(rect, desiredWidth, 260));
       }
       setOpen(true);
@@ -433,7 +442,10 @@ export function ColorSelect({
          1200px control (Anir, Aug 27: "why is the drop-down so small?...
          it looks bad"). The list is the field's own — it wears the field's
          width. */
-      const desiredWidth = menuWidthFor(rect.width, detailed ? 304 : 240);
+      const desiredWidth = menuWidthFor(
+        rect.width,
+        Math.max(menuMinWidth ?? 0, detailed ? 304 : 240)
+      );
       setMenuStyle(floatingMenuStyle(rect, desiredWidth, 260));
     }
     setMenuQuery("");
@@ -472,7 +484,9 @@ export function ColorSelect({
       // Keep the width the menu opened with; only the anchor moves.
       setMenuStyle((prev) => {
         const width =
-          typeof prev?.width === "number" ? prev.width : menuWidthFor(rect.width, 240);
+          typeof prev?.width === "number"
+            ? prev.width
+            : menuWidthFor(rect.width, Math.max(menuMinWidth ?? 0, 240));
         return floatingMenuStyle(rect, width, 260);
       });
     };
@@ -1132,7 +1146,9 @@ export function MultiColorSelect({
       // Keep the width the menu opened with; only the anchor moves.
       setMenuStyle((prev) => {
         const width =
-          typeof prev?.width === "number" ? prev.width : menuWidthFor(rect.width, 240);
+          typeof prev?.width === "number"
+            ? prev.width
+            : menuWidthFor(rect.width, 240);
         return floatingMenuStyle(rect, width, 260);
       });
     };

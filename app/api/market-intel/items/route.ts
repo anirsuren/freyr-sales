@@ -1,3 +1,5 @@
+import { getDataMode } from "@/lib/dataMode";
+import { hideMockIntelStories } from "@/lib/marketIntelTracking";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
@@ -33,7 +35,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Choose a story to remove." }, { status: 400 });
   }
   try {
-    const removed = await removeFeedStoryItems(companyId, items);
+    const removed = getDataMode() === "mock" ? await hideMockIntelStories(companyId, items.map((i: {url:string})=>i.url)) : await removeFeedStoryItems(companyId, items);
     return NextResponse.json({ ok: true, removed });
   } catch (error) {
     return NextResponse.json(

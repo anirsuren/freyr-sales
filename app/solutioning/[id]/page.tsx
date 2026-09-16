@@ -10,6 +10,7 @@ import {
   moduleDeleteRefusal,
   requireModuleAccess,
 } from "@/lib/moduleAccessServer";
+import { privilegesForPerson, readPrivileges } from "@/lib/privileges";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function generateMetadata({
   return {
     title: request
       ? `${request.ref}${request.title ? ` ${request.title}` : ""} · Solutioning`
-      : "Solution request",
+      : "Solutioning request",
   };
 }
 
@@ -41,10 +42,11 @@ export default async function SolutioningRequestPage({
   const { id } = await params;
   const live = getDataMode() === "live";
   const workspace = process.env.FREYR_WORKSPACE_ID;
-  const [state, me, directory] = await Promise.all([
+  const [state, me, directory, privilegeState] = await Promise.all([
     readSolutioning(),
     getCurrentUser(),
     live && workspace ? listWorkspaceAccess(workspace).catch(() => null) : null,
+    readPrivileges(),
   ]);
   const request = state.requests.find((r) => r.id === id);
     /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
@@ -115,8 +117,18 @@ export default async function SolutioningRequestPage({
        * produce an error message. Same question, same answer, one place.
        */
       may={{
-        create: (await moduleCreateRefusal("/solutioning")) === null,
+        create:
+          (await moduleCreateRefusal("/solutioning?tab=submissions")) === null ||
+          (await moduleCreateRefusal("/solutioning?tab=presentations")) === null,
         remove: (await moduleDeleteRefusal("/solutioning")) === null,
+        assign: (() => {
+          const held = privilegesForPerson(privilegeState, me.name);
+          return (
+            me.role === "admin" ||
+            held.includes("admin") ||
+            held.includes("sol_owner")
+          );
+        })(),
       }}
       /* SOL-014/SOL-028: the deliverables raised off this request. The request
          cannot close while one is still open, and it should say so rather than

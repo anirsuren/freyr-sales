@@ -93,9 +93,7 @@ export default async function ForecastPage() {
   ]);
 
   const deals = buildDeals(sessions, customers, contacts, interactions);
-  if (getDataMode() === "live" && deals.length === 0) {
-    return <EmptyState icon={Target} title="No forecast yet" description="Add an account and create its first deal. The forecast fills in from there." />;
-  }
+
   const open = deals.filter((d) => d.stage !== "Closed Lost");
   const bestCase = open.reduce((s, d) => s + d.value, 0);
   const commit = deals.reduce(
@@ -171,7 +169,7 @@ export default async function ForecastPage() {
     const realWeighted = deals
       .filter((d) => repOwnsDeal(rep, d))
       .reduce((s, d) => s + d.value * (STAGE_PROBABILITY[d.stage] ?? 0), 0);
-    const synth = repForecast(rep.name);
+    const synth = getDataMode() === "mock" ? repForecast(rep.name) : { weighted: 0, open: 0 };
     const isCurrentUser = isCurrentRep(rep, currentUser.memberId);
     const weighted =
       realWeighted > 0 ? realWeighted : isCurrentUser ? 0 : synth.weighted;
@@ -185,7 +183,7 @@ export default async function ForecastPage() {
     const repDeals =
       realRepDeals.length > 0
         ? realRepDeals
-        : isCurrentUser
+        : isCurrentUser || getDataMode() === "live"
           ? []
           : synthDealsForRep(rep.name, repOpen, customers, contacts);
     return {

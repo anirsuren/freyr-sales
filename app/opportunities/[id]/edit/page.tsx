@@ -224,6 +224,13 @@ export default async function EditDealPage({
           people={members}
           team={teamFor(teams, "opportunity", deal.id)}
           mayChangeTeam={mayChangeTeam}
+          /* OWNERSHIP MOVES ON THIS SCREEN TOO (Anir, Sep 15: "why can't I
+             assign an owner? I'm an admin, right?"). The deal page has passed
+             this since Manoj's item 6 — owner is system set, admin may change
+             it — and the edit page, the screen you actually go to in order to
+             change things, never passed it at all, so the field sat as plain
+             text for everybody including an admin. Same rule, same source. */
+          mayChangeOwner={role === "admin"}
           customers={customers.map((c) => ({
             id: c.id,
             name: c.company_name ?? "",

@@ -1,7 +1,8 @@
+import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 /**
  * Recurring Market Intel collection is allowed only on the production site.
- * Development and localhost keep their databases and manual onboarding/admin
- * refreshes, but must never spend provider credits merely because the app is
+ * Development and localhost share the configured Market Intel store and retain
+ * manual onboarding/admin refreshes, but must never spend provider credits merely because the app is
  * running or somebody opened a page.
  *
  * The explicit variable is useful for operations, but the hostname allowlist
@@ -71,8 +72,8 @@ export function millisecondsUntilNextMarketIntelRun(
 export async function claimAutomaticMarketIntelCycle(
   now = new Date(),
 ): Promise<boolean> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = marketIntelDatabaseConfig().url;
+  const key = marketIntelDatabaseConfig().key;
   if (!url || !key) return false;
 
   try {

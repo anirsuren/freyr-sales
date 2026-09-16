@@ -214,11 +214,15 @@ function DeviationsTable({
   plans,
   deals,
   opportunities,
+  opportunityId,
+  onOpportunityId,
   onOpen,
 }: {
   plans: AccrualPlan[];
   deals: DealOption[];
   opportunities: Opportunity[];
+  opportunityId: string;
+  onOpportunityId: (id: string) => void;
   onOpen: (plan: AccrualPlan) => void;
 }) {
   const [statusFilter, setStatusFilter] = useState<TabAccrualStatus[]>([]);
@@ -565,8 +569,33 @@ function DeviationsTable({
         onQuery={setQuery}
         placeholder="Search by deal, customer or ID…"
         searchAriaLabel="Search deviated records"
+        filtersBefore={
+          <ColorSelect
+            value={opportunityId}
+            onChange={onOpportunityId}
+            ariaLabel="Filter by opportunity"
+            minWidth={250}
+            searchable
+            inlineDescription
+            options={[
+              {
+                value: "",
+                label: "All opportunities",
+                color: "var(--ink-violet-soft)",
+                icon: Briefcase,
+              },
+              ...opportunities.map((opportunity) => ({
+                value: opportunity.id,
+                label: opportunity.name,
+                logoName: opportunity.customer,
+                description: `${opportunity.externalId || opportunity.id} · ${opportunity.customer}`,
+              })),
+            ]}
+          />
+        }
         onClearAll={() => {
           setQuery("");
+          onOpportunityId("");
           setStatusFilter([]);
           setOwnerFilter([]);
           setDealStatusFilter([]);
@@ -876,6 +905,14 @@ export function RevenueAccrualsModule({
      it should take me back to this page, and if I had anything searched in
      it, it should keep that"). Read once on arrival; written below. */
   const params = useSearchParams();
+  /* An opportunity can send somebody straight to ITS deviations. Keep the
+     internal id in the address rather than translating it into a search term:
+     names are not unique, can change, and a search for one customer can pull
+     in several unrelated opportunities. */
+  const focusedOpportunityId = params.get("opportunity") ?? "";
+  const [opportunityFilter, setOpportunityFilter] = useState(
+    () => focusedOpportunityId
+  );
   const [query, setQuery] = useState(() => params.get("q") ?? "");
   const [only, setOnly] = useState<"all" | "flagged" | "missing">(() => {
     const show = params.get("show");
@@ -887,6 +924,16 @@ export function RevenueAccrualsModule({
   const [deviationView, setDeviationView] = useState<
     "records" | "months" | "sources"
   >("records");
+  const deviationPlans = useMemo(
+    () =>
+      opportunityFilter
+        ? state.plans.filter((plan) => plan.opportunityId === opportunityFilter)
+        : state.plans,
+    [state.plans, opportunityFilter]
+  );
+  useEffect(() => {
+    setOpportunityFilter(focusedOpportunityId);
+  }, [focusedOpportunityId]);
   /* INSIDE OPPORTUNITIES THE OUTER TAB DECIDES (Manoj, Sep 10). */
   useEffect(() => {
     if (embeddedTab) setTab(embeddedTab);
@@ -900,6 +947,7 @@ export function RevenueAccrualsModule({
       const put = (k: string, v: string) => (v ? next.set(k, v) : next.delete(k));
       put("q", query.trim());
       put("show", only === "all" ? "" : only);
+      put("opportunity", opportunityFilter);
       /* Inside Opportunities, ?tab= belongs to the outer tabs. */
       if (!embeddedTab) put("tab", tab === "plans" ? "" : tab);
       const qs = next.toString();
@@ -909,7 +957,7 @@ export function RevenueAccrualsModule({
       }
     }, 250);
     return () => clearTimeout(t);
-  }, [query, only, tab, embeddedTab]);
+  }, [query, only, tab, embeddedTab, opportunityFilter]);
   /* THE SUMMARY'S OWN CONTROLS. No measure picker: this page is TCV and only
      TCV (Suren, Aug 30: "it's only TCV on the revenue page"). */
   const [accrDims, setAccrDims] = useStickyValue<SummaryDimension[]>(
@@ -1171,8 +1219,8 @@ export function RevenueAccrualsModule({
   );
 
   const deviation = useMemo(
-    () => buildDeviation(state.plans, snapshot),
-    [state.plans, snapshot]
+    () => buildDeviation(deviationPlans, snapshot),
+    [deviationPlans, snapshot]
   );
 
   const shown = useMemo(() => {
@@ -1509,11 +1557,7 @@ export function RevenueAccrualsModule({
                 view-only account opens, and the access shield answers it on
                 hover already. The mock notice stays — that one says the DATA
                 is not real, which nothing else says. */
-            live ? null : (
-              <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-                Sample plan. Switch to Real mode to work the live numbers
-              </span>
-            )
+            null
           )
         }
       />
@@ -2286,9 +2330,11 @@ export function RevenueAccrualsModule({
               it keeps its own empty state. */}
           {deviationView === "records" && (
             <DeviationsTable
-              plans={state.plans}
+              plans={deviationPlans}
               deals={deals}
               opportunities={opportunities}
+              opportunityId={opportunityFilter}
+              onOpportunityId={setOpportunityFilter}
               onOpen={(plan) => setPlanning({ dealId: plan.opportunityId })}
             />
           )}

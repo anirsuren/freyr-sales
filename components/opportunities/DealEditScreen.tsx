@@ -31,6 +31,7 @@ export function DealEditScreen({
   meName = "",
   team = null,
   mayChangeTeam = false,
+  mayChangeOwner = false,
   mayEdit,
   mayDelete = false,
   why,
@@ -45,6 +46,7 @@ export function DealEditScreen({
    *  Overview tab — one form, one set of facts, either door. */
   team?: DealTeam;
   mayChangeTeam?: boolean;
+  mayChangeOwner?: boolean;
   mayEdit: boolean;
   /** Deleting is its own privilege, asked the way the route asks it. */
   mayDelete?: boolean;
@@ -131,6 +133,7 @@ export function DealEditScreen({
       meName={meName}
       team={team}
       mayChangeTeam={mayChangeTeam}
+      mayChangeOwner={mayChangeOwner}
       accrualPlan={accrual?.plan ?? null}
       /* THE SAME COMPONENT THE ACCRUALS MODULE MOUNTS, without its modal
          chrome — not a copy, so the two cannot drift (Suren, Sep 1: "both the
@@ -181,35 +184,46 @@ export function DealEditScreen({
             body: JSON.stringify({ op: "update", id: deal.id, ...patch }),
           });
 
-        let res = await send();
+        /* A SAVE THAT NEVER LEFT THE BROWSER USED TO SAY NOTHING AT ALL.
+           Every answer the route can give is handled below, but a dropped
+           connection rejects the fetch instead of answering: the bar sat
+           there still saying "1 unsaved change" with no message, and the
+           only sign anything had happened was a red line in the console.
+           The dialog's own postUpdate already caught this; this page, the
+           one somebody sits on staging edits, did not. */
+        try {
+          let res = await send();
 
-        /**
-         * A TIMED-OUT PASS IS NOT A REFUSAL (Anir, Sep 4).
-         *
-         * The workspace pass lasts fifteen minutes and every navigation
-         * quietly renews it — but this screen is one somebody SITS on, staging
-         * edits without saving. Take a call, come back, press Save, and the
-         * pass has lapsed: the route answered 403 "Workspace owner approval
-         * required", which reads as a permissions problem and sends people
-         * hunting for an admin. Pressing Save again did nothing, because
-         * nothing on this page renewed it. The only thing that did was
-         * reloading, and reloading throws away everything typed.
-         *
-         * So: on that one specific answer, renew the pass and send the save
-         * again. A real permission refusal (a deal that is not yours) says
-         * something else and is passed straight through untouched.
-         */
-        if (res.status === 403) {
-          const body = await res.clone().json().catch(() => ({}));
-          if (/approval required/i.test(String(body?.error ?? ""))) {
-            await fetch("/api/auth/access", { method: "POST" }).catch(() => undefined);
-            res = await send();
+          /**
+           * A TIMED-OUT PASS IS NOT A REFUSAL (Anir, Sep 4).
+           *
+           * The workspace pass lasts fifteen minutes and every navigation
+           * quietly renews it — but this screen is one somebody SITS on, staging
+           * edits without saving. Take a call, come back, press Save, and the
+           * pass has lapsed: the route answered 403 "Workspace owner approval
+           * required", which reads as a permissions problem and sends people
+           * hunting for an admin. Pressing Save again did nothing, because
+           * nothing on this page renewed it. The only thing that did was
+           * reloading, and reloading throws away everything typed.
+           *
+           * So: on that one specific answer, renew the pass and send the save
+           * again. A real permission refusal (a deal that is not yours) says
+           * something else and is passed straight through untouched.
+           */
+          if (res.status === 403) {
+            const body = await res.clone().json().catch(() => ({}));
+            if (/approval required/i.test(String(body?.error ?? ""))) {
+              await fetch("/api/auth/access", { method: "POST" }).catch(() => undefined);
+              res = await send();
+            }
           }
-        }
 
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data?.error) return data?.error || "That did not save.";
-        return null;
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data?.error) return data?.error || "That did not save.";
+          return null;
+        } catch {
+          return "That did not save. Check your connection and try again.";
+        }
       }}
     >
       {/* AT THE VERY END, AND RED. Nothing else on this screen is

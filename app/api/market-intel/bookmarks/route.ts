@@ -1,3 +1,4 @@
+import { getDataMode } from "@/lib/dataMode";
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
@@ -99,7 +100,7 @@ export async function PUT(request: NextRequest) {
       }
       const bookmarks = await saveMarketIntelBookmarkChanges(scope, changes);
       const waking = changes.filter((c) => c.on && hadNobody(c.id)).map((c) => c.id);
-      if (waking.length > 0) after(() => resumeCompaniesIfStale(waking));
+      if (getDataMode() === "live" && waking.length > 0) after(() => resumeCompaniesIfStale(waking));
       return NextResponse.json({ ok: true, companyIds: bookmarks.companyIds, starredIds: bookmarks.starredIds });
     }
 
@@ -109,7 +110,7 @@ export async function PUT(request: NextRequest) {
       const waking = on ? ids.filter(hadNobody) : [];
       const bookmarks = await setMarketIntelBookmarks(scope, ids, on);
       /* Whatever nobody had is pulled now if its data has gone stale. */
-      if (waking.length > 0) after(() => resumeCompaniesIfStale(waking));
+      if (getDataMode() === "live" && waking.length > 0) after(() => resumeCompaniesIfStale(waking));
       return NextResponse.json({
         ok: true,
         companyIds: bookmarks.companyIds,
@@ -124,7 +125,7 @@ export async function PUT(request: NextRequest) {
     if (typeof body.star === "boolean") {
       const wake = body.star && hadNobody(id) && known.has(id);
       const bookmarks = await setMarketIntelStar(scope, id, body.star);
-      if (wake) after(() => resumeCompanyIfStale(id));
+      if (getDataMode() === "live" && wake) after(() => resumeCompanyIfStale(id));
       return NextResponse.json({
         ok: true,
         companyIds: bookmarks.companyIds,
@@ -140,7 +141,7 @@ export async function PUT(request: NextRequest) {
        answer says so, so the screen can too. */
     const stopped = !on && known.has(id) && !collectedAnyway.has(id) && !othersHaveIt(id);
     const bookmarks = await setMarketIntelBookmark(scope, id, on);
-    if (wake) after(() => resumeCompanyIfStale(id));
+    if (getDataMode() === "live" && wake) after(() => resumeCompanyIfStale(id));
     return NextResponse.json({
       ok: true,
       companyIds: bookmarks.companyIds,

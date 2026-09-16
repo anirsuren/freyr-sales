@@ -69,7 +69,7 @@ export default async function AdminGoalMasterPage() {
     <div>
       <PerformanceModule
         initial={state}
-        live={live}
+        live={true}
         canLog={!(await moduleWriteRefusal("/performance"))}
         meName={meFirst.name}
         isManager={isManagerOrAdmin(role)}

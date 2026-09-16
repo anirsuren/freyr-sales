@@ -75,7 +75,7 @@ export function CustomersWorkspace({
        Customers, remove Targets"). Hidden, never deleted: the 122 accounts
        stay in their row, and Mock keeps the tab, the way every "remove" in
        this app has been done. */
-  ].filter((p) => !(live && p.key === "targets"));
+  ].filter((p): boolean => p.key !== "targets");
 
   return (
     <div>

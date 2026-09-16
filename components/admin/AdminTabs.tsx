@@ -65,7 +65,7 @@ const TABS: (PageTab & { detail?: string })[] = [
     icon: UsersRound,
     color: "var(--ink-violet-soft)",
     detail:
-      "The departments people belong to. Each group has one owner and the people in it. Open a group to set the goals it carries and each person's target.\n\nThe kind of group decides what work it can be given. A business development group takes customers, contracts and opportunities. A solutioning group takes solution requests, submissions, presentations and meetings.",
+      "The departments people belong to. Each group has one owner and the people in it. Open a group to set the goals it carries and each person's target.\n\nThe kind of group decides what work it can be given. A business development group takes customers, contracts and opportunities. A solutioning group takes solutioning requests, submissions, presentations and meetings.",
   },
   // Configuration lives with the other admin controls (Suren, Aug 18: "I
   // think you should have admin module where all these are configured").

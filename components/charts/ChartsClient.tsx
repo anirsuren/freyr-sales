@@ -1084,7 +1084,7 @@ function TipHeader({
      * colour was which and how much each was worth. Same rows, same order,
      * same words, so the tip and the panel are the same object.
      */
-    bands?: { color: string; label: string; value: string; faded?: boolean }[];
+    bands?: { color: string; label: string; value: string }[];
   };
 }) {
   return (
@@ -1137,14 +1137,13 @@ function TipHeader({
               <span className="mt-2 block space-y-1">
                 {bar.bands.map((band) => (
                   <span key={band.label} className="flex items-center gap-1.5">
-                    {/* Solid dot, faded for money merely waiting its turn —
-                        the SAME swatch the goal's own month panel draws, since
-                        the point of this block is that the two read as one
-                        thing. Stripes are how a BAR says "not signed off"; at
-                        8px they just muddy the colour. */}
+                    {/* The legend uses the exact status colour painted beneath
+                        the bar's white hatch. The hatch communicates that the
+                        amount is provisional; fading the dot changed its hue
+                        and made one status look like two unrelated series. */}
                     <span
                       className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ background: band.color, opacity: band.faded ? 0.28 : 1 }}
+                      style={{ background: band.color }}
                     />
                     <span className="min-w-0 flex-1 truncate text-[11px] text-text-secondary">
                       {band.label}

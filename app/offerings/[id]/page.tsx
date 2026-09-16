@@ -49,7 +49,7 @@ import { ConnectedComponents } from "@/components/offerings/ConnectedComponents"
 import { OfferingCompetition } from "@/components/offerings/OfferingCompetition";
 import { readCompetition } from "@/lib/offeringCompetition";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
-import { readMarketIntelSummaries } from "@/lib/marketIntelFeed";
+import { readMarketIntelSummaries } from "@/lib/marketIntelRead";
 import { OfferingAgentButton } from "@/components/offerings/OfferingAgentButton";
 import { getDataMode } from "@/lib/dataMode";
 import { isOfferingsOnly } from "@/lib/release";
@@ -137,7 +137,7 @@ export default async function OfferingDetailPage({
    * under the Aug 7 ruling that commercial views live in Mock; Real mode
    * neither shows the chip nor honours the URL.
    */
-  const showReports = getDataMode() !== "live";
+  const showReports = true;
   /* SALES REPS DON'T SEE THE CUSTOMERS TAB — FOR NOW (Suren via Anir,
    * Aug 13: "anyone with the Sales Rep access should currently NOT be able
    * to see the 'Customers' tab within an Offering Page", so reps aren't
@@ -790,7 +790,7 @@ export default async function OfferingDetailPage({
             initialRows={competitionRows}
             suggestions={competitorSuggestions}
             logos={competitionLogos}
-            live={getDataMode() === "live"}
+            live={true}
           />
         ) : tab === "reports" ? (
           <OfferingReports report={report} offeringName={o.offering_name} />

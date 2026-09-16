@@ -1157,6 +1157,24 @@ export function OfferingForm({
     !isEdit ||
     hasOfferingEditChanges(currentEditSnapshot, initialEditSnapshot);
 
+  /* SAY IT BEFORE THE CLICK, NOT AFTER (Anir, Sep 10: "don't make it like u can
+     press the button and then it throws error. just dont let them click in the
+     first place and give reason"). Save was live on an empty new offering and
+     answered "Give the offering a name first." only once it had been pressed.
+     The same two checks `submit` makes now hold the button and say why. */
+  const halfMaterial = materials.find(
+    (m) => (m.label.trim() && !m.url.trim()) || (!m.label.trim() && m.url.trim())
+  );
+  const saveBlockedBecause = !offeringName.trim()
+    ? "Give the offering a name first."
+    : halfMaterial
+      ? halfMaterial.label.trim()
+        ? `Add a link for “${halfMaterial.label.trim()}”, or remove that material.`
+        : "Add a name for that material, or remove the empty link."
+      : !hasOfferingChanges
+        ? "Nothing has changed yet. Edit a field and this turns on."
+        : "";
+
   // Unsaved work must never leave quietly. Closing the tab, hitting back or
   // reloading with edits pending now costs a confirmation instead of the work.
   const unsavedRef = useRef(false);
@@ -3232,18 +3250,23 @@ export function OfferingForm({
               disappeared when I left"). A disabled button that says why is a
               statement; a missing button is a mystery. */}
           <span
+            aria-live="polite"
             className={cn(
               "text-[12px]",
-              isEdit && hasOfferingChanges
-                ? "font-semibold text-blue-primary"
-                : "text-text-tertiary"
+              saveBlockedBecause && (!isEdit || hasOfferingChanges)
+                ? "font-semibold text-[color:var(--ink-orange)]"
+                : isEdit && hasOfferingChanges
+                  ? "font-semibold text-blue-primary"
+                  : "text-text-tertiary"
             )}
           >
-            {!isEdit
-              ? "Nothing is saved until you press save."
-              : hasOfferingChanges
-                ? "You have unsaved changes on this page."
-                : "Everything on this page is saved."}
+            {saveBlockedBecause && (!isEdit || hasOfferingChanges)
+              ? saveBlockedBecause
+              : !isEdit
+                ? "Nothing is saved until you press save."
+                : hasOfferingChanges
+                  ? "You have unsaved changes on this page."
+                  : "Everything on this page is saved."}
           </span>
           <button
             type="button"
@@ -3255,12 +3278,8 @@ export function OfferingForm({
           <Button
             onClick={submit}
             loading={saving}
-            disabled={!hasOfferingChanges}
-            title={
-              hasOfferingChanges
-                ? undefined
-                : "Nothing has changed yet. Edit a field and this turns on."
-            }
+            disabled={!!saveBlockedBecause}
+            title={saveBlockedBecause || undefined}
           >
             {isEdit ? "Save changes" : "Save offering"}
           </Button>

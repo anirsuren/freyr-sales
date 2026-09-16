@@ -22,7 +22,7 @@ import { PageTabs } from "@/components/ui/PageTabs";
 const TABS = [
   {
     key: "requests",
-    label: "Solution requests",
+    label: "All solutioning requests",
     href: "/solutioning",
     icon: Inbox,
     color: "var(--ink-bright-blue)",

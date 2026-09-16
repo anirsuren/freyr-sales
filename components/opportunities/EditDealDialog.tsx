@@ -47,6 +47,7 @@ export function EditDealDialog({
   meName = "",
   team = null,
   mayChangeTeam = false,
+  mayChangeOwner = false,
   onClose,
   onSave,
   onSaved,
@@ -87,6 +88,8 @@ export function EditDealDialog({
    *  section is part of the form, so both doors into it carry them. */
   team?: DealTeam;
   mayChangeTeam?: boolean;
+  /** Only an admin moves ownership (Manoj's item 6). Passed from the page. */
+  mayChangeOwner?: boolean;
   /**
    * ACCEPTED AND IGNORED, so the call sites that still pass them keep
    * compiling while they are tidied up. The bands used to be rendered here as
@@ -141,6 +144,7 @@ export function EditDealDialog({
       meName={meName}
       team={team}
       mayChangeTeam={mayChangeTeam}
+      mayChangeOwner={mayChangeOwner}
       {...(onSave ? { onSave } : {})}
       {...(onSaved ? { onSaved } : {})}
     >

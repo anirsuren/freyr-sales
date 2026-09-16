@@ -835,13 +835,7 @@ export function EmailComposer() {
             needs no account — is on the To field's own hint, which is where
             somebody actually wonders it. */}
 
-        {!live && (
-          <p className="mt-2 flex items-start gap-2 rounded-lg bg-[rgba(124,58,237,0.10)] px-3 py-2 text-[12.5px] font-medium text-[color:var(--ink-violet-soft)]">
-            <FlaskConical size={14} strokeWidth={2} className="mt-0.5 shrink-0" />
-            Sample mode. You can write and press Send to see the whole flow, but
-            nothing leaves the building. Switch to Real to deliver.
-          </p>
-        )}
+
 
         <div className="mt-4 space-y-3.5">
           <RecipientField

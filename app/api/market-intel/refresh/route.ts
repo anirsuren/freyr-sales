@@ -1,3 +1,4 @@
+import { getDataMode } from "@/lib/dataMode";
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import {
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
+  if (getDataMode() === "mock") return NextResponse.json({started:true,ran:true,items:0,cost:0});
   const body = (await req.json().catch(() => ({}))) ?? {};
   /* THE CLASSIFIER'S OWN HATCH: read every unread item now, up to a call
      budget, and report tokens so the cost is a number rather than a guess. */

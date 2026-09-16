@@ -782,10 +782,24 @@ export function DealOverviewEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetNonce]);
 
+  /**
+   * THE BAR HAS TO MOVE WHILE YOU TYPE (Anir, Sep 15: "whenever I click out,
+   * that's weird, because if I'm just typing, it should go through... right
+   * here the save button should pop up because I removed the last three
+   * characters").
+   *
+   * Every typed field calls this twice now: once on each keystroke with
+   * `stageOnly`, and once on blur as before. Staging only banks what is on
+   * screen, so the footer and its count follow your typing. The blur call is
+   * still the one that enforces the rules below — a starred field cannot be
+   * emptied, and emptying it puts the old value back — because doing that
+   * mid-word would snap the text back under the cursor.
+   */
   async function commit(
     key: string,
     patch: Record<string, unknown>,
-    revert: () => void
+    revert: () => void,
+    opts?: { stageOnly?: boolean }
   ) {
     /* Nothing moved, nothing to say. Every control below fires on blur as well
        as on change, so this is the common case and it must be silent. */
@@ -834,6 +848,9 @@ export function DealOverviewEditor({
       const label = REQUIRED_FIELDS[k];
       if (!label) continue;
       if (blank(v) && !blank(baseline[k])) {
+        /* Mid-word, say nothing and bank nothing: the field is empty because
+           the person is halfway through retyping it. Blur decides. */
+        if (opts?.stageOnly) return;
         revert();
         setState((s) => ({ ...s, [key]: "error" }));
         setErrors((e) => ({ ...e, [key]: `${label} is required and cannot be left blank.` }));
@@ -1071,7 +1088,13 @@ export function DealOverviewEditor({
               <input
                 value={name}
                 maxLength={200}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  const typed = e.target.value;
+                  setName(typed);
+                  void commit("name", { name: typed.trim() }, () => setName(deal.name ?? ""), {
+                    stageOnly: true,
+                  });
+                }}
                 onBlur={() =>
                   commit("name", { name: name.trim() }, () =>
                     setName(deal.name ?? "")
@@ -1146,6 +1169,10 @@ export function DealOverviewEditor({
                   ariaLabel="Offering"
                   fill
                   collapsible={false}
+                  /* The field is a quarter of the row; the list is a catalogue
+                     of long names, so it gets room of its own rather than
+                     wrapping "Freya.intelligence + Agents" onto two lines. */
+                  menuMinWidth={460}
                   onChange={(v) => {
                     if (v === "__label") return;
                     /* ONE OFFERING PER OPPORTUNITY. Picking from the catalogue
@@ -1520,7 +1547,12 @@ export function DealOverviewEditor({
                         integer={false}
                         /* The same box as the schedule underneath it: symbol
                            inside, commas as you type (Anir, Sep 7). */
-                        onChange={setTcv}
+                        onChange={(v) => {
+                          setTcv(v);
+                          void commit("estimatedTcv", tcvPatch(v), revertTcv, {
+                            stageOnly: true,
+                          });
+                        }}
                         onBlur={() =>
                           /* BOTH FIELDS, ONE NUMBER — BUT ONLY WHEN THE DEAL
                              IS IN DOLLARS.
@@ -1584,7 +1616,20 @@ export function DealOverviewEditor({
                       ariaLabel="Estimated ACV"
                       symbol={localSymbol}
                       integer={false}
-                      onChange={setAcv}
+                      onChange={(v) => {
+                        setAcv(v);
+                        void commit(
+                          "estimatedAcv",
+                          { estimatedAcv: v === "" ? null : Number(v) },
+                          () =>
+                            setAcv(
+                              deal.estimatedAcv === undefined
+                                ? ""
+                                : String(deal.estimatedAcv)
+                            ),
+                          { stageOnly: true }
+                        );
+                      }}
                       onBlur={() =>
                         void commit(
                           "estimatedAcv",
@@ -2003,7 +2048,13 @@ export function DealOverviewEditor({
                  nothing in it. Imported deals arrived this way. */
               <input
                 value={owner}
-                onChange={(e) => setOwner(e.target.value)}
+                onChange={(e) => {
+                  const typed = e.target.value;
+                  setOwner(typed);
+                  void commit("owner", { owner: typed.trim() }, () => setOwner(deal.owner ?? ""), {
+                    stageOnly: true,
+                  });
+                }}
                 onBlur={() =>
                   commit("owner", { owner: owner.trim() }, () =>
                     setOwner(deal.owner ?? "")
@@ -2075,7 +2126,13 @@ export function DealOverviewEditor({
                    Paste a couple of paragraphs about a call and the tail went
                    without a word. */
                 maxLength={600}
-                onChange={(e) => setNote(e.target.value)}
+                onChange={(e) => {
+                  const typed = e.target.value;
+                  setNote(typed);
+                  void commit("nextSteps", { nextSteps: typed.trim() }, () => setNote(deal.nextSteps ?? ""), {
+                    stageOnly: true,
+                  });
+                }}
                 onBlur={() =>
                   commit("nextSteps", { nextSteps: note.trim() }, () =>
                     setNote(deal.nextSteps ?? "")
@@ -2173,6 +2230,31 @@ export function DealOverviewEditor({
       )}
     </div>
   );
+
+  /* WHAT THE MONEY BOX WRITES, in one place, because the keystroke and the
+     blur have to agree. See the note on the box below for why a euro deal
+     writes two different numbers. */
+  function tcvPatch(raw: string): Record<string, unknown> {
+    if (isBase) return { estimatedTcv: num(raw), value: num(raw) ?? 0 };
+    const typed = num(raw);
+    const asDollars =
+      typed === null ? null : convertToUsd(typed, currency, signs || undefined);
+    return {
+      estimatedTcv: typed,
+      ...(asDollars === undefined || asDollars === null
+        ? {}
+        : { value: Math.round(asDollars) }),
+    };
+  }
+  function revertTcv() {
+    setTcv(
+      deal.estimatedTcv === undefined
+        ? deal.value
+          ? String(deal.value)
+          : ""
+        : String(deal.estimatedTcv)
+    );
+  }
 
   function commitConfidence() {
     return commit("confidence", { confidence: num(confidence) }, () =>

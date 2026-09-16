@@ -22,6 +22,7 @@ import {
   PauseCircle,
   Trophy,
   CircleSlash,
+  CheckCircle2,
   Presentation,
   Target,
   UserPlus,
@@ -88,6 +89,30 @@ const OPPORTUNITY_STATUS_ICON: Record<string, LucideIcon> = {
   "On hold": PauseCircle,
   Won: Trophy,
   Lost: CircleSlash,
+};
+
+const SOLUTION_STATUS_COLOR: Record<string, string> = {
+  "Request initiated": "var(--ink-bright-blue)",
+  Assigned: "#0891B2",
+  "Work in progress": "var(--ink-violet-soft)",
+  Delayed: "var(--ink-orange)",
+  Drafted: "#64748B",
+  "Submitted to BD": "var(--ink-bright-blue)",
+  "Submitted to customer": "var(--ink-teal-deep)",
+  Completed: "#15803D",
+  Cancelled: "var(--status-red)",
+};
+
+const SOLUTION_STATUS_ICON: Record<string, LucideIcon> = {
+  "Request initiated": Inbox,
+  Assigned: UserPlus,
+  "Work in progress": Hourglass,
+  Delayed: CalendarClock,
+  Drafted: FileText,
+  "Submitted to BD": Send,
+  "Submitted to customer": Send,
+  Completed: CheckCircle2,
+  Cancelled: CircleSlash,
 };
 
 /**
@@ -285,6 +310,7 @@ export function Customer360({
   );
   const customerOpportunityTable =
     active?.key === "opportunities" && cols.some((column) => column.key === "signs");
+  const solutionRequestTable = active?.key === "solutionRequests";
 
   return (
     <section
@@ -722,7 +748,8 @@ export function Customer360({
                 <table
                   className={cn(
                     "w-full min-w-[480px] border-collapse text-left",
-                    customerOpportunityTable && "table-fixed min-w-[920px]"
+                    customerOpportunityTable && "table-fixed min-w-[920px]",
+                    solutionRequestTable && "table-fixed min-w-[1540px]"
                   )}
                 >
                   {customerOpportunityTable && (
@@ -740,6 +767,20 @@ export function Customer360({
                       <col style={{ width: "15%" }} />
                       <col style={{ width: "12%" }} />
                       <col style={{ width: "8%" }} />
+                    </colgroup>
+                  )}
+                  {solutionRequestTable && (
+                    <colgroup>
+                      <col style={{ width: 430 }} />
+                      <col style={{ width: 145 }} />
+                      <col style={{ width: 150 }} />
+                      <col style={{ width: 170 }} />
+                      <col style={{ width: 160 }} />
+                      <col style={{ width: 125 }} />
+                      <col style={{ width: 125 }} />
+                      <col style={{ width: 125 }} />
+                      <col style={{ width: 175 }} />
+                      <col style={{ width: 130 }} />
                     </colgroup>
                   )}
                   <thead>
@@ -860,20 +901,31 @@ export function Customer360({
                                 active.key === "opportunities" && c.key === "level";
                               const opportunityStatus =
                                 active.key === "opportunities" && c.key === "status";
+                              const solutionStatus =
+                                active.key === "solutionRequests" && c.key === "status";
                               const identityColor = opportunityStage
                                 ? OPPORTUNITY_LEVEL_COLOR[v] ?? "#8E98A8"
                                 : opportunityStatus
                                   ? statusColor(v)
+                                  : solutionStatus
+                                    ? SOLUTION_STATUS_COLOR[v] ?? "#64748B"
                                   : null;
                               const IdentityIcon = opportunityStage
                                 ? OPPORTUNITY_LEVEL_ICON[v] ?? Workflow
                                 : opportunityStatus
                                   ? OPPORTUNITY_STATUS_ICON[v] ?? Hourglass
+                                  : solutionStatus
+                                    ? SOLUTION_STATUS_ICON[v] ?? Hourglass
                                   : null;
                               return (
                                 <td
                                   key={c.key}
-                                  className="py-3 pr-4 text-left text-[12.5px] text-text-secondary"
+                                  className={cn(
+                                    "py-3 pr-4 text-left text-[12.5px] text-text-secondary",
+                                    solutionRequestTable &&
+                                      ["requested", "due", "submitted"].includes(c.key) &&
+                                      "whitespace-nowrap"
+                                  )}
                                 >
                                   {IdentityIcon && identityColor ? (
                                     <span

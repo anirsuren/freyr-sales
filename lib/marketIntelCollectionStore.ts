@@ -1,3 +1,4 @@
+import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
@@ -6,7 +7,7 @@ export function collectionKey(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 32);
 }
 function db() {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+  return createClient(marketIntelDatabaseConfig().url!, marketIntelDatabaseConfig().key!, {
     auth: { persistSession: false },
     global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store", signal: AbortSignal.timeout(30_000) }) },
   });

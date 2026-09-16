@@ -46,6 +46,7 @@ export type CompetitorProduct = {
 type CompetitionRow = { byOffering: Record<string, CompetitorProduct[]> };
 
 const ROW_ID = "offering-competition";
+function activeRowId() { return getDataMode() === "mock" ? `${ROW_ID}:mock` : ROW_ID; }
 
 function hasDatabase(): boolean {
   return !!(
@@ -74,21 +75,23 @@ function normalize(value: unknown): CompetitionRow {
   };
 }
 
-async function readRow(): Promise<CompetitionRow> {
+async function readRow(offeringId?:string): Promise<CompetitionRow> {
   if (!hasDatabase()) return { byOffering: {} };
   const { data, error } = await client()
     .from("offering_catalog_state")
     .select("catalog")
-    .eq("id", ROW_ID)
+    .eq("id", activeRowId())
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return normalize(data?.catalog);
+  const row = normalize(data?.catalog);
+  if (getDataMode() === "mock" && offeringId && !row.byOffering[offeringId]) row.byOffering[offeringId] = structuredClone(SAMPLE_ROWS);
+  return row;
 }
 
 async function writeRow(row: CompetitionRow): Promise<void> {
   const { error } = await client()
     .from("offering_catalog_state")
-    .upsert({ id: ROW_ID, catalog: row, updated_at: new Date().toISOString() });
+    .upsert({ id: activeRowId(), catalog: row, updated_at: new Date().toISOString() });
   if (error) throw new Error(error.message);
 }
 
@@ -165,8 +168,7 @@ const SAMPLE_ROWS: CompetitorProduct[] = [
 export async function readCompetition(
   offeringId: string
 ): Promise<CompetitorProduct[]> {
-  if (getDataMode() !== "live") return structuredClone(SAMPLE_ROWS);
-  const row: CompetitionRow = await readRow().catch(() => ({ byOffering: {} }));
+  const row: CompetitionRow = await readRow(offeringId).catch(() => ({ byOffering: {} }));
   return row.byOffering[offeringId] ?? [];
 }
 
@@ -184,7 +186,7 @@ export async function addCompetitorProduct(input: {
   if (!company || !product) {
     throw new Error("Both the company and their product name are needed.");
   }
-  const row = await readRow();
+  const row = await readRow(input.offeringId);
   const list = (row.byOffering[input.offeringId] ??= []);
   if (
     list.some(
@@ -230,7 +232,7 @@ export async function removeCompetitorProduct(
   offeringId: string,
   competitorId: string
 ): Promise<void> {
-  const row = await readRow();
+  const row = await readRow(offeringId);
   const list = row.byOffering[offeringId] ?? [];
   row.byOffering[offeringId] = list.filter((c) => c.id !== competitorId);
   await writeRow(row);
@@ -255,7 +257,7 @@ export async function addCompetitionMaterial(input: {
   if ((input.kind === "link" || input.kind === "file") && !url) {
     throw new Error("A link or file needs its URL.");
   }
-  const row = await readRow();
+  const row = await readRow(input.offeringId);
   const entry = (row.byOffering[input.offeringId] ?? []).find(
     (c) => c.id === input.competitorId
   );
@@ -279,7 +281,7 @@ export async function removeCompetitionMaterial(
   competitorId: string,
   materialId: string
 ): Promise<void> {
-  const row = await readRow();
+  const row = await readRow(offeringId);
   const entry = (row.byOffering[offeringId] ?? []).find(
     (c) => c.id === competitorId
   );

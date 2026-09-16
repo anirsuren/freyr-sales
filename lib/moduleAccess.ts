@@ -122,15 +122,13 @@ export function isManagerOrAdmin(role: UserIdentityRole): boolean {
  * WHAT THE SOLUTIONS ROLE OPENS (Suren, Aug 24: "the solutioning guy will not
  * come to the customer module, he'll come to the solutioning module").
  *
- * Their room, plus the three every role gets: the assistant, the offerings
- * catalogue their decks are built from, and the team directory. Nothing
- * manager-only, no customers, no pipeline — a solutions person is not sales.
+ * Their room only. Meetings is the fourth Solutioning tab even though its
+ * records have a separate route, so it belongs to the same section. Sales,
+ * customer, revenue, catalogue and administration modules stay out.
  */
 export const SOLUTIONS_MODULES = [
   "/solutioning",
-  "/agent",
-  "/offerings",
-  "/team",
+  "/meetings",
 ] as const;
 
 /** Does this path belong to a manager-and-admin-only module? */
@@ -166,6 +164,11 @@ export function canAccessModuleWith(
   if (!access) return canAccessModule(path, role);
   // Signing in, settings, notifications: never a module, never gated.
   if (isAlwaysOpen(path)) return true;
+  if (
+    role === "sol_member" &&
+    !SOLUTIONS_MODULES.some((modulePath) => isUnder(path, modulePath))
+  )
+    return false;
   const key = moduleKeyForPath(path);
   if (!key) return canAccessModule(path, role);
   const level = access[key] ?? "none";
@@ -186,6 +189,11 @@ export function canWriteModuleWith(
   access: Partial<Record<string, Access>> | null
 ): boolean {
   if (!access) return canAccessModule(path, role);
+  if (
+    role === "sol_member" &&
+    !SOLUTIONS_MODULES.some((modulePath) => isUnder(path, modulePath))
+  )
+    return false;
   const key = moduleKeyForPath(path);
   if (!key) return canAccessModule(path, role);
   return canEdit(access[key] ?? "none");
@@ -198,6 +206,11 @@ export function canCreateModuleWith(
   access: Partial<Record<string, Access>> | null
 ): boolean {
   if (!access) return canAccessModule(path, role);
+  if (
+    role === "sol_member" &&
+    !SOLUTIONS_MODULES.some((modulePath) => isUnder(path, modulePath))
+  )
+    return false;
   const key = moduleKeyForPath(path);
   if (!key) return canAccessModule(path, role);
   return canCreate(access[key] ?? "none");
@@ -217,6 +230,11 @@ export function canDeleteModuleWith(
   access: Partial<Record<string, Access>> | null
 ): boolean {
   if (!access) return canAccessModule(path, role);
+  if (
+    role === "sol_member" &&
+    !SOLUTIONS_MODULES.some((modulePath) => isUnder(path, modulePath))
+  )
+    return false;
   const key = moduleKeyForPath(path);
   if (!key) return canAccessModule(path, role);
   return canDelete(access[key] ?? "none");
@@ -238,7 +256,7 @@ export function canAccessModule(
   // Same rule, same place in the order: ahead of the rep whitelist and the
   // manager default, so nothing picks these up by being none of the above.
   if (NEW_MODULES_ADMIN_ONLY.some((m) => isUnder(path, m))) {
-    return role === "admin";
+    return role === "admin" || (role === "sol_member" && isUnder(path, "/meetings"));
   }
   // Signing in, your own settings, the notification list, the tour: these are
   // not modules and locking a rep out of them would lock them out of the app.

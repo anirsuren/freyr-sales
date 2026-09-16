@@ -35,19 +35,18 @@ function dayClock(ms: number, now: number): string {
   return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${clock(ms)}`;
 }
 
-/**
- * The chip used to read "Updated 7:53 AM" while every company card underneath
- * it read "Updated 19 min ago" — two clocks for one fact, on one screen (Anir,
- * Aug 14). The chip now speaks the cards' language; the exact wall-clock time
- * is still one click away inside the panel.
- */
+/** Keep the header compact; the panel retains the exact day and time. */
 function agoLabel(ms: number, now: number): string {
-  const mins = Math.max(0, Math.round((now - ms) / 60_000));
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
-  return dayClock(ms, now);
+  const date = new Date(ms);
+  const today = new Date(now);
+  if (date.toDateString() === today.toDateString()) return clock(ms);
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return "yesterday";
+  return date.toLocaleDateString("en-US", {
+    month: "short", day: "numeric",
+    ...(date.getFullYear() !== today.getFullYear() ? { year: "numeric" as const } : {}),
+  });
 }
 
 export function RefreshChip({
@@ -122,7 +121,7 @@ export function RefreshChip({
         onClick={toggle}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="flex h-[34px] cursor-pointer items-center gap-2 rounded-full border border-border-light bg-white px-3 text-[12px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:text-text-primary"
+        className="flex h-[34px] cursor-pointer items-center gap-2 whitespace-nowrap rounded-full border border-border-light bg-white px-3 text-[12px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:text-text-primary"
       >
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1A7A35] opacity-50" />

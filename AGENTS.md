@@ -119,10 +119,9 @@ what was written back, `deleted-test-customers.json`).
 - Live mode **strips demo materials** (ids `m-0xx`) at render;
   `restoreDemoMaterials()` deliberately heals them back into the stored row.
   Don't "clean" them from the row — mock mode uses them.
-- Release gating: `lib/release.ts`. Real mode shows only
-  `RELEASED_MODULE_PREFIXES` — currently `/offerings`, `/agent`,
-  `/customers` — plus `NON_MODULE_PATHS` (login, settings, onboarding…).
-  Everything else exists but is mock-mode-only until released.
+- Release gating: `lib/release.ts`. The deployment release flag applies equally
+  to Mock and Real; role/module permissions still apply in both modes.
+
 
 ## 5. Working rules (non-negotiable, from Anir)
 
@@ -193,6 +192,73 @@ what was written back, `deleted-test-customers.json`).
   named accounts imported from KonnectCo without disrupting it.
 
 ## 9. Current state — Jul 31, 2026
+
+- **Sep 15 Solutioning request drill-down:** Expanded request rows keep Latest
+  Activity as the capped right-hand timeline. The left side now leads with the
+  request brief, shows customer/opportunity/contact context in one compact
+  strip, and renders documents as a full-width, internally scrolling table with
+  stage, version, owner, added date, hover preview and open action. Build and
+  typecheck pass; approved for development and production deployment.
+
+- **Sep 15 Lead journey side rail:** Expanded lead rows now place Lead Journey
+  in a dedicated right-hand column using the same compact vertical activity
+  anatomy as Solutioning: small event marks, a thin spine, concise metadata and
+  a capped internal scroll. It no longer consumes a full-width row. Build and
+  typecheck pass; approved for development and production deployment.
+
+- **Sep 15 People Performance folding:** Waiting for verification, sent back
+  to the selected person, sent back by the manager, and Logged results now use
+  full-heading dropdown targets rather than tiny chevron-only controls. Each
+  section remembers its open/closed state in the browser. Local only; not
+  deployed.
+
+- **Sep 15 Lead journey timeline:** Replaced the three status-card layout with
+  the same vertical spine, milestone marks and compact event anatomy used by
+  Solution Requests. Removed the duplicate current-status pill and enclosing
+  timeline box; unresolved outcomes use a dashed continuation. Local only;
+  not deployed.
+
+- **Sep 15 Leads analytics date chip:** Removed the redundant "Through [date]"
+  chip from the shared Leads analytics header. The chart axis and its
+  "last 12 weeks" label already communicate the reporting window. Local only;
+  not deployed.
+
+- **Sep 15 Mock/Real parity:** Market Intel list/detail/manage routes now read
+  sample records through the real feed schema and shared UI: tabs, search,
+  filters, tracking, bookmarks and moderation. Mock provider actions stay local.
+  Removed mode-only navigation/action gates and redundant preview notices;
+  enabled isolated persisted mock edits for opportunities, activity master and
+  offering competition. Analytics/Forecast/Recordings retain their workspace
+  shells in Real mode with empty data; forecasts no longer invent Real rep deals.
+  Verification: isolated data/config tests + TypeScript, no browser verification,
+  provider calls or production writes. Details: `docs/mock-real-parity-audit.md`.
+  Deployment remains on hold.
+
+- **Sep 15 shared Real Market Intel (authorized both ways):** Dedicated server-only
+  Market Intel connection settings now route tracking, feeds, bookmarks, refresh
+  locks/checkpoints and accounting to a shared database. Mock tracking stays local;
+  auth/CRM connections are unchanged. Cross-database bookmark members match by
+  active workspace membership and email. Production remains the sole automatic
+  daily collector. Setup is documented in `docs/shared-market-intel.md`; settings
+  have NOT been activated and nothing deployed. Four isolated configuration tests
+  pass and typecheck is clean; no provider or production writes used for testing.
+
+- **Sep 15 Market Intel header fit:** The three Intelligence tabs remain one
+  unbroken strip; header actions move together below when space is limited.
+  Refresh chips show time for today, yesterday for the previous calendar day,
+  and date only for older updates. Exact timestamps remain in the panel.
+  Local only; not deployed.
+
+- **Sep 15 briefing sidebar top signals:** A shared Top signals card below
+  competitors ranks the five most frequent specific signals from existing
+  briefing counts. Rows toggle the signal filter and select all sources so
+  their updates are visible. Mock and Real use the same card; no new API work.
+  Local only; not deployed.
+
+- **Sep 15 Signals scroll direction:** The shared Market Intel Signals row
+  uses native horizontal scrolling and no longer converts vertical wheel
+  input into sideways chip movement. Vertical gestures scroll the page in
+  both Mock and Real briefings. Local only; not deployed.
 
 - **Sep 15 lead source drill-down:** Every Source performance row on Leads is
   now a full clickable target. Its source and volume bar share one column, while
@@ -835,3 +901,9 @@ The rich-text toolbar supports undo, redo, emphasis, strikethrough, fonts, colou
 
 ### Sep 15: template placeholders are editable fields
 Loading an admin email template with bracketed values opens a dedicated Template details panel between Subject and Message. Each unique placeholder becomes a labelled text, date, or full-link field, with the original token shown beside it and a live subject preview below. Send explains the first missing or invalid value and stays unavailable until all details are valid. “Apply to email” replaces every occurrence in both subject and HTML message, so the sender can review the final words before sending; Send also resolves completed values if they have not pressed Apply. Repeated material placeholders have distinct first and second document fields. Completed locally, not deployed.
+
+### Sep 15: performance evidence scales and previews like sales materials
+Collapsed People Performance rows show one compact document count instead of listing every attachment. Opening a row reveals a bounded, scrollable document table with sticky headings, file type, and action. Hovering a document uses the shared Sales Materials preview, while clicking opens the same full document renderer in a modal or dedicated page. Mock claims point to real shipped PDF and Word samples so every preview can be reviewed. Completed locally, not deployed.
+
+### Sep 15: performance status colours remain identical
+Performance progress bars, segment brackets, endpoint markers, monthly legends, and chart-tooltip legends all use the shared status colour without changing its opacity. Hatching alone communicates that a claim is still unverified, so the legend key and the bar remain visibly the same hue. Completed locally, not deployed.

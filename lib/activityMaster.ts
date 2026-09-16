@@ -129,6 +129,7 @@ async function readRow(): Promise<ActivityMasterState> {
     .eq("id", activeRowId())
     .maybeSingle();
   if (error) throw new Error(error.message);
+  if (!data && isMock()) return seededMock();
   return normalize(data?.catalog);
 }
 
@@ -144,7 +145,6 @@ async function writeRow(state: ActivityMasterState): Promise<void> {
 }
 
 export async function readActivityMaster(): Promise<ActivityMasterState> {
-  if (isMock()) return seededMock();
   return readRow().catch(() => normalize(null));
 }
 

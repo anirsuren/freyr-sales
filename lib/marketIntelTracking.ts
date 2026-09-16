@@ -1,3 +1,4 @@
+import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 import { getDataMode } from "./dataMode";
 import { MI_COMPANIES } from "./marketIntelMock";
 import { COMPANY_SOURCES, COMPETITOR_SOURCES, type CompanySource } from "./marketIntelSources";
@@ -73,6 +74,7 @@ export type TrackedCompany = {
 };
 
 export type MarketIntelTracking = {
+  mockHiddenStories?: Record<string,string[]>;
   companies: TrackedCompany[];
   people: TrackedPerson[];
   /**
@@ -256,8 +258,8 @@ export function splitList(raw: string): string[] {
 
 function hasTrackingDatabase(): boolean {
   return !!(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    marketIntelDatabaseConfig(getDataMode()).url &&
+    marketIntelDatabaseConfig(getDataMode()).key
   );
 }
 
@@ -265,8 +267,8 @@ function trackingClient() {
   // Required lazily, same as the offerings catalogue adapter, so the Supabase
   // SDK never rides into a client bundle through this module's types.
   return require("@supabase/supabase-js").createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    marketIntelDatabaseConfig(getDataMode()).url!,
+    marketIntelDatabaseConfig(getDataMode()).key!,
     { global: { fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, cache: "no-store" }) } }
   );
 }
@@ -289,16 +291,16 @@ function normalize(value: unknown): MarketIntelTracking {
     companies: Array.isArray(raw.companies) ? raw.companies : [],
     people: Array.isArray(raw.people) ? raw.people : [],
     divisions,
+    mockHiddenStories: raw.mockHiddenStories,
     removedSeeds: Array.isArray(raw.removedSeeds)
       ? raw.removedSeeds.filter((v): v is string => typeof v === "string")
       : [],
   };
 }
 
-// Same one-minute process cache as the feed (see marketIntelFeed.ts): tab
-// clicks stop re-reading rows that change a few times a day. Keyed per data
-// mode so mock and real never serve each other's list.
-const TRACKING_CACHE_MS = 60_000;
+// Re-read on navigation to see edits from the other environment. Entries
+// remain keyed by data mode so mock and real never serve each other's list.
+const TRACKING_CACHE_MS = 0; // Read the shared store on navigation across environments.
 
 export function bustMarketIntelTrackingCache(): void {
   (globalThis as any).__MI_TRACKING_CACHE__ = undefined;
@@ -752,4 +754,14 @@ export async function untrackPerson(id: string): Promise<void> {
   tracking.people = tracking.people.filter((p) => p.id !== id);
   if (tracking.people.length === before) return;
   await saveMarketIntelTracking(tracking);
+}
+
+/** Story moderation in the sample workspace never writes real feed rows. */
+export async function hideMockIntelStories(companyId:string, urls:string[]) {
+  if (getDataMode() !== "mock") throw new Error("Sample workspace required.");
+  const tracking = await readMarketIntelTracking({fresh:true});
+  const prior = tracking.mockHiddenStories?.[companyId] ?? [];
+  tracking.mockHiddenStories = {...tracking.mockHiddenStories,[companyId]:[...new Set([...prior,...urls])]};
+  await saveMarketIntelTracking(tracking);
+  return urls.length;
 }

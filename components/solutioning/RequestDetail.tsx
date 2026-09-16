@@ -228,7 +228,7 @@ export function RequestDetail({
   members: string[];
   linkables: Linkable[];
   /** What the SERVER says this person may do here (SOL-026). */
-  may: { create: boolean; remove: boolean };
+  may: { create: boolean; remove: boolean; assign: boolean };
   /** The submissions and presentations raised off this request (SOL-028). */
   children_?: {
     id: string;
@@ -1046,7 +1046,7 @@ export function RequestDetail({
                             hint="Accountable for this division"
                             value={w?.lead ?? ""}
                             members={members}
-                            disabled={busy || !canWrite}
+                            disabled={busy || !canWrite || !may.assign}
                             onPick={(v) =>
                               post({ op: "set-workstream", division, lead: v })
                             }
@@ -1056,7 +1056,7 @@ export function RequestDetail({
                             hint="Doing the work"
                             value={w?.primaryAssignee ?? ""}
                             members={members}
-                            disabled={busy || !canWrite}
+                            disabled={busy || !canWrite || !may.assign}
                             onPick={(v) =>
                               post({
                                 op: "set-workstream",
@@ -1074,7 +1074,7 @@ export function RequestDetail({
                                 m !== w?.primaryAssignee &&
                                 !(w?.contributors ?? []).includes(m)
                             )}
-                            disabled={busy || !canWrite}
+                            disabled={busy || !canWrite || !may.assign}
                             onPick={(v) =>
                               v
                                 ? post({
@@ -1095,7 +1095,7 @@ export function RequestDetail({
                               >
                                 <Avatar name={c} className="h-[16px] w-[16px] text-[6px]" />
                                 {c}
-                                {canWrite && (
+                                {canWrite && may.assign && (
                                   <button
                                     type="button"
                                     aria-label={`Remove ${c}`}

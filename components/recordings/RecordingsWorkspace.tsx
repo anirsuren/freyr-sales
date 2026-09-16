@@ -230,7 +230,7 @@ function CoachChat({ rec }: { rec: Recording }) {
 }
 
 /* ---------------- Workspace ---------------- */
-export function RecordingsWorkspace() {
+export function RecordingsWorkspace({ empty = false }: { empty?: boolean }) {
   const { toast } = useToast();
   const currentUser = useCurrentUser();
   const [selectedId, setSelectedId] = useState(RECORDINGS[0].id);
@@ -336,7 +336,7 @@ export function RecordingsWorkspace() {
   }
 
   const list = useMemo(() => {
-    const filtered = RECORDINGS.filter(
+    const filtered = (empty ? [] : RECORDINGS).filter(
       (r) =>
         !q ||
         r.company.toLowerCase().includes(q.toLowerCase()) ||
@@ -348,7 +348,7 @@ export function RecordingsWorkspace() {
     else if (sortBy === "duration")
       sorted.sort((a, b) => toSec(b.duration) - toSec(a.duration));
     return sorted;
-  }, [q, sortBy]);
+  }, [q, sortBy, empty]);
 
   const shownTranscript = tq
     ? transcript.filter((l) => l.text.toLowerCase().includes(tq.toLowerCase()))
@@ -362,10 +362,7 @@ export function RecordingsWorkspace() {
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <h2 className="text-[17px] font-semibold text-text-primary">Recordings</h2>
-              <span className="text-[10px] font-bold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded bg-blue-light text-blue-primary">
-                Sample
-              </span>
-              <InfoHint text="These calls are samples, so you can try the coaching tools. Upload a recording or connect your dialer, top right, to use your real ones." />
+
             </span>
             <ColorSelect
               ariaLabel="Sort recordings"
@@ -433,6 +430,8 @@ export function RecordingsWorkspace() {
 
       {/* Detail */}
       <section className="flex-1 min-w-0 bg-white overflow-y-auto">
+        {empty ? <div className="p-8"><div className="flex items-center justify-between"><h1 className="text-xl font-semibold">Recordings</h1><Button onClick={() => setUploadOpen(true)}>Add recording</Button></div><p className="mt-8 text-text-secondary">No recordings yet. Add your first recording to see its transcript and coaching.</p></div> : <>
+
         <div className="px-8 pt-7 pb-5 border-b border-border-light">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -875,9 +874,10 @@ export function RecordingsWorkspace() {
             </div>
           )}
         </div>
+      </>}
       </section>
 
-      <CoachChat rec={rec} />
+      {!empty && <CoachChat rec={rec} />}
 
       {/* Upload recording / connect a dialer (#16) */}
       <Modal open={uploadOpen} onClose={() => setUploadOpen(false)} title="Add a recording">
@@ -902,6 +902,7 @@ export function RecordingsWorkspace() {
               <Button
                 disabled={!fileName}
                 onClick={() => {
+                  if (empty) { toast("Recording storage and transcription are not connected yet.", "error"); return; }
                   toast(`Uploaded “${fileName}”: transcription queued`);
                   setFileName("");
                   setUploadOpen(false);
@@ -925,6 +926,7 @@ export function RecordingsWorkspace() {
                 <button
                   key={d}
                   onClick={() => {
+                    if (empty) { toast("This dialer connection is not configured yet.", "error"); return; }
                     toast(`Connected to ${d}`);
                     setUploadOpen(false);
                   }}

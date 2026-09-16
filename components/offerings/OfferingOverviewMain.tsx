@@ -338,7 +338,7 @@ export function OfferingOverviewMain({
           was a row of zeros pretending to be a dashboard (Anir, Aug 7:
           "remove commercial performance on real mode, no real data right?").
           It returns by itself once revenue lines exist. */}
-      {!realMode && (
+      {(
       <section className="py-7 border-b border-border-light">
         <SectionHeading
           icon={BarChart3}

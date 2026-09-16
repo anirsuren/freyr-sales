@@ -395,7 +395,14 @@ export function OfferingActivities({
             the Actions header cell, directly above the pencil and the bin it
             belongs with, left aligned like every other Actions column in this
             app. */}
-        <div className="overflow-x-auto">
+        {/* A SCROLLBAR YOU CAN SEE (Anir, Sep 15: "if there was no scrollbar,
+            that's a different problem. You should have just added a scrollbar").
+            The columns below are his: Details is 300px because 300px is what
+            a detail needs. The table is therefore wider than the card on a
+            laptop, and macOS hides overlay scrollbars until you scroll, so it
+            looked like the table simply ended at Documents. Same thin, always
+            visible bar the heat map uses. */}
+        <div className="wide-table-scroll overflow-x-auto">
           {/* The min-width only has to be wide enough that no chip wraps; past that
              it invents a scrollbar for a table that already fits (Anir, Aug 9:
              "it looks like you don't even need the horizontal scroll on the

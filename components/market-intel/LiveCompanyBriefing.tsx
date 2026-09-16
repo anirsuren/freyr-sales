@@ -51,6 +51,7 @@ import { Sparkline } from "@/components/charts/Charts";
 import { MiLogo } from "@/components/market-intel/MiLogo";
 import { DivisionEditor } from "@/components/market-intel/DivisionChips";
 import { SignalRow } from "@/components/market-intel/SignalRow";
+import { TopSignals } from "@/components/market-intel/TopSignals";
 import { CompanyAdminControls } from "@/components/market-intel/CompanyAdminControls";
 import { WatchStatus, type WatchState } from "@/components/market-intel/WatchStatus";
 import { MyListToggle } from "@/components/market-intel/MyListToggle";
@@ -1050,6 +1051,7 @@ export function LiveCompanyBriefing({
               </p>
             </Card>
           )}
+          <TopSignals counts={signalCounts} active={signalPick} onPick={(id) => { setSignalPick(id); setSource("all"); }} />
           </div>
           </aside>
         </div>

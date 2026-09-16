@@ -1,3 +1,4 @@
+import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 import { usableRundown } from "./marketIntelRundown";
 import { clipText, titleFromUrl } from "./marketIntelText";
 import { MI_COMPANIES, MI_WATCHLIST, SIGNAL_META } from "./marketIntelMock";
@@ -328,22 +329,21 @@ export function isRelevantCompanyItem(
 
 function hasFeedDatabase(): boolean {
   return !!(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    marketIntelDatabaseConfig().url &&
+    marketIntelDatabaseConfig().key
   );
 }
 
 function feedClient() {
   return require("@supabase/supabase-js").createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    marketIntelDatabaseConfig().url!,
+    marketIntelDatabaseConfig().key!,
     { global: { fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, cache: "no-store" }) } }
   );
 }
 
-// One process-local copy of each read serves requests for a minute; writers
-// bust it so an edit shows up immediately on the instance that wrote.
-const FEED_CACHE_MS = 60_000;
+// Re-read on navigation so changes from the other environment are visible.
+const FEED_CACHE_MS = 0; // Read the shared store on navigation across environments.
 
 type Caches = {
   feed?: { at: number; feed: MarketIntelFeed | null };

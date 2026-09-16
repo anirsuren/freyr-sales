@@ -253,15 +253,6 @@ export async function POST(req: NextRequest) {
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
-  if (getDataMode() !== "live") {
-    return NextResponse.json(
-      {
-        error:
-          "Mock mode shows a sample pipeline only. Switch to Real to change it.",
-      },
-      { status: 403 }
-    );
-  }
   /* See the performance route: a literal `null` body parses, so the catch
      never fires and the read below threw a 500 instead of a 400. */
   const raw = ((await req.json().catch(() => ({}))) ?? {}) as Record<string, unknown>;

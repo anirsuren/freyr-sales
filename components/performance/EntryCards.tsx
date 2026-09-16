@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Eye,
+  FileText,
   Hourglass,
   Paperclip,
   PenLine,
@@ -36,7 +37,7 @@ import {
 import { currencyMeta } from "@/lib/currency";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyFan } from "@/components/ui/CompanyFan";
-import { EvidencePreview, EvidenceThumb } from "./EvidenceViewer";
+import { EvidencePeek, EvidencePreview } from "./EvidenceViewer";
 import { EvidencePicker } from "./EvidencePicker";
 import { SegmentValues } from "./bits";
 import { Card } from "@/components/ui/Card";
@@ -47,6 +48,7 @@ import { typeMeta, GroupPill } from "./bits";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import { useStoredView } from "@/lib/useStoredView";
 
 /**
  * THE EVIDENCE-AND-VERIFICATION SURFACES (Suren, Aug 13).
@@ -74,10 +76,8 @@ function goalChip(state: PerformanceState, goalId: string) {
 
 function EvidenceLinks({
   entry,
-  onOpen,
 }: {
   entry: PerfActual;
-  onOpen?: (file: { name: string; url: string }) => void;
 }) {
   if (!entry.evidence?.length) {
     return (
@@ -87,33 +87,11 @@ function EvidenceLinks({
       </span>
     );
   }
+  const count = entry.evidence.length;
   return (
-    <span className="flex min-w-0 flex-col items-start gap-1.5">
-      {entry.evidence.map((e) => (
-        <button
-          key={e.url}
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpen?.({ name: e.name, url: e.url });
-          }}
-          title={`Open ${e.name}`}
-          aria-label={`Open attachment ${e.name}`}
-          className="group inline-flex max-w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-[rgba(0,113,227,0.16)] bg-white px-2.5 py-1.5 text-left text-blue-primary transition-colors hover:border-[rgba(0,113,227,0.3)] hover:bg-blue-light"
-        >
-          <Paperclip size={12} strokeWidth={2.4} className="shrink-0" aria-hidden="true" />
-          <span className="min-w-0">
-            <span className="block max-w-[150px] truncate text-[12px] font-semibold leading-4">
-              {e.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ")}
-            </span>
-            {e.name.includes(".") && (
-              <span className="block text-[9.5px] font-bold uppercase leading-3 tracking-[0.04em] text-text-tertiary">
-                {e.name.split(".").pop()}
-              </span>
-            )}
-          </span>
-        </button>
-      ))}
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold text-blue-primary">
+      <Paperclip size={12} strokeWidth={2.2} aria-hidden="true" />
+      {count} {count === 1 ? "document" : "documents"}
     </span>
   );
 }
@@ -703,7 +681,12 @@ export function SentBackWatchCard({
   state: PerformanceState;
   meName: string;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [panelView, setPanelView] = useStoredView<"open" | "closed">(
+    "freyr.performance.sent-back-watch",
+    "open",
+    ["open", "closed"]
+  );
+  const expanded = panelView === "open";
   const waiting = state.actuals
     .filter(
       (a) =>
@@ -735,20 +718,16 @@ export function SentBackWatchCard({
         aria-hidden="true"
         className="absolute inset-y-0 left-0 w-[5px] bg-[color:#B45309]"
       />
-      <div className="flex items-start gap-2 border-b border-[rgba(180,83,9,0.2)] bg-[rgba(180,83,9,0.06)] px-4 py-3">
-        <button
+      <button
           type="button"
-          onClick={() => setExpanded((open) => !open)}
+          onClick={() => setPanelView(expanded ? "closed" : "open")}
           aria-expanded={expanded}
           aria-label={expanded ? "Hide sent-back claims" : "Show sent-back claims"}
-          className="mt-px flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-[color:var(--ink-amber)] transition-colors hover:bg-[rgba(180,83,9,0.1)]"
+          className="flex w-full cursor-pointer items-start gap-2 border-b border-[rgba(180,83,9,0.2)] bg-[rgba(180,83,9,0.06)] px-4 py-3 text-left transition-colors hover:bg-[rgba(180,83,9,0.1)]"
         >
-          <ChevronDown
-            size={15}
-            strokeWidth={2.4}
-            className={cn("transition-transform", !expanded && "-rotate-90")}
-          />
-        </button>
+        <span className="mt-px flex h-6 w-6 shrink-0 items-center justify-center text-[color:var(--ink-amber)]">
+          <ChevronDown size={15} strokeWidth={2.4} className={cn("transition-transform", !expanded && "-rotate-90")} />
+        </span>
         <RotateCcw
           size={16}
           strokeWidth={2.4}
@@ -768,7 +747,7 @@ export function SentBackWatchCard({
             it and you sign it off.
           </span>
         </span>
-      </div>
+      </button>
       {expanded && (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1260px] table-fixed border-collapse">
@@ -858,7 +837,12 @@ export function SentBackCard({
   isMe: boolean;
   onFix: (entryId: string) => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [panelView, setPanelView] = useStoredView<"open" | "closed">(
+    "freyr.performance.sent-back",
+    "open",
+    ["open", "closed"]
+  );
+  const expanded = panelView === "open";
   const rejected = state.actuals
     .filter(
       (a) =>
@@ -874,20 +858,16 @@ export function SentBackCard({
         aria-hidden="true"
         className="absolute inset-y-0 left-0 w-[5px] bg-[color:#DC2626]"
       />
-      <div className="flex items-start gap-2 border-b border-[rgba(220,38,38,0.25)] bg-[rgba(220,38,38,0.07)] px-4 py-3">
-        <button
+      <button
           type="button"
-          onClick={() => setExpanded((open) => !open)}
+          onClick={() => setPanelView(expanded ? "closed" : "open")}
           aria-expanded={expanded}
           aria-label={expanded ? "Hide claims needing a fix" : "Show claims needing a fix"}
-          className="mt-px flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-[color:var(--ink-red)] transition-colors hover:bg-[rgba(220,38,38,0.1)]"
+          className="flex w-full cursor-pointer items-start gap-2 border-b border-[rgba(220,38,38,0.25)] bg-[rgba(220,38,38,0.07)] px-4 py-3 text-left transition-colors hover:bg-[rgba(220,38,38,0.11)]"
         >
-          <ChevronDown
-            size={15}
-            strokeWidth={2.4}
-            className={cn("transition-transform", !expanded && "-rotate-90")}
-          />
-        </button>
+        <span className="mt-px flex h-6 w-6 shrink-0 items-center justify-center text-[color:var(--ink-red)]">
+          <ChevronDown size={15} strokeWidth={2.4} className={cn("transition-transform", !expanded && "-rotate-90")} />
+        </span>
         <AlertCircle
           size={16}
           strokeWidth={2.4}
@@ -906,7 +886,7 @@ export function SentBackCard({
               : "None of it counts until they fix it."}
           </span>
         </span>
-      </div>
+      </button>
       {expanded && <ul className="divide-y divide-border-light">
         {rejected.map((a) => {
           const goal = state.goals.find((g) => g.id === a.goalId);
@@ -997,6 +977,12 @@ export function MyEntriesCard({
    *  no-op set-state React drops. */
   focusEntry?: { id: string; n: number } | null;
 }) {
+  const [panelView, setPanelView] = useStoredView<"open" | "closed">(
+    "freyr.performance.logged-results",
+    "open",
+    ["open", "closed"]
+  );
+  const expanded = panelView === "open";
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
   const [openRow, setOpenRow] = useState<string | null>(null);
   /** The claim whose review popup is open, by entry id. */
@@ -1119,7 +1105,17 @@ export function MyEntriesCard({
   return (
     <>
       <Card className="p-0 overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-border-light px-4 py-2.5">
+        <button
+          type="button"
+          onClick={() => setPanelView(expanded ? "closed" : "open")}
+          aria-expanded={expanded}
+          className="flex w-full cursor-pointer items-center gap-2 border-b border-border-light px-4 py-2.5 text-left transition-colors hover:bg-surface/70"
+        >
+          <ChevronDown
+            size={15}
+            strokeWidth={2.4}
+            className={cn("shrink-0 transition-transform", !expanded && "-rotate-90")}
+          />
           <h3 className="text-[13.5px] font-semibold text-text-primary">
             Logged results
           </h3>
@@ -1159,8 +1155,8 @@ export function MyEntriesCard({
           <span className="ml-auto text-[11px] text-text-tertiary tnum">
             {mine.length} {mine.length === 1 ? "entry" : "entries"}
           </span>
-        </div>
-        <div className="overflow-x-auto">
+        </button>
+        {expanded && <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] border-collapse">
             <thead>
               <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
@@ -1248,7 +1244,7 @@ export function MyEntriesCard({
                         </span>
                       </td>
                       <td className="px-4 py-3.5">
-                        <EvidenceLinks entry={a} onOpen={setPreview} />
+                        <EvidenceLinks entry={a} />
                       </td>
                       <td className="px-4 py-3.5">
                         {/* The pill IS the control: hovering a locked claim
@@ -1494,35 +1490,66 @@ export function MyEntriesCard({
                                 </Fact>
                               </div>
 
-                          {/* The proof, big enough to judge without opening it. */}
+                          {/* A scalable document table. The collapsed row says
+                              only the count; opening it reveals names and the
+                              same hover preview Sales Materials uses. */}
                           <div className="mt-4">
                             <span className="block text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
                               Proof
                             </span>
                             {a.evidence?.length ? (
-                              <div className="mt-1.5 flex flex-wrap gap-2">
-                                {a.evidence.map((e) => (
-                                  <button
-                                    key={e.url}
-                                    type="button"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      setPreview({ name: e.name, url: e.url });
-                                    }}
-                                    title={`Preview ${e.name}`}
-                                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-border-light bg-white p-1.5 pr-3 text-left transition-colors hover:border-blue-primary"
-                                  >
-                                    <EvidenceThumb file={e} />
-                                    <span className="min-w-0">
-                                      <span className="block max-w-[190px] truncate text-[11.5px] font-semibold text-text-primary">
-                                        {e.name}
-                                      </span>
-                                      <span className="block text-[10px] text-blue-primary">
-                                        Click to preview
-                                      </span>
-                                    </span>
-                                  </button>
-                                ))}
+                              <div className="mt-1.5 max-h-[360px] overflow-auto rounded-xl border border-border-light bg-white">
+                                <table className="w-full table-fixed border-collapse text-left">
+                                  <colgroup>
+                                    <col />
+                                    <col className="w-24" />
+                                    <col className="w-24" />
+                                  </colgroup>
+                                  <thead>
+                                    <tr className="sticky top-0 z-10 border-b border-border-light bg-surface text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                                      <th className="px-3 py-2">Document</th>
+                                      <th className="px-3 py-2">Type</th>
+                                      <th className="px-3 py-2">Action</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-border-light">
+                                    {a.evidence.map((e) => {
+                                      const extension = e.name.split(".").pop()?.toUpperCase() || "FILE";
+                                      return (
+                                        <tr key={e.url || e.name} className="hover:bg-surface/55">
+                                          <td className="px-3 py-2.5">
+                                            <EvidencePeek file={e}>
+                                              <button
+                                                type="button"
+                                                onClick={(event) => {
+                                                  event.stopPropagation();
+                                                  setPreview({ name: e.name, url: e.url });
+                                                }}
+                                                className="flex min-w-0 cursor-pointer items-center gap-2 text-left font-semibold text-text-primary hover:text-blue-primary hover:underline"
+                                              >
+                                                <FileText size={14} className="shrink-0 text-blue-primary" />
+                                                <span className="truncate">{e.name}</span>
+                                              </button>
+                                            </EvidencePeek>
+                                          </td>
+                                          <td className="px-3 py-2.5 text-[11px] font-semibold text-text-tertiary">{extension}</td>
+                                          <td className="px-3 py-2.5">
+                                            <button
+                                              type="button"
+                                              onClick={(event) => {
+                                                event.stopPropagation();
+                                                setPreview({ name: e.name, url: e.url });
+                                              }}
+                                              className="cursor-pointer text-[11.5px] font-semibold text-blue-primary hover:underline"
+                                            >
+                                              Open
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
                               </div>
                             ) : (
                               <p className="mt-1 text-[11.5px] text-text-secondary">
@@ -1590,7 +1617,7 @@ export function MyEntriesCard({
               })}
             </tbody>
           </table>
-        </div>
+        </div>}
       </Card>
       {/* THE SAME REVIEW POPUP THE QUEUE OPENS. One dialog for signing a
           claim off, wherever you happen to be standing when you decide to. */}
@@ -1959,7 +1986,12 @@ export function VerifyQueueCard({
    *  this is the same idiom on the queue. */
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
-  const [expanded, setExpanded] = useState(true);
+  const [panelView, setPanelView] = useStoredView<"open" | "closed">(
+    "freyr.performance.verification-queue",
+    "open",
+    ["open", "closed"]
+  );
+  const expanded = panelView === "open";
   const heads = headedGroups(state, meName);
   if (heads.length === 0) return null;
   const queue = verificationQueue(state, meName);
@@ -2007,34 +2039,33 @@ export function VerifyQueueCard({
       >
         <button
           type="button"
-          onClick={() => setExpanded((open) => !open)}
+          onClick={() => setPanelView(expanded ? "closed" : "open")}
           aria-expanded={expanded}
           aria-label={expanded ? "Hide verification requests" : "Show verification requests"}
-          className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-[color:var(--ink-amber)] transition-colors hover:bg-[rgba(217,119,6,0.1)]"
+          className="flex min-w-0 cursor-pointer items-center gap-2 rounded-md py-0.5 pr-2 text-left transition-colors hover:bg-[rgba(217,119,6,0.1)]"
         >
           <ChevronDown
             size={15}
             strokeWidth={2.4}
-            className={cn("transition-transform", !expanded && "-rotate-90")}
+            className={cn("shrink-0 text-[color:var(--ink-amber)] transition-transform", !expanded && "-rotate-90")}
           />
-        </button>
-        {pending && (
+          {pending && (
           <AlertCircle
             size={16}
             strokeWidth={2.4}
             aria-hidden="true"
             className="shrink-0 text-[color:var(--ink-amber)]"
           />
-        )}
-        <h3
+          )}
+          <h3
           className={cn(
             "text-[13.5px] font-semibold",
             pending ? "text-[color:#92400E]" : "text-text-primary"
           )}
         >
           {pending ? "Action needed. Waiting for your verification" : "Waiting for your verification"}
-        </h3>
-        <span
+          </h3>
+          <span
           className={cn(
             "rounded-full px-2 py-0.5 text-[10.5px] font-bold",
             pending
@@ -2043,12 +2074,13 @@ export function VerifyQueueCard({
           )}
         >
           {queue.length || "all clear"}
-        </span>
-        {pending && onHold > 0 && (
+          </span>
+          {pending && onHold > 0 && (
           <span className="text-[11.5px] font-semibold text-[color:var(--ink-amber)] tnum">
             {fmtAmount("currency", onHold)} on hold until you do
           </span>
-        )}
+          )}
+        </button>
         {/* ONE SENTENCE, WITH THE GROUP NAME AS A TAG INSIDE IT (Anir,
             Aug 15). Two goes at this: "you own test. Only you can lock these"
             read like a typo, and pilling the name mid-sentence just turned it
@@ -2261,7 +2293,7 @@ export function VerifyQueueCard({
                         )}
                       </td>
                       <td className="px-4 py-3.5">
-                        <EvidenceLinks entry={a} onOpen={setPreview} />
+                        <EvidenceLinks entry={a} />
                       </td>
                       <td className="px-4 py-3.5">
                         {/* ONE BUTTON: READ IT, THEN DECIDE. */}
@@ -2700,25 +2732,26 @@ export function ClaimReviewDialog({
                   {a.evidence?.length ? (
                     <div className="mt-1.5 space-y-1.5">
                       {a.evidence.map((e) => (
-                        <button
-                          key={e.url}
-                          type="button"
-                          onClick={() => onPreview?.(e)}
-                          title={`Open ${e.name}`}
-                          className="group flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
-                        >
-                          <Paperclip
-                            size={13}
-                            strokeWidth={2.1}
-                            className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
-                          />
-                          <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">
-                            {e.name}
-                          </span>
-                          <span className="shrink-0 text-[11.5px] font-semibold text-blue-primary">
-                            View
-                          </span>
-                        </button>
+                        <EvidencePeek key={e.url || e.name} file={e}>
+                          <button
+                            type="button"
+                            onClick={() => onPreview?.(e)}
+                            title={`Open ${e.name}`}
+                            className="group flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
+                          >
+                            <Paperclip
+                              size={13}
+                              strokeWidth={2.1}
+                              className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
+                            />
+                            <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                              {e.name}
+                            </span>
+                            <span className="shrink-0 text-[11.5px] font-semibold text-blue-primary">
+                              View
+                            </span>
+                          </button>
+                        </EvidencePeek>
                       ))}
                     </div>
                   ) : (

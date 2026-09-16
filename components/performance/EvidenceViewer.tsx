@@ -1,9 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Download, ExternalLink, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/Modal";
+import { MaterialPeek } from "@/components/offerings/MaterialPeek";
+import { formatFromFilename } from "@/lib/offeringMaterials";
+
+export function performanceEvidenceHref(file: { name: string; url: string }, embed = false) {
+  const query = new URLSearchParams({ name: file.name, source: file.url });
+  if (embed) query.set("embed", "1");
+  return `/performance/evidence?${query.toString()}`;
+}
+
+/** The exact hover-preview surface used by Sales Materials. */
+export function EvidencePeek({
+  file,
+  children,
+}: {
+  file: { name: string; url: string };
+  children: ReactNode;
+}) {
+  return (
+    <MaterialPeek
+      material={{
+        id: file.url || file.name,
+        label: file.name,
+        kind: formatFromFilename(file.name),
+        url: file.url,
+      }}
+      previewUrl={performanceEvidenceHref(file, true)}
+    >
+      {children}
+    </MaterialPeek>
+  );
+}
 
 /**
  * THE PROOF, OPENABLE — an attachment nobody can look at is not evidence
@@ -21,9 +52,6 @@ export function EvidencePreview({
   file: { name: string; url: string };
   onClose: () => void;
 }) {
-  const ext = (file.name.split(".").pop() ?? "").toLowerCase();
-  const isImage = ["png", "jpg", "jpeg", "gif", "webp", "svg", "avif", "bmp"].includes(ext);
-  const isPdf = ext === "pdf";
   return (
     <Modal
       open
@@ -34,7 +62,7 @@ export function EvidencePreview({
       actions={
         <span className="flex items-center gap-1">
           <a
-            href={file.url}
+            href={performanceEvidenceHref(file)}
             target="_blank"
             rel="noreferrer"
             title="Open in a new tab"
@@ -55,25 +83,11 @@ export function EvidencePreview({
         </span>
       }
     >
-      <div className="flex min-h-[420px] items-center justify-center">
-        {isImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={file.url}
-            alt={file.name}
-            className="max-h-[72vh] w-auto max-w-full rounded-lg object-contain"
-          />
-        ) : isPdf ? (
-          <iframe src={file.url} title={file.name} className="h-[72vh] w-full rounded-lg bg-white" />
-        ) : (
-          <div className="flex flex-col items-center gap-3 py-10 text-center">
-            <FileText size={34} strokeWidth={1.6} className="text-text-tertiary" />
-            <p className="text-[13px] text-text-secondary">
-              {ext ? `.${ext} files` : "This file type"} open in their own app.
-            </p>
-          </div>
-        )}
-      </div>
+      <iframe
+        src={performanceEvidenceHref(file, true)}
+        title={file.name}
+        className="h-[72vh] min-h-[420px] w-full rounded-lg bg-white"
+      />
     </Modal>
   );
 }

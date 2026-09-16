@@ -1273,7 +1273,6 @@ export function PaceTimeline({
             {awaiting - sentBack > 0 && (
               <PaceRow
                 swatch={ENTRY_COLOR.reported}
-                faded
                 label="Claimed, not checked yet"
                 value={fmtAmount(unit, awaiting - sentBack)}
               />
@@ -1305,14 +1304,12 @@ export function PaceTimeline({
 
 function PaceRow({
   swatch,
-  faded,
   label,
   value,
   strong,
   tone,
 }: {
   swatch?: string;
-  faded?: boolean;
   label: string;
   value: string;
   strong?: boolean;
@@ -1323,7 +1320,7 @@ function PaceRow({
       {swatch && (
         <span
           className="h-2 w-2 shrink-0 rounded-full"
-          style={{ background: swatch, opacity: faded ? 0.28 : 1 }}
+          style={{ background: swatch }}
         />
       )}
       <span

@@ -530,7 +530,7 @@ export function Sidebar({
                 !collapsed &&
                 (isActive(pathname, "/solutioning") || isActive(pathname, "/meetings")) &&
                 [
-                  { href: "/solutioning", label: "Solution requests", icon: Inbox },
+                  { href: "/solutioning", label: "Solutioning requests", icon: Inbox },
                   { href: "/solutioning?tab=submissions", label: "Submissions", icon: FileUp },
                   { href: "/solutioning?tab=presentations", label: "Presentations", icon: Presentation },
                   { href: "/meetings", label: "Meetings", icon: CalendarClock },

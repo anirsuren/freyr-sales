@@ -129,7 +129,7 @@ export function ActivityMasterCard({
     [goals]
   );
 
-  const writable = live && isAdmin;
+  const writable = isAdmin;
 
   async function post(body: Record<string, unknown>, done?: string) {
     setBusy(true);
@@ -166,7 +166,7 @@ export function ActivityMasterCard({
           </Button>
         ) : (
           <span className="text-[11.5px] text-text-tertiary">
-            {live ? "Admins edit this list" : "Switch to Real mode to change the master"}
+            Admins edit this list
           </span>
         )}
       </AdminTabActions>

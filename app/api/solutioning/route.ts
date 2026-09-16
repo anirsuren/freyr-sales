@@ -37,6 +37,7 @@ import {
   moduleDeleteRefusal,
   moduleWriteRefusal,
 } from "@/lib/moduleAccessServer";
+import { privilegesForPerson, readPrivileges } from "@/lib/privileges";
 
 export const dynamic = "force-dynamic";
 
@@ -413,12 +414,23 @@ export async function POST(req: NextRequest) {
         by: me.name,
       });
     } else if (op === "set-workstream") {
-      /* Choosing the lead for a division is the requester's call (SOL-009:
-         "Sales retains final selection authority"), and the lead who holds a
-         workstream assigns inside it (SOL-011). Both are writes on this
-         record, so both ask the module's write question. */
-      const refusal = await moduleWriteRefusal("/solutioning");
-      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      /* This is the one request operation owned by Solutioning rather than
+         BD: only the Solutioning Owner assigns the work to a Solutioning
+         Member. The module matrix deliberately leaves Solutioning roles with
+         view access to the request itself, so this operation checks the
+         person's explicit privilege instead of smuggling general edit access
+         back in through the module row. Admin remains the workspace override. */
+      const held = privilegesForPerson(await readPrivileges(), me.name);
+      if (
+        me.role !== "admin" &&
+        !held.includes("admin") &&
+        !held.includes("sol_owner")
+      ) {
+        return NextResponse.json(
+          { error: "Only a Solutioning Owner can assign this request." },
+          { status: 403 }
+        );
+      }
       await setWorkstream({
         requestId,
         division: String(body.division ?? ""),

@@ -1304,7 +1304,7 @@ function MasterTab({
                       <td className="whitespace-nowrap px-4 py-4 text-[13px] font-semibold text-text-primary tnum">
                         {g.target > 0 ? (
                           fmtAmount(g.unit, g.target)
-                        ) : live && isManager ? (
+                        ) : isManager ? (
                           /* A REAL button, not blue-painted text: clicking the
                              words used to just collapse the row it sat in
                              (Anir, Aug 19: "I can't even click on the Set
@@ -1357,11 +1357,11 @@ function MasterTab({
                         )}
                       </td>
                       <td className="px-4 py-4">
-                        <PickedPill goal={g} live={live && isManager} run={run} />
+                        <PickedPill goal={g} live={isManager} run={run} />
                       </td>
                       <td className="py-4 pl-2 pr-4">
                         <span className="flex items-center justify-start gap-0.5">
-                          {live && isManager && (
+                          {isManager && (
                             <>
                               <button
                                 type="button"
@@ -2592,9 +2592,9 @@ function GoalPopupBody({
           </span>
         </span>
         <span className="flex items-center gap-1.5">
-          <PickedPill goal={goal} live={live && isManager} run={run} />
+          <PickedPill goal={goal} live={isManager} run={run} />
           <InfoHint text={"Tracking means this goal is counted and shown on Org performance.\nNot tracked means it stays on the master list only."} />
-          {live && isManager && (
+          {isManager && (
             <button
               type="button"
               title="Edit the goal's details: name, type, year, target"
@@ -2604,7 +2604,7 @@ function GoalPopupBody({
               <Pencil size={14} strokeWidth={2.2} />
             </button>
           )}
-          {live && isManager && (
+          {isManager && (
             <span className="relative">
               <button
                 type="button"
@@ -2760,7 +2760,7 @@ function GoalPopupBody({
         {/* The add action lives WITH the section it adds to, not stranded at
             the bottom-left (Anir, Aug 12: "that's a bad place to put this
             button"). */}
-        {live && isManager && (
+        {isManager && (
           <button
             type="button"
             onClick={() => setOpenSub("new")}
@@ -2872,7 +2872,7 @@ function GoalPopupBody({
                     ))}
                   </span>
                 )}
-                {live && isManager && expanded && (
+                {isManager && expanded && (
                   <span
                     className="relative shrink-0"
                     onClick={(e) => e.stopPropagation()}
@@ -3011,7 +3011,7 @@ function GoalPopupBody({
           <p className="text-[12.5px] text-text-secondary">
             No department carries this goal yet.
           </p>
-          {live && isManager && state.groups.length > 0 && (
+          {isManager && state.groups.length > 0 && (
             <button
               type="button"
               onClick={() => setGroupAssignOpen(true)}
@@ -3115,7 +3115,7 @@ function GoalPopupBody({
                   its people carry {fmtAmount(goal.unit, peopleTotal)}
                 </span>
               )}
-              {live && isManager && (
+              {isManager && (
                 <span className="relative ml-auto shrink-0">
                   {confirmGroupUnassign === assignment.groupId ? (
                     <span className="flex items-center gap-1.5 whitespace-nowrap text-[11.5px]">
@@ -3224,7 +3224,7 @@ function GoalPopupBody({
               ? "Nobody outside those groups carries this goal."
               : "Nobody carries this goal individually yet."}
           </p>
-          {live && isManager && (
+          {isManager && (
             <button
               type="button"
               onClick={() => setAssignOpen(true)}
@@ -3319,7 +3319,7 @@ function GoalPopupBody({
                     : undefined
                 }
               />
-              {live && isManager && (
+              {isManager && (
                 <span className="shrink-0">
                   <button
                     type="button"

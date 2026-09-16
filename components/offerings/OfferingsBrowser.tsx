@@ -920,7 +920,7 @@ export function OfferingsBrowser({
                   it is where the product is going, not something we dropped
                   ("if she says we're going to need it later, keep it on mock
                   mode, just remove it from real"). */}
-              {!realMode && (
+              {(
                 <>
               {/* The commercial mini-dashboard, the numbers a rep would
                   otherwise open the offering to see. Every tile is icon +

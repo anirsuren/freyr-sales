@@ -9,7 +9,7 @@ import {
   readMarketIntelBookmarks,
   readMarketIntelFollowers,
 } from "@/lib/marketIntelBookmarks";
-import { readMarketIntelSummaries } from "@/lib/marketIntelFeed";
+import { readMarketIntelSummaries } from "@/lib/marketIntelRead";
 import { buildManagedCompanies } from "@/lib/marketIntelManaged";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";

@@ -274,14 +274,36 @@ export function DealPeople({
       </div>
 
       {others.length === 0 ? (
-        /* NO AVATAR ON A PLACEHOLDER. Avatar resolves a headshot by name, so
+        /* THE EMPTY BOX IS THE BUTTON (Anir, Sep 15: "I should also be able to
+           add people without even clicking the plus. There has to be a place
+           where it says 'Nobody else is on this deal.' In the middle, there
+           should be some button that says that, and then I can click on it
+           because it'll be a lot easier"). The plus beside the heading stays
+           for people who already know where it is; this is the target you
+           cannot miss, and it opens the same picker.
+
+           NO AVATAR ON A PLACEHOLDER. Avatar resolves a headshot by name, so
            giving an empty row one is how a real person's face lands on a deal
            nobody is on. */
-        <p className="mt-2 rounded-xl border border-dashed border-border-light px-3 py-2.5 text-[12.5px] text-text-tertiary">
-          {mayChangeTeam
-            ? "Nobody else is on this deal. Use the plus to add somebody."
-            : "Nobody else is on this deal."}
-        </p>
+        mayChangeTeam ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setPicked([]);
+              setQuery("");
+              setAdding(true);
+            }}
+            className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border-light px-3 py-3 text-[12.5px] font-medium text-text-secondary transition-colors hover:border-blue-primary hover:bg-blue-light hover:text-blue-primary disabled:opacity-50"
+          >
+            <Plus size={14} strokeWidth={2.6} aria-hidden="true" />
+            Nobody else is on this deal. Add somebody.
+          </button>
+        ) : (
+          <p className="mt-2 rounded-xl border border-dashed border-border-light px-3 py-2.5 text-[12.5px] text-text-tertiary">
+            Nobody else is on this deal.
+          </p>
+        )
       ) : (
         <ul className="mt-2 space-y-2">
           {others.map((n) => (

@@ -194,16 +194,13 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
 
   return (
     <Card className="mt-4 overflow-hidden p-0">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border-light px-5 py-4">
+      <div className="border-b border-border-light px-5 py-4">
         <div>
           <h2 className="text-[15px] font-semibold text-text-primary">How leads are moving</h2>
           <p className="mt-0.5 text-[11.5px] text-text-tertiary">
             Intake, current stage and source performance from the leads in this workspace.
           </p>
         </div>
-        <span className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-medium text-text-secondary tnum">
-          Through {shortDate(data.latest)}
-        </span>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.08fr)_minmax(620px,1.2fr)]">

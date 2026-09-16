@@ -46,9 +46,7 @@ export default async function AnalyticsPage({
     db.contacts.list(),
     db.interactions.list(),
   ]);
-  if (dataMode === "live" && allSessions.length === 0) {
-    return <EmptyState icon={BarChart3} title="No analytics yet" description="Add an account, then log a call or an email against it. The charts build themselves from there." />;
-  }
+
 
   const range =
     query?.range &&

@@ -989,7 +989,6 @@ export function OrgPerformanceTab({
                                 color: ENTRY_COLOR.reported,
                                 label: "Claimed, not checked yet",
                                 value: fmtAmount(g.unit, awaiting - sentBack),
-                                faded: true,
                               },
                             ]
                           : []),
@@ -1348,7 +1347,7 @@ export function OrgPerformanceTab({
               </button>
             );
           })()}
-          {live && canLog && (
+          {canLog && (
             <button
               type="button"
               onClick={() => onLogActual()}
@@ -2040,7 +2039,7 @@ function GoalRows({
                 onSetSchedule={live ? () => onEditGoal(goal) : undefined}
                 embedded
                 headerAction={
-                  live && canLog ? (
+                  canLog ? (
                     <button
                       type="button"
                       onClick={() =>
@@ -2285,7 +2284,7 @@ function GoalRows({
                                 verified={a.verified}
                                 size="sm"
                                 onToggle={
-                                  live && canSignOff(a.person)
+                                  canSignOff(a.person)
                                     ? () =>
                                         askVerify({
                                           person: a.person,
@@ -2486,7 +2485,7 @@ function GoalRows({
                             verified={s.verified}
                             size="sm"
                             onToggle={
-                              live && canSignOff()
+                              canSignOff()
                                 ? () =>
                                     askVerify({
                                       subgoalId: s.id,

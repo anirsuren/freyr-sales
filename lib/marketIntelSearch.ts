@@ -1,3 +1,4 @@
+import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 import { runDurableMarketIntelActor } from "./marketIntelActor";
 import { collectedInCurrentCycle } from "./marketIntelCadence";
 import { createHash, randomUUID } from "node:crypto";
@@ -143,8 +144,8 @@ export async function requestRenderedNewsPage(url:string,key:string,options:{web
   return html;
 }
 function db() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("Search accounting is unavailable; paid search was not started.");
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {auth:{persistSession:false},global:{fetch:(input,init)=>fetch(input,{...init,cache:"no-store",signal:init?.signal?AbortSignal.any([init.signal,AbortSignal.timeout(30_000)]):AbortSignal.timeout(30_000)})}});
+  if (!marketIntelDatabaseConfig().url || !marketIntelDatabaseConfig().key) throw new Error("Search accounting is unavailable; paid search was not started.");
+  return createClient(marketIntelDatabaseConfig().url!, marketIntelDatabaseConfig().key!, {auth:{persistSession:false},global:{fetch:(input,init)=>fetch(input,{...init,cache:"no-store",signal:init?.signal?AbortSignal.any([init.signal,AbortSignal.timeout(30_000)]):AbortSignal.timeout(30_000)})}});
 }
 async function read(id:string):Promise<Row|null> {
   const r=await db().from("offering_catalog_state").select("catalog,updated_at").eq("id",id).maybeSingle();

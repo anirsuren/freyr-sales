@@ -597,11 +597,7 @@ export function ContractsModule({
                 view-only account opens, and the access shield answers it on
                 hover already. The mock notice stays — that one says the DATA
                 is not real, which nothing else says. */
-            live ? null : (
-              <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-                Sample contracts. Switch to Real mode to work the live list
-              </span>
-            )
+            null
           )
         }
       />

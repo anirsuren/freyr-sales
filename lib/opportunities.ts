@@ -324,6 +324,7 @@ async function readRow(): Promise<OpportunitiesState> {
     .eq("id", activeRowId())
     .maybeSingle();
   if (error) throw new Error(error.message);
+  if (!data && getDataMode() === "mock") return seededMock();
   return normalize(data?.catalog);
 }
 
@@ -612,7 +613,6 @@ export async function commitOpportunitiesChange<T>(
 }
 
 export async function readOpportunities(): Promise<OpportunitiesState> {
-  if (getDataMode() === "mock") return seededMock();
   return readRow().catch(() => structuredClone(EMPTY_OPPORTUNITIES));
 }
 

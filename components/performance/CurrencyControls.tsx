@@ -92,7 +92,7 @@ export function DisplayCurrencyPicker({
             ))}
           </select>
         </span>
-        {live && canEditRates && (
+        {canEditRates && (
           <button
             type="button"
             onClick={() => setRatesOpen(true)}

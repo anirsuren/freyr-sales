@@ -101,13 +101,13 @@ const ROOM_META: Record<
      request"). The record is still a request; what changed is that the app
      now says it the way the floor says it. */
   requests: {
-    title: "Solution requests",
+    title: "All solutioning requests",
     subtitle:
       "What sales has asked the Solutioning team for: a submission, a presentation or a meeting.",
-    empty: "No solution requests yet.",
-    newLabel: "New solution request",
-    noun: "solution requests",
-    rowNoun: "Solution request",
+    empty: "No solutioning requests yet.",
+    newLabel: "New solutioning request",
+    noun: "solutioning requests",
+    rowNoun: "Solutioning request",
   },
   submissions: {
     title: "Submissions",
@@ -239,7 +239,12 @@ export function SolutioningModule({
       if (room === "submissions" && itemType !== "submission") return false;
       if (room === "presentations" && itemType !== "presentation") return false;
       if (kinds.length && !kinds.includes(r.kind)) return false;
-      if (statuses.length && !statuses.includes(r.status)) return false;
+      const delayed =
+        Boolean(r.neededBy) &&
+        r.status !== "completed" &&
+        String(r.neededBy) < todayISO();
+      if (statuses.length && !statuses.includes(solutionStatusLabel(r, delayed)))
+        return false;
       if (owners.length) {
         const owner = r.owner ?? "__none";
         if (!owners.includes(owner)) return false;
@@ -479,13 +484,17 @@ export function SolutioningModule({
               label: "Status",
               values: statuses,
               onChange: setStatuses,
-              options: (
-                ["initiated", "in_progress", "completed"] as const
-              ).map((s) => ({
-                value: s,
-                label: STATUS_META[s].label,
-                color: STATUS_META[s].color,
-              })),
+              options: [
+                { value: "Request initiated", label: "Request initiated", color: STATUS_META.initiated.color },
+                { value: "Assigned", label: "Assigned", color: STATUS_META.assigned.color },
+                { value: "Work in progress", label: "Work in progress", color: STATUS_META.in_progress.color },
+                { value: "Delayed", label: "Delayed", color: "var(--status-red)" },
+                { value: "Drafted", label: "Drafted", color: "var(--ink-violet-soft)" },
+                { value: "Submitted to BD", label: "Submitted to BD", color: "var(--ink-teal-deep)" },
+                { value: "Submitted to customer", label: "Submitted to customer", color: "var(--ink-green)" },
+                { value: "Completed", label: "Completed", color: STATUS_META.completed.color },
+                { value: "Cancelled", label: "Cancelled", color: STATUS_META.cancelled.color },
+              ],
             },
             {
               key: "owner",
@@ -737,24 +746,22 @@ export function SolutioningModule({
       ) : (
         <Card key="table" className="tab-panel p-0 overflow-hidden">
           <PinnableTable id="solutioning-requests">
-            <table className="w-full min-w-[1100px] table-fixed border-collapse text-[13px]">
+            <table className="w-full min-w-[2260px] table-fixed border-collapse text-[13px]">
               <thead>
                 <tr className="border-b border-border-light text-left text-[12.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary [&>th]:whitespace-nowrap">
-                  {/* THE ROOM'S OWN WORD (Suren, Aug 26: "I don't need to see
-                      the request in submissions. Submissions are submission
-                      presentations"). The column said "Request" in every room,
-                      so a list of submissions read as a list of requests. */}
-                  <th className="w-[24%] px-4 py-2.5">
-                    {ROOM_META[room].rowNoun}
-                  </th>
-                  <th className="w-[14%] px-4 py-2.5">Customer</th>
-                  <th className="w-[16%] px-4 py-2.5">What it is for</th>
-                  <th className="w-[14%] px-4 py-2.5">
-                    {room === "requests" ? "Requested by" : "Raised by"}
-                  </th>
-                  <th className="w-[10%] px-4 py-2.5">Needed</th>
-                  <th className="w-[12%] px-4 py-2.5">Owner</th>
-                  <th className="w-[10%] px-4 py-2.5">Status</th>
+                  <th className="w-[125px] px-4 py-2.5">Request ID</th>
+                  <th className="w-[270px] px-4 py-2.5">Solution title</th>
+                  <th className="w-[140px] px-4 py-2.5">Request type</th>
+                  <th className="w-[185px] px-4 py-2.5">Opportunity ID</th>
+                  <th className="w-[185px] px-4 py-2.5">Customer</th>
+                  <th className="w-[175px] px-4 py-2.5">BD member</th>
+                  <th className="w-[175px] px-4 py-2.5">Solutioning owner</th>
+                  <th className="w-[175px] px-4 py-2.5">Prepared by</th>
+                  <th className="w-[125px] px-4 py-2.5">Requested</th>
+                  <th className="w-[125px] px-4 py-2.5">Due</th>
+                  <th className="w-[125px] px-4 py-2.5">Submitted</th>
+                  <th className="w-[160px] px-4 py-2.5">Solution status</th>
+                  <th className="w-[130px] px-4 py-2.5">Documents</th>
                   {/* AN ACTIONS COLUMN, NAMED AND LEFT-ALIGNED (Anir, Aug 31:
                       "you need an actions column at the end... and make sure
                       it's aligned properly since you always fuck that up").
@@ -891,6 +898,21 @@ export function SolutioningModule({
   );
 }
 
+function solutionStatusLabel(r: SolutionRequest, overdue: boolean): string {
+  if (overdue) return "Delayed";
+  if (r.deliverableStatus === "Draft") return "Drafted";
+  if (
+    r.deliverableStatus === "Ready for review" ||
+    r.deliverableStatus === "Finalized"
+  ) {
+    return "Submitted to BD";
+  }
+  if (r.deliverableStatus === "Submitted to customer") {
+    return "Submitted to customer";
+  }
+  return STATUS_META[r.status].label;
+}
+
 function RequestRow({
   request: r,
   fulfiller,
@@ -921,19 +943,7 @@ function RequestRow({
     r.neededBy && r.status !== "completed"
       ? r.neededBy < todayISO()
       : false;
-  const against =
-    r.opportunityLabels.length + r.contactNames.length === 0
-      ? null
-      : [
-          r.opportunityLabels.length > 0
-            ? `${r.opportunityLabels.length} ${r.opportunityLabels.length === 1 ? "opportunity" : "opportunities"}`
-            : null,
-          r.contactNames.length > 0
-            ? `${r.contactNames.length} ${r.contactNames.length === 1 ? "contact" : "contacts"}`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" · ");
+  const preparedBy = r.completedBy || r.owner || "Not started";
   return (
     <>
     {/* Empty row space toggles the inline breakdown. The request title is the
@@ -962,40 +972,54 @@ function RequestRow({
       )}
     >
       <td className="px-4 py-3.5">
-        {/* THE LINK IS THE WORDS, NOT THE CELL (Anir, Aug 27: "when I click
-            on the actual thing, it can open up the page. Otherwise, when I
-            just click anywhere else, it should open the dropdown").
-
-            It was `block`, which stretches a link across the whole REQUEST
-            column — so the empty space beside a short title navigated away
-            when he meant to fold the row open. inline-block w-fit gives the
-            link exactly the width of its own two lines and hands every pixel
-            beside them back to the row's toggle. */}
         <Link
           href={requestHref}
           onClick={(e) => e.stopPropagation()}
-          className="group/request inline-block w-fit max-w-full min-w-0 rounded-lg -m-1.5 p-1.5 transition-colors"
+          className="whitespace-nowrap text-[11px] font-bold text-text-secondary transition-colors hover:text-blue-primary hover:underline tnum"
         >
-          <span className="flex items-center gap-1.5">
-            <span className="whitespace-nowrap text-[11px] font-bold text-text-tertiary tnum">
-              {r.ref}
-            </span>
-            <KindChip kind={r.kind} size="sm" iconOnly={hideKindLabel} />
-          </span>
-          {/* NO HOVER ARROW BESIDE THE TITLE (Anir, Aug 26: "there's an arrow
-              here that feels like a screenshot, I don't want that, it looks
-              weird"). It floated mid-sentence next to a wrapped title and read
-              as a stray glyph. The whole row is already a link and the title
-              already turns blue, which is the affordance. */}
-          <span className="mt-1 block break-words text-[13.5px] font-semibold text-text-primary transition-colors group-hover/request:text-blue-primary group-hover/request:underline">
-            {r.title}
-          </span>
-          {r.subtype && (
-            <span className="mt-1 block text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-              {r.subtype}
-            </span>
-          )}
+          {r.ref}
         </Link>
+      </td>
+      <td className="px-4 py-3.5">
+        <Link
+          href={requestHref}
+          onClick={(e) => e.stopPropagation()}
+          className="line-clamp-2 text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
+        >
+          {r.title}
+        </Link>
+      </td>
+      <td className="px-4 py-3.5">
+        <KindChip kind={r.kind} size="sm" iconOnly={hideKindLabel} />
+        {r.subtype && (
+          <span className="mt-1.5 block text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+            {r.subtype}
+          </span>
+        )}
+      </td>
+      <td className="px-4 py-3.5">
+        {r.opportunityIds.length === 1 ? (
+          <Link
+            href={`/opportunities/${r.opportunityIds[0]}`}
+            onClick={(event) => event.stopPropagation()}
+            className="line-clamp-2 text-[12px] text-text-secondary transition-colors hover:text-blue-primary hover:underline"
+          >
+            <span className="block font-semibold text-text-primary">
+              {r.opportunityIds[0]}
+            </span>
+            {r.opportunityLabels[0] && (
+              <span className="mt-0.5 block line-clamp-1 text-[10.5px] text-text-tertiary">
+                {r.opportunityLabels[0]}
+              </span>
+            )}
+          </Link>
+        ) : r.opportunityIds.length > 1 ? (
+          <span className="text-[12px] text-text-secondary">
+            {r.opportunityIds.length} opportunities
+          </span>
+        ) : (
+          <span className="text-[12px] text-text-tertiary">Not linked</span>
+        )}
       </td>
       <td className="px-4 py-3.5">
         {r.customerId ? (
@@ -1017,77 +1041,16 @@ function RequestRow({
         )}
       </td>
       <td className="px-4 py-3.5">
-        {against ? (
-          <span className="text-[12px] text-text-secondary">
-            {r.opportunityIds.length === 1 ? (
-              <Link
-                href={`/opportunities/${r.opportunityIds[0]}`}
-                onClick={(event) => event.stopPropagation()}
-                className="transition-colors hover:text-blue-primary hover:underline"
-              >
-                1 opportunity
-              </Link>
-            ) : r.opportunityLabels.length > 0 ? (
-              `${r.opportunityLabels.length} ${r.opportunityLabels.length === 1 ? "opportunity" : "opportunities"}`
-            ) : null}
-            {r.opportunityLabels.length > 0 && r.contactNames.length > 0 ? " · " : null}
-            {r.contactIds.length === 1 ? (
-              <Link
-                href={`/contacts/${r.contactIds[0]}`}
-                onClick={(event) => event.stopPropagation()}
-                className="transition-colors hover:text-blue-primary hover:underline"
-              >
-                1 contact
-              </Link>
-            ) : r.contactNames.length > 0 ? (
-              `${r.contactNames.length} ${r.contactNames.length === 1 ? "contact" : "contacts"}`
-            ) : null}
-          </span>
-        ) : (
-          <span className="text-[12px] text-text-tertiary">
-            the customer itself
-          </span>
-        )}
-      </td>
-      <td className="px-4 py-3.5">
         <Link
           href={`/analytics/reps/${repSlug(r.requestedBy)}`}
           onClick={(event) => event.stopPropagation()}
           className="group/person flex min-w-0 items-center gap-1.5"
         >
           <Avatar name={r.requestedBy} className="h-5 w-5 shrink-0 text-[7px]" />
-          <span className="min-w-0">
-            <span className="block truncate text-[12px] text-text-primary transition-colors group-hover/person:text-blue-primary group-hover/person:underline">
-              {r.requestedBy}
-            </span>
-            <span className="block text-[10.5px] text-text-tertiary">
-              <DateText value={r.requestedAt} />
-            </span>
+          <span className="block truncate text-[12px] text-text-primary transition-colors group-hover/person:text-blue-primary group-hover/person:underline">
+            {r.requestedBy}
           </span>
         </Link>
-      </td>
-      <td className="px-4 py-3.5">
-        {r.neededBy ? (
-          <span
-            className={cn(
-              "text-[12px] tnum",
-              overdue ? "font-bold text-[color:var(--status-red)]" : "text-text-secondary"
-            )}
-          >
-            {/* TWO LINES, NO DOT (Anir, Sep 4: "it should be on two lines:
-                the date, overdue or whatever. You don't need the bullet point
-                because it's going to be on another line"). The column is
-                narrow, so date-dot-overdue wrapped wherever it liked — the
-                dot ending up alone at a line end. The date owns a line and
-                never breaks; the verdict owns the next. The comparison above
-                still uses the raw ISO string, which is what a comparison
-                wants. */}
-            <span className="block whitespace-nowrap"><DateText value={r.neededBy} /></span>
-            {overdue && <span className="block">overdue</span>}
-          </span>
-        ) : (
-          <span className="text-[12px] text-text-tertiary">-</span>
-        )}
       </td>
       <td className="px-4 py-3.5">
         {r.owner ? (
@@ -1118,7 +1081,53 @@ function RequestRow({
         )}
       </td>
       <td className="px-4 py-3.5">
-        <StatusPill status={r.status} size="sm" />
+        {preparedBy === "Not started" ? (
+          <span className="text-[12px] text-text-tertiary">Not started</span>
+        ) : (
+          <Link
+            href={`/analytics/reps/${repSlug(preparedBy)}`}
+            onClick={(event) => event.stopPropagation()}
+            className="group/person flex min-w-0 items-center gap-1.5"
+          >
+            <Avatar name={preparedBy} className="h-5 w-5 shrink-0 text-[7px]" />
+            <span className="truncate text-[12px] text-text-primary transition-colors group-hover/person:text-blue-primary group-hover/person:underline">
+              {preparedBy}
+            </span>
+          </Link>
+        )}
+      </td>
+      <td className="px-4 py-3.5 text-[12px] text-text-secondary tnum">
+        <DateText value={r.requestedAt} />
+      </td>
+      <td className="px-4 py-3.5">
+        {r.neededBy ? (
+          <span className={cn("text-[12px] tnum", overdue ? "font-bold text-[color:var(--status-red)]" : "text-text-secondary")}>
+            <span className="block whitespace-nowrap"><DateText value={r.neededBy} /></span>
+            {overdue && <span className="block">overdue</span>}
+          </span>
+        ) : (
+          <span className="text-[12px] text-text-tertiary">-</span>
+        )}
+      </td>
+      <td className="px-4 py-3.5 text-[12px] text-text-secondary tnum">
+        {r.completedAt ? <DateText value={r.completedAt} /> : <span className="text-text-tertiary">-</span>}
+      </td>
+      <td className="px-4 py-3.5">
+        <span className={cn("inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold", overdue ? "bg-red-50 text-error" : "bg-blue-light text-blue-primary")}>
+          {solutionStatusLabel(r, overdue)}
+        </span>
+      </td>
+      <td className="px-4 py-3.5">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle();
+          }}
+          className="text-left text-[12px] font-semibold text-blue-primary hover:underline"
+        >
+          {r.docs.length} {r.docs.length === 1 ? "document" : "documents"}
+        </button>
       </td>
       <td className="px-4 py-3.5">
         <span className="flex items-center justify-start gap-0.5">
@@ -1194,7 +1203,7 @@ function RequestRow({
         {/* max-w-0 on the cell so the panel can never stretch the table —
             the same trap the claim table hit on Aug 23. */}
         <td
-          colSpan={8}
+          colSpan={14}
           className="max-w-0 pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
         >
           <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
@@ -1253,7 +1262,7 @@ function RequestPanel({
   const [viewingDocument, setViewingDocument] = useState<SolutionDoc | null>(null);
   return (
     <>
-    <div className="relative grid grid-cols-1 gap-x-10 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="relative grid w-full max-w-[1280px] grid-cols-1 gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_300px]">
       {/* NO ARROW IN HERE. It used to hang off this panel's top-right
           corner, which in a table row lands beside "Latest activity" and reads
           as if it opens the activity list (Anir, Aug 30: "you keep putting the
@@ -1283,170 +1292,109 @@ function RequestPanel({
                   </p>
                 )}
 
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                    What it is for
-                  </span>
-                  {r.opportunityLabels.length + r.contactNames.length === 0 ? (
-                    r.customerId ? (
-                      <Link
-                        href={`/customers/${r.customerId}`}
-                        className="mt-1.5 flex w-fit items-center gap-1.5 text-[12.5px] text-text-secondary hover:text-blue-primary hover:underline"
-                      >
+                <div className="mt-4 grid grid-cols-1 gap-3 border-y border-border-light py-3 sm:grid-cols-3">
+                  <div className="min-w-0">
+                    <span className="block text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Customer</span>
+                    {r.customerId ? (
+                      <Link href={`/customers/${r.customerId}`} className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium text-text-secondary hover:text-blue-primary hover:underline">
                         <CompanyLogo name={r.customer} className="h-[18px] w-[18px] shrink-0 text-[6px]" />
-                        {r.customer}
+                        <span className="truncate">{r.customer}</span>
                       </Link>
                     ) : (
-                      <p className="mt-1.5 text-[12.5px] text-text-tertiary">The customer itself</p>
-                    )
-                  ) : (
-                    <div className="mt-1.5 space-y-1.5">
-                      {r.customerId && (
-                        <Link
-                          href={`/customers/${r.customerId}`}
-                          className="group/entity flex items-center gap-1.5 text-[12.5px] text-text-secondary"
-                        >
-                          <CompanyLogo name={r.customer} className="h-[18px] w-[18px] shrink-0 text-[6px]" />
-                          <span className="group-hover/entity:text-blue-primary group-hover/entity:underline">{r.customer}</span>
-                        </Link>
-                      )}
-                      {r.opportunityLabels.map((label, index) => {
-                        /* Linked only when names and ids line up one to one. */
-                        const opportunityId =
-                          r.opportunityIds.length === r.opportunityLabels.length ? r.opportunityIds[index] : undefined;
-                        const content = (
-                          <>
-                          <Briefcase
-                            size={13}
-                            strokeWidth={2}
-                            aria-hidden="true"
-                            className="mt-0.5 shrink-0 text-text-tertiary"
-                          />
-                          <span className="min-w-0">{label}</span>
-                          </>
-                        );
-                        return opportunityId ? (
-                          <Link
-                            key={`${opportunityId}-${label}`}
-                            href={`/opportunities/${opportunityId}`}
-                            className="group/entity flex items-start gap-1.5 text-[12.5px] text-text-secondary hover:text-blue-primary hover:underline"
-                          >
-                            {content}
-                          </Link>
-                        ) : (
-                          <p key={label} className="flex items-start gap-1.5 text-[12.5px] text-text-secondary">{content}</p>
-                        );
-                      })}
-                      {r.contactNames.map((name, index) => {
-                        const contactId =
-                          r.contactIds.length === r.contactNames.length ? r.contactIds[index] : undefined;
-                        const content = (
-                          <>
-                          <Avatar
-                            name={name}
-                            className="h-[18px] w-[18px] shrink-0 text-[7px]"
-                          />
-                          {name}
-                          </>
-                        );
-                        return contactId ? (
-                          <Link
-                            key={`${contactId}-${name}`}
-                            href={`/contacts/${contactId}`}
-                            className="flex items-center gap-1.5 text-[12.5px] text-text-secondary hover:text-blue-primary hover:underline"
-                          >
-                            {content}
-                          </Link>
-                        ) : (
-                          <p key={name} className="flex items-center gap-1.5 text-[12.5px] text-text-secondary">{content}</p>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                    Documents
-                  </span>
-                  {r.docs.length === 0 ? (
-                    <p className="mt-1.5 text-[12.5px] text-text-tertiary">
-                      Nothing added yet
-                    </p>
-                  ) : (
-                    <div className="mt-1.5 grid max-h-[210px] grid-cols-1 gap-2 overflow-y-auto pr-1">
-                      {r.docs.map((doc) => {
-                        const isFile = Boolean(doc.docsPath || doc.ref);
-                        const previewPage = `/solutioning/${encodeURIComponent(
-                          r.id
-                        )}/documents/${encodeURIComponent(doc.id)}`;
-                        const name = isFile ? (
-                          <MaterialPeek
-                            material={requestDocumentMaterial(doc)}
-                            previewUrl={`${previewPage}?embed=1`}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => setViewingDocument(doc)}
-                              className="min-w-0 cursor-pointer truncate text-left text-[12.5px] font-semibold text-text-primary underline-offset-2 hover:text-blue-primary hover:underline"
-                            >
-                              {doc.name}
-                            </button>
-                          </MaterialPeek>
-                        ) : (
-                          <span className="min-w-0 truncate text-[12.5px] font-semibold text-text-primary">
-                            {doc.name}
-                          </span>
-                        );
-                        if (doc.url && !doc.docsPath && !doc.ref) {
-                          return (
-                            <a
-                              key={doc.id}
-                              href={doc.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="group flex min-w-0 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2.5 transition-colors hover:border-blue-subtle hover:bg-blue-light"
-                            >
-                              <FileText size={14} strokeWidth={2} className="shrink-0 text-blue-primary" />
-                              <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">
-                                {doc.name}
-                              </span>
-                              <ArrowUpRight size={13} className="shrink-0 text-text-tertiary" />
-                            </a>
+                      <p className="mt-1.5 text-[12.5px] text-text-tertiary">Not linked</p>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Opportunity</span>
+                    {r.opportunityLabels.length === 0 ? (
+                      <p className="mt-1.5 text-[12.5px] text-text-tertiary">Not linked</p>
+                    ) : (
+                      <div className="mt-1.5 space-y-1">
+                        {r.opportunityLabels.map((label, index) => {
+                          const opportunityId = r.opportunityIds.length === r.opportunityLabels.length ? r.opportunityIds[index] : undefined;
+                          const content = <><Briefcase size={13} strokeWidth={2} className="shrink-0 text-text-tertiary" /><span className="truncate">{label}</span></>;
+                          return opportunityId ? (
+                            <Link key={`${opportunityId}-${label}`} href={`/opportunities/${opportunityId}`} className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium text-text-secondary hover:text-blue-primary hover:underline">{content}</Link>
+                          ) : (
+                            <p key={label} className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-secondary">{content}</p>
                           );
-                        }
-                        return (
-                          <div
-                            key={doc.id}
-                            className="flex min-w-0 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2.5"
-                          >
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
-                              <FileText size={14} strokeWidth={2} />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="flex min-w-0">{name}</span>
-                              <span className="mt-0.5 block truncate text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                                {DOC_TAB_WORDS.find(([key]) => key === doc.category)?.[1] ?? doc.category}
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Contacts</span>
+                    {r.contactNames.length === 0 ? (
+                      <p className="mt-1.5 text-[12.5px] text-text-tertiary">None linked</p>
+                    ) : (
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                        {r.contactNames.map((name, index) => {
+                          const contactId = r.contactIds.length === r.contactNames.length ? r.contactIds[index] : undefined;
+                          const content = <><Avatar name={name} className="h-[18px] w-[18px] shrink-0 text-[7px]" /><span className="truncate">{name}</span></>;
+                          return contactId ? (
+                            <Link key={`${contactId}-${name}`} href={`/contacts/${contactId}`} className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-secondary hover:text-blue-primary hover:underline">{content}</Link>
+                          ) : (
+                            <p key={name} className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-secondary">{content}</p>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <section className="mt-4 min-w-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Documents</span>
+                    <span className="text-[11px] text-text-tertiary">{r.docs.length} {r.docs.length === 1 ? "document" : "documents"}</span>
+                  </div>
+                  {r.docs.length === 0 ? (
+                    <div className="mt-2 rounded-lg border border-dashed border-border px-3 py-6 text-center text-[12.5px] text-text-tertiary">Nothing added yet</div>
+                  ) : (
+                    <div className="mt-2 overflow-hidden rounded-lg border border-border-light bg-white">
+                      <div className="hidden grid-cols-[minmax(0,1fr)_140px_58px_140px_88px_36px] gap-3 border-b border-border-light bg-surface/70 px-3 py-2 sm:grid">
+                        {['Document', 'Stage', 'Version', 'Owner', 'Added', ''].map((heading) => (
+                          <span key={heading || 'action'} className="text-[9.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">{heading}</span>
+                        ))}
+                      </div>
+                      <div className="max-h-[240px] divide-y divide-border-light overflow-y-auto">
+                        {r.docs.map((doc) => {
+                          const isFile = Boolean(doc.docsPath || doc.ref);
+                          const previewPage = `/solutioning/${encodeURIComponent(r.id)}/documents/${encodeURIComponent(doc.id)}`;
+                          const kind = docKind(doc.fileName ?? doc.name);
+                          const DocIcon = kind.icon;
+                          const documentName = isFile ? (
+                            <MaterialPeek material={requestDocumentMaterial(doc)} previewUrl={`${previewPage}?embed=1`}>
+                              <button type="button" onClick={() => setViewingDocument(doc)} className="min-w-0 truncate text-left text-[12.5px] font-semibold text-text-primary underline-offset-2 hover:text-blue-primary hover:underline">{doc.name}</button>
+                            </MaterialPeek>
+                          ) : doc.url ? (
+                            <a href={doc.url} target="_blank" rel="noreferrer" className="min-w-0 truncate text-[12.5px] font-semibold text-text-primary hover:text-blue-primary hover:underline">{doc.name}</a>
+                          ) : (
+                            <span className="min-w-0 truncate text-[12.5px] font-semibold text-text-primary">{doc.name}</span>
+                          );
+                          return (
+                            <div key={doc.id} className="grid grid-cols-[minmax(0,1fr)_32px] gap-3 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_140px_58px_140px_88px_36px] sm:items-center">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ color: kind.color, background: tint(kind.color, 10) }}><DocIcon size={14} strokeWidth={2} /></span>
+                                <span className="min-w-0 flex-1">{documentName}</span>
+                              </div>
+                              <span className="hidden truncate text-[11.5px] font-medium capitalize text-text-secondary sm:block">{DOC_TAB_WORDS.find(([key]) => key === doc.category)?.[1] ?? doc.category}</span>
+                              <span className="hidden text-[11.5px] font-semibold text-text-secondary sm:block">v{doc.version}</span>
+                              <span className="hidden min-w-0 items-center gap-1.5 text-[11.5px] text-text-secondary sm:flex">
+                                {doc.assignedTo ? <><Avatar name={doc.assignedTo} className="h-[18px] w-[18px] shrink-0 text-[7px]" /><span className="truncate">{doc.assignedTo}</span></> : <span className="text-text-tertiary">Unassigned</span>}
                               </span>
-                            </span>
-                            {isFile && (
-                              <Link
-                                href={previewPage}
-                                target="_blank"
-                                aria-label={`Open ${doc.name} on its own page`}
-                                title="Open on its own page"
-                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary"
-                              >
-                                <ArrowUpRight size={13} strokeWidth={2.2} />
-                              </Link>
-                            )}
-                          </div>
-                        );
-                      })}
+                              <span className="hidden whitespace-nowrap text-[11px] text-text-tertiary sm:block"><DateText value={doc.addedAt} /></span>
+                              {isFile ? (
+                                <Link href={previewPage} target="_blank" aria-label={`Open ${doc.name} on its own page`} title="Open on its own page" className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary"><ArrowUpRight size={13} strokeWidth={2.2} /></Link>
+                              ) : doc.url ? (
+                                <a href={doc.url} target="_blank" rel="noreferrer" aria-label={`Open ${doc.name}`} className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary"><ArrowUpRight size={13} strokeWidth={2.2} /></a>
+                              ) : <span />}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
-                </div>
-                </div>
+                </section>
               </div>
 
               {/* THE FACTS STACK ON THE LEFT, THE STORY OWNS THE RIGHT
@@ -1936,6 +1884,8 @@ export function NewRequestDialog({
     !!kind &&
     title.trim().length > 0 &&
     !!customer &&
+    !!neededBy &&
+    details.trim().length > 0 &&
     !uploading &&
     !dateProblem;
 
@@ -1957,9 +1907,13 @@ export function NewRequestDialog({
         ? "Give it a title."
         : !customer
           ? "Say which account it is for."
-          : dateProblem
-            ? dateProblem
-            : null;
+          : !neededBy
+            ? "Pick a due date."
+            : !details.trim()
+              ? "Say what the Solutioning team needs to know."
+              : dateProblem
+                ? dateProblem
+                : null;
 
   return (
     <FrameOrNot
@@ -2257,7 +2211,7 @@ export function NewRequestDialog({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
-                What is it called?
+                Title <span className="text-error">*</span>
               </span>
               <input
                 autoFocus
@@ -2277,7 +2231,7 @@ export function NewRequestDialog({
             {kind === "submission" && (
               <label className="block">
                 <span className="text-[12px] font-semibold text-text-primary">
-                  Submission type
+                  Submission type <span className="text-error">*</span>
                 </span>
                 <div className="mt-1.5">
                   <ColorSelect
@@ -2339,7 +2293,7 @@ export function NewRequestDialog({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
-                Which customer?
+                Customer <span className="text-error">*</span>
               </span>
               <div className="mt-1.5">
                 <ColorSelect
@@ -2393,45 +2347,8 @@ export function NewRequestDialog({
             </label>
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
-                Needed by
-              </span>
-              <input
-                type="date"
-                value={neededBy}
-                /* The past is not offered (Anir, Sep 6: "when I request it,
-                   the needed date should always be in the future"). The
-                   server refuses it too, for anything that bypasses the
-                   picker. */
-                min={todayISO()}
-                onChange={(e) => setNeededBy(e.target.value)}
-                className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
-              />
-              {/* THE COMPLAINT SITS UNDER THE FIELD IT IS ABOUT. It used to
-                  live beside the Create button at the far corner of the
-                  dialog, a full form away from the date it was talking about
-                  (Anir, Sep 7: "why would you put that message there? Put it
-                  next to the date selector"). */}
-              {/* THE LINE IS ALWAYS THERE, EMPTY OR NOT, so saying the date
-                  has passed does not grow the dialog and shove everything
-                  under it down a line (Anir, Sep 7: "it shouldn't increase
-                  the dimensions of the pop-up when it shows that"). Same rule
-                  as every other pop-up here: the frame holds still. */}
-              <span
-                aria-live="polite"
-                className="mt-1 block h-[16px] text-[12px] font-semibold leading-4 text-[color:var(--ink-orange)]"
-              >
-                {neededByProblem}
-              </span>
-            </label>
-          </div>
-
-          {/* Attached to one or MORE opportunities, or one or more contacts —
-              his exact multiplicity, both optional: a request can be about
-              the account itself. */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-[12px] font-semibold text-text-primary">
-                Which deals is this for?
+                Opportunity
+                <span className="ml-1 font-normal text-text-tertiary">Optional</span>
               </span>
               <div className="mt-1.5">
                 <MultiColorSelect
@@ -2442,7 +2359,7 @@ export function NewRequestDialog({
                   allLabel={
                     customer
                       ? customerOpps.length
-                        ? "Pick opportunities"
+                        ? "Pick associated opportunities"
                         : "No opportunities on this account"
                       : "Pick the customer first"
                   }
@@ -2461,9 +2378,57 @@ export function NewRequestDialog({
                 />
               </div>
             </label>
+          </div>
+
+          {/* Request date is generated by the system, but it must still be
+              visible in the form. Hiding it made the requested field look
+              absent even though the API was recording it. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
-                Which contacts is this for?
+                Request date <span className="text-error">*</span>
+              </span>
+              <span className="mt-1.5 flex h-10 w-full items-center gap-2 rounded-lg border border-border-light bg-surface/60 px-3 text-[13px] text-text-primary">
+                <CalendarDays size={15} className="shrink-0 text-blue-primary" />
+                <span className="font-medium tnum">{formatDate(todayISO())}</span>
+                <span className="ml-auto text-[11.5px] text-text-tertiary">
+                  Generated automatically
+                </span>
+              </span>
+            </label>
+            <label className="block">
+              <span className="text-[12px] font-semibold text-text-primary">
+                Due date <span className="text-error">*</span>
+              </span>
+              <input
+                type="date"
+                value={neededBy}
+                /* The past is not offered (Anir, Sep 6: "when I request it,
+                   the needed date should always be in the future"). The
+                   server refuses it too, for anything that bypasses the
+                   picker. */
+                min={todayISO()}
+                onChange={(e) => setNeededBy(e.target.value)}
+                className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+              />
+              {/* Keep the validation line reserved so an error does not
+                  change the dimensions of the dialog. */}
+              <span
+                aria-live="polite"
+                className="mt-1 block h-[16px] text-[12px] font-semibold leading-4 text-[color:var(--ink-orange)]"
+              >
+                {neededByProblem}
+              </span>
+            </label>
+          </div>
+
+          {/* A request may have one or more customer contacts. The field is
+              optional, but uses the business name from the specification. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-[12px] font-semibold text-text-primary">
+                Customer POC
+                <span className="ml-1 font-normal text-text-tertiary">Optional</span>
               </span>
               <div className="mt-1.5">
                 <MultiColorSelect
@@ -2491,6 +2456,7 @@ export function NewRequestDialog({
                 />
               </div>
             </label>
+            <div className="hidden sm:block" aria-hidden="true" />
           </div>
 
           {kind === "meeting" && (
@@ -2519,7 +2485,8 @@ export function NewRequestDialog({
 
           <label className="block">
             <span className="text-[12px] font-semibold text-text-primary">
-              What does the Solutioning team need to know?
+              What does the Solutioning team need to know?{" "}
+              <span className="text-error">*</span>
             </span>
             <textarea
               value={details}

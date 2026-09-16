@@ -141,7 +141,7 @@ export const PRIVILEGE_MODULES: {
   { key: "contacts", label: "Contacts", path: "/contacts" },
   {
     key: "solution_requests",
-    label: "Solution requests",
+    label: "Solutioning requests",
     path: "/solutioning",
   },
   {
@@ -541,12 +541,12 @@ function defaultMatrix(): Record<string, Partial<Record<ModuleKey, Access>>> {
     solution_requests: [
       "create",
       "edit",
-      "create",
-      "edit",
-      "create",
-      "edit",
-      "create",
-      "edit",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
+      "view",
       "create",
       "view",
     ],

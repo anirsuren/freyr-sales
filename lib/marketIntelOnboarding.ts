@@ -1,3 +1,4 @@
+import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
@@ -19,8 +20,8 @@ const LEASE_MS = 3 * 60_000;
 const HEARTBEAT_MS = 30_000;
 const db = () =>
   createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    marketIntelDatabaseConfig().url!,
+    marketIntelDatabaseConfig().key!,
     {
       auth: { persistSession: false },
       global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store", signal: AbortSignal.timeout(30_000) }) },

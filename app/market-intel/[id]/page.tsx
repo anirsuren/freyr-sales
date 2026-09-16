@@ -28,7 +28,7 @@ import {
   readFeedCompany,
   readFeedPeople,
   readMarketIntelSummaries,
-} from "@/lib/marketIntelFeed";
+} from "@/lib/marketIntelRead";
 import { maybeScheduleMarketIntelRefresh } from "@/lib/marketIntelRefresh";
 import { miCompany } from "@/lib/marketIntelMock";
 import { COMPANY_SOURCES, COMPETITOR_SOURCES } from "@/lib/marketIntelSources";
@@ -118,14 +118,14 @@ export default async function MarketIntelCompanyPage({
     byDefault: tracking.companies.some((c) => c.id === companyId && c.activeByDefault === true),
   });
 
-  if (getDataMode() === "live") {
+  {
     /* ONE ROW (Sep 10): the briefing reads this company's row and, for a
        customer, the rows of the people followed here. Never the whole feed. */
     const [feedCompany, intel] = await Promise.all([
       readFeedCompany(id).catch(() => null),
       readMarketIntelSummaries().catch(() => null),
     ]);
-    maybeScheduleMarketIntelRefresh(intel?.meta ?? null);
+    if (getDataMode() === "live") maybeScheduleMarketIntelRefresh(intel?.meta ?? null);
     if (feedCompany) {
       const trackedConfig = tracking.companies.find((c) => c.id === id);
       const isCompetitor = feedCompany.group === "competitor";
@@ -165,11 +165,6 @@ export default async function MarketIntelCompanyPage({
           />
         </>
       );
-    }
-  } else {
-    const company = miCompany(id);
-    if (company) {
-      return <CompanyIntel company={company} extraPeople={extraPeople} />;
     }
   }
 

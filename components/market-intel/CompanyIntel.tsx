@@ -43,6 +43,7 @@ import type { TrackedPerson } from "@/lib/marketIntelTracking";
 import { useStoredView } from "@/lib/useStoredView";
 import { fallbackSignals, type SignalId } from "@/lib/marketIntelSignals";
 import { SignalRow } from "@/components/market-intel/SignalRow";
+import { TopSignals } from "@/components/market-intel/TopSignals";
 import { tint } from "@/lib/tint";
 
 /**
@@ -525,6 +526,7 @@ export function CompanyIntel({
               the past 90 days.
             </p>
           </Card>
+          <TopSignals counts={signalCounts} active={signalPick} onPick={(id) => { setSignalPick(id); setLens("all"); }} />
         </div>
       </div>
 

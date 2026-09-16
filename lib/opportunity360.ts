@@ -4,8 +4,7 @@ import { orderDealBands } from "./connectionOrder";
 import { canAccessModuleWith } from "./moduleAccess";
 import { viewerAccessMap } from "./viewerAccess";
 import type { UserIdentityRole } from "./userIdentity";
-import { readSolutioning, solutioningShelf } from "./solutioning";
-import { readMeetings } from "./meetings";
+import { readSolutioning, type SolutionRequest } from "./solutioning";
 import { readContracts } from "./contracts";
 import { readRevenueAccruals } from "./revenueAccruals";
 import { monthLabel, type AccrualLine } from "./revenueAccrualsShared";
@@ -45,9 +44,6 @@ const readAccrualPlans = cache(async () => {
 const requestsOnce = cache(async () =>
   readSolutioning().then((s) => s.requests).catch(() => [])
 );
-const meetingsOnce = cache(async () =>
-  readMeetings().then((s) => s.meetings).catch(() => [])
-);
 const contractsOnce = cache(async () =>
   readContracts().then((s) => s.contracts).catch(() => [])
 );
@@ -69,6 +65,32 @@ function accrualSplit(line: AccrualLine): string {
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+function displayedSolutionStatus(request: SolutionRequest): string {
+  const overdue =
+    Boolean(request.neededBy) &&
+    request.status !== "completed" &&
+    String(request.neededBy) < new Date().toISOString().slice(0, 10);
+  if (overdue) return "Delayed";
+  if (request.deliverableStatus === "Draft") return "Drafted";
+  if (
+    request.deliverableStatus === "Ready for review" ||
+    request.deliverableStatus === "Finalized"
+  ) {
+    return "Submitted to BD";
+  }
+  if (request.deliverableStatus === "Submitted to customer") {
+    return "Submitted to customer";
+  }
+  const status = request.status.replace(/_/g, " ").trim().toLowerCase();
+  if (status === "initiated") return "Request initiated";
+  if (status === "in progress") return "Work in progress";
+  if (status === "completed") return "Completed";
+  if (status === "cancelled") return "Cancelled";
+  return status
+    ? `${status.charAt(0).toUpperCase()}${status.slice(1)}`
+    : "Not started";
 }
 
 /**
@@ -113,9 +135,8 @@ export async function buildOpportunity360(
   const access = await viewerAccessMap().catch(() => null);
   const may = (path: string) => canAccessModuleWith(path, role, access);
 
-  const [solutioning, meetings, contracts, accrualPlans] = await Promise.all([
+  const [solutioning, contracts, accrualPlans] = await Promise.all([
     may("/solutioning") ? requestsOnce() : Promise.resolve([]),
-    may("/meetings") ? meetingsOnce() : Promise.resolve([]),
     may("/contracts") ? contractsOnce() : Promise.resolve([]),
     may("/revenue-accruals") ? readAccrualPlans() : Promise.resolve([]),
   ]);
@@ -127,104 +148,44 @@ export async function buildOpportunity360(
 
   if (may("/solutioning")) {
     const mine = solutioning.filter((r) => against(r.opportunityIds));
-    /**
-     * WHICH SHELF A RECORD BELONGS ON.
-     *
-     * This used to read `type ?? kind`, which put every REQUEST on no shelf at
-     * all: a meeting request is stored as `type: "request", kind: "meeting"`,
-     * so `type ?? kind` answered "request" and the Meeting requests band —
-     * which was looking for "meeting" — could never match one. Same for a
-     * submission request. Found Aug 31 with the data sitting right there in
-     * the store: Submissions 3, Meeting requests 0, on a deal carrying two.
-     *
-     * `type` says whether it is the work or the ASK for the work; `kind` says
-     * what the work is. The shelf needs both.
-     */
-
-    for (const [key, label, color] of [
-      ["submissions", "Submissions", "var(--ink-violet-soft)"],
-      ["presentations", "Presentations", "var(--ink-teal-deep)"],
-      /* Named as a REQUEST, the same correction the customer page needed:
-         a meeting asked of the Solutioning team is not a meeting held. */
-      ["meetingRequests", "Meeting requests", "var(--ink-magenta)"],
-      /* What sales has asked for on this deal and nobody has turned into work
-         yet — the half of Solutioning that was invisible from the deal. */
-      ["solutionRequests", "Solution requests", "var(--ink-orange)"],
-    ] as const) {
-      const rows = mine.filter((r) => solutioningShelf(r) === key);
-      bands.push({
-        key,
-        columns: [
-          { key: "status", label: "Status" },
-          { key: "owner", label: "Owner", kind: "person" },
-          { key: "docs", label: "Documents" },
-          { key: "needed", label: "Needed by" },
-        ],
-        label,
-        icon: BAND_ICONS[key],
-        color,
-        count: rows.length,
-        href: "/solutioning",
-        hrefLabel: "Solutioning",
-        empty: `No ${label.toLowerCase()} on this deal yet.`,
-        items: rows.map<Customer360Item>((r) => ({
+    bands.push({
+      key: "solutionRequests",
+      columns: [
+        { key: "type", label: "Request type" },
+        { key: "bd", label: "BD member", kind: "person" },
+        { key: "owner", label: "Solutioning owner", kind: "person" },
+        { key: "prepared", label: "Prepared by", kind: "person" },
+        { key: "requested", label: "Requested" },
+        { key: "due", label: "Due" },
+        { key: "submitted", label: "Submitted" },
+        { key: "status", label: "Solution status" },
+        { key: "docs", label: "Documents" },
+      ],
+      label: "Solutioning requests",
+      icon: BAND_ICONS.solutionRequests,
+      color: "var(--ink-orange)",
+      count: mine.length,
+      href: "/solutioning",
+      hrefLabel: "All solutioning requests",
+      empty: "No solutioning request has been raised for this opportunity yet.",
+      items: [...mine]
+        .sort((a, b) => (b.requestedAt || "").localeCompare(a.requestedAt || ""))
+        .map<Customer360Item>((r) => ({
           id: r.id,
           title: r.title,
           code: r.ref,
-          when: r.neededBy || r.requestedAt,
-          href: `/solutioning/${r.id}`,
-          /* The documents built for this deal are the "all the materials"
-             half of what he asked for, said on the row that owns them. */
-          sub: [
-            r.status.replace(/_/g, " "),
-            r.owner || null,
-            r.docs.length > 0
-              ? `${r.docs.length} ${r.docs.length === 1 ? "document" : "documents"}`
-              : null,
-          ]
-            .filter(Boolean)
-            .join(" · "),
           cells: {
-            status: r.status.replace(/_/g, " "),
+            type: r.subtype ? `${r.kind} · ${r.subtype}` : r.kind,
+            bd: r.requestedBy,
             owner: r.owner || "Unassigned",
-            docs: r.docs.length ? String(r.docs.length) : "",
-            needed: r.neededBy ? formatDate(r.neededBy) : "",
+            prepared: r.completedBy || r.owner || "Not started",
+            requested: formatDate(r.requestedAt),
+            due: r.neededBy ? formatDate(r.neededBy) : "",
+            submitted: r.completedAt ? formatDate(r.completedAt) : "",
+            status: displayedSolutionStatus(r),
+            docs: `${r.docs.length} ${r.docs.length === 1 ? "document" : "documents"}`,
           },
-        })),
-      });
-    }
-  }
-
-  if (may("/meetings")) {
-    const mine = meetings.filter((m) => against(m.opportunityIds));
-    bands.push({
-      key: "meetings",
-      columns: [
-        { key: "type", label: "Type" },
-        { key: "owner", label: "Who ran it", kind: "person" },
-        { key: "status", label: "Status" },
-      ],
-      label: "Meetings",
-      icon: BAND_ICONS.meetings,
-      color: "var(--ink-magenta)",
-      count: mine.length,
-      href: "/meetings",
-      hrefLabel: "All meetings",
-      empty: "No meeting has been held against this deal yet.",
-      items: [...mine]
-        .sort((a, b) => (b.meetingAt || "").localeCompare(a.meetingAt || ""))
-        .map<Customer360Item>((m) => ({
-          id: m.id,
-          title: m.title,
-          code: m.ref,
-          sub: `${m.type} · ${m.owner} · ${m.status}`,
-          cells: {
-            type: m.type || "",
-            owner: m.owner || "Unassigned",
-            status: m.status === "completed" ? "Completed" : "Planned",
-          },
-          when: m.meetingAt,
-          href: `/meetings/${m.id}`,
+          href: `/solutioning/${r.id}`,
         })),
     });
   }

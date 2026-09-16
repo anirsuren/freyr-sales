@@ -1470,7 +1470,7 @@ export function OpportunitiesBrowser({
     }
   }
 
-  const writable = canEdit && live;
+  const writable = canEdit;
   /** May THIS row be changed by the reader? Same rule the API applies. */
   const mayTouch = (o: Opportunity) => privileged || (o.owner ?? "") === meName;
 
@@ -2220,7 +2220,7 @@ export function OpportunitiesBrowser({
           sits on the page he is copying. That still answers his earlier
           complaint, which was that the button sat ALONE on an empty row, not
           that it had to be inside the search bar. */}
-      {(live || inTabs) && (
+      {(
         <OppHeader
           embedded={inTabs}
           title="Opportunities"
@@ -2868,11 +2868,7 @@ export function OpportunitiesBrowser({
       )}
       </div>
 
-      {!live && (
-        <p className="mt-3 text-[12px] text-text-tertiary">
-          Sample pipeline — switch to Real mode to add or change deals.
-        </p>
-      )}
+
 
       <Modal
         open={editing !== null}
@@ -3627,7 +3623,7 @@ export function OpportunitiesBrowser({
                 doesn't even show up"). Sticky inside the modal's scroller,
                 white over the content it floats above. */}
             <div className="sticky bottom-[-20px] -mx-5 -mb-5 mt-auto flex items-center justify-end gap-3 border-t border-border-light bg-white px-5 pb-5 pt-3">
-              {editing.id && canCreate && live && (
+              {editing.id && canCreate && (
                 <button
                   type="button"
                   onClick={() => {

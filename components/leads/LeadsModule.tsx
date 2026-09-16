@@ -359,11 +359,7 @@ export function LeadsModule({
                it repeats what the access shield answers on hover. The mock
                notice stays — that one tells you the DATA is not real, which
                nothing else says. */
-            live ? null : (
-              <span className="rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-                Sample leads. Switch to Real mode to work the live list
-              </span>
-            )
+            null
           )
         }
       />
@@ -757,8 +753,9 @@ export function LeadsModule({
                               ) : null}
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(460px,.9fr)]">
-                              <section className="rounded-xl border border-border-light bg-white p-4">
+                            <div className="grid grid-cols-1 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+                              <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(380px,.9fr)]">
+                                <section className="rounded-xl border border-border-light bg-white p-4">
                                 <div className="flex items-center justify-between gap-3">
                                   <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                                     Contact & account
@@ -849,9 +846,10 @@ export function LeadsModule({
                                 accountMatched={Boolean(linkedCustomer)}
                                 onEdit={canWrite ? () => openEditor(lead) : undefined}
                               />
-                            </div>
+                              </div>
 
-                            <LeadJourney lead={lead} />
+                              <LeadJourney lead={lead} />
+                            </div>
 
                           </div>
                         </td>
