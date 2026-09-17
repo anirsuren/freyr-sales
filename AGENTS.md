@@ -1026,5 +1026,7 @@ The contributor roster search uses the full modal-field scale: 52px tall with la
 ### Sep 17: request timeline ends with Documents
 The Solutioning request timeline fills the remaining right-rail space only until the bottom edge of the Documents section in the left column. Its events scroll internally inside that aligned boundary, while the comment action remains visible at the bottom of the card. The rail is sized by the page content rather than the viewport. Completed locally, not deployed.
 
+An empty request timeline stays compact around its header and Add a comment action. It expands toward the Documents boundary only when activity exists to use and scroll within that space. Completed locally, not deployed.
+
 ### Sep 17: customer band tabs omit redundant actions
 Customer connection tabs no longer repeat record-team editing controls or links such as “The team” and “All deals” beside the active band summary. The selected tab already identifies and opens that destination, so the duplicated action row is removed across all customer band tabs. Completed locally, not deployed.

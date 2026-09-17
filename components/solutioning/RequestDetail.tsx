@@ -1379,8 +1379,14 @@ export function RequestDetail({
             <SectionCard
               title="Timeline"
               icon={History}
-              className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:[&>div]:min-h-0 lg:[&>div]:flex-1 lg:[&>div>div]:h-full"
-              bodyClassName="flex h-full min-h-0 flex-col"
+              className={cn(
+                r.activity.length > 0 &&
+                  "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:[&>div]:min-h-0 lg:[&>div]:flex-1 lg:[&>div>div]:h-full"
+              )}
+              bodyClassName={cn(
+                "flex min-h-0 flex-col",
+                r.activity.length > 0 && "h-full"
+              )}
             >
               {/* AN ACTUAL TIMELINE (Anir, Aug 27: "this has to be an actual
                   fucking timeline"). It was six identical blue documents in a
@@ -1420,7 +1426,7 @@ export function RequestDetail({
                   above the comment button. max-height does both jobs: it
                   shrinks to five rows and it still caps and scrolls at a
                   hundred. Roughly six rows at 52px each. */}
-              <ol className="min-h-0 flex-1 overflow-y-auto pr-1">
+              <ol className={cn("min-h-0 overflow-y-auto pr-1", r.activity.length > 0 && "flex-1")}>
                 {[...r.activity]
                   .reverse()
                   .filter((a, i, arr) =>
