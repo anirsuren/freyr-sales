@@ -1005,3 +1005,6 @@ An opportunity's Solutioning requests tab contains request records only; submiss
 
 ### Sep 17: solutioning owner picker clears its card
 The request-detail Owner card lets its people picker render beyond the rounded card body and raises the open menu above the cards that follow. The assignment choices are fully visible instead of being clipped at the Owner card boundary. Completed locally, not deployed.
+
+### Sep 17: dev admins can create role-review accounts
+The dev login gate accepts plus-addressed test identities for the approved admin accounts, including the transcript's `manojkumar.odela+2@freyrsolutions.com`. This also works when the deployment uses an explicit dev allowlist: an included admin's exact address expands to that admin's plus aliases, while omitted admins and unrelated company aliases stay blocked. Production remains unaffected. This lets an admin create separate BD Member, BD Owner, Solutioning Member, and Solutioning Owner accounts, assign each role, and review the corresponding workspace. Completed locally, not deployed.
