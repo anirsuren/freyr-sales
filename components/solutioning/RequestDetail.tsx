@@ -22,6 +22,7 @@ import {
   ListChecks,
   Plus,
   RotateCcw,
+  Search,
   Trash2,
   Undo2,
   UserRound,
@@ -351,6 +352,7 @@ export function RequestDetail({
     name: string;
   } | null>(null);
   const [addingContributorTo, setAddingContributorTo] = useState<string | null>(null);
+  const [contributorQuery, setContributorQuery] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -1135,7 +1137,10 @@ export function RequestDetail({
                             <button
                               type="button"
                               disabled={busy}
-                              onClick={() => setAddingContributorTo(division)}
+                              onClick={() => {
+                                setContributorQuery("");
+                                setAddingContributorTo(division);
+                              }}
                               className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-2.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <Plus size={13.5} strokeWidth={2.5} />
@@ -2002,8 +2007,14 @@ export function RequestDetail({
 
       <Modal
         open={addingContributorTo !== null}
-        onClose={() => setAddingContributorTo(null)}
+        onClose={() => {
+          setAddingContributorTo(null);
+          setContributorQuery("");
+        }}
         title="Add a contributor"
+        size="wide"
+        dialogClassName="min-h-[min(560px,calc(100vh-4rem))]"
+        bodyClassName="flex flex-col"
       >
         {(() => {
           const division = addingContributorTo;
@@ -2023,28 +2034,70 @@ export function RequestDetail({
               !samePerson(name, r.owner) &&
               !contributors.some((contributor) => samePerson(contributor, name))
           );
+          const query = contributorQuery.trim().toLowerCase();
+          const shown = eligible.filter(
+            (name) => !query || name.toLowerCase().includes(query)
+          );
           return (
-            <div>
-              <p className="mb-3 text-[12.5px] leading-relaxed text-text-secondary">
-                Choose someone to support {division ?? "this division"}. The lead,
-                primary assignee, request owner, and existing contributors are excluded.
+            <div className="flex min-h-0 flex-1 flex-col">
+              <p className="text-[13px] leading-relaxed text-text-secondary">
+                Choose someone to support <b className="text-text-primary">{division ?? "this division"}</b>.
+                People who already have a role here are hidden.
               </p>
-              <PeopleSelect
-                value=""
-                options={eligible}
-                allowUnassigned={false}
-                placeholder={eligible.length > 0 ? "Choose a contributor" : "Nobody else is available"}
-                ariaLabel="Contributor"
-                onChange={(name) => {
-                  if (!name || !division) return;
-                  void post({
-                    op: "set-workstream",
-                    division,
-                    contributors: [...contributors, name],
-                  });
-                  setAddingContributorTo(null);
-                }}
-              />
+              <label className="mt-4 flex h-11 items-center gap-2 rounded-xl border border-border-light bg-white px-3 shadow-sm focus-within:border-blue-primary focus-within:shadow-input-focus">
+                <Search size={15} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
+                <input
+                  autoFocus
+                  value={contributorQuery}
+                  onChange={(event) => setContributorQuery(event.target.value)}
+                  placeholder="Search people…"
+                  aria-label="Search contributors"
+                  className="min-w-0 flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-text-tertiary"
+                />
+              </label>
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                  Available people
+                </p>
+                <span className="tnum text-[11.5px] text-text-tertiary">{shown.length}</span>
+              </div>
+              <div className="mt-2 min-h-0 flex-1 overflow-y-auto rounded-xl border border-border-light bg-surface/40 p-1.5">
+                {shown.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      if (!division) return;
+                      void post({
+                        op: "set-workstream",
+                        division,
+                        contributors: [...contributors, name],
+                      });
+                      setAddingContributorTo(null);
+                      setContributorQuery("");
+                    }}
+                    className="group flex w-full cursor-pointer items-center gap-3 rounded-lg bg-white px-3 py-2.5 text-left transition-colors hover:bg-blue-light disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Avatar name={name} className="h-8 w-8 shrink-0 text-[10px]" />
+                    <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                      {name}
+                    </span>
+                    <span className="inline-flex h-7 items-center gap-1 rounded-lg border border-blue-subtle bg-white px-2 text-[11.5px] font-semibold text-blue-primary">
+                      <Plus size={12} strokeWidth={2.5} /> Add
+                    </span>
+                  </button>
+                ))}
+                {shown.length === 0 && (
+                  <div className="grid min-h-[220px] place-items-center px-6 text-center">
+                    <p className="text-[13px] text-text-tertiary">
+                      {eligible.length === 0
+                        ? "Everyone available already has a role on this division."
+                        : "No people match that search."}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })()}
