@@ -31,6 +31,7 @@ import {
   countryOptions,
   countryFlag,
   dialOptions,
+  dialTriggerLabel,
   joinPhone,
   splitPhone,
 } from "@/lib/countries";
@@ -821,7 +822,7 @@ export function LeadsModule({
                                     <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><Mail size={12} strokeWidth={2} aria-hidden="true" /> Email</span>
                                     {lead.email ? (
                                       <a href={`mailto:${lead.email}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-h-5 min-w-0 items-start leading-5 text-[12.5px] font-semibold text-blue-primary hover:underline">
-                                        <span className="min-w-0 truncate" title={lead.email}>{lead.email}</span>
+                                        <span className="min-w-0 truncate">{lead.email}</span>
                                       </a>
                                     ) : <span className="mt-1 flex min-h-5 items-center text-[12px] leading-5 text-text-tertiary">Not added</span>}
                                   </span>
@@ -849,15 +850,15 @@ export function LeadsModule({
                                       <span className="min-w-0 truncate">{lead.source}</span>
                                     </span>
                                   </span>
-                                  <span className="flex min-w-0 flex-col">
-                                    <span className="flex h-4 shrink-0 items-center whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary">Account match</span>
-                                    {linkedCustomer ? (
+                                  {linkedCustomer && (
+                                    <span className="flex min-w-0 flex-col">
+                                      <span className="flex h-4 shrink-0 items-center whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary">Customer account</span>
                                       <Link href={`/customers/${linkedCustomer.id}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-h-5 min-w-0 leading-5 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
                                         <CompanyLogo name={linkedCustomer.name} className="h-5 w-5 shrink-0 rounded-md text-[7px]" />
                                         <span className="min-w-0 truncate">{linkedCustomer.name}</span>
                                       </Link>
-                                    ) : <span className="mt-1 flex min-h-5 items-center text-[12px] leading-5 text-text-tertiary">Not matched</span>}
-                                  </span>
+                                    </span>
+                                  )}
                                   <span className="flex min-w-0 flex-col">
                                     <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><UserRound size={12} strokeWidth={2} aria-hidden="true" /> Owner</span>
                                     {lead.owner ? (
@@ -886,7 +887,6 @@ export function LeadsModule({
 
                               <LeadPersonInsights
                                 lead={lead}
-                                accountMatched={Boolean(linkedCustomer)}
                                 onEdit={canWrite ? () => openEditor(lead) : undefined}
                               />
                               </div>
@@ -1121,7 +1121,7 @@ export function LeadsModule({
                       ariaLabel="Country dialling code"
                       collapsible={false}
                       minWidth={104}
-                      triggerLabel={dial}
+                      triggerLabel={dialTriggerLabel(dial, editing.country)}
                       onChange={(v) =>
                         setEditing({ ...editing, dialCode: v, phone: joinPhone(v, number) })
                       }

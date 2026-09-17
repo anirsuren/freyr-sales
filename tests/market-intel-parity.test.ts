@@ -32,6 +32,20 @@ test("sample moderation removes a story from the card and briefing data",()=>{
   assert.ok(!after.companies["test-customer"].news.some(n=>n.url===url));
   assert.equal(after.summaries["test-customer"].counts.news,before.summaries["test-customer"].counts.news-1);
 });
+test("sample company charts have distinct, non-periodic histories",()=>{
+  const demo=buildDemoIntel(tracking);
+  const customer=cardFromSummary(demo.summaries["test-customer"]);
+  const competitor=cardFromSummary(demo.summaries["test-competitor"]);
+  assert.equal(customer.trend.length,12);
+  assert.equal(competitor.trend.length,12);
+  assert.notDeepEqual(customer.trend,competitor.trend);
+  assert.ok(new Set(customer.trend).size>=4);
+  assert.ok(new Set(competitor.trend).size>=4);
+  for (const card of [customer,competitor]) {
+    const prior = Math.max(1, card.trend.at(-2) ?? 0);
+    assert.ok((card.trend.at(-1) ?? 0) / prior < 2.5,"sample must not end in an artificial cliff spike");
+  }
+});
 test("Ready now contains only released modules while In progress exposes work in progress",()=>{
   assert.equal(isReleasedOnly("live"),true);
   assert.equal(isReleasedOnly("mock"),false);

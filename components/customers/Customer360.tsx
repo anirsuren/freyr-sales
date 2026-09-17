@@ -310,7 +310,12 @@ export function Customer360({
   );
   const customerOpportunityTable =
     active?.key === "opportunities" && cols.some((column) => column.key === "signs");
-  const solutionRequestTable = active?.key === "solutionRequests";
+  const solutionArtifactTable = [
+    "solutionRequests",
+    "submissions",
+    "presentations",
+    "meetingRequests",
+  ].includes(active?.key ?? "");
 
   return (
     <section
@@ -749,7 +754,7 @@ export function Customer360({
                   className={cn(
                     "w-full min-w-[480px] border-collapse text-left",
                     customerOpportunityTable && "table-fixed min-w-[920px]",
-                    solutionRequestTable && "table-fixed min-w-[1540px]"
+                    solutionArtifactTable && "table-fixed min-w-[1000px]"
                   )}
                 >
                   {customerOpportunityTable && (
@@ -769,18 +774,17 @@ export function Customer360({
                       <col style={{ width: "8%" }} />
                     </colgroup>
                   )}
-                  {solutionRequestTable && (
+                  {solutionArtifactTable && (
+                    /* Keep the record name useful without letting it consume
+                       the space required by Requested and When. Both dates
+                       stay readable on one line at ordinary desktop widths. */
                     <colgroup>
-                      <col style={{ width: 430 }} />
-                      <col style={{ width: 145 }} />
-                      <col style={{ width: 150 }} />
-                      <col style={{ width: 170 }} />
-                      <col style={{ width: 160 }} />
-                      <col style={{ width: 125 }} />
-                      <col style={{ width: 125 }} />
-                      <col style={{ width: 125 }} />
-                      <col style={{ width: 175 }} />
-                      <col style={{ width: 130 }} />
+                      <col style={{ width: "43%" }} />
+                      <col style={{ width: "10%" }} />
+                      <col style={{ width: "10%" }} />
+                      <col style={{ width: "15%" }} />
+                      <col style={{ width: "11%" }} />
+                      <col style={{ width: "11%" }} />
                     </colgroup>
                   )}
                   <thead>
@@ -922,8 +926,7 @@ export function Customer360({
                                   key={c.key}
                                   className={cn(
                                     "py-3 pr-4 text-left text-[12.5px] text-text-secondary",
-                                    solutionRequestTable &&
-                                      ["requested", "due", "submitted"].includes(c.key) &&
+                                    solutionArtifactTable && c.key === "asked" &&
                                       "whitespace-nowrap"
                                   )}
                                 >
@@ -990,7 +993,7 @@ export function Customer360({
                           </td>
                         )}
                         {anyWhen && (
-                          <td className="py-3 text-left text-[12.5px] tnum text-text-secondary">
+                          <td className="whitespace-nowrap py-3 text-left text-[12.5px] tnum text-text-secondary">
                             {item.when ? <DateText value={item.when} /> : "—"}
                           </td>
                         )}

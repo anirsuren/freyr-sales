@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, AlertCircle, CheckCircle2, Clock3, Pencil, Target } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { isOpenLead, leadAgeDays, leadStatusColor, type Lead } from "@/lib/leadsShared";
+import { isOpenLead, leadAgeDays, type Lead } from "@/lib/leadsShared";
 
 const FOLLOW_UP_DAYS = 21;
 
@@ -20,11 +20,9 @@ function recommendedAction(lead: Lead) {
 
 export function LeadPersonInsights({
   lead,
-  accountMatched,
   onEdit,
 }: {
   lead: Lead;
-  accountMatched: boolean;
   onEdit?: () => void;
 }) {
   const checks = [
@@ -33,7 +31,6 @@ export function LeadPersonInsights({
     { label: "What they need", complete: Boolean(lead.interest?.trim()) },
     { label: "Owner", complete: Boolean(lead.owner?.trim()) },
     { label: "Country", complete: Boolean(lead.country?.trim()) },
-    { label: "Matched customer", complete: accountMatched },
   ];
   const missingChecks = checks.filter((check) => !check.complete);
   const age = leadAgeDays(lead);
@@ -45,7 +42,6 @@ export function LeadPersonInsights({
     ? lead.status === "Converted" ? "#15803D" : "var(--status-red)"
     : overdueBy > 0 ? "var(--ink-orange)" : "var(--ink-bright-blue)";
 
-  const statusColor = leadStatusColor(lead.status);
   const explanation = lead.status === "Converted"
     ? "This lead is now an opportunity. Manage the deal and its next steps there."
     : lead.status === "Disqualified"
@@ -59,13 +55,8 @@ export function LeadPersonInsights({
 
   return (
     <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border-light bg-white">
-      <header className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
+      <header className="px-4 pt-4">
         <h3 className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Lead follow-up</h3>
-        <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10.5px] font-semibold"
-          style={{ color: statusColor, backgroundColor: `color-mix(in srgb, ${statusColor} 9%, transparent)` }}>
-          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
-          {lead.status}
-        </span>
       </header>
 
       <div className="flex items-start gap-3 px-4 py-4">
@@ -109,7 +100,7 @@ export function LeadPersonInsights({
             <div className="flex items-center justify-between gap-2">
               <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[color:var(--ink-orange)]">
                 <AlertCircle size={13} className="shrink-0" />
-                {missingChecks.length} {missingChecks.length === 1 ? "detail" : "details"} to complete
+                Missing: {missingChecks.map(check => check.label).join(" · ")}
               </p>
               {onEdit && (
                 <button type="button" onClick={event => { event.stopPropagation(); onEdit(); }}
@@ -118,7 +109,6 @@ export function LeadPersonInsights({
                 </button>
               )}
             </div>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-text-secondary">{missingChecks.map(check => check.label).join(" · ")}</p>
           </>
         ) : (
           <p className="flex items-center gap-2 text-[11px] text-text-secondary">

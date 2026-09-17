@@ -3,7 +3,7 @@
 import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import { SmartBack } from "@/components/ui/BackButton";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -167,6 +167,8 @@ export function LiveCompanyBriefing({
   const [relevantOnly, setRelevantOnly] = useState(isCompetitor);
   const [detailsView, setDetailsView] = useStoredView("freyr.mi.details", "open", ["open", "closed"] as const);
   const detailsOpen = detailsView === "open";
+  const detailsRailRef = useRef<HTMLDivElement>(null);
+  const [detailsRailHeight, setDetailsRailHeight] = useState<number | null>(null);
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
     "freyr.mi.news.view",
     "rows",
@@ -183,13 +185,52 @@ export function LiveCompanyBriefing({
   const [savedReady, setSavedReady] = useState(false);
   const [savingArticle, setSavingArticle] = useState<string | null>(null);
   useEffect(() => {
+    let frame: number | null = null;
+    const syncRailHeight = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        const top = Math.max(80, detailsRailRef.current?.getBoundingClientRect().top ?? 80);
+        const next = Math.max(280, Math.floor(window.innerHeight - top - 16));
+        setDetailsRailHeight((current) => current === next ? current : next);
+      });
+    };
+    syncRailHeight();
+    window.addEventListener("scroll", syncRailHeight, { capture: true, passive: true });
+    window.addEventListener("resize", syncRailHeight);
+    return () => {
+      window.removeEventListener("scroll", syncRailHeight, { capture: true });
+      window.removeEventListener("resize", syncRailHeight);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [detailsOpen]);
+  useEffect(() => {
     const controller = new AbortController();
     setSavedReady(false);
     setSavedArticles([]);
     fetch(`/api/market-intel/saved-articles?companyId=${encodeURIComponent(briefing.id)}`, { signal: controller.signal })
       .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
       .then(data => {
-        setSavedArticles(data.articles.map((article: Item) => ({ ...article, key: article.url, news: { title: article.title, url: article.url, source: article.sourceLabel, published: article.date, summary: article.body ?? undefined } })));
+        setSavedArticles(data.articles.map((article: Item) => {
+          const saved = { ...article, key: article.url };
+          if (article.kind === "company" || article.kind === "people") {
+            return {
+              ...saved,
+              post: {
+                url: article.url,
+                text: article.body || article.title,
+                date: article.date,
+                reactions: null,
+                comments: null,
+                reposts: null,
+                ...(article.kind === "people"
+                  ? { by: { id: `saved:${article.url}`, name: article.sourceLabel, role: "Tracked person" } }
+                  : {}),
+              },
+            };
+          }
+          return { ...saved, news: { title: article.title, url: article.url, source: article.sourceLabel, published: article.date, summary: article.body ?? undefined } };
+        }));
         setSavedReady(true);
       }).catch(() => { if (!controller.signal.aborted) toast("Could not load your saved articles. Reload to try again.", "error"); });
     return () => controller.abort();
@@ -203,14 +244,14 @@ export function LiveCompanyBriefing({
       const response = await fetch("/api/market-intel/saved-articles", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: briefing.id, url: item.url, title: item.title, body: item.body, date: item.date, sourceLabel: item.sourceLabel, kind: item.kind, on }) });
       if (!response.ok) throw new Error();
       setSavedArticles(previous => on ? [...previous.filter(article => article.url !== item.url), item] : previous.filter(article => article.url !== item.url));
-      toast(on ? "Article saved to your bookmarks." : "Article removed from your bookmarks.");
+      toast(on ? "Item saved to your bookmarks." : "Item removed from your bookmarks.");
     } catch { toast("Could not update this bookmark. Please try again.", "error"); }
     finally { setSavingArticle(null); }
   }
-  const bookmarkButton = (item: Item) => (item.kind === "news" || item.kind === "site") && (
+  const bookmarkButton = (item: Item) => (
     <button type="button" disabled={!savedReady || savingArticle !== null} onClick={() => void toggleArticle(item)}
-      aria-label={`${savedUrls.has(item.url) ? "Unsave" : "Save"} article: ${item.title}`} aria-pressed={savedUrls.has(item.url)}
-      title={savedUrls.has(item.url) ? "Remove bookmark" : "Save article"}
+      aria-label={`${savedUrls.has(item.url) ? "Unsave" : "Save"} item: ${item.title}`} aria-pressed={savedUrls.has(item.url)}
+      title={savedUrls.has(item.url) ? "Remove bookmark" : "Save item"}
       className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-blue-primary hover:bg-blue-light disabled:opacity-40">
       <Bookmark size={15} fill={savedUrls.has(item.url) ? "currentColor" : "none"} />
     </button>
@@ -361,13 +402,38 @@ export function LiveCompanyBriefing({
         aria-label={`Remove story: ${group.lead.title}`}
         title="Remove this story"
         className={cn(
-          "pointer-events-none inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary opacity-0 transition-[color,background-color,opacity] group-hover/story:pointer-events-auto group-hover/story:opacity-100 group-focus-within/story:pointer-events-auto group-focus-within/story:opacity-100 hover:bg-[rgba(176,32,32,0.08)] hover:text-[color:#B02020] focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:#B02020]",
+          "inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-[color,background-color,opacity] hover:bg-[rgba(176,32,32,0.08)] hover:text-[color:#B02020] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:#B02020]",
           className
         )}
       >
         <Trash2 size={13} strokeWidth={2.1} />
       </button>
     ) : null;
+
+  const openItemButton = (item: Item) => {
+    const linkedIn = item.kind === "company" || item.kind === "people";
+    return (
+      <a
+        href={safeHref(item.url) as string}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={`Open item in a new tab: ${item.title}`}
+        title="Open in a new tab"
+        className="inline-flex h-7 min-w-7 shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-blue-primary transition-colors hover:bg-blue-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+      >
+        {linkedIn && <LinkedInIcon size={13} />}
+        <ExternalLink size={12} strokeWidth={2.2} />
+      </a>
+    );
+  };
+
+  const storyActions = (group: StoryGroup<Item>) => (
+    <span className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-lg border border-border-light bg-white/95 p-0.5 shadow-sm backdrop-blur-sm">
+      {bookmarkButton(group.lead)}
+      {removeStoryButton(group)}
+      {openItemButton(group.lead)}
+    </span>
+  );
 
   // ---------------------------------------------------------------- cards
   const signalChips = (item: Item) =>
@@ -459,7 +525,7 @@ export function LiveCompanyBriefing({
   };
   const cardStyle = (item: Item) =>
     leadKind(item) !== "others" ? { borderLeftColor: SIGNAL_META[leadKind(item)].color } : undefined;
-  const cardClass = (item: Item) => cn("group/story p-4", leadKind(item) !== "others" && "border-l-[3px]");
+  const cardClass = (item: Item) => cn("group/story relative flex h-full flex-col p-4", leadKind(item) !== "others" && "border-l-[3px]");
 
   const postCard = (group: StoryGroup<Item>, key: string) => {
     const item = group.lead;
@@ -468,11 +534,14 @@ export function LiveCompanyBriefing({
     // unicode, where one visible character is two units, so slicing by
     // index could split one and React would throw a hydration error.
     const chars = Array.from(post.text);
-    const isLong = chars.length > 120;
     const open = expanded.has(post.url);
+    const titleLength = Array.from(item.title).length;
+    const postRemainder = chars.slice(titleLength).join("").trim();
+    const isLong = Array.from(postRemainder).length > 120;
     return (
       <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
-        <p className="mb-2 flex flex-wrap items-center gap-2">{sourceTypeChip(item)}{signalChips(item)}</p>
+        {storyActions(group)}
+        <p className="mb-2 flex flex-wrap items-center gap-2 pr-28">{sourceTypeChip(item)}{signalChips(item)}</p>
         <div className="flex items-start gap-3">
           {post.by ? (
             <Avatar
@@ -494,30 +563,18 @@ export function LiveCompanyBriefing({
               </span>
               <span
                 className="text-[11.5px] text-text-tertiary"
-                suppressHydrationWarning
               >
                 {post.by
-                  ? `${post.by.role || "Tracked person"} · ${fmtDate(post.date)}`
-                  : `Company page · ${fmtDate(post.date)}`}
-              </span>
-              <span className="ml-auto flex items-center gap-1">
-                {removeStoryButton(group)}
-                <a
-                  href={safeHref(post.url) as string}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Open on LinkedIn"
-                  title="Open on LinkedIn"
-                  className="flex items-center gap-1 text-[color:var(--ink-bright-blue)] transition-opacity hover:opacity-70"
-                >
-                  <LinkedInIcon size={13} />
-                  <ExternalLink size={12} strokeWidth={2.2} />
-                </a>
+                  ? post.by.role || "Tracked person"
+                  : "Company page"}
               </span>
             </p>
-            <p className={cn("mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-text-primary", !open && "overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]")}>
-              {post.text || "This post has no caption. Open it on LinkedIn to view."}
-            </p>
+            <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
+              <a href={safeHref(post.url) as string} target="_blank" rel="noreferrer" className="text-blue-primary hover:underline">{item.title}</a>
+            </h3>
+            {postRemainder && <p className={cn("mt-1 whitespace-pre-line text-[12.5px] leading-relaxed text-text-secondary", !open && "overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]")}>
+              {postRemainder}
+            </p>}
             {isLong && (
               <button
                 type="button"
@@ -534,26 +591,17 @@ export function LiveCompanyBriefing({
                 {open ? "Show less" : "Show the full post"}
               </button>
             )}
-            <p className="mt-2.5 flex items-center gap-4 text-[11.5px] font-medium text-text-tertiary">
-              {post.reactions != null && (
-                <span className="flex items-center gap-1 tnum">
-                  <ThumbsUp size={12} strokeWidth={2} /> {post.reactions}
-                </span>
-              )}
-              {post.comments != null && (
-                <span className="flex items-center gap-1 tnum">
-                  <MessageSquare size={12} strokeWidth={2} /> {post.comments}
-                </span>
-              )}
-              {post.reposts != null && (
-                <span className="flex items-center gap-1 tnum">
-                  <Repeat2 size={13} strokeWidth={2} /> {post.reposts}
-                </span>
-              )}
-            </p>
             {item.signal?.why && whyLine(item.signal)}
             {othersLine(group)}
           </div>
+        </div>
+        <div className="mt-auto flex items-end justify-between gap-4 pt-3">
+          <p className="flex items-center gap-4 text-[11.5px] font-medium text-text-tertiary">
+            {post.reactions != null && <span className="flex items-center gap-1 tnum"><ThumbsUp size={12} strokeWidth={2} /> {post.reactions}</span>}
+            {post.comments != null && <span className="flex items-center gap-1 tnum"><MessageSquare size={12} strokeWidth={2} /> {post.comments}</span>}
+            {post.reposts != null && <span className="flex items-center gap-1 tnum"><Repeat2 size={13} strokeWidth={2} /> {post.reposts}</span>}
+          </p>
+          <time className="shrink-0 whitespace-nowrap text-right text-[11.5px] text-text-tertiary" suppressHydrationWarning>{fmtDate(item.date)}</time>
         </div>
       </Card>
     );
@@ -565,7 +613,8 @@ export function LiveCompanyBriefing({
     const own = item.kind === "site";
     return (
       <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
-        <p className="flex flex-wrap items-center gap-2">
+        {storyActions(group)}
+        <p className="flex flex-wrap items-center gap-2 pr-28">
           {sourceTypeChip(item)}
           {signalChips(item)}
           {own ? (
@@ -585,20 +634,15 @@ export function LiveCompanyBriefing({
               <Newspaper size={10.5} strokeWidth={2.2} /> {outletName(article.source, article.url)}
             </span>
           )}
-          <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
-            {fmtDate(article.published)}
-          </span>
-          <span className="ml-auto inline-flex items-center gap-1">{bookmarkButton(item)}{removeStoryButton(group)}</span>
         </p>
         <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
           <a
             href={safeHref(article.url) as string}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-start gap-1 text-blue-primary hover:underline"
+            className="text-blue-primary hover:underline"
           >
             <span>{item.title}</span>
-            <ExternalLink size={11} strokeWidth={2.2} className="mt-1 shrink-0" />
           </a>
         </h3>
         {article.summary && (
@@ -611,6 +655,7 @@ export function LiveCompanyBriefing({
         )}
         {item.signal?.why && whyLine(item.signal)}
         {othersLine(group)}
+        <time className="mt-auto block whitespace-nowrap pt-3 text-right text-[11.5px] text-text-tertiary" suppressHydrationWarning>{fmtDate(item.date)}</time>
       </Card>
     );
   };
@@ -745,8 +790,8 @@ export function LiveCompanyBriefing({
       )}
 
       <div className={cn(
-        "-mr-4 mt-5 grid items-start gap-4 motion-safe:transition-[grid-template-columns] motion-safe:duration-300 motion-safe:ease-in-out",
-        detailsOpen ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,calc((100%_-_16px)/3))]" : "grid-cols-[minmax(0,1fr)_40px] lg:grid-cols-[minmax(0,1fr)_minmax(0,40px)]"
+        "mt-5 grid items-start gap-4 motion-safe:transition-[grid-template-columns] motion-safe:duration-300 motion-safe:ease-in-out",
+        detailsOpen ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]" : "grid-cols-[minmax(0,1fr)_40px]"
       )}>
         <div className="min-w-0">
           {/* THE SECONDARY BAR: SOURCES (Saras, Sep 11), under the Signals
@@ -816,7 +861,7 @@ export function LiveCompanyBriefing({
                     <col className="w-[21%]" />
                     <col />
                     <col className="w-[170px]" />
-                    <col className="w-[76px]" />
+                    <col className="w-[112px]" />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-border-light">
@@ -853,7 +898,6 @@ export function LiveCompanyBriefing({
                       return (
                         <tr key={index} className="group/story transition-colors hover:bg-surface">
                           <td className="px-4 py-3 align-top">
-                            <span className="mb-1.5 block">{sourceTypeChip(item)}</span>
                             <a
                               href={safeHref(item.url) as string}
                               target="_blank"
@@ -862,25 +906,26 @@ export function LiveCompanyBriefing({
                             >
                               <RowIcon size={12} strokeWidth={2} className="shrink-0" />
                               <span className="min-w-0 [overflow-wrap:anywhere]">{sourceName}</span>
-                              <ExternalLink size={10} className="shrink-0" />
                             </a>
                             <span className="mt-1 block max-w-[200px] truncate text-[11px] text-text-tertiary" title={rowKind === "post" ? item.sourceLabel : domain}>
                               {rowKind === "post" ? item.sourceLabel : rowKind === "site" ? "Company website" : domain !== sourceName ? domain : ""}
                             </span>
                           </td>
                           <td className="px-4 py-3 align-top">
-                            {tagged && <span className="mb-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-4" style={{ color, background: tint(color, 8) }}>
-                              <SignalIcon size={12} strokeWidth={2} className="shrink-0" />
-                              {SIGNAL_META[lead].label}
-                            </span>}
+                            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                              {sourceTypeChip(item)}
+                              {tagged && <span className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-4" style={{ color, background: tint(color, 8) }}>
+                                <SignalIcon size={12} strokeWidth={2} className="shrink-0" />
+                                {SIGNAL_META[lead].label}
+                              </span>}
+                            </div>
                             <a
                               href={safeHref(item.url) as string}
                               target="_blank"
                               rel="noreferrer"
-                              className="group inline-flex max-w-full items-start gap-1 text-[13px] font-semibold leading-snug text-blue-primary hover:underline"
+                              className="inline-flex max-w-full items-start text-[13px] font-semibold leading-snug text-blue-primary hover:underline"
                             >
                               <span className="overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">{item.title}</span>
-                              <ExternalLink size={11} strokeWidth={2.2} className="mt-0.5 shrink-0 opacity-60 group-hover:opacity-100" />
                             </a>
                             {(item.signal?.why || item.news?.summary) && (
                               <p className="mt-0.5 overflow-hidden text-[12px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
@@ -897,9 +942,10 @@ export function LiveCompanyBriefing({
                             <span className="whitespace-nowrap">{fmtDate(item.date)}</span>
                           </td>
                           <td className="px-3 py-3 align-top">
-                            <span className="flex items-start justify-end gap-1">
+                            <span className="flex items-start justify-end gap-1 rounded-lg border border-border-light bg-white p-0.5">
                               {bookmarkButton(item)}
                               {removeStoryButton(group)}
+                              {openItemButton(item)}
                             </span>
                           </td>
                         </tr>
@@ -919,7 +965,7 @@ export function LiveCompanyBriefing({
         </div>
 
         {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4). */}
-        <div className="sticky top-20 min-w-0 self-start">
+        <div ref={detailsRailRef} className="sticky top-20 min-w-0 self-start">
           {!detailsOpen && (
             <button
               type="button"
@@ -938,15 +984,19 @@ export function LiveCompanyBriefing({
             aria-label="Company details"
             aria-hidden={!detailsOpen}
             inert={!detailsOpen}
-            className={cn("min-w-0 overflow-hidden rounded-l-2xl border-l border-border-light bg-white shadow-[-4px_0_16px_-12px_rgba(0,0,0,0.18)] motion-safe:transition-[opacity,transform,max-height] motion-safe:duration-300 motion-safe:ease-in-out", detailsOpen ? "max-h-[calc(100vh-6rem)] translate-x-0 opacity-100" : "pointer-events-none max-h-0 translate-x-4 opacity-0")}
+            className={cn("flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm motion-safe:transition-[opacity,transform,max-height] motion-safe:duration-300 motion-safe:ease-in-out", detailsOpen ? "translate-x-0 opacity-100" : "pointer-events-none max-h-0 translate-x-4 opacity-0")}
+            style={detailsOpen && detailsRailHeight ? { maxHeight: detailsRailHeight } : undefined}
           >
-          {/* The panel hugs what it holds (Sep 13 loop): a fixed 600px floor left a
-              tall empty white box under a quiet company's one activity card. */}
-          <div className="max-h-[calc(100vh-6rem)] space-y-4 overflow-y-auto overscroll-contain p-4">
-          <div className="flex items-center justify-between gap-2">
+          {/* Keep the rail control outside its scrolling body. Previously the
+              header disappeared as soon as someone scrolled down to the last
+              cards, making the panel look impossible to close. */}
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-light bg-white px-4 py-3">
             <h2 className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Company details</h2>
-            <button type="button" onClick={() => setDetailsView("closed")} aria-label="Hide company details" aria-expanded={true} aria-controls="company-details-panel" className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-medium text-text-secondary hover:bg-surface hover:text-blue-primary"><PanelRightClose size={14} className="shrink-0" />Hide</button>
+            <button type="button" onClick={() => setDetailsView("closed")} aria-label="Hide company details" aria-expanded={true} aria-controls="company-details-panel" className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light"><PanelRightClose size={14} className="shrink-0" />Hide</button>
           </div>
+          {/* The panel hugs quiet content, while busy content scrolls inside the
+              viewport. Extra bottom room keeps the last card clear of chat. */}
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 pb-24 [scrollbar-gutter:stable]">
           <Card className="p-4" aria-labelledby="signal-filter-title">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -979,23 +1029,6 @@ export function LiveCompanyBriefing({
               })}
             </div>
           </Card>
-          {/* NO PEOPLE ON A COMPETITOR (Saras, Sep 10). */}
-          {!isCompetitor && (
-            <Card className="p-4">
-              <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
-                <Users size={14} strokeWidth={2} className="text-blue-primary" />
-                People tracked
-                {canWrite && <TrackPersonButton companyId={briefing.id} companyName={briefing.name} />}
-              </h2>
-              {extraPeople.length === 0 ? (
-                <p className="mt-2.5 text-[12px] leading-relaxed text-text-secondary">
-                  Nobody yet.{canWrite ? " Add the senior people whose posts you want in this feed, with the plus above." : ""}
-                </p>
-              ) : (
-                <TrackedPeopleList people={extraPeople} personPosts={railPosts} />
-              )}
-            </Card>
-          )}
 
           {briefing.competitorMentions.length > 0 && (
             <Card className="p-4">
@@ -1022,6 +1055,25 @@ export function LiveCompanyBriefing({
               </p>
             </Card>
           )}
+
+          {/* NO PEOPLE ON A COMPETITOR (Saras, Sep 10). */}
+          {!isCompetitor && (
+            <Card className="p-4">
+              <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
+                <Users size={14} strokeWidth={2} className="text-blue-primary" />
+                People tracked
+                {canWrite && <TrackPersonButton companyId={briefing.id} companyName={briefing.name} />}
+              </h2>
+              {extraPeople.length === 0 ? (
+                <p className="mt-2.5 text-[12px] leading-relaxed text-text-secondary">
+                  Nobody yet.{canWrite ? " Add the senior people whose posts you want in this feed, with the plus above." : ""}
+                </p>
+              ) : (
+                <TrackedPeopleList people={extraPeople} personPosts={railPosts} />
+              )}
+            </Card>
+          )}
+
           </div>
           </aside>
         </div>

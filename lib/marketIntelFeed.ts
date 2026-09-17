@@ -1041,27 +1041,31 @@ function itemDates(company: FeedCompany): number[] {
   return out.filter((t) => Number.isFinite(t));
 }
 
-/** THIRTY DAYS, ONE POINT A DAY (Anir, Sep 10: "I don't know why you're
- *  showing 90 days for this graph... just show 30"). The same window as
- *  "this month" beside it, so the line and the number describe one thing. */
+/** The default detail view uses thirty days. Dashboard cards can request the
+ *  active page range; longer ranges are grouped into readable buckets instead
+ *  of drawing dozens of one-day teeth in a tiny sparkline. */
 export const TREND_DAYS = 30;
 
 export function trendFromDates(dates: number[], days = TREND_DAYS): { points: number[]; labels: string[] } {
   const now = Date.now();
   const day = 86_400_000;
-  const points = new Array(days).fill(0);
+  const bucketCount = days <= 14 ? days : days <= 30 ? 15 : 12;
+  const bucketMs = (days * day) / bucketCount;
+  const windowStart = now - days * day;
+  const points = new Array(bucketCount).fill(0);
   const labels: string[] = [];
-  for (let i = days - 1; i >= 0; i -= 1) {
+  for (let i = 0; i < bucketCount; i += 1) {
     labels.push(
-      new Date(now - i * day).toLocaleDateString("en-US", {
+      new Date(windowStart + i * bucketMs).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
       })
     );
   }
   for (const t of dates) {
-    const daysAgo = Math.floor((now - t) / day);
-    if (daysAgo >= 0 && daysAgo < days) points[days - 1 - daysAgo] += 1;
+    if (t < windowStart || t > now) continue;
+    const bucket = Math.min(bucketCount - 1, Math.floor((t - windowStart) / bucketMs));
+    points[bucket] += 1;
   }
   return { points, labels };
 }

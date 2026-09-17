@@ -359,20 +359,16 @@ function DeviationsTable({
   );
   const invalidOnly =
     validityFilter.length === 1 && validityFilter[0] === "Invalid";
-
-  if (!rows.length && invalidAll.length === 0) {
-    return (
-      <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-        <h2 className="text-[15px] font-semibold text-text-primary">
-          Deviated records
-        </h2>
-        <p className="mt-1 text-[13px] text-text-secondary">
-          Nothing has been deviated yet. A record turns up here the first time
-          its schedule, its contract value or its expected sign date changes.
-        </p>
-      </section>
-    );
-  }
+  const selectedOpportunity = useMemo(
+    () => opportunities.find((opportunity) => opportunity.id === opportunityId),
+    [opportunities, opportunityId]
+  );
+  const hasSecondaryFilters =
+    !!query.trim() ||
+    statusFilter.length > 0 ||
+    ownerFilter.length > 0 ||
+    dealStatusFilter.length > 0 ||
+    validityFilter.length > 0;
 
   return (
     <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
@@ -688,6 +684,54 @@ function DeviationsTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border-light">
+            {shown.length === 0 && (
+              <tr>
+                <td colSpan={11} className="px-5 py-12 text-center">
+                  <div className="mx-auto flex max-w-[520px] flex-col items-center">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(124,58,237,0.08)] text-[color:var(--ink-violet-soft)]">
+                      <UserPen size={18} strokeWidth={2} />
+                    </span>
+                    <h3 className="mt-3 text-[14px] font-semibold text-text-primary">
+                      {opportunityId
+                        ? `No deviations for ${selectedOpportunity?.name || "this opportunity"}`
+                        : hasSecondaryFilters
+                          ? "No deviations match these filters"
+                          : "Nothing has been deviated yet"}
+                    </h3>
+                    <p className="mt-1.5 text-[12.5px] leading-5 text-text-secondary">
+                      {opportunityId
+                        ? "This opportunity has no changed schedule, contract value, or expected sign date. Clear the opportunity filter to return to every deviated record."
+                        : hasSecondaryFilters
+                          ? "Clear the current search and filters to return to every deviated record."
+                          : "A record appears here after its schedule, contract value, or expected sign date changes."}
+                    </p>
+                    {(opportunityId || hasSecondaryFilters) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (opportunityId && !hasSecondaryFilters) {
+                            onOpportunityId("");
+                            return;
+                          }
+                          setQuery("");
+                          onOpportunityId("");
+                          setStatusFilter([]);
+                          setOwnerFilter([]);
+                          setDealStatusFilter([]);
+                          setValidityFilter([]);
+                        }}
+                        className="mt-4 inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3.5 text-[12.5px] font-semibold text-blue-primary shadow-sm transition-colors hover:border-blue-primary hover:bg-blue-pale"
+                      >
+                        <X size={14} strokeWidth={2.3} />
+                        {opportunityId && !hasSecondaryFilters
+                          ? "Clear opportunity filter"
+                          : "Clear all filters"}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )}
             {shown.map((r) => (
               <tr
                 key={r.plan.opportunityId}
@@ -2338,34 +2382,35 @@ export function RevenueAccrualsModule({
         </div>
       ) : (
         <div key="deviation" className="tab-panel mt-4 space-y-4">
-          <div
-            role="tablist"
-            aria-label="Deviation view"
-            className="flex flex-wrap items-center gap-1 rounded-xl border border-border-light bg-surface p-1.5 shadow-card"
-          >
-            {(
-              [
-                ["records", "Deviated records"],
-                ["months", "What each month says now"],
-                ["sources", "Where the gap came from"],
-              ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={deviationView === key}
-                onClick={() => setDeviationView(key)}
-                className={cn(
-                  "min-h-9 cursor-pointer rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-primary",
-                  deviationView === key
-                    ? "bg-white text-blue-primary shadow-[0_1px_3px_rgba(16,24,40,0.10)]"
-                    : "text-text-secondary hover:bg-white/70 hover:text-text-primary"
-                )}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="flex items-center justify-end">
+            <ColorSelect
+              value={deviationView}
+              onChange={(value) =>
+                setDeviationView(value as "records" | "months" | "sources")
+              }
+              ariaLabel="Deviation view"
+              minWidth={255}
+              options={[
+                {
+                  value: "records",
+                  label: "Deviated records",
+                  color: "var(--ink-violet-soft)",
+                  icon: UserPen,
+                },
+                {
+                  value: "months",
+                  label: "What each month says now",
+                  color: "var(--ink-bright-blue)",
+                  icon: CalendarRange,
+                },
+                {
+                  value: "sources",
+                  label: "Where the gap came from",
+                  color: "var(--ink-amber)",
+                  icon: Shuffle,
+                },
+              ]}
+            />
           </div>
           {/* MANOJ'S TABLE FIRST, and outside the snapshot gate. His question
               — which records have been deviated, by whom, how many times — has

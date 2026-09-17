@@ -1142,8 +1142,9 @@ export function CustomerTabs({
                 the one thing a rep actually rings was the one thing you had to
                 go looking for.
 
-                A summary, not the Contacts tab moved up: six faces, and the
-                tab is still where you go to work with all of them. */}
+                A summary, not the Contacts tab moved up: four useful contact
+                cards, and the tab is still where you go to work with all of
+                them. */}
             {/* ALWAYS ON THE PAGE, EVEN AT ZERO. Manoj asked for key contacts
                 as one of the five things a customer page must show; rendering
                 the card only when contacts exist meant the account that most
@@ -1154,7 +1155,7 @@ export function CustomerTabs({
                   <h3 className="text-[15px] font-semibold text-text-primary">
                     Key contacts
                   </h3>
-                  {contacts.length > 6 && (
+                  {contacts.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setTab("contacts")}
@@ -1164,31 +1165,46 @@ export function CustomerTabs({
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {contacts.slice(0, 6).map((c) => (
-                    <Link
-                      key={c.id}
-                      href={`/contacts/${c.id}`}
-                      className="flex min-w-0 items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface"
-                    >
-                      <Avatar name={c.full_name} className="h-[34px] w-[34px] shrink-0 text-[12px]" />
-                      <span className="min-w-0">
-                        <span className="block truncate text-[13.5px] font-semibold text-text-primary">
-                          {c.full_name}
-                        </span>
-                        {/* Title, then the number, because a rep scanning this
-                            is looking for the right ROLE first and the way to
-                            reach them second. */}
-                        <span className="block truncate text-[12.5px] text-text-secondary">
-                          {c.job_title || "Title not set"}
-                        </span>
-                        {c.phone && (
-                          <span className="block truncate text-[12px] text-text-tertiary tnum">
-                            {formatPhoneNumber(c.phone)}
-                          </span>
-                        )}
-                      </span>
-                    </Link>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {contacts.slice(0, 4).map((c) => (
+                    <Card key={c.id} className="relative p-3.5 transition-colors hover:border-blue-subtle">
+                      <div className="flex items-start gap-3">
+                        <Avatar name={c.full_name} className="h-10 w-10 shrink-0 text-[13px]" />
+                        <div className="min-w-0 flex-1">
+                          <p className="flex items-center gap-1.5 text-[14px] font-semibold text-text-primary">
+                            <Link
+                              href={`/contacts/${c.id}`}
+                              aria-label={`View ${c.full_name}`}
+                              className="min-w-0 rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-2 focus-visible:ring-blue-primary"
+                            >
+                              <span className="block break-words">{c.full_name}</span>
+                            </Link>
+                            <span className="relative z-10 shrink-0">
+                              <LinkedInLink url={c.linkedin_url} size={14} />
+                            </span>
+                          </p>
+                          <p className="break-words text-[12px] text-text-secondary">
+                            {c.job_title || "Title not set"}
+                          </p>
+                          {(c.email || c.phone) && (
+                            <div className="mt-2 flex flex-col gap-1">
+                              {c.email && (
+                                <a href={`mailto:${c.email}`} className="relative z-10 flex w-fit max-w-full items-center gap-1.5 text-[12px] text-text-tertiary hover:text-blue-primary">
+                                  <Mail size={12.5} strokeWidth={1.6} className="shrink-0" />
+                                  <span className="break-all">{c.email}</span>
+                                </a>
+                              )}
+                              {c.phone && (
+                                <a href={`tel:${c.phone}`} className="relative z-10 flex w-fit items-center gap-1.5 text-[12px] text-text-tertiary hover:text-blue-primary">
+                                  <Phone size={12.5} strokeWidth={1.6} className="shrink-0" />
+                                  <span className="tnum">{formatPhoneNumber(c.phone)}</span>
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
                   ))}
                 </div>
                 {contacts.length === 0 && (
@@ -1331,65 +1347,6 @@ export function CustomerTabs({
                 page; see also the removed Analyze banner and 'Let the agent
                 work' button). The analyze API route still exists for the
                 agent's own use; the page simply no longer advertises it. */}
-
-            {contacts.length > 0 && (
-              <div>
-                <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
-                  Key Contacts
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {contacts.slice(0, 4).map((c) => (
-                    // Stretched-link card: whole card → contact; email / phone /
-                    // LinkedIn stay their own links (no nested anchors). Now shows
-                    // the real contact details Suren asked for (Jul 8).
-                    <Card key={c.id} className="relative p-3.5 hover:border-blue-subtle transition-colors">
-                      <div className="flex items-start gap-3">
-                        <Avatar name={c.full_name} className="w-10 h-10 text-[13px] shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="flex items-center gap-1.5 text-[14px] font-semibold text-text-primary">
-                            <Link
-                              href={`/contacts/${c.id}`}
-                              aria-label={`View ${c.full_name}`}
-                              className="min-w-0 rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-2 focus-visible:ring-blue-primary"
-                            >
-                              <span className="block break-words">{c.full_name}</span>
-                            </Link>
-                            <span className="relative z-10 shrink-0">
-                              <LinkedInLink url={c.linkedin_url} size={14} />
-                            </span>
-                          </p>
-                          <p className="text-[12px] text-text-secondary break-words">
-                            {c.job_title}
-                          </p>
-                          {(c.email || c.phone) && (
-                            <div className="mt-2 flex flex-col gap-1">
-                              {c.email && (
-                                <a
-                                  href={`mailto:${c.email}`}
-                                  className="relative z-10 flex items-center gap-1.5 text-[12px] text-text-tertiary hover:text-blue-primary w-fit max-w-full"
-                                >
-                                  <Mail size={12.5} strokeWidth={1.6} className="shrink-0" />
-                                  <span className="break-all">{c.email}</span>
-                                </a>
-                              )}
-                              {c.phone && (
-                                <a
-                                  href={`tel:${c.phone}`}
-                                  className="relative z-10 flex items-center gap-1.5 text-[12px] text-text-tertiary hover:text-blue-primary w-fit"
-                                >
-                                  <Phone size={12.5} strokeWidth={1.6} className="shrink-0" />
-                                  <span className="tnum">{c.phone}</span>
-                                </a>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div>
               <h3 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">

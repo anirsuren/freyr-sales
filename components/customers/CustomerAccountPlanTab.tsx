@@ -314,6 +314,9 @@ export function CustomerAccountPlanTab({
   const [editing, setEditing] = useState(false);
   const [expandedPlay, setExpandedPlay] = useState<string | null>(basePlan.plays[0]?.id || null);
   const [stakeholderSearch, setStakeholderSearch] = useState("");
+  const [stakeholderRole, setStakeholderRole] = useState("all");
+  const [stakeholderRelationship, setStakeholderRelationship] = useState("all");
+  const [stakeholderSort, setStakeholderSort] = useState("priority");
   const [expandedStakeholder, setExpandedStakeholder] = useState<string | null>(null);
   const [planView, setPlanView] = useState<"plays" | "people" | "actions">("plays");
 
@@ -334,8 +337,32 @@ export function CustomerAccountPlanTab({
     () => buildStakeholders(customer, contacts, plan.owner),
     [customer, contacts, plan.owner]
   );
-  const visibleStakeholders = stakeholders.filter((person) =>
-    `${person.name} ${person.title} ${person.buyingRole}`.toLowerCase().includes(stakeholderSearch.toLowerCase())
+  const visibleStakeholders = useMemo(() => {
+    const query = stakeholderSearch.trim().toLowerCase();
+    const priorityOrder = { High: 0, Medium: 1, Low: 2 } as const;
+    const relationshipOrder = { Strong: 0, Developing: 1, Unclear: 2 } as const;
+    return stakeholders
+      .filter((person) => {
+        const matchesQuery = !query ||
+          `${person.name} ${person.title} ${person.buyingRole} ${person.relationship} ${person.position} ${person.nextAction}`
+            .toLowerCase()
+            .includes(query);
+        const matchesRole = stakeholderRole === "all" || person.buyingRole === stakeholderRole;
+        const matchesRelationship = stakeholderRelationship === "all" || person.relationship === stakeholderRelationship;
+        return matchesQuery && matchesRole && matchesRelationship;
+      })
+      .sort((a, b) => {
+        if (stakeholderSort === "name") return a.name.localeCompare(b.name);
+        if (stakeholderSort === "relationship") {
+          return relationshipOrder[a.relationship] - relationshipOrder[b.relationship] ||
+            priorityOrder[a.priority] - priorityOrder[b.priority] ||
+            a.name.localeCompare(b.name);
+        }
+        return priorityOrder[a.priority] - priorityOrder[b.priority] || a.name.localeCompare(b.name);
+      });
+  }, [stakeholderRelationship, stakeholderRole, stakeholderSearch, stakeholderSort, stakeholders]);
+  const stakeholderFiltersActive = Boolean(
+    stakeholderSearch || stakeholderRole !== "all" || stakeholderRelationship !== "all" || stakeholderSort !== "priority"
   );
   const champion = stakeholders.find((person) => person.buyingRole === "Champion") || stakeholders[0];
   const decisionMaker = stakeholders.find((person) => person.buyingRole === "Decision-maker") || stakeholders[1];
@@ -791,14 +818,21 @@ export function CustomerAccountPlanTab({
         </Card>
 
         <Card className="overflow-hidden p-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-light px-5 py-3.5">
+        <div className="border-b border-border-light px-5 py-3.5">
           <div><div className="flex items-center gap-2"><Users size={16} className="text-[color:var(--ink-teal-deep)]" /><h3 className="text-[15px] font-semibold text-text-primary">Stakeholder map</h3></div><p className="mt-0.5 text-[12px] text-text-secondary">Who matters, where they stand and the next relationship move.</p></div>
-          <div className="relative w-full sm:w-64"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" /><input value={stakeholderSearch} onChange={(e) => setStakeholderSearch(e.target.value)} placeholder="Search stakeholders…" className="h-9 w-full rounded-md border border-border bg-white pl-8 pr-3 text-[12.5px] outline-none focus:border-blue-primary" /></div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 border-b border-border-light bg-surface/35 px-5 py-3">
+          <div className="relative min-w-[240px] flex-[1_1_320px]"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" /><input value={stakeholderSearch} onChange={(e) => setStakeholderSearch(e.target.value)} placeholder="Search stakeholders…" className="h-9 w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[12.5px] outline-none transition-[border-color,box-shadow] focus:border-blue-primary focus:shadow-input-focus" /></div>
+          <ColorSelect value={stakeholderRole} onChange={setStakeholderRole} ariaLabel="Filter by buying role" collapsible={false} dense options={[{ value: "all", label: "All buying roles", noMark: true }, { value: "Champion", label: "Champion", noMark: true }, { value: "Decision-maker", label: "Decision-maker", noMark: true }, { value: "Influencer", label: "Influencer", noMark: true }, { value: "Introducer", label: "Introducer", noMark: true }, { value: "Blocker", label: "Blocker", noMark: true }]} />
+          <ColorSelect value={stakeholderRelationship} onChange={setStakeholderRelationship} ariaLabel="Filter by relationship" collapsible={false} dense options={[{ value: "all", label: "All relationships", noMark: true }, { value: "Strong", label: "Strong", noMark: true }, { value: "Developing", label: "Developing", noMark: true }, { value: "Unclear", label: "Unclear", noMark: true }]} />
+          <ColorSelect value={stakeholderSort} onChange={setStakeholderSort} ariaLabel="Sort stakeholders" collapsible={false} dense options={[{ value: "priority", label: "Priority first", noMark: true }, { value: "relationship", label: "Relationship", noMark: true }, { value: "name", label: "Name A–Z", noMark: true }]} />
+          <span className="ml-auto whitespace-nowrap text-[11.5px] font-medium text-text-tertiary">{visibleStakeholders.length} of {stakeholders.length}</span>
+          {stakeholderFiltersActive && <button type="button" onClick={() => { setStakeholderSearch(""); setStakeholderRole("all"); setStakeholderRelationship("all"); setStakeholderSort("priority"); }} className="h-9 rounded-lg px-2.5 text-[12px] font-semibold text-blue-primary transition-colors hover:bg-blue-light/60">Clear</button>}
         </div>
         <div className="max-h-[430px] overflow-auto">
           <table className="w-full min-w-[720px] border-collapse text-left">
             <thead className="sticky top-0 z-10 bg-white"><tr className="border-b border-border-light text-[10.5px] uppercase tracking-[0.08em] text-text-tertiary"><th className="px-5 py-2.5">Stakeholder</th><th className="px-3 py-2.5">Buying role</th><th className="px-3 py-2.5">Relationship</th><th className="px-3 py-2.5">Next move</th><th className="w-10 px-3 py-2.5" /></tr></thead>
-            <tbody>{visibleStakeholders.map((person) => {
+            <tbody>{visibleStakeholders.length === 0 && <tr><td colSpan={5} className="px-5 py-10 text-center text-[12.5px] text-text-secondary">No stakeholders match these filters.</td></tr>}{visibleStakeholders.map((person) => {
               const expanded = expandedStakeholder === person.id;
               return <Fragment key={person.id}>
                 <tr tabIndex={0} aria-expanded={expanded} onClick={() => setExpandedStakeholder(expanded ? null : person.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setExpandedStakeholder(expanded ? null : person.id); } }} className={cn("cursor-pointer border-b border-border-light text-[12px] outline-none transition-colors focus-visible:bg-blue-light/55 focus-visible:[box-shadow:inset_3px_0_0_0_var(--ink-teal-deep)]", expanded ? "bg-blue-light/45" : "hover:bg-surface/60")}><td className="px-5 py-3"><div className="flex items-center gap-2.5"><Avatar name={person.name} className="h-8 w-8" /><div><p className="font-semibold text-text-primary">{person.name}</p><p className="text-[11px] text-text-secondary">{person.title}</p></div></div></td><td className="px-3 py-3"><RolePill role={person.buyingRole} /></td><td className="px-3 py-3"><p className="font-semibold text-text-primary">{person.relationship}</p><p className="text-[11px] text-text-tertiary">{person.position} · {person.priority} priority</p></td><td className="max-w-[260px] px-3 py-3 font-medium text-blue-primary">{person.nextAction}</td><td className="px-3 py-3"><button aria-label={`${expanded ? "Collapse" : "Expand"} ${person.name}`} aria-expanded={expanded} onClick={(event) => { event.stopPropagation(); setExpandedStakeholder(expanded ? null : person.id); }} className={cn("inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white transition-colors", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/50 hover:text-blue-primary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></button></td></tr>

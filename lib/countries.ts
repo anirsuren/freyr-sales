@@ -140,6 +140,24 @@ export function dialOptions(): { value: string; label: string; noMark: true }[] 
   return out;
 }
 
+/** Compact label for the closed dialling-code picker: flag plus code. */
+export function dialTriggerLabel(
+  dial: string,
+  countryName?: string | null
+): string {
+  const normalizedDial = dial.trim().replace(/^\+/, "");
+  const selectedCountry = findCountry(countryName);
+  const country =
+    selectedCountry?.dial === normalizedDial
+      ? selectedCountry
+      : COUNTRIES.find((candidate) => candidate.dial === normalizedDial);
+
+  if (!normalizedDial) return "Pick code";
+  return country
+    ? `${flagOf(country.iso2)}  +${normalizedDial}`
+    : `🌐  +${normalizedDial}`;
+}
+
 /**
  * Split a stored phone string into its dialling code and the rest, so an
  * existing "+44 20 7946 0000" reopens with the United Kingdom already chosen

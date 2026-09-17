@@ -193,6 +193,20 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 17 Market Intel mock charts:** Replaced the shared modulo-based sample
+  schedule that gave every company the same sawtooth and final spike. Mock
+  posts, news, website items and people posts now use stable company-specific
+  timing, varied momentum and occasional event clusters. The company-details
+  rail now pins its always-visible Hide control, places competitor mentions
+  directly under Signals and gives its independently scrolling body enough
+  bottom clearance to reveal the last card. Company and people posts now keep
+  bookmark, admin delete and LinkedIn/open actions together in a permanent
+  top-right control group, and post bookmarks persist and render in Saved.
+  The New FDL component dialog now follows the Solutioning request visual
+  structure with a purpose panel, descriptive type cards, explicit selected
+  state and a separate action footer. Focused tests, TypeScript, lint and the
+  production build pass. Local only, not deployed.
+
 - **Sep 16 Solutioning requirements follow-up:** Owner-only workstream assignment
   now bypasses the unrelated request-edit gate, while admin bypasses shared
   module read/create/edit/delete restrictions. Request create/edit enforces BD
@@ -879,7 +893,7 @@ Expanded lead rows keep the request summary and primary workflow action in the h
 Source Performance uses the same four-column grid and horizontal inset for its heading and every row. The source name, total, converted count, percentage, and chevron occupy the first row; the volume bar has its own second row. Numeric cells no longer sit halfway between the source label and its bar. Completed locally, not deployed.
 
 ### Sep 15: deviation analysis is selectable and explicit
-Opportunities → Deviations opens on the simple Deviated records table. What each month says now and Where the gap came from are separate selectable views rather than two long sections appended below it. Gap cards name the opportunity and customer, state where slipped money moved, and show frozen-plan-to-today amounts for every changed month instead of unexplained positive and negative mini bars. Completed locally, not deployed.
+Opportunities → Deviations opens on the simple Deviated records table. A single compact dropdown switches between Deviated records, What each month says now, and Where the gap came from instead of using a wide tab strip or appending two long sections below the table. Gap cards name the opportunity and customer, state where slipped money moved, and show frozen-plan-to-today amounts for every changed month instead of unexplained positive and negative mini bars. Completed locally, not deployed.
 
 ### Sep 15: solution request folds and documents match sales materials
 Clicking unused space on a Solution request row expands or collapses its inline details; its title remains the direct link to the full page. Submission subtype text such as Proposal sits below the title and cannot be squeezed into a clipped metadata fragment. In table and split details, document names use the shared Sales Materials hover preview and open in the shared document modal, with a separate open-on-own-page action. What it is for keeps its linked names without redundant arrow glyphs. Completed locally, not deployed.
@@ -894,8 +908,8 @@ Mock-mode Market Intel keeps the same link behavior as the live feed. Every comp
 
 Lead chart hover rows carry two separate identities: a prominent company logo beside the company name, then the person’s own avatar beside the person’s name. Lead status is a status chip rather than flat text attached to the person. This applies to both weekly-intake points and the current-status donut. Completed locally, not deployed.
 
-### Sep 15: chart record popups remain reachable and scrollable
-Every chart type uses the shared portalled tooltip surface. Record popups keep a short pointer handoff from graph to card, include the visual gap in their hit area, constrain the whole card to the viewport, and contain wheel scrolling inside the card. The card remains open while hovered or keyboard-focused, so long record lists can be read to the end without scrolling the page underneath. Completed locally, not deployed.
+### Sep 15: chart record popups use exact marks
+Every chart type uses the shared portalled tooltip surface. Line and area popups open only from their visible data dots, compact sparklines open only from their visible endpoint dot, and bar/donut popups open from the painted mark itself; empty plot space never snaps to a nearby point or reopens a dismissed card. The card is constrained to the viewport and closes as soon as the pointer leaves its exact chart mark. Completed locally, not deployed.
 
 ### Sep 15: lead journey is one continuous timeline
 Expanded leads show Received, Current status, and Outcome on one connected rail instead of three separate cards. Completed movement uses a solid connector, an undecided outcome uses a dashed continuation, the current state carries its canonical status colour, and every date and person stays attached to the milestone it describes. Completed locally, not deployed.
@@ -923,3 +937,36 @@ Mock customer pages now place Account plan immediately after Overview. The revie
 
 ### Sep 16: first-use product tour stays anchored
 The walkthrough now measures targets without repeatedly scrolling already-visible controls, ignores sub-pixel geometry noise, and updates only when the target or dialog size actually changes. The tour card no longer animates between its fallback and measured positions; its entrance and step changes use opacity only. An isolated fake-data browser reproduction held both the first-step dialog and spotlight at one position with zero automatic scroll calls. Typecheck and the whitespace check pass. Ready for production deployment.
+
+### Sep 17: deviation filters never replace the workspace
+Opportunities → Deviations keeps its heading, opportunity selector, search, filters, and table when a selected opportunity has no deviated records. The zero-result message appears inside the table, names the selected opportunity when available, and provides a direct clear-filter action. Clearing it also removes the opportunity query parameter, so a deep link can never strand the user on a blank, control-free page. Typecheck, focused lint, revenue rules, booked-revenue tests, production build, and whitespace checks pass. Completed locally, not deployed.
+
+### Sep 17: phone country selection keeps its flag
+The closed phone dialling-code selector shows the selected country flag beside its code, matching the option the user chose in the open menu. Shared dial codes use the lead's selected country when available, so a Canadian selection does not reopen looking like the United States. Completed locally, not deployed.
+
+### Sep 17: expanded lead guidance names the missing information
+Lead follow-up cards do not repeat the status already shown on the row. Their footer names each missing field directly instead of showing a detached detail count, and customer matching is not treated as missing lead data. Contact details show a Customer account row only when a linked account exists. Truncated email links do not open a persistent native browser title bubble. Completed locally, not deployed.
+
+### Sep 17: customer presentation dates keep their column
+Customer Submissions, Presentations, and Meeting requests tables use balanced fixed columns. The record title no longer consumes the space reserved for Requested and When, and both date columns stay on one line at desktop widths. Completed locally, not deployed.
+
+### Sep 17: customer solutioning tables share one six-column layout
+Customer Solutioning requests no longer uses the stale 1,540px ten-column table intended for a larger record shape. Solutioning requests, Submissions, Presentations, and Meeting requests share the same balanced six-column layout, keep both dates on one line, and fit the customer content area without opening at a hidden horizontal offset. The remaining customer tables retain only the minimum widths their visible columns require. Completed locally, not deployed.
+
+### Sep 17: customer Overview has one Key contacts section
+Customer Overview shows Key contacts once, directly after the account summary. Its four preview cards retain the richer email, phone, LinkedIn, and contact-page actions, while a persistent All contacts action opens the complete Contacts tab. The later duplicate section is removed. Completed locally, not deployed.
+
+### Sep 17: chart popups end with the chart mark
+Every chart tooltip is display-only and belongs to the exact painted mark that opened it. Line and area hit targets match the visible point's resting and active sizes instead of surrounding each point with an invisible 18px circle. Leaving a dot, bar, slice, or sparkline endpoint closes the popup synchronously; moving horizontally through empty plot space cannot retain the current point or select the next one. There is no delayed dismissal, invisible bridge, or popup hover area that can keep it stuck on screen. Completed locally, not deployed.
+
+### Sep 17: stakeholder controls share one toolbar
+Customer Account plan keeps the Stakeholder map heading clear and places search at the left of a dedicated toolbar. Buying-role and relationship filters, stakeholder sorting, the visible-result count, and a contextual Clear action occupy the same row. Empty filter results stay inside the table with an explicit message. Completed locally, not deployed.
+
+### Sep 17: Market Intel cards share one hierarchy
+Market Intel list and tile cards keep source and signal tags at the top-left, a permanent Save / Delete / Open-in-new-tab action cluster at the top-right for authorized actions, one linked title treatment, and the timestamp at the bottom-right. Company and people posts use the same title hierarchy as articles instead of mixing their date into the author line. Table view keeps the same tag order and the same three-action cluster in its Actions column. Completed locally, not deployed.
+
+### Sep 17: Market Intel details rail stays reachable
+The feed and Company details rail no longer overlap or borrow width through a negative page margin. The open rail has a stable desktop width and continuously measures the viewport room beneath its current sticky position, then confines Signals, Competitors mentioned, People tracked, and later cards to one internal scroll area. Its header and Hide action remain outside that scroll area. Completed locally, not deployed.
+
+### Sep 17: mock Market Intel trends describe different histories
+Mock company sparklines use deterministic but visibly different activity families, including climbs, recoveries, steps, and cycles. Their records are distributed across the same history used for the momentum percentage, with no shared sawtooth or manufactured final-day spike. Ranges longer than two weeks are grouped into a readable 12–15 points so a compact card never draws 90 noisy daily teeth. Completed locally, not deployed.

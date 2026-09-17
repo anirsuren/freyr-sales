@@ -59,6 +59,12 @@ export const FDL_TYPE_META: Record<
   },
 };
 
+const FDL_TYPE_DESCRIPTION: Record<FdlComponentType, string> = {
+  Module: "A focused product capability that can be connected to offerings.",
+  Agent: "An AI-led workflow that performs or assists with a defined task.",
+  Platform: "A shared foundation that supports multiple modules or agents.",
+};
+
 /** The sentinel for "belongs to no offering", which is a real answer here and
  *  not the absence of one. */
 const UNCONNECTED = "\u0000none";
@@ -951,19 +957,43 @@ export function FdlComponentsBrowser({
         </div>
       )}
 
-      <Modal open={adding} onClose={() => setAdding(false)} title="New FDL component">
+      <Modal
+        open={adding}
+        onClose={() => setAdding(false)}
+        title="New FDL component"
+        size="wide"
+        titleAfter={
+          <span className="rounded-full bg-blue-light px-2 py-0.5 text-[10.5px] font-semibold text-blue-primary">
+            Component catalog
+          </span>
+        }
+      >
         <form
           onSubmit={(event) => {
             event.preventDefault();
             void create();
           }}
-          className="space-y-4"
+          className="flex flex-col"
         >
-          <div>
-            <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
-              Component name
+          <div className="mb-5 flex items-start gap-3 rounded-xl border border-blue-subtle bg-blue-light/45 p-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-primary shadow-sm">
+              <Boxes size={17} strokeWidth={2} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[13px] font-semibold text-text-primary">
+                Add a reusable product building block
+              </span>
+              <span className="mt-0.5 block text-[12px] leading-relaxed text-text-secondary">
+                Give it a clear name and choose the type that best describes how it is used.
+              </span>
+            </span>
+          </div>
+
+          <label className="block">
+            <span className="mb-1.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
+              Component name <span className="text-error">*</span>
               <InfoHint text="What this piece of software is called, for example Register Module or PI Agent." />
-            </label>
+            </span>
             {/* The cap the route already keeps: /api/fdl-components trims the
                 name to 80 characters, so a longer one was accepted, saved short
                 and never mentioned. Declaring it here stops the typing where
@@ -974,14 +1004,18 @@ export function FdlComponentsBrowser({
               maxLength={80}
               onChange={(event) => setName(event.target.value)}
               placeholder="Register Module"
-              className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary"
+              className="h-11 w-full rounded-xl border border-border-light bg-white px-3.5 text-[13.5px] text-text-primary outline-none transition-[border-color,box-shadow] placeholder:text-text-tertiary focus:border-blue-subtle focus:shadow-input-focus"
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-[12px] font-medium text-text-primary">
-              Component type
-            </label>
-            <div className="flex gap-2">
+          </label>
+
+          <fieldset className="mt-5">
+            <legend className="text-[12.5px] font-semibold text-text-primary">
+              Component type <span className="text-error">*</span>
+            </legend>
+            <p className="mt-0.5 text-[11.5px] text-text-secondary">
+              Choose one. You can change its details after creation.
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {(Object.keys(FDL_TYPE_META) as FdlComponentType[]).map((option) => {
                 const meta = FDL_TYPE_META[option];
                 const active = type === option;
@@ -990,24 +1024,52 @@ export function FdlComponentsBrowser({
                     key={option}
                     type="button"
                     onClick={() => setType(option)}
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-semibold transition-colors"
-                    style={
-                      active
-                        ? { color: meta.color, background: meta.bg, borderColor: meta.border }
-                        : undefined
-                    }
+                    aria-pressed={active}
+                    className="group flex min-h-[138px] cursor-pointer flex-col items-start rounded-xl border-2 bg-white p-3.5 text-left transition-[transform,border-color,box-shadow,background-color] hover:-translate-y-0.5 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30"
+                    style={{
+                      borderColor: active ? meta.border : "var(--border-light)",
+                      background: active ? meta.bg : "white",
+                    }}
                   >
-                    <meta.Icon size={13} strokeWidth={2.2} />
-                    {option}
+                    <span className="flex w-full items-start justify-between gap-2">
+                      <span
+                        className="flex h-9 w-9 items-center justify-center rounded-lg"
+                        style={{ color: meta.color, background: active ? "white" : meta.bg }}
+                      >
+                        <meta.Icon size={17} strokeWidth={2} />
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="flex h-5 w-5 items-center justify-center rounded-full border-2"
+                        style={{ borderColor: active ? meta.color : "var(--border-light)", color: meta.color }}
+                      >
+                        {active && <CircleCheck size={14} strokeWidth={2.5} />}
+                      </span>
+                    </span>
+                    <span className="mt-3 text-[13.5px] font-semibold" style={{ color: active ? meta.color : "var(--text-primary)" }}>
+                      {option}
+                    </span>
+                    <span className="mt-1 text-[11.5px] leading-snug text-text-secondary">
+                      {FDL_TYPE_DESCRIPTION[option]}
+                    </span>
                   </button>
                 );
               })}
             </div>
-          </div>
-          <div className="flex justify-end">
-            <Button type="submit" disabled={!name.trim()} loading={busy}>
-              <Plus size={14} strokeWidth={2.2} /> Create component
-            </Button>
+          </fieldset>
+
+          <div className="-mx-5 -mb-5 mt-6 flex items-center justify-between gap-4 border-t border-border-light bg-surface/45 px-5 py-4">
+            <span className="min-w-0 text-[11.5px] text-text-secondary">
+              {!name.trim() ? "Enter a component name to continue." : `${type} selected`}
+            </span>
+            <span className="flex shrink-0 items-center gap-2">
+              <Button type="button" variant="secondary" onClick={() => setAdding(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!name.trim()} loading={busy}>
+                <Plus size={14} strokeWidth={2.2} /> Create component
+              </Button>
+            </span>
           </div>
         </form>
       </Modal>
