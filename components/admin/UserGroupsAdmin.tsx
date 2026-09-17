@@ -521,12 +521,23 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                     onClick={() => setSelectedId(g.id)}
                     aria-current={on ? "true" : undefined}
                     className={cn(
-                      "grid w-full cursor-pointer grid-cols-[104px_minmax(0,1fr)] items-center gap-2.5 border-b border-border-light px-3.5 py-3 text-left transition-colors last:border-b-0",
+                      "grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_104px] items-center gap-2.5 border-b border-border-light px-3.5 py-3 text-left transition-colors last:border-b-0",
                       on
                         ? "bg-blue-light/50 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                         : "hover:bg-surface"
                     )}
                   >
+                    <span className="min-w-0 flex-1">
+                      <span className={cn(
+                        "block truncate text-[13px] font-semibold",
+                        on ? "text-blue-primary" : "text-text-primary"
+                      )}>
+                        {g.name}
+                      </span>
+                      <span className="block truncate text-[11px] text-text-tertiary">
+                        {roster.length} {roster.length === 1 ? "person" : "people"}
+                      </span>
+                    </span>
                     <span className="min-w-0 overflow-hidden py-1">
                       <PersonFan
                         people={roster.map((member) => ({
@@ -541,17 +552,6 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                         overlap={-7}
                         max={3}
                       />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className={cn(
-                        "block truncate text-[13px] font-semibold",
-                        on ? "text-blue-primary" : "text-text-primary"
-                      )}>
-                        {g.name}
-                      </span>
-                      <span className="block truncate text-[11px] text-text-tertiary">
-                        {roster.length} {roster.length === 1 ? "person" : "people"}
-                      </span>
                     </span>
                   </button>
                 );
