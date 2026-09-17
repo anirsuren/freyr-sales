@@ -226,12 +226,14 @@ export function LiveCompanyBriefing({
     } catch { toast("Could not update this bookmark. Please try again.", "error"); }
     finally { setSavingArticle(null); }
   }
+  const storyActionClass =
+    "inline-flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary";
   const bookmarkButton = (item: Item) => (
     <button type="button" disabled={!savedReady || savingArticle !== null} onClick={() => void toggleArticle(item)}
       aria-label={`${savedUrls.has(item.url) ? "Unsave" : "Save"} item: ${item.title}`} aria-pressed={savedUrls.has(item.url)}
       title={savedUrls.has(item.url) ? "Remove bookmark" : "Save item"}
-      className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-blue-primary hover:bg-blue-light disabled:opacity-40">
-      <Bookmark size={15} fill={savedUrls.has(item.url) ? "currentColor" : "none"} />
+      className={cn(storyActionClass, "w-7 hover:bg-blue-light hover:text-blue-primary disabled:cursor-default disabled:opacity-40", savedUrls.has(item.url) && "text-blue-primary")}>
+      <Bookmark size={14} strokeWidth={2.2} fill={savedUrls.has(item.url) ? "currentColor" : "none"} />
     </button>
   );
   const [removedUrls, setRemovedUrls] = useState<Set<string>>(new Set());
@@ -380,16 +382,16 @@ export function LiveCompanyBriefing({
         aria-label={`Remove story: ${group.lead.title}`}
         title="Remove this story"
         className={cn(
-          "inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-[color,background-color,opacity] hover:bg-[rgba(176,32,32,0.08)] hover:text-[color:#B02020] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:#B02020]",
+          storyActionClass,
+          "w-7 hover:bg-[rgba(176,32,32,0.08)] hover:text-[color:#B02020] focus-visible:outline-[color:#B02020]",
           className
         )}
       >
-        <Trash2 size={13} strokeWidth={2.1} />
+        <Trash2 size={14} strokeWidth={2.2} />
       </button>
     ) : null;
 
   const openItemButton = (item: Item) => {
-    const linkedIn = item.kind === "company" || item.kind === "people";
     return (
       <a
         href={safeHref(item.url) as string}
@@ -397,19 +399,18 @@ export function LiveCompanyBriefing({
         rel="noreferrer"
         aria-label={`Open item in a new tab: ${item.title}`}
         title="Open in a new tab"
-        className="inline-flex h-7 min-w-7 shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-blue-primary transition-colors hover:bg-blue-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+        className={cn(storyActionClass, "w-7 hover:bg-blue-light hover:text-blue-primary")}
       >
-        {linkedIn && <LinkedInIcon size={13} />}
-        <ExternalLink size={12} strokeWidth={2.2} />
+        <ExternalLink size={14} strokeWidth={2.2} />
       </a>
     );
   };
 
   const storyActions = (group: StoryGroup<Item>) => (
-    <span className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-lg border border-border-light bg-white/95 p-0.5 shadow-sm backdrop-blur-sm">
+    <span className="absolute right-3 top-3 z-10 inline-flex w-max items-center gap-0.5 rounded-lg border border-border-light bg-white/95 p-0.5 shadow-sm backdrop-blur-sm">
       {bookmarkButton(group.lead)}
-      {removeStoryButton(group)}
       {openItemButton(group.lead)}
+      {removeStoryButton(group)}
     </span>
   );
 
@@ -836,10 +837,10 @@ export function LiveCompanyBriefing({
               <Card className="overflow-hidden p-0">
                 <table className="w-full table-fixed">
                   <colgroup>
-                    <col className="w-[21%]" />
+                    <col className="w-[220px]" />
                     <col />
-                    <col className="w-[170px]" />
-                    <col className="w-[112px]" />
+                    <col className="w-[180px]" />
+                    <col className="w-[128px]" />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-border-light">
@@ -880,17 +881,18 @@ export function LiveCompanyBriefing({
                               href={safeHref(item.url) as string}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex max-w-full items-center gap-1.5 text-[12px] font-semibold text-blue-primary hover:underline"
+                              className="flex h-7 max-w-full items-center gap-1.5 text-[12px] font-semibold text-blue-primary hover:underline"
+                              title={sourceName}
                             >
                               <RowIcon size={12} strokeWidth={2} className="shrink-0" />
-                              <span className="min-w-0 [overflow-wrap:anywhere]">{sourceName}</span>
+                              <span className="min-w-0 truncate">{sourceName}</span>
                             </a>
-                            <span className="mt-1 block max-w-[200px] truncate text-[11px] text-text-tertiary" title={rowKind === "post" ? item.sourceLabel : domain}>
+                            <span className="mt-1 block max-w-full truncate text-[11px] leading-4 text-text-tertiary" title={rowKind === "post" ? item.sourceLabel : domain}>
                               {rowKind === "post" ? item.sourceLabel : rowKind === "site" ? "Company website" : domain !== sourceName ? domain : ""}
                             </span>
                           </td>
                           <td className="px-4 py-3 align-top">
-                            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                            <div className="mb-1.5 flex min-h-7 flex-wrap items-center gap-1.5">
                               {sourceTypeChip(item)}
                               {tagged && <span className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-4" style={{ color, background: tint(color, 8) }}>
                                 <SignalIcon size={12} strokeWidth={2} className="shrink-0" />
@@ -913,17 +915,17 @@ export function LiveCompanyBriefing({
                             {othersLine(group)}
                           </td>
                           <td
-                            className="px-4 py-3 align-top text-[12px] leading-relaxed text-text-secondary"
+                            className="px-4 py-3 align-top text-[12px] text-text-secondary"
                             suppressHydrationWarning
                           >
                             {/* One line: "Sep 13, 2026 ·" used to break away from its time. */}
-                            <span className="whitespace-nowrap">{fmtDate(item.date)}</span>
+                            <span className="inline-flex h-7 items-center whitespace-nowrap">{fmtDate(item.date)}</span>
                           </td>
-                          <td className="px-3 py-3 align-top">
-                            <span className="flex items-start justify-end gap-1 rounded-lg border border-border-light bg-white p-0.5">
+                          <td className="px-3 py-3 text-right align-top">
+                            <span className="inline-flex w-max items-center gap-0.5 rounded-lg border border-border-light bg-white p-0.5 align-top">
                               {bookmarkButton(item)}
-                              {removeStoryButton(group)}
                               {openItemButton(item)}
+                              {removeStoryButton(group)}
                             </span>
                           </td>
                         </tr>
