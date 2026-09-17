@@ -1021,6 +1021,8 @@ People, owner, assignee, customer, and other record lookup menus show a search f
 ### Sep 17: solutioning division assignments stay compact
 Each division card keeps Solutioning lead and Primary assignee in two balanced columns. A compact blue Add contributor action sits in the card header and opens a large searchable roster with every eligible person already visible; it does not hide the roster behind another dropdown. The roster excludes the request owner, division lead, primary assignee, and existing contributors. Existing contributors remain in an explicit labelled row with confirmed removal. Completed locally, not deployed.
 
+The contributor roster search uses the full modal-field scale: 52px tall with larger text, icon, and padding, plus one clean focus border instead of the compact toolbar field and doubled focus halo. Completed locally, not deployed.
+
 ### Sep 17: request timeline ends with Documents
 The Solutioning request timeline fills the remaining right-rail space only until the bottom edge of the Documents section in the left column. Its events scroll internally inside that aligned boundary, while the comment action remains visible at the bottom of the card. The rail is sized by the page content rather than the viewport. Completed locally, not deployed.
 

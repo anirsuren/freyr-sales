@@ -2044,15 +2044,15 @@ export function RequestDetail({
                 Choose someone to support <b className="text-text-primary">{division ?? "this division"}</b>.
                 People who already have a role here are hidden.
               </p>
-              <label className="mt-4 flex h-11 items-center gap-2 rounded-xl border border-border-light bg-white px-3 shadow-sm focus-within:border-blue-primary focus-within:shadow-input-focus">
-                <Search size={15} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
+              <label className="mt-5 flex h-[52px] items-center gap-3 rounded-xl border-2 border-border-light bg-white px-4 transition-colors focus-within:border-blue-primary">
+                <Search size={18} strokeWidth={2.1} className="shrink-0 text-text-secondary" />
                 <input
                   autoFocus
                   value={contributorQuery}
                   onChange={(event) => setContributorQuery(event.target.value)}
                   placeholder="Search people…"
                   aria-label="Search contributors"
-                  className="min-w-0 flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-text-tertiary"
+                  className="min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-text-tertiary"
                 />
               </label>
               <div className="mt-4 flex items-center justify-between">
