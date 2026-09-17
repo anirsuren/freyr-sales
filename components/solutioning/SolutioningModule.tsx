@@ -1042,21 +1042,17 @@ function RequestRow({
       )}
     >
       <td className="px-4 py-3.5">
-        <Link
-          href={requestHref}
-          onClick={(e) => e.stopPropagation()}
-          className="whitespace-nowrap text-[11px] font-bold text-text-secondary transition-colors hover:text-blue-primary hover:underline tnum"
-        >
+        <span className="whitespace-nowrap text-[11px] font-bold text-text-secondary tnum">
           {r.ref}
-        </Link>
+        </span>
       </td>
       <td className="px-4 py-3.5">
         <Link
           href={requestHref}
           onClick={(e) => e.stopPropagation()}
-          className="line-clamp-2 text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
+          className="inline-block max-w-full text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
         >
-          {r.title}
+          <span className="line-clamp-2">{r.title}</span>
         </Link>
       </td>
       <td className="px-4 py-3.5">
@@ -1072,7 +1068,7 @@ function RequestRow({
           <Link
             href={`/opportunities/${r.opportunityIds[0]}`}
             onClick={(event) => event.stopPropagation()}
-            className="line-clamp-2 text-[12px] text-text-secondary transition-colors hover:text-blue-primary hover:underline"
+            className="inline-block max-w-full text-[12px] text-text-secondary transition-colors hover:text-blue-primary hover:underline"
           >
             <span className="block font-semibold text-text-primary">
               {r.opportunityIds[0]}
@@ -1114,7 +1110,7 @@ function RequestRow({
         <Link
           href={`/analytics/reps/${repSlug(r.requestedBy)}`}
           onClick={(event) => event.stopPropagation()}
-          className="group/person flex min-w-0 items-center gap-1.5"
+          className="group/person inline-flex max-w-full min-w-0 items-center gap-1.5"
         >
           <Avatar name={r.requestedBy} className="h-5 w-5 shrink-0 text-[7px]" />
           <span className="block truncate text-[12px] text-text-primary transition-colors group-hover/person:text-blue-primary group-hover/person:underline">
@@ -1127,7 +1123,7 @@ function RequestRow({
           <Link
             href={`/analytics/reps/${repSlug(r.owner)}`}
             onClick={(event) => event.stopPropagation()}
-            className="group/person flex min-w-0 items-center gap-1.5"
+            className="group/person inline-flex max-w-full min-w-0 items-center gap-1.5"
           >
             <Avatar name={r.owner} className="h-5 w-5 shrink-0 text-[7px]" />
             <span className="min-w-0 break-words text-[12px] text-text-primary transition-colors group-hover/person:text-blue-primary group-hover/person:underline">
@@ -1157,7 +1153,7 @@ function RequestRow({
           <Link
             href={`/analytics/reps/${repSlug(preparedBy)}`}
             onClick={(event) => event.stopPropagation()}
-            className="group/person flex min-w-0 items-center gap-1.5"
+            className="group/person inline-flex max-w-full min-w-0 items-center gap-1.5"
           >
             <Avatar name={preparedBy} className="h-5 w-5 shrink-0 text-[7px]" />
             <span className="truncate text-[12px] text-text-primary transition-colors group-hover/person:text-blue-primary group-hover/person:underline">

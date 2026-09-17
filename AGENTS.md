@@ -1048,5 +1048,7 @@ Expanded Solutioning list rows are compact previews rather than miniature detail
 
 The expanded preview is sticky to the table's visible horizontal viewport. Scrolling the wide table to later columns cannot push the preview's brief and context off-screen or strand the activity summary by itself. Completed locally, not deployed.
 
+In Solutioning list rows, only the visible solution title opens the request detail page. The request ID is plain text, and every linked person or opportunity uses a content-sized hit area. Clicking unused space in any cell stays on the list and expands or collapses the preview. Completed locally, not deployed.
+
 ### Sep 17: customer band tabs omit redundant actions
 Customer connection tabs no longer repeat record-team editing controls or links such as “The team” and “All deals” beside the active band summary. The selected tab already identifies and opens that destination, so the duplicated action row is removed across all customer band tabs. Completed locally, not deployed.
