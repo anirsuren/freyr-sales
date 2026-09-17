@@ -868,7 +868,7 @@ export function RequestDetail({
       </div>
 
       {tab === "overview" ? (
-        <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-stretch">
+        <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           {/* ------------------------------------------------ MAIN column */}
           {/* KEYED ON THE TAB, WHICH IS WHAT MAKES IT ANIMATE AT ALL
               (Suren, Aug 28: "add premium animations when I switch between").
@@ -1299,7 +1299,7 @@ export function RequestDetail({
           </div>
 
           {/* ------------------------------------------------- SIDE rail */}
-          <div key={`rail-${tab}`} className="tab-panel tab-panel-stagger space-y-4 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:space-y-0 lg:gap-4">
+          <div key={`rail-${tab}`} className="tab-panel tab-panel-stagger space-y-4">
             {/* This picker opens beyond the card's body. SectionCard normally
                 clips its rounded corners, which also clipped this menu before
                 the first option could paint. Keep this card above the cards
@@ -1394,14 +1394,6 @@ export function RequestDetail({
             <SectionCard
               title="Timeline"
               icon={History}
-              className={cn(
-                hasTimelineItems &&
-                  "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:[&>div]:min-h-0 lg:[&>div]:flex-1 lg:[&>div>div]:h-full"
-              )}
-              bodyClassName={cn(
-                "flex min-h-0 flex-col",
-                hasTimelineItems && "h-full flex-1"
-              )}
             >
               {/* AN ACTUAL TIMELINE (Anir, Aug 27: "this has to be an actual
                   fucking timeline"). It was six identical blue documents in a
@@ -1444,8 +1436,8 @@ export function RequestDetail({
               <ol
                 key={timelineItems.length}
                 className={cn(
-                  "min-h-0 overflow-y-auto pr-1",
-                  hasTimelineItems && "flex-1"
+                  "overflow-y-auto pr-1",
+                  hasTimelineItems && "max-h-[620px]"
                 )}
               >
                 {timelineItems.map((a, i, all) => {

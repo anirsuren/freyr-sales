@@ -1023,14 +1023,14 @@ Each division card keeps Solutioning lead and Primary assignee in two balanced c
 
 The contributor roster search uses the full modal-field scale: 52px tall with larger text, icon, and padding, plus one clean focus border instead of the compact toolbar field and doubled focus halo. Completed locally, not deployed.
 
-### Sep 17: request timeline ends with Documents
-The Solutioning request timeline fills the remaining right-rail space only until the bottom edge of the Documents section in the left column. Its events scroll internally inside that aligned boundary, while the comment action remains visible at the bottom of the card. The rail is sized by the page content rather than the viewport. Completed locally, not deployed.
+### Sep 17: request timeline grows only with its content
+The Solutioning request timeline treats the Documents endpoint as a maximum boundary, not a required height. The card grows naturally with its visible entries, caps its event list at 620px and scrolls internally after that. It never stretches merely to match the left column or viewport. Completed locally, not deployed.
 
 An empty request timeline stays compact around its header and Add a comment action. It expands toward the Documents boundary only when activity exists to use and scroll within that space. Completed locally, not deployed.
 
 Timeline sizing uses the final deduplicated entries that actually render, not the raw activity array. Hidden or collapsed activity can never make an apparently empty card stretch down the page. Completed locally, not deployed.
 
-When activity exists, the Timeline body itself owns the remaining card height and the event list scrolls inside it. The outer card never stretches while leaving its body collapsed at the top, and the list resets its scroll position when its entry count changes. Completed locally, not deployed.
+The list resets its scroll position when its entry count changes. Completed locally, not deployed.
 
 An empty timeline explicitly says “No activity yet” and explains that changes and comments will appear there. The empty message and comment action form one compact card instead of leaving an unexplained blank panel. Completed locally, not deployed.
 
