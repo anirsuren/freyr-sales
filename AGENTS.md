@@ -970,3 +970,6 @@ The feed and Company details rail no longer overlap or borrow width through a ne
 
 ### Sep 17: mock Market Intel trends describe different histories
 Mock company sparklines use deterministic but visibly different activity families, including climbs, recoveries, steps, and cycles. Their records are distributed across the same history used for the momentum percentage, with no shared sawtooth or manufactured final-day spike. Ranges longer than two weeks are grouped into a readable 12–15 points so a compact card never draws 90 noisy daily teeth. Completed locally, not deployed.
+
+### Sep 17: Company details uses the full viewport
+While a Market Intel briefing scrolls, its Company details rail sticks four pixels below the 56px global header instead of leaving a 24px dead band. The internal scroll limit is measured from that same position, exposing more of Signals, People tracked, competitors, and the remaining detail cards without covering the header. Completed locally, not deployed.

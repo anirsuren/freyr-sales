@@ -190,8 +190,11 @@ export function LiveCompanyBriefing({
       if (frame !== null) return;
       frame = window.requestAnimationFrame(() => {
         frame = null;
-        const top = Math.max(80, detailsRailRef.current?.getBoundingClientRect().top ?? 80);
-        const next = Math.max(280, Math.floor(window.innerHeight - top - 16));
+        /* The global header is 56px tall. Keep only a 4px breathing gap so
+           the rail uses the full viewport instead of parking noticeably below
+           the account controls while the feed scrolls. */
+        const top = Math.max(60, detailsRailRef.current?.getBoundingClientRect().top ?? 60);
+        const next = Math.max(280, Math.floor(window.innerHeight - top - 12));
         setDetailsRailHeight((current) => current === next ? current : next);
       });
     };
@@ -965,7 +968,7 @@ export function LiveCompanyBriefing({
         </div>
 
         {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4). */}
-        <div ref={detailsRailRef} className="sticky top-20 min-w-0 self-start">
+        <div ref={detailsRailRef} className="sticky top-[60px] min-w-0 self-start">
           {!detailsOpen && (
             <button
               type="button"
