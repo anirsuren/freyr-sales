@@ -215,7 +215,6 @@ export function CustomerTabs({
   canDeleteContacts = false,
   includeDemoTeam,
   bands = [],
-  bandActions,
 }: {
   /** The Market Intel briefing for this account, when one is tracked. */
   intelligence?: {
@@ -251,7 +250,6 @@ export function CustomerTabs({
    * same panels, one row.
    */
   bands?: Customer360Band[];
-  bandActions?: Record<string, React.ReactNode>;
   // Customer⇄offering link (Suren, Jul 3): the master-list type options + the
   // offerings applicable to this customer's type + the ones already in use,
   // serialized by the server page for the Offerings tab.
@@ -915,7 +913,9 @@ export function CustomerTabs({
             forceKey={tab.slice(5)}
             company={customer.company_name}
             bands={bands}
-            bandActions={bandActions}
+            /* Customer bands are already the destination. Repeating "All…"
+               and record-team actions in every tab added a second navigation
+               row with no new information. */
           />
         )}
         {tab === "overview" && (

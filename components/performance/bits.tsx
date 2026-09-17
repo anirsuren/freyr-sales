@@ -191,7 +191,7 @@ export function PersonSelect({
     // half (Anir, Aug 18: "this last guy is clearly getting cut off") — now
     // the panel stops short of the edge and the roster scrolls inside it.
     const room = (below ? spaceBelow : rect.top) - 18;
-    const searchRow = people.length > 6 ? 41 : 0;
+    const searchRow = 41;
     setListMax(Math.max(180, Math.min(320, room - searchRow)));
     setMenuStyle({
       position: "fixed",
@@ -286,8 +286,7 @@ export function PersonSelect({
           style={menuStyle ?? undefined}
           className="menu-in overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
         >
-          {people.length > 6 && (
-            <div className="flex items-center gap-1.5 border-b border-border-light px-2.5 py-2">
+          <div className="flex items-center gap-1.5 border-b border-border-light px-2.5 py-2">
               <Search size={13} strokeWidth={2.2} className="text-text-tertiary" />
               <input
                 autoFocus
@@ -312,8 +311,7 @@ export function PersonSelect({
                 placeholder="Search people…"
                 className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
               />
-            </div>
-          )}
+          </div>
           <div style={{ maxHeight: listMax }} className="overflow-y-auto p-1">
             {matches.map((p) => (
               <button

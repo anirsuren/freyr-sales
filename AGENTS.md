@@ -1014,3 +1014,15 @@ All solutioning requests, Submissions, Presentations, and Meetings keep search, 
 
 ### Sep 17: division roles cannot duplicate contributors
 A request owner, division lead, and primary assignee cannot also be added as a contributor for that division. Changing any of those roles cleans stale duplicates from the stored workstream. The contributor list is always labelled with a count and explicitly says when it is empty, and removing a contributor requires confirmation. Completed locally, not deployed.
+
+### Sep 17: lookup menus are searchable without bloating basic controls
+People, owner, assignee, customer, and other record lookup menus show a search field whenever they open. Keyboard typeahead and Enter-to-select remain available in the shared select controls even when a compact fixed-choice menu does not display a search field. Sort, view, status, and other short fixed-choice controls stay compact. Completed locally, not deployed.
+
+### Sep 17: solutioning division assignments stay compact
+Each division card keeps Solutioning lead and Primary assignee in two balanced columns. A compact blue Add contributor action sits in the card header and opens a searchable picker that excludes the request owner, division lead, primary assignee, and existing contributors. Existing contributors remain in an explicit labelled row with confirmed removal. Completed locally, not deployed.
+
+### Sep 17: request timeline fills the remaining rail
+The Solutioning request timeline uses the remaining viewport height in the right rail and scrolls its events internally. The comment action remains pinned at the bottom of the card instead of leaving unused space beneath a short fixed-height timeline. Completed locally, not deployed.
+
+### Sep 17: customer band tabs omit redundant actions
+Customer connection tabs no longer repeat record-team editing controls or links such as “The team” and “All deals” beside the active band summary. The selected tab already identifies and opens that destination, so the duplicated action row is removed across all customer band tabs. Completed locally, not deployed.

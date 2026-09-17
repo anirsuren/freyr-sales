@@ -350,6 +350,7 @@ export function RequestDetail({
     division: string;
     name: string;
   } | null>(null);
+  const [addingContributorTo, setAddingContributorTo] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -1126,10 +1127,23 @@ export function RequestDetail({
                         key={division}
                         className="rounded-xl border border-border-light bg-white p-4"
                       >
-                        <p className="text-[13.5px] font-semibold text-text-primary">
-                          {division}
-                        </p>
-                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[13.5px] font-semibold text-text-primary">
+                            {division}
+                          </p>
+                          {canWrite && may.assign && (
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => setAddingContributorTo(division)}
+                              className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-2.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <Plus size={13.5} strokeWidth={2.5} />
+                              Add contributor
+                            </button>
+                          )}
+                        </div>
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <PersonPick
                             label="Solutioning lead"
                             hint="Accountable for this division"
@@ -1162,28 +1176,6 @@ export function RequestDetail({
                                 division,
                                 primaryAssignee: v,
                               })
-                            }
-                          />
-                          <PersonPick
-                            label="Add contributor"
-                            hint="Choose another person"
-                            value=""
-                            members={members.filter(
-                              (m) =>
-                                !samePerson(m, w?.lead) &&
-                                !samePerson(m, w?.primaryAssignee) &&
-                                !samePerson(m, r.owner) &&
-                                !contributors.some((c) => samePerson(c, m))
-                            )}
-                            disabled={busy || !canWrite || !may.assign}
-                            onPick={(v) =>
-                              v
-                                ? post({
-                                    op: "set-workstream",
-                                    division,
-                                    contributors: [...contributors, v],
-                                  })
-                                : Promise.resolve(false)
                             }
                           />
                         </div>
@@ -1379,7 +1371,12 @@ export function RequestDetail({
               </SectionCard>
             )}
 
-            <SectionCard title="Timeline" icon={History}>
+            <SectionCard
+              title="Timeline"
+              icon={History}
+              className="lg:min-h-[calc(100vh-430px)]"
+              bodyClassName="flex min-h-[calc(100vh-480px)] flex-col"
+            >
               {/* AN ACTUAL TIMELINE (Anir, Aug 27: "this has to be an actual
                   fucking timeline"). It was six identical blue documents in a
                   list. A timeline has a spine, and each event wears its own
@@ -1418,7 +1415,7 @@ export function RequestDetail({
                   above the comment button. max-height does both jobs: it
                   shrinks to five rows and it still caps and scrolls at a
                   hundred. Roughly six rows at 52px each. */}
-              <ol className="max-h-[320px] overflow-y-auto pr-1">
+              <ol className="min-h-0 flex-1 overflow-y-auto pr-1">
                 {[...r.activity]
                   .reverse()
                   .filter((a, i, arr) =>
@@ -2002,6 +1999,56 @@ export function RequestDetail({
           </div>
         </Modal>
       )}
+
+      <Modal
+        open={addingContributorTo !== null}
+        onClose={() => setAddingContributorTo(null)}
+        title="Add a contributor"
+      >
+        {(() => {
+          const division = addingContributorTo;
+          const workstream = (r.workstreams ?? []).find(
+            (item) => item.division === division
+          );
+          const contributors = (workstream?.contributors ?? []).filter(
+            (name) =>
+              !samePerson(name, workstream?.lead) &&
+              !samePerson(name, workstream?.primaryAssignee) &&
+              !samePerson(name, r.owner)
+          );
+          const eligible = members.filter(
+            (name) =>
+              !samePerson(name, workstream?.lead) &&
+              !samePerson(name, workstream?.primaryAssignee) &&
+              !samePerson(name, r.owner) &&
+              !contributors.some((contributor) => samePerson(contributor, name))
+          );
+          return (
+            <div>
+              <p className="mb-3 text-[12.5px] leading-relaxed text-text-secondary">
+                Choose someone to support {division ?? "this division"}. The lead,
+                primary assignee, request owner, and existing contributors are excluded.
+              </p>
+              <PeopleSelect
+                value=""
+                options={eligible}
+                allowUnassigned={false}
+                placeholder={eligible.length > 0 ? "Choose a contributor" : "Nobody else is available"}
+                ariaLabel="Contributor"
+                onChange={(name) => {
+                  if (!name || !division) return;
+                  void post({
+                    op: "set-workstream",
+                    division,
+                    contributors: [...contributors, name],
+                  });
+                  setAddingContributorTo(null);
+                }}
+              />
+            </div>
+          );
+        })()}
+      </Modal>
 
       <ConfirmDialog
         open={confirmRemoveDoc !== null}

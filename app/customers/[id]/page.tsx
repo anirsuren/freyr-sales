@@ -3,8 +3,6 @@ import { EMPTY_CUSTOMER_PROFILES, formatAddress } from "@/lib/customerProfilesSh
 import { Building2 as ParentCompanyIcon, MapPin } from "lucide-react";
 import { orderBands } from "@/lib/connectionOrder";
 import { redirect } from "next/navigation";
-import { readRecordTeams, teamFor } from "@/lib/recordTeams";
-import { RecordTeamButton } from "@/components/team/RecordTeamButton";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import Link from "next/link";
 import { SmartBack } from "@/components/ui/BackButton";
@@ -264,7 +262,6 @@ export default async function CustomerDetailPage({
      leads. A contact is part of the account itself, which is why it has its
      own tab and its own editor. */
   const bands360 = orderBands(c360);
-  const recordTeams = await readRecordTeams();
 
   /**
    * WHAT MAY THIS PERSON DO TO **THIS** ACCOUNT (Suren, Sep 1): "you can only
@@ -451,29 +448,6 @@ export default async function CustomerDetailPage({
            refused is never drawn. */
         canDeleteContacts={mayDeleteOnThisAccount}
         bands={bands360}
-        bandActions={{
-          /* CHANGING WHO IS ON AN ACCOUNT IS THE STRONGEST WRITE THERE IS, so
-             it is drawn only for somebody who may already change this account.
-             Otherwise it is the way round every other check: put yourself on
-             the record and it becomes yours. /api/record-team refuses it as
-             well; this stops it being offered. The team itself still READS on
-             the band for everybody, which is the point of view access. */
-          team: mayEditThisAccount ? (
-            /* KEYED AT THE POINT IT IS CREATED. Customer360 renders this node
-               inside a list, so React warned "each child in a list should have
-               a unique key" on every customer page in dev, naming this line.
-               The element is handed over as a prop, so the key has to travel
-               with it — the receiving list cannot add one. */
-            <RecordTeamButton
-              key="band-action-team"
-              type="customer"
-              id={customer.id}
-              label={customer.company_name}
-              team={teamFor(recordTeams, "customer", customer.id)}
-              members={solutioningMembers}
-            />
-          ) : null,
-        }}
         customer={customer}
         contacts={contacts}
         sessions={sessions}

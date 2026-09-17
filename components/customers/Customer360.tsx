@@ -493,17 +493,6 @@ export function Customer360({
                   </span>
                 )}
               </div>
-              <span className="flex items-center gap-3">
-                {bandActions?.[active.key]}
-                {active.href && (
-                  <Link
-                    href={active.href}
-                    className="text-[12.5px] font-semibold text-blue-primary hover:underline"
-                  >
-                    {active.hrefLabel ?? "Open"} &rsaquo;
-                  </Link>
-                )}
-              </span>
             </div>
           )}
 
