@@ -1264,7 +1264,15 @@ export function RequestDetail({
 
           {/* ------------------------------------------------- SIDE rail */}
           <div key={`rail-${tab}`} className="tab-panel tab-panel-stagger space-y-4">
-            <SectionCard title="Owner" icon={UserRound}>
+            {/* This picker opens beyond the card's body. SectionCard normally
+                clips its rounded corners, which also clipped this menu before
+                the first option could paint. Keep this card above the cards
+                that follow so the full people list stays visible. */}
+            <SectionCard
+              title="Owner"
+              icon={UserRound}
+              className="relative z-20 overflow-visible"
+            >
               {may.assign && r.status !== "completed" && r.status !== "cancelled" ? (
                 <div className={cn(busy && "pointer-events-none opacity-60")}>
                   <PeopleSelect

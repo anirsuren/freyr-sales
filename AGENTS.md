@@ -1002,3 +1002,6 @@ All solutioning requests uses the shared list toolbar with search, layered filte
 
 ### Sep 17: opportunity solutioning shows requests without crowding
 An opportunity's Solutioning requests tab contains request records only; submissions and presentations created from those requests remain in their own module rooms. The tab has an in-place search and an All / Submissions / Meetings / Presentations selector. Its compact table keeps request ID and title together, then shows type, BD member, solutioning owner, requested date, and status. The redundant All solutioning requests exit link is removed. Request details keep an Edit action for authorized users, and Edit covers the title, what was requested, subtype, priority, deadline, and meeting details rather than only priority and deadline. The brief also has a quiet inline Edit action beside “What they asked for”; it becomes an in-place editor only while being changed and saves without sending the user to a detached dialog. Completed locally, not deployed.
+
+### Sep 17: solutioning owner picker clears its card
+The request-detail Owner card lets its people picker render beyond the rounded card body and raises the open menu above the cards that follow. The assignment choices are fully visible instead of being clipped at the Owner card boundary. Completed locally, not deployed.
