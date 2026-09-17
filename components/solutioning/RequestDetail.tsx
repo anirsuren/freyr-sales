@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -193,20 +193,23 @@ function SectionHeading({
   icon: Icon,
   title,
   description,
+  action,
 }: {
   icon: LucideIcon;
   title: string;
   description: string;
+  action?: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 items-start gap-3">
       <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
         <Icon size={16} strokeWidth={1.9} />
       </span>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <h2 className="text-[16px] font-semibold text-text-primary">{title}</h2>
         <p className="mt-0.5 text-[12px] text-text-tertiary">{description}</p>
       </div>
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
@@ -329,6 +332,11 @@ export function RequestDetail({
   const [editNeededBy, setEditNeededBy] = useState("");
   const [editMeetingAt, setEditMeetingAt] = useState("");
   const [editAttendees, setEditAttendees] = useState("");
+  /* The brief is read far more often than it is changed. Keep it as ordinary
+     page copy until an authorized person deliberately asks to edit it, then
+     edit it in the exact place they were reading. */
+  const [editingBrief, setEditingBrief] = useState(false);
+  const [briefDraft, setBriefDraft] = useState("");
   /* CLOSING A REQUEST ASKS FIRST (Anir, Aug 30: "when I click it, it should ask
      me for a pop-up just like hand it back, to confirm I want to mark it as
      complete"). It is the one action here that ends the record for everybody
@@ -355,6 +363,7 @@ export function RequestDetail({
   const iRequested =
     r.requestedBy.trim().toLowerCase() === meName.trim().toLowerCase();
   const iOwn = (r.owner ?? "").trim().toLowerCase() === meName.trim().toLowerCase();
+  const canEditRequest = may.edit && canWrite && (iRequested || managerial);
   const kindMeta = KIND_META[r.kind];
   const KindIcon = kindMeta.icon;
   const overdue =
@@ -525,7 +534,7 @@ export function RequestDetail({
             r.status !== "cancelled" &&
             r.status !== "completed" &&
             (iRequested || iOwn || managerial);
-          const mayEdit = may.edit && canWrite && (iRequested || managerial);
+          const mayEdit = canEditRequest;
           const mayDelete =
             may.remove &&
             (meRole === "admin" || (iRequested && r.status === "initiated"));
@@ -852,10 +861,76 @@ export function RequestDetail({
                 icon={FileText}
                 title="What they asked for"
                 description="The brief the requester wrote for the Solutioning team."
+                action={
+                  canEditRequest && !editingBrief ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBriefDraft(r.details ?? "");
+                        setEditingBrief(true);
+                      }}
+                      disabled={busy}
+                      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label="Edit what they asked for"
+                    >
+                      <Pencil size={13} strokeWidth={2} />
+                      Edit
+                    </button>
+                  ) : undefined
+                }
               />
-              <p className="mt-4 max-w-[680px] pl-11 text-[13.5px] leading-relaxed text-text-secondary">
-                {r.details || "No details written on the request."}
-              </p>
+              {editingBrief ? (
+                <div className="mt-4 max-w-[680px] pl-11">
+                  <Textarea
+                    value={briefDraft}
+                    onChange={(e) => setBriefDraft(e.target.value)}
+                    rows={4}
+                    autoFocus
+                    aria-label="What they asked for"
+                    className="min-h-[104px] bg-white text-[13.5px] leading-relaxed"
+                  />
+                  <div className="mt-2.5 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBriefDraft(r.details ?? "");
+                        setEditingBrief(false);
+                      }}
+                      disabled={busy}
+                      className="h-8 cursor-pointer rounded-lg px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:bg-surface hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const next = briefDraft.trim();
+                        if (next === (r.details ?? "").trim()) {
+                          setEditingBrief(false);
+                          return;
+                        }
+                        if (
+                          await post({
+                            op: "update",
+                            patch: { details: next || null },
+                          })
+                        ) {
+                          setEditingBrief(false);
+                        }
+                      }}
+                      disabled={busy}
+                      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Check size={13} strokeWidth={2.4} />
+                      Save
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 max-w-[680px] pl-11 text-[13.5px] leading-relaxed text-text-secondary">
+                  {r.details || "No details written on the request."}
+                </p>
+              )}
             </section>
 
             <section className="border-b border-border-light py-7">
