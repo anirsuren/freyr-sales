@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { ViewSwitch } from "@/components/ui/ViewSwitch";
+import { ViewSelect } from "@/components/ui/ViewSelect";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -399,6 +399,7 @@ export function MeetingsModule({
       </div>
 
       <PageToolbar
+        singleRow
         className="mt-4"
         query={query}
         onQuery={setQuery}
@@ -409,25 +410,43 @@ export function MeetingsModule({
           { key: "customer", label: "Customer", values: customerFilter, onChange: setCustomers, options: [...new Set(all.map(m => m.customer))].map(value => ({value,label:value})) },
           { key: "owner", label: "Owner", values: owners, onChange: setOwners, options: [...new Set(all.map(m => m.owner || ""))].map(value => ({value,label:value || "Unassigned"})) },
           { key: "type", label: "Meeting type", values: types, onChange: setTypes, options: [...new Set(all.map(m => m.type))].map(value => ({value,label:value})) },
+          {
+            key: "date",
+            label: "Meeting date",
+            values: [dateFrom, dateTo].filter(Boolean),
+            onChange: (values: string[]) => {
+              if (values.length === 0) { setDateFrom(""); setDateTo(""); }
+            },
+            options: [],
+            content: (
+              <div className="space-y-3">
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                  From
+                  <input aria-label="Meetings from" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
+                </label>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                  Through
+                  <input aria-label="Meetings through" type="date" min={dateFrom || undefined} value={dateTo} onChange={e => setDateTo(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
+                </label>
+              </div>
+            ),
+          },
         ]}
 
         view={
-          <ViewSwitch
-            ariaLabel="How to show meetings"
-            className="flex"
+          <ViewSelect
             value={view}
             onChange={pickView}
-            options={
-              [
-              { key: "table", label: "List", icon: Rows3 },
-              { key: "split", label: "Split", icon: PanelsTopLeft },
-              ] as const
-            }
+            tileValue="table"
+            tableValue="split"
+            tileLabel="List"
+            tableLabel="Split"
+            tileIcon={Rows3}
+            tableIcon={PanelsTopLeft}
+            menuOnly
           />
         }
         filtersAfter={<>
-          <label className="text-xs text-text-secondary">From <input aria-label="Meetings from" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="rounded-lg border border-border-light bg-white p-2" /></label>
-          <label className="text-xs text-text-secondary">Through <input aria-label="Meetings through" type="date" min={dateFrom || undefined} value={dateTo} onChange={e => setDateTo(e.target.value)} className="rounded-lg border border-border-light bg-white p-2" /></label>
           <ColorSelect
             value={period}
             ariaLabel="Group meetings"
@@ -456,6 +475,11 @@ export function MeetingsModule({
               { value: "owner", label: "By owner (A to Z)", color: "var(--ink-amber)" },
             ]}
           />
+        }
+        display={
+          <span className="whitespace-nowrap text-[12px] text-text-secondary" aria-live="polite">
+            <b className="tnum text-text-primary">{shown.length}</b> shown
+          </span>
         }
       />
 

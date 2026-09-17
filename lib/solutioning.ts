@@ -401,12 +401,18 @@ function normalizeWorkstream(v: unknown): SolutionWorkstream | null {
   if (!division) return null;
   const lead = str(r.lead, 80);
   const primary = str(r.primaryAssignee, 80);
-  /* THE SAME PERSON CANNOT APPEAR TWICE IN THE SAME ROLE LIST (SOL-011), and
-     the primary assignee is not also a contributor — they are the one doing
-     it, not one of the people helping. */
-  const contributors = [
-    ...new Set(strList(r.contributors, 80).filter((n) => n !== primary)),
-  ];
+  /* THE SAME PERSON CANNOT APPEAR TWICE IN THE SAME ROLE LIST (SOL-011).
+     Leads and primary assignees have explicit roles, so neither also appears
+     in the contributor list. */
+  const occupied = new Set(
+    [lead, primary].filter(Boolean).map((name) => name.trim().toLowerCase())
+  );
+  const contributorMap = new Map<string, string>();
+  for (const name of strList(r.contributors, 80)) {
+    const key = name.trim().toLowerCase();
+    if (!occupied.has(key) && !contributorMap.has(key)) contributorMap.set(key, name);
+  }
+  const contributors = [...contributorMap.values()];
   return {
     division,
     ...(lead ? { lead } : {}),
@@ -525,6 +531,7 @@ function normalizeRequest(v: unknown): SolutionRequest | null {
   const rawType = str((r as { type?: string }).type, 20);
   const type: SolutionItemType =
     rawType === "submission" || rawType === "presentation" ? rawType : "request";
+  const owner = str(r.owner, 80) || undefined;
   return {
     id,
     type,
@@ -552,12 +559,18 @@ function normalizeRequest(v: unknown): SolutionRequest | null {
     ),
     workstreams: (Array.isArray(r.workstreams) ? r.workstreams : [])
       .map(normalizeWorkstream)
-      .filter((w): w is SolutionWorkstream => w !== null),
+      .filter((w): w is SolutionWorkstream => w !== null)
+      .map((workstream) => ({
+        ...workstream,
+        contributors: workstream.contributors.filter(
+          (name) => name.trim().toLowerCase() !== owner?.trim().toLowerCase()
+        ),
+      })),
     ...(str(r.updatedAt, 40) ? { updatedAt: str(r.updatedAt, 40) } : {}),
     requestedBy: str(r.requestedBy, 80) || "Unknown",
     requestedAt: str(r.requestedAt, 40) || new Date().toISOString(),
     neededBy: str(r.neededBy, 20) || undefined,
-    owner: str(r.owner, 80) || undefined,
+    owner,
     pickedUpAt: str(r.pickedUpAt, 40) || undefined,
     completedBy: str(r.completedBy, 80) || undefined,
     completedAt: str(r.completedAt, 40) || undefined,
@@ -1304,13 +1317,26 @@ export async function setWorkstream(input: {
       );
     }
     if (input.contributors !== undefined) {
-      /* SOL-011: nobody twice in the same list, and the primary assignee is
-         not also a contributor. */
-      w.contributors = [
-        ...new Set(
-          strList(input.contributors, 80).filter((n) => n !== w!.primaryAssignee)
-        ),
-      ];
+      w.contributors = strList(input.contributors, 80);
+    }
+    /* Each person has one role in this division. A request owner, division
+       lead, or primary assignee cannot also appear as a contributor. Apply
+       this after every edit so changing a lead also cleans up old duplicates. */
+    const occupied = new Set(
+      [r.owner, w.lead, w.primaryAssignee]
+        .filter((name): name is string => Boolean(name))
+        .map((name) => name.trim().toLowerCase())
+    );
+    const contributorMap = new Map<string, string>();
+    for (const name of w.contributors ?? []) {
+      const clean = str(name, 80);
+      const key = clean.toLowerCase();
+      if (clean && !occupied.has(key) && !contributorMap.has(key)) {
+        contributorMap.set(key, clean);
+      }
+    }
+    w.contributors = [...contributorMap.values()];
+    if (input.contributors !== undefined) {
       said.push(`${w.contributors.length} contributor(s)`);
     }
     /* SOL-013: "Once all required Solutioning Leads are selected, it can move
@@ -1329,6 +1355,16 @@ export async function setWorkstream(input: {
     touch(r, input.by, `${division}: ${said.join(", ")}`);
     await writeRow(state);
   });
+}
+
+function removeRequestOwnerFromContributors(r: SolutionRequest): void {
+  const ownerKey = (r.owner ?? "").trim().toLowerCase();
+  if (!ownerKey) return;
+  for (const workstream of r.workstreams ?? []) {
+    workstream.contributors = workstream.contributors.filter(
+      (name) => name.trim().toLowerCase() !== ownerKey
+    );
+  }
 }
 
 /** Assign the request itself without pretending the manager is the assignee.
@@ -1352,6 +1388,7 @@ export async function assignRequestOwner(input: {
       throw new Error("Choose the replacement owner before removing the current one.");
     }
     r.owner = owner;
+    removeRequestOwnerFromContributors(r);
     if (owner) {
       r.pickedUpAt = r.pickedUpAt ?? new Date().toISOString();
       if (r.status === "initiated") r.status = "assigned";
@@ -1424,6 +1461,7 @@ export async function pickUpRequest(input: {
     if (r.owner && r.owner !== input.by)
       throw new Error(`${r.owner} already picked this up.`);
     r.owner = input.by;
+    removeRequestOwnerFromContributors(r);
     r.pickedUpAt = r.pickedUpAt ?? new Date().toISOString();
     // Picking up IS starting: "somebody picks up the request... work in
     // progress". A separate "start" click would be a step nobody asked for.

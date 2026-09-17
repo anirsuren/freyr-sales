@@ -68,16 +68,6 @@ const DEFAULT_DEV_ALLOWLIST = [
   "sameer.siddiqui@freyrsolutions.com",
 ];
 
-/* ADMINS NEED THROWAWAY ROLE ACCOUNTS ON DEV (Manoj, Sep 17). The transcript
-   explicitly uses `manojkumar.odela+2@freyrsolutions.com` so an admin can
-   assign BD Member, BD Owner, Solutioning Member and Solutioning Owner access
-   to separate identities and review each workspace. Keep this list narrow:
-   the general dev allowlist still decides who enters dev at all. */
-const DEV_TEST_ACCOUNT_ADMINS = [
-  "anir.s@freyrsolutions.com",
-  "manojkumar.odela@freyrsolutions.com",
-];
-
 function plusAliasGlob(email: string): string {
   const at = email.lastIndexOf("@");
   return `${email.slice(0, at)}+*${email.slice(at)}`;
@@ -91,12 +81,20 @@ function allowlistGlobs(): string[] {
   const configured = override.length ? override : DEFAULT_DEV_ALLOWLIST;
   const expanded = new Set(configured);
 
-  /* A deployment override commonly lists the admin's exact address. Preserve
-     that override while still granting the admin capability promised by the
-     UI: if the admin is allowed, their +tag test identities are allowed too.
-     An admin omitted from the override remains omitted. */
-  for (const admin of DEV_TEST_ACCOUNT_ADMINS) {
-    if (configured.includes(admin)) expanded.add(plusAliasGlob(admin));
+  /* EVERY DEV ADMIN GETS ROLE-TEST IDENTITIES (Anir, Sep 17). The configured
+     dev roster is the source of truth for the admins allowed onto this
+     deployment. Any exact Freyr address on that roster receives its own
+     plus-address glob; wildcard entries already describe their own scope.
+     This avoids a second hardcoded "special admins" list that inevitably
+     leaves another admin unable to run the same role review. */
+  for (const admin of configured) {
+    if (
+      admin.endsWith("@freyrsolutions.com") &&
+      !admin.includes("*") &&
+      !admin.slice(0, admin.lastIndexOf("@")).includes("+")
+    ) {
+      expanded.add(plusAliasGlob(admin));
+    }
   }
   return [...expanded];
 }

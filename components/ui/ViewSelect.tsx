@@ -47,6 +47,7 @@ export function ViewSelect<T extends string>({
   // with an outer frame, which at 15px reads as a second, squarer tile icon;
   // three stacked rows says "rows" at a glance.
   tableIcon: TableIcon = Rows3,
+  menuOnly = false,
   className,
 }: {
   value: T;
@@ -61,10 +62,14 @@ export function ViewSelect<T extends string>({
    *  list-versus-timeline pair, say. */
   tileIcon?: LucideIcon;
   tableIcon?: LucideIcon;
+  /** Always use the compact current-icon dropdown instead of the icon pair. */
+  menuOnly?: boolean;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"pair" | "menu">("pair");
+  const [mode, setMode] = useState<"pair" | "menu">(
+    menuOnly ? "menu" : "pair"
+  );
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const boxRef = useRef<HTMLDivElement>(null);
@@ -77,6 +82,10 @@ export function ViewSelect<T extends string>({
 
   // ---- fit-to-toolbar: pair when it fits, menu when the row would wrap.
   useEffect(() => {
+    if (menuOnly) {
+      setMode("menu");
+      return;
+    }
     const box = boxRef.current;
     if (!box || !box.parentElement) return;
     // The control usually sits inside a small `ml-auto` cluster that never
@@ -127,7 +136,7 @@ export function ViewSelect<T extends string>({
       observer.disconnect();
       window.removeEventListener("resize", evaluate);
     };
-  }, [mode]);
+  }, [mode, menuOnly]);
 
   useEffect(() => {
     if (!open) return;

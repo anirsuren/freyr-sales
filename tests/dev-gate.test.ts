@@ -27,7 +27,7 @@ function withDevGateEnv(
   }
 }
 
-test("a dev admin can use plus aliases for role-review accounts", () => {
+test("every default dev admin can use plus aliases for role-review accounts", () => {
   withDevGateEnv({ origin: "https://freyrsales.dev.freyrapps.com" }, () => {
     assert.equal(
       isLoginAllowedHere("manojkumar.odela+2@freyrsolutions.com"),
@@ -37,19 +37,27 @@ test("a dev admin can use plus aliases for role-review accounts", () => {
       isLoginAllowedHere("manojkumar.odela+solutioning-owner@freyrsolutions.com"),
       true
     );
+    assert.equal(isLoginAllowedHere("anir.s+bd-owner@freyrsolutions.com"), true);
+    assert.equal(isLoginAllowedHere("suren+bd-member@freyrsolutions.com"), true);
+    assert.equal(isLoginAllowedHere("saras.verma+sol-member@freyrsolutions.com"), true);
+    assert.equal(isLoginAllowedHere("sameer.siddiqui+review@freyrsolutions.com"), true);
     assert.equal(isLoginAllowedHere("someone+2@freyrsolutions.com"), false);
   });
 });
 
-test("an explicit dev roster still gives an included admin test aliases", () => {
+test("an explicit dev roster gives every included admin test aliases", () => {
   withDevGateEnv(
     {
       origin: "https://freyrsales.dev.freyrapps.com",
-      allowlist: "manojkumar.odela@freyrsolutions.com",
+      allowlist: "manojkumar.odela@freyrsolutions.com,saras.verma@freyrsolutions.com",
     },
     () => {
       assert.equal(
         isLoginAllowedHere("manojkumar.odela+4@freyrsolutions.com"),
+        true
+      );
+      assert.equal(
+        isLoginAllowedHere("saras.verma+solutioning@freyrsolutions.com"),
         true
       );
       assert.equal(isLoginAllowedHere("anir.s+4@freyrsolutions.com"), false);

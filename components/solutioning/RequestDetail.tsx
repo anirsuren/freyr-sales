@@ -77,6 +77,9 @@ const PRIORITY_TONE: Record<string, string> = {
   Low: "var(--ink-teal-deep)",
 };
 
+const samePerson = (left?: string | null, right?: string | null) =>
+  (left ?? "").trim().toLowerCase() === (right ?? "").trim().toLowerCase();
+
 /* The deliverable's own six states, walking from not-started to out-the-door.
    Cancelled is the only red: it is the one that ends the work. */
 const DELIVERABLE_TONE: Record<string, string> = {
@@ -343,6 +346,10 @@ export function RequestDetail({
      working it, and it was the only one that fired on a single click. */
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmRemoveDoc, setConfirmRemoveDoc] = useState<{ id: string; name: string } | null>(null);
+  const [confirmRemoveContributor, setConfirmRemoveContributor] = useState<{
+    division: string;
+    name: string;
+  } | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -1108,6 +1115,12 @@ export function RequestDetail({
                     const w = (r.workstreams ?? []).find(
                       (x) => x.division === division
                     );
+                    const contributors = (w?.contributors ?? []).filter(
+                      (name) =>
+                        !samePerson(name, w?.lead) &&
+                        !samePerson(name, w?.primaryAssignee) &&
+                        !samePerson(name, r.owner)
+                    );
                     return (
                       <div
                         key={division}
@@ -1121,7 +1134,12 @@ export function RequestDetail({
                             label="Solutioning lead"
                             hint="Accountable for this division"
                             value={w?.lead ?? ""}
-                            members={members}
+                            members={members.filter(
+                              (name) =>
+                                samePerson(name, w?.lead) ||
+                                (!samePerson(name, w?.primaryAssignee) &&
+                                  !contributors.some((c) => samePerson(c, name)))
+                            )}
                             disabled={busy || !canWrite || !may.assign}
                             onPick={(v) =>
                               post({ op: "set-workstream", division, lead: v })
@@ -1131,7 +1149,12 @@ export function RequestDetail({
                             label="Primary assignee"
                             hint="Doing the work"
                             value={w?.primaryAssignee ?? ""}
-                            members={members}
+                            members={members.filter(
+                              (name) =>
+                                samePerson(name, w?.primaryAssignee) ||
+                                (!samePerson(name, w?.lead) &&
+                                  !contributors.some((c) => samePerson(c, name)))
+                            )}
                             disabled={busy || !canWrite || !may.assign}
                             onPick={(v) =>
                               post({
@@ -1142,13 +1165,15 @@ export function RequestDetail({
                             }
                           />
                           <PersonPick
-                            label="Add a contributor"
-                            hint="Supporting the work"
+                            label="Add contributor"
+                            hint="Choose another person"
                             value=""
                             members={members.filter(
                               (m) =>
-                                m !== w?.primaryAssignee &&
-                                !(w?.contributors ?? []).includes(m)
+                                !samePerson(m, w?.lead) &&
+                                !samePerson(m, w?.primaryAssignee) &&
+                                !samePerson(m, r.owner) &&
+                                !contributors.some((c) => samePerson(c, m))
                             )}
                             disabled={busy || !canWrite || !may.assign}
                             onPick={(v) =>
@@ -1156,15 +1181,19 @@ export function RequestDetail({
                                 ? post({
                                     op: "set-workstream",
                                     division,
-                                    contributors: [...(w?.contributors ?? []), v],
+                                    contributors: [...contributors, v],
                                   })
                                 : Promise.resolve(false)
                             }
                           />
                         </div>
-                        {(w?.contributors ?? []).length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {(w?.contributors ?? []).map((c) => (
+                        <div className="mt-3 border-t border-border-light pt-3">
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                            Contributors ({contributors.length})
+                          </p>
+                          {contributors.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {contributors.map((c) => (
                               <span
                                 key={c}
                                 className="inline-flex items-center gap-1.5 rounded-full bg-surface py-1 pl-1.5 pr-1 text-[12px] font-medium text-text-primary"
@@ -1176,15 +1205,7 @@ export function RequestDetail({
                                     type="button"
                                     aria-label={`Remove ${c}`}
                                     disabled={busy}
-                                    onClick={() =>
-                                      post({
-                                        op: "set-workstream",
-                                        division,
-                                        contributors: (w?.contributors ?? []).filter(
-                                          (x) => x !== c
-                                        ),
-                                      })
-                                    }
+                                    onClick={() => setConfirmRemoveContributor({ division, name: c })}
                                     className="cursor-pointer rounded-full p-0.5 text-error/70 transition-colors hover:bg-red-50 hover:text-error"
                                   >
                                     <Trash2 size={11} strokeWidth={2} />
@@ -1193,7 +1214,10 @@ export function RequestDetail({
                               </span>
                             ))}
                           </div>
-                        )}
+                          ) : (
+                            <p className="text-[12.5px] text-text-tertiary">No contributors added.</p>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -1989,6 +2013,33 @@ export function RequestDetail({
         title="Remove this document?"
         body={<><b>{confirmRemoveDoc?.name}</b> comes off this request for everyone working on it. You would have to add it again.</>}
         confirmLabel="Remove it"
+      />
+      <ConfirmDialog
+        open={confirmRemoveContributor !== null}
+        onClose={() => setConfirmRemoveContributor(null)}
+        onConfirm={() => {
+          if (!confirmRemoveContributor) return;
+          const workstream = (r.workstreams ?? []).find(
+            (item) => item.division === confirmRemoveContributor.division
+          );
+          void post({
+            op: "set-workstream",
+            division: confirmRemoveContributor.division,
+            contributors: (workstream?.contributors ?? []).filter(
+              (name) => !samePerson(name, confirmRemoveContributor.name)
+            ),
+          });
+          setConfirmRemoveContributor(null);
+        }}
+        busy={busy}
+        title="Remove this contributor?"
+        body={
+          <>
+            <b>{confirmRemoveContributor?.name}</b> will no longer be listed as
+            supporting {confirmRemoveContributor?.division}.
+          </>
+        }
+        confirmLabel="Remove contributor"
       />
       <ConfirmDialog
         open={confirmPickUp}

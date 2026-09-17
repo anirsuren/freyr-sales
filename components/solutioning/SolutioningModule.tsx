@@ -5,7 +5,7 @@ import { UploadProgress } from "@/components/ui/UploadProgress";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { withCommas } from "@/lib/currency";
-import { ViewSwitch } from "@/components/ui/ViewSwitch";
+import { ViewSelect } from "@/components/ui/ViewSelect";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -497,7 +497,7 @@ export function SolutioningModule({
 
       <div className="mt-4">
         <PageToolbar
-          stacked
+          singleRow
           query={query}
           onQuery={setQuery}
           /* The room's own noun, like the tiles and the count under it. */
@@ -515,63 +515,35 @@ export function SolutioningModule({
             setDueFrom(""); setDueTo("");
             setGroupBy("none");
           }}
-          filtersBefore={
-            room === "requests" ? (
-              <div className="flex items-center gap-2">
-              <ColorSelect
-                value={kinds.length === 1 ? kinds[0] : "all"}
-                onChange={(value) => setKinds(value === "all" ? [] : [value])}
-                ariaLabel="Request type"
-                minWidth={185}
-                dense
-                options={[
-                  {
-                    value: "all",
-                    label: "All request types",
-                    color: "var(--ink-bright-blue)",
-                    icon: ClipboardList,
-                  },
-                  {
-                    value: "submission",
-                    label: "Submissions",
-                    color: KIND_META.submission.color,
-                    icon: FileSpreadsheet,
-                  },
-                  {
-                    value: "meeting",
-                    label: "Meetings",
-                    color: KIND_META.meeting.color,
-                    icon: CalendarDays,
-                  },
-                  {
-                    value: "presentation",
-                    label: "Presentations",
-                    color: KIND_META.presentation.color,
-                    icon: Presentation,
-                  },
-                ]}
-              />
-              <ColorSelect
-                value={assignment}
-                onChange={(value) => setAssignment(value as typeof assignment)}
-                ariaLabel="Assignment status"
-                minWidth={165}
-                dense
-                options={[
-                  { value: "all", label: "All assignments", color: "var(--ink-bright-blue)", icon: ClipboardList },
-                  { value: "unassigned", label: "Unassigned", color: "var(--ink-amber)", icon: Inbox },
-                  { value: "assigned", label: "Assigned", color: "var(--ink-violet-soft)", icon: Check },
-                ]}
-              />
-              </div>
-            ) : null
-          }
           filtersAfter={<>
-            <label className="text-xs text-text-secondary">Due from <input aria-label="Due from" type="date" value={dueFrom} onChange={e => setDueFrom(e.target.value)} className="rounded-lg border border-border-light bg-white p-2" /></label>
-            <label className="text-xs text-text-secondary">Due through <input aria-label="Due through" type="date" min={dueFrom || undefined} value={dueTo} onChange={e => setDueTo(e.target.value)} className="rounded-lg border border-border-light bg-white p-2" /></label>
             <ColorSelect value={groupBy} onChange={setGroupBy} ariaLabel="Group requests" options={[{value:"none",label:"No grouping",color:"var(--ink-bright-blue)"},{value:"customer",label:"By customer",color:"var(--ink-violet-soft)"},{value:"owner",label:"By owner",color:"var(--ink-bright-blue)"},{value:"status",label:"By status",color:"var(--ink-violet-soft)"}]} />
           </>}
           groups={[
+            ...(room === "requests" ? [
+              {key:"kind",label:"Request type",values:kinds,onChange:setKinds,options:KIND_ORDER.map(value => ({value,label:KIND_META[value].plural,color:KIND_META[value].color}))},
+              {key:"assignment",label:"Assignment",values:assignment === "all" ? [] : [assignment],onChange:(values: string[]) => setAssignment((values.at(-1) as typeof assignment) ?? "all"),options:[{value:"unassigned",label:"Unassigned"},{value:"assigned",label:"Assigned"}]},
+            ] : []),
+            {
+              key: "due",
+              label: "Due date",
+              values: [dueFrom, dueTo].filter(Boolean),
+              onChange: (values: string[]) => {
+                if (values.length === 0) { setDueFrom(""); setDueTo(""); }
+              },
+              options: [],
+              content: (
+                <div className="space-y-3">
+                  <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                    From
+                    <input aria-label="Due from" type="date" value={dueFrom} onChange={e => setDueFrom(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
+                  </label>
+                  <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                    Through
+                    <input aria-label="Due through" type="date" min={dueFrom || undefined} value={dueTo} onChange={e => setDueTo(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
+                  </label>
+                </div>
+              ),
+            },
             {key:"requester",label:"BD member",values:requestedByPick,onChange:setRequestedByPick,options:[...new Set(state.requests.map(r => r.requestedBy))].map(value => ({value,label:value}))},
             {key:"assignee",label:"Prepared by",values:assigneePick,onChange:setAssigneePick,options:members.map(value => ({value,label:value}))},
             {key:"opportunity",label:"Opportunity",values:opportunityPick,onChange:setOpportunityPick,options:opportunities.map(o => ({value:o.id,label:o.label}))},
@@ -610,17 +582,16 @@ export function SolutioningModule({
             },
           ]}
           view={
-            <ViewSwitch
-              ariaLabel="How to show this room"
-              className="flex"
+            <ViewSelect
               value={view}
               onChange={pickView}
-              options={
-                [
-                { key: "table", label: "Table", icon: Rows3 },
-                { key: "split", label: "Split", icon: PanelsTopLeft },
-                ] as const
-              }
+              tileValue="table"
+              tableValue="split"
+              tileLabel="Table"
+              tableLabel="Split"
+              tileIcon={Rows3}
+              tableIcon={PanelsTopLeft}
+              menuOnly
             />
           }
           sort={

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
@@ -51,6 +52,8 @@ export type FilterGroup = {
   values: string[];
   onChange: (next: string[]) => void;
   options: FilterOption[];
+  /** A compact custom editor for filters such as a date range. */
+  content?: ReactNode;
 };
 
 /** Two columns side by side: the categories, and the options in one of them. */
@@ -305,7 +308,9 @@ export function FilterMenu({
                       )}
                     </div>
                     <div className="min-h-0 flex-1 overflow-y-auto py-1">
-                      {current.options.map((option) => {
+                      {current.content ? (
+                        <div className="p-3">{current.content}</div>
+                      ) : current.options.map((option) => {
                         const on = current.values.includes(option.value);
                         return (
                           <button
