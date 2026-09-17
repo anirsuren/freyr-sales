@@ -490,6 +490,7 @@ export function SolutioningModule({
           /* The room's own noun, like the tiles and the count under it. */
           placeholder={`Search ${ROOM_META[room].noun}, customers, people…`}
           searchAriaLabel="Search solutioning requests"
+          filterAriaLabel="Filter solutioning requests"
           onClearAll={() => {
             setQuery("");
             setKinds([]);
@@ -498,7 +499,45 @@ export function SolutioningModule({
             setCustomerPick([]);
             setRequestedByPick([]); setAssigneePick([]); setOpportunityPick([]);
             setDueFrom(""); setDueTo("");
+            setGroupBy("none");
           }}
+          filtersBefore={
+            room === "requests" ? (
+              <ColorSelect
+                value={kinds.length === 1 ? kinds[0] : "all"}
+                onChange={(value) => setKinds(value === "all" ? [] : [value])}
+                ariaLabel="Request type"
+                minWidth={185}
+                dense
+                options={[
+                  {
+                    value: "all",
+                    label: "All request types",
+                    color: "var(--ink-bright-blue)",
+                    icon: ClipboardList,
+                  },
+                  {
+                    value: "submission",
+                    label: "Submissions",
+                    color: KIND_META.submission.color,
+                    icon: FileSpreadsheet,
+                  },
+                  {
+                    value: "meeting",
+                    label: "Meetings",
+                    color: KIND_META.meeting.color,
+                    icon: CalendarDays,
+                  },
+                  {
+                    value: "presentation",
+                    label: "Presentations",
+                    color: KIND_META.presentation.color,
+                    icon: Presentation,
+                  },
+                ]}
+              />
+            ) : null
+          }
           filtersAfter={<>
             <label className="text-xs text-text-secondary">Due from <input aria-label="Due from" type="date" value={dueFrom} onChange={e => setDueFrom(e.target.value)} className="rounded-lg border border-border-light bg-white p-2" /></label>
             <label className="text-xs text-text-secondary">Due through <input aria-label="Due through" type="date" min={dueFrom || undefined} value={dueTo} onChange={e => setDueTo(e.target.value)} className="rounded-lg border border-border-light bg-white p-2" /></label>
@@ -508,17 +547,6 @@ export function SolutioningModule({
             {key:"requester",label:"BD member",values:requestedByPick,onChange:setRequestedByPick,options:[...new Set(state.requests.map(r => r.requestedBy))].map(value => ({value,label:value}))},
             {key:"assignee",label:"Prepared by",values:assigneePick,onChange:setAssigneePick,options:members.map(value => ({value,label:value}))},
             {key:"opportunity",label:"Opportunity",values:opportunityPick,onChange:setOpportunityPick,options:opportunities.map(o => ({value:o.id,label:o.label}))},
-            {
-              key: "kind",
-              label: "Type",
-              values: kinds,
-              onChange: setKinds,
-              options: KIND_ORDER.map((k) => ({
-                value: k,
-                label: KIND_META[k].label,
-                color: KIND_META[k].color,
-              })),
-            },
             {
               key: "status",
               label: "Status",
@@ -579,6 +607,15 @@ export function SolutioningModule({
               ]}
             />
           }
+          display={
+            <span
+              className="whitespace-nowrap text-[12px] text-text-secondary"
+              aria-live="polite"
+            >
+              <b className="tnum text-text-primary">{shown.length}</b> of{" "}
+              <b className="tnum text-text-primary">{inRoom.length}</b> shown
+            </span>
+          }
         />
       </div>
 
@@ -590,12 +627,6 @@ export function SolutioningModule({
       {/* COUNT THE ROOM YOU ARE IN, not the whole store. Submissions read
           "Showing 2 of 9 requests" — the 9 was every item in Solutioning, and
           the word was wrong twice over. */}
-      <p className="mb-3 text-[13px] text-text-secondary">
-        Showing <b className="text-text-primary tnum">{shown.length}</b> of{" "}
-        <b className="text-text-primary tnum">{inRoom.length}</b>{" "}
-        {ROOM_META[room].noun}
-      </p>
-
       {/* NO BOX AROUND AN EMPTY STATE (Anir, Aug 26: "for Solutioning you have
           this box, but then for Leads and Revenue Accruals you don't have the
           box… remove the box for Solutioning"). Every other list in this app

@@ -982,3 +982,6 @@ Save, Open-in-new-tab, and Delete use the same 28px control height, width, corne
 
 ### Sep 17: deviation view control belongs to its content
 Opportunities → Deviations keeps its three-option view selector inside the active content card header. It sits beside the shown count for records and beside the contextual heading for month, source, and empty comparison views. The selector never occupies a detached row between the page actions and the content it controls. Completed locally, not deployed.
+
+### Sep 17: solutioning request types are visible list controls
+All solutioning requests uses the shared list toolbar with search, layered filters, sorting, table/split view, and its visible-result count. A permanent request-type selector beside search switches directly among All request types, Submissions, Meetings, and Presentations; type is not duplicated inside the layered filter menu. Clearing filters also clears the grouping choice. Completed locally, not deployed.
