@@ -1044,5 +1044,9 @@ Arrow-up-right and external-link actions open their destination in a new browser
 
 The Owner card can transfer ownership for requests, submissions, and presentations. Choosing a different person opens a confirmation dialog before anything is saved, and the timeline records the previous and new owner. Only a Solutioning Owner or Admin can complete the transfer. Completed locally, not deployed.
 
+Expanded Solutioning list rows are compact previews rather than miniature detail pages. They keep the brief and linked context together, show at most three documents, and summarize only the three newest activity updates without a nested scrolling timeline. Empty document and activity states use one short row, while the full record remains the home for complete history. Completed locally, not deployed.
+
+The expanded preview is sticky to the table's visible horizontal viewport. Scrolling the wide table to later columns cannot push the preview's brief and context off-screen or strand the activity summary by itself. Completed locally, not deployed.
+
 ### Sep 17: customer band tabs omit redundant actions
 Customer connection tabs no longer repeat record-team editing controls or links such as “The team” and “All deals” beside the active band summary. The selected tab already identifies and opens that destination, so the duplicated action row is removed across all customer band tabs. Completed locally, not deployed.

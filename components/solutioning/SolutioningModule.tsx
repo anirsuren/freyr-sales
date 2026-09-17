@@ -43,7 +43,6 @@ import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Avatar } from "@/components/ui/Avatar";
 import { DocumentPeek } from "@/components/ui/DocumentPeek";
-import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { timelineMark } from "@/components/solutioning/RequestDetail";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
@@ -60,7 +59,6 @@ import {
   type SolutioningState,
   type SolutionRequest,
 } from "@/lib/solutioning";
-import { formatFromFilename, type OfferingMaterial } from "@/lib/offeringMaterials";
 import { KIND_META, KindChip, STATUS_META, StatusPill } from "./bits";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
@@ -1280,7 +1278,7 @@ function RequestRow({
           colSpan={14}
           className="max-w-0 pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
         >
-          <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
+          <div className="tab-panel sticky left-0 w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border-light bg-white sm:w-[calc(100vw-290px)]">
             <RequestPanel r={r} />
           </div>
         </td>
@@ -1298,16 +1296,6 @@ function RequestRow({
  * thing rather than two drawings of it (Anir, Aug 30: "you probably want to
  * have the table and the split view too on all the solutioning ones").
  */
-function requestDocumentMaterial(doc: SolutionDoc): OfferingMaterial {
-  return {
-    id: doc.id,
-    kind: formatFromFilename(doc.fileName || doc.name),
-    label: doc.name,
-    url: doc.url ?? "",
-    ...(doc.docsPath ? { docsPath: doc.docsPath } : {}),
-  };
-}
-
 const requestDocumentDownloadUrl = (requestId: string, docId: string) =>
   `/api/solutioning/download?requestId=${encodeURIComponent(
     requestId
@@ -1334,226 +1322,169 @@ function RequestPanel({
   const [viewingDocument, setViewingDocument] = useState<SolutionDoc | null>(null);
   return (
     <>
-    <div className="relative grid w-full max-w-[1280px] grid-cols-1 gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_300px]">
-      {/* NO ARROW IN HERE. It used to hang off this panel's top-right
-          corner, which in a table row lands beside "Latest activity" and reads
-          as if it opens the activity list (Anir, Aug 30: "you keep putting the
-          arrow in the wrong spot, not on activities, should be on the ROW").
-          The row owns it now, next to the chevron that opens this panel — the
-          two controls that act on the request sit together. */}
-              {/* WHAT THEY ACTUALLY ASKED FOR leads, at the width a sentence
-                  needs. It is the only thing on this panel written by a
-                  person; everything else is a count or a name. */}
-              <div className="min-w-0">
-                <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                  What they asked for
-                </span>
-                {r.details ? (
-                  <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-text-primary">
-                    {r.details}
-                  </p>
-                ) : (
-                  <p className="mt-1.5 text-[12.5px] text-text-tertiary">
-                    No details written on the request.
-                  </p>
-                )}
-                {r.kind === "meeting" && r.meetingAt && (
-                  <p className="mt-2.5 text-[12.5px] text-text-secondary">
-                    Meeting on{" "}
-                    <b className="tnum text-text-primary">{stampedAt(r.meetingAt)}</b>
-                  </p>
-                )}
+    <div className="grid w-full grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="min-w-0">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <span className="block text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+              What they asked for
+            </span>
+            <p className={cn(
+              "mt-1.5 max-w-[76ch] text-[13px] leading-relaxed",
+              r.details ? "text-text-primary" : "text-text-tertiary"
+            )}>
+              {r.details || "No brief has been added."}
+            </p>
+          </div>
+          {r.kind === "meeting" && r.meetingAt && (
+            <span className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-secondary tnum">
+              {stampedAt(r.meetingAt)}
+            </span>
+          )}
+        </div>
 
-                <div className="mt-4 grid grid-cols-1 gap-3 border-y border-border-light py-3 sm:grid-cols-3">
-                  <div className="min-w-0">
-                    <span className="block text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Customer</span>
-                    {r.customerId ? (
-                      <Link href={`/customers/${r.customerId}`} className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium text-text-secondary hover:text-blue-primary hover:underline">
-                        <CompanyLogo name={r.customer} className="h-[18px] w-[18px] shrink-0 text-[6px]" />
-                        <span className="truncate">{r.customer}</span>
-                      </Link>
-                    ) : (
-                      <p className="mt-1.5 text-[12.5px] text-text-tertiary">Not linked</p>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Opportunity</span>
-                    {r.opportunityLabels.length === 0 ? (
-                      <p className="mt-1.5 text-[12.5px] text-text-tertiary">Not linked</p>
-                    ) : (
-                      <div className="mt-1.5 space-y-1">
-                        {r.opportunityLabels.map((label, index) => {
-                          const opportunityId = r.opportunityIds.length === r.opportunityLabels.length ? r.opportunityIds[index] : undefined;
-                          const content = <><Briefcase size={13} strokeWidth={2} className="shrink-0 text-text-tertiary" /><span className="truncate">{label}</span></>;
-                          return opportunityId ? (
-                            <Link key={`${opportunityId}-${label}`} href={`/opportunities/${opportunityId}`} className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium text-text-secondary hover:text-blue-primary hover:underline">{content}</Link>
-                          ) : (
-                            <p key={label} className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-secondary">{content}</p>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Contacts</span>
-                    {r.contactNames.length === 0 ? (
-                      <p className="mt-1.5 text-[12.5px] text-text-tertiary">None linked</p>
-                    ) : (
-                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-                        {r.contactNames.map((name, index) => {
-                          const contactId = r.contactIds.length === r.contactNames.length ? r.contactIds[index] : undefined;
-                          const content = <><Avatar name={name} className="h-[18px] w-[18px] shrink-0 text-[7px]" /><span className="truncate">{name}</span></>;
-                          return contactId ? (
-                            <Link key={`${contactId}-${name}`} href={`/contacts/${contactId}`} className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-secondary hover:text-blue-primary hover:underline">{content}</Link>
-                          ) : (
-                            <p key={name} className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-secondary">{content}</p>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <section className="mt-4 min-w-0">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Documents</span>
-                    <span className="text-[11px] text-text-tertiary">{r.docs.length} {r.docs.length === 1 ? "document" : "documents"}</span>
-                  </div>
-                  {r.docs.length === 0 ? (
-                    <div className="mt-2 rounded-lg border border-dashed border-border px-3 py-6 text-center text-[12.5px] text-text-tertiary">Nothing added yet</div>
+        <div className="mt-3 grid grid-cols-1 gap-x-5 gap-y-3 rounded-lg border border-border-light bg-surface/45 px-3.5 py-3 sm:grid-cols-3">
+          <div className="min-w-0">
+            <span className="block text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Customer</span>
+            {r.customerId ? (
+              <Link href={`/customers/${r.customerId}`} className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary hover:text-blue-primary hover:underline">
+                <CompanyLogo name={r.customer} className="h-[18px] w-[18px] shrink-0 text-[6px]" />
+                <span className="truncate">{r.customer}</span>
+              </Link>
+            ) : (
+              <p className="mt-1.5 text-[12px] text-text-tertiary">Not linked</p>
+            )}
+          </div>
+          <div className="min-w-0">
+            <span className="block text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Opportunity</span>
+            {r.opportunityLabels.length === 0 ? (
+              <p className="mt-1.5 text-[12px] text-text-tertiary">Not linked</p>
+            ) : (
+              <div className="mt-1.5 space-y-1">
+                {r.opportunityLabels.slice(0, 2).map((label, index) => {
+                  const opportunityId = r.opportunityIds.length === r.opportunityLabels.length ? r.opportunityIds[index] : undefined;
+                  const content = <><Briefcase size={12} strokeWidth={2} className="shrink-0 text-text-tertiary" /><span className="truncate">{label}</span></>;
+                  return opportunityId ? (
+                    <Link key={`${opportunityId}-${label}`} href={`/opportunities/${opportunityId}`} className="flex min-w-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary hover:text-blue-primary hover:underline">{content}</Link>
                   ) : (
-                    <div className="mt-2 overflow-hidden rounded-lg border border-border-light bg-white">
-                      <div className="hidden grid-cols-[minmax(0,1fr)_140px_58px_140px_88px_36px] gap-3 border-b border-border-light bg-surface/70 px-3 py-2 sm:grid">
-                        {['Document', 'Stage', 'Version', 'Owner', 'Added', ''].map((heading) => (
-                          <span key={heading || 'action'} className="text-[9.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">{heading}</span>
-                        ))}
-                      </div>
-                      <div className="max-h-[240px] divide-y divide-border-light overflow-y-auto">
-                        {r.docs.map((doc) => {
-                          const isFile = Boolean(doc.docsPath || doc.ref);
-                          const previewPage = `/solutioning/${encodeURIComponent(r.id)}/documents/${encodeURIComponent(doc.id)}`;
-                          const kind = docKind(doc.fileName ?? doc.name);
-                          const DocIcon = kind.icon;
-                          const documentName = isFile ? (
-                            <MaterialPeek material={requestDocumentMaterial(doc)} previewUrl={`${previewPage}?embed=1`}>
-                              <button type="button" onClick={() => setViewingDocument(doc)} className="min-w-0 truncate text-left text-[12.5px] font-semibold text-text-primary underline-offset-2 hover:text-blue-primary hover:underline">{doc.name}</button>
-                            </MaterialPeek>
-                          ) : doc.url ? (
-                            <a href={doc.url} target="_blank" rel="noreferrer" className="min-w-0 truncate text-[12.5px] font-semibold text-text-primary hover:text-blue-primary hover:underline">{doc.name}</a>
-                          ) : (
-                            <span className="min-w-0 truncate text-[12.5px] font-semibold text-text-primary">{doc.name}</span>
-                          );
-                          return (
-                            <div key={doc.id} className="grid grid-cols-[minmax(0,1fr)_32px] gap-3 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_140px_58px_140px_88px_36px] sm:items-center">
-                              <div className="flex min-w-0 items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ color: kind.color, background: tint(kind.color, 10) }}><DocIcon size={14} strokeWidth={2} /></span>
-                                <span className="min-w-0 flex-1">{documentName}</span>
-                              </div>
-                              <span className="hidden truncate text-[11.5px] font-medium capitalize text-text-secondary sm:block">{DOC_TAB_WORDS.find(([key]) => key === doc.category)?.[1] ?? doc.category}</span>
-                              <span className="hidden text-[11.5px] font-semibold text-text-secondary sm:block">v{doc.version}</span>
-                              <span className="hidden min-w-0 items-center gap-1.5 text-[11.5px] text-text-secondary sm:flex">
-                                {doc.assignedTo ? <><Avatar name={doc.assignedTo} className="h-[18px] w-[18px] shrink-0 text-[7px]" /><span className="truncate">{doc.assignedTo}</span></> : <span className="text-text-tertiary">Unassigned</span>}
-                              </span>
-                              <span className="hidden whitespace-nowrap text-[11px] text-text-tertiary sm:block"><DateText value={doc.addedAt} /></span>
-                              {isFile ? (
-                                <Link href={previewPage} target="_blank" aria-label={`Open ${doc.name} on its own page`} title="Open on its own page" className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary"><ArrowUpRight size={13} strokeWidth={2.2} /></Link>
-                              ) : doc.url ? (
-                                <a href={doc.url} target="_blank" rel="noreferrer" aria-label={`Open ${doc.name}`} className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary"><ArrowUpRight size={13} strokeWidth={2.2} /></a>
-                              ) : <span />}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </section>
+                    <p key={label} className="flex min-w-0 items-center gap-1.5 text-[12px] text-text-secondary">{content}</p>
+                  );
+                })}
+                {r.opportunityLabels.length > 2 && <p className="text-[11px] text-text-tertiary">+{r.opportunityLabels.length - 2} more</p>}
               </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <span className="block text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Contacts</span>
+            {r.contactNames.length === 0 ? (
+              <p className="mt-1.5 text-[12px] text-text-tertiary">None linked</p>
+            ) : (
+              <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px] text-text-primary">
+                <span className="flex shrink-0 -space-x-1.5">
+                  {r.contactNames.slice(0, 3).map((name) => (
+                    <Avatar key={name} name={name} className="h-[20px] w-[20px] border-2 border-white text-[7px]" />
+                  ))}
+                </span>
+                <span className="truncate font-medium">{r.contactNames.slice(0, 2).join(", ")}</span>
+                {r.contactNames.length > 2 && <span className="shrink-0 text-text-tertiary">+{r.contactNames.length - 2}</span>}
+              </div>
+            )}
+          </div>
+        </div>
 
-              {/* THE FACTS STACK ON THE LEFT, THE STORY OWNS THE RIGHT
-                  (Anir, Aug 27: "if there's like a million steps, how is this
-                  gonna look good?... activities should take up the entire
-                  right side, where you see that vertical line. Move the
-                  against and the documents to the left"). Against and
-                  Documents sit under the request's own words; the activity
-                  timeline gets the ruled-off rail full-height, scrolling on
-                  its own when the story gets long. */}
-              <div className="min-w-0 sm:border-l sm:border-border-light sm:pl-6">
-                {/* THE HEADING SCROLLS WITH ITS LIST (Anir, Aug 28: "also the
-                    'latest activity' I don't want it to be sticky"). It sat
-                    OUTSIDE the scrolling box, so it held still while the
-                    events moved under it — sticky in effect even without the
-                    class. Inside the box it behaves like a heading again. */}
-                <div className="max-h-[320px] overflow-y-auto pr-1">
-                  <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                    Latest activity
-                  </span>
-                  <div className="mt-2">
-                  {/* A TIMELINE, WITH ITS CLOCK (Anir, Aug 27: "I need
-                      times and date and also I need latest activity like a
-                      timeline"). Three bare avatar lines said what happened
-                      but not when, and nothing connected them. Same marks
-                      and spine as the request page's own timeline —
-                      timelineMark is shared, not copied — with the date AND
-                      the time on every entry. */}
-                  <ul className="mt-2">
-                    {r.activity.length === 0 ? (
-                      <li className="text-[12.5px] text-text-tertiary">
-                        Nothing has happened on this yet.
-                      </li>
-                    ) : (
-                      /* Every step, newest first — the rail scrolls, so a
-                         million-step story stays a rail, not a wall. */
-                      [...r.activity]
-                        .reverse()
-                        .map((a, i, arr) => {
-                          const mark = timelineMark(a.what);
-                          const MarkIcon = mark.icon;
-                          return (
-                            <li
-                              key={`${a.at}-${i}`}
-                              className={cn(
-                                "relative pl-8",
-                                i < arr.length - 1 && "pb-3"
-                              )}
-                            >
-                              {i < arr.length - 1 && (
-                                <span
-                                  aria-hidden="true"
-                                  className="absolute bottom-0 left-[10px] top-[24px] w-[2px] bg-border-light"
-                                />
-                              )}
-                              <span
-                                aria-hidden="true"
-                                className="absolute left-0 top-0 flex h-[22px] w-[22px] items-center justify-center rounded-full"
-                                style={{ background: tint(mark.color, 10), color: mark.color }}
-                              >
-                                <MarkIcon size={11} strokeWidth={2.4} />
-                              </span>
-                              <p className="text-[12.5px] leading-[22px] text-text-primary">
-                                {a.what}
-                              </p>
-                              <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
-                                <Avatar
-                                  name={a.by}
-                                  className="h-[14px] w-[14px] shrink-0 text-[6px]"
-                                />
-                                <Link href={`/analytics/reps/${repSlug(a.by)}`} className="min-w-0 truncate hover:text-blue-primary hover:underline">{a.by}</Link>
-                                <span className="whitespace-nowrap tnum">
-                                  · <DateText value={a.at} /> ·{" "}
-                                  {new Date(a.at).toLocaleTimeString([], {
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                  })}
-                                </span>
-                              </p>
-                            </li>
-                          );
-                        })
-                    )}
-                  </ul>
+        <section className="mt-3 min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Documents</span>
+            <span className="text-[11px] text-text-tertiary">{r.docs.length}</span>
+          </div>
+          {r.docs.length === 0 ? (
+            <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-border-light px-3 py-2.5 text-[12px] text-text-tertiary">
+              <FileText size={15} strokeWidth={1.9} /> No documents yet
+            </div>
+          ) : (
+            <div className="mt-1.5 divide-y divide-border-light overflow-hidden rounded-lg border border-border-light bg-white">
+              {r.docs.slice(0, 3).map((doc) => {
+                const isFile = Boolean(doc.docsPath || doc.ref);
+                const previewPage = `/solutioning/${encodeURIComponent(r.id)}/documents/${encodeURIComponent(doc.id)}`;
+                const kind = docKind(doc.fileName ?? doc.name);
+                const DocIcon = kind.icon;
+                return (
+                  <div key={doc.id} className="flex min-w-0 items-center gap-2 px-3 py-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ color: kind.color, background: tint(kind.color, 10) }}>
+                      <DocIcon size={14} strokeWidth={2} />
+                    </span>
+                    <button
+                      type="button"
+                      disabled={!isFile}
+                      onClick={() => isFile && setViewingDocument(doc)}
+                      className="min-w-0 flex-1 truncate text-left text-[12px] font-semibold text-text-primary enabled:hover:text-blue-primary enabled:hover:underline disabled:cursor-default"
+                    >
+                      {doc.name}
+                    </button>
+                    <span className="shrink-0 text-[10.5px] text-text-tertiary">v{doc.version}</span>
+                    {isFile ? (
+                      <Link href={previewPage} target="_blank" rel="noopener noreferrer" aria-label={`Open ${doc.name} on its own page`} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary">
+                        <ArrowUpRight size={13} strokeWidth={2.2} />
+                      </Link>
+                    ) : doc.url ? (
+                      <a href={doc.url} target="_blank" rel="noreferrer" aria-label={`Open ${doc.name}`} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary">
+                        <ArrowUpRight size={13} strokeWidth={2.2} />
+                      </a>
+                    ) : null}
                   </div>
+                );
+              })}
+              {r.docs.length > 3 && (
+                <div className="px-3 py-2 text-[11px] font-medium text-text-tertiary">
+                  +{r.docs.length - 3} more on the full record
                 </div>
-              </div>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <aside className="self-start rounded-xl border border-border-light bg-surface/45 p-3.5">
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+            <Timer size={14} strokeWidth={2} className="text-blue-primary" /> Recent activity
+          </span>
+          <span className="text-[11px] text-text-tertiary">{r.activity.length}</span>
+        </div>
+        {r.activity.length === 0 ? (
+          <div className="mt-3 rounded-lg border border-dashed border-border px-3 py-4 text-center">
+            <p className="text-[12px] font-medium text-text-secondary">No activity yet</p>
+            <p className="mt-1 text-[11px] text-text-tertiary">Changes will appear here.</p>
+          </div>
+        ) : (
+          <ol className="mt-2 divide-y divide-border-light">
+            {[...r.activity].reverse().slice(0, 3).map((a, index) => {
+              const mark = timelineMark(a.what);
+              const MarkIcon = mark.icon;
+              return (
+                <li key={`${a.at}-${index}`} className="flex gap-2.5 py-2.5 first:pt-1.5 last:pb-1">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: tint(mark.color, 10), color: mark.color }}>
+                    <MarkIcon size={12} strokeWidth={2.3} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-[12px] font-medium leading-[17px] text-text-primary">{a.what}</p>
+                    <p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-tertiary">
+                      <Avatar name={a.by} className="h-[14px] w-[14px] shrink-0 text-[6px]" />
+                      <span className="min-w-0 truncate">{a.by}</span>
+                      <span className="shrink-0 tnum">· <DateText value={a.at} /></span>
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+        {r.activity.length > 3 && (
+          <p className="mt-2 border-t border-border-light pt-2 text-[11px] text-text-tertiary">
+            {r.activity.length - 3} earlier {r.activity.length - 3 === 1 ? "update" : "updates"} on the full record
+          </p>
+        )}
+      </aside>
     </div>
     {viewingDocument && (
       <DocumentPeek
@@ -1571,14 +1502,6 @@ function RequestPanel({
     </>
   );
 }
-
-/** The drill-down's plain words for the four tabs. */
-const DOC_TAB_WORDS: [import("@/lib/solutioning").DocCategory, string][] = [
-  ["customer", "customer document"],
-  ["working", "working document"],
-  ["final", "final deliverable"],
-  ["analysis", "analysis document"],
-];
 
 /* ------------------------------------------------------------- creation */
 
