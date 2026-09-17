@@ -610,7 +610,7 @@ export function RequestDetail({
               }
             : existingWork
               ? {
-                  label: `Open ${existingWork.ref}`,
+                  label: `Open ${existingWork.title}`,
                   icon: ArrowUpRight,
                   run: async () => router.push(`/solutioning/${existingWork.id}`),
                 }

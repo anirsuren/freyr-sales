@@ -1036,5 +1036,7 @@ An empty timeline explicitly says “No activity yet” and explains that change
 
 The request Owner menu uses its empty prompt only in the closed trigger. Its open list begins with real workspace people and does not repeat “Assign a Solutioning member” as a selectable first option. Completed locally, not deployed.
 
+When a Solutioning request has already raised a submission or presentation, the primary action names the work item, such as “Open Test RFP,” instead of exposing its internal reference as “Open SUB-0001.” Completed locally, not deployed.
+
 ### Sep 17: customer band tabs omit redundant actions
 Customer connection tabs no longer repeat record-team editing controls or links such as “The team” and “All deals” beside the active band summary. The selected tab already identifies and opens that destination, so the duplicated action row is removed across all customer band tabs. Completed locally, not deployed.
