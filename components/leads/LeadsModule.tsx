@@ -1283,6 +1283,7 @@ export function LeadsModule({
 
       <ConfirmDialog
         open={!!confirmDelete}
+        person={confirmDelete?.name || null}
         onClose={() => setConfirmDelete(null)}
         onConfirm={async () => {
           if (!confirmDelete) return;

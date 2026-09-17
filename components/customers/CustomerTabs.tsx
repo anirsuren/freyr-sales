@@ -1902,6 +1902,7 @@ export function CustomerTabs({
             </div>
             <ConfirmDialog
               open={!!removingContact}
+              person={removingContact?.name}
               busy={removeBusy}
               onClose={() => setRemovingContact(null)}
               title="Remove this contact?"

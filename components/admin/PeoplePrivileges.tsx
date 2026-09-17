@@ -346,6 +346,7 @@ export function PeoplePrivileges() {
 
       <ConfirmDialog
         open={pending !== null}
+        person={pending?.person}
         onClose={() => setPending(null)}
         onConfirm={applyPending}
         title={pending?.to ? "Give this privilege?" : "Take this privilege away?"}

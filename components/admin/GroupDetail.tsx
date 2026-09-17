@@ -958,6 +958,7 @@ export function GroupDetail({
 
       <ConfirmDialog
         open={confirmDropPerson !== null}
+        person={confirmDropPerson}
         onClose={() => setConfirmDropPerson(null)}
         onConfirm={() => {
           const who = confirmDropPerson;

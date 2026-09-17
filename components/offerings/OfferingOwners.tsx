@@ -505,6 +505,7 @@ export function OfferingOwners({
           access, they lose theirs without being told. */}
       <ConfirmDialog
         open={!!confirmOwner}
+        person={confirmOwner?.name}
         onClose={() => setConfirmOwner(null)}
         onConfirm={() => {
           const target = confirmOwner;

@@ -129,6 +129,8 @@ export function TrackedPeopleList({
           little buttons, which moved the list under the cursor. */}
       <ConfirmDialog
         open={!!confirmingId}
+        person={people.find((p) => p.id === confirmingId)?.name}
+        personPhoto={people.find((p) => p.id === confirmingId)?.photoUrl}
         onClose={() => setConfirmingId(null)}
         onConfirm={() => {
           const target = people.find((p) => p.id === confirmingId);

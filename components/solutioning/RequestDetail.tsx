@@ -1834,6 +1834,7 @@ export function RequestDetail({
 
       <ConfirmDialog
         open={confirmOwner !== null}
+        person={confirmOwner}
         onClose={() => setConfirmOwner(null)}
         onConfirm={() => {
           const owner = confirmOwner;
@@ -2189,6 +2190,7 @@ export function RequestDetail({
       />
       <ConfirmDialog
         open={confirmRemoveContributor !== null}
+        person={confirmRemoveContributor?.name}
         onClose={() => setConfirmRemoveContributor(null)}
         onConfirm={() => {
           if (!confirmRemoveContributor) return;

@@ -531,6 +531,7 @@ export function PeopleSplit() {
 
       <ConfirmDialog
         open={pendingPriv !== null}
+        person={pendingPriv?.person}
         onClose={() => setPendingPriv(null)}
         onConfirm={applyPendingPriv}
         title={pendingPriv?.to ? "Give this privilege?" : "Take this privilege away?"}

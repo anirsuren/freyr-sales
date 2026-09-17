@@ -3351,6 +3351,7 @@ function GoalPopupBody({
                       in half. */}
                   <ConfirmDialog
                     open={confirmUnassign === a.person}
+                    person={a.person}
                     onClose={() => setConfirmUnassign(null)}
                     onConfirm={() => {
                       setConfirmUnassign(null);

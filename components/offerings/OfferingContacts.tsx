@@ -467,6 +467,7 @@ export function OfferingContacts({
           thing"). */}
       <ConfirmDialog
         open={!!confirmRemove}
+        person={confirmRemove?.name}
         onClose={() => setConfirmRemove(null)}
         onConfirm={() => {
           const target = confirmRemove;

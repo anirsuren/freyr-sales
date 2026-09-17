@@ -3,6 +3,7 @@
 import { AlertTriangle, HelpCircle } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,6 +25,8 @@ export function ConfirmDialog({
   title,
   body,
   detail,
+  person,
+  personPhoto,
   confirmLabel = "Remove",
   busy = false,
   tone = "destructive",
@@ -36,6 +39,9 @@ export function ConfirmDialog({
   body: React.ReactNode;
   /** The consequence they might not have thought about. Optional. */
   detail?: React.ReactNode;
+  /** The person this decision affects. Their photo replaces the generic icon. */
+  person?: string | null;
+  personPhoto?: string | null;
   confirmLabel?: string;
   busy?: boolean;
   /**
@@ -69,11 +75,25 @@ export function ConfirmDialog({
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[13.5px] leading-relaxed text-text-primary">
-            {body}
-          </p>
+          <div className="flex min-w-0 items-start gap-2">
+            {person && (
+              <Avatar
+                name={person}
+                src={personPhoto}
+                className="mt-px h-6 w-6 shrink-0 border border-border-light text-[8.5px] shadow-sm"
+              />
+            )}
+            <p className="min-w-0 text-[13.5px] leading-relaxed text-text-primary">
+              {body}
+            </p>
+          </div>
           {detail && (
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-secondary">
+            <p
+              className={cn(
+                "mt-1.5 text-[12.5px] leading-relaxed text-text-secondary",
+                person && "ml-8"
+              )}
+            >
               {detail}
             </p>
           )}

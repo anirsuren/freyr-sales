@@ -347,6 +347,7 @@ export function DealPeople({
 
       <ConfirmDialog
         open={!!removing}
+        person={removing}
         onClose={() => setRemoving(null)}
         busy={busy}
         title="Take them off this deal?"
