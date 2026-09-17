@@ -147,26 +147,28 @@ export async function buildOpportunity360(
   const bands: Customer360Band[] = [];
 
   if (may("/solutioning")) {
-    const mine = solutioning.filter((r) => against(r.opportunityIds));
+    /* THE OPPORTUNITY TAB HOLDS REQUESTS, NOT THE WORK THEY CREATED.
+       Submissions and presentations have their own records in the same store;
+       including them here duplicated one ask two or three times and made the
+       compact deal table far wider than the page. `kind` still tells us what
+       was requested, which powers the All / Submission / Meeting /
+       Presentation view control on the deal. */
+    const mine = solutioning.filter(
+      (r) => against(r.opportunityIds) && (r.type ?? "request") === "request"
+    );
     bands.push({
       key: "solutionRequests",
       columns: [
         { key: "type", label: "Request type" },
         { key: "bd", label: "BD member", kind: "person" },
         { key: "owner", label: "Solutioning owner", kind: "person" },
-        { key: "prepared", label: "Prepared by", kind: "person" },
         { key: "requested", label: "Requested" },
-        { key: "due", label: "Due" },
-        { key: "submitted", label: "Submitted" },
         { key: "status", label: "Solution status" },
-        { key: "docs", label: "Documents" },
       ],
       label: "Solutioning requests",
       icon: BAND_ICONS.solutionRequests,
       color: "var(--ink-orange)",
       count: mine.length,
-      href: "/solutioning",
-      hrefLabel: "All solutioning requests",
       empty: "No solutioning request has been raised for this opportunity yet.",
       items: [...mine]
         .sort((a, b) => (b.requestedAt || "").localeCompare(a.requestedAt || ""))
@@ -178,12 +180,8 @@ export async function buildOpportunity360(
             type: r.subtype ? `${r.kind} · ${r.subtype}` : r.kind,
             bd: r.requestedBy,
             owner: r.owner || "Unassigned",
-            prepared: r.completedBy || r.owner || "Not started",
             requested: formatDate(r.requestedAt),
-            due: r.neededBy ? formatDate(r.neededBy) : "",
-            submitted: r.completedAt ? formatDate(r.completedAt) : "",
             status: displayedSolutionStatus(r),
-            docs: `${r.docs.length} ${r.docs.length === 1 ? "document" : "documents"}`,
           },
           href: `/solutioning/${r.id}`,
         })),

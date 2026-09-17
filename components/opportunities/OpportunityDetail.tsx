@@ -723,6 +723,7 @@ export function OpportunityDetail({
         ) : (
           <Customer360
             chromeless
+            solutioningControls
             /* Each area says its own sentence when it is empty, rather than
                the panel's generic "Nothing on X for {company} yet." — which
                names the ACCOUNT on a page about one deal and tells you

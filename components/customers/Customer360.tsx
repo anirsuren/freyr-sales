@@ -41,6 +41,8 @@ import { DateText } from "@/components/ui/DateText";
 export { BAND_ICONS };
 export type { BandIconKey, Customer360Band, Customer360Item };
 import { Card } from "@/components/ui/Card";
+import { PageToolbar } from "@/components/ui/PageToolbar";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ChevronDown } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -199,6 +201,7 @@ export function Customer360({
   bandEmpty = false,
   chromeless = false,
   forceKey,
+  solutioningControls = false,
 }: {
   company: string;
   bands: Customer360Band[];
@@ -244,6 +247,8 @@ export function Customer360({
   chromeless?: boolean;
   /** The page is driving which band shows. */
   forceKey?: string;
+  /** The opportunity page narrows its linked requests without leaving it. */
+  solutioningControls?: boolean;
 }) {
   /* A band that deliberately carries no badge (item 21) is still live when it
      has items — "no number" is not "nothing here". */
@@ -265,6 +270,8 @@ export function Customer360({
   const [openGoal, setOpenGoal] = useState<string | null>(null);
   /** Folded goal families — the goals page's own header fold. */
   const [shutFamilies, setShutFamilies] = useState<string[]>([]);
+  const [solutionQuery, setSolutionQuery] = useState("");
+  const [solutionKind, setSolutionKind] = useState("all");
   /**
    * EVERY AREA IS A TAB, INCLUDING THE EMPTY ONES (Anir, Aug 28: "at the
    * bottom 'Nothing yet on: contacts, submissions...' is ugly").
@@ -316,6 +323,19 @@ export function Customer360({
     "presentations",
     "meetingRequests",
   ].includes(active?.key ?? "");
+  const shownItems =
+    active?.key === "solutionRequests" && solutioningControls
+      ? active.items.filter((item) => {
+          const kind = String(item.cells?.type ?? "").toLowerCase();
+          if (solutionKind !== "all" && !kind.startsWith(solutionKind)) return false;
+          const q = solutionQuery.trim().toLowerCase();
+          if (!q) return true;
+          return [item.title, item.code ?? "", ...Object.values(item.cells ?? {})]
+            .join(" ")
+            .toLowerCase()
+            .includes(q);
+        })
+      : (active?.items ?? []);
 
   return (
     <section
@@ -489,6 +509,36 @@ export function Customer360({
 
           {/* Keyed so switching areas animates the panel, never the strip. */}
           <div key={active.key} className="tab-panel" data-c360-band={active.key}>
+            {chromeless && active.key === "solutionRequests" && solutioningControls && (
+              <PageToolbar
+                className="mb-4"
+                query={solutionQuery}
+                onQuery={setSolutionQuery}
+                placeholder="Search requests, people or status…"
+                searchAriaLabel="Search this opportunity's solutioning requests"
+                filtersBefore={
+                  <ColorSelect
+                    value={solutionKind}
+                    onChange={setSolutionKind}
+                    ariaLabel="Request type"
+                    minWidth={185}
+                    dense
+                    options={[
+                      { value: "all", label: "All request types", color: "var(--ink-bright-blue)", icon: Inbox },
+                      { value: "submission", label: "Submissions", color: "#0891B2", icon: FileText },
+                      { value: "meeting", label: "Meetings", color: "var(--ink-magenta)", icon: CalendarClock },
+                      { value: "presentation", label: "Presentations", color: "var(--ink-violet-soft)", icon: Presentation },
+                    ]}
+                  />
+                }
+                display={
+                  <span className="whitespace-nowrap text-[12px] text-text-secondary" aria-live="polite">
+                    <b className="tnum text-text-primary">{shownItems.length}</b> of{" "}
+                    <b className="tnum text-text-primary">{active.items.length}</b> shown
+                  </span>
+                }
+              />
+            )}
             {active.items.some((i) => i.goalDrill) ? (
               /* THE PEOPLE-PERFORMANCE TABLE, ON THE PERSON'S OWN PAGE
                  (Anir, Aug 27: "show me all the columns, bro: the target,
@@ -731,6 +781,12 @@ export function Customer360({
                   ? active.empty
                   : `Nothing on ${active.label.toLowerCase()} for ${company} yet.`}
               </p>
+            ) : active.key === "solutionRequests" &&
+              solutioningControls &&
+              shownItems.length === 0 ? (
+              <p className="py-8 text-center text-[12.5px] text-text-secondary">
+                No solutioning requests match this search or request type.
+              </p>
             ) : chromeless ? (
               /* A REAL TABLE, ONE ROW PER RECORD (Suren, Aug 28: "he wants it
                  in probably one row, like a table format, for everything, and
@@ -830,7 +886,7 @@ export function Customer360({
                     </tr>
                   </thead>
                   <tbody>
-                    {active.items.map((item) => (
+                    {shownItems.map((item) => (
                       <tr
                         key={item.id}
                         className="border-b border-border-light transition-colors last:border-b-0 hover:bg-surface/60"

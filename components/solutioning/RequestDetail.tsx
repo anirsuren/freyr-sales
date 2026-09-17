@@ -321,8 +321,13 @@ export function RequestDetail({
   /* The one door to the facts on this record, so nothing on the header writes
      the moment it is brushed. */
   const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDetails, setEditDetails] = useState("");
+  const [editSubtype, setEditSubtype] = useState("");
   const [editPriority, setEditPriority] = useState("");
   const [editNeededBy, setEditNeededBy] = useState("");
+  const [editMeetingAt, setEditMeetingAt] = useState("");
+  const [editAttendees, setEditAttendees] = useState("");
   /* CLOSING A REQUEST ASKS FIRST (Anir, Aug 30: "when I click it, it should ask
      me for a pop-up just like hand it back, to confirm I want to mark it as
      complete"). It is the one action here that ends the record for everybody
@@ -441,10 +446,10 @@ export function RequestDetail({
 
   return (
     <div>
-      {/* THE WAY BACK NAMES THE ROOM YOU CAME FROM (Suren, Aug 28: "when I go
-          and click on this, it should not say 'all requests'. It's all
-          submissions"). Every record wore "All requests" whatever it was, so
-          a submission offered to take you back to a list it is not on. */}
+      {/* A record reached from a list still needs a quiet way back. The
+          redundant link removed from the opportunity tab is the second door
+          beside Add solutioning request; this is the detail page's history
+          navigation and keeps its room-specific label. */}
       <SmartBack
         fallback={
           r.type === "submission"
@@ -543,8 +548,13 @@ export function RequestDetail({
             if (made) router.push(`/solutioning/${made.id}`);
           };
           const openEdit = () => {
+            setEditTitle(r.title);
+            setEditDetails(r.details ?? "");
+            setEditSubtype(r.subtype ?? "");
             setEditPriority(r.priority ?? "");
             setEditNeededBy(r.neededBy ?? "");
+            setEditMeetingAt(r.meetingAt ?? "");
+            setEditAttendees((r.attendees ?? []).join(", "));
             setEditing(true);
           };
 
@@ -1756,6 +1766,39 @@ export function RequestDetail({
           size="wide"
         >
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <label className="block sm:col-span-2">
+              <span className="text-[12px] font-semibold text-text-primary">
+                Solutioning title
+              </span>
+              <input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+              />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-[12px] font-semibold text-text-primary">
+                What they asked for
+              </span>
+              <textarea
+                value={editDetails}
+                onChange={(e) => setEditDetails(e.target.value)}
+                rows={4}
+                className="mt-1.5 w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] leading-relaxed outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+              />
+            </label>
+            {r.kind !== "meeting" && (
+              <label className="block">
+                <span className="text-[12px] font-semibold text-text-primary">
+                  {r.kind === "submission" ? "Submission type" : "Presentation type"}
+                </span>
+                <input
+                  value={editSubtype}
+                  onChange={(e) => setEditSubtype(e.target.value)}
+                  className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+                />
+              </label>
+            )}
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
                 Priority
@@ -1778,6 +1821,32 @@ export function RequestDetail({
                 />
               </span>
             </label>
+            {r.kind === "meeting" && (
+              <>
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-text-primary">
+                    Meeting time
+                  </span>
+                  <input
+                    type="datetime-local"
+                    value={editMeetingAt}
+                    onChange={(e) => setEditMeetingAt(e.target.value)}
+                    className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+                  />
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="text-[12px] font-semibold text-text-primary">
+                    Attendees
+                  </span>
+                  <input
+                    value={editAttendees}
+                    onChange={(e) => setEditAttendees(e.target.value)}
+                    placeholder="Separate names with commas"
+                    className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+                  />
+                </label>
+              </>
+            )}
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
                 Needed by
@@ -1799,21 +1868,39 @@ export function RequestDetail({
               </button>
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !editTitle.trim()}
                 onClick={async () => {
                   /* Only what actually moved, so saving the dialog cannot
                      overwrite a field somebody else changed while it was
                      open — and each lands on the timeline under its own name. */
+                  let saved = true;
                   if (editPriority !== (r.priority ?? "")) {
-                    await post({ op: "set-priority", priority: editPriority });
-                  }
-                  if (editNeededBy !== (r.neededBy ?? "")) {
-                    await post({
-                      op: "update",
-                      patch: { neededBy: editNeededBy || null },
+                    saved = await post({
+                      op: "set-priority",
+                      priority: editPriority,
                     });
                   }
-                  setEditing(false);
+                  const patch: Record<string, unknown> = {};
+                  if (editTitle.trim() !== r.title) patch.title = editTitle.trim();
+                  if (editDetails.trim() !== (r.details ?? ""))
+                    patch.details = editDetails.trim() || null;
+                  if (editSubtype.trim() !== (r.subtype ?? ""))
+                    patch.subtype = editSubtype.trim() || null;
+                  if (editNeededBy !== (r.neededBy ?? ""))
+                    patch.neededBy = editNeededBy || null;
+                  if (editMeetingAt !== (r.meetingAt ?? ""))
+                    patch.meetingAt = editMeetingAt || null;
+                  const attendeeNames = editAttendees
+                    .split(",")
+                    .map((name) => name.trim())
+                    .filter(Boolean);
+                  if (attendeeNames.join("|") !== (r.attendees ?? []).join("|")) {
+                    patch.attendees = attendeeNames;
+                  }
+                  if (Object.keys(patch).length > 0) {
+                    saved = (await post({ op: "update", patch })) && saved;
+                  }
+                  if (saved) setEditing(false);
                 }}
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-5 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
