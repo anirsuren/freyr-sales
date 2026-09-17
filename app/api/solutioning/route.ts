@@ -359,7 +359,7 @@ export async function POST(req: NextRequest) {
     if (op === "pick-up") {
       if (!canAssignSolutioning(me.role, held)) {
         return NextResponse.json(
-          { error: "Only a Solutioning Owner can assign this request." },
+          { error: "Only a Solutioning Owner or Admin can change the owner." },
           { status: 403 }
         );
       }

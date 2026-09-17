@@ -1042,5 +1042,7 @@ Solutioning request lists show the current owner as read-only identity text. Own
 
 Arrow-up-right and external-link actions open their destination in a new browser tab throughout the app, including internal record destinations. Plain names and ordinary navigation links keep their existing behavior; the arrow is the visual promise that the current page remains open. Completed locally, not deployed.
 
+The Owner card can transfer ownership for requests, submissions, and presentations. Choosing a different person opens a confirmation dialog before anything is saved, and the timeline records the previous and new owner. Only a Solutioning Owner or Admin can complete the transfer. Completed locally, not deployed.
+
 ### Sep 17: customer band tabs omit redundant actions
 Customer connection tabs no longer repeat record-team editing controls or links such as “The team” and “All deals” beside the active band summary. The selected tab already identifies and opens that destination, so the duplicated action row is removed across all customer band tabs. Completed locally, not deployed.

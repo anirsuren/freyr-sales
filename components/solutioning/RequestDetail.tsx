@@ -326,6 +326,7 @@ export function RequestDetail({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmPickUp, setConfirmPickUp] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmOwner, setConfirmOwner] = useState<string | null>(null);
   /* The one door to the facts on this record, so nothing on the header writes
      the moment it is brushed. */
   const [editing, setEditing] = useState(false);
@@ -376,6 +377,12 @@ export function RequestDetail({
   const canEditRequest = may.edit && canWrite && (iRequested || managerial);
   const kindMeta = KIND_META[r.kind];
   const KindIcon = kindMeta.icon;
+  const recordLabel =
+    r.type === "submission"
+      ? "submission"
+      : r.type === "presentation"
+        ? "presentation"
+        : "request";
   const overdue =
     !!r.neededBy &&
     r.status !== "completed" &&
@@ -1316,15 +1323,17 @@ export function RequestDetail({
                   <PeopleSelect
                     value={r.owner ?? ""}
                     options={members}
-                    onChange={(owner) => void post({ op: "assign-request", owner })}
+                    onChange={(owner) => {
+                      if (!samePerson(owner, r.owner)) setConfirmOwner(owner);
+                    }}
                     placeholder="Assign a Solutioning member"
                     allowUnassigned={false}
                     ariaLabel={`Assign ${r.ref}`}
                   />
                   <p className="mt-2 text-[11.5px] leading-relaxed text-text-tertiary">
                     {r.owner
-                      ? "Choose another teammate to transfer this request."
-                      : "Only a Solutioning Owner or Admin can assign this request."}
+                      ? `Choose another teammate to transfer this ${recordLabel}.`
+                      : `Only a Solutioning Owner or Admin can assign this ${recordLabel}.`}
                   </p>
                 </div>
               ) : r.owner ? (
@@ -1799,6 +1808,30 @@ export function RequestDetail({
           </button>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmOwner !== null}
+        onClose={() => setConfirmOwner(null)}
+        onConfirm={() => {
+          const owner = confirmOwner;
+          setConfirmOwner(null);
+          if (owner) void post({ op: "assign-request", owner });
+        }}
+        busy={busy}
+        tone="primary"
+        title={r.owner ? "Change owner?" : "Assign owner?"}
+        body={
+          <>
+            <b>{confirmOwner}</b> will become the owner of <b>{r.title}</b>.
+          </>
+        }
+        detail={
+          r.owner
+            ? `${r.owner} will no longer own this ${recordLabel}.`
+            : `This ${recordLabel} will move into ${confirmOwner ?? "their"}'s assigned work.`
+        }
+        confirmLabel={r.owner ? "Change owner" : "Assign owner"}
+      />
 
       <ConfirmDialog
         open={confirmComplete}

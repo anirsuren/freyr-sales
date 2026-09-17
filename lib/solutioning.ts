@@ -1377,12 +1377,10 @@ export async function assignRequestOwner(input: {
   return withWrite(async () => {
     const state = await readRow();
     const r = mustFind(state, input.requestId);
-    if ((r.type ?? "request") !== "request") {
-      throw new Error("Only solutioning requests are assigned here.");
-    }
     if (["completed", "cancelled"].includes(r.status)) {
-      throw new Error("Closed requests cannot be reassigned.");
+      throw new Error("Closed solutioning records cannot be reassigned.");
     }
+    const previousOwner = r.owner;
     const owner = str(input.owner ?? "", 80) || undefined;
     if (r.owner && !owner) {
       throw new Error("Choose the replacement owner before removing the current one.");
@@ -1396,7 +1394,15 @@ export async function assignRequestOwner(input: {
       r.pickedUpAt = undefined;
       if (r.status === "assigned") r.status = "initiated";
     }
-    touch(r, input.by, owner ? `Assigned to ${owner}` : "Assignment cleared");
+    touch(
+      r,
+      input.by,
+      owner
+        ? previousOwner && previousOwner !== owner
+          ? `Owner changed from ${previousOwner} to ${owner}`
+          : `Assigned to ${owner}`
+        : "Assignment cleared"
+    );
     await writeRow(state);
   });
 }
