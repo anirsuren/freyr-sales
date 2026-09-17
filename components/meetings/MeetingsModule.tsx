@@ -95,6 +95,8 @@ function MeetingPanel({
     <div className="relative grid grid-cols-1 gap-x-10 gap-y-4 sm:grid-cols-[minmax(0,1fr)_240px]">
       {ownArrow && (
       <Link
+        target="_blank"
+        rel="noopener noreferrer"
         href={`/meetings/${m.id}`}
         title="Open the meeting"
         aria-label={`Open ${m.title}`}
@@ -646,6 +648,8 @@ export function MeetingsModule({
                     </span>
                   </span>
                   <Link
+                    target="_blank"
+                    rel="noopener noreferrer"
                     href={`/meetings/${picked.id}`}
                     title="Open the meeting"
                     aria-label={`Open ${picked.title}`}

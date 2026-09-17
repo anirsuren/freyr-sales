@@ -213,6 +213,8 @@ export function CustomerDots({
                 return (
                   <li key={person.id}>
                     <Link
+                      target="_blank"
+                      rel="noopener noreferrer"
                       href={`/customers/${person.id}?tab=components`}
                       onClick={(event) => event.stopPropagation()}
                       className="group flex min-h-[64px] items-center gap-3 rounded-xl border border-border-light bg-white px-3 py-2.5 transition-[border-color,background-color,box-shadow] hover:border-blue-subtle hover:bg-blue-light/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"

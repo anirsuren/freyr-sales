@@ -1814,6 +1814,8 @@ export function OpportunitiesBrowser({
                                 behind `writable && mayTouch`, which left a
                                 view-only account with no door at all. */}
                             <Link
+                              target="_blank"
+                              rel="noopener noreferrer"
                               href={`/opportunities/${o.id}`}
                               title={`Open ${o.name}`}
                               aria-label={`Open ${o.name}`}

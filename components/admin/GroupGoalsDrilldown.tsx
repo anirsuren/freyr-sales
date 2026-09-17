@@ -304,6 +304,8 @@ export function GroupGoalsDrilldown({
                       control, identical to the one in the group row above it —
                       the words live on the tooltip and the aria-label. */}
                   <Link
+                    target="_blank"
+                    rel="noopener noreferrer"
                     href={`/performance/groups?group=${encodeURIComponent(groupId)}&goal=${encodeURIComponent(goal.id)}`}
                     title={
                       goalWaiting > 0

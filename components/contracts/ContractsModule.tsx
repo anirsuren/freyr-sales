@@ -1322,6 +1322,8 @@ export function ContractsModule({
                         {c.opportunityId &&
                           deals.some((d) => d.id === c.opportunityId) && (
                           <Link
+                            target="_blank"
+                            rel="noopener noreferrer"
                             href={`/opportunities?deal=${encodeURIComponent(c.opportunityId)}`}
                             title="Open the deal"
                             aria-label="Open the deal behind this contract"

@@ -172,6 +172,8 @@ export default async function AgentRunDetailPage({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         {run.customer_id && run.company ? (
           <Link
+            target="_blank"
+            rel="noopener noreferrer"
             href={`/customers/${run.customer_id}`}
             className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-blue-primary hover:underline"
           >
@@ -286,6 +288,8 @@ export default async function AgentRunDetailPage({
                         <OutcomeBadge outcome={it.outcome} />
                         {company && (
                           <Link
+                            target="_blank"
+                            rel="noopener noreferrer"
                             href={`/customers/${it.customer_id}`}
                             className={cn(
                               "text-[13px] font-semibold text-blue-primary hover:underline inline-flex items-center gap-1.5",

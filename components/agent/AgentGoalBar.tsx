@@ -369,6 +369,8 @@ export function AgentGoalBar() {
                               {it.title}
                             </span>
                             <Link
+                              target="_blank"
+                              rel="noopener noreferrer"
                               href={it.href}
                               aria-label={`Open ${it.company || it.title}`}
                               className="ml-auto text-text-tertiary hover:text-blue-primary shrink-0"
@@ -391,6 +393,8 @@ export function AgentGoalBar() {
                       {preview.willEscalate.map((it, i) => (
                         <li key={i}>
                           <Link
+                            target="_blank"
+                            rel="noopener noreferrer"
                             href={it.href}
                             className="flex items-center gap-2 text-[12px] text-text-secondary hover:text-blue-primary group"
                           >

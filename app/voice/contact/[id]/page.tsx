@@ -242,6 +242,8 @@ export default async function VoiceContactPage({
           </div>
         </div>
         <Link
+          target="_blank"
+          rel="noopener noreferrer"
           href={`/contacts/${contact.id}`}
           className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-lg border border-border-light text-text-secondary hover:bg-surface transition-colors shrink-0"
         >

@@ -224,6 +224,8 @@ export default async function DealDetailPage({
         {/* One line, not two. What it opens lives in the hover, where an
             explanation belongs. */}
         <Link
+          target="_blank"
+          rel="noopener noreferrer"
           href={`/sessions/${session.id}`}
           title="The writing workspace for this deal: the pitch, the email and the objections."
           className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 py-2 text-[13px] font-semibold text-blue-primary transition-colors hover:bg-surface hover:text-blue-hover"

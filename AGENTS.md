@@ -1038,5 +1038,9 @@ The request Owner menu uses its empty prompt only in the closed trigger. Its ope
 
 When a Solutioning request has already raised a submission or presentation, the primary action names the work item, such as “Open Test RFP,” instead of exposing its internal reference as “Open SUB-0001.” Completed locally, not deployed.
 
+Solutioning request lists show the current owner as read-only identity text. Ownership is transferred from the request detail Owner card; an unassigned fulfiller can still use Pick it up from the list. Completed locally, not deployed.
+
+Arrow-up-right and external-link actions open their destination in a new browser tab throughout the app, including internal record destinations. Plain names and ordinary navigation links keep their existing behavior; the arrow is the visual promise that the current page remains open. Completed locally, not deployed.
+
 ### Sep 17: customer band tabs omit redundant actions
 Customer connection tabs no longer repeat record-team editing controls or links such as “The team” and “All deals” beside the active band summary. The selected tab already identifies and opens that destination, so the duplicated action row is removed across all customer band tabs. Completed locally, not deployed.

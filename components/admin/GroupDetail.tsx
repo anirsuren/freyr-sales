@@ -508,6 +508,8 @@ export function GroupDetail({
                       <td className="py-3.5 pl-2 pr-4">
                         <span className="flex items-center justify-start gap-0.5">
                           <Link
+                            target="_blank"
+                            rel="noopener noreferrer"
                             href="/admin/goal-master"
                             title={`Open ${g.name} on the Goal Master`}
                             aria-label={`Open ${g.name} on the Goal Master`}

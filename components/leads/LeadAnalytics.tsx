@@ -534,7 +534,10 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                       </td>
                       <td>
                         {lead.customerId ? (
-                          <Link href={`/customers/${lead.customerId}`} className="group/company flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary hover:text-blue-primary">
+                          <Link
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            href={`/customers/${lead.customerId}`} className="group/company flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary hover:text-blue-primary">
                             <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
                             <span className="min-w-0 truncate group-hover/company:underline">{lead.company}</span>
                             <ArrowUpRight size={13} className="shrink-0 opacity-0 transition-opacity group-hover/company:opacity-100" aria-hidden="true" />
@@ -559,7 +562,10 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                           </span>
                         ) : null}
                         {lead.convertedOpportunityId ? (
-                          <Link href={`/opportunities/${lead.convertedOpportunityId}`} className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-semibold text-blue-primary hover:underline">
+                          <Link
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            href={`/opportunities/${lead.convertedOpportunityId}`} className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-semibold text-blue-primary hover:underline">
                             Open opportunity <ArrowUpRight size={11} aria-hidden="true" />
                           </Link>
                         ) : null}

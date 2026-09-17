@@ -778,6 +778,8 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                           <td className="py-3.5 pl-2 pr-4">
                             <span className="flex items-center justify-start gap-0.5">
                               <Link
+                              target="_blank"
+                              rel="noopener noreferrer"
                                 /* The tab picks a group by ID, so linking the
                                    NAME landed on the page with the first group
                                    selected instead of this one (Anir, Aug 19:

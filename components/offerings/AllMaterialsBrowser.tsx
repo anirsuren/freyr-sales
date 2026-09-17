@@ -464,6 +464,8 @@ const TABLE_CLASS =
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 align-middle">
                     <Link
+                      target="_blank"
+                      rel="noopener noreferrer"
                       href={`/offerings/${row.offeringId}`}
                       className="group/off flex w-full min-w-0 items-center gap-1 text-[12.5px] text-text-primary transition-colors hover:text-blue-primary"
                     >

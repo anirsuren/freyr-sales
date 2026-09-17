@@ -967,6 +967,8 @@ export function RequestDetail({
               <div className="mt-4 space-y-2.5 pl-11">
                 {r.customerId ? (
                   <Link
+                    target="_blank"
+                    rel="noopener noreferrer"
                     href={`/customers/${r.customerId}`}
                     className="group/customer flex w-fit items-center gap-2 text-[13.5px] font-semibold text-text-primary"
                   >

@@ -42,7 +42,6 @@ import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Avatar } from "@/components/ui/Avatar";
-import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { DocumentPeek } from "@/components/ui/DocumentPeek";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { timelineMark } from "@/components/solutioning/RequestDetail";
@@ -780,6 +779,8 @@ export function SolutioningModule({
                       whoever raised it while nothing has started. */}
                   <span className="flex shrink-0 items-center gap-1">
                     <Link
+                      target="_blank"
+                      rel="noopener noreferrer"
                       href={`/solutioning/${picked.id}${room === "requests" ? "" : `?tab=${room}`}`}
                       title="Open the full request"
                       aria-label={`Open ${picked.ref} in full`}
@@ -852,8 +853,6 @@ export function SolutioningModule({
                     fulfiller={fulfiller}
                     hideKindLabel={oneKind}
                     room={room}
-                    canAssign={canAssign}
-                    members={members}
                     busy={busy === r.id}
                     open={openIds.has(r.id)}
                     onToggle={() =>
@@ -866,9 +865,6 @@ export function SolutioningModule({
                     }
                     onPickUp={() =>
                       setConfirmPickUp({ id: r.id, label: `${r.ref} · ${r.title}` })
-                    }
-                    onAssign={(owner) =>
-                      void post({ op: "assign-request", requestId: r.id, owner }, r.id)
                     }
                     /* THE SAME RULE THE ROUTE APPLIES: an admin, or the person
                        who raised it while nothing has started. Anyone else has
@@ -992,21 +988,16 @@ function solutionStatusLabel(r: SolutionRequest, overdue: boolean): string {
 function RequestRow({
   request: r,
   fulfiller,
-  canAssign,
-  members,
   busy,
   open,
   onToggle,
   onPickUp,
-  onAssign,
   onDelete,
   hideKindLabel = false,
   room,
 }: {
   request: SolutionRequest;
   fulfiller: boolean;
-  canAssign: boolean;
-  members: string[];
   /** The room this row is being read in — it travels with the record link so
    *  the sidebar can keep the right sub-item lit on the detail page. */
   room: "requests" | "submissions" | "presentations";
@@ -1016,7 +1007,6 @@ function RequestRow({
   open: boolean;
   onToggle: () => void;
   onPickUp: () => void;
-  onAssign: (owner: string) => void;
   /** Absent when this person may not delete this row — see the note above. */
   onDelete?: () => void;
 }) {
@@ -1135,17 +1125,7 @@ function RequestRow({
         </Link>
       </td>
       <td className="px-4 py-3.5">
-        {canAssign && room === "requests" && r.status !== "completed" && r.status !== "cancelled" ? (
-          <PeopleSelect
-            value={r.owner ?? ""}
-            options={members}
-            onChange={onAssign}
-            placeholder="Unassigned"
-            allowUnassigned={!r.owner}
-            ariaLabel={`Assign ${r.ref}`}
-            className="w-[155px]"
-          />
-        ) : r.owner ? (
+        {r.owner ? (
           <Link
             href={`/analytics/reps/${repSlug(r.owner)}`}
             onClick={(event) => event.stopPropagation()}
@@ -1248,6 +1228,8 @@ function RequestRow({
             these are the two things you can do to a request from a list: look
             at it here, or go to it. */}
         <Link
+          target="_blank"
+          rel="noopener noreferrer"
           href={requestHref}
           title="Open the full request"
           aria-label={`Open ${r.ref} in full`}

@@ -487,6 +487,8 @@ export function ManageCompaniesPanel({
                         <MiLogo name={c.name} logoUrl={c.logoUrl} className="h-8 w-8 shrink-0" />
                         <span className="min-w-0">
                           <Link
+                            target="_blank"
+                            rel="noopener noreferrer"
                             href={`/market-intel/${c.id}`}
                             className="group/name inline-flex items-center gap-1 text-[13px] font-semibold text-text-primary hover:text-blue-primary"
                           >

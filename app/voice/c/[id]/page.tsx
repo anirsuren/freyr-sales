@@ -422,6 +422,8 @@ export default async function ConversationPage({
             <div className="mt-3 flex flex-col gap-2">
               {vm.contactId && (
                 <Link
+                  target="_blank"
+                  rel="noopener noreferrer"
                   href={`/voice/contact/${vm.contactId}`}
                   className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline"
                 >
@@ -435,6 +437,8 @@ export default async function ConversationPage({
               )}
               {vm.contactId && (
                 <Link
+                  target="_blank"
+                  rel="noopener noreferrer"
                   href={`/contacts/${vm.contactId}`}
                   className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-text-secondary hover:text-text-primary"
                 >

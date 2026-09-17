@@ -404,6 +404,8 @@ export function OpportunityDetail({
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-text-secondary">
               {customerId ? (
                 <Link
+                  target="_blank"
+                  rel="noopener noreferrer"
                   href={`/customers/${customerId}`}
                   className="inline-flex items-center gap-1 font-semibold text-text-primary hover:text-blue-primary"
                 >
