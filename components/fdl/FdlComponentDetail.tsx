@@ -3604,13 +3604,16 @@ export function FdlComponentDetail({
         open={addingCustomers}
         onClose={() => setAddingCustomers(false)}
         title={`Add a customer to ${component.name}`}
+        size="wide"
+        dialogClassName="!h-[min(640px,calc(100vh-3rem))] !max-w-[720px]"
+        bodyClassName="flex flex-col"
       >
         <form
           onSubmit={(event) => {
             event.preventDefault();
             void connectCustomers();
           }}
-          className="space-y-4"
+          className="flex h-full min-h-0 flex-col gap-4"
         >
           <div>
             <p className="mb-1.5 text-[12.5px] font-semibold text-text-primary">
@@ -3638,8 +3641,8 @@ export function FdlComponentDetail({
             className="w-full"
           />
           {matchingUnconnected.length > 0 ? (
-          <ScrollHint className="max-h-72">
-          <ul className="space-y-1.5">
+          <ScrollHint containerClassName="min-h-0 flex-1" className="h-full">
+          <ul className="grid gap-2 sm:grid-cols-2">
             {matchingUnconnected.map((customer) => {
               const active = pickedCustomers.includes(customer.id);
               return (
@@ -3683,7 +3686,7 @@ export function FdlComponentDetail({
               No customers match “{customerQuery.trim()}”.
             </div>
           )}
-          <div className="flex justify-end">
+          <div className="mt-auto flex shrink-0 justify-end border-t border-border-light pt-4">
             <Button type="submit" disabled={!pickedCustomers.length} loading={busy}>
               <Plus size={14} strokeWidth={2.2} /> Add customer
             </Button>

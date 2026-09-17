@@ -109,6 +109,12 @@ const BLANK = {
 
 type Draft = typeof BLANK;
 
+const PHONE_EXAMPLE_BY_DIAL: Record<string, string> = {
+  "+1": "202 555 0123",
+  "+44": "20 7946 0000",
+  "+91": "98765 43210",
+};
+
 export function LeadsModule({
   state: initial,
   live,
@@ -1148,7 +1154,7 @@ export function LeadsModule({
                           phone: joinPhone(dial, digits),
                         });
                       }}
-                      placeholder="20 7946 0000"
+                      placeholder={PHONE_EXAMPLE_BY_DIAL[dial] ?? "Phone number"}
                       aria-label="Phone number"
                     />
                   </div>

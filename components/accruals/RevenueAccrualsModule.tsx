@@ -402,7 +402,6 @@ function DeviationsTable({
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          {viewControl}
           <span className="inline-flex h-7 items-center rounded-full bg-surface px-2.5 text-[11.5px] font-semibold text-text-secondary">
             <span className="tnum text-text-primary">{shown.length}</span>
             <span className="mx-1">shown</span>
@@ -410,6 +409,7 @@ function DeviationsTable({
               <span className="tnum text-text-tertiary">of {rows.length}</span>
             )}
           </span>
+          {viewControl}
         </div>
       </div>
 

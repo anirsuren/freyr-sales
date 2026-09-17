@@ -1604,9 +1604,9 @@ function GoalRows({
         )}
         style={{ ["--goal-accent" as string]: typeMeta(goal.type).color }}
       >
-        <td className="px-4 py-3">
+        <td className="px-4 py-2">
           <span className="flex items-center gap-3">
-            <TypeIconTile type={goal.type} />
+            <TypeIconTile type={goal.type} className="h-9 w-9 rounded-lg" />
             {/* THE MARKS SHARE ONE LINE (Anir, Aug 16: "this has to be on one
                 line. the 'financial...' thing is below lagging when it should
                 be in line with it"). The pace pill used to sit on the name's
@@ -1678,7 +1678,7 @@ function GoalRows({
             </span>
           </span>
         </td>
-        <td className="whitespace-nowrap px-4 py-3">
+        <td className="whitespace-nowrap px-4 py-2">
           {/* JUST THE NUMBER (Anir, Aug 20: "can you remove the edit button
               next to the target? I think it's useless"). Changing a target was
               given its own pencil here on Aug 15, but the row's Actions column
@@ -1706,7 +1706,7 @@ function GoalRows({
             <span className="text-[13px] text-text-tertiary">·</span>
           )}
         </td>
-        <td className="whitespace-nowrap px-4 py-3">
+        <td className="whitespace-nowrap px-4 py-2">
           <span className="block text-[13px] font-semibold text-text-primary tnum">
             {money(actual, goal.currency)}
           </span>
@@ -1717,7 +1717,7 @@ function GoalRows({
             </span>
           )}
         </td>
-        <td className="px-4 py-3">
+        <td className="px-4 py-2">
           {goal.target > 0 ? (
             <MetPill met={verifiedActual >= goal.target} size="sm" />
           ) : (
@@ -1730,7 +1730,7 @@ function GoalRows({
             The whole row used to broadcast, so crossing any of its seven cells
             lit the bar and its partner in the chart. */}
         <td
-          className="px-4 py-3"
+          className="px-4 py-2"
           onMouseEnter={() => donutSyncBroadcast(syncId, index)}
           onMouseLeave={() => donutSyncBroadcast(syncId, null)}
         >
@@ -1778,7 +1778,7 @@ function GoalRows({
           />
 
         </td>
-        <td className="px-4 py-3">
+        <td className="px-4 py-2">
           <VerifiedPill
             /**
              * SIGNED OFF IS SIGNED OFF (Anir, Aug 23: "we verified it, but it
@@ -1834,7 +1834,7 @@ function GoalRows({
             }
           />
         </td>
-        <td className="px-2 py-3">
+        <td className="px-2 py-2">
           {/* THE FIRST ICON STARTS WHERE THE HEADING DOES (Anir, Aug 16: "the
               a should line up with the first icon"). The heading was left
               aligned and the controls right aligned, so they sat on opposite

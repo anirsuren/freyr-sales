@@ -482,13 +482,6 @@ export function NewMeetingDialog({
               searchable
               inlineDescription
               className="w-full"
-              createLabel="Add a customer"
-              onCreate={() => {
-                const prefix = window.location.pathname.startsWith("/mock-mode")
-                  ? "/mock-mode"
-                  : "";
-                window.open(`${prefix}/customers?add=1`, "_blank", "noopener,noreferrer");
-              }}
               onChange={(v) => {
                 setCustomerId(v);
                 /* Their people and their deals both change with the account,
@@ -553,7 +546,6 @@ export function NewMeetingDialog({
                   value: c.id,
                   label: c.name,
                   logoName: c.name,
-                  href: `/customers/${c.id}`,
                   color: "var(--ink-bright-blue)",
                   description: parts.length ? parts.join(" · ") : "nothing yet",
                   descriptionAccent: parts.length > 0,
