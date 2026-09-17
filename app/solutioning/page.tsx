@@ -11,6 +11,8 @@ import {
   moduleWriteRefusal,
   requireModuleAccess,
 } from "@/lib/moduleAccessServer";
+import { privilegesForPerson, readPrivileges } from "@/lib/privileges";
+import { canAssignSolutioning } from "@/lib/solutioningValidation";
 
 export const metadata = { title: "Solutioning" };
 export const dynamic = "force-dynamic";
@@ -35,7 +37,7 @@ export default async function SolutioningPage({
   const live = getDataMode() === "live";
   const workspace = process.env.FREYR_WORKSPACE_ID;
   const db = getDb();
-  const [state, me, customers, opportunities, directory] = await Promise.all([
+  const [state, me, customers, opportunities, directory, privilegeState] = await Promise.all([
     readSolutioning(),
     getCurrentUser(),
     db.customers.list().catch(() => []),
@@ -43,7 +45,22 @@ export default async function SolutioningPage({
       .then((s) => s.opportunities)
       .catch(() => []),
     live && workspace ? listWorkspaceAccess(workspace).catch(() => null) : null,
+    readPrivileges(),
   ]);
+  const held = privilegesForPerson(privilegeState, me.name);
+  const isBd =
+    me.role === "admin" ||
+    me.role === "bd_owner" ||
+    me.role === "bd_member" ||
+    held.includes("admin") ||
+    held.includes("bd_owner") ||
+    held.includes("bd_member");
+  const solutioningMemberOnly =
+    (me.role === "sol_member" || held.includes("sol_member")) &&
+    !canAssignSolutioning(me.role, held);
+  const visibleState = solutioningMemberOnly
+    ? { ...state, requests: state.requests.filter((request) => request.owner === me.name) }
+    : state;
 
   /* The people pickers: real workspace accounts in live mode — never invented
      names on real data. Mock offers the sample cast the sample requests are
@@ -52,7 +69,15 @@ export default async function SolutioningPage({
     ? [
         ...new Set(
           (directory?.members ?? [])
-            .filter((m) => m.active && m.accountType === "real")
+            .filter((m) => {
+              if (!m.active || m.accountType !== "real") return false;
+              const personPrivileges = privilegesForPerson(privilegeState, m.name);
+              return (
+                m.role === "sol_member" ||
+                personPrivileges.includes("sol_member") ||
+                personPrivileges.includes("sol_owner")
+              );
+            })
             .map((m) => m.name.trim())
             .filter(Boolean)
         ),
@@ -67,9 +92,12 @@ export default async function SolutioningPage({
       ];
   return (
     <SolutioningModule
-      state={state}
+      state={visibleState}
       room={tab === "submissions" || tab === "presentations" ? tab : "requests"}
       meRole={me.role}
+      meName={me.name}
+      limitToOwn={solutioningMemberOnly}
+      canAssign={canAssignSolutioning(me.role, held)}
       /* THE ROOM DECIDES WHICH QUESTION (see the note in the API route).
          Requests is the module's inbound — anybody who may write it may raise
          one. Submissions and presentations are the work itself, and starting
@@ -80,7 +108,7 @@ export default async function SolutioningPage({
                and Presentations each have their own, and asking "/solutioning"
                asked about Solution requests for all three. */
             !(await moduleCreateRefusal(`/solutioning?tab=${tab}`))
-          : !(await moduleWriteRefusal("/solutioning"))
+          : isBd && !(await moduleWriteRefusal("/solutioning"))
       }
       members={members}
       customers={customers

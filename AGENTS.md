@@ -193,6 +193,20 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 17 Solutioning stakeholder transcript:** Opportunity-level Solutioning
+  now uses the compact request-only table with search and All / Submissions /
+  Meetings / Presentations filtering; its redundant link back to the main room
+  is gone. Request creation shows request date, customer POC and document
+  upload alongside the existing request fields. Request editing now includes
+  the title, brief, subtype, priority and relevant dates/attendees. Only BD
+  Members, BD Owners and Admin may create or edit requests. The main queue has
+  a visible assigned/unassigned filter. Solutioning Owners and Admin can assign
+  or transfer a request from the list or detail page; an existing assignment
+  cannot be cleared without choosing a replacement. Solutioning Members see
+  only records assigned to them. TypeScript, focused permission/tour tests and
+  changed-file lint pass (pre-existing warnings remain). Local only, not
+  deployed.
+
 - **Sep 17 Market Intel mock charts:** Replaced the shared modulo-based sample
   schedule that gave every company the same sawtooth and final spike. Mock
   posts, news, website items and people posts now use stable company-specific

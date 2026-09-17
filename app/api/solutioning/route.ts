@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getDb } from "@/lib/db";
 import {
   addDocument,
+  assignRequestOwner,
   cancelRequest,
   setDeliverableStatus,
   setPriority,
@@ -17,7 +18,6 @@ import {
   deleteRequest,
   pickUpRequest,
   readSolutioning,
-  releaseRequest,
   removeDocument,
   reopenRequest,
   updateRequest,
@@ -95,8 +95,20 @@ export async function GET(req: NextRequest) {
       })),
     });
   }
-  const state = await readSolutioning();
-  return NextResponse.json({ state });
+  const [state, me, privilegeState] = await Promise.all([
+    readSolutioning(),
+    getCurrentUser(),
+    readPrivileges(),
+  ]);
+  const held = privilegesForPerson(privilegeState, me.name);
+  const limitedToOwn =
+    (me.role === "sol_member" || held.includes("sol_member")) &&
+    !canAssignSolutioning(me.role, held);
+  return NextResponse.json({
+    state: limitedToOwn
+      ? { ...state, requests: state.requests.filter((r) => r.owner === me.name) }
+      : state,
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -111,13 +123,12 @@ export async function POST(req: NextRequest) {
      etc.) should be on mock mode, but it shouldn't affect real data"). */
   const me = await getCurrentUser();
   const managerial = me.role === "admin" || me.role === "bd_owner";
-  const fulfiller = managerial || me.role === "sol_member";
   const body = (await req.json().catch(() => ({}))) ?? {};
   const op = String(body.op ?? "");
   const held = privilegesForPerson(await readPrivileges(), me.name);
   const admin = me.role === "admin" || held.includes("admin");
   // Assignment has its own owner permission, independent of request editing.
-  if (!admin && op !== "set-workstream") {
+  if (!admin && op !== "set-workstream" && op !== "assign-request") {
     const refusal = await moduleWriteRefusal("/solutioning");
     if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   }
@@ -335,11 +346,20 @@ export async function POST(req: NextRequest) {
       target.requestedBy.trim().toLowerCase() === me.name.trim().toLowerCase();
     const iOwn =
       (target.owner ?? "").trim().toLowerCase() === me.name.trim().toLowerCase();
+    const limitedToOwn =
+      (me.role === "sol_member" || held.includes("sol_member")) &&
+      !canAssignSolutioning(me.role, held);
+    if (limitedToOwn && !iOwn) {
+      return NextResponse.json(
+        { error: "This request is assigned to another Solutioning teammate." },
+        { status: 403 }
+      );
+    }
 
     if (op === "pick-up") {
-      if (!fulfiller) {
+      if (!canAssignSolutioning(me.role, held)) {
         return NextResponse.json(
-          { error: "Picking up requests is the Solutioning team's job." },
+          { error: "Only a Solutioning Owner can assign this request." },
           { status: 403 }
         );
       }
@@ -361,15 +381,10 @@ export async function POST(req: NextRequest) {
           : {}),
       });
     } else if (op === "release") {
-      /* The way back out of a pick-up. The owner may always put it down; a
-         manager or admin may take it off somebody who has gone quiet. */
-      if (!(iOwn || managerial)) {
-        return NextResponse.json(
-          { error: `${target.owner || "Somebody else"} picked this up, so only they can hand it back.` },
-          { status: 403 }
-        );
-      }
-      await releaseRequest({ requestId, by: me.name, managerial });
+      return NextResponse.json(
+        { error: "Choose a replacement owner instead of leaving this request unassigned." },
+        { status: 400 }
+      );
     } else if (op === "complete") {
       await completeRequest({
         requestId,
@@ -416,6 +431,18 @@ export async function POST(req: NextRequest) {
         priority:
           (["High", "Medium", "Low"] as const).find((x) => x === body.priority) ??
           null,
+        by: me.name,
+      });
+    } else if (op === "assign-request") {
+      if (!canAssignSolutioning(me.role, held)) {
+        return NextResponse.json(
+          { error: "Only a Solutioning Owner can assign this request." },
+          { status: 403 }
+        );
+      }
+      await assignRequestOwner({
+        requestId,
+        owner: typeof body.owner === "string" ? body.owner : null,
         by: me.name,
       });
     } else if (op === "set-workstream") {

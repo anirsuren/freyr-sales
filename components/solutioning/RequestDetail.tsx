@@ -36,6 +36,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Field, Input } from "@/components/ui/Input";
 import { SmartBack } from "@/components/ui/BackButton";
 import { Avatar } from "@/components/ui/Avatar";
+import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -228,7 +229,7 @@ export function RequestDetail({
   members: string[];
   linkables: Linkable[];
   /** What the SERVER says this person may do here (SOL-026). */
-  may: { create: boolean; remove: boolean; assign: boolean };
+  may: { create: boolean; remove: boolean; edit: boolean; assign: boolean };
   /** The submissions and presentations raised off this request (SOL-028). */
   children_?: {
     id: string;
@@ -513,7 +514,6 @@ export function RequestDetail({
                openChildren is the live work already raised off this request. */
             openChildren.length === 0;
           const mayTakeUp = !r.owner && r.status !== "completed" && fulfiller;
-          const mayHandBack = !!r.owner && r.status !== "completed" && iOwn;
           const mayComplete =
             r.status !== "completed" &&
             r.status !== "cancelled" &&
@@ -525,7 +525,7 @@ export function RequestDetail({
             r.status !== "cancelled" &&
             r.status !== "completed" &&
             (iRequested || iOwn || managerial);
-          const mayEdit = canWrite && (iRequested || iOwn || managerial);
+          const mayEdit = may.edit && canWrite && (iRequested || managerial);
           const mayDelete =
             may.remove &&
             (meRole === "admin" || (iRequested && r.status === "initiated"));
@@ -644,15 +644,6 @@ export function RequestDetail({
               label: `Create ${r.kind === "submission" ? "submission" : "presentation"}`,
               icon: Plus,
               onClick: () => void createWork(),
-              disabled: busy,
-            });
-          if (mayHandBack)
-            actions.push({
-              key: "release",
-              label: "Hand it back",
-              icon: Undo2,
-              tone: "warn" as const,
-              onClick: () => void post({ op: "release" }),
               disabled: busy,
             });
           if (mayCancel)
@@ -1199,7 +1190,23 @@ export function RequestDetail({
           {/* ------------------------------------------------- SIDE rail */}
           <div key={`rail-${tab}`} className="tab-panel tab-panel-stagger space-y-4">
             <SectionCard title="Owner" icon={UserRound}>
-              {r.owner ? (
+              {may.assign && r.status !== "completed" && r.status !== "cancelled" ? (
+                <div className={cn(busy && "pointer-events-none opacity-60")}>
+                  <PeopleSelect
+                    value={r.owner ?? ""}
+                    options={members}
+                    onChange={(owner) => void post({ op: "assign-request", owner })}
+                    placeholder="Assign a Solutioning member"
+                    allowUnassigned={!r.owner}
+                    ariaLabel={`Assign ${r.ref}`}
+                  />
+                  <p className="mt-2 text-[11.5px] leading-relaxed text-text-tertiary">
+                    {r.owner
+                      ? "Choose another teammate to transfer this request."
+                      : "Only a Solutioning Owner or Admin can assign this request."}
+                  </p>
+                </div>
+              ) : r.owner ? (
                 <Link
                   href={`/analytics/reps/${repSlug(r.owner)}`}
                   className="group/owner flex items-center gap-2.5"
@@ -1221,28 +1228,6 @@ export function RequestDetail({
                   <CircleDashed size={14} strokeWidth={2} />
                   Waiting for the Solutioning team to take it up
                 </p>
-              )}
-              {/* THE WAY BACK OUT (Anir, Aug 26: "I just picked this up, and I
-                  don't know how to leave, because I don't want to pick it up.
-                  If that's not a feature, then that's a problem"). It sits on
-                  the owner card because that is the thing it undoes, and it is
-                  quiet rather than a top-bar button: putting work down is a
-                  correction, not one of the actions the page is FOR. */}
-              {r.owner && r.status !== "completed" && (iOwn || managerial) && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => post({ op: "release" })}
-                  title={
-                    iOwn
-                      ? "Put it back so somebody else can take it up"
-                      : `Take it off ${r.owner}`
-                  }
-                  className="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--status-red)] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.07)] disabled:opacity-50"
-                >
-                  <Undo2 size={13.5} strokeWidth={2.2} />
-                  {iOwn ? "Hand it back" : `Take it off ${r.owner.split(" ")[0]}`}
-                </button>
               )}
               {r.completedAt && (
                 <p className="mt-2.5 border-t border-border-light pt-2.5 text-[12px] text-text-secondary">

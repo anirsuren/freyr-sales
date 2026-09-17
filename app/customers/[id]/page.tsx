@@ -39,6 +39,8 @@ import {
 import { isSalesVisible } from "@/lib/offeringMaterials";
 import { getDataMode } from "@/lib/dataMode";
 import { requireModuleAccess, moduleWriteRefusal, moduleDeleteRefusal } from "@/lib/moduleAccessServer";
+import { getCurrentUser } from "@/lib/currentUser";
+import { privilegesForPerson, readPrivileges } from "@/lib/privileges";
 import {
   canDeleteRecord,
   canEditRecord,
@@ -66,6 +68,19 @@ export default async function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   await requireModuleAccess("/customers");
+  const [me, privilegeState] = await Promise.all([
+    getCurrentUser(),
+    readPrivileges(),
+  ]);
+  const heldPrivileges = privilegesForPerson(privilegeState, me.name);
+  const mayRequestSolutioning =
+    (me.role === "admin" ||
+      me.role === "bd_owner" ||
+      me.role === "bd_member" ||
+      heldPrivileges.includes("admin") ||
+      heldPrivileges.includes("bd_owner") ||
+      heldPrivileges.includes("bd_member")) &&
+    !(await moduleWriteRefusal("/solutioning"));
   const id = (await params).id;
   const db = getDb();
   const customer = await db.customers.get(id);
@@ -405,7 +420,7 @@ export default async function CustomerDetailPage({
               page (Anir, Aug 28: "when I press 'Request Solutioning', why does
               it take me to another page?"). Same dialog the leads page uses. */}
           <RequestSolutioningButton
-            canRequest={!(await moduleWriteRefusal("/solutioning"))}
+            canRequest={mayRequestSolutioning}
             customerId={customer.id}
             companyName={customer.company_name}
             customers={solutioningCustomers}

@@ -113,11 +113,12 @@ export default async function OpportunityPage({
      actually on the account and on the deal (Suren, Aug 30). Decided on the
      server so a hidden control is not the only thing standing between somebody
      and a write. */
+  const heldPrivileges = await verifiedMemberPrivileges(privileges, me.memberId);
   const verdict = mayTouchOpportunity({
     privileges,
     teams,
     person: me.name,
-    heldPrivileges: await verifiedMemberPrivileges(privileges, me.memberId),
+    heldPrivileges,
     role,
     opportunityId: deal.id,
     ...(customerId ? { customerId } : {}),
@@ -186,6 +187,12 @@ export default async function OpportunityPage({
      the route asks. Somebody who cannot open the module gets no button at
      all rather than one that fails on submit. */
   const mayRequestSolutioning =
+    (me.role === "admin" ||
+      me.role === "bd_owner" ||
+      me.role === "bd_member" ||
+      heldPrivileges.includes("admin") ||
+      heldPrivileges.includes("bd_owner") ||
+      heldPrivileges.includes("bd_member")) &&
     (await canOpenModule("/solutioning")) &&
     !(await moduleWriteRefusal("/solutioning"));
 

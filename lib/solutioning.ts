@@ -1331,6 +1331,39 @@ export async function setWorkstream(input: {
   });
 }
 
+/** Assign the request itself without pretending the manager is the assignee.
+ * Unlike `pickUpRequest`, this does not create downstream deliverable work. */
+export async function assignRequestOwner(input: {
+  requestId: string;
+  owner: string | null;
+  by: string;
+}): Promise<void> {
+  return withWrite(async () => {
+    const state = await readRow();
+    const r = mustFind(state, input.requestId);
+    if ((r.type ?? "request") !== "request") {
+      throw new Error("Only solutioning requests are assigned here.");
+    }
+    if (["completed", "cancelled"].includes(r.status)) {
+      throw new Error("Closed requests cannot be reassigned.");
+    }
+    const owner = str(input.owner ?? "", 80) || undefined;
+    if (r.owner && !owner) {
+      throw new Error("Choose the replacement owner before removing the current one.");
+    }
+    r.owner = owner;
+    if (owner) {
+      r.pickedUpAt = r.pickedUpAt ?? new Date().toISOString();
+      if (r.status === "initiated") r.status = "assigned";
+    } else {
+      r.pickedUpAt = undefined;
+      if (r.status === "assigned") r.status = "initiated";
+    }
+    touch(r, input.by, owner ? `Assigned to ${owner}` : "Assignment cleared");
+    await writeRow(state);
+  });
+}
+
 /** SOL-019 and SOL-021 — the deliverable's own status, independent of its
  *  parent and of every other deliverable. */
 export async function setDeliverableStatus(input: {

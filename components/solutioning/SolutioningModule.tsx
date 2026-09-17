@@ -42,6 +42,7 @@ import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Avatar } from "@/components/ui/Avatar";
+import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { DocumentPeek } from "@/components/ui/DocumentPeek";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { timelineMark } from "@/components/solutioning/RequestDetail";
@@ -131,10 +132,13 @@ export function SolutioningModule({
   state: initial,
   room = "requests",
   meRole,
+  meName,
+  limitToOwn,
   members,
   customers,
   opportunities,
   canCreate,
+  canAssign,
 }: {
   state: SolutioningState;
   /**
@@ -144,6 +148,9 @@ export function SolutioningModule({
    */
   room?: "requests" | "submissions" | "presentations";
   meRole: string;
+  meName: string;
+  /** Solutioning members receive work; their queue contains only their work. */
+  limitToOwn: boolean;
   /**
    * MAY THEY RAISE ONE (Suren, Aug 29: "owner can create, member can edit").
    * Both of these buttons rendered for anybody who could open the room, and
@@ -151,6 +158,7 @@ export function SolutioningModule({
    * no create on.
    */
   canCreate: boolean;
+  canAssign: boolean;
   members: string[];
   customers: CustomerOption[];
   opportunities: OpportunityOption[];
@@ -177,6 +185,7 @@ export function SolutioningModule({
   const [kinds, setKinds] = useState<string[]>([]);
   const [statuses, setStatuses] = useState<string[]>([]);
   const [owners, setOwners] = useState<string[]>([]);
+  const [assignment, setAssignment] = useState<"all" | "assigned" | "unassigned">("all");
   const [customerPick, setCustomerPick] = useState<string[]>([]);
   const [requestedByPick, setRequestedByPick] = useState<string[]>([]);
   const [assigneePick, setAssigneePick] = useState<string[]>([]);
@@ -222,8 +231,7 @@ export function SolutioningModule({
 
   /** The fulfiller side of the flow: Solutions picks up; managers and admins
    *  can too, so a request is never stranded when the team is out. */
-  const fulfiller =
-    meRole === "sol_member" || meRole === "bd_owner" || meRole === "admin";
+  const fulfiller = canAssign;
 
   /* The customer page's "Request solutioning" button lands here with the
      account already chosen — the dialog opens itself, prefilled. */
@@ -243,11 +251,12 @@ export function SolutioningModule({
     () =>
       state.requests.filter((r) => {
         const itemType = r.type ?? "request";
+        if (limitToOwn && r.owner !== meName) return false;
         if (room === "requests") return itemType === "request";
         if (room === "submissions") return itemType === "submission";
         return itemType === "presentation";
       }),
-    [state.requests, room]
+    [state.requests, room, limitToOwn, meName]
   );
 
   const shown = useMemo(() => {
@@ -261,6 +270,7 @@ export function SolutioningModule({
       if (room === "requests" && itemType !== "request") return false;
       if (room === "submissions" && itemType !== "submission") return false;
       if (room === "presentations" && itemType !== "presentation") return false;
+      if (limitToOwn && r.owner !== meName) return false;
       if (kinds.length && !kinds.includes(r.kind)) return false;
       const delayed =
         Boolean(r.neededBy) &&
@@ -272,6 +282,8 @@ export function SolutioningModule({
         const owner = r.owner ?? "__none";
         if (!owners.includes(owner)) return false;
       }
+      if (assignment === "assigned" && !r.owner) return false;
+      if (assignment === "unassigned" && r.owner) return false;
       if (customerPick.length && !customerPick.includes(r.customer)) return false;
       if (requestedByPick.length && !requestedByPick.includes(r.requestedBy)) return false;
       if (assigneePick.length && !assigneePick.includes(r.completedBy || r.owner || "")) return false;
@@ -306,7 +318,7 @@ export function SolutioningModule({
       }
       return a.requestedAt < b.requestedAt ? 1 : -1;
     });
-  }, [state.requests, query, kinds, statuses, owners, customerPick, sort, room, requestedByPick, assigneePick, opportunityPick, dueFrom, dueTo, groupLabel]);
+  }, [state.requests, query, kinds, statuses, owners, assignment, customerPick, sort, room, requestedByPick, assigneePick, opportunityPick, dueFrom, dueTo, groupLabel, limitToOwn, meName]);
 
   /** What the split is standing on. Null means the first row on screen, so
    *  the right pane is never empty while the left has something in it — and a
@@ -496,6 +508,7 @@ export function SolutioningModule({
             setKinds([]);
             setStatuses([]);
             setOwners([]);
+            setAssignment("all");
             setCustomerPick([]);
             setRequestedByPick([]); setAssigneePick([]); setOpportunityPick([]);
             setDueFrom(""); setDueTo("");
@@ -503,6 +516,7 @@ export function SolutioningModule({
           }}
           filtersBefore={
             room === "requests" ? (
+              <div className="flex items-center gap-2">
               <ColorSelect
                 value={kinds.length === 1 ? kinds[0] : "all"}
                 onChange={(value) => setKinds(value === "all" ? [] : [value])}
@@ -536,6 +550,19 @@ export function SolutioningModule({
                   },
                 ]}
               />
+              <ColorSelect
+                value={assignment}
+                onChange={(value) => setAssignment(value as typeof assignment)}
+                ariaLabel="Assignment status"
+                minWidth={165}
+                dense
+                options={[
+                  { value: "all", label: "All assignments", color: "var(--ink-bright-blue)", icon: ClipboardList },
+                  { value: "unassigned", label: "Unassigned", color: "var(--ink-amber)", icon: Inbox },
+                  { value: "assigned", label: "Assigned", color: "var(--ink-violet-soft)", icon: Check },
+                ]}
+              />
+              </div>
             ) : null
           }
           filtersAfter={<>
@@ -857,6 +884,8 @@ export function SolutioningModule({
                     fulfiller={fulfiller}
                     hideKindLabel={oneKind}
                     room={room}
+                    canAssign={canAssign}
+                    members={members}
                     busy={busy === r.id}
                     open={openIds.has(r.id)}
                     onToggle={() =>
@@ -869,6 +898,9 @@ export function SolutioningModule({
                     }
                     onPickUp={() =>
                       setConfirmPickUp({ id: r.id, label: `${r.ref} · ${r.title}` })
+                    }
+                    onAssign={(owner) =>
+                      void post({ op: "assign-request", requestId: r.id, owner }, r.id)
                     }
                     /* THE SAME RULE THE ROUTE APPLIES: an admin, or the person
                        who raised it while nothing has started. Anyone else has
@@ -992,16 +1024,21 @@ function solutionStatusLabel(r: SolutionRequest, overdue: boolean): string {
 function RequestRow({
   request: r,
   fulfiller,
+  canAssign,
+  members,
   busy,
   open,
   onToggle,
   onPickUp,
+  onAssign,
   onDelete,
   hideKindLabel = false,
   room,
 }: {
   request: SolutionRequest;
   fulfiller: boolean;
+  canAssign: boolean;
+  members: string[];
   /** The room this row is being read in — it travels with the record link so
    *  the sidebar can keep the right sub-item lit on the detail page. */
   room: "requests" | "submissions" | "presentations";
@@ -1011,6 +1048,7 @@ function RequestRow({
   open: boolean;
   onToggle: () => void;
   onPickUp: () => void;
+  onAssign: (owner: string) => void;
   /** Absent when this person may not delete this row — see the note above. */
   onDelete?: () => void;
 }) {
@@ -1129,7 +1167,17 @@ function RequestRow({
         </Link>
       </td>
       <td className="px-4 py-3.5">
-        {r.owner ? (
+        {canAssign && room === "requests" && r.status !== "completed" && r.status !== "cancelled" ? (
+          <PeopleSelect
+            value={r.owner ?? ""}
+            options={members}
+            onChange={onAssign}
+            placeholder="Unassigned"
+            allowUnassigned={!r.owner}
+            ariaLabel={`Assign ${r.ref}`}
+            className="w-[155px]"
+          />
+        ) : r.owner ? (
           <Link
             href={`/analytics/reps/${repSlug(r.owner)}`}
             onClick={(event) => event.stopPropagation()}

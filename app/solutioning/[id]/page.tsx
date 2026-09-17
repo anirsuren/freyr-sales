@@ -56,6 +56,15 @@ export default async function SolutioningRequestPage({
      flipping Mock/Real while standing on a record; the honest answer is the
      module's own list, which exists in both worlds. */
   if (!request) redirect("/solutioning");
+  const held = privilegesForPerson(privilegeState, me.name);
+  const limitedToOwn =
+    (me.role === "sol_member" || held.includes("sol_member")) &&
+    !(
+      me.role === "admin" ||
+      held.includes("admin") ||
+      held.includes("sol_owner")
+    );
+  if (limitedToOwn && request.owner !== me.name) redirect("/solutioning");
 
   const members = live
     ? [
@@ -121,8 +130,17 @@ export default async function SolutioningRequestPage({
           (await moduleCreateRefusal("/solutioning?tab=submissions")) === null ||
           (await moduleCreateRefusal("/solutioning?tab=presentations")) === null,
         remove: (await moduleDeleteRefusal("/solutioning")) === null,
+        edit: (() => {
+          return (
+            me.role === "admin" ||
+            me.role === "bd_owner" ||
+            me.role === "bd_member" ||
+            held.includes("admin") ||
+            held.includes("bd_owner") ||
+            held.includes("bd_member")
+          );
+        })(),
         assign: (() => {
-          const held = privilegesForPerson(privilegeState, me.name);
           return (
             me.role === "admin" ||
             held.includes("admin") ||
