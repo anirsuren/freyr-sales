@@ -1028,5 +1028,9 @@ The Solutioning request timeline fills the remaining right-rail space only until
 
 An empty request timeline stays compact around its header and Add a comment action. It expands toward the Documents boundary only when activity exists to use and scroll within that space. Completed locally, not deployed.
 
+Timeline sizing uses the final deduplicated entries that actually render, not the raw activity array. Hidden or collapsed activity can never make an apparently empty card stretch down the page. Completed locally, not deployed.
+
+An empty timeline explicitly says “No activity yet” and explains that changes and comments will appear there. The empty message and comment action form one compact card instead of leaving an unexplained blank panel. Completed locally, not deployed.
+
 ### Sep 17: customer band tabs omit redundant actions
 Customer connection tabs no longer repeat record-team editing controls or links such as “The team” and “All deals” beside the active band summary. The selected tab already identifies and opens that destination, so the duplicated action row is removed across all customer band tabs. Completed locally, not deployed.

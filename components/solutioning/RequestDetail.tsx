@@ -463,6 +463,21 @@ export function RequestDetail({
       : DOC_TABS;
   const docs = tab === "overview" ? [] : r.docs.filter((d) => d.category === tab);
   const hint = DOC_TABS.find((t) => t.key === tab)?.hint;
+  const timelineItems = [...r.activity]
+    .reverse()
+    .filter((a, i, items) =>
+      a.comment
+        ? true
+        : !items.some(
+            (b, j) =>
+              j < i &&
+              !b.comment &&
+              b.what === a.what &&
+              b.by === a.by &&
+              b.at.slice(0, 16) === a.at.slice(0, 16)
+          )
+    );
+  const hasTimelineItems = timelineItems.length > 0;
 
   return (
     <div>
@@ -1380,12 +1395,12 @@ export function RequestDetail({
               title="Timeline"
               icon={History}
               className={cn(
-                r.activity.length > 0 &&
+                hasTimelineItems &&
                   "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:[&>div]:min-h-0 lg:[&>div]:flex-1 lg:[&>div>div]:h-full"
               )}
               bodyClassName={cn(
                 "flex min-h-0 flex-col",
-                r.activity.length > 0 && "h-full"
+                hasTimelineItems && "h-full"
               )}
             >
               {/* AN ACTUAL TIMELINE (Anir, Aug 27: "this has to be an actual
@@ -1426,22 +1441,8 @@ export function RequestDetail({
                   above the comment button. max-height does both jobs: it
                   shrinks to five rows and it still caps and scrolls at a
                   hundred. Roughly six rows at 52px each. */}
-              <ol className={cn("min-h-0 overflow-y-auto pr-1", r.activity.length > 0 && "flex-1")}>
-                {[...r.activity]
-                  .reverse()
-                  .filter((a, i, arr) =>
-                    a.comment
-                      ? true
-                      : !arr.some(
-                          (b, j) =>
-                            j < i &&
-                            !b.comment &&
-                            b.what === a.what &&
-                            b.by === a.by &&
-                            b.at.slice(0, 16) === a.at.slice(0, 16)
-                        )
-                  )
-                  .map((a, i, all) => {
+              <ol className={cn("min-h-0 overflow-y-auto pr-1", hasTimelineItems && "flex-1")}>
+                {timelineItems.map((a, i, all) => {
                   /* A COMMENT IS SOMEBODY TALKING, AN EVENT IS THE RECORD
                      MOVING. Same spine, different voice: a comment wears a
                      speech mark and its words are set as prose, so a sentence
@@ -1508,6 +1509,16 @@ export function RequestDetail({
                   );
                 })}
               </ol>
+              {!hasTimelineItems && (
+                <div className="rounded-xl bg-surface/70 px-4 py-4 text-center">
+                  <p className="text-[13px] font-semibold text-text-primary">
+                    No activity yet
+                  </p>
+                  <p className="mt-0.5 text-[11.5px] text-text-tertiary">
+                    Changes and comments will appear here.
+                  </p>
+                </div>
+              )}
 
               {/* ANYONE WHO CAN SEE IT CAN SAY SOMETHING (Suren, Aug 28: "like
                   how you have a comment section when you hand it back,
