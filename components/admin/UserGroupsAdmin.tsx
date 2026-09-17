@@ -504,7 +504,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
              it is the same node with different children and nothing animates. */
           <div
             key="split"
-            className="tab-panel mt-3 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]"
+            className="tab-panel mt-3 grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]"
           >
             <div className="max-h-[640px] overflow-y-auto rounded-xl border border-border-light">
               {groups.map((g) => {
@@ -521,13 +521,13 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                     onClick={() => setSelectedId(g.id)}
                     aria-current={on ? "true" : undefined}
                     className={cn(
-                      "flex w-full cursor-pointer items-center gap-2.5 border-b border-border-light px-3.5 py-3 text-left transition-colors last:border-b-0",
+                      "grid w-full cursor-pointer grid-cols-[104px_minmax(0,1fr)] items-center gap-2.5 border-b border-border-light px-3.5 py-3 text-left transition-colors last:border-b-0",
                       on
                         ? "bg-blue-light/50 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                         : "hover:bg-surface"
                     )}
                   >
-                    <span className="w-[72px] shrink-0">
+                    <span className="min-w-0 overflow-hidden py-1">
                       <PersonFan
                         people={roster.map((member) => ({
                           name: member,
@@ -537,9 +537,9 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                               : roleLabel(roles[member]),
                           context: g.name,
                         }))}
-                        avatarClassName="h-7 w-7 text-[9px]"
-                        overlap={-8}
-                        max={4}
+                        avatarClassName="h-6 w-6 text-[8px]"
+                        overlap={-7}
+                        max={3}
                       />
                     </span>
                     <span className="min-w-0 flex-1">
