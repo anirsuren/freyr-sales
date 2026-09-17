@@ -1316,7 +1316,7 @@ export function RequestDetail({
                     options={members}
                     onChange={(owner) => void post({ op: "assign-request", owner })}
                     placeholder="Assign a Solutioning member"
-                    allowUnassigned={!r.owner}
+                    allowUnassigned={false}
                     ariaLabel={`Assign ${r.ref}`}
                   />
                   <p className="mt-2 text-[11.5px] leading-relaxed text-text-tertiary">
