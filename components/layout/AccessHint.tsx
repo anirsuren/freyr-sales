@@ -88,14 +88,17 @@ export function AccessHint() {
       align="right"
       label={
         <span className="block max-w-[280px] text-left">
-          <span className="block text-[12.5px] font-semibold text-white">
-            {answer.headline}
+          <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.08em]", look.tint)}>
+            {look.word} · {answer.module ?? "This page"}
           </span>
-          <span className="mt-1 block text-[11.5px] leading-snug text-white/75">
-            {answer.detail}
+          <span className="mt-1 block text-[12.5px] font-semibold text-text-primary">
+            {answer.headline ?? look.word}
+          </span>
+          <span className="mt-1 block text-[11.5px] leading-snug text-text-secondary">
+            {answer.detail ?? `Your access level on this page is ${look.word.toLowerCase()}.`}
           </span>
           {answer.fallback && (
-            <span className="mt-1.5 block text-[11px] leading-snug text-white/60">
+            <span className="mt-1.5 block text-[11px] leading-snug text-text-tertiary">
               The permissions table could not be read just now, so this is your
               role&apos;s default rather than your settings.
             </span>
