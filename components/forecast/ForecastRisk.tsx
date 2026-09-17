@@ -733,6 +733,7 @@ export function ForecastRisk({
                         key={s.stage}
                         side="right"
                         width={272}
+                        triggerSelector="[data-chart-mark]"
                         className="cursor-pointer rounded-md px-1.5 py-1 transition-colors hover:bg-[var(--surface)]"
                         content={splitHover(
                           s.stage,
@@ -763,6 +764,7 @@ export function ForecastRisk({
                         </span>
                         <span className="mt-1 block h-1 overflow-hidden rounded-full bg-surface">
                           <span
+                            data-chart-mark
                             className="chart-grow-x block h-full rounded-full"
                             style={{ width: `${share}%`, background: color }}
                           />
@@ -821,28 +823,14 @@ export function ForecastRisk({
                     {marks.map(({ deal, past, pct, disambiguator }) => {
                       const tone = past ? RISK : MEASURE;
                       return (
-                        <HoverCard
+                        <span
                           key={deal.sessionId}
-                          // The card opens off the ROW'S RIGHT EDGE, which is
-                          // the right edge of this whole panel — so it lands
-                          // beside the plot, never on it. Anchoring to the
-                          // cursor put it wherever the pointer was, i.e. in
-                          // the middle of the chart (Anir, Jul 28: "it should
-                          // only show the pop-up right after the dot, it's
-                          // covering up the graph").
-                          side="right"
-                          width={300}
-                          anchor="trigger"
-                          className="cursor-pointer rounded-md transition-colors hover:bg-[var(--surface)]"
-                          content={quietHover(deal)}
+                          className="grid items-center py-[3px]"
+                          style={{
+                            gridTemplateColumns: PLOT_COLS,
+                            columnGap: COL_GAP,
+                          }}
                         >
-                          <span
-                            className="grid items-center py-[3px]"
-                            style={{
-                              gridTemplateColumns: PLOT_COLS,
-                              columnGap: COL_GAP,
-                            }}
-                          >
                             {/* The row names its own deal — a plot of anonymous
                                 dots would be the same failure again. */}
                             <span className="flex min-w-0 items-center gap-1.5">
@@ -869,16 +857,32 @@ export function ForecastRisk({
                                 className="chart-grow-x absolute left-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full"
                                 style={{ width: `${pct}%`, background: tone }}
                               />
-                              {/* the mark itself */}
+                              {/* The dot is the only popup trigger. Empty track,
+                                  the company label, and the day value remain
+                                  readable without opening anything. */}
                               <span
-                                className="absolute top-1/2 z-[2] h-[11px] w-[11px] -translate-y-1/2 rounded-full"
+                                className="absolute top-1/2 z-[2] h-[11px] w-[11px] -translate-y-1/2"
                                 style={{
                                   left: `${pct}%`,
                                   marginLeft: -5.5,
-                                  background: tone,
-                                  boxShadow: `0 0 0 3px ${tint(tone, 15)}`,
                                 }}
-                              />
+                              >
+                                <HoverCard
+                                  side="right"
+                                  width={300}
+                                  anchor="trigger"
+                                  className="h-[11px] w-[11px] cursor-pointer rounded-full"
+                                  content={quietHover(deal)}
+                                >
+                                  <span
+                                    className="block h-[11px] w-[11px] rounded-full"
+                                    style={{
+                                      background: tone,
+                                      boxShadow: `0 0 0 3px ${tint(tone, 15)}`,
+                                    }}
+                                  />
+                                </HoverCard>
+                              </span>
                             </span>
                             <span
                               className="text-[10.5px] font-semibold leading-tight tnum"
@@ -886,8 +890,7 @@ export function ForecastRisk({
                             >
                               {idleLabel(deal.staleDays)}
                             </span>
-                          </span>
-                        </HoverCard>
+                        </span>
                       );
                     })}
                     {/* One continuous quiet line across every row. Drawn after
@@ -1010,6 +1013,7 @@ export function ForecastRisk({
                     key={deal.sessionId}
                     side="left"
                     width={296}
+                    triggerSelector="[data-chart-mark]"
                     content={
                       <div>
                         {/* Adds what the row can't fit: the person's title, who
@@ -1151,6 +1155,7 @@ export function ForecastRisk({
                         <span className="mt-1.5 flex items-center gap-2">
                           <span className="block h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface">
                             <span
+                              data-chart-mark
                               className="chart-grow-x block h-full rounded-full"
                               style={{ width: `${barPct}%`, background: RISK }}
                             />

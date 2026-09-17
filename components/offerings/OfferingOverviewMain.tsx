@@ -539,12 +539,9 @@ export function OfferingOverviewMain({
                               lift is CSS-only (`group-hover`) because this is a
                               server component with no hover state of its own. */}
                           <div
-                            className="absolute inset-x-0 bottom-0 flex justify-center transition-transform duration-150 group-hover:-translate-y-1.5 motion-reduce:transition-none"
+                            className="absolute inset-x-0 bottom-0 flex justify-center"
                             style={{ height: `${barPct}%` }}
                           >
-                            <span className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap text-center text-[10.5px] font-semibold tnum text-text-primary">
-                              {formatMoney(month.value)}
-                            </span>
                             <HoverCard
                               side="top"
                               width={266}
@@ -557,15 +554,20 @@ export function OfferingOverviewMain({
                               // the lift itself or it lands on the top of the
                               // value label it is supposed to clear.
                               tightAbove={26}
-                              className="h-full w-[70%] max-w-[52px] cursor-pointer"
+                              className="group/bar relative h-full w-[70%] max-w-[52px] cursor-pointer"
                             >
-                              <div
-                                className="chart-bar h-full w-full rounded-t-md transition-[filter] group-hover:brightness-105"
-                                style={{
-                                  background: month.color,
-                                  animationDelay: `${index * 60}ms`,
-                                }}
-                              />
+                              <div className="relative h-full w-full transition-transform duration-150 group-hover/bar:-translate-y-1.5 motion-reduce:transition-none">
+                                <span className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap text-center text-[10.5px] font-semibold tnum text-text-primary">
+                                  {formatMoney(month.value)}
+                                </span>
+                                <div
+                                  className="chart-bar h-full w-full rounded-t-md transition-[filter] group-hover/bar:brightness-105"
+                                  style={{
+                                    background: month.color,
+                                    animationDelay: `${index * 60}ms`,
+                                  }}
+                                />
+                              </div>
                             </HoverCard>
                           </div>
                         </div>

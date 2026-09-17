@@ -671,7 +671,8 @@ function DeviationsTable({
           every other table in the app and made three columns look like six. The
           headings now refuse to wrap and the table is given the room they need;
           past that the wrapper scrolls sideways rather than the page. */}
-      <div className="mt-4 overflow-x-auto rounded-xl border border-border-light">
+      <div className="mt-4 overflow-hidden rounded-xl border border-border-light">
+        <div className="overflow-x-auto">
         <table className="w-full min-w-[1560px] table-fixed border-collapse text-left">
           <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>tr>th]:whitespace-nowrap">
             <tr>
@@ -689,54 +690,6 @@ function DeviationsTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border-light">
-            {shown.length === 0 && (
-              <tr>
-                <td colSpan={11} className="px-5 py-12 text-center">
-                  <div className="mx-auto flex max-w-[520px] flex-col items-center">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(124,58,237,0.08)] text-[color:var(--ink-violet-soft)]">
-                      <UserPen size={18} strokeWidth={2} />
-                    </span>
-                    <h3 className="mt-3 text-[14px] font-semibold text-text-primary">
-                      {opportunityId
-                        ? `No deviations for ${selectedOpportunity?.name || "this opportunity"}`
-                        : hasSecondaryFilters
-                          ? "No deviations match these filters"
-                          : "Nothing has been deviated yet"}
-                    </h3>
-                    <p className="mt-1.5 text-[12.5px] leading-5 text-text-secondary">
-                      {opportunityId
-                        ? "This opportunity has no changed schedule, contract value, or expected sign date. Clear the opportunity filter to return to every deviated record."
-                        : hasSecondaryFilters
-                          ? "Clear the current search and filters to return to every deviated record."
-                          : "A record appears here after its schedule, contract value, or expected sign date changes."}
-                    </p>
-                    {(opportunityId || hasSecondaryFilters) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (opportunityId && !hasSecondaryFilters) {
-                            onOpportunityId("");
-                            return;
-                          }
-                          setQuery("");
-                          onOpportunityId("");
-                          setStatusFilter([]);
-                          setOwnerFilter([]);
-                          setDealStatusFilter([]);
-                          setValidityFilter([]);
-                        }}
-                        className="mt-4 inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3.5 text-[12.5px] font-semibold text-blue-primary shadow-sm transition-colors hover:border-blue-primary hover:bg-blue-pale"
-                      >
-                        <X size={14} strokeWidth={2.3} />
-                        {opportunityId && !hasSecondaryFilters
-                          ? "Clear opportunity filter"
-                          : "Clear all filters"}
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            )}
             {shown.map((r) => (
               <tr
                 key={r.plan.opportunityId}
@@ -863,6 +816,53 @@ function DeviationsTable({
             ))}
           </tbody>
         </table>
+        </div>
+        {shown.length === 0 && (
+          <div className="flex min-h-[315px] w-full items-center justify-center px-5 py-12 text-center">
+            <div className="flex max-w-[520px] flex-col items-center">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(124,58,237,0.08)] text-[color:var(--ink-violet-soft)]">
+                <UserPen size={18} strokeWidth={2} />
+              </span>
+              <h3 className="mt-3 text-[14px] font-semibold text-text-primary">
+                {opportunityId
+                  ? `No deviations for ${selectedOpportunity?.name || "this opportunity"}`
+                  : hasSecondaryFilters
+                    ? "No deviations match these filters"
+                    : "Nothing has been deviated yet"}
+              </h3>
+              <p className="mt-1.5 text-[12.5px] leading-5 text-text-secondary">
+                {opportunityId
+                  ? "This opportunity has no changed schedule, contract value, or expected sign date. Clear the opportunity filter to return to every deviated record."
+                  : hasSecondaryFilters
+                    ? "Clear the current search and filters to return to every deviated record."
+                    : "A record appears here after its schedule, contract value, or expected sign date changes."}
+              </p>
+              {(opportunityId || hasSecondaryFilters) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (opportunityId && !hasSecondaryFilters) {
+                      onOpportunityId("");
+                      return;
+                    }
+                    setQuery("");
+                    onOpportunityId("");
+                    setStatusFilter([]);
+                    setOwnerFilter([]);
+                    setDealStatusFilter([]);
+                    setValidityFilter([]);
+                  }}
+                  className="mt-4 inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3.5 text-[12.5px] font-semibold text-blue-primary shadow-sm transition-colors hover:border-blue-primary hover:bg-blue-pale"
+                >
+                  <X size={14} strokeWidth={2.3} />
+                  {opportunityId && !hasSecondaryFilters
+                    ? "Clear opportunity filter"
+                    : "Clear all filters"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <Modal

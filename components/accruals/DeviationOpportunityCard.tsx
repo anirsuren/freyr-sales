@@ -78,7 +78,7 @@ export function DeviationOpportunityCard({ deal, open, onToggle }: {
                 ].map(bar => {
                   const percent = Math.max(0, (bar.value / totalScale) * 100);
                   return (
-                    <div key={bar.label} title={`${bar.label}: ${exact(bar.value)}`}>
+                    <div key={bar.label}>
                       <div className="mb-1 text-[11px] font-medium text-text-secondary">{bar.label}</div>
                       <div className="relative pt-6" role="img" aria-label={`${bar.label}: ${exact(bar.value)}`}>
                         <span
@@ -87,7 +87,11 @@ export function DeviationOpportunityCard({ deal, open, onToggle }: {
                         >
                           {formatMoney(bar.value)}
                         </span>
-                        <div className="h-3 rounded-r-full" style={{ width: `${percent}%`, background: bar.color }} />
+                        <div
+                          className="h-3 rounded-r-full"
+                          title={`${bar.label}: ${exact(bar.value)}`}
+                          style={{ width: `${percent}%`, background: bar.color }}
+                        />
                         <span aria-hidden="true" className="absolute bottom-0 h-4 border-l" style={{ left: `${percent}%`, borderColor: BLUE }} />
                       </div>
                     </div>

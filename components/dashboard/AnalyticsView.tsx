@@ -493,6 +493,7 @@ export function AnalyticsView({
                 </span>
                 <div className="flex-1 flex items-center gap-2.5 min-w-0">
                   <div
+                    data-chart-mark
                     className="h-9 rounded-md flex items-center justify-end pr-3 text-white text-[13px] font-semibold tnum shrink-0"
                     style={{
                       width: `${Math.max(8, (s.count / maxFunnel) * 100)}%`,
@@ -527,6 +528,7 @@ export function AnalyticsView({
                     width={280}
                     delayMs={0}
                     className="block"
+                    triggerSelector="[data-chart-mark]"
                     content={
                       <div>
                         <p className="flex items-center gap-2 text-[13px] font-semibold text-text-primary mb-2">

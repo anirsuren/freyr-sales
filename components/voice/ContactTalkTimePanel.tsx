@@ -90,15 +90,12 @@ export function ContactTalkTimePanel({ calls, color }: { calls: TalkTimeCall[]; 
               <div key={call.id} className="flex min-w-[52px] flex-1 flex-col items-center">
                 <div className="relative w-full flex-1">
                   <div className="absolute inset-x-0 bottom-0" style={{ height: `${barPct}%` }}>
-                    <span className="absolute inset-x-0 -top-[17px] text-center text-[11px] font-semibold text-text-secondary tnum">
-                      {fmtLength(call.value)}
-                    </span>
                     <HoverCard
                       width={260}
                       side="top"
                       delayMs={0}
                       clearAncestor="[data-talk-plot]"
-                      className="flex h-full w-full cursor-pointer items-end justify-center"
+                      className="group/bar relative mx-auto flex h-full w-8 cursor-pointer items-end justify-center"
                       content={
                         <div>
                           <div className="flex items-center gap-2.5">
@@ -125,10 +122,15 @@ export function ContactTalkTimePanel({ calls, color }: { calls: TalkTimeCall[]; 
                         </div>
                       }
                     >
-                      <span
-                        className="chart-bar block h-full w-8 rounded-t-md transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_24px_-8px_rgba(0,0,0,0.22)]"
-                        style={{ background: color, animationDelay: `${i * 60}ms` }}
-                      />
+                      <span className="relative block h-full w-full transition-transform duration-150 group-hover/bar:-translate-y-1.5 motion-reduce:transition-none">
+                        <span className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold text-text-secondary tnum">
+                          {fmtLength(call.value)}
+                        </span>
+                        <span
+                          className="chart-bar block h-full w-full rounded-t-md transition-[filter,box-shadow] group-hover/bar:brightness-105 group-hover/bar:shadow-[0_10px_24px_-8px_rgba(0,0,0,0.22)]"
+                          style={{ background: color, animationDelay: `${i * 60}ms` }}
+                        />
+                      </span>
                     </HoverCard>
                   </div>
                 </div>

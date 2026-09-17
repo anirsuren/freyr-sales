@@ -399,8 +399,10 @@ export function TopBar({
         {onAgentToggle && (
           <button
             data-tour="agent-assistant"
-            aria-label="Ask your agent"
-            title="Your agent"
+            data-agent-dock-launcher
+            aria-label={agentActive ? "Close Freyr AI" : "Open Freyr AI"}
+            title={agentActive ? "Close Freyr AI" : "Open Freyr AI"}
+            aria-pressed={agentActive}
             onClick={onAgentToggle}
             className={cn(
               "w-9 h-9 flex items-center justify-center rounded-full transition-colors",

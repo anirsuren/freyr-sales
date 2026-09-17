@@ -328,7 +328,6 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 }}
                 aria-label={`Open all ${bar.value} ${bar.label} leads`}
                 className="group grid w-full grid-cols-[minmax(150px,1fr)_72px_154px_14px] grid-rows-[auto_8px] items-center gap-x-3 gap-y-1.5 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
-                title={`${bar.label}: ${bar.value} leads, ${bar.converted} converted (${bar.conversionRate}%)`}
               >
                 <span className="col-start-1 row-start-1 block min-w-0 truncate text-[11.5px] font-medium leading-5 text-text-secondary">
                   {bar.label}
@@ -353,6 +352,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 <span className="relative col-start-1 row-start-2 block h-2 overflow-hidden rounded-full bg-surface">
                   <span
                     className="absolute inset-y-0 left-0 rounded-full"
+                    title={`${bar.label}: ${bar.value} leads, ${bar.converted} converted (${bar.conversionRate}%)`}
                     style={{
                       width: `${Math.max(5, (bar.value / maxSourceValue) * 100)}%`,
                       background: bar.color,

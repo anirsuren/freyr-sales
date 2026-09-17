@@ -28,6 +28,7 @@ export function HoverCard({
   clearAncestor,
   tightAbove,
   suspended = false,
+  triggerSelector,
 }: {
   children: React.ReactNode;
   content: React.ReactNode;
@@ -57,6 +58,9 @@ export function HoverCard({
   /** Keep the trigger mounted while a click opens a real dialog, but dismiss
    *  this lightweight preview so it cannot sit above that dialog's portal. */
   suspended?: boolean;
+  /** Restrict opening to a descendant that matches this selector. Chart rows
+   *  use this so labels and empty plot space never behave like data marks. */
+  triggerSelector?: string;
 }) {
   const [pos, setPos] = useState<{
     left: number;
@@ -68,6 +72,11 @@ export function HoverCard({
   const cursorRef = useRef<{ x: number; y: number } | null>(null);
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const overTrigger = useRef(false);
+  function matchesTrigger(target: EventTarget | null) {
+    if (!triggerSelector) return true;
+    return target instanceof Element && !!target.closest(triggerSelector);
+  }
   function place() {
     const el = triggerRef.current;
     if (!el) return;
@@ -178,14 +187,33 @@ export function HoverCard({
       ref={triggerRef}
       className={cn("relative", className)}
       onMouseEnter={(event) => {
+        if (!matchesTrigger(event.target)) return;
+        overTrigger.current = true;
         cursorRef.current = { x: event.clientX, y: event.clientY };
         show();
       }}
       onMouseMove={(event) => {
+        const allowed = matchesTrigger(event.target);
+        if (!allowed) {
+          if (overTrigger.current) {
+            overTrigger.current = false;
+            scheduleHide();
+          }
+          return;
+        }
         cursorRef.current = { x: event.clientX, y: event.clientY };
+        if (!overTrigger.current) {
+          overTrigger.current = true;
+          show();
+        }
       }}
-      onMouseLeave={scheduleHide}
-      onFocusCapture={show}
+      onMouseLeave={() => {
+        overTrigger.current = false;
+        scheduleHide();
+      }}
+      onFocusCapture={(event) => {
+        if (matchesTrigger(event.target)) show();
+      }}
       onBlurCapture={onBlur}
     >
       {children}
@@ -193,7 +221,7 @@ export function HoverCard({
         createPortal(
           <div
             role="tooltip"
-            className="fixed z-[9999]"
+            className={cn("fixed z-[9999]", triggerSelector && "pointer-events-none")}
             style={{
               left: pos.left,
               top: pos.top,
@@ -209,8 +237,8 @@ export function HoverCard({
                   ? `calc(100vh - ${pos.top + 12}px)`
                   : `calc(100vh - ${pos.bottom! + 12}px)`,
             }}
-            onMouseEnter={show}
-            onMouseLeave={scheduleHide}
+            onMouseEnter={triggerSelector ? undefined : show}
+            onMouseLeave={triggerSelector ? undefined : scheduleHide}
           >
             {/* pt/pb (not mt/mb) so the gap to the trigger is inside this
                 hoverable element, the cursor never crosses a dead margin. */}

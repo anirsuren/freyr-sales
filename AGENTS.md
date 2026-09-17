@@ -168,7 +168,10 @@ what was written back, `deleted-test-customers.json`).
   drill-downs must ADD information, not restate.
 - Charts: fill the card width, units visible at rest, tooltips portal
   (never clipped), hover shows the who/what breakdown, no "…" truncation,
-  donut legends beside the ring, hover popovers scale UP on the card.
+  donut legends beside the ring, hover popovers scale UP on the card. A chart
+  popup may open only while the pointer is on the painted bar, point, slice or
+  heat-map cell; empty plot space, labels, legend rows and the popup itself are
+  never hover targets.
 - Every company mention gets its logo, every person their headshot
   (CompanyLogo / Avatar resolve by name). Countries get flags.
 - Charts architecture: server components must not pass functions to client
@@ -192,6 +195,25 @@ what was written back, `deleted-test-customers.json`).
   named accounts imported from KonnectCo without disrupting it.
 
 ## 9. Current state — Jul 31, 2026
+
+- **Sep 17 interaction and Solutioning consistency pass:** Solutioning detail
+  timelines keep a usable minimum viewport without crushing Owner or Where it
+  stands, place comment creation in the header, normalize impossible legacy
+  pickup dates, and make request previews count the same customer/analysis
+  documents exposed by the full record. Shared and custom column charts lift
+  each value label with its painted bar while retaining bar-only hover targets.
+  Market Intel management gives its four scopes distinct semantic colours and
+  keeps the sticky save strip full-width. The top Freyr AI button now closes the
+  open dock as well as opening it. Performance goal rows are compact again.
+  TypeScript and focused lint pass; browser screenshots verified the timeline,
+  customer filters/save strip, and AI toggle. Local only, not deployed.
+
+- **Sep 17 chart hit targets:** Shared bar, area, line, donut, sparkline and
+  movement charts now open their popup only from the painted data mark. Bar
+  columns no longer use their full-height empty track as a hit target, chart
+  popups are display-only, and donut legend rows no longer open the slice
+  popup. Custom funnel, forecast, risk, accrual, lead-source and roster graphs
+  follow the same rule. TypeScript passes. Local only, not deployed.
 
 - **Sep 17 Solutioning stakeholder transcript:** Opportunity-level Solutioning
   now uses the compact request-only table with search and All / Submissions /
@@ -1049,6 +1071,12 @@ Expanded Solutioning list rows are compact previews rather than miniature detail
 The expanded preview is sticky to the table's visible horizontal viewport. Scrolling the wide table to later columns cannot push the preview's brief and context off-screen or strand the activity summary by itself. Completed locally, not deployed.
 
 In Solutioning list rows, only the visible solution title opens the request detail page. The request ID is plain text, and every linked person or opportunity uses a content-sized hit area. Clicking unused space in any cell stays on the list and expands or collapses the preview. Completed locally, not deployed.
+
+Solutioning request details do not repeat an “Open [title]” header action for work already listed under Work raised off this. The child record remains reachable by its visible title there. On populated requests, the right rail stretches to the real left-column endpoint and the Timeline owns the remaining space, so its bottom border aligns exactly with the bottom of the final Documents count card and excess activity scrolls inside. Short and empty histories still remain compact. Completed locally, not deployed.
+
+Expanded Solutioning previews render Recent activity as a true compact timeline. The three newest events use the same connected vertical spine and event-specific markers as the full record, followed by the earlier-update count. Completed locally, not deployed.
+
+Request details label the linked context explicitly. “What this is for” uses one restrained panel with Customer, Opportunities, and Contacts columns, preserving the existing links and showing “None linked” where a relationship is absent. Completed locally, not deployed.
 
 ### Sep 17: customer band tabs omit redundant actions
 Customer connection tabs no longer repeat record-team editing controls or links such as “The team” and “All deals” beside the active band summary. The selected tab already identifies and opens that destination, so the duplicated action row is removed across all customer band tabs. Completed locally, not deployed.

@@ -343,15 +343,15 @@ function PipelineBarInspector({ rep }: { rep: RosterRep }) {
   const [focusedStage, setFocusedStage] = useState<string | null>(null);
   const total = rep.stageValues.reduce((sum, stage) => sum + stage.value, 0) || 1;
   return (
-    <HoverCard
-      side="top"
-      width={360}
-      className="w-[200px]"
-      content={<PipelineInspector rep={rep} focusedStage={focusedStage} />}
+    <div
+      className="group flex h-5 w-[200px] items-center rounded-full"
+      aria-label={`${rep.name} open pipeline: ${formatMoney(rep.openValue)}`}
     >
-      <div
-        className="group flex h-5 items-center rounded-full cursor-pointer"
-        aria-label={`${rep.name} open pipeline: ${formatMoney(rep.openValue)}`}
+      <HoverCard
+        side="top"
+        width={360}
+        className="h-2.5 w-full cursor-pointer rounded-full"
+        content={<PipelineInspector rep={rep} focusedStage={focusedStage} />}
       >
         <div className="flex h-2.5 w-full origin-center overflow-hidden rounded-full bg-surface transition-transform duration-150 group-hover:scale-y-[1.35] group-hover:shadow-[0_3px_9px_rgba(0,0,0,0.12)]">
           {rep.stageValues.filter((stage) => stage.value > 0).map((stage) => (
@@ -366,8 +366,8 @@ function PipelineBarInspector({ rep }: { rep: RosterRep }) {
             />
           ))}
         </div>
-      </div>
-    </HoverCard>
+      </HoverCard>
+    </div>
   );
 }
 
@@ -429,23 +429,34 @@ function ActivityInspector({ rep }: { rep: RosterRep }) {
 }
 
 function ActivityTrendInspector({ rep }: { rep: RosterRep }) {
+  const peak = Math.max(...rep.trend, 1);
+  const latest = rep.trend[rep.trend.length - 1] ?? 0;
+  const endpointTop = ((27 - (latest / peak) * 24) / 30) * 100;
   return (
-    <HoverCard side="top" width={360} content={<ActivityInspector rep={rep} />}>
-      <div
-        className="group w-[100px] cursor-pointer rounded-md p-1 transition-all hover:bg-blue-light/45 hover:shadow-[0_3px_10px_rgba(10,115,232,0.12)]"
-        aria-label={`${rep.name} activity over the last 10 weeks`}
-        tabIndex={0}
+    <div
+      className="relative w-[100px] rounded-md p-1"
+      aria-label={`${rep.name} activity over the last 10 weeks`}
+    >
+      <Sparkline
+        points={rep.trend}
+        color={VIZ.blue}
+        height={30}
+        interactive={false}
+      />
+      <span
+        className="absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2"
+        style={{ left: 93.7, top: 4 + endpointTop * 0.3 }}
       >
-        <div className="transition-transform duration-200 group-hover:scale-[1.04]">
-          <Sparkline
-            points={rep.trend}
-            color={VIZ.blue}
-            height={30}
-            interactive={false}
-          />
-        </div>
-      </div>
-    </HoverCard>
+        <HoverCard
+          side="top"
+          width={360}
+          className="h-2 w-2 cursor-pointer rounded-full"
+          content={<ActivityInspector rep={rep} />}
+        >
+          <span className="block h-2 w-2 rounded-full" aria-hidden="true" />
+        </HoverCard>
+      </span>
+    </div>
   );
 }
 

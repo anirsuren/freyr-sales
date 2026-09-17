@@ -27,7 +27,6 @@ export const HOVER_HINT_DELAY_MS = 250;
 
 /**
  * Ordinary rich hover popups close as soon as the pointer leaves them. Chart
- * record cards use their own short physical handoff because they are portalled
- * away from the graph and must be entered to scroll.
+ * popups are display-only and close when the pointer leaves the painted mark.
  */
 export const HOVER_CLOSE_GRACE_MS = 0;

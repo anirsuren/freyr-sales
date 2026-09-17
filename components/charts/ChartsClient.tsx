@@ -250,16 +250,6 @@ function PointGuide({ left, color }: { left: string; color: string }) {
     />
   );
 }
-/** Whether a point has a record breakdown to render in its popup. */
-function tipHasRecords(items?: TipItem[]): boolean {
-  return (items?.length ?? 0) > 0;
-}
-
-/** A tip's record list is "long" when it would otherwise be truncated. */
-function tipIsLong(items?: TipItem[]): boolean {
-  return (items?.length ?? 0) > TIP_INLINE_ROWS;
-}
-
 // Hover state for one chart: which index is lit and where its tip is anchored.
 // The popup itself never owns hover; leaving the painted mark closes it.
 /** Every graph tooltip in this app waits this long before it opens. No chart
@@ -370,7 +360,7 @@ function useChartHover() {
     [keepOpen, stopOpening, setCard]
   );
 
-  return { hover, active, anchor, show, move, close, keepOpen };
+  return { hover, active, anchor, show, move, close };
 }
 
 // A tooltip rendered into <body> via a portal so it can NEVER be clipped by a
@@ -393,12 +383,6 @@ function PortalTip({
    *  way from the hovered point (Anir: "it should be right below where it is
    *  on the graph… or above… it shouldn't be that far away"). */
   nearPoint?: boolean;
-  /** Legacy call-site metadata. The shared popup is always display-only. */
-  interactive?: boolean;
-  /** Legacy callback retained while chart callers migrate to mark-only hover. */
-  onEnter?: () => void;
-  /** Legacy callback retained while chart callers migrate to mark-only hover. */
-  onLeave?: () => void;
   children: React.ReactNode;
 }) {
   const [ready, setReady] = useState(false);
@@ -620,26 +604,17 @@ function Tip({
   children,
   wide,
   nearPoint,
-  interactive,
-  onEnter,
-  onLeave,
 }: {
   anchor: ChartAnchor | null;
   children: React.ReactNode;
   wide?: boolean;
   nearPoint?: boolean;
-  interactive?: boolean;
-  onEnter?: () => void;
-  onLeave?: () => void;
 }) {
   return (
     <PortalTip
       anchor={anchor}
       wide={wide}
       nearPoint={nearPoint}
-      interactive={interactive}
-      onEnter={onEnter}
-      onLeave={onLeave}
     >
       {children}
     </PortalTip>
@@ -816,15 +791,15 @@ function splitTipNote(note?: string): { tags: TipTagDef[]; lines: string[] } {
 function TipBreakdown({
   items,
   label,
-  /** Render every record when the caller has room for the full breakdown. */
-  interactive,
 }: {
   items?: TipItem[];
   label?: string;
-  interactive?: boolean;
 }) {
   if (!items || items.length === 0) return null;
-  const rows = interactive ? items : items.slice(0, TIP_INLINE_ROWS);
+  // Chart cards are display-only: the pointer must remain on the painted mark
+  // to keep them open. Keep the breakdown useful without pretending it is a
+  // separate scroll target.
+  const rows = items.slice(0, TIP_INLINE_ROWS);
   const hidden = items.length - rows.length;
   return (
     // Full-bleed section. Two things fall out of that: the hairline above the
@@ -1374,7 +1349,6 @@ export function AreaChart({
     anchor: mouse,
     show: showHover,
     close: closeTip,
-    keepOpen,
   } = useChartHover();
   const w = 600;
   const h = height;
@@ -1409,8 +1383,6 @@ export function AreaChart({
   const attainment = goal && goal > 0 ? Math.round((data[hi] / goal) * 100) : null;
   const goalGap = goal != null ? goal - data[hi] : null;
   const pointRecords = pointTips?.[hi];
-  const tipInteractive = tipHasRecords(pointRecords);
-  const tipScrollable = tipIsLong(pointRecords);
 
   return (
     <div
@@ -1590,9 +1562,6 @@ export function AreaChart({
           anchor={mouse}
           wide={!!pointTips || goal != null}
           nearPoint
-          interactive={tipInteractive}
-          onEnter={keepOpen}
-          onLeave={() => closeTip()}
         >
           <TipHeader
             color={color}
@@ -1627,7 +1596,6 @@ export function AreaChart({
           <TipBreakdown
             items={pointRecords}
             label="Records at this point"
-            interactive={tipScrollable}
           />
         </Tip>
       )}
@@ -1719,7 +1687,6 @@ export function DonutChart({
     show: showHover,
     move: moveTip,
     close: closeTip,
-    keepOpen,
   } = useChartHover();
   const linked = useDonutSync(syncId);
   // A slice is "lit" when the mouse is on it OR its legend row is hovered.
@@ -1766,8 +1733,6 @@ export function DonutChart({
     ? Math.max(7.5, Math.min(compactCenter ? 9 : 10, subChord / (centerSub.length * 0.55)))
     : 9;
   const hoveredTip = hover != null ? segments[hover]?.tip : undefined;
-  const tipInteractive = tipHasRecords(hoveredTip);
-  const tipScrollable = tipIsLong(hoveredTip);
   function tipAnchor(event: React.MouseEvent<SVGCircleElement>) {
     const chartElement = event.currentTarget.ownerSVGElement;
     if (!chartElement) return null;
@@ -1870,9 +1835,6 @@ export function DonutChart({
         <PortalTip
           anchor={mouse}
           wide
-          interactive={tipInteractive}
-          onEnter={keepOpen}
-          onLeave={() => closeTip()}
         >
           <TipHeader
             icon={segments[hover].icon}
@@ -1891,7 +1853,6 @@ export function DonutChart({
           <TipBreakdown
             items={hoveredTip}
             label="Records in this segment"
-            interactive={tipScrollable}
           />
         </PortalTip>
       )}
@@ -2080,7 +2041,6 @@ export function BarChart({
     show: showHover,
     move: moveTip,
     close: closeTip,
-    keepOpen,
   } = useChartHover();
   /**
    * A PERCENT CHART IS SCALED 0-100, ALWAYS. NOT TO ITS TALLEST BAR.
@@ -2268,18 +2228,6 @@ export function BarChart({
           and colliding with the labels to do it. */}
       {data.map((d, i) => {
         /**
-         * REACHABLE WHENEVER IT LISTS ANYTHING (Anir, Aug 19: "if there are
-         * multiple things that this is made of, I need to be able to scroll
-         * on the pop-up. I can't scroll on the pop-up because as soon as I
-         * leave my cursor, it disappears").
-         *
-         * This used to open only past three rows, so a card the reader could
-         * plainly see more in still evaporated the moment they moved toward
-         * it. A tip with no record list stays inert, as it must — nothing to
-         * reach for, and it would only intercept the pointer.
-         */
-        const barInteractive = (d.tip?.length ?? 0) > 0;
-        /**
          * THE RING IS THE COLOUR OF WHAT IT IS RINGING (Anir, Aug 20: "why is
          * the outline green").
          *
@@ -2350,9 +2298,6 @@ export function BarChart({
                 anchor={mouse}
                 wide
                 nearPoint
-                interactive={barInteractive}
-                onEnter={keepOpen}
-                onLeave={() => closeTip()}
               >
                 <TipHeader
                   icon={d.icon}
@@ -2386,7 +2331,6 @@ export function BarChart({
                 <TipBreakdown
                   items={d.tip}
                   label={tipRecordsLabel}
-                  interactive={barInteractive}
                 />
               </PortalTip>
             )}
@@ -2397,25 +2341,6 @@ export function BarChart({
                 /forecast's by-stage columns: a stretchy track, bar pinned to
                 the shared baseline. */}
             <div
-              /* THE WHOLE COLUMN IS THE HOVER TARGET (Anir, Aug 30: "when it's
-                 such a small bar, it glitches when I hover over it, it
-                 stutters"). The handlers used to sit on the BAR, which lifts
-                 by HOVER_LIFT the moment it is entered — so on a 4px stub the
-                 bar moved out from under the cursor, fired mouseleave, dropped
-                 back under it, fired mouseenter, and oscillated. The column is
-                 full height and never moves, so entering it is a decision the
-                 pointer cannot accidentally undo. */
-              onMouseEnter={(e) => {
-                showHover(i, barLabelAnchor(e.currentTarget) ?? pointerAnchor(e));
-                if (syncId) donutSyncBroadcast(syncId, i);
-              }}
-              onMouseMove={(e) =>
-                moveTip(barLabelAnchor(e.currentTarget) ?? pointerAnchor(e))
-              }
-              onMouseLeave={() => {
-                closeTip();
-                if (syncId) donutSyncBroadcast(syncId, null);
-              }}
               className="relative flex min-h-0 w-full flex-1 items-end justify-center px-1.5"
               style={{ paddingTop: labelRoom }}
             >
@@ -2469,37 +2394,45 @@ export function BarChart({
                   likes about .bar-lit — the travelling sheen and the lift in
                   saturation — and drops the line, because .chart-bar sets its
                   own blurred glow inline and an inline box-shadow beats the
-                  class's. The lift stays here, on the wrapper, so the label
-                  still rides up with the bar. */}
+                  class's. Only the painted bar moves; its stable wrapper is
+                  the exact hover target, so the lift cannot cause flicker. */}
               <div
-                className="group/bar relative flex w-[72%] min-w-[14px] justify-center transition-transform duration-150 motion-reduce:transition-none"
+                className="group/bar relative flex w-[72%] min-w-[14px] cursor-pointer justify-center"
+                onMouseEnter={(e) => {
+                  showHover(i, barLabelAnchor(e.currentTarget) ?? pointerAnchor(e));
+                  if (syncId) donutSyncBroadcast(syncId, i);
+                }}
+                onMouseMove={(e) =>
+                  moveTip(barLabelAnchor(e.currentTarget) ?? pointerAnchor(e))
+                }
+                onMouseLeave={() => {
+                  closeTip();
+                  if (syncId) donutSyncBroadcast(syncId, null);
+                }}
                 style={{
                   ["--bar-glow" as string]: `${tint(d.color || VIZ.blue, 75)}`,
                   maxWidth: maxBarWidth,
                   height: `${(plotted(d.value) / max) * 100}%`,
                   minHeight: 4,
-                  // Every bar keeps its FULL colour at all times. Fading the
-                  // siblings to 0.4 read as damage, not emphasis (Suren: "I
-                  // don't know why you're blurring the other ones out… it
-                  // should just pop a little bit"). So the only hover change is
-                  // the bar under the cursor lifting — the same idiom as the
-                  // rep bars on the forecast page.
-                  transform: lit === i ? `translateY(-${HOVER_LIFT}px)` : undefined,
                 }}
               >
-                <span
-                  data-bar-label
-                  className="pointer-events-none absolute bottom-full left-1/2 mb-1 flex -translate-x-1/2 flex-col items-center whitespace-nowrap leading-tight"
+                <div
+                  className="relative h-full w-full transition-transform duration-150 ease-out motion-reduce:transition-none"
+                  style={{ transform: lit === i ? `translateY(-${HOVER_LIFT}px)` : undefined }}
                 >
-                  <span className="text-[11px] font-semibold text-text-secondary tnum">
-                    {d.valueLabel ?? `${fmt(format, d.value)}${unit ? ` ${unit}` : ""}`}
-                  </span>
-                  {d.caption && (
-                    <span className="text-[9.5px] font-medium text-text-tertiary tnum">
-                      {d.caption}
+                  <span
+                    data-bar-label
+                    className="pointer-events-none absolute bottom-full left-1/2 mb-1 flex -translate-x-1/2 flex-col items-center whitespace-nowrap leading-tight"
+                  >
+                    <span className="text-[11px] font-semibold text-text-secondary tnum">
+                      {d.valueLabel ?? `${fmt(format, d.value)}${unit ? ` ${unit}` : ""}`}
                     </span>
-                  )}
-                </span>
+                    {d.caption && (
+                      <span className="text-[9.5px] font-medium text-text-tertiary tnum">
+                        {d.caption}
+                      </span>
+                    )}
+                  </span>
                 {/* THE REST OF THE WAY, IN A WHISPER (Anir, Aug 23: "can you
                     put a light 100% on these bar charts — really light,
                     subtle. That way I can see exactly where I need to get to.
@@ -2517,7 +2450,7 @@ export function BarChart({
 
                 <div
                   className={cn(
-                    "chart-bar relative h-full w-full overflow-hidden rounded-t-lg transition-[filter,box-shadow] group-hover/bar:brightness-105",
+                    "chart-bar relative h-full w-full overflow-hidden rounded-t-lg transition-[filter,box-shadow] duration-150 group-hover/bar:brightness-105 motion-reduce:transition-none",
                     lit === i && "bar-lit"
                   )}
                   style={{
@@ -2577,6 +2510,7 @@ export function BarChart({
                       }}
                     />
                   )}
+                </div>
                 </div>
               </div>
             </div>
@@ -2653,7 +2587,6 @@ export function LineChart({
     anchor: mouse,
     show: showHover,
     close: closeTip,
-    keepOpen,
   } = useChartHover();
   const w = 600;
   const h = height;
@@ -2668,8 +2601,6 @@ export function LineChart({
     .join(", ");
   const hi = hover;
   const pointRecords = hi != null ? pointTips?.[hi] : undefined;
-  const tipInteractive = tipHasRecords(pointRecords);
-  const tipScrollable = tipIsLong(pointRecords);
 
   return (
     <div className={cn("relative w-full", className)}>
@@ -2794,9 +2725,6 @@ export function LineChart({
             <Tip
               anchor={mouse}
               wide
-              interactive={tipInteractive}
-              onEnter={keepOpen}
-              onLeave={() => closeTip()}
             >
               {series.length === 1 ? (
                 <div className="shrink-0">
@@ -2851,7 +2779,6 @@ export function LineChart({
               <TipBreakdown
                 items={pointRecords}
                 label="Records at this point"
-                interactive={tipScrollable}
               />
             </Tip>
           );
@@ -2902,7 +2829,6 @@ export function Sparkline({
     anchor: mouse,
     show: showHover,
     close: closeTip,
-    keepOpen,
   } = useChartHover();
   const w = 120;
   const h = height;
@@ -2918,11 +2844,6 @@ export function Sparkline({
     .join(" ");
   const hi = hover ?? n - 1;
   const pointRecords = pointTips?.[hi];
-  // Distinct from the `interactive` PROP above (which decides whether this
-  // sparkline pops a tip at all): this is whether the tip itself can be
-  // entered and scrolled.
-  const tipReachable = tipHasRecords(pointRecords);
-  const tipScrollable = tipIsLong(pointRecords);
 
   return (
     <div
@@ -2986,9 +2907,6 @@ export function Sparkline({
         <Tip
           anchor={mouse}
           wide
-          interactive={tipReachable}
-          onEnter={keepOpen}
-          onLeave={() => closeTip()}
         >
           <div className="shrink-0">
             <TipHeader
@@ -3024,7 +2942,6 @@ export function Sparkline({
           <TipBreakdown
             items={pointRecords}
             label="Records at this point"
-            interactive={tipScrollable}
           />
         </Tip>
       )}
@@ -3075,14 +2992,6 @@ export function DonutLegend({
 }) {
   const sum = (total ?? items.reduce((s, x) => s + x.value, 0)) || 1;
   const linked = useDonutSync(syncId);
-  const {
-    hover,
-    anchor: mouse,
-    show: showHover,
-    move: moveTip,
-    close: closeTip,
-    keepOpen,
-  } = useChartHover();
   return (
     // One shared grid: label/value/% columns size to their widest row, so
     // every share bar starts at the same x (Anir: "the bars have to be
@@ -3120,14 +3029,11 @@ export function DonutLegend({
         return (
           <div
             key={it.label}
-            onMouseEnter={(e) => {
+            onMouseEnter={() => {
               if (syncId) donutSyncBroadcast(syncId, i);
-              if (it.tip?.length) showHover(i, pointerAnchor(e));
             }}
-            onMouseMove={it.tip?.length ? (e) => moveTip(pointerAnchor(e)) : undefined}
             onMouseLeave={() => {
               if (syncId) donutSyncBroadcast(syncId, null);
-              if (it.tip?.length) closeTip();
             }}
             className={cn(
               // Always the pointer cursor — these rows are hover-interactive
@@ -3193,37 +3099,6 @@ export function DonutLegend({
           </div>
         );
       })}
-      {/* The same records pop-up the donut slice opens, fed by the same tip
-          rows, so the legend and the ring answer a hover identically. */}
-      {hover != null && items[hover]?.tip?.length ? (
-        <PortalTip
-          anchor={mouse}
-          wide
-          interactive={tipHasRecords(items[hover].tip)}
-          onEnter={keepOpen}
-          onLeave={() => closeTip()}
-        >
-          <TipHeader
-            icon={items[hover].icon}
-            color={items[hover].color}
-            dot
-            label={items[hover].label}
-            value={format ? fmt(format, items[hover].value) : String(items[hover].value)}
-          />
-          <TipShareStats
-            value={items[hover].value}
-            total={sum}
-            share={Math.round((items[hover].value / sum) * 100)}
-            color={items[hover].color}
-            format={format}
-          />
-          <TipBreakdown
-            items={items[hover].tip}
-            label="Records in this segment"
-            interactive={tipIsLong(items[hover].tip)}
-          />
-        </PortalTip>
-      ) : null}
     </div>
   );
 }
@@ -3276,7 +3151,7 @@ export function MovementBarChart({ data, enabled = true }: {
   enabled?: boolean;
   data: { label: string; value: number; valueLabel: string; exactValue: string; color: string; description: string; tip: TipItem[] }[];
 }) {
-  const { hover, active, anchor, show, close, keepOpen } = useChartHover();
+  const { hover, active, anchor, show, close } = useChartHover();
   useEffect(() => { if (!enabled) close(0); }, [enabled, close]);
   const positiveMax = Math.max(0, ...data.map(row => row.value));
   const negativeMax = Math.max(0, ...data.map(row => -row.value));
@@ -3347,9 +3222,9 @@ export function MovementBarChart({ data, enabled = true }: {
         </div>
       </div>
       {enabled && selected && (
-        <PortalTip anchor={anchor} wide nearPoint interactive onEnter={keepOpen} onLeave={() => close()}>
+        <PortalTip anchor={anchor} wide nearPoint>
           <TipHeader icon="money" color={selected.color} label={selected.label} value={selected.exactValue} note={selected.value >= 0 ? "Added to this month's plan" : "Removed from this month's plan"} />
-          <TipBreakdown items={selected.tip} label="Frozen compared with today" interactive />
+          <TipBreakdown items={selected.tip} label="Frozen compared with today" />
         </PortalTip>
       )}
     </div>

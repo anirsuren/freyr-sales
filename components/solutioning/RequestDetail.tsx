@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -66,6 +66,8 @@ import { KIND_META, KindChip, StatusPill } from "./bits";
 import {
   DELIVERABLE_STATUSES,
   REQUEST_PRIORITIES,
+  chronologicalActivity,
+  sensiblePickedUpAt,
 } from "@/lib/solutioning";
 import { DateText } from "@/components/ui/DateText";
 import { repSlug } from "@/lib/team";
@@ -252,6 +254,23 @@ export function RequestDetail({
   const { toast } = useToast();
   const [r, setR] = useState(initial);
   const [tab, setTab] = useState<"overview" | DocCategory>("overview");
+  const overviewMainRef = useRef<HTMLDivElement>(null);
+  const [overviewMainHeight, setOverviewMainHeight] = useState<number>();
+
+  useEffect(() => {
+    if (tab !== "overview") return;
+    const main = overviewMainRef.current;
+    if (!main) return;
+    const measure = () => setOverviewMainHeight(main.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(main);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [tab]);
   const [adding, setAdding] = useState(false);
   const [comment, setComment] = useState("");
   const [commenting, setCommenting] = useState(false);
@@ -470,8 +489,7 @@ export function RequestDetail({
       : DOC_TABS;
   const docs = tab === "overview" ? [] : r.docs.filter((d) => d.category === tab);
   const hint = DOC_TABS.find((t) => t.key === tab)?.hint;
-  const timelineItems = [...r.activity]
-    .reverse()
+  const timelineItems = chronologicalActivity(r)
     .filter((a, i, items) =>
       a.comment
         ? true
@@ -602,10 +620,6 @@ export function RequestDetail({
           /* THE PRIMARY IS WHATEVER THIS RECORD IS WAITING ON. Nobody has it
              yet, so taking it up comes before building the thing; once
              somebody owns it, building the thing is the job. */
-          /* Whatever the pick-up made, or somebody made earlier: the header
-             sends you to it rather than pretending it is not there. */
-          const existingWork =
-            r.type === "request" && openChildren.length > 0 ? openChildren[0] : null;
           const primary = mayTakeUp
             ? {
                 label: "Take this up",
@@ -615,12 +629,6 @@ export function RequestDetail({
                    to pick this up?"). Same commitment either door. */
                 run: async () => setConfirmPickUp(true),
               }
-            : existingWork
-              ? {
-                  label: `Open ${existingWork.title}`,
-                  icon: ArrowUpRight,
-                  run: async () => router.push(`/solutioning/${existingWork.id}`),
-                }
             : mayCreateWork
               ? {
                   label: `Create ${r.kind === "submission" ? "submission" : "presentation"}`,
@@ -887,7 +895,7 @@ export function RequestDetail({
               are SIBLINGS — keying both on `tab` gave React two children keyed
               "overview" and it warned that one may be dropped. Prefixed, so
               each still remounts on a switch and neither collides. */}
-          <div key={`main-${tab}`} className="tab-panel tab-panel-stagger">
+          <div ref={overviewMainRef} key={`main-${tab}`} className="tab-panel tab-panel-stagger">
             <section className="border-b border-border-light pb-7">
               <SectionHeading
                 icon={FileText}
@@ -971,25 +979,31 @@ export function RequestDetail({
                 title="What this is for"
                 description="The customer, and the opportunities and contacts this is for."
               />
-              <div className="mt-4 space-y-2.5 pl-11">
-                {r.customerId ? (
-                  <Link
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={`/customers/${r.customerId}`}
-                    className="group/customer flex w-fit items-center gap-2 text-[13.5px] font-semibold text-text-primary"
-                  >
-                    <CompanyLogo name={r.customer} className="h-6 w-6 text-[8px]" />
-                    <span className="group-hover/customer:text-blue-primary group-hover/customer:underline">{r.customer}</span>
-                    <ArrowUpRight size={13} className="text-text-tertiary" />
-                  </Link>
-                ) : (
-                  <p className="flex items-center gap-2 text-[13.5px] font-semibold text-text-primary">
-                    <CompanyLogo name={r.customer} className="h-6 w-6 text-[8px]" />
-                    {r.customer}
-                  </p>
-                )}
-                {r.opportunityLabels.length > 0 && (
+              <div className="mt-4 ml-11 grid gap-4 rounded-xl border border-border-light bg-surface/35 p-4 sm:grid-cols-3">
+                <div className="min-w-0">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.07em] text-text-tertiary">Customer</p>
+                  {r.customerId ? (
+                    <Link
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      href={`/customers/${r.customerId}`}
+                      className="group/customer flex w-fit max-w-full items-center gap-2 text-[13px] font-semibold text-text-primary"
+                    >
+                      <CompanyLogo name={r.customer} className="h-5 w-5 shrink-0 text-[7px]" />
+                      <span className="truncate group-hover/customer:text-blue-primary group-hover/customer:underline">{r.customer}</span>
+                      <ArrowUpRight size={12} className="shrink-0 text-text-tertiary" />
+                    </Link>
+                  ) : (
+                    <p className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
+                      <CompanyLogo name={r.customer} className="h-5 w-5 shrink-0 text-[7px]" />
+                      <span className="truncate">{r.customer}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.07em] text-text-tertiary">Opportunities</p>
+                  {r.opportunityLabels.length > 0 ? (
                   /* THE DEAL IS ONE CLICK AWAY. It was a chip that named the
                      deal and went nowhere (Anir, Sep 7: "how can I go to the
                      deal from here? It's associated with it"). Ids and labels
@@ -1025,9 +1039,15 @@ export function RequestDetail({
                       );
                     })}
                   </div>
-                )}
-                {r.contactNames.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
+                  ) : (
+                    <p className="text-[12px] text-text-tertiary">None linked</p>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.07em] text-text-tertiary">Contacts</p>
+                  {r.contactNames.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
                     {r.contactNames.map((name, i) => {
                       /* Linked only when names and ids line up one to one. */
                       const contactId =
@@ -1053,13 +1073,11 @@ export function RequestDetail({
                         </span>
                       );
                     })}
-                  </div>
-                )}
-                {r.opportunityLabels.length + r.contactNames.length === 0 && (
-                  <p className="text-[12.5px] text-text-tertiary">
-                    The customer itself, no specific opportunity or contact.
-                  </p>
-                )}
+                    </div>
+                  ) : (
+                    <p className="text-[12px] text-text-tertiary">None linked</p>
+                  )}
+                </div>
               </div>
             </section>
 
@@ -1274,7 +1292,7 @@ export function RequestDetail({
               </section>
             )}
 
-            <section className="py-7">
+            <section className="pt-7">
               <SectionHeading
                 icon={FileText}
                 title="Documents"
@@ -1308,7 +1326,20 @@ export function RequestDetail({
           </div>
 
           {/* ------------------------------------------------- SIDE rail */}
-          <div key={`rail-${tab}`} className="tab-panel tab-panel-stagger space-y-4">
+          <div
+            key={`rail-${tab}`}
+            className={cn(
+              "tab-panel tab-panel-stagger",
+              hasTimelineItems
+                ? "flex min-h-0 flex-col gap-4 lg:min-h-[var(--overview-main-height)]"
+                : "space-y-4 self-start"
+            )}
+            style={
+              overviewMainHeight
+                ? ({ "--overview-main-height": `${overviewMainHeight}px` } as CSSProperties)
+                : undefined
+            }
+          >
             {/* This picker opens beyond the card's body. SectionCard normally
                 clips its rounded corners, which also clipped this menu before
                 the first option could paint. Keep this card above the cards
@@ -1346,9 +1377,9 @@ export function RequestDetail({
                     <span className="block text-[13.5px] font-semibold text-text-primary group-hover/owner:text-blue-primary group-hover/owner:underline">
                       {r.owner}
                     </span>
-                    {r.pickedUpAt && (
+                    {sensiblePickedUpAt(r) && (
                       <span className="block text-[11.5px] text-text-tertiary">
-                        <span suppressHydrationWarning>picked it up {stampedAt(r.pickedUpAt)}</span>
+                        <span suppressHydrationWarning>picked it up {stampedAt(sensiblePickedUpAt(r)!)}</span>
                       </span>
                     )}
                   </span>
@@ -1405,6 +1436,19 @@ export function RequestDetail({
             <SectionCard
               title="Timeline"
               icon={History}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setCommenting(true)}
+                  aria-label="Add a comment"
+                  title="Add a comment"
+                  className="grid h-7 w-7 cursor-pointer place-items-center rounded-md bg-blue-primary text-white transition-[transform,background-color] hover:-translate-y-px hover:bg-blue-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30"
+                >
+                  <Plus size={15} strokeWidth={2.5} />
+                </button>
+              }
+              className={cn(hasTimelineItems && "flex min-h-[300px] flex-1 flex-col")}
+              bodyClassName={cn(hasTimelineItems && "flex min-h-0 flex-1 flex-col")}
             >
               {/* AN ACTUAL TIMELINE (Anir, Aug 27: "this has to be an actual
                   fucking timeline"). It was six identical blue documents in a
@@ -1448,7 +1492,7 @@ export function RequestDetail({
                 key={timelineItems.length}
                 className={cn(
                   "overflow-y-auto pr-1",
-                  hasTimelineItems && "max-h-[620px]"
+                  hasTimelineItems && "min-h-0 flex-1"
                 )}
               >
                 {timelineItems.map((a, i, all) => {
@@ -1529,27 +1573,6 @@ export function RequestDetail({
                 </div>
               )}
 
-              {/* ANYONE WHO CAN SEE IT CAN SAY SOMETHING (Suren, Aug 28: "like
-                  how you have a comment section when you hand it back,
-                  somebody comes and provides some comments... anyone can
-                  comment, whoever has access to this"). Deliberately available
-                  on a completed record too: the moment work is handed back is
-                  exactly when the person who asked for it has something to
-                  say. */}
-              {/* A BUTTON, NOT A BOX SITTING THERE (Anir, Aug 28: "super
-                  fucking ugly ui here should just be a button to popup"). An
-                  always-open textarea took a third of the card to say nothing,
-                  and it sat under a timeline that is already scrolling. */}
-              <div className="mt-3 border-t border-border-light pt-3">
-                <button
-                  type="button"
-                  onClick={() => setCommenting(true)}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-2 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
-                >
-                  <MessageSquare size={13.5} strokeWidth={2.2} />
-                  Add a comment
-                </button>
-              </div>
             </SectionCard>
           </div>
         </div>

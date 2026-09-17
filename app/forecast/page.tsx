@@ -721,6 +721,7 @@ export default async function ForecastPage() {
                   key={deal.sessionId}
                   side="right"
                   width={286}
+                  triggerSelector="[data-chart-mark]"
                   content={
                     <div>
                       {/* Adds what the row can't fit: full names, the odds
@@ -811,6 +812,7 @@ export default async function ForecastPage() {
                     </span>
                     <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-surface">
                       <span
+                        data-chart-mark
                         className="block h-full rounded-full bg-blue-primary"
                         style={{ width: `${Math.max(barPct, 3)}%` }}
                       />

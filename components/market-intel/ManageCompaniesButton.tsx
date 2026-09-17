@@ -339,6 +339,12 @@ export function ManageCompaniesPanel({
 
   const chip = (key: Show, label: string, Icon: LucideIcon, count: number) => {
     const on = show === key;
+    const color = {
+      all: "#0071E3",
+      mine: "#0F766E",
+      starred: "#B45309",
+      inactive: "#64748B",
+    }[key];
     return (
       <button
         key={key}
@@ -347,10 +353,11 @@ export function ManageCompaniesPanel({
         aria-pressed={on}
         className={cn(
           "flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
-          on
-            ? "border-transparent bg-blue-primary text-white"
-            : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
+          !on && "border-border-light bg-white text-text-secondary hover:text-text-primary"
         )}
+        style={on
+          ? { borderColor: color, background: color, color: "white" }
+          : { borderColor: "var(--border-light)" }}
       >
         <Icon size={13} strokeWidth={2.2} />
         {label}
@@ -589,7 +596,7 @@ export function ManageCompaniesPanel({
         </div>
       </div>
 
-      <div className="sticky bottom-4 z-20 mr-[76px] mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white px-4 py-3 shadow-lg" aria-live="polite">
+      <div className="sticky bottom-4 z-20 mt-4 flex w-full flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white px-4 py-3 pr-[92px] shadow-lg" aria-live="polite">
         <span className="mr-auto text-[13px] font-medium text-text-secondary">
           {/* "1 companies" read wrong on the first tick (Sep 13 loop). */}
           {dirty ? `${plural(rows.filter((c) => c.group === group && mine.has(c.id)).length)} selected · Unsaved changes`

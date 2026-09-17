@@ -298,6 +298,31 @@ export type SolutioningState = {
   requests: SolutionRequest[];
 };
 
+/** Keep impossible legacy/mock pickup dates from predating their request. */
+export function sensiblePickedUpAt(
+  request: Pick<SolutionRequest, "requestedAt" | "pickedUpAt">
+): string | undefined {
+  if (!request.pickedUpAt) return undefined;
+  const requested = Date.parse(request.requestedAt);
+  const picked = Date.parse(request.pickedUpAt);
+  if (!Number.isFinite(requested) || !Number.isFinite(picked) || picked >= requested) {
+    return request.pickedUpAt;
+  }
+  return new Date(requested + 24 * 60 * 60 * 1000).toISOString();
+}
+
+/** Newest first, with the same corrected pickup time used by the owner card. */
+export function chronologicalActivity(request: SolutionRequest): RequestActivity[] {
+  const pickedUpAt = sensiblePickedUpAt(request);
+  return request.activity
+    .map((activity) =>
+      pickedUpAt && /^(picked it up|took this up)$/i.test(activity.what.trim())
+        ? { ...activity, at: pickedUpAt }
+        : activity
+    )
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+}
+
 export const EMPTY_SOLUTIONING: SolutioningState = { requests: [] };
 
 /**

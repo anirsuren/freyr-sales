@@ -307,13 +307,6 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                     was being clipped by the column (Anir, Jul 27: "the number
                     is supposed to move with it… it's almost getting cut off").
                     Same distance, same duration, they move as one object. */}
-                <span
-                  className={`text-[10.5px] font-semibold tnum shrink-0 transition-all duration-150 group-hover:-translate-y-1.5 ${
-                    you ? "text-blue-primary" : "text-text-secondary group-hover:text-blue-primary"
-                  }`}
-                >
-                  {formatMoney(r.weighted)}
-                </span>
                 {/* Only the bar itself pops the breakdown — hovering the empty
                     space above a short bar no longer triggers it (Suren).
                     tightAbove anchors the card to THIS bar's top edge, lifted
@@ -329,16 +322,24 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                   content={hover}
                   clearAncestor="[data-rep-column]"
                   tightAbove={14}
-                  className="w-full flex justify-center shrink-0"
+                  className="group/bar flex shrink-0 justify-center"
                 >
                   {/* Hovering pops THIS bar up — no fading of the others
                       (Anir: "it should just pop that one up"). */}
                   <div
-                    className={`chart-bar rounded-t-md transition-all duration-150 group-hover:brightness-105 group-hover:-translate-y-1.5 group-hover:shadow-[0_10px_22px_-8px_rgba(0,0,0,0.3)] ${
+                    className={`relative rounded-t-md transition-transform duration-150 group-hover/bar:-translate-y-1.5 motion-reduce:transition-none ${
                       you ? "w-[38px] shadow-[0_0_0_3px_rgba(0,113,227,0.18)]" : "w-[30px]"
                     }`}
-                    style={{ height: `${barH}px`, background: color, animationDelay: `${i * 45}ms` }}
-                  />
+                    style={{ height: `${barH}px` }}
+                  >
+                    <span className={`pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap text-[10.5px] font-semibold tnum ${you ? "text-blue-primary" : "text-text-secondary group-hover/bar:text-blue-primary"}`}>
+                      {formatMoney(r.weighted)}
+                    </span>
+                    <span
+                      className="chart-bar block h-full w-full rounded-t-md transition-[filter,box-shadow] duration-150 group-hover/bar:brightness-105 group-hover/bar:shadow-[0_10px_22px_-8px_rgba(0,0,0,0.3)]"
+                      style={{ background: color, animationDelay: `${i * 45}ms` }}
+                    />
+                  </div>
                 </HoverCard>
               </div>
               <Avatar

@@ -58,6 +58,7 @@ import {
   type SolutionDoc,
   type SolutioningState,
   type SolutionRequest,
+  chronologicalActivity,
 } from "@/lib/solutioning";
 import { KIND_META, KindChip, STATUS_META, StatusPill } from "./bits";
 import { tint } from "@/lib/tint";
@@ -1192,7 +1193,7 @@ function RequestRow({
           }}
           className="text-left text-[12px] font-semibold text-blue-primary hover:underline"
         >
-          {r.docs.length} {r.docs.length === 1 ? "document" : "documents"}
+          {visibleRequestDocs(r).length} {visibleRequestDocs(r).length === 1 ? "document" : "documents"}
         </button>
       </td>
       <td className="px-4 py-3.5">
@@ -1297,6 +1298,14 @@ const requestDocumentDownloadUrl = (requestId: string, docId: string) =>
     requestId
   )}&docId=${encodeURIComponent(docId)}`;
 
+/** The list preview must expose the same shelves as the full record. */
+const visibleRequestDocs = (request: SolutionRequest) =>
+  request.type === "request"
+    ? request.docs.filter(
+        (doc) => doc.category === "customer" || doc.category === "analysis"
+      )
+    : request.docs;
+
 function RequestPanel({
   r,
 }: {
@@ -1316,6 +1325,8 @@ function RequestPanel({
   onBack?: () => void;
 }) {
   const [viewingDocument, setViewingDocument] = useState<SolutionDoc | null>(null);
+  const documents = visibleRequestDocs(r);
+  const activity = chronologicalActivity(r);
   return (
     <>
     <div className="grid w-full grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_340px]">
@@ -1391,15 +1402,15 @@ function RequestPanel({
         <section className="mt-3 min-w-0">
           <div className="flex items-center justify-between gap-3">
             <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Documents</span>
-            <span className="text-[11px] text-text-tertiary">{r.docs.length}</span>
+            <span className="text-[11px] text-text-tertiary">{documents.length}</span>
           </div>
-          {r.docs.length === 0 ? (
+          {documents.length === 0 ? (
             <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-border-light px-3 py-2.5 text-[12px] text-text-tertiary">
               <FileText size={15} strokeWidth={1.9} /> No documents yet
             </div>
           ) : (
             <div className="mt-1.5 divide-y divide-border-light overflow-hidden rounded-lg border border-border-light bg-white">
-              {r.docs.slice(0, 3).map((doc) => {
+              {documents.slice(0, 3).map((doc) => {
                 const isFile = Boolean(doc.docsPath || doc.ref);
                 const previewPage = `/solutioning/${encodeURIComponent(r.id)}/documents/${encodeURIComponent(doc.id)}`;
                 const kind = docKind(doc.fileName ?? doc.name);
@@ -1430,9 +1441,9 @@ function RequestPanel({
                   </div>
                 );
               })}
-              {r.docs.length > 3 && (
+              {documents.length > 3 && (
                 <div className="px-3 py-2 text-[11px] font-medium text-text-tertiary">
-                  +{r.docs.length - 3} more on the full record
+                  +{documents.length - 3} more on the full record
                 </div>
               )}
             </div>
@@ -1445,21 +1456,31 @@ function RequestPanel({
           <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
             <Timer size={14} strokeWidth={2} className="text-blue-primary" /> Recent activity
           </span>
-          <span className="text-[11px] text-text-tertiary">{r.activity.length}</span>
+          <span className="text-[11px] text-text-tertiary">{activity.length}</span>
         </div>
-        {r.activity.length === 0 ? (
+        {activity.length === 0 ? (
           <div className="mt-3 rounded-lg border border-dashed border-border px-3 py-4 text-center">
             <p className="text-[12px] font-medium text-text-secondary">No activity yet</p>
             <p className="mt-1 text-[11px] text-text-tertiary">Changes will appear here.</p>
           </div>
         ) : (
-          <ol className="mt-2 divide-y divide-border-light">
-            {[...r.activity].reverse().slice(0, 3).map((a, index) => {
+          <ol className="mt-3">
+            {activity.slice(0, 3).map((a, index, shown) => {
               const mark = timelineMark(a.what);
               const MarkIcon = mark.icon;
               return (
-                <li key={`${a.at}-${index}`} className="flex gap-2.5 py-2.5 first:pt-1.5 last:pb-1">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: tint(mark.color, 10), color: mark.color }}>
+                <li key={`${a.at}-${index}`} className="relative pl-9 pb-4 last:pb-0">
+                  {index < shown.length - 1 && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-[12px] top-[26px] bottom-0 w-[2px] rounded bg-border-light"
+                    />
+                  )}
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-0 top-0 flex h-6 w-6 items-center justify-center rounded-full"
+                    style={{ background: tint(mark.color, 10), color: mark.color }}
+                  >
                     <MarkIcon size={12} strokeWidth={2.3} />
                   </span>
                   <div className="min-w-0 flex-1">
@@ -1475,9 +1496,9 @@ function RequestPanel({
             })}
           </ol>
         )}
-        {r.activity.length > 3 && (
+        {activity.length > 3 && (
           <p className="mt-2 border-t border-border-light pt-2 text-[11px] text-text-tertiary">
-            {r.activity.length - 3} earlier {r.activity.length - 3 === 1 ? "update" : "updates"} on the full record
+            {activity.length - 3} earlier {activity.length - 3 === 1 ? "update" : "updates"} on the full record
           </p>
         )}
       </aside>

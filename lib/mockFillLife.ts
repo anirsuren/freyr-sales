@@ -594,7 +594,9 @@ export function mockFillSolutioning(): SolutionRequest[] {
             : undefined;
       const offering = deal ? deal.offering : a.offering(k);
       const owner = k % 2 === 0 ? a.second : a.third;
-      const requestedAt = iso(-(6 + ((a.i * 4 + k) % 80)));
+      const requestedDaysAgo = 6 + ((a.i * 4 + k) % 80);
+      const requestedAt = iso(-requestedDaysAgo);
+      const pickedUpAt = iso(-Math.max(0, requestedDaysAgo - 1));
       out.push({
         id: `${FP}sr-${pad(p)}-${k + 1}`,
         type,
@@ -637,7 +639,7 @@ export function mockFillSolutioning(): SolutionRequest[] {
         requestedAt,
         neededBy: day(4 + ((a.i + k) % 40)),
         owner,
-        pickedUpAt: iso(-(3 + ((a.i + k) % 30))),
+        pickedUpAt,
         ...(kind === "meeting"
           ? { meetingAt: day(5 + ((a.i + k) % 30)), attendees: [a.owner, owner] }
           : {}),
@@ -697,7 +699,7 @@ export function mockFillSolutioning(): SolutionRequest[] {
         ],
         activity: [
           { at: requestedAt, by: a.owner, what: `Raised this ${isRequest ? "request" : type}` },
-          { at: iso(-(3 + ((a.i + k) % 30))), by: owner, what: "Picked it up" },
+          { at: pickedUpAt, by: owner, what: "Picked it up" },
         ],
         updatedAt: iso(-((a.i + k) % 12)),
       });
