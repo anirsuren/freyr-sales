@@ -1008,3 +1008,6 @@ The request-detail Owner card lets its people picker render beyond the rounded c
 
 ### Sep 17: dev admins can create role-review accounts
 The dev login gate accepts plus-addressed test identities for the approved admin accounts, including the transcript's `manojkumar.odela+2@freyrsolutions.com`. This also works when the deployment uses an explicit dev allowlist: an included admin's exact address expands to that admin's plus aliases, while omitted admins and unrelated company aliases stay blocked. Production remains unaffected. This lets an admin create separate BD Member, BD Owner, Solutioning Member, and Solutioning Owner accounts, assign each role, and review the corresponding workspace. Completed locally, not deployed.
+
+### Sep 17: Solutioning filters keep a deliberate two-row grid
+Solutioning list toolbars use one row for search and filtering and a second row for due dates, grouping, sorting, the visible count, and the table/split switch. The grouping selector no longer wraps onto a line by itself, and the display controls no longer bunch against it. Empty rooms use the active room's icon, tighter vertical spacing, and the single create action already present in the page header. Completed locally, not deployed.

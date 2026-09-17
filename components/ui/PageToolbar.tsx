@@ -50,6 +50,7 @@ export function PageToolbar({
   display,
   action,
   bare = false,
+  stacked = false,
   className,
 }: {
   query: string;
@@ -99,6 +100,11 @@ export function PageToolbar({
    * border making a third. Bare drops the frame and keeps the layout.
    */
   bare?: boolean;
+  /**
+   * Keep filters and display controls on two intentional rows. This is useful
+   * for dense toolbars whose controls otherwise wrap one at a time.
+   */
+  stacked?: boolean;
   className?: string;
 }) {
   const hasDisplay = Boolean(sort || view || display);
@@ -106,14 +112,20 @@ export function PageToolbar({
     <SearchPriority
       query={query}
       className={cn(
-        "rise-in flex flex-wrap items-center gap-2.5",
+        "rise-in flex gap-2.5",
+        stacked ? "flex-col items-stretch" : "flex-wrap items-center",
         bare
           ? "mb-0"
           : "mb-4 rounded-xl border border-border-light bg-[var(--surface)] p-2.5",
         className
       )}
     >
-      <div className="flex min-w-0 flex-1 basis-[320px] flex-wrap items-center gap-2.5">
+      <div
+        className={cn(
+          "flex min-w-0 flex-wrap items-center gap-2.5",
+          !stacked && "flex-1 basis-[320px]"
+        )}
+      >
         <PrioritySearchInput
           grow
           value={query}
@@ -136,24 +148,47 @@ export function PageToolbar({
             ariaLabel={filterAriaLabel}
           />
         )}
-        {filtersAfter}
+        {!stacked && filtersAfter}
+        {stacked && action && <div className="ml-auto shrink-0">{action}</div>}
       </div>
-      {hasDisplay && (
-        <div className="ml-auto flex max-w-full flex-wrap items-center gap-2 border-l border-border-light pl-2.5">
-          {sort && (
-            <>
-              <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
-                {sortLabel}
-              </span>
-              {sort}
-            </>
+      {stacked ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5 border-t border-border-light pt-2.5">
+          {filtersAfter}
+          {hasDisplay && (
+            <div className="ml-auto flex max-w-full flex-wrap items-center gap-2">
+              {sort && (
+                <>
+                  <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
+                    {sortLabel}
+                  </span>
+                  {sort}
+                </>
+              )}
+              {display}
+              {view}
+            </div>
           )}
-          {display}
-          {view}
         </div>
-      )}
-      {action && (
-        <div className={cn("shrink-0", !hasDisplay && "ml-auto")}>{action}</div>
+      ) : (
+        <>
+          {hasDisplay && (
+            <div className="ml-auto flex max-w-full flex-wrap items-center gap-2 border-l border-border-light pl-2.5">
+              {sort && (
+                <>
+                  <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">
+                    {sortLabel}
+                  </span>
+                  {sort}
+                </>
+              )}
+              {display}
+              {view}
+            </div>
+          )}
+          {action && (
+            <div className={cn("shrink-0", !hasDisplay && "ml-auto")}>{action}</div>
+          )}
+        </>
       )}
     </SearchPriority>
   );

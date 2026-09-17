@@ -497,6 +497,7 @@ export function SolutioningModule({
 
       <div className="mt-4">
         <PageToolbar
+          stacked
           query={query}
           onQuery={setQuery}
           /* The room's own noun, like the tiles and the count under it. */
@@ -668,20 +669,16 @@ export function SolutioningModule({
           rule as the "Showing x of y" line above it. */}
       {inRoom.length === 0 ? (
         <EmptyState
-          icon={ClipboardList}
+          icon={
+            room === "submissions"
+              ? FileSpreadsheet
+              : room === "presentations"
+                ? Presentation
+                : ClipboardList
+          }
           title={ROOM_META[room].empty}
           description="Ask for a presentation, a submission or a meeting. The Solutioning team picks it up from here, and you close it when it's delivered."
-          action={
-            canCreate ? (
-              <button
-                type="button"
-                onClick={() => setCreating(true)}
-                className="inline-flex items-center gap-1.5 rounded-md bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
-              >
-                <Plus size={14} strokeWidth={2.4} /> {ROOM_META[room].newLabel}
-              </button>
-            ) : null
-          }
+          className="py-10"
         />
       ) : shown.length === 0 ? (
         <EmptyState
