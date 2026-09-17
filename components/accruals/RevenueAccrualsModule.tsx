@@ -20,7 +20,7 @@ import {
   statusColor,
   type Opportunity,
 } from "@/lib/opportunitiesShared";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -228,6 +228,7 @@ function DeviationsTable({
   opportunityId,
   onOpportunityId,
   onOpen,
+  viewControl,
 }: {
   plans: AccrualPlan[];
   deals: DealOption[];
@@ -235,6 +236,7 @@ function DeviationsTable({
   opportunityId: string;
   onOpportunityId: (id: string) => void;
   onOpen: (plan: AccrualPlan) => void;
+  viewControl?: ReactNode;
 }) {
   const [statusFilter, setStatusFilter] = useState<TabAccrualStatus[]>([]);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
@@ -399,13 +401,16 @@ function DeviationsTable({
             </p>
           </div>
         </div>
-        <span className="inline-flex h-7 items-center rounded-full bg-surface px-2.5 text-[11.5px] font-semibold text-text-secondary">
-          <span className="tnum text-text-primary">{shown.length}</span>
-          <span className="mx-1">shown</span>
-          {shown.length !== rows.length && (
-            <span className="tnum text-text-tertiary">of {rows.length}</span>
-          )}
-        </span>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {viewControl}
+          <span className="inline-flex h-7 items-center rounded-full bg-surface px-2.5 text-[11.5px] font-semibold text-text-secondary">
+            <span className="tnum text-text-primary">{shown.length}</span>
+            <span className="mx-1">shown</span>
+            {shown.length !== rows.length && (
+              <span className="tnum text-text-tertiary">of {rows.length}</span>
+            )}
+          </span>
+        </div>
       </div>
 
       {/* THE ANSWER BEFORE THE ROWS. See the note above `byOwner`: the table
@@ -984,6 +989,37 @@ export function RevenueAccrualsModule({
   const [deviationView, setDeviationView] = useState<
     "records" | "months" | "sources"
   >("records");
+  const deviationViewControl = (
+    <ColorSelect
+      value={deviationView}
+      onChange={(value) =>
+        setDeviationView(value as "records" | "months" | "sources")
+      }
+      ariaLabel="Deviation view"
+      minWidth={235}
+      dense
+      options={[
+        {
+          value: "records",
+          label: "Deviated records",
+          color: "var(--ink-violet-soft)",
+          icon: UserPen,
+        },
+        {
+          value: "months",
+          label: "What each month says now",
+          color: "var(--ink-bright-blue)",
+          icon: CalendarRange,
+        },
+        {
+          value: "sources",
+          label: "Where the gap came from",
+          color: "var(--ink-amber)",
+          icon: Shuffle,
+        },
+      ]}
+    />
+  );
   const deviationPlans = useMemo(
     () =>
       opportunityFilter
@@ -2382,36 +2418,6 @@ export function RevenueAccrualsModule({
         </div>
       ) : (
         <div key="deviation" className="tab-panel mt-4 space-y-4">
-          <div className="flex items-center justify-end">
-            <ColorSelect
-              value={deviationView}
-              onChange={(value) =>
-                setDeviationView(value as "records" | "months" | "sources")
-              }
-              ariaLabel="Deviation view"
-              minWidth={255}
-              options={[
-                {
-                  value: "records",
-                  label: "Deviated records",
-                  color: "var(--ink-violet-soft)",
-                  icon: UserPen,
-                },
-                {
-                  value: "months",
-                  label: "What each month says now",
-                  color: "var(--ink-bright-blue)",
-                  icon: CalendarRange,
-                },
-                {
-                  value: "sources",
-                  label: "Where the gap came from",
-                  color: "var(--ink-amber)",
-                  icon: Shuffle,
-                },
-              ]}
-            />
-          </div>
           {/* MANOJ'S TABLE FIRST, and outside the snapshot gate. His question
               — which records have been deviated, by whom, how many times — has
               nothing to do with whether a month has been frozen. The
@@ -2425,6 +2431,7 @@ export function RevenueAccrualsModule({
               opportunityId={opportunityFilter}
               onOpportunityId={setOpportunityFilter}
               onOpen={(plan) => setPlanning({ dealId: plan.opportunityId })}
+              viewControl={deviationViewControl}
             />
           )}
           {deviationView !== "records" && !deviation.againstMonth ? (
@@ -2433,42 +2440,61 @@ export function RevenueAccrualsModule({
                compare against yet; the old copy told the person who had just
                frozen this month that there was no frozen sheet at all (Anir,
                Sep 7). Say what is true for each case. */
-            <EmptyState
-              icon={Lock}
-              title={
-                frozenThisMonth
-                  ? `${monthLabel(monthKey(new Date()))} is frozen. The month-on-month view starts next month.`
-                  : "No frozen sheet to compare against yet"
-              }
-              description={
-                frozenThisMonth
-                  ? "Every change from here on is measured against this sheet: which months moved, and which deals moved them. Freeze again at the end of next month and the gap between the two appears here."
-                  : "Freeze a month once and every later change is measured against it: which months moved, and which deals moved them. Freezing at the end of each month is what makes the month-on-month gap possible."
-              }
-            />
+            <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-[15px] font-semibold text-text-primary">
+                    Deviation comparison
+                  </h2>
+                  <p className="mt-0.5 text-[12.5px] text-text-secondary">
+                    Compare the current plan with a frozen monthly sheet.
+                  </p>
+                </div>
+                {deviationViewControl}
+              </div>
+              <EmptyState
+                className="pb-9 pt-10"
+                icon={Lock}
+                title={
+                  frozenThisMonth
+                    ? `${monthLabel(monthKey(new Date()))} is frozen. The month-on-month view starts next month.`
+                    : "No frozen sheet to compare against yet"
+                }
+                description={
+                  frozenThisMonth
+                    ? "Every change from here on is measured against this sheet: which months moved, and which deals moved them. Freeze again at the end of next month and the gap between the two appears here."
+                    : "Freeze a month once and every later change is measured against it: which months moved, and which deals moved them. Freezing at the end of each month is what makes the month-on-month gap possible."
+                }
+              />
+            </section>
           ) : deviationView !== "records" ? (
             <>
               {deviationView === "months" && (
               <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-                <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-                  <CalendarRange size={15} strokeWidth={2} className="text-blue-primary" />
-                  What each month says now, against {monthLabel(deviation.againstMonth!)}
-                  <InfoHint text="The frozen sheet is what every plan said when the month was closed. This compares today's plans against it, so a month that lost money shows the amount and the deals that caused it." />
-                </h2>
-                <p className="mt-0.5 text-[12.5px] text-text-secondary">
-                  Frozen {deviation.takenAt ? formatDate(deviation.takenAt) : "—"}.
-                  Across every month, the plan is{" "}
-                  <b
-                    className="tnum"
-                    style={{
-                      color: deviation.totalDelta < 0 ? AMBER : "#16A34A",
-                    }}
-                  >
-                    {deviation.totalDelta >= 0 ? "+" : "-"}
-                    {formatMoney(Math.abs(deviation.totalDelta))}
-                  </b>{" "}
-                  against that sheet.
-                </p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+                      <CalendarRange size={15} strokeWidth={2} className="text-blue-primary" />
+                      What each month says now, against {monthLabel(deviation.againstMonth!)}
+                      <InfoHint text="The frozen sheet is what every plan said when the month was closed. This compares today's plans against it, so a month that lost money shows the amount and the deals that caused it." />
+                    </h2>
+                    <p className="mt-0.5 text-[12.5px] text-text-secondary">
+                      Frozen {deviation.takenAt ? formatDate(deviation.takenAt) : "—"}.
+                      Across every month, the plan is{" "}
+                      <b
+                        className="tnum"
+                        style={{
+                          color: deviation.totalDelta < 0 ? AMBER : "#16A34A",
+                        }}
+                      >
+                        {deviation.totalDelta >= 0 ? "+" : "-"}
+                        {formatMoney(Math.abs(deviation.totalDelta))}
+                      </b>{" "}
+                      against that sheet.
+                    </p>
+                  </div>
+                  {deviationViewControl}
+                </div>
                 <div className="mt-3 overflow-x-auto">
                   <table className="w-full min-w-[560px] text-left">
                     <thead>
@@ -2516,15 +2542,20 @@ export function RevenueAccrualsModule({
 
               {deviationView === "sources" && (
               <section className="rounded-xl border border-border-light bg-white p-5 shadow-card">
-                <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-                  <AlertTriangle size={15} strokeWidth={2} style={{ color: AMBER }} />
-                  Where the gap came from
-                  <InfoHint text="A total that fell tells you nothing you can act on. These are the deals whose plans changed since the sheet was frozen, with the months that moved." />
-                </h2>
-                <p className="mt-1 text-[12.5px] text-text-secondary">
-                  See which opportunities created the variance, how their total changed, and the
-                  exact months that gained or lost planned revenue.
-                </p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+                      <AlertTriangle size={15} strokeWidth={2} style={{ color: AMBER }} />
+                      Where the gap came from
+                      <InfoHint text="A total that fell tells you nothing you can act on. These are the deals whose plans changed since the sheet was frozen, with the months that moved." />
+                    </h2>
+                    <p className="mt-1 text-[12.5px] text-text-secondary">
+                      See which opportunities created the variance, how their total changed, and the
+                      exact months that gained or lost planned revenue.
+                    </p>
+                  </div>
+                  {deviationViewControl}
+                </div>
                 {deviation.byDeal.length > 0 && (
                   <div className="mt-4 grid gap-2 sm:grid-cols-3">
                     {[

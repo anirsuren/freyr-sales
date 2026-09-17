@@ -979,3 +979,6 @@ The open Market Intel Company details rail has a fixed viewport-relative height 
 
 ### Sep 17: Market Intel story actions share one control style
 Save, Open-in-new-tab, and Delete use the same 28px control height, width, corner radius, neutral default colour, 14px icon box, and 2.2 stroke weight in cards and table rows. They always appear in that order, with Delete third. A saved bookmark alone uses the blue active state; Delete turns red only on hover. The action pill sizes itself to those three controls rather than stretching across the table column, so its outer padding and icon centres are symmetric. The table reserves the pill's full measured width, aligns source, tags, date, and actions to one 28px top row, and truncates long source names instead of letting one column's wrap shift the visual grid. LinkedIn remains source metadata and does not add a fourth icon or force Save outside the pill. Completed locally, not deployed.
+
+### Sep 17: deviation view control belongs to its content
+Opportunities → Deviations keeps its three-option view selector inside the active content card header. It sits beside the shown count for records and beside the contextual heading for month, source, and empty comparison views. The selector never occupies a detached row between the page actions and the content it controls. Completed locally, not deployed.
