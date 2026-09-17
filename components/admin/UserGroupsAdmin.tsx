@@ -509,6 +509,11 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
             <div className="max-h-[640px] overflow-y-auto rounded-xl border border-border-light">
               {groups.map((g) => {
                 const on = (selectedId ?? groups[0]?.id) === g.id;
+                const roster = [
+                  ...new Set(
+                    [g.head, ...g.members].map((member) => member.trim()).filter(Boolean)
+                  ),
+                ];
                 return (
                   <button
                     key={g.id}
@@ -522,7 +527,21 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                         : "hover:bg-surface"
                     )}
                   >
-                    <Avatar name={g.head} className="h-7 w-7 shrink-0 text-[9px]" />
+                    <span className="w-[72px] shrink-0">
+                      <PersonFan
+                        people={roster.map((member) => ({
+                          name: member,
+                          role:
+                            member === g.head
+                              ? `Group owner · ${roleLabel(roles[member])}`
+                              : roleLabel(roles[member]),
+                          context: g.name,
+                        }))}
+                        avatarClassName="h-7 w-7 text-[9px]"
+                        overlap={-8}
+                        max={4}
+                      />
+                    </span>
                     <span className="min-w-0 flex-1">
                       <span className={cn(
                         "block truncate text-[13px] font-semibold",
@@ -531,10 +550,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                         {g.name}
                       </span>
                       <span className="block truncate text-[11px] text-text-tertiary">
-                        {(() => {
-                          const n = [...new Set([g.head, ...g.members])].length;
-                          return `${n} ${n === 1 ? "person" : "people"}`;
-                        })()}
+                        {roster.length} {roster.length === 1 ? "person" : "people"}
                       </span>
                     </span>
                   </button>
