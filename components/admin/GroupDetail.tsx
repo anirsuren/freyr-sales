@@ -13,6 +13,7 @@ import {
   X,
   Loader2,
   Plus,
+  Search,
   Target,
   Trash2,
   UsersRound,
@@ -90,6 +91,7 @@ export function GroupDetail({
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState(false);
   const [chosen, setChosen] = useState<string[]>([]);
+  const [goalSearch, setGoalSearch] = useState("");
   const [editingPeople, setEditingPeople] = useState(false);
   const [roster, setRoster] = useState<string[]>([]);
   const [confirmDrop, setConfirmDrop] = useState<PrimaryGoal | null>(null);
@@ -144,6 +146,14 @@ export function GroupDetail({
     [state.goals, carried]
   );
 
+  const visibleAvailable = useMemo(() => {
+    const query = goalSearch.trim().toLowerCase();
+    if (!query) return available;
+    return available.filter((goal) => {
+      return `${goal.name} ${goal.type} ${goal.year}`.toLowerCase().includes(query);
+    });
+  }, [available, goalSearch]);
+
   if (!group) return null;
 
   async function run(body: Record<string, unknown>, ok: string) {
@@ -184,6 +194,7 @@ export function GroupDetail({
       if (!ok) break;
     }
     setChosen([]);
+    setGoalSearch("");
     setPicking(false);
   }
 
@@ -674,6 +685,7 @@ export function GroupDetail({
         onClose={() => {
           setPicking(false);
           setChosen([]);
+          setGoalSearch("");
         }}
         title="Assign goals to this group"
         /* NOT A SKINNY POPUP (Anir, Aug 30: "never do those skinny popups").
@@ -681,22 +693,43 @@ export function GroupDetail({
            mattered and made the list feel like a straw. Same frame as the Goal
            Master's own group picker: wide, and a fixed height so ticking a row
            does not resize the dialog under the cursor. */
-        size="wide"
+        size="workflow"
         tall
-        dialogClassName="!h-[min(720px,calc(100vh-3rem))]"
+        dialogClassName="!max-w-[880px] !h-[min(760px,calc(100vh-3rem))]"
         bodyClassName="flex flex-col"
       >
         <div className="flex min-h-0 flex-1 flex-col">
-        <p className="mb-3 text-[12.5px] text-text-secondary">
-          Pick from the Goal Master. Tick as many as you need.
+        <p className="mb-3 text-[13.5px] text-text-secondary">
+          Pick from the Goal Master. Select as many as you need.
         </p>
-        <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
+        <div className="relative mb-4 shrink-0">
+          <Search
+            size={18}
+            strokeWidth={2}
+            aria-hidden="true"
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary"
+          />
+          <input
+            type="search"
+            value={goalSearch}
+            onChange={(event) => setGoalSearch(event.target.value)}
+            placeholder="Search goals by name, type, or year…"
+            aria-label="Search goals"
+            autoFocus
+            className="h-[52px] w-full rounded-xl border border-border-light bg-white pl-11 pr-4 text-[14px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary hover:border-border focus:border-blue-primary"
+          />
+        </div>
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
           {available.length === 0 ? (
-            <p className="rounded-lg bg-surface px-4 py-6 text-center text-[12.5px] text-text-secondary">
+            <p className="rounded-xl bg-surface px-5 py-10 text-center text-[13.5px] text-text-secondary">
               Every goal in the master is already on this group.
             </p>
+          ) : visibleAvailable.length === 0 ? (
+            <p className="rounded-xl bg-surface px-5 py-10 text-center text-[13.5px] text-text-secondary">
+              No goals match “{goalSearch.trim()}”.
+            </p>
           ) : (
-            available.map((g) => {
+            visibleAvailable.map((g) => {
               const on = chosen.includes(g.id);
               const accent = typeMeta(g.type).color;
               return (
@@ -715,7 +748,7 @@ export function GroupDetail({
                   key={g.id}
                   style={{ ["--goal-accent" as string]: accent }}
                   className={cn(
-                    "flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 transition-all",
+                    "flex min-h-[68px] cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-all",
                     on
                       ? "border-[color:var(--goal-accent)] bg-[color:var(--goal-accent)]/[0.07] [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
                       : "border-border-light hover:border-[color:var(--goal-accent)]/50 hover:bg-surface"
@@ -744,20 +777,20 @@ export function GroupDetail({
                         : undefined
                     }
                     className={cn(
-                      "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border transition-colors",
+                      "flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[6px] border transition-colors",
                       on ? "text-white" : "border-border-light text-transparent"
                     )}
                   >
-                    <Check size={12} strokeWidth={3.2} />
+                    <Check size={14} strokeWidth={3.2} />
                   </span>
-                  <TypeIconTile type={g.type} className="h-8 w-8 rounded-lg" />
+                  <TypeIconTile type={g.type} className="h-10 w-10 rounded-xl" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold text-text-primary">
+                    <span className="block truncate text-[14px] font-semibold text-text-primary">
                       {g.name}
                     </span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
                       <TypeChip type={g.type} size="sm" />
-                      <span className="text-[11px] text-text-tertiary tnum">
+                      <span className="text-[12px] text-text-tertiary tnum">
                         {g.year}
                         {g.target > 0 && ` · org target ${money(g.target)}`}
                       </span>
@@ -768,12 +801,19 @@ export function GroupDetail({
             })
           )}
         </div>
-        <div className="mt-4 flex justify-end gap-2">
+        <div className="mt-5 flex shrink-0 items-center justify-between gap-3 border-t border-border-light pt-4">
+          <span className="text-[12.5px] text-text-secondary">
+            {chosen.length === 0
+              ? `${visibleAvailable.length} ${plural(visibleAvailable.length, "goal")} shown`
+              : `${chosen.length} selected`}
+          </span>
+          <div className="flex gap-2">
           <Button
             variant="secondary"
             onClick={() => {
               setPicking(false);
               setChosen([]);
+              setGoalSearch("");
             }}
           >
             Cancel
@@ -787,6 +827,7 @@ export function GroupDetail({
               ? "Assign goal"
               : `Assign ${chosen.length} ${plural(chosen.length, "goal")}`}
           </Button>
+          </div>
         </div>
         </div>
       </Modal>

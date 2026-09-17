@@ -2751,7 +2751,7 @@ function GoalPopupBody({
         confirmLabel="Remove subgoal"
       />
 
-      <div className="mt-3 rounded-xl border border-border-light p-3.5">
+      <div className="mt-3 rounded-xl border border-border-light p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Subgoals
@@ -2776,7 +2776,7 @@ function GoalPopupBody({
           of it.
         </p>
       )}
-      <div className="mt-1.5 space-y-2">
+      <div className="mt-1.5 space-y-1.5">
         {/* NO POPUP ON A POPUP (Anir, Aug 12: "when I click on subgoal it
             should not be a pop-up because it's already a pop-up"). Hosted in
             the goal popup, the new-subgoal form unfolds right here; expanded
@@ -2848,7 +2848,7 @@ function GoalPopupBody({
                 type="button"
                 aria-expanded={expanded}
                 onClick={() => setOpenSub(expanded ? null : s.id)}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-blue-light/40"
+                className="flex min-h-10 w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-blue-light/40"
               >
                 <span className="min-w-0 flex-1">
                   <span className="text-[13px] font-semibold text-text-primary">
@@ -2929,6 +2929,10 @@ function GoalPopupBody({
                 />
               </button>
               <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
+                {/* The fold needs an unpadded direct child. Padding on the
+                    collapsing grid item survives at 0fr and was leaving a
+                    large blank block under every closed subgoal. */}
+                <div>
                 <div className="bg-[rgba(0,113,227,0.02)] p-3.5">
                   {live ? (
                     <>
@@ -2967,6 +2971,7 @@ function GoalPopupBody({
                     </div>
                   )}
                 </div>
+                </div>
               </div>
             </div>
           );
@@ -2987,7 +2992,7 @@ function GoalPopupBody({
           always its people's, added up. */}
       </div>
 
-      <div className="mt-3 rounded-xl border border-border-light p-3.5">
+      <div className="mt-3 rounded-xl border border-border-light p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Assigned groups
@@ -3051,7 +3056,7 @@ function GoalPopupBody({
                   );
                 }
               }}
-              className="flex cursor-pointer flex-wrap items-center gap-2.5 px-3 py-2 transition-colors hover:bg-blue-light/40"
+              className="flex min-h-10 cursor-pointer flex-wrap items-center gap-2.5 px-3 py-2 transition-colors hover:bg-blue-light/40"
             >
               <span className="flex shrink-0 items-center">
                 <ChevronDown
@@ -3194,7 +3199,7 @@ function GoalPopupBody({
           their people do) ---------------- */}
       </div>
 
-      <div className="mt-3 rounded-xl border border-border-light p-3.5">
+      <div className="mt-3 rounded-xl border border-border-light p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
           Assigned individually
