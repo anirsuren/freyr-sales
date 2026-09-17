@@ -1021,8 +1021,8 @@ People, owner, assignee, customer, and other record lookup menus show a search f
 ### Sep 17: solutioning division assignments stay compact
 Each division card keeps Solutioning lead and Primary assignee in two balanced columns. A compact blue Add contributor action sits in the card header and opens a large searchable roster with every eligible person already visible; it does not hide the roster behind another dropdown. The roster excludes the request owner, division lead, primary assignee, and existing contributors. Existing contributors remain in an explicit labelled row with confirmed removal. Completed locally, not deployed.
 
-### Sep 17: request timeline fills the remaining rail
-The Solutioning request timeline uses the remaining viewport height in the right rail and scrolls its events internally. The comment action remains pinned at the bottom of the card instead of leaving unused space beneath a short fixed-height timeline. Completed locally, not deployed.
+### Sep 17: request timeline ends with Documents
+The Solutioning request timeline fills the remaining right-rail space only until the bottom edge of the Documents section in the left column. Its events scroll internally inside that aligned boundary, while the comment action remains visible at the bottom of the card. The rail is sized by the page content rather than the viewport. Completed locally, not deployed.
 
 ### Sep 17: customer band tabs omit redundant actions
 Customer connection tabs no longer repeat record-team editing controls or links such as “The team” and “All deals” beside the active band summary. The selected tab already identifies and opens that destination, so the duplicated action row is removed across all customer band tabs. Completed locally, not deployed.
