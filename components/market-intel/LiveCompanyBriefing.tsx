@@ -3,7 +3,7 @@
 import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import { SmartBack } from "@/components/ui/BackButton";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -167,8 +167,6 @@ export function LiveCompanyBriefing({
   const [relevantOnly, setRelevantOnly] = useState(isCompetitor);
   const [detailsView, setDetailsView] = useStoredView("freyr.mi.details", "open", ["open", "closed"] as const);
   const detailsOpen = detailsView === "open";
-  const detailsRailRef = useRef<HTMLDivElement>(null);
-  const [detailsRailHeight, setDetailsRailHeight] = useState<number | null>(null);
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
     "freyr.mi.news.view",
     "rows",
@@ -184,29 +182,6 @@ export function LiveCompanyBriefing({
   const [savedOnly, setSavedOnly] = useState(false);
   const [savedReady, setSavedReady] = useState(false);
   const [savingArticle, setSavingArticle] = useState<string | null>(null);
-  useEffect(() => {
-    let frame: number | null = null;
-    const syncRailHeight = () => {
-      if (frame !== null) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = null;
-        /* The global header is 56px tall. Keep only a 4px breathing gap so
-           the rail uses the full viewport instead of parking noticeably below
-           the account controls while the feed scrolls. */
-        const top = Math.max(60, detailsRailRef.current?.getBoundingClientRect().top ?? 60);
-        const next = Math.max(280, Math.floor(window.innerHeight - top - 12));
-        setDetailsRailHeight((current) => current === next ? current : next);
-      });
-    };
-    syncRailHeight();
-    window.addEventListener("scroll", syncRailHeight, { capture: true, passive: true });
-    window.addEventListener("resize", syncRailHeight);
-    return () => {
-      window.removeEventListener("scroll", syncRailHeight, { capture: true });
-      window.removeEventListener("resize", syncRailHeight);
-      if (frame !== null) window.cancelAnimationFrame(frame);
-    };
-  }, [detailsOpen]);
   useEffect(() => {
     const controller = new AbortController();
     setSavedReady(false);
@@ -968,7 +943,7 @@ export function LiveCompanyBriefing({
         </div>
 
         {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4). */}
-        <div ref={detailsRailRef} className="sticky top-[60px] min-w-0 self-start">
+        <div className="sticky top-[60px] min-w-0 self-start">
           {!detailsOpen && (
             <button
               type="button"
@@ -987,8 +962,12 @@ export function LiveCompanyBriefing({
             aria-label="Company details"
             aria-hidden={!detailsOpen}
             inert={!detailsOpen}
-            className={cn("flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm motion-safe:transition-[opacity,transform,max-height] motion-safe:duration-300 motion-safe:ease-in-out", detailsOpen ? "translate-x-0 opacity-100" : "pointer-events-none max-h-0 translate-x-4 opacity-0")}
-            style={detailsOpen && detailsRailHeight ? { maxHeight: detailsRailHeight } : undefined}
+            className={cn(
+              "flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm motion-safe:transition-[opacity,transform] motion-safe:duration-200 motion-safe:ease-out",
+              detailsOpen
+                ? "h-[calc(100dvh-72px)] min-h-[420px] translate-x-0 opacity-100"
+                : "pointer-events-none h-0 translate-x-4 opacity-0"
+            )}
           >
           {/* Keep the rail control outside its scrolling body. Previously the
               header disappeared as soon as someone scrolled down to the last

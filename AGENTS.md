@@ -973,3 +973,6 @@ Mock company sparklines use deterministic but visibly different activity familie
 
 ### Sep 17: Company details uses the full viewport
 While a Market Intel briefing scrolls, its Company details rail sticks four pixels below the 56px global header instead of leaving a 24px dead band. The internal scroll limit is measured from that same position, exposing more of Signals, People tracked, competitors, and the remaining detail cards without covering the header. Completed locally, not deployed.
+
+### Sep 17: Company details has one stable height
+The open Market Intel Company details rail has a fixed viewport-relative height from its 60px sticky position to a 12px bottom gap. It does not listen to page or nested scroll events, recalculate geometry, or animate max-height; only its contents scroll. This prevents the panel from shrinking and eliminates the choppy feedback loop while the page moves. Completed locally, not deployed.
