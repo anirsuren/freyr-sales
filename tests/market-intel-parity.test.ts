@@ -1,7 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildDemoIntel } from "../lib/marketIntelDemoFeed";
-import { isReleased, getHomePath } from "../lib/release";
+import {
+  getHomePath,
+  isOfferingsOnly,
+  isOfferingsReleasePath,
+  isReleased,
+  isReleasedOnly,
+} from "../lib/release";
 import { buildBriefing, cardFromSummary } from "../lib/marketIntelFeed";
 import type { MarketIntelTracking } from "../lib/marketIntelTracking";
 const tracking:MarketIntelTracking = {companies:[
@@ -26,7 +32,28 @@ test("sample moderation removes a story from the card and briefing data",()=>{
   assert.ok(!after.companies["test-customer"].news.some(n=>n.url===url));
   assert.equal(after.summaries["test-customer"].counts.news,before.summaries["test-customer"].counts.news-1);
 });
-test("mode changes never change released routes or the home page",()=>{
-  for(const path of ["/market-intel","/dashboard","/analytics","/forecast","/recordings","/performance/people","/offerings/a","/opportunities","/contracts","/solutioning"]) assert.equal(isReleased(path,"mock"),isReleased(path,"live"),path);
-  assert.equal(getHomePath("mock"),getHomePath("live"));
+test("Ready now contains only released modules while In progress exposes work in progress",()=>{
+  assert.equal(isReleasedOnly("live"),true);
+  assert.equal(isReleasedOnly("mock"),false);
+  assert.equal(isOfferingsOnly("live"),false);
+  for(const path of ["/market-intel","/performance/people","/offerings/a","/opportunities","/contracts","/solutioning"]) {
+    assert.equal(isReleased(path,"live"),true,path);
+    assert.equal(isReleased(path,"mock"),true,path);
+  }
+  for(const path of ["/dashboard","/analytics","/forecast","/recordings"]) {
+    assert.equal(isReleased(path,"live"),false,path);
+    assert.equal(isReleased(path,"mock"),true,path);
+  }
+  assert.equal(getHomePath("live"),"/offerings");
+  assert.equal(getHomePath("mock"),"/dashboard");
+});
+
+test("released-route checks ignore view labels, tabs, filters, and fragments",()=>{
+  for(const path of [
+    "/market-intel?tab=competitors",
+    "/opportunities?tab=deviations",
+    "/settings?tab=profile",
+    "/mock-mode/market-intel?tab=market#results",
+  ]) assert.equal(isOfferingsReleasePath(path),true,path);
+  assert.equal(isOfferingsReleasePath("/mock-mode/dashboard?tab=anything"),false);
 });

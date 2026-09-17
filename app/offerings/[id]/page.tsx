@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { OfferingBackButton } from "@/components/offerings/OfferingBackButton";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import {
   Pencil,
   Plus,
@@ -20,7 +20,6 @@ import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
 import { RecordView } from "@/components/RecordView";
@@ -39,7 +38,6 @@ import { canManageOfferings, getRole, isAdmin } from "@/lib/role";
 import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import {
   customerFamiliesPresent,
-  customerFamilyColor,
 } from "@/lib/customerFamilies";
 import { getCurrentUser } from "@/lib/currentUser";
 import { OfferingOwners } from "@/components/offerings/OfferingOwners";
@@ -52,7 +50,7 @@ import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { readMarketIntelSummaries } from "@/lib/marketIntelRead";
 import { OfferingAgentButton } from "@/components/offerings/OfferingAgentButton";
 import { getDataMode } from "@/lib/dataMode";
-import { isOfferingsOnly } from "@/lib/release";
+import { isReleasedOnly } from "@/lib/release";
 import { getDb } from "@/lib/db";
 import { formatMoney } from "@/lib/pipeline";
 import { REVENUE_TYPE_META } from "@/lib/revenue";
@@ -137,7 +135,7 @@ export default async function OfferingDetailPage({
    * under the Aug 7 ruling that commercial views live in Mock; Real mode
    * neither shows the chip nor honours the URL.
    */
-  const showReports = true;
+  const showReports = getDataMode() === "mock";
   /* SALES REPS DON'T SEE THE CUSTOMERS TAB — FOR NOW (Suren via Anir,
    * Aug 13: "anyone with the Sales Rep access should currently NOT be able
    * to see the 'Customers' tab within an Offering Page", so reps aren't
@@ -336,6 +334,7 @@ export default async function OfferingDetailPage({
   const customerPickList = allCustomers.map((c) => ({
     id: c.id,
     name: c.company_name,
+    assigned: (c.offerings_in_use || []).includes(o.id),
   }));
 
   /**
@@ -386,7 +385,7 @@ export default async function OfferingDetailPage({
   const canSeeNextCustomerVersion = await canViewNextCustomerVersion(o);
   const role = await getRole();
   const dataMode = getDataMode();
-  const commercialActionsEnabled = !isOfferingsOnly(dataMode);
+  const commercialActionsEnabled = !isReleasedOnly(dataMode);
 
   // A POC name copied from the catalogue is useful sample/catalogue context,
   // but it is not proof that the person has a workspace account. In live mode
@@ -423,12 +422,6 @@ export default async function OfferingDetailPage({
     if (n.includes("germany")) return "🇩🇪";
     return "🌐";
   };
-  // Two colour dimensions on Target segments (Suren): the FAMILY and the SIZE —
-  // distinct hues so they never clash when shown together. Family colours come
-  // from the shared map the editor and the master list already use; the local
-  // copy knew only three families and painted every other one gray, which is a
-  // colour identity is never allowed to be.
-  const familyStyle = customerFamilyColor;
   // One size system app-wide (SizeBadge's). The old local palette painted
   // small in sky and mid in cyan — two blues nobody can tell apart (Anir:
   // "small and mid-sized, literally the same color").
@@ -487,6 +480,7 @@ export default async function OfferingDetailPage({
             offeringName={o.offering_name}
             customers={customerPickList}
             commercialActionsEnabled={commercialActionsEnabled}
+            pitchActionEnabled={dataMode === "mock" && commercialActionsEnabled}
             extra={
               <>
                 {/* Stay on the offering and open the shared assistant with

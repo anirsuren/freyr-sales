@@ -12,7 +12,8 @@ import { PresenceHeartbeat } from "@/components/presence/PresenceHeartbeat";
 import { NavHistoryTracker } from "@/components/ui/BackButton";
 import type { DataMode } from "@/lib/dataMode";
 import type { Access } from "@/lib/privileges";
-import { isOfferingsOnly, isReleased, isReleasedPath } from "@/lib/release";
+import type { PerformanceRoom } from "@/lib/performanceShared";
+import { isOfferingsOnly, isReleased, isReleasedOnly, isReleasedPath } from "@/lib/release";
 import { HOVER_HINT_DELAY_MS } from "@/lib/hoverPreferences";
 import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
 import { ProductTourProvider } from "@/components/onboarding/ProductTourProvider";
@@ -42,6 +43,7 @@ export function AppShell({
   approvalEnabled,
   currentUser,
   moduleAccess = null,
+  performanceRooms,
 }: {
   children: React.ReactNode;
   dataMode: DataMode;
@@ -50,6 +52,7 @@ export function AppShell({
   /** What this person may do per module, when the privilege table is the
    *  authority. Null = fall back to the role rules. */
   moduleAccess?: Record<string, Access> | null;
+  performanceRooms: PerformanceRoom[];
 }) {
   /**
    * THE PREFIX IS A LABEL, NOT PART OF THE ROUTE.
@@ -110,6 +113,7 @@ export function AppShell({
     pathname.endsWith("/edit") || pathname.endsWith("/new");
   const router = useRouter();
   const offeringsOnly = isOfferingsOnly(dataMode);
+  const releasedOnly = isReleasedOnly(dataMode);
   const customersReleased = isReleased("/customers", dataMode);
   // Same allow-list the middleware redirect uses (lib/release.ts). Keeping one
   // copy is what stops a page from rendering its chrome for a frame before the
@@ -466,11 +470,12 @@ export function AppShell({
             mobileOpen={mobileNavOpen}
             onMobileClose={() => setMobileNavOpen(false)}
             moduleAccess={moduleAccess}
+            performanceRooms={performanceRooms}
           />
           <div className="flex h-full min-w-0 flex-1 flex-col">
             <TopBar
               moduleAccess={moduleAccess}
-              offeringsOnly={offeringsOnly}
+              releasedOnly={releasedOnly}
               customersReleased={customersReleased}
               onMenuClick={() => setMobileNavOpen(true)}
               onAgentToggle={toggleAgent}
@@ -559,7 +564,7 @@ export function AppShell({
         />
         )}
         <ProductTourProvider
-          offeringsOnly={offeringsOnly}
+          offeringsOnly={releasedOnly}
           // Mock mode is a review workspace. Opening a pasted mock link must
           // show the requested screen, not resume a saved first-use tour and
           // immediately navigate somewhere else. The Help launcher still

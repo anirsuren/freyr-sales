@@ -4,7 +4,10 @@ import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getRole } from "@/lib/role";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
-import { visibleNamesFor } from "@/lib/performanceShared";
+import {
+  performanceRoomsForViewer,
+  visibleNamesFor,
+} from "@/lib/performanceShared";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
@@ -103,14 +106,7 @@ export default async function PerformanceTabPage({
   // route is the rule (Suren, Aug 12: a group owner sees their group, an
   // individual sees themself). The Goal Master is open to everyone — it is how
   // anybody picks up a goal.
-  const iHeadAGroup = state.groups.some(
-    (g) => g.head.trim().toLowerCase() === me.name.trim().toLowerCase()
-  );
-  const allowed: RouteTab[] = manager
-    ? [...ROUTE_TABS]
-    : iHeadAGroup
-      ? ["groups", "people"]
-      : ["people"];
+  const allowed = performanceRoomsForViewer(state, me.name, manager);
   if (!master && !allowed.includes(raw as RouteTab))
     redirect(`/performance/${allowed[0]}`);
 

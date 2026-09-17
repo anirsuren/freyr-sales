@@ -7,6 +7,12 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { viewerAccessMap } from "@/lib/viewerAccess";
 import { getRoleInfo } from "@/lib/role";
 import { PreviewBanner } from "@/components/layout/PreviewBanner";
+import { readPerformance } from "@/lib/performance";
+import { isManagerOrAdmin } from "@/lib/moduleAccess";
+import {
+  performanceRoomsForViewer,
+  type PerformanceRoom,
+} from "@/lib/performanceShared";
 
 export const metadata: Metadata = {
   metadataBase: new URL("http://localhost:3001"),
@@ -53,6 +59,25 @@ export default async function RootLayout({
     roleInfo.role === realUser.role
       ? realUser
       : { ...realUser, role: roleInfo.role };
+  const dataMode = getDataMode();
+  let performanceRooms: PerformanceRoom[];
+  try {
+    const performance = await readPerformance(
+      dataMode === "live" ? undefined : currentUser.name
+    );
+    performanceRooms = performanceRoomsForViewer(
+      performance,
+      currentUser.name,
+      isManagerOrAdmin(roleInfo.role)
+    );
+  } catch {
+    // The shell must remain usable if performance storage is temporarily
+    // unavailable. Managers keep their normal rooms; everyone else gets the
+    // universally valid personal room until the next server render.
+    performanceRooms = isManagerOrAdmin(roleInfo.role)
+      ? ["org", "groups", "people"]
+      : ["people"];
+  }
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -70,7 +95,7 @@ export default async function RootLayout({
           <PreviewBanner role={roleInfo.role} realRole={roleInfo.realRole} />
         )}
         <AppShell
-          dataMode={getDataMode()}
+          dataMode={dataMode}
           approvalEnabled={isApprovalGateEnabled()}
           currentUser={currentUser}
           /* Resolved once here and threaded down: the sidebar and the command
@@ -78,6 +103,7 @@ export default async function RootLayout({
              per nav item would be one round trip per link. Null means the
              privilege table is not the authority — see lib/viewerAccess. */
           moduleAccess={await viewerAccessMap()}
+          performanceRooms={performanceRooms}
         >
           {children}
         </AppShell>

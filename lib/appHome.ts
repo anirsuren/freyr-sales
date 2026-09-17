@@ -1,5 +1,5 @@
 import { getDataMode } from "@/lib/dataMode";
-import { isOfferingsOnly } from "@/lib/release";
+import { getHomePath } from "@/lib/release";
 
 /**
  * WHERE A SIGNED-IN PERSON BELONGS.
@@ -17,5 +17,5 @@ import { isOfferingsOnly } from "@/lib/release";
  * the full app is available and the dashboard is home.
  */
 export function appHomePath(): string {
-  return isOfferingsOnly(getDataMode()) ? "/offerings" : "/dashboard";
+  return getHomePath(getDataMode());
 }

@@ -129,14 +129,16 @@ export function ManageCompaniesButton({
 }: {
   group?: "customer" | "competitor";
   /** "cta" is the button inside the empty page, which has to be found. */
-  variant?: "chip" | "cta";
+  variant?: "chip" | "cta" | "primary";
 }) {
   return (
     <Link
       href={manageHref(group)}
       className={cn(
         "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full font-semibold transition-colors",
-        variant === "cta"
+        variant === "primary"
+          ? "!rounded-lg bg-blue-primary px-5 py-2.5 text-[13.5px] text-white shadow-sm hover:opacity-90"
+          : variant === "cta"
           ? "bg-blue-primary px-5 py-2.5 text-[13.5px] text-white hover:opacity-90"
           : "border border-border-light bg-white px-4 py-2 text-[13px] text-text-secondary hover:border-blue-subtle hover:text-blue-primary"
       )}
@@ -153,6 +155,7 @@ type ManageProps = {
   isAdmin?: boolean;
   /** Admin or BD: may add a company nobody is tracking yet. */
   canWrite?: boolean;
+  additionsRemaining?: number;
   /** What the viewer has ticked and starred, straight from the server. */
   myIds?: string[];
   starredIds?: string[];
@@ -163,6 +166,7 @@ export function ManageCompaniesPanel({
   group = "customer",
   isAdmin = false,
   canWrite = false,
+  additionsRemaining,
   myIds,
   starredIds,
 }: ManageProps) {
@@ -242,7 +246,7 @@ export function ManageCompaniesPanel({
       if (!res.ok) throw new Error(data.error || "Could not save your list. Your changes are still here.");
       adopt(data.companyIds, data.starredIds);
       const count = rows.filter((c) => c.group === group && data.companyIds.includes(c.id)).length;
-      toast(`Now tracking ${count} ${count === 1 ? "company" : "companies"}.`);
+      toast(`Now tracking ${count} ${count === 1 ? "company" : "companies"}.${data.stopped > 0 ? ` Collection stopped for ${data.stopped} ${data.stopped === 1 ? "company" : "companies"} because nobody is tracking ${data.stopped === 1 ? "it" : "them"}.` : ""}`);
       router.refresh();
     } catch (error) {
       toast(error instanceof Error ? error.message : "Could not save your list. Your changes are still here.", "error");
@@ -303,6 +307,24 @@ export function ManageCompaniesPanel({
       );
   }, [rows, q, group, divisionFilter, show, sort, mine, stars]);
 
+  const selectedShown = shown.filter(company => mine.has(company.id)).length;
+  const allShownSelected = shown.length > 0 && selectedShown === shown.length;
+  function toggleAllShown() {
+    if (saving || shown.length === 0) return;
+    const next = new Set(mine);
+    const favourites = new Set(stars);
+    for (const company of shown) {
+      if (allShownSelected) {
+        next.delete(company.id);
+        favourites.delete(company.id);
+      } else {
+        next.add(company.id);
+      }
+    }
+    setMine(next);
+    setStars(favourites);
+  }
+
   const inSection = useMemo(
     () => rows.filter((c) => c.group === group && passesDivision(c, divisionFilter)),
     [rows, group, divisionFilter]
@@ -353,7 +375,7 @@ export function ManageCompaniesPanel({
           </div>
           {canWrite && (
             <span className="ml-auto">
-              <TrackCompanyButton group={group} canTrack={canWrite} />
+              <TrackCompanyButton group={group} canTrack={canWrite} additionsRemaining={additionsRemaining} />
             </span>
           )}
         </div>
@@ -411,7 +433,19 @@ export function ManageCompaniesPanel({
               <tr className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                 <th className="w-[48%] py-2.5 pl-4 pr-3">
                   <span className="flex items-center gap-3">
-                    Company
+                    <TickBox
+                      checked={allShownSelected}
+                      indeterminate={selectedShown > 0 && !allShownSelected}
+                      disabled={saving || shown.length === 0}
+                      onChange={toggleAllShown}
+                      label={allShownSelected ? "Deselect all shown companies" : "Select all shown companies"}
+                      title={`${allShownSelected ? "Deselect" : "Select"} all ${shown.length} shown companies. Save changes to apply.`}
+                    />
+                    <span>Company</span>
+                    <button type="button" onClick={toggleAllShown} disabled={saving || shown.length === 0}
+                      className="cursor-pointer text-[11px] font-semibold normal-case tracking-normal text-blue-primary hover:underline disabled:cursor-default disabled:opacity-40">
+                      {allShownSelected ? "Deselect all" : "Select all"} ({shown.length})
+                    </button>
                   </span>
                 </th>
                 {isAdmin && <th className="w-[18%] px-3 py-2.5">Status</th>}

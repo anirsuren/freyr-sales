@@ -1,3 +1,5 @@
+import { marketIntelAddRefusal } from "@/lib/marketIntelAddAccess";
+import { BD_COMPANY_LIMIT } from "@/lib/marketIntelCompanyLimit";
 import { getDataMode } from "@/lib/dataMode";
 import {
   enqueueCompany,
@@ -66,8 +68,7 @@ async function acquireTrackingWrite(): Promise<() => void> {
  * WHO MAY CHANGE THE WATCH LIST — the privilege table, like every other module.
  *
  * Since Sep 10 the Market Intel row gives BD *create* beside Admin (Saras).
- * There is no limit on how many companies a person adds (Anir, Sep 10: "idk
- * why ur putting a limit"); a company already in the list is never scraped
+ * BD members may add up to 20 companies (Sep 17); existing companies are never scraped
  * twice, it is simply ticked.
  *
  * THE MODEL (Anir, Sep 10): the catalogue holds every company the team knows
@@ -85,7 +86,8 @@ async function readOnly(): Promise<NextResponse | null> {
 export async function GET(req: NextRequest) {
   if (!(await verifiedRequestMemberScope(req)))
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
-  const shut = await readOnly();
+  const refusal = await marketIntelAddRefusal();
+  const shut = refusal ? NextResponse.json({ error: refusal }, { status: 403 }) : null;
   if (shut) return shut;
   try {
     const tracking = await readMarketIntelTracking({ fresh: true });
@@ -132,7 +134,10 @@ export async function POST(req: NextRequest) {
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
-  const shut = await readOnly();
+  const body = (await req.json().catch(() => ({}))) ?? {};
+  const addingCompany = body.kind === "company-link" || body.kind === "company";
+  const refusal = addingCompany ? await marketIntelAddRefusal() : await moduleWriteRefusal("/market-intel");
+  const shut = refusal ? NextResponse.json({ error: refusal }, { status: 403 }) : null;
   if (shut) return shut;
   const user = await getCurrentUser();
   const isAdmin = user.role === "admin";
@@ -141,7 +146,7 @@ export async function POST(req: NextRequest) {
     ...(user.name ? { name: user.name } : {}),
     ...(user.email ? { email: user.email } : {}),
   };
-  const body = (await req.json().catch(() => ({}))) ?? {};
+  const additionLimit = user.role === "bd_member" ? BD_COMPANY_LIMIT : undefined;
   if (getDataMode() === "mock" && ["company-link", "company-retry", "person-link"].includes(body?.kind)) {
     try {
       if (body.kind === "company-retry") return NextResponse.json({ok:true,status:"complete"});
@@ -150,13 +155,13 @@ export async function POST(req: NextRequest) {
         const person = await trackPerson({...body,name:body.name || slug.replace(/-/g," ")});
         return NextResponse.json({ok:true,person});
       }
-      const result = await trackCompany({...body,name:body.name || "Sample company"}, {addedBy,divisions:cleanDivisions(body.divisions)});
+      const result = await trackCompany({...body,name:body.name || "Sample company"}, {addedBy,additionLimit,divisions:cleanDivisions(body.divisions)});
       await setCompanyGroup(result.company.id, body.group === "competitor" ? "competitor" : "customer");
       await setMarketIntelBookmark(scope,result.company.id,true);
       return NextResponse.json({ok:true,company:result.company,status:"complete"});
     } catch(error) { return NextResponse.json({error:error instanceof Error ? error.message : "Could not save."},{status:400}); }
   }
-  if (body?.kind === "company-link" || body?.kind === "company-retry") {
+  if (body?.kind === "company-link" || body?.kind === "company-retry" || (body?.kind === "company" && user.role === "bd_member" && getDataMode() === "live")) {
     try {
       let company;
       if (body.kind === "company-retry") {
@@ -172,7 +177,7 @@ export async function POST(req: NextRequest) {
             linkedinUrl: body.linkedinUrl,
           },
           body.group === "competitor" ? "competitor" : "customer",
-          { addedBy, divisions: cleanDivisions(body.divisions) },
+          { addedBy, additionLimit, divisions: cleanDivisions(body.divisions) },
         );
         try {
           await setMarketIntelBookmark(scope, company.id, true);
@@ -221,7 +226,7 @@ export async function POST(req: NextRequest) {
           { status: 400 },
         );
       }
-      const result = await trackCompany(body, { addedBy, divisions });
+      const result = await trackCompany(body, { addedBy, additionLimit, divisions });
       await setMarketIntelBookmark(scope, result.company.id, true);
       // The first briefing is collected right after this response goes out
       // (a few cents), so the page fills in minutes instead of a day.

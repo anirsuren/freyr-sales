@@ -22,8 +22,6 @@ import {
   Swords,
   Paperclip,
   Plus,
-  Check,
-  Pencil,
   Users,
   Trash2,
   Mail,
@@ -38,6 +36,7 @@ import {
   type TabOffering,
 } from "@/components/customers/CustomerOfferingsTab";
 import { CustomerDigitalComponents } from "@/components/customers/CustomerDigitalComponents";
+import { CustomerAccountPlanTab } from "@/components/customers/CustomerAccountPlanTab";
 import { SizeBadge, Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
@@ -97,6 +96,7 @@ import { DateText } from "@/components/ui/DateText";
 // it's reachable from every tab without hiding the account (Anir, Jul 3).
 const TABS = [
   { key: "overview", label: "Overview" },
+  { key: "account-plan", label: "Account plan" },
   { key: "analytics", label: "Analytics" },
   { key: "offerings", label: "Offerings" },
   { key: "components", label: "Digital components" },
@@ -331,14 +331,12 @@ export function CustomerTabs({
       )
         setTab(wanted);
     } catch {}
-  }, []);
+  }, [includeDemoTeam]);
   // editable account fields (#55 owner, #59 competitor, #60 notes/attachments).
   // Seeded demo accounts keep their deterministic sample owner. Live and newly
   // created accounts remain unassigned until a real teammate claims them.
   const [owner, setOwner] = useState(customer.owner || ownerFor(customer));
   const [competitor, setCompetitor] = useState(customer.competitor || "");
-  const [editingComp, setEditingComp] = useState(false);
-  const [compDraft, setCompDraft] = useState(customer.competitor || "");
   const [notes, setNotes] = useState<AccountNote[]>(customer.notes_log || []);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteKind, setNoteKind] = useState<"call" | "email" | "meeting" | "note">("note");
@@ -420,8 +418,6 @@ export function CustomerTabs({
     setTabState(visible(wanted) ? (wanted as string) : "overview");
     setOwner(customer.owner || ownerFor(customer));
     setCompetitor(customer.competitor || "");
-    setEditingComp(false);
-    setCompDraft(customer.competitor || "");
     setNoteDraft("");
     setNoteKind("note");
     setNoteNext("");
@@ -700,31 +696,6 @@ export function CustomerTabs({
     toast(`Added deal “${name}”`);
   }
 
-  async function assignOwner(v: string) {
-    const previous = owner;
-    setOwner(v);
-    const updated = await patchCustomer({
-      owner: v,
-      owner_user_id:
-        v && v === currentUser.name
-          ? currentUser.memberId || undefined
-          : undefined,
-    });
-    if (!updated) {
-      setOwner(previous);
-      return;
-    }
-    toast(v ? `Owner set to ${v}` : "Owner cleared");
-  }
-
-  function saveCompetitor() {
-    const v = compDraft.trim();
-    setEditingComp(false);
-    setCompetitor(v);
-    patchCustomer({ competitor: v });
-    toast(v ? "Competitor updated" : "Competitor cleared");
-  }
-
   async function addNote() {
     const body = noteDraft.trim();
     if (!body) return;
@@ -872,6 +843,22 @@ export function CustomerTabs({
               Overview
             </button>
           )}
+          {includeDemoTeam && (
+            <button
+              key="account-plan"
+              role="tab"
+              aria-selected={tab === "account-plan"}
+              onClick={() => setTab("account-plan")}
+              className={cn(
+                "-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 pb-3 text-[14px] transition-colors",
+                tab === "account-plan"
+                  ? "border-blue-primary font-semibold text-blue-primary"
+                  : "border-transparent font-medium text-text-secondary hover:text-text-primary"
+              )}
+            >
+              Account plan
+            </button>
+          )}
           {bands.map((b) => (
             <button
               key={`band:${b.key}`}
@@ -895,7 +882,10 @@ export function CustomerTabs({
             </button>
           ))}
           {TABS.filter(
-            (t) => t.key !== "overview" && (includeDemoTeam || REAL_MODE_TABS.has(t.key))
+            (t) =>
+              t.key !== "overview" &&
+              t.key !== "account-plan" &&
+              (includeDemoTeam || REAL_MODE_TABS.has(t.key))
           ).map((t) => (
             <button
               key={t.key}
@@ -1837,6 +1827,16 @@ export function CustomerTabs({
           </div>
         )}
 
+        {tab === "account-plan" && includeDemoTeam && (
+          <CustomerAccountPlanTab
+            customer={customer}
+            contacts={contacts}
+            interactions={interactions}
+            offerings={offeringsCatalog?.all || offeringsCatalog?.applicable || []}
+            ownerOptions={ownerOptions}
+          />
+        )}
+
         {tab === "components" && (
           <CustomerDigitalComponents
             customerId={customer.id}
@@ -2662,59 +2662,20 @@ export function CustomerTabs({
               <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
                 Owner
               </label>
-              <PeopleSelect
-                value={owner}
-                options={ownerOptions}
-                onChange={assignOwner}
-                placeholder="Unassigned"
-                ariaLabel="Account owner"
-              />
+              <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
+                <Avatar name={owner || "Unassigned"} className="h-7 w-7 shrink-0" />
+                <span className={cn("min-w-0 truncate text-[13px] font-semibold", owner ? "text-text-primary" : "text-text-tertiary")}>{owner || "Unassigned"}</span>
+              </div>
             </div>
             <div>
               <label className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
                 Competitor / incumbent
                 <InfoHint text="Who they use for this work today, or who you are up against to win it. Knowing that changes how you pitch." />
               </label>
-              {editingComp ? (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    autoFocus
-                    aria-label="Competitor"
-                    value={compDraft}
-                    onChange={(e) => setCompDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveCompetitor();
-                      if (e.key === "Escape") setEditingComp(false);
-                    }}
-                    placeholder="e.g. Veeva, IQVIA"
-                    className="flex-1 bg-surface border border-blue-primary rounded-md px-2.5 py-1.5 text-[13px] outline-none"
-                  />
-                  <button
-                    aria-label="Save competitor"
-                    onClick={saveCompetitor}
-                    className="text-blue-primary"
-                  >
-                    <Check size={16} strokeWidth={2} />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  aria-label="Edit competitor"
-                  onClick={() => {
-                    setCompDraft(competitor);
-                    setEditingComp(true);
-                  }}
-                  className="w-full flex items-center gap-2 text-left text-[13px] text-text-primary border border-border-light rounded-md px-2.5 py-1.5 hover:border-blue-subtle transition-colors"
-                >
-                  <Swords size={14} strokeWidth={1.6} className="text-text-tertiary shrink-0" />
-                  {competitor ? (
-                    <span className="min-w-0 break-words">{competitor}</span>
-                  ) : (
-                    <span className="text-text-tertiary">Add competitor</span>
-                  )}
-                  <Pencil size={13} strokeWidth={1.6} className="ml-auto text-text-tertiary shrink-0" />
-                </button>
-              )}
+              <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
+                <Swords size={15} strokeWidth={1.7} className="shrink-0 text-text-tertiary" />
+                <span className={cn("min-w-0 break-words text-[13px] font-medium", competitor ? "text-text-primary" : "text-text-tertiary")}>{competitor || "None recorded"}</span>
+              </div>
             </div>
           </div>
         </Card>

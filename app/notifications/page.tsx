@@ -9,7 +9,7 @@ import { NotificationsCenter } from "@/components/notifications/NotificationsCen
 import { listStoredVoiceConversations } from "@/lib/voiceEvents";
 import { currentUserSetupNudges } from "@/lib/setupNudges";
 import { getDataMode } from "@/lib/dataMode";
-import { isOfferingsOnly } from "@/lib/release";
+import { isReleasedOnly } from "@/lib/release";
 import { readPerformance } from "@/lib/performance";
 import { getCurrentUser } from "@/lib/currentUser";
 import { RoadmapEmailSettings } from "@/components/notifications/RoadmapEmailSettings";
@@ -79,7 +79,7 @@ export default async function NotificationsPage() {
   ]);
   const opportunities = oppState.opportunities;
 
-  if (isOfferingsOnly(getDataMode())) {
+  if (isReleasedOnly(getDataMode())) {
     const items = buildNotifications({
       sessions: [],
       customers: [],

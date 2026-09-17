@@ -40,8 +40,8 @@ const cache = new Map();
 function load(relative) {
   const filename = path.resolve(root, relative);
   if (cache.has(filename)) return cache.get(filename).exports;
-  const module = { exports: {} };
-  cache.set(filename, module);
+  const loadedModule = { exports: {} };
+  cache.set(filename, loadedModule);
   const localRequire = (name) => {
     if (name === "server-only") return {};
     if (name === "@supabase/supabase-js")
@@ -238,10 +238,10 @@ function load(relative) {
   }).outputText;
   new Function("require", "module", "exports", output)(
     localRequire,
-    module,
-    module.exports,
+    loadedModule,
+    loadedModule.exports,
   );
-  return module.exports;
+  return loadedModule.exports;
 }
 const access = load("lib/accessControl.ts");
 const session = load("lib/appSession.ts");

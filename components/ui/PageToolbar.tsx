@@ -106,14 +106,14 @@ export function PageToolbar({
     <SearchPriority
       query={query}
       className={cn(
-        "rise-in flex flex-nowrap items-center gap-2.5",
+        "rise-in flex flex-wrap items-center gap-2.5",
         bare
           ? "mb-0"
           : "mb-4 rounded-xl border border-border-light bg-[var(--surface)] p-2.5",
         className
       )}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      <div className="flex min-w-0 flex-1 basis-[320px] flex-wrap items-center gap-2.5">
         <PrioritySearchInput
           grow
           value={query}
@@ -139,7 +139,7 @@ export function PageToolbar({
         {filtersAfter}
       </div>
       {hasDisplay && (
-        <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-border-light pl-2.5">
+        <div className="ml-auto flex max-w-full flex-wrap items-center gap-2 border-l border-border-light pl-2.5">
           {sort && (
             <>
               <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">

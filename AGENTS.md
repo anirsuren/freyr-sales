@@ -193,6 +193,16 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 16 Solutioning requirements follow-up:** Owner-only workstream assignment
+  now bypasses the unrelated request-edit gate, while admin bypasses shared
+  module read/create/edit/delete restrictions. Request create/edit enforces BD
+  roles (admin exempt). New-request due date and brief validation runs before
+  persistence; inherited deliverables retain historical dates. Solutioning adds
+  BD member/preparer/opportunity/due filters and customer/owner/status grouping
+  in table and split views. Meetings adds customer/owner/type/date filters.
+  TypeScript and 14 isolated permission/validation/tour checks pass. No browser
+  verification (user prohibited computer use). Local only, not deployed.
+
 - **Sep 15 Solutioning request drill-down:** Expanded request rows keep Latest
   Activity as the capped right-hand timeline. The left side now leads with the
   request brief, shows customer/opportunity/contact context in one compact
@@ -907,6 +917,9 @@ Collapsed People Performance rows show one compact document count instead of lis
 
 ### Sep 15: performance status colours remain identical
 Performance progress bars, segment brackets, endpoint markers, monthly legends, and chart-tooltip legends all use the shared status colour without changing its opacity. Hatching alone communicates that a claim is still unverified, so the legend key and the bar remain visibly the same hue. Completed locally, not deployed.
+
+### Sep 16: account planning starts inside the customer
+Mock customer pages now place Account plan immediately after Overview. The review slice uses the existing Freyr visual language and dense expandable tables: a compact editable plan header, objective and current position, prioritized offering plays with targets and linked material, a vertical introducer-to-champion-to-decision-maker path, a bounded searchable stakeholder table, relationship gaps, and next actions. Mock edits persist per customer in local browser storage. The tab is intentionally excluded from Real mode until the normalized account-planning data model, permissions, APIs, and production rollout are implemented. Typecheck and focused lint pass. Completed locally, not deployed.
 
 ### Sep 16: first-use product tour stays anchored
 The walkthrough now measures targets without repeatedly scrolling already-visible controls, ignores sub-pixel geometry noise, and updates only when the target or dialog size actually changes. The tour card no longer animates between its fallback and measured positions; its entrance and step changes use opacity only. An isolated fake-data browser reproduction held both the first-step dialog and spotlight at one position with zero automatic scroll calls. Typecheck and the whitespace check pass. Ready for production deployment.

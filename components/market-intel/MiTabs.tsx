@@ -69,8 +69,10 @@ export function MiTabs({
   active,
   action,
   children,
+  minimalHeader = false,
 }: {
   active: string;
+  minimalHeader?: boolean;
   /** The header's right side (live chip, track button). */
   action?: React.ReactNode;
   /** The bucket's content; swapped for the skeleton while a pick loads. */
@@ -102,6 +104,12 @@ export function MiTabs({
           entrance class here replays on the pill strip and "everything goes
           haywire". The strip renders already-settled; only the keyed
           tab-panel below animates. */}
+      {minimalHeader ? (
+        <div className="relative z-40 mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-[20px] font-semibold text-text-primary">{current.label}</h1>
+          {action}
+        </div>
+      ) : (
       <div className="relative z-40 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative max-w-full overflow-x-auto [scrollbar-width:none]">
@@ -129,6 +137,7 @@ export function MiTabs({
           {current.subtitle}
         </p>
       </div>
+      )}
       {/* The bucket's content ENTERS instead of popping (Anir, Aug 17: the
           switch to Market Intelligence "is not good. Look at that animation").
           Keyed by bucket so each pick replays the entrance; the pill row above

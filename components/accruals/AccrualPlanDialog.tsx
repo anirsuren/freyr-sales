@@ -1492,6 +1492,9 @@ export function AccrualPlanDialog({
     0
   );
   const editingValue = Number(editing.contractValue) || 0;
+  const contractMismatch = editingValue > 0 && Math.abs(editingTotal - editingValue) > 1
+    ? `${formatMoney(Math.abs(editingTotal - editingValue))} ${editingTotal > editingValue ? "above" : "below"} contract value`
+    : null;
 
   /* THE COLUMNS ON SCREEN. How many depends on what is being sold — a licence
      schedules as OTS + ARR, a service as one monthly figure — and doubles
@@ -2609,41 +2612,12 @@ export function AccrualPlanDialog({
                 busiest. Taking a month out still works (the x on its row) and
                 putting one back still works (Add month); this only ever
                 narrated what had happened. */}
-            {/* THE MISMATCH WARNING STAYS PROSE, because it is a sentence
-                about the plan rather than a figure in a column. The TOTAL
-                itself moved into the table's own footer row (Anir, Sep 3:
-                "remove the 'the months add up to...' and just have a final row
-                saying total") — it belongs under the column it sums, in the
-                same tabular figures, not in a different typeface beneath. */}
-            <p className="mt-2 text-[12.5px]">
-              {/* ITEM 10 — the same figure in the deal's own money, beside the
-                  dollars rather than instead of them. Both at once is the
-                  honest shape: the schedule IS dollars, and this is what that
-                  comes to in the currency the contract was written in. */}
-              {editingValue > 0 && Math.abs(editingTotal - editingValue) > 1 && (
-                <span className="font-semibold" style={{ color: ACCRUAL_RED }}>
-                  {/* A SENTENCE, NOT A FRAGMENT. The total it used to hang off
-                      moved into the footer row, which left this opening with
-                      a dangling dash (Sep 7 test loop).
-
-                      AND IT SAYS WHAT THE BUTTON SAYS. It used to promise
-                      "saving is allowed; the plan will be flagged" while the
-                      footer beside a greyed-out Save plan said the opposite:
-                      every month has to add up to the contract (Anir, Sep 7:
-                      "why is it not letting me save?"). A schedule that does
-                      not add up cannot be saved, so this now names the way
-                      out instead of contradicting the button two inches
-                      below it. */}
-                  That is {formatMoney(Math.abs(editingTotal - editingValue))}{" "}
-                  {editingTotal > editingValue ? "more" : "less"} than the contract
-                  value.{" "}
-                  {editingTotal > editingValue
-                    ? "Take it off a month before saving"
-                    : `Put the remaining ${formatMoney(editingValue - editingTotal)} into a month, or press ${editingRows.some((l) => l.pinned) ? "Start over" : "Spread evenly"} to share the whole contract out again`}
-                  .
-                </span>
-              )}
-            </p>
+            {/* Embedded planners have no action footer, so keep their warning here. */}
+            {(draft || deferSave) && contractMismatch && (
+              <p className="mt-2 overflow-x-auto whitespace-nowrap text-[12.5px] font-semibold" style={{ color: ACCRUAL_RED }} title={planProblem ?? undefined} role="status">
+                {contractMismatch}
+              </p>
+            )}
             </>
           )}
 
@@ -2808,7 +2782,7 @@ export function AccrualPlanDialog({
           has its own Add button, and a second Save inside it would be two
           buttons claiming to save the same thing. */}
       {!draft && !deferSave && (
-      <div className="mt-4 flex shrink-0 items-center gap-2 border-t border-border-light pt-3">
+      <div className="mt-4 flex shrink-0 items-center gap-2 border-t border-border-light pt-3 [&>button]:shrink-0">
         {/* A DELETE STANDS APART FROM THE THING THAT SAVES, on the left, red,
             and it asks the caller first. Nothing passes it today; see the prop
             above for why. It is not offered mid-deviation: finish the change
@@ -2822,7 +2796,15 @@ export function AccrualPlanDialog({
             <Trash2 size={14} strokeWidth={2.2} /> Delete plan
           </button>
         ) : null}
-        <span className="flex-1" />
+        <div
+          className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap pr-2 text-right text-[12.5px] font-semibold"
+          style={{ color: ACCRUAL_RED }}
+          title={planProblem ?? undefined}
+          role="status"
+          aria-live="polite"
+        >
+          {!deviating && contractMismatch}
+        </div>
         {deviating ? (
           <>
             <button
@@ -2864,15 +2846,7 @@ export function AccrualPlanDialog({
                 THE GATE IS UNCHANGED. This dialog is only mounted for somebody
                 who may write — the module checks canWrite, a deal page checks
                 mayPlan, and the API asks again. */}
-            {/* The reason sits BESIDE the button it disables, so the answer to
-                "why can't I press this" is already on screen. */}
-            {/* ONE MESSAGE, AND THE BUTTONS NEVER MOVE (Anir, Sep 7: "two
-                errors that say the same thing... you can't be moving around
-                the cancel button either"). The same complaint used to be
-                printed twice: once under the schedule, where the numbers are,
-                and again here, where it pushed Cancel and Save sideways every
-                time it appeared. The line under the table is the one that
-                stays; this button's reason lives on its hover. */}
+            {/* Keep the short warning beside Cancel; the full guidance remains on Save. */}
             <button
               type="button"
               disabled={busy || planProblem !== null || nothingChanged}

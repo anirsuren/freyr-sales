@@ -27,8 +27,8 @@ import { cn } from "@/lib/utils";
  * from LinkedIn, press releases from the website, and news and the AI rundown
  * come with either.
  *
- * One column, explanations tucked into the ? hints. No limit on how many a
- * person adds ("idk why ur putting a limit"), and the button stays off until
+ * One column, explanations tucked into the ? hints. BD members can add
+ * up to 20 companies, and the button stays off until
  * the form can actually work ("I shouldn't be able to press the button till I
  * add one of them, obviously"). An existing company is rejected before submission; its selection belongs
  * in Manage companies.
@@ -53,10 +53,12 @@ export function TrackCompanyButton({
   canTrack = true,
   stacked = false,
   compact = false,
+  additionsRemaining,
 }: {
   group?: "customer" | "competitor";
   /** MAY THEY ADD ONE: the Market Intel row of the privilege table decides. */
   canTrack?: boolean;
+  additionsRemaining?: number;
   /** Opened from inside another dialog (the Manage companies pop-up). */
   stacked?: boolean;
   /** A smaller button, for a dialog header. */
@@ -285,6 +287,8 @@ export function TrackCompanyButton({
   return (
     <>
       <Button
+        disabled={additionsRemaining === 0}
+        title={additionsRemaining === 0 ? "You have reached your 20-company limit. You can still select existing companies." : undefined}
         onClick={() => {
           reset();
           setOpen(true);
@@ -296,6 +300,7 @@ export function TrackCompanyButton({
         <Plus size={compact ? 14 : 15} strokeWidth={2.4} />
         {title}
       </Button>
+      {additionsRemaining !== undefined && <span className="text-[12px] text-text-secondary">{additionsRemaining} of 20 company additions remaining</span>}
 
       <Modal
         open={open}

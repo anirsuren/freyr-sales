@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Compass, LayoutDashboard, Package } from "lucide-react";
 import { getDataMode } from "@/lib/dataMode";
-import { getHomePath, isOfferingsOnly } from "@/lib/release";
+import { getHomePath } from "@/lib/release";
 
 export const metadata = { title: "Page not found" };
 
@@ -15,7 +15,7 @@ export default function NotFound() {
      mode", the same one the logo in the rail uses. */
   const dataMode = getDataMode();
   const home = getHomePath(dataMode);
-  const homeIsOfferings = isOfferingsOnly(dataMode);
+  const homeIsOfferings = home === "/offerings";
   return (
     <div className="flex flex-col items-center justify-center text-center min-h-[70vh] px-6">
       <span className="flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-light text-blue-primary mb-5">

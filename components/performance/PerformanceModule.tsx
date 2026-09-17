@@ -85,6 +85,8 @@ import {
   type PrimaryGoal,
   type Subgoal,
   actualValue,
+  performanceRoomsForViewer,
+  type PerformanceRoom,
 } from "@/lib/performanceShared";
 import {
   PersonGoalPanel,
@@ -121,9 +123,7 @@ import { tint } from "@/lib/tint";
  * header. Saves QUEUE instead of silently dropping while one is in flight.
  */
 
-const TABS = ["org", "groups", "people"] as const;
-
-type Tab = (typeof TABS)[number];
+type Tab = PerformanceRoom;
 
 const SPLIT_COLORS = ["var(--ink-bright-blue)", "var(--ink-violet)", "var(--ink-teal-deep)", "var(--ink-magenta)", "var(--ink-orange)", "#0EA5E9"];
 // A sane window: last year through three years out. Nobody plans 2126.
@@ -228,21 +228,17 @@ export function PerformanceModule({
   const [busy, setBusy] = useState(false);
   // Which rooms this person gets: org for managers, groups when you head
   // one, and everyone gets their own performance plus the Goal Master.
-  const iHeadAGroup = state.groups.some(
-    (g) => g.head.trim().toLowerCase() === meName.trim().toLowerCase()
+  const visibleTabs = useMemo(
+    () => performanceRoomsForViewer(state, meName, isManager),
+    [state, meName, isManager]
   );
-  const visibleTabs: Tab[] = isManager
-    ? [...TABS]
-    : iHeadAGroup
-      ? ["groups", "people"]
-      : ["people"];
   useEffect(() => {
     // The route is gated on the server too; this only keeps the UI honest if
     // somebody's permissions change while the page is open.
     if (!showMaster && !visibleTabs.includes(tab))
       router.replace(`/performance/${visibleTabs[0]}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, showMaster, isManager, iHeadAGroup]);
+  }, [tab, showMaster, isManager, visibleTabs, router]);
   const [howOpen, setHowOpen] = useState(false);
 
   /**
@@ -1086,7 +1082,9 @@ function MasterTab({
                       {groupGoals.length}
                     </span>
                   </button>
-                  {!shut && groupGoals.map((g) => {
+                  <div className="freyr-fold" data-open={shut ? "false" : "true"}>
+                  <div>
+                  {groupGoals.map((g) => {
                     const on = picked?.id === g.id;
                     return (
                       <button
@@ -1135,6 +1133,8 @@ function MasterTab({
                       </button>
                     );
                   })}
+                  </div>
+                  </div>
                 </Fragment>
                 );
               })}
@@ -1216,9 +1216,7 @@ function MasterTab({
                         {groupGoals.length === 1 ? "goal" : "goals"}
                       </span>
                     </button>
-                    {!shut && (
-                      /* The reveal, not a teleport (Anir, Aug 13: "I want a
-                         premium animation… Right now, it's just instant"). */
+                    <div className="freyr-fold" data-open={shut ? "false" : "true"}>
                       <div className="tab-panel overflow-x-auto border-t border-border-light">
                         <table className="w-full min-w-[780px] table-fixed">
                           <colgroup>
@@ -1464,7 +1462,7 @@ function MasterTab({
                           </tbody>
                         </table>
                       </div>
-                    )}
+                    </div>
                   </Card>
                 );
               })}

@@ -5,14 +5,17 @@ import {
   useContext,
   useEffect,
   useId,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   Check,
+  ChevronDown,
+  Eye,
   Layers3,
   Maximize2,
-  Rows3,
 } from "lucide-react";
 import {
   AreaChart,
@@ -25,7 +28,11 @@ import {
 import { VIZ, VIZ_SERIES } from "@/components/charts/palette";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
-import { tint } from "@/lib/tint";
+import {
+  floatingMenuStyle,
+  menuMotionVars,
+  type FloatingMenuStyle,
+} from "@/components/ui/ColorSelect";
 
 /**
  * Existing chart wrappers can provide this around their chart content to
@@ -75,6 +82,166 @@ export type ExpandedChartControlProps = {
   className?: string;
 };
 
+function SeriesVisibilityMenu({
+  items,
+  visibleKeys,
+  onToggle,
+  onOnly,
+  onAll,
+  itemNoun,
+}: {
+  items: ExpandedChartItem[];
+  visibleKeys: Set<string>;
+  onToggle: (key: string) => void;
+  onOnly: (key: string) => void;
+  onAll: () => void;
+  itemNoun: "series" | "slices";
+}) {
+  const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const shown = items.filter((item) => visibleKeys.has(item.key)).length;
+  const allShown = shown === items.length;
+
+  const positionMenu = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) setMenuStyle(floatingMenuStyle(rect, 360, 360));
+  };
+
+  const toggleMenu = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    positionMenu();
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        !triggerRef.current?.contains(target) &&
+        !menuRef.current?.contains(target)
+      ) {
+        setOpen(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const reposition = () => positionMenu();
+    document.addEventListener("pointerdown", dismiss, true);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss, true);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={toggleMenu}
+        className={cn(
+          "inline-flex h-[42px] min-w-[132px] cursor-pointer items-center gap-2 rounded-xl border bg-white px-3 text-[11.5px] font-semibold shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,box-shadow,color]",
+          open
+            ? "border-blue-primary text-blue-primary shadow-input-focus"
+            : "border-border-light text-text-primary hover:border-blue-subtle"
+        )}
+      >
+        <Eye size={14} strokeWidth={2.1} className="text-blue-primary" />
+        <span className="flex-1 text-left">
+          {allShown ? "Show all" : `Show ${shown} of ${items.length}`}
+        </span>
+        <ChevronDown
+          size={14}
+          strokeWidth={2.2}
+          className={cn(
+            "text-text-tertiary transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+            open && "rotate-180 text-blue-primary"
+          )}
+        />
+      </button>
+
+      {open && menuStyle && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="listbox"
+            aria-label={`Visible chart ${itemNoun}`}
+            className="menu-in z-[240] overflow-hidden rounded-xl border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
+            style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
+          >
+            <button
+              type="button"
+              role="option"
+              aria-selected={allShown}
+              onClick={onAll}
+              className={cn(
+                "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[12px] font-semibold transition-colors hover:bg-surface",
+                allShown && "bg-blue-light text-blue-primary"
+              )}
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+                <Layers3 size={12} strokeWidth={2.2} />
+              </span>
+              <span className="flex-1">All {itemNoun}</span>
+              {allShown && <Check size={14} strokeWidth={2.5} />}
+            </button>
+            <div className="my-1 border-t border-border-light" />
+            {items.map((item) => {
+              const visible = visibleKeys.has(item.key);
+              return (
+                <div
+                  key={item.key}
+                  className="group flex items-center rounded-lg transition-colors hover:bg-surface"
+                >
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={visible}
+                    onClick={() => onToggle(item.key)}
+                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 px-2.5 py-2 text-left text-[12px] font-medium text-text-primary"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
+                        visible ? "border-transparent text-white" : "border-border bg-white"
+                      )}
+                      style={visible ? { background: item.color } : undefined}
+                    >
+                      {visible && <Check size={12} strokeWidth={2.7} />}
+                    </span>
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOnly(item.key)}
+                    className="mr-1.5 cursor-pointer rounded-md px-2 py-1 text-[9.5px] font-bold uppercase tracking-[0.04em] text-text-tertiary opacity-70 transition-[background-color,color,opacity] hover:bg-white hover:text-blue-primary group-hover:opacity-100"
+                  >
+                    Only
+                  </button>
+                </div>
+              );
+            })}
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
+
 /**
  * Generic client control for charts that already know how to render
  * themselves. Its item metadata is plain data, while the render callback stays
@@ -91,7 +258,6 @@ export function ExpandedChartControl({
 }: ExpandedChartControlProps) {
   const suppressed = useChartExpansionSuppressed();
   const [open, setOpen] = useState(false);
-  const [layout, setLayout] = useState<"combined" | "split">("combined");
   const keys = items.map((item) => item.key);
   const keySignature = keys.join("\u0000");
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(
@@ -109,7 +275,6 @@ export function ExpandedChartControl({
   if (suppressed) return null;
 
   const shownKeys = keys.filter((key) => visibleKeys.has(key));
-  const allShown = shownKeys.length === keys.length;
   const openLabel =
     triggerLabel === "Open chart"
       ? `Open ${title} chart`
@@ -171,117 +336,15 @@ export function ExpandedChartControl({
               </span>
             </div>
 
-            <div
-              role="group"
-              aria-label="Chart layout"
-              className="inline-flex shrink-0 rounded-xl border border-border-light bg-surface p-1"
-            >
-              {(
-                [
-                  ["combined", "Together", Layers3],
-                  ["split", "Separate", Rows3],
-                ] as const
-              ).map(([value, label, Icon]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={layout === value}
-                  onClick={() => setLayout(value)}
-                  className={cn(
-                    "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[11.5px] font-semibold transition-[background-color,color,box-shadow]",
-                    layout === value
-                      ? "bg-white text-text-primary shadow-[0_1px_3px_rgba(16,24,40,0.10)]"
-                      : "text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  <Icon size={13} strokeWidth={2} />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto border-b border-border-light px-1 py-3">
-            <span className="mr-1 shrink-0 text-[10.5px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">
-              Show
-            </span>
-            <div
-              role="group"
-              aria-label={`Visible chart ${itemNoun}`}
-              className="flex w-max flex-nowrap gap-2 pr-1"
-            >
-              <button
-                type="button"
-                aria-pressed={allShown}
-                onClick={showAll}
-                className={cn(
-                  "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[11.5px] font-semibold transition-[border-color,background-color,box-shadow]",
-                  allShown
-                    ? "border-blue-primary/40 bg-blue-light text-blue-primary shadow-[0_0_0_2px_rgba(0,113,227,0.07)]"
-                    : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"
-                )}
-              >
-                <Layers3 size={14} strokeWidth={2} />
-                All
-                {allShown && <Check size={13} strokeWidth={2.4} />}
-              </button>
-
-              {items.map((item) => {
-                const visible = visibleKeys.has(item.key);
-                return (
-                  <span
-                    key={item.key}
-                    className="inline-flex h-8 overflow-hidden rounded-lg border"
-                    style={{
-                      borderColor: visible ? `${tint(item.color, 45)}` : undefined,
-                      background: visible ? tint(item.color, 8) : undefined,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={visible}
-                      onClick={() => toggle(item.key)}
-                      className={cn(
-                        "inline-flex min-w-0 cursor-pointer items-center gap-1.5 px-2.5 text-[11.5px] font-semibold text-text-primary",
-                        !visible && "bg-surface text-text-tertiary"
-                      )}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                          visible
-                            ? "border-transparent text-white"
-                            : "border-border bg-white"
-                        )}
-                        style={
-                          visible ? { background: item.color } : undefined
-                        }
-                      >
-                        {visible && <Check size={11} strokeWidth={2.8} />}
-                      </span>
-                      <span
-                        aria-hidden="true"
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: item.color }}
-                      />
-                      <span className="max-w-[190px] truncate">
-                        {item.label}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => showOnly(item.key)}
-                      aria-label={`Show only ${item.label}`}
-                      title={`Show only ${item.label}`}
-                      className="flex shrink-0 cursor-pointer items-center justify-center border-l border-inherit px-2 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary transition-colors hover:bg-white hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary/30"
-                    >
-                      Only
-                    </button>
-                  </span>
-                );
-              })}
+            <div className="flex shrink-0 items-center">
+              <SeriesVisibilityMenu
+                items={items}
+                visibleKeys={visibleKeys}
+                onToggle={toggle}
+                onOnly={showOnly}
+                onAll={showAll}
+                itemNoun={itemNoun}
+              />
             </div>
           </div>
 
@@ -304,38 +367,11 @@ export function ExpandedChartControl({
                 Show all
               </button>
             </div>
-          ) : layout === "combined" ? (
+          ) : (
             <div className="mt-4 min-h-[390px] rounded-2xl border border-border-light bg-surface p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.38)]">
               <ChartExpansionSuppressionProvider>
                 {renderExpanded(shownKeys)}
               </ChartExpansionSuppressionProvider>
-            </div>
-          ) : (
-            <div className="mt-4 space-y-3">
-              {shownKeys.map((key) => {
-                const item = items.find((candidate) => candidate.key === key);
-                if (!item) return null;
-                return (
-                  <section
-                    key={key}
-                    aria-label={`${item.label} chart`}
-                    className="rounded-2xl border border-border-light bg-surface p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.38)]"
-                  >
-                    <div className="mb-4 flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ background: item.color }}
-                      />
-                      <h3 className="text-[13px] font-semibold text-text-primary">
-                        {item.label}
-                      </h3>
-                    </div>
-                    <ChartExpansionSuppressionProvider>
-                      {renderExpanded([key])}
-                    </ChartExpansionSuppressionProvider>
-                  </section>
-                );
-              })}
             </div>
           )}
         </div>

@@ -3,13 +3,15 @@
 import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import { SmartBack } from "@/components/ui/BackButton";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Bookmark,
   Building2,
   CalendarDays,
   CalendarRange,
+  Check,
   ChevronDown,
   ExternalLink,
   Filter,
@@ -29,8 +31,6 @@ import {
   Swords,
   Table2,
   ThumbsUp,
-  TrendingDown,
-  TrendingUp,
   Trash2,
   Users,
   type LucideIcon,
@@ -47,18 +47,15 @@ import {
   SearchPriority,
 } from "@/components/ui/SearchPriority";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
-import { Sparkline } from "@/components/charts/Charts";
 import { MiLogo } from "@/components/market-intel/MiLogo";
 import { DivisionEditor } from "@/components/market-intel/DivisionChips";
-import { SignalRow } from "@/components/market-intel/SignalRow";
-import { TopSignals } from "@/components/market-intel/TopSignals";
 import { CompanyAdminControls } from "@/components/market-intel/CompanyAdminControls";
 import { WatchStatus, type WatchState } from "@/components/market-intel/WatchStatus";
 import { MyListToggle } from "@/components/market-intel/MyListToggle";
 import { TrackPersonButton } from "@/components/market-intel/TrackPersonControls";
 import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
 import { cn } from "@/lib/utils";
-import { SIGNAL_META, type ItemLabel, type SignalId } from "@/lib/marketIntelSignals";
+import { SIGNAL_META, signalsFor, type ItemLabel, type SignalId } from "@/lib/marketIntelSignals";
 import { groupStories, type StoryGroup, type StoryInput } from "@/lib/marketIntelStories";
 import { clipText, outletName, titleFromUrl } from "@/lib/marketIntelText";
 import {
@@ -101,11 +98,6 @@ type NewsView = (typeof NEWS_VIEWS)[number];
 /** Date, plus the time when the record actually carries one. */
 const fmtDate = fmtWhen;
 
-function fmtFollowers(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return String(n);
-}
 
 type Item = StoryInput & {
   kind: "company" | "people" | "news" | "site";
@@ -168,15 +160,13 @@ export function LiveCompanyBriefing({
   const { toast } = useToast();
   const isCompetitor = briefing.group === "competitor";
   const [source, setSource] = useState<Source>("all");
-  const [signalPick, setSignalPick] = useState<SignalId | null>(null);
+  const [selectedSignals, setSelectedSignals] = useState<SignalId[]>([]);
   /* A COMPETITOR SHOWS WHAT CONCERNS US BY DEFAULT (Saras, Sep 10: "only if
      their posts are related to these industries should they show up here").
      Nothing is thrown away: the switch shows everything, with a count. */
   const [relevantOnly, setRelevantOnly] = useState(isCompetitor);
   const [detailsView, setDetailsView] = useStoredView("freyr.mi.details", "open", ["open", "closed"] as const);
   const detailsOpen = detailsView === "open";
-  const [viewOpen, setViewOpen] = useState(false);
-  const viewRef = useRef<HTMLDivElement>(null);
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
     "freyr.mi.news.view",
     "rows",
@@ -186,29 +176,56 @@ export function LiveCompanyBriefing({
   // "A lot of these post a lot... you can always just filter it" (Aug 11
   // call): the feed keeps 90 days, the chips narrow the window.
   const [range, setRange] = useState<"1" | "7" | "30" | "90">("90");
+  const [exactDate, setExactDate] = useState("");
   const [query, setQuery] = useState("");
+  const [savedArticles, setSavedArticles] = useState<Item[]>([]);
+  const [savedOnly, setSavedOnly] = useState(false);
+  const [savedReady, setSavedReady] = useState(false);
+  const [savingArticle, setSavingArticle] = useState<string | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    setSavedReady(false);
+    setSavedArticles([]);
+    fetch(`/api/market-intel/saved-articles?companyId=${encodeURIComponent(briefing.id)}`, { signal: controller.signal })
+      .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
+      .then(data => {
+        setSavedArticles(data.articles.map((article: Item) => ({ ...article, key: article.url, news: { title: article.title, url: article.url, source: article.sourceLabel, published: article.date, summary: article.body ?? undefined } })));
+        setSavedReady(true);
+      }).catch(() => { if (!controller.signal.aborted) toast("Could not load your saved articles. Reload to try again.", "error"); });
+    return () => controller.abort();
+  }, [briefing.id, toast]);
+  const savedUrls = new Set(savedArticles.map(article => article.url));
+  async function toggleArticle(item: Item) {
+    if (!savedReady || savingArticle) return;
+    const on = !savedUrls.has(item.url);
+    setSavingArticle(item.url);
+    try {
+      const response = await fetch("/api/market-intel/saved-articles", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: briefing.id, url: item.url, title: item.title, body: item.body, date: item.date, sourceLabel: item.sourceLabel, kind: item.kind, on }) });
+      if (!response.ok) throw new Error();
+      setSavedArticles(previous => on ? [...previous.filter(article => article.url !== item.url), item] : previous.filter(article => article.url !== item.url));
+      toast(on ? "Article saved to your bookmarks." : "Article removed from your bookmarks.");
+    } catch { toast("Could not update this bookmark. Please try again.", "error"); }
+    finally { setSavingArticle(null); }
+  }
+  const bookmarkButton = (item: Item) => (item.kind === "news" || item.kind === "site") && (
+    <button type="button" disabled={!savedReady || savingArticle !== null} onClick={() => void toggleArticle(item)}
+      aria-label={`${savedUrls.has(item.url) ? "Unsave" : "Save"} article: ${item.title}`} aria-pressed={savedUrls.has(item.url)}
+      title={savedUrls.has(item.url) ? "Remove bookmark" : "Save article"}
+      className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-blue-primary hover:bg-blue-light disabled:opacity-40">
+      <Bookmark size={15} fill={savedUrls.has(item.url) ? "currentColor" : "none"} />
+    </button>
+  );
   const [removedUrls, setRemovedUrls] = useState<Set<string>>(new Set());
   const [storyRemoval, setStoryRemoval] = useState<StoryRemoval | null>(null);
   const [removingStory, setRemovingStory] = useState(false);
-  useEffect(() => {
-    if (!viewOpen) return;
-    const onDown = (event: MouseEvent) => {
-      if (!viewRef.current?.contains(event.target as Node)) setViewOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setViewOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [viewOpen]);
-
-  const up = (briefing.momentumPct ?? 0) >= 0;
   const cutoff = Date.now() - Number(range) * 86_400_000;
-  const inRange = (iso: string | null) => !iso || Date.parse(iso) > cutoff;
+  const localDay = (iso: string) => {
+    const date = new Date(iso);
+    if (!Number.isFinite(date.getTime())) return "";
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  };
+  const inRange = (iso: string | null) =>
+    exactDate ? Boolean(iso && localDay(iso) === exactDate) : !iso || Date.parse(iso) > cutoff;
   const q = query.trim().toLowerCase();
   const hit = (...parts: (string | null | undefined)[]) =>
     !q || parts.some((part) => part?.toLowerCase().includes(q));
@@ -276,7 +293,8 @@ export function LiveCompanyBriefing({
 
   const concerns = (i: Item) =>
     !relevantOnly || isRelevantCompanyItem(briefing.group, i);
-  const matched = items.filter((i) => inRange(i.date) && hit(i.title, i.body, i.sourceLabel, i.signal?.why));
+  const availableItems = savedOnly ? savedArticles.map(saved => items.find(item => item.url === saved.url) ?? saved) : items;
+  const matched = availableItems.filter((i) => (savedOnly || inRange(i.date)) && hit(i.title, i.body, i.sourceLabel, i.signal?.why));
   const base = matched.filter(concerns);
   const hiddenByRelevance = matched.length - base.length;
 
@@ -298,7 +316,7 @@ export function LiveCompanyBriefing({
   const passesSource = (i: Item) => source === "all" || i.kind === source;
   const filtered = base
     .filter(passesSource)
-    .filter((i) => !signalPick || kindsOf(i).includes(signalPick));
+    .filter((i) => selectedSignals.length === 0 || selectedSignals.some((signal) => kindsOf(i).includes(signal)));
   const groups = groupStories(filtered).filter((group) =>
     [group.lead, ...group.others].every((item) => !removedUrls.has(item.url))
   );
@@ -425,6 +443,20 @@ export function LiveCompanyBriefing({
   };
 
   const leadKind = (item: Item) => kindsOf(item)[0];
+  const sourceType = (item: Item) => {
+    if (item.kind === "company") return { label: "Company post", Icon: Building2, color: "var(--ink-bright-blue)" };
+    if (item.kind === "people") return { label: "People post", Icon: Users, color: "var(--ink-magenta)" };
+    if (item.kind === "site") return { label: "Company website", Icon: Globe2, color: "var(--ink-orange)" };
+    return { label: "News article", Icon: Newspaper, color: "var(--ink-teal-deep)" };
+  };
+  const sourceTypeChip = (item: Item) => {
+    const meta = sourceType(item);
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]" style={{ color: meta.color, background: tint(meta.color, 10) }}>
+        <meta.Icon size={10.5} strokeWidth={2.2} /> {meta.label}
+      </span>
+    );
+  };
   const cardStyle = (item: Item) =>
     leadKind(item) !== "others" ? { borderLeftColor: SIGNAL_META[leadKind(item)].color } : undefined;
   const cardClass = (item: Item) => cn("group/story p-4", leadKind(item) !== "others" && "border-l-[3px]");
@@ -436,11 +468,11 @@ export function LiveCompanyBriefing({
     // unicode, where one visible character is two units, so slicing by
     // index could split one and React would throw a hydration error.
     const chars = Array.from(post.text);
-    const isLong = chars.length > 420;
+    const isLong = chars.length > 120;
     const open = expanded.has(post.url);
     return (
       <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
-        <p className="mb-2 flex flex-wrap items-center gap-2">{signalChips(item)}</p>
+        <p className="mb-2 flex flex-wrap items-center gap-2">{sourceTypeChip(item)}{signalChips(item)}</p>
         <div className="flex items-start gap-3">
           {post.by ? (
             <Avatar
@@ -483,10 +515,8 @@ export function LiveCompanyBriefing({
                 </a>
               </span>
             </p>
-            <p className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-text-primary">
-              {isLong && !open
-                ? `${chars.slice(0, 420).join("").trimEnd()}…`
-                : post.text || "This post has no caption. Open it on LinkedIn to view."}
+            <p className={cn("mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-text-primary", !open && "overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]")}>
+              {post.text || "This post has no caption. Open it on LinkedIn to view."}
             </p>
             {isLong && (
               <button
@@ -536,6 +566,7 @@ export function LiveCompanyBriefing({
     return (
       <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
         <p className="flex flex-wrap items-center gap-2">
+          {sourceTypeChip(item)}
           {signalChips(item)}
           {own ? (
             /* THE COMPANY'S OWN PAGE, said plainly: a warm chip and
@@ -557,7 +588,7 @@ export function LiveCompanyBriefing({
           <span className="text-[11.5px] text-text-tertiary" suppressHydrationWarning>
             {fmtDate(article.published)}
           </span>
-          {removeStoryButton(group, "ml-auto")}
+          <span className="ml-auto inline-flex items-center gap-1">{bookmarkButton(item)}{removeStoryButton(group)}</span>
         </p>
         <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
           <a
@@ -619,30 +650,6 @@ export function LiveCompanyBriefing({
         <h1 className="flex items-center gap-1.5 text-[22px] font-bold tracking-[-0.02em] text-text-primary">
           {briefing.name}
         </h1>
-        {briefing.momentumPct === null ? (
-          /* A COUNT, NOT A TREND, and an exact one: nothing is capped any
-             more (Anir, Sep 10: "if there are 1,000 items, there should be
-             1,000 items"). */
-          <span
-            title="Items picked up in the last 30 days: posts, articles and their own website. Not enough history yet to compare with the month before."
-            className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-bold text-[color:var(--ink-bright-blue)] tnum"
-          >
-            <Newspaper size={12} strokeWidth={2.4} />
-            {briefing.itemsThisMonth} items this month
-          </span>
-        ) : (
-          <span
-            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold tnum"
-            style={{
-              color: up ? "var(--ink-green)" : "#DC2626",
-              background: up ? "rgba(26,122,53,0.10)" : "rgba(220,38,38,0.10)",
-            }}
-          >
-            {up ? <TrendingUp size={12} strokeWidth={2.4} /> : <TrendingDown size={12} strokeWidth={2.4} />}
-            {up ? "+" : ""}
-            {briefing.momentumPct}% vs last month
-          </span>
-        )}
         {isAdmin && <WatchStatus state={watch} />}
         <DivisionEditor
           companyId={briefing.id}
@@ -650,11 +657,6 @@ export function LiveCompanyBriefing({
           divisions={divisions}
           canEdit={canWrite}
         />
-        {briefing.followerCount != null && (
-          <span className="flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[12px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
-            <LinkedInIcon size={11} /> {fmtFollowers(briefing.followerCount)} followers
-          </span>
-        )}
         <span className="ml-auto flex items-center gap-2">
           <RefreshChip updatedAt={refreshUpdatedAt} />
           <MyListToggle
@@ -676,8 +678,61 @@ export function LiveCompanyBriefing({
         </span>
       </div>
 
-      {/* The rundown before any scrolling: everything that happened, in one
-          breath, regenerated by AI with each refresh. */}
+      <SearchPriority
+        query={query}
+        className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-surface/55 p-2.5"
+      >
+        <PrioritySearchInput
+          grow
+          className="min-w-[240px] flex-1"
+          value={query}
+          onChange={setQuery}
+          placeholder="Search this briefing…"
+          ariaLabel="Search this briefing"
+          iconSize={14}
+          iconClassName="left-3"
+          inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-subtle"
+        />
+        {isCompetitor && (
+          <ColorSelect
+            value={relevantOnly ? "relevant" : "all"}
+            onChange={(value) => setRelevantOnly(value === "relevant")}
+            ariaLabel="Filter competitor updates by relevance"
+            minWidth={165}
+            dense
+            options={[
+              { value: "relevant", label: "Relevant to Freyr", color: "var(--ink-teal-deep)", icon: Filter },
+              { value: "all", label: "All competitor updates", color: "var(--ink-bright-blue)", icon: Globe2 },
+            ]}
+          />
+        )}
+        <button type="button" disabled={!savedReady} aria-pressed={savedOnly} onClick={() => { setSavedOnly(!savedOnly); setSource("all"); setSelectedSignals([]); setQuery(""); }}
+          className={cn("inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold disabled:opacity-40", savedOnly ? "border-blue-primary bg-blue-light text-blue-primary" : "border-border-light bg-white text-text-secondary")}>
+          <Bookmark size={14} fill={savedOnly ? "currentColor" : "none"} />Saved {savedArticles.length}
+        </button>
+        {!savedOnly && <>
+          <ColorSelect
+            value={range}
+            onChange={(value) => { setRange(value as typeof range); setExactDate(""); }}
+            ariaLabel="Filter by time range"
+            minWidth={150}
+            dense
+            options={[
+              { value: "1", label: "Past day", color: "var(--ink-orange)", icon: Sun },
+              { value: "7", label: "Past week", color: "var(--ink-bright-blue)", icon: CalendarDays },
+              { value: "30", label: "Past month", color: "var(--ink-violet)", icon: CalendarRange },
+              { value: "90", label: "Past 3 months", color: "var(--ink-teal-deep)", icon: History },
+            ]}
+          />
+          <div className="relative flex h-10 items-center gap-2 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary focus-within:border-blue-subtle">
+            <CalendarDays size={14} className="text-blue-primary" />
+            <label htmlFor="briefing-exact-date" className="sr-only">Show updates from an exact date</label>
+            <input id="briefing-exact-date" type="date" value={exactDate} onChange={(event) => setExactDate(event.target.value)} className="cursor-pointer bg-transparent text-[12px] text-text-primary outline-none" />
+            {exactDate && <button type="button" onClick={() => setExactDate("")} className="cursor-pointer text-blue-primary hover:underline">Clear</button>}
+          </div>
+        </>}
+      </SearchPriority>
+
       {briefing.tldr && (
         <div className="rise-in mt-4 rounded-xl border border-blue-subtle bg-[rgba(0,113,227,0.04)] p-4">
           <p className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[color:var(--ink-bright-blue)]">
@@ -689,16 +744,6 @@ export function LiveCompanyBriefing({
         </div>
       )}
 
-      {/* THE MAIN BAR: SIGNALS (Saras, Sep 11). */}
-      <SignalRow
-        className="mt-4"
-        group={briefing.group}
-        counts={signalCounts}
-        total={base.length}
-        active={signalPick}
-        onPick={setSignalPick}
-      />
-
       <div className={cn(
         "-mr-4 mt-5 grid items-start gap-4 motion-safe:transition-[grid-template-columns] motion-safe:duration-300 motion-safe:ease-in-out",
         detailsOpen ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,calc((100%_-_16px)/3))]" : "grid-cols-[minmax(0,1fr)_40px] lg:grid-cols-[minmax(0,1fr)_minmax(0,40px)]"
@@ -707,7 +752,8 @@ export function LiveCompanyBriefing({
           {/* THE SECONDARY BAR: SOURCES (Saras, Sep 11), under the Signals
               bar: where an item came from. Thought leadership and awards are
               signals now, so they are not sources any more. */}
-          <div className="mb-3 flex min-w-0 items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1" role="group" aria-label="Sources">
+          <div className="mb-3 flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1" role="group" aria-label="Sources">
             <span className="mr-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Sources</span>
             {SOURCES.map((s) => {
               const SIcon = s.icon;
@@ -734,120 +780,22 @@ export function LiveCompanyBriefing({
               );
             })}
           </div>
-
-          <SearchPriority
-            query={query}
-            className="mb-3 flex flex-wrap items-center gap-1.5"
-          >
-            <PrioritySearchInput
-              grow
-              className="flex-1"
-              value={query}
-              onChange={setQuery}
-              placeholder="Search this briefing…"
-              ariaLabel="Search this briefing"
-              iconSize={13}
-              iconClassName="left-3"
-              inputClassName="h-[34px] w-full rounded-full border border-border-light bg-white pl-8 pr-3 text-[12px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-subtle"
-            />
-            <span className="ml-auto flex items-center gap-2">
-              {isCompetitor && (
-                <button
-                  type="button"
-                  onClick={() => setRelevantOnly((v) => !v)}
-                  aria-pressed={relevantOnly}
-                  title="Only items about pharma, medical devices, consumer products or regulatory work"
-                  className={cn(
-                    "flex h-[34px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors",
-                    relevantOnly
-                      ? "border-transparent bg-[color:var(--ink-teal-deep)] text-white"
-                      : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
-                  )}
-                >
-                  <Filter size={13} strokeWidth={2.2} />
-                  {relevantOnly ? "Freyr's industries only" : "Showing everything"}
-                  {relevantOnly && hiddenByRelevance > 0 && (
-                    <span className="tnum opacity-85">· {hiddenByRelevance} hidden</span>
-                  )}
-                </button>
-              )}
-              <ColorSelect
-                value={range}
-                onChange={(v) => setRange(v as typeof range)}
-                ariaLabel="Filter by time range"
-                minWidth={150}
-                dense
-                options={[
-                  { value: "1", label: "Past day", color: "var(--ink-orange)", icon: Sun },
-                  { value: "7", label: "Past week", color: "var(--ink-bright-blue)", icon: CalendarDays },
-                  { value: "30", label: "Past month", color: "var(--ink-violet)", icon: CalendarRange },
-                  { value: "90", label: "Past 3 months", color: "var(--ink-teal-deep)", icon: History },
-                ]}
-              />
-              <div ref={viewRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setViewOpen((v) => !v)}
-                  aria-haspopup="menu"
-                  aria-expanded={viewOpen}
-                  aria-label="Layout"
-                  title="Layout"
-                  className="flex h-[34px] cursor-pointer items-center gap-1 rounded-full border border-border-light bg-white px-2 transition-colors hover:border-blue-subtle"
-                >
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(0,113,227,0.10)] text-blue-primary">
-                    {newsView === "rows" ? (
-                      <List size={14} strokeWidth={2.2} />
-                    ) : newsView === "tiles" ? (
-                      <LayoutGrid size={14} strokeWidth={2.2} />
-                    ) : (
-                      <Table2 size={14} strokeWidth={2.2} />
-                    )}
-                  </span>
-                  <ChevronDown
-                    size={12}
-                    strokeWidth={2.2}
-                    className={cn("text-text-tertiary transition-transform", viewOpen && "rotate-180 text-blue-primary")}
-                  />
-                </button>
-                {viewOpen && (
-                  <div
-                    role="menu"
-                    className="menu-in absolute right-0 top-full z-50 mt-2 flex gap-1 rounded-xl border border-border-light bg-white p-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.22)]"
-                  >
-                    {(["rows", "tiles", "table"] as NewsView[]).map((view) => {
-                      const VIcon = view === "rows" ? List : view === "tiles" ? LayoutGrid : Table2;
-                      const on = newsView === view;
-                      return (
-                        <button
-                          key={view}
-                          type="button"
-                          role="menuitemradio"
-                          aria-checked={on}
-                          aria-label={view}
-                          title={view === "rows" ? "List" : view === "tiles" ? "Tiles" : "Table"}
-                          onClick={() => {
-                            chooseNewsView(view);
-                            setViewOpen(false);
-                          }}
-                          className={cn(
-                            "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg transition-colors",
-                            on
-                              ? "bg-[rgba(0,113,227,0.12)] text-blue-primary"
-                              : "text-text-tertiary hover:bg-surface hover:text-text-primary"
-                          )}
-                        >
-                          <VIcon size={16} strokeWidth={2.2} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </span>
-          </SearchPriority>
+          <ColorSelect
+            value={newsView}
+            onChange={(value) => chooseNewsView(value as NewsView)}
+            ariaLabel="Article view"
+            minWidth={128}
+            dense
+            options={[
+              { value: "rows", label: "List view", color: "var(--ink-bright-blue)", icon: List },
+              { value: "tiles", label: "Tile view", color: "var(--ink-violet)", icon: LayoutGrid },
+              { value: "table", label: "Table view", color: "var(--ink-teal-deep)", icon: Table2 },
+            ]}
+          />
+          </div>
 
           <div
-            key={`${source}-${signalPick ?? "any"}-${newsView}-${range}-${relevantOnly}`}
+            key={`${source}-${selectedSignals.join(",") || "any"}-${newsView}-${range}-${exactDate}-${relevantOnly}`}
             className={cn(
               "tab-panel",
               newsView === "tiles" && groups.length > 0
@@ -858,16 +806,17 @@ export function LiveCompanyBriefing({
             {groups.length === 0 ? (
               <Card className="p-6 text-[13px] leading-relaxed text-text-secondary">
                 {relevantOnly && hiddenByRelevance > 0 && matched.length > 0
-                  ? `Nothing here concerns Freyr's industries. ${hiddenByRelevance} ${hiddenByRelevance === 1 ? "item is" : "items are"} hidden; switch to "Showing everything" to see them.`
+                  ? `Nothing here is currently marked relevant to Freyr. ${hiddenByRelevance} ${hiddenByRelevance === 1 ? "item is" : "items are"} hidden; choose “All competitor updates” to see them.`
                   : "Nothing matches the current filters. Widen the source, signal, time range or search to see more."}
               </Card>
             ) : newsView === "table" ? (
-              <Card className="overflow-x-auto p-0">
-                <table className="min-w-[560px] w-full table-fixed">
+              <Card className="overflow-hidden p-0">
+                <table className="w-full table-fixed">
                   <colgroup>
-                    <col className="w-[23%]" />
+                    <col className="w-[21%]" />
                     <col />
                     <col className="w-[170px]" />
+                    <col className="w-[76px]" />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-border-light">
@@ -879,6 +828,9 @@ export function LiveCompanyBriefing({
                       </th>
                       <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                         When
+                      </th>
+                      <th className="px-3 py-2.5 text-right text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                        Actions
                       </th>
                     </tr>
                   </thead>
@@ -901,6 +853,7 @@ export function LiveCompanyBriefing({
                       return (
                         <tr key={index} className="group/story transition-colors hover:bg-surface">
                           <td className="px-4 py-3 align-top">
+                            <span className="mb-1.5 block">{sourceTypeChip(item)}</span>
                             <a
                               href={safeHref(item.url) as string}
                               target="_blank"
@@ -940,9 +893,12 @@ export function LiveCompanyBriefing({
                             className="px-4 py-3 align-top text-[12px] leading-relaxed text-text-secondary"
                             suppressHydrationWarning
                           >
-                            <span className="flex items-start justify-between gap-2">
-                              {/* One line: "Sep 13, 2026 ·" used to break away from its time. */}
-                              <span className="whitespace-nowrap">{fmtDate(item.date)}</span>
+                            {/* One line: "Sep 13, 2026 ·" used to break away from its time. */}
+                            <span className="whitespace-nowrap">{fmtDate(item.date)}</span>
+                          </td>
+                          <td className="px-3 py-3 align-top">
+                            <span className="flex items-start justify-end gap-1">
+                              {bookmarkButton(item)}
                               {removeStoryButton(group)}
                             </span>
                           </td>
@@ -991,25 +947,38 @@ export function LiveCompanyBriefing({
             <h2 className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Company details</h2>
             <button type="button" onClick={() => setDetailsView("closed")} aria-label="Hide company details" aria-expanded={true} aria-controls="company-details-panel" className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-medium text-text-secondary hover:bg-surface hover:text-blue-primary"><PanelRightClose size={14} className="shrink-0" />Hide</button>
           </div>
-          <Card className="p-4">
-            <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
-              <TrendingUp size={14} strokeWidth={2} className="text-blue-primary" />
-              Activity, last 30 days
-            </h2>
-            <p className="mt-0.5 text-[11.5px] text-text-tertiary">
-              Posts, articles and website items per day.
-            </p>
-            <div className="mt-2">
-              <Sparkline
-                points={briefing.trend}
-                height={44}
-                xLabels={briefing.trendLabels}
-                unit="items"
-                label={briefing.name}
-              />
+          <Card className="p-4" aria-labelledby="signal-filter-title">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 id="signal-filter-title" className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
+                  <Radar size={14} strokeWidth={2} className="text-blue-primary" />
+                  Signals
+                </h2>
+                <p className="mt-1 text-[11.5px] leading-snug text-text-tertiary">
+                  {selectedSignals.length > 0 ? `${selectedSignals.length} selected` : "Showing every signal"}
+                </p>
+              </div>
+              {selectedSignals.length > 0 && <button type="button" onClick={() => setSelectedSignals([])} className="shrink-0 cursor-pointer text-[11.5px] font-semibold text-blue-primary hover:underline">Clear</button>}
+            </div>
+            <div className="mt-2.5 space-y-1">
+              {signalsFor(briefing.group).map(signal => {
+                const meta = SIGNAL_META[signal];
+                const Icon = meta.icon;
+                const checked = selectedSignals.includes(signal);
+                return (
+                  <label key={signal} className={cn("flex cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors", checked ? "border-blue-subtle bg-blue-light" : "border-transparent hover:bg-surface")}>
+                    <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded border", checked ? "border-blue-primary bg-blue-primary text-white" : "border-border-light bg-white")}>
+                      {checked && <Check size={10} strokeWidth={3} />}
+                    </span>
+                    <input type="checkbox" className="sr-only" checked={checked} onChange={() => setSelectedSignals(current => checked ? current.filter(item => item !== signal) : [...current, signal])} />
+                    <Icon size={14} style={{ color: meta.color }} className="shrink-0" />
+                    <span className="min-w-0 flex-1 text-[12px] font-semibold leading-snug text-text-primary">{meta.label}</span>
+                    <span className="tnum text-[11.5px] font-semibold text-text-secondary">{signalCounts[signal] ?? 0}</span>
+                  </label>
+                );
+              })}
             </div>
           </Card>
-
           {/* NO PEOPLE ON A COMPETITOR (Saras, Sep 10). */}
           {!isCompetitor && (
             <Card className="p-4">
@@ -1036,13 +1005,15 @@ export function LiveCompanyBriefing({
               </h2>
               <div className="mt-2.5 flex flex-wrap gap-1.5">
                 {briefing.competitorMentions.map((mention) => (
-                  <span
+                  <button
+                    type="button"
                     key={mention.name}
-                    className="flex items-center gap-1.5 rounded-full bg-[rgba(180,49,143,0.10)] px-2.5 py-1 text-[12px] font-semibold text-[color:var(--ink-magenta)]"
+                    onClick={() => { setSelectedSignals(["competitor_mentions"]); setSource("all"); }}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-full bg-[rgba(180,49,143,0.10)] px-2.5 py-1 text-[12px] font-semibold text-[color:var(--ink-magenta)] hover:bg-[rgba(180,49,143,0.16)]"
                   >
                     {mention.name}
                     <span className="tnum font-bold">{mention.count}</span>
-                  </span>
+                  </button>
                 ))}
               </div>
               <p className="mt-2.5 text-[11.5px] leading-snug text-text-tertiary">
@@ -1051,7 +1022,6 @@ export function LiveCompanyBriefing({
               </p>
             </Card>
           )}
-          <TopSignals counts={signalCounts} active={signalPick} onPick={(id) => { setSignalPick(id); setSource("all"); }} />
           </div>
           </aside>
         </div>

@@ -54,6 +54,7 @@ export const REP_MODULES = [
      to /performance, so it has to be reachable by everyone /performance is. */
   "/goals",
   "/opportunities",
+  "/market-intel",
 ] as const;
 
 /**
@@ -92,16 +93,7 @@ export const NEW_MODULES_ADMIN_ONLY = [
   "/meetings",
 ] as const;
 
-/**
- * MARKET INTEL IS CLOSED TO REPS AGAIN (Anir, Aug 25: "can we hide the Market
- * Intel module for everybody with rep access? Let's do that ASAP").
- *
- * He opened it to them on Aug 20 — "I think they should be able to see market
- * intel" — and closed it again after watching a rep's screen on the Aug 25
- * call. Both calls are his; this is the current one. The module still ships
- * for managers and admins, and re-opening it is putting "/market-intel" back
- * in the list above.
- */
+// BD members can access Market Intel and add up to 20 companies (Sep 17).
 
 /**
  * TEAM IS NOT FINISHED, SO NOBODY BUT ADMINS SEES IT YET (Anir, Aug 16: "the
@@ -161,6 +153,7 @@ export function canAccessModuleWith(
   role: UserIdentityRole,
   access: Partial<Record<string, Access>> | null
 ): boolean {
+  if (role === "admin") return true;
   if (!access) return canAccessModule(path, role);
   // Signing in, settings, notifications: never a module, never gated.
   if (isAlwaysOpen(path)) return true;
@@ -188,6 +181,7 @@ export function canWriteModuleWith(
   role: UserIdentityRole,
   access: Partial<Record<string, Access>> | null
 ): boolean {
+  if (role === "admin") return true;
   if (!access) return canAccessModule(path, role);
   if (
     role === "sol_member" &&
@@ -205,6 +199,7 @@ export function canCreateModuleWith(
   role: UserIdentityRole,
   access: Partial<Record<string, Access>> | null
 ): boolean {
+  if (role === "admin") return true;
   if (!access) return canAccessModule(path, role);
   if (
     role === "sol_member" &&
@@ -229,6 +224,7 @@ export function canDeleteModuleWith(
   role: UserIdentityRole,
   access: Partial<Record<string, Access>> | null
 ): boolean {
+  if (role === "admin") return true;
   if (!access) return canAccessModule(path, role);
   if (
     role === "sol_member" &&

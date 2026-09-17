@@ -7,6 +7,7 @@ export {
   AreaChart,
   DonutChart,
   BarChart,
+  MovementBarChart,
   LineChart,
   Sparkline,
   Legend,

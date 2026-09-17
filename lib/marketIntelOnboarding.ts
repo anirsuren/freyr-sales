@@ -1,3 +1,4 @@
+import { assertCompanyAdditionAllowed } from "./marketIntelCompanyLimit";
 import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
@@ -67,7 +68,7 @@ export async function editQueuedCompany(
 export async function enqueueCompany(
   input: { name?: string; website?: string; linkedinUrl?: string },
   group: "customer" | "competitor",
-  meta: { divisions: Division[]; addedBy: TrackedCompany["addedBy"] },
+  meta: { divisions: Division[]; addedBy: TrackedCompany["addedBy"]; additionLimit?: number },
 ): Promise<TrackedCompany> {
   const website = String(input.website || "").trim(),
     linkedin = String(input.linkedinUrl || "").trim();
@@ -123,6 +124,7 @@ export async function enqueueCompany(
       company.linkedinUrl,
     );
     if (duplicate) throw new DuplicateCompanyError(duplicate);
+    assertCompanyAdditionAllowed(data.catalog.companies, meta.addedBy?.id, meta.additionLimit);
     data.catalog.companies.push(company);
     data.catalog.divisions = {
       ...data.catalog.divisions,

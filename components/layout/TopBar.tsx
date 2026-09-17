@@ -51,7 +51,7 @@ export function TopBar({
   onMenuClick,
   onAgentToggle,
   agentActive,
-  offeringsOnly = false,
+  releasedOnly = false,
   customersReleased = false,
   feedbackAction,
   moduleAccess = null,
@@ -59,7 +59,7 @@ export function TopBar({
   onMenuClick?: () => void;
   onAgentToggle?: () => void;
   agentActive?: boolean;
-  offeringsOnly?: boolean;
+  releasedOnly?: boolean;
   customersReleased?: boolean;
   feedbackAction?: ReactNode;
   /** Passed straight through to the palette so search and the rail agree. */
@@ -365,7 +365,7 @@ export function TopBar({
             className="absolute left-3 top-1/2 -translate-y-1/2 shrink-0 transition-all duration-200 group-hover:text-blue-primary group-hover:scale-110 group-focus-visible:text-blue-primary"
           />
           <span className="truncate">
-            {offeringsOnly
+            {releasedOnly
               ? customersReleased
                 ? "Search offerings, companies, or jump to a page…"
                 : "Search offerings…"
@@ -380,8 +380,7 @@ export function TopBar({
             open={paletteOpen}
             onClose={() => setPaletteOpen(false)}
             anchored
-            offeringsOnly={offeringsOnly}
-            customersReleased={customersReleased}
+            releasedOnly={releasedOnly}
             moduleAccess={moduleAccess}
         />
       </div>
@@ -714,8 +713,6 @@ export function TopBar({
                     <Settings size={16} strokeWidth={1.7} className="text-text-secondary" />
                     Profile and settings
                   </Link>
-                  {!offeringsOnly && (
-                    <>
                   <Link
                     role="menuitem"
                     href="/agent/settings"
@@ -725,6 +722,7 @@ export function TopBar({
                     <SlidersHorizontal size={16} strokeWidth={1.7} className="text-text-secondary" />
                     Agent settings
                   </Link>
+                  {currentUser.role === "admin" && (
                   <Link
                     role="menuitem"
                     href="/admin"
@@ -734,6 +732,9 @@ export function TopBar({
                     <BookOpen size={16} strokeWidth={1.7} className="text-text-secondary" />
                     Admin
                   </Link>
+                  )}
+                  {!releasedOnly && (
+                    <>
                   <Link
                     role="menuitem"
                     href="/services"
@@ -752,6 +753,8 @@ export function TopBar({
                     <Mic size={16} strokeWidth={1.7} className="text-text-secondary" />
                     Recordings
                   </Link>
+                    </>
+                  )}
                   <button
                     role="menuitem"
                     onClick={() => {
@@ -764,8 +767,6 @@ export function TopBar({
                     Keyboard shortcuts
                   </button>
                   <div className="my-1 border-t border-border-light" />
-                    </>
-                  )}
                   {/* Two different intentions, and only one of them was here.
                       Log out means "I am done"; switching means "I want to be
                       someone else for a minute" — which an admin testing what

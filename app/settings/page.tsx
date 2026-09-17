@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
 import { getDataMode, isDataModeLocked } from "@/lib/dataMode";
 import { isApprovalGateEnabled } from "@/lib/accessControl";
-import { isOfferingsOnly } from "@/lib/release";
+import { isReleasedOnly } from "@/lib/release";
 import { getCurrentUser } from "@/lib/currentUser";
 import { ssoStatusForEmail } from "@/lib/ssoStatus";
 
@@ -25,7 +25,7 @@ export default async function SettingsPage() {
   // contacts and deals — none of which are released — so in that mode they are
   // never read and never reach the browser (the Integrations tab that shows
   // them is hidden too; see SettingsTabs).
-  const offeringsOnly = isOfferingsOnly(dataMode);
+  const offeringsOnly = isReleasedOnly(dataMode);
 
   // Real counts for the CRM mirror — the app's own book, not invented numbers.
   const db = getDb();

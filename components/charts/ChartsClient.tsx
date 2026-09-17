@@ -123,7 +123,7 @@ const TIP_INLINE_ROWS = 3;
  * close ordinary popovers immediately; chart record cards need this physical
  * handoff because they are designed to be entered and scrolled.
  */
-const CHART_TIP_HANDOFF_MS = 180;
+const CHART_TIP_HANDOFF_MS = 480;
 /** Hard ceiling on the record list, so a reachable tip always reads as a
  *  tooltip and never as a panel. ~3 rows, then it scrolls. Shared by every
  *  chart so the bar tip and the line tip beside it feel like one component. */
@@ -241,8 +241,8 @@ function tipIsLong(items?: TipItem[]): boolean {
 }
 
 // Hover state for one chart: which index is lit, where its tip is anchored, and
-// — for tips the user is allowed to reach — a zero-delay handoff timer so the
-// card can receive mouse-enter before it closes.
+// — for tips the user is allowed to reach — a short handoff timer so the card
+// can receive pointer-enter before it closes.
 /** Every graph tooltip in this app waits this long before it opens. No chart
  *  gets to opt out, and there is no user setting for it any more (Anir, Jul 28:
  *  "we need it where it's 0.5 seconds on every single graph. There should not
@@ -533,6 +533,8 @@ function PortalTip({
         transform: placement === "top" ? "translateY(-100%)" : undefined,
         maxHeight,
       }}
+      onPointerEnter={interactive ? onEnter : undefined}
+      onPointerLeave={interactive ? onLeave : undefined}
     >
       <div
         className={cn(
@@ -543,8 +545,6 @@ function PortalTip({
           bridge > 0 && (placement === "top" ? "pb-3" : "pt-3")
         )}
         style={{ maxHeight }}
-        onPointerEnter={interactive ? onEnter : undefined}
-        onPointerLeave={interactive ? onLeave : undefined}
         onFocus={interactive ? onEnter : undefined}
         onBlur={interactive ? onLeave : undefined}
       >
@@ -3228,6 +3228,91 @@ export function Legend({
           )}
         </span>
       ))}
+    </div>
+  );
+}
+
+/** Signed monthly changes, using the same hover controller and popup as other charts. */
+export function MovementBarChart({ data, enabled = true }: {
+  enabled?: boolean;
+  data: { label: string; value: number; valueLabel: string; exactValue: string; color: string; description: string; tip: TipItem[] }[];
+}) {
+  const { hover, active, anchor, show, close, keepOpen } = useChartHover();
+  useEffect(() => { if (!enabled) close(0); }, [enabled, close]);
+  const positiveMax = Math.max(0, ...data.map(row => row.value));
+  const negativeMax = Math.max(0, ...data.map(row => -row.value));
+  const range = positiveMax + negativeMax || 1;
+  const plotHeight = 144;
+  const zeroY = 30 + plotHeight * positiveMax / range;
+  const height = plotHeight + 60;
+  const selected = hover === null ? null : data[hover];
+  const lit = active ?? hover;
+
+  function openTip(index: number, element: HTMLElement) {
+    const valueLabel = element.querySelector("[data-movement-label]") ?? element;
+    const rect = valueLabel.getBoundingClientRect();
+    show(index, elementAnchor(valueLabel, rect.left + rect.width / 2, rect.top));
+  }
+
+  return (
+    <div onKeyDown={event => { if (event.key === "Escape") close(0); }}>
+      <div className="overflow-x-auto pb-1">
+        <div className="relative ml-5 grid" style={{ gridTemplateColumns: `repeat(${Math.max(data.length, 1)}, minmax(80px, 1fr))`, minWidth: data.length * 80 }}>
+          <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 border-t border-border" style={{ top: zeroY }} />
+          <span aria-hidden="true" className="absolute -left-5 text-[10px] tnum text-text-tertiary" style={{ top: zeroY - 7 }}>$0</span>
+          {data.map((row, index) => {
+            const positive = row.value >= 0;
+            const barHeight = Math.abs(row.value) / range * plotHeight;
+            const isLit = lit === index;
+            return (
+              <div key={row.label} className="min-w-0 px-2">
+                <div className="relative" style={{ height }}>
+                  <div
+                    role="img"
+                    tabIndex={0}
+                    aria-label={row.description}
+                    className="absolute left-1/2 w-[65%] max-w-[48px] cursor-default rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-primary focus-visible:ring-offset-2"
+                    style={{ top: positive ? zeroY - barHeight : zeroY, height: Math.max(barHeight, 1), transform: "translateX(-50%)" }}
+                    onMouseEnter={event => openTip(index, event.currentTarget)}
+                    onMouseLeave={() => close(CHART_TIP_HANDOFF_MS)}
+                    onFocus={event => openTip(index, event.currentTarget)}
+                    onBlur={() => close(0)}
+                    onClick={event => openTip(index, event.currentTarget)}
+                  >
+                    <div
+                      className="relative h-full w-full transition-transform duration-200 ease-out motion-reduce:transition-none"
+                      style={{ transform: isLit ? `translateY(${positive ? -5 : 5}px)` : undefined }}
+                    >
+                      <span
+                        data-movement-label
+                        className="absolute left-1/2 whitespace-nowrap text-[12px] font-bold tnum transition-colors duration-200"
+                        style={{ transform: "translateX(-50%)", ...(positive ? { bottom: "100%", paddingBottom: 7 } : { top: "100%", paddingTop: 7 }), color: row.color }}
+                      >{row.valueLabel}</span>
+                      <div
+                        className={cn("chart-bar h-full w-full transition-[filter,box-shadow] duration-200 motion-reduce:animate-none motion-reduce:transition-none", positive ? "rounded-t-lg" : "rounded-b-lg")}
+                        style={{
+                          transformOrigin: positive ? "bottom" : "top",
+                          animationDelay: `${index * 45}ms`,
+                          background: `linear-gradient(${positive ? "0deg" : "180deg"}, ${row.color}, color-mix(in srgb, ${row.color} 78%, white))`,
+                          filter: isLit ? "brightness(1.08)" : undefined,
+                          boxShadow: isLit ? `0 5px 20px ${tint(row.color, 30)}` : undefined,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p className="text-center text-[11.5px] font-semibold text-text-primary">{row.label}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {enabled && selected && (
+        <PortalTip anchor={anchor} wide nearPoint interactive onEnter={keepOpen} onLeave={() => close(CHART_TIP_HANDOFF_MS)}>
+          <TipHeader icon="money" color={selected.color} label={selected.label} value={selected.exactValue} note={selected.value >= 0 ? "Added to this month's plan" : "Removed from this month's plan"} />
+          <TipBreakdown items={selected.tip} label="Frozen compared with today" interactive />
+        </PortalTip>
+      )}
     </div>
   );
 }

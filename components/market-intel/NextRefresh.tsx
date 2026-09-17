@@ -7,7 +7,6 @@ import {
   CalendarClock,
   ChevronDown,
   History,
-  Loader2,
   Users,
 } from "lucide-react";
 import { nextMarketIntelCycle } from "@/lib/marketIntelCadence";
@@ -163,15 +162,11 @@ export function RefreshChip({
             </span>
             <span className="min-w-0 text-right">
               <span className="flex items-center justify-end gap-1 text-[11px] font-medium text-[color:var(--ink-violet)]">
-                {due ? (
-                  <Loader2 size={12} strokeWidth={2.2} className="animate-spin" />
-                ) : (
-                  <CalendarClock size={12} strokeWidth={2.2} />
-                )}{" "}
+                <CalendarClock size={12} strokeWidth={2.2} />{" "}
                 Next refresh
               </span>
               <span className="mt-0.5 block text-[14px] font-bold text-text-primary tnum">
-                {due ? "Due shortly" : `~${clock(next)}`}
+                {due ? "Due now" : `~${clock(next)}`}
               </span>
             </span>
           </div>
@@ -206,7 +201,7 @@ export function RefreshChip({
                 transform: `translateX(-${Math.min(100, Math.max(0, pct))}%)`,
               }}
             >
-              {due ? "refresh due" : `you're here · ${clock(now)}`}
+              {due ? "daily refresh is due" : `you're here · ${clock(now)}`}
             </span>
           </div>
 
@@ -216,6 +211,7 @@ export function RefreshChip({
               strokeWidth={2.2}
               className="mt-0.5 shrink-0 text-blue-primary"
             />
+            {due && "The scheduled update is due; this does not mean it is currently running. "}
             Everyone sees the same live feed. Each news, website and LinkedIn
             source refreshes once every 24 hours.
           </p>

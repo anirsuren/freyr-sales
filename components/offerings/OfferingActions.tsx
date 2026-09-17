@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Rocket, Plus, Check, Search, X, Building2 } from "lucide-react";
+import { Rocket, Check, Search, X, Building2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
@@ -23,21 +23,24 @@ export function OfferingActions({
   customers,
   extra,
   commercialActionsEnabled = true,
+  pitchActionEnabled = true,
 }: {
   offeringId: string;
   offeringName: string;
-  customers: { id: string; name: string }[];
+  customers: { id: string; name: string; assigned: boolean }[];
   extra?: ReactNode;
   commercialActionsEnabled?: boolean;
+  pitchActionEnabled?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState("");
   const [cursor, setCursor] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [added, setAdded] = useState("");
+  const [assignedIds, setAssignedIds] = useState(
+    () => new Set(customers.filter((customer) => customer.assigned).map((customer) => customer.id))
+  );
+  const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const wrapRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -46,6 +49,10 @@ export function OfferingActions({
     const q = query.trim().toLowerCase();
     return q ? customers.filter((c) => c.name.toLowerCase().includes(q)) : customers;
   }, [customers, query]);
+
+  useEffect(() => {
+    setAssignedIds(new Set(customers.filter((customer) => customer.assigned).map((customer) => customer.id)));
+  }, [customers]);
 
   // Click-away + Escape close, same as every other popover in the app.
   useEffect(() => {
@@ -97,36 +104,54 @@ export function OfferingActions({
   function close() {
     setOpen(false);
     setQuery("");
-    setPicked("");
-    setAdded("");
     setCursor(0);
   }
 
-  async function add(id = picked) {
-    if (!id || busy) return;
-    setBusy(true);
+  async function toggleCustomer(id: string) {
+    if (!id || busyIds.has(id)) return;
+    const wasAssigned = assignedIds.has(id);
+    const nextAssigned = !wasAssigned;
+    setAssignedIds((current) => {
+      const next = new Set(current);
+      if (nextAssigned) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+    setBusyIds((current) => new Set(current).add(id));
     try {
       const res = await fetch(`/api/customers/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ addOfferingInUse: offeringId }),
+        body: JSON.stringify({
+          setOfferingInUse: { offeringId, on: nextAssigned },
+        }),
       });
       const data = await res.json();
       if (data.ok) {
         const name = customers.find((c) => c.id === id)?.name || "the customer";
-        // Two-part feedback: the toast people already expect, plus a visible
-        // confirmation inside the popover before it closes itself.
-        setAdded(name);
-        toast(`Added ${offeringName} to ${name}: see it on their Offerings tab.`);
+        toast(
+          nextAssigned
+            ? `Added ${offeringName} to ${name}.`
+            : `Removed ${offeringName} from ${name}.`
+        );
         router.refresh();
-        window.setTimeout(close, 1600);
       } else {
-        toast(data.error || "Couldn't add it.", "error");
+        throw new Error(data.error || "Couldn't update it.");
       }
-    } catch {
-      toast("Couldn't add it.", "error");
+    } catch (caught) {
+      setAssignedIds((current) => {
+        const next = new Set(current);
+        if (wasAssigned) next.add(id);
+        else next.delete(id);
+        return next;
+      });
+      toast(caught instanceof Error ? caught.message : "Couldn't update it.", "error");
     } finally {
-      setBusy(false);
+      setBusyIds((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
     }
   }
 
@@ -140,26 +165,24 @@ export function OfferingActions({
     } else if (e.key === "Enter") {
       e.preventDefault();
       const row = matches[cursor];
-      // Enter picks the highlighted row; Enter again on a picked row adds it.
-      if (row && row.id === picked) add(row.id);
-      else if (row) setPicked(row.id);
+      if (row) void toggleCustomer(row.id);
     }
   }
-
-  const pickedName = customers.find((c) => c.id === picked)?.name || "";
 
   return (
     <div className="flex flex-col items-stretch gap-2 lg:items-end">
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
         {commercialActionsEnabled && (
           <>
-            <Link
-              href="/intake"
-              className="inline-flex items-center gap-1.5 rounded-md bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white shadow-[0_1px_2px_rgba(0,113,227,0.20)] transition-all hover:bg-blue-hover hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
-            >
-              <Rocket size={14} strokeWidth={2} />
-              Use in a pitch
-            </Link>
+            {pitchActionEnabled && (
+              <Link
+                href="/intake"
+                className="inline-flex items-center gap-1.5 rounded-md bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white shadow-[0_1px_2px_rgba(0,113,227,0.20)] transition-all hover:bg-blue-hover hover:shadow-[0_4px_12px_rgba(0,113,227,0.26)]"
+              >
+                <Rocket size={14} strokeWidth={2} />
+                Use in a pitch
+              </Link>
+            )}
 
             {/* Anchored, not inline — opening it must never move the page. */}
             <div ref={wrapRef} className="relative">
@@ -175,28 +198,21 @@ export function OfferingActions({
                     : "border-border bg-white text-text-primary hover:bg-surface"
                 )}
               >
-                <Plus size={14} strokeWidth={2} />
-                Add to a customer
+                <Building2 size={14} strokeWidth={2} />
+                Customers
+                {assignedIds.size > 0 && (
+                  <span className="tnum rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] text-blue-primary">
+                    {assignedIds.size}
+                  </span>
+                )}
               </button>
 
               {open && (
                 <div
                   role="dialog"
-                  aria-label="Add this offering to a customer"
+                  aria-label="Choose customers using this offering"
                   className="hovercard-in absolute right-0 top-full z-40 mt-2 w-[320px] overflow-hidden rounded-xl border border-border-light bg-white text-left shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
                 >
-                  {added ? (
-                    <div className="flex items-center gap-2.5 px-4 py-5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(52,199,89,0.14)] text-[var(--ink-green)]">
-                        <Check size={16} strokeWidth={2.6} />
-                      </span>
-                      <p className="text-[13px] leading-snug text-text-primary">
-                        Added to <span className="font-semibold">{added}</span>. It&apos;s on
-                        their Offerings tab now.
-                      </p>
-                    </div>
-                  ) : (
-                    <>
                       <div className="flex items-center gap-2 border-b border-border-light px-3">
                         <Search size={15} strokeWidth={1.8} className="shrink-0 text-text-tertiary" />
                         <input
@@ -220,7 +236,7 @@ export function OfferingActions({
 
                       <div
                         ref={listRef}
-                        role="listbox"
+                        role="group"
                         aria-label="Customers"
                         className="max-h-[248px] overflow-y-auto p-1.5"
                       >
@@ -230,18 +246,20 @@ export function OfferingActions({
                           </p>
                         ) : (
                           matches.map((c, i) => {
-                            const on = c.id === picked;
+                            const on = assignedIds.has(c.id);
+                            const saving = busyIds.has(c.id);
                             return (
                               <button
                                 key={c.id}
                                 type="button"
-                                role="option"
-                                aria-selected={on}
+                                role="checkbox"
+                                aria-checked={on}
+                                disabled={saving}
                                 data-row={i}
                                 onMouseEnter={() => setCursor(i)}
-                                onClick={() => setPicked(on ? "" : c.id)}
+                                onClick={() => void toggleCustomer(c.id)}
                                 className={cn(
-                                  "flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors",
+                                  "flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors disabled:opacity-55",
                                   on
                                     ? "bg-blue-light"
                                     : i === cursor
@@ -260,52 +278,17 @@ export function OfferingActions({
                                 >
                                   {c.name}
                                 </span>
-                                {on && (
-                                  <Check
-                                    size={15}
-                                    strokeWidth={2.6}
-                                    className="shrink-0 text-blue-primary"
-                                  />
-                                )}
+                                <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-md border", on ? "border-blue-primary bg-blue-primary text-white" : "border-border-light bg-white")}>
+                                  {on && <Check size={13} strokeWidth={2.8} />}
+                                </span>
                               </button>
                             );
                           })
                         )}
                       </div>
-
-                      <div className="flex items-center gap-2 border-t border-border-light bg-surface/60 px-3 py-2.5">
-                        <span className="min-w-0 flex-1 text-[11.5px] leading-snug text-text-secondary">
-                          {pickedName ? (
-                            <>
-                              Adding to{" "}
-                              <span className="font-semibold text-text-primary">
-                                {pickedName}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5">
-                              <Building2 size={12} strokeWidth={1.9} />
-                              Pick a customer first
-                            </span>
-                          )}
-                        </span>
-                        <button
-                          onClick={() => add()}
-                          disabled={!picked || busy}
-                          className={cn(
-                            "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors",
-                            picked && !busy
-                              ? "bg-blue-primary text-white shadow-[0_1px_2px_rgba(0,113,227,0.20)] hover:bg-blue-hover"
-                              : // A real disabled state, not a washed-out blue.
-                                "cursor-not-allowed border border-border-light bg-white text-text-tertiary"
-                          )}
-                        >
-                          <Check size={14} strokeWidth={2.2} />
-                          {busy ? "Adding…" : "Add"}
-                        </button>
-                      </div>
-                    </>
-                  )}
+                      <p className="border-t border-border-light bg-surface/60 px-3 py-2 text-[11px] text-text-secondary">
+                        Check a customer to add this offering. Uncheck one to remove it.
+                      </p>
                 </div>
               )}
             </div>

@@ -3,22 +3,28 @@
 // version — only the Offerings tab. After customers and contacts are done,
 // those get released."
 //
-// Flip with NEXT_PUBLIC_RELEASE_MODE (build-time, set it in Vercel + redeploy):
-//   unset / "all"  → the full experience (demo + dev default)
-//   "offerings"    → first Freyr rollout: Offerings (+ Settings) only
+// "Ready now" (live data mode) shows only finished modules. "In progress"
+// (mock data mode) shows the full product so unfinished work can be reviewed.
+// NEXT_PUBLIC_RELEASE_MODE="offerings" can additionally lock an entire
+// deployment to the released surface.
 import type { DataMode } from "./dataMode";
 
 export const RELEASE_MODE: "all" | "offerings" =
   process.env.NEXT_PUBLIC_RELEASE_MODE === "offerings" ? "offerings" : "all";
 
-// Release visibility is deployment-wide. Mock and Real use the same routes;
-// only their data source and the Mock banner differ. Role checks still apply.
-export function isOfferingsOnly(_dataMode: DataMode): boolean {
+/** Legacy deployment lock: the build itself contains only the catalogue. */
+export function isOfferingsOnly(dataMode: DataMode): boolean {
+  void dataMode;
   return RELEASE_MODE === "offerings";
 }
 
+/** Ready now shows the released surface; In progress shows work in progress. */
+export function isReleasedOnly(dataMode: DataMode): boolean {
+  return RELEASE_MODE === "offerings" || dataMode === "live";
+}
+
 export function isReleased(href: string, dataMode: DataMode): boolean {
-  if (!isOfferingsOnly(dataMode)) return true;
+  if (!isReleasedOnly(dataMode)) return true;
   // Defer to the one path answer below — this used to check only the module
   // prefixes, so a NON_MODULE path (Admin) rendered fine when you typed the
   // URL but never appeared in the sidebar. Exactly the drift the comment on
@@ -146,15 +152,19 @@ const NON_MODULE_PATHS: ReadonlySet<string> = new Set([
  * of them and missing from the third).
  */
 export function isReleasedPath(pathname: string, dataMode: DataMode): boolean {
-  if (!isOfferingsOnly(dataMode)) return true;
+  if (!isReleasedOnly(dataMode)) return true;
   return isOfferingsReleasePath(pathname);
 }
 
 /** Mode-free variant for callers that already know they are gated. */
 export function isOfferingsReleasePath(pathname: string): boolean {
-  if (NON_MODULE_PATHS.has(pathname)) return true;
+  const canonicalPath = pathname
+    .split("?", 1)[0]
+    .split("#", 1)[0]
+    .replace(/^\/mock-mode(?=\/|$)/, "") || "/";
+  if (NON_MODULE_PATHS.has(canonicalPath)) return true;
   return RELEASED_MODULE_PREFIXES.some(
-    (m) => pathname === m || pathname.startsWith(`${m}/`)
+    (m) => canonicalPath === m || canonicalPath.startsWith(`${m}/`)
   );
 }
 
@@ -171,5 +181,5 @@ export function canSwitchWorkspaceMode(role: string | null | undefined): boolean
 
 // Where the logo / default redirects should land per mode.
 export function getHomePath(dataMode: DataMode): "/dashboard" | "/offerings" {
-  return isOfferingsOnly(dataMode) ? "/offerings" : "/dashboard";
+  return isReleasedOnly(dataMode) ? "/offerings" : "/dashboard";
 }

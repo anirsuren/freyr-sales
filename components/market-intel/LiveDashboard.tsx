@@ -1,13 +1,6 @@
 import {
-  Building2,
   ListChecks,
-  type LucideIcon,
-  Newspaper,
-  Radar,
-  Swords,
 } from "lucide-react";
-import { StatTile } from "@/components/ui/StatTile";
-import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import type { CardPerson } from "@/components/market-intel/LiveCompanyCard";
 import { LiveCompanyGrid } from "@/components/market-intel/LiveCompanyGrid";
 import { MiTabs } from "@/components/market-intel/MiTabs";
@@ -39,10 +32,9 @@ import { displayPersonName } from "@/lib/personName";
  * window), so the busiest accounts lead.
  */
 
-const LinkedInGlyph = LinkedInIcon as unknown as LucideIcon;
-
 export function LiveMarketIntelDashboard({
   summaries,
+  defaultView = "tiles",
   meta,
   tracking,
   group = "customer",
@@ -53,6 +45,7 @@ export function LiveMarketIntelDashboard({
   viewer = { userId: "", myIds: [], starredIds: [] },
 }: {
   summaries: Record<string, FeedCompanySummary>;
+  defaultView?: "tiles" | "list";
   meta: FeedMeta;
   tracking: MarketIntelTracking;
   /** Post counts per followed person, for the facepiles. */
@@ -83,6 +76,9 @@ export function LiveMarketIntelDashboard({
     .filter((company) => registry.has(company.id) && !registry.get(company.id)?.onboarding && inGroup(company.id) && myIds.has(company.id))
     .map((summary) => ({ ...cardFromSummary(summary), logoUrl: registry.get(summary.id)?.logoUrl || summary.logoUrl || null }))
     .sort((a, b) => b.itemsInWindow - a.itemsInWindow);
+  const cardsByRange = Object.fromEntries([1, 7, 30, 90].map(days => [String(days), cards.map(card => ({
+    ...cardFromSummary(summaries[card.id], days), logoUrl: card.logoUrl,
+  }))]));
   // The dashboard clock describes the companies visible on this dashboard.
   // Meta.updatedAt also moves for the M&A/thought boards, which made a page
   // with one customer say "Updated 36 min ago" above a 51-minute-old card.
@@ -95,12 +91,6 @@ export function LiveMarketIntelDashboard({
   const pending = tracking.companies.filter(
     (c) => (c.onboarding || !summaries[c.id]) && inGroup(c.id) && myIds.has(c.id)
   );
-  const totalPosts = cards.reduce((a, c) => a + c.counts.posts, 0);
-  const totalNews = cards.reduce((a, c) => a + c.counts.news, 0);
-  const totalSite = cards.reduce((a, c) => a + c.counts.site, 0);
-  const totalSignals = cards.reduce((a, c) => a + c.signalTotal, 0);
-  const busy = cards.filter((c) => c.itemsThisMonth >= 10).length;
-  const onMyPage = cards.length + pending.length;
   /* What is waiting in Manage companies: the rest of this tab's catalogue. */
   const catalogue = tracking.companies.filter((c) => inGroup(c.id)).length;
 
@@ -130,25 +120,7 @@ export function LiveMarketIntelDashboard({
   }
 
 
-  return (
-    <>
-      <MiTabs
-        active={group === "competitor" ? "competitors" : "customers"}
-        action={
-          <span className="flex flex-wrap items-center gap-2.5">
-            <RefreshChip updatedAt={visibleUpdatedAt} />
-            <ManageCompaniesButton group={group} />
-            <TrackCompanyButton group={group} canTrack={canTrack} />
-          </span>
-        }
-      >
-
-        <>
-      {onMyPage === 0 ? (
-        /* NOTHING UNTIL YOU PICK (Anir, Sep 10: "if they haven't set it up...
-           nothing should show up here. They have to individually check off
-           everything, so it should prompt them to click on Manage
-           Companies"). */
+  const emptyState = (
         <section className="rise-in flex min-h-[min(560px,calc(100vh-15rem))] flex-col items-center justify-center rounded-2xl border border-dashed border-border-light bg-white px-6 py-14 text-center">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(0,113,227,0.08)] text-[color:var(--ink-bright-blue)]">
             <ListChecks size={22} strokeWidth={2} />
@@ -176,64 +148,42 @@ export function LiveMarketIntelDashboard({
             <ManageCompaniesButton group={group} variant="cta" />
             {/* One thing to do. The add button only earns its place when
                 there is nothing in the list to tick. */}
-            {catalogue === 0 && (
+            {group === "competitor" && catalogue === 0 && (
               <TrackCompanyButton group={group} canTrack={canTrack} />
             )}
           </span>
         </section>
-      ) : (
-        <>
-      {/* The stagger entrance every other page's cards got in the Aug
-          sweep — Market Intel shipped after it and was missed (Anir, Aug 17:
-          "the four cards at the top don't animate at all"). */}
-      <section className="stagger mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile
-          singleLine
-          icon={group === "competitor" ? Swords : Building2}
-          label={group === "competitor" ? "Competitors tracked" : "Customers tracked"}
-          value={String(onMyPage)}
-          sub={`${busy} busy this month`}
-        />
-        <StatTile
-          singleLine
-          icon={LinkedInGlyph}
-          label="LinkedIn posts"
-          value={String(totalPosts)}
-          sub="Company posts · past 90 days"
-        />
-        <StatTile
-          singleLine
-          icon={Newspaper}
-          label="News picked up"
-          value={String(totalNews)}
-          sub={`90 days · ${totalSite} website updates`}
-        />
-        {/* THE COUNT IS THE COUNT (Sep 10). Signals used to be capped at eight
-            per company; now every item that carries one of the nine signals
-            is counted. */}
-        <StatTile
-          singleLine
-          icon={Radar}
-          label="Signals live"
-          value={String(totalSignals)}
-          sub="Updates with detected signals"
-        />
-      </section>
+  );
 
-      <LiveCompanyGrid
+  return (
+    <>
+      <MiTabs
+        minimalHeader
+        active={group === "competitor" ? "competitors" : "customers"}
+        action={
+          <span className="flex flex-wrap items-center gap-2.5">
+            <RefreshChip updatedAt={visibleUpdatedAt} />
+            <ManageCompaniesButton group={group} variant="primary" />
+          </span>
+        }
+      >
+        <LiveCompanyGrid
+          catalogueTotal={catalogue}
+          emptyState={emptyState}
           isAdmin={isAdmin}
-        cards={cards}
-        pending={pending}
-        addedAt={Object.fromEntries(tracking.companies.map(c=>[c.id,c.addedAt]))}
-        people={peopleByCompany}
-        group={group}
-        divisions={divisions}
-        watch={watch}
-        starred={viewer.starredIds}
-      />
-        </>
-      )}
-        </>
+          key={`${viewer.userId}:${group}`}
+          viewerId={viewer.userId}
+          defaultView={defaultView}
+          cards={cards}
+          cardsByRange={cardsByRange}
+          pending={pending}
+          addedAt={Object.fromEntries(tracking.companies.map(c => [c.id, c.addedAt]))}
+          people={peopleByCompany}
+          group={group}
+          divisions={divisions}
+          watch={watch}
+          starred={viewer.starredIds}
+        />
       </MiTabs>
     </>
   );

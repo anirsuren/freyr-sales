@@ -231,6 +231,11 @@ export function MeetingsModule({
   );
   const [sort, setSort] = useState<"date" | "customer" | "title" | "owner">("date");
   const [query, setQuery] = useState("");
+  const [customerFilter, setCustomers] = useState<string[]>([]);
+  const [owners, setOwners] = useState<string[]>([]);
+  const [types, setTypes] = useState<string[]>([]);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [creating, setCreating] = useState(false);
   /* THE SAME TWO WAYS TO READ A LIST AS EVERY OTHER MODULE (Anir, Aug 30:
      "the table and the split view too on all the solutioning ones"). Meetings
@@ -257,7 +262,13 @@ export function MeetingsModule({
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const rows = (room === "planned" ? planned : completed).filter((m) =>
+    const rows = (room === "planned" ? planned : completed).filter(m =>
+      (!customerFilter.length || customerFilter.includes(m.customer)) &&
+      (!owners.length || owners.includes(m.owner ?? "")) &&
+      (!types.length || types.includes(m.type)) &&
+      (!dateFrom || (m.meetingAt ?? "").slice(0,10) >= dateFrom) &&
+      (!dateTo || (!!m.meetingAt && m.meetingAt.slice(0,10) <= dateTo))
+    ).filter((m) =>
       !q
         ? true
         : [m.title, m.customer, m.type, m.owner, m.ref, ...m.presenters, ...m.attendees]
@@ -282,7 +293,7 @@ export function MeetingsModule({
         return (a.owner ?? "").localeCompare(b.owner ?? "") || byDate(a, b);
       return room === "planned" ? byDate(a, b) : -byDate(a, b);
     });
-  }, [room, planned, completed, query, sort]);
+  }, [room, planned, completed, query, sort, customerFilter, owners, types, dateFrom, dateTo]);
 
   /* Soonest first while planning, most recent first when looking back. */
   const groups = useMemo(() => {
@@ -393,6 +404,12 @@ export function MeetingsModule({
         onQuery={setQuery}
         placeholder="Search meetings, customers, people…"
         searchAriaLabel="Search meetings"
+        onClearAll={() => { setQuery(""); setCustomers([]); setOwners([]); setTypes([]); setDateFrom(""); setDateTo(""); }}
+        groups={[
+          { key: "customer", label: "Customer", values: customerFilter, onChange: setCustomers, options: [...new Set(all.map(m => m.customer))].map(value => ({value,label:value})) },
+          { key: "owner", label: "Owner", values: owners, onChange: setOwners, options: [...new Set(all.map(m => m.owner || ""))].map(value => ({value,label:value || "Unassigned"})) },
+          { key: "type", label: "Meeting type", values: types, onChange: setTypes, options: [...new Set(all.map(m => m.type))].map(value => ({value,label:value})) },
+        ]}
 
         view={
           <ViewSwitch
@@ -408,7 +425,9 @@ export function MeetingsModule({
             }
           />
         }
-        filtersAfter={
+        filtersAfter={<>
+          <label className="text-xs text-text-secondary">From <input aria-label="Meetings from" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="rounded-lg border border-border-light bg-white p-2" /></label>
+          <label className="text-xs text-text-secondary">Through <input aria-label="Meetings through" type="date" min={dateFrom || undefined} value={dateTo} onChange={e => setDateTo(e.target.value)} className="rounded-lg border border-border-light bg-white p-2" /></label>
           <ColorSelect
             value={period}
             ariaLabel="Group meetings"
@@ -421,7 +440,7 @@ export function MeetingsModule({
               { value: "week", label: "By week", color: "var(--ink-violet-soft)", icon: CalendarClock },
             ]}
           />
-        }
+        </>}
         sort={
           <ColorSelect
             value={sort}

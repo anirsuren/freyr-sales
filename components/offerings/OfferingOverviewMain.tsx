@@ -7,16 +7,12 @@ import {
   Check,
   ChevronRight,
   DollarSign,
-  FolderOpen,
   KeyRound,
   Layers,
-  Package,
   ReceiptText,
   Building2,
 } from "lucide-react";
-import { AddMaterialButton } from "@/components/offerings/AddMaterialButton";
 import { OfferingCapabilities } from "@/components/offerings/OfferingCapabilities";
-import { MaterialsSection } from "@/components/offerings/MaterialsSection";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
@@ -337,8 +333,9 @@ export function OfferingOverviewMain({
           contracts recorded there yet, so every tile read 0 and the section
           was a row of zeros pretending to be a dashboard (Anir, Aug 7:
           "remove commercial performance on real mode, no real data right?").
-          It returns by itself once revenue lines exist. */}
-      {(
+          It remains available in Mock while the workflow and data are being
+          reviewed. */}
+      {!realMode && (
       <section className="py-7 border-b border-border-light">
         <SectionHeading
           icon={BarChart3}

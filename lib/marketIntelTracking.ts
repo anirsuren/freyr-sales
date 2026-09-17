@@ -1,3 +1,4 @@
+import { assertCompanyAdditionAllowed } from "./marketIntelCompanyLimit";
 import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 import { getDataMode } from "./dataMode";
 import { MI_COMPANIES } from "./marketIntelMock";
@@ -74,6 +75,7 @@ export type TrackedCompany = {
 };
 
 export type MarketIntelTracking = {
+  demoVersion?: number;
   mockHiddenStories?: Record<string,string[]>;
   companies: TrackedCompany[];
   people: TrackedPerson[];
@@ -292,6 +294,7 @@ function normalize(value: unknown): MarketIntelTracking {
     people: Array.isArray(raw.people) ? raw.people : [],
     divisions,
     mockHiddenStories: raw.mockHiddenStories,
+    demoVersion: raw.demoVersion,
     removedSeeds: Array.isArray(raw.removedSeeds)
       ? raw.removedSeeds.filter((v): v is string => typeof v === "string")
       : [],
@@ -478,7 +481,18 @@ function showroomTracking(): MarketIntelTracking {
       });
     }
   );
-  return { companies, people };
+  const roots = ["Arden", "Bellhaven", "Crestwell", "Dunmere", "Elmbridge", "Fairhaven", "Glenwick", "Harborcrest", "Ivydale", "Juniper", "Kingswell", "Larkspur", "Meridian", "Northvale", "Oakmere", "Pinehaven", "Quillstone", "Ridgewell", "Silverbrook", "Thornfield", "Umber", "Valewood", "Westhaven", "Yarrow", "Zephyr", "Aster", "Birchwell", "Cedarcrest", "Dovewell", "Evermere", "Foxglove", "Greenvale", "Highwater", "Ironwood", "Jadecrest", "Kestrel", "Linden", "Meadowvale", "Newbridge", "Oriole", "Primrose", "Redwood"];
+  roots.forEach((root, index) => {
+    const id = `mockgen-rich-${root.toLowerCase()}`;
+    const group = index < 30 ? "customer" : "competitor";
+    const division = (["MPR", "MDV", "CON"] as Division[])[index % 3];
+    companies.push({ id, name: `${root} ${index < 30 ? ["Biopharma", "MedTech", "Consumer Health"][index % 3] : "Regulatory Services"}`, group, industry: "Life sciences", hq: ["United States", "Germany", "India", "United Kingdom", "Singapore"][index % 5], website: `https://${root.toLowerCase()}.example`, linkedinUrl: "", competitors: [], keywords: ["regulatory", "clinical", "expansion"], note: "Fictional demonstration company.", addedAt: day(-60-index), divisions: [division] });
+    if (group === "customer") for (let seat = 0; seat < 3 + index % 4; seat++) {
+      const name = `${["Maya", "Leo", "Priya", "Owen", "Nora", "Arun"][seat % 6]} ${root}`;
+      people.push({id:`${id}-person-${seat}`,companyId:id,name,role:["VP Regulatory Affairs", "Head of Clinical Operations", "Quality Director", "Medical Affairs Lead", "R&D Director", "Market Access Lead"][seat],linkedinUrl:"",headline:"Sample industry contact",addedAt:day(-30)});
+    }
+  });
+  return { companies, people, demoVersion: 20260917 };
 }
 
 export async function readMarketIntelTracking(options?: {
@@ -486,7 +500,7 @@ export async function readMarketIntelTracking(options?: {
    *  made a moment ago by anyone is never written over. */
   fresh?: boolean;
 }): Promise<MarketIntelTracking> {
-  if (!hasTrackingDatabase()) return structuredClone(EMPTY);
+  if (!hasTrackingDatabase()) return getDataMode() === "mock" ? showroomTracking() : structuredClone(EMPTY);
   const row = rowId();
   const cached = (globalThis as any).__MI_TRACKING_CACHE__ as
     | { at: number; row: string; tracking: MarketIntelTracking }
@@ -507,15 +521,13 @@ export async function readMarketIntelTracking(options?: {
      contract lib/contracts.ts uses: the samples become an ordinary row that
      can then be added to, edited and emptied, and a demo somebody has
      deliberately cleared out stays cleared. */
-  if (getDataMode() === "mock" && !data) {
-    tracking = showroomTracking();
-    await trackingClient()
-      .from("offering_catalog_state")
-      .upsert({ id: row, catalog: tracking, updated_at: new Date().toISOString() })
-      .then(
-        () => undefined,
-        () => undefined
-      );
+  if (getDataMode() === "mock" && tracking.demoVersion !== 20260917) {
+    const samples = showroomTracking();
+    const existing = new Set(tracking.companies.map(company => company.id));
+    const existingPeople = new Set(tracking.people.map(person => person.id));
+    tracking = { ...tracking, companies: [...tracking.companies, ...samples.companies.filter(company => !existing.has(company.id))], people: [...tracking.people, ...samples.people.filter(person => !existingPeople.has(person.id))], demoVersion: 20260917 };
+    const { error: seedError } = await trackingClient().from("offering_catalog_state").upsert({id:row,catalog:tracking,updated_at:new Date().toISOString()});
+    if (seedError) throw new Error(`Could not populate sample Market Intel: ${seedError.message}`);
   }
   /* REAL MODE: the code's seed list joins the catalogue once, unticked, so
      nobody's page fills up by itself. Idempotent, and a seed an admin
@@ -567,6 +579,7 @@ export type TrackCompanyInput = {
 };
 
 export type TrackMeta = {
+  additionLimit?: number;
   addedBy?: TrackedCompany["addedBy"];
   divisions?: Division[];
 };
@@ -623,6 +636,7 @@ export async function trackCompany(
       addedAt: now,
     });
   }
+  assertCompanyAdditionAllowed(tracking.companies, meta.addedBy?.id, meta.additionLimit);
   tracking.companies.push(company);
   tracking.people.push(...people);
   if (company.divisions) {

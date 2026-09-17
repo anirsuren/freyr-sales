@@ -8,7 +8,7 @@ import { listStoredVoiceConversations } from "@/lib/voiceEvents";
 import { currentUserSetupNudges } from "@/lib/setupNudges";
 import { getDataMode } from "@/lib/dataMode";
 import { roadmapChangesForReader } from "@/lib/roadmapNotices";
-import { isOfferingsOnly } from "@/lib/release";
+import { isReleasedOnly } from "@/lib/release";
 import { readPerformance } from "@/lib/performance";
 import { getCurrentUser } from "@/lib/currentUser";
 
@@ -47,7 +47,7 @@ export async function GET() {
    * data-derived is skipped here, which also means the bell stops reading the
    * database every fifteen seconds to conclude there is nothing to say.
    */
-  if (isOfferingsOnly(getDataMode())) {
+  if (isReleasedOnly(getDataMode())) {
     return NextResponse.json({
       notifications: buildNotifications({
         sessions: [],

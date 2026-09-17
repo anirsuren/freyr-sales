@@ -969,6 +969,8 @@ const PAGE_WINDOW_DAYS = 90;
  * they are as true as the last refresh.
  */
 export type CompanyCard = {
+  windowDays?: number;
+  countsKnown?: boolean;
   id: string;
   name: string;
   group: "customer" | "competitor";
@@ -987,16 +989,16 @@ export type CompanyCard = {
   stories: FeedCompanySummary["stories"];
 };
 
-export function cardFromSummary(summary: FeedCompanySummary): CompanyCard {
+export function cardFromSummary(summary: FeedCompanySummary, windowDays = PAGE_WINDOW_DAYS): CompanyCard {
   const now = Date.now();
   const cutoff = now - WINDOW_DAYS * 86_400_000;
   const dates = summary.itemDates.filter((t) => Number.isFinite(t) && t > cutoff);
-  const { points, labels } = trendFromDates(dates);
+  const { points, labels } = trendFromDates(dates, windowDays);
   const mo = momentumFromDates(dates);
   const freshest =
     [summary.fetchedAt, summary.newsAt, summary.siteAt].filter(Boolean).sort().pop() ??
     summary.fetchedAt;
-  const pageCutoff = now - PAGE_WINDOW_DAYS * 86_400_000;
+  const pageCutoff = now - windowDays * 86_400_000;
   const inPageWindow = (values: (number | null)[]) =>
     values.filter((at) => at === null || at * 60_000 > pageCutoff).length;
   const shownCounts = summary.shown
@@ -1008,6 +1010,8 @@ export function cardFromSummary(summary: FeedCompanySummary): CompanyCard {
       }
     : null;
   return {
+    windowDays,
+    countsKnown: Boolean(summary.shown) || windowDays === PAGE_WINDOW_DAYS,
     id: summary.id,
     name: summary.name,
     group: summary.group,
@@ -1017,13 +1021,13 @@ export function cardFromSummary(summary: FeedCompanySummary): CompanyCard {
     updatedLabel: updatedLabel(freshest),
     momentumPct: mo.pct,
     itemsThisMonth: mo.thisMonth,
-    itemsInWindow: shownCounts ? shownCounts.posts + shownCounts.news + shownCounts.site : dates.length,
+    itemsInWindow: shownCounts ? shownCounts.posts + shownCounts.news + shownCounts.site : dates.filter(at => at > pageCutoff).length,
     trend: points,
     trendLabels: labels,
     counts: shownCounts ?? summary.counts,
     signalTotal: shownCounts ? shownCounts.signals : summary.signalTotal,
     signalCounts: summary.signalCounts,
-    stories: summary.stories,
+    stories: summary.stories.filter(story => !story.published || Date.parse(story.published) > pageCutoff),
   };
 }
 
@@ -1042,12 +1046,12 @@ function itemDates(company: FeedCompany): number[] {
  *  "this month" beside it, so the line and the number describe one thing. */
 export const TREND_DAYS = 30;
 
-export function trendFromDates(dates: number[]): { points: number[]; labels: string[] } {
+export function trendFromDates(dates: number[], days = TREND_DAYS): { points: number[]; labels: string[] } {
   const now = Date.now();
   const day = 86_400_000;
-  const points = new Array(TREND_DAYS).fill(0);
+  const points = new Array(days).fill(0);
   const labels: string[] = [];
-  for (let i = TREND_DAYS - 1; i >= 0; i -= 1) {
+  for (let i = days - 1; i >= 0; i -= 1) {
     labels.push(
       new Date(now - i * day).toLocaleDateString("en-US", {
         month: "short",
@@ -1057,7 +1061,7 @@ export function trendFromDates(dates: number[]): { points: number[]; labels: str
   }
   for (const t of dates) {
     const daysAgo = Math.floor((now - t) / day);
-    if (daysAgo >= 0 && daysAgo < TREND_DAYS) points[TREND_DAYS - 1 - daysAgo] += 1;
+    if (daysAgo >= 0 && daysAgo < days) points[days - 1 - daysAgo] += 1;
   }
   return { points, labels };
 }
@@ -1190,12 +1194,18 @@ export function deriveSignals(
       kinds = fallbackSignals(text, group);
       if (kinds[0] !== "others") why = signalWhy(group, kinds[0]);
     }
-    signals.push({ kinds, title, sourceLabel, url, date, why });
+    let hasCompetitorMention = false;
     for (const other of others) {
       if (other.found(text)) {
+        hasCompetitorMention = true;
         mentionCounts.set(other.name, (mentionCounts.get(other.name) ?? 0) + 1);
       }
     }
+    if (hasCompetitorMention && group === "customer" && !kinds.includes("competitor_mentions")) {
+      kinds = [...kinds.filter((kind) => kind !== "others"), "competitor_mentions"];
+      if (!why) why = signalWhy(group, "competitor_mentions");
+    }
+    signals.push({ kinds, title, sourceLabel, url, date, why });
   };
 
   for (const n of company.news) {
@@ -1298,8 +1308,16 @@ export function buildBriefing(
     posts,
     // Retained publisher evidence is for server-side verification/digests.
     // The browser needs summaries and links, not entire source documents.
-    news: news.map(({articleText: _text,articleReadAt: _readAt,...item})=>item),
-    site: site.map(({articleText: _text,articleReadAt: _readAt,...item})=>item),
+    news: news.map(({ articleText, articleReadAt, ...item }) => {
+      void articleText;
+      void articleReadAt;
+      return item;
+    }),
+    site: site.map(({ articleText, articleReadAt, ...item }) => {
+      void articleText;
+      void articleReadAt;
+      return item;
+    }),
     signals,
     competitorMentions,
   };

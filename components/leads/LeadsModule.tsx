@@ -103,7 +103,7 @@ const BLANK = {
      choosing a country can set the code before any digits are typed. A phone
      with no number is still no phone: `phone` stays empty until there are
      digits, and this only drives the picker. */
-  dialCode: "",
+  dialCode: "+1",
 };
 
 type Draft = typeof BLANK;
@@ -143,6 +143,7 @@ export function LeadsModule({
   const [owners, setOwners] = useState<string[]>([]);
   const [sort, setSort] = useState<"newest" | "oldest" | "stalest">("newest");
   const [groupBy, setGroupBy] = useState<"none" | "status" | "owner" | "source">("none");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Lead | null>(null);
@@ -260,6 +261,9 @@ export function LeadsModule({
             ...Object.fromEntries(
               Object.entries(lead).map(([k, v]) => [k, v ?? ""])
             ),
+            dialCode: splitPhone(lead.phone).dial ||
+              (lead.country ? dialOptions().find(option => option.label.endsWith(lead.country!))?.value : undefined) ||
+              "+1",
           } as Draft
         : { ...BLANK }
     );
@@ -476,20 +480,46 @@ export function LeadsModule({
           </PriorityTooltip>
         }
         filtersAfter={
-          <ColorSelect
-            value={groupBy}
-            onChange={(v) => setGroupBy(v as typeof groupBy)}
-            ariaLabel="Group leads"
-            minWidth={160}
-            dense
-            collapsible={false}
-            options={[
-              { value: "none", label: "No grouping", color: "#8E98A8" },
-              { value: "status", label: "By status", color: "var(--ink-bright-blue)" },
-              { value: "owner", label: "By owner", color: "var(--ink-violet-soft)" },
-              { value: "source", label: "By source", color: "#0F6E56" },
-            ]}
-          />
+          <div className="flex items-center gap-2">
+            <ColorSelect
+              value={groupBy}
+              onChange={(v) => setGroupBy(v as typeof groupBy)}
+              ariaLabel="Group leads"
+              minWidth={160}
+              dense
+              collapsible={false}
+              options={[
+                { value: "none", label: "No grouping", color: "#8E98A8" },
+                { value: "status", label: "By status", color: "var(--ink-bright-blue)" },
+                { value: "owner", label: "By owner", color: "var(--ink-violet-soft)" },
+                { value: "source", label: "By source", color: "#0F6E56" },
+              ]}
+            />
+            {sections && (
+              <button
+                type="button"
+                onClick={() => {
+                  const allClosed = sections.every((section) =>
+                    collapsedGroups.has(`${groupBy}:${section.key}`)
+                  );
+                  setCollapsedGroups(
+                    allClosed
+                      ? new Set()
+                      : new Set(sections.map((section) => `${groupBy}:${section.key}`))
+                  );
+                }}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 text-[11.5px] font-semibold text-text-secondary transition-colors hover:bg-surface hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+              >
+                {sections.every((section) =>
+                  collapsedGroups.has(`${groupBy}:${section.key}`)
+                ) ? (
+                  <><ChevronDown size={14} /> Open all</>
+                ) : (
+                  <><ChevronDown size={14} className="-rotate-90" /> Close all</>
+                )}
+              </button>
+            )}
+          </div>
         }
         sort={
           <ColorSelect
@@ -523,11 +553,37 @@ export function LeadsModule({
           }
         />
       ) : (
-        <div className="mt-4 overflow-hidden rounded-xl border border-border-light bg-white shadow-card">
+        <div className="mt-4 space-y-5">
+        {(sections ?? [{ key: "__all", items: shown }]).map(sec => (
+        <section key={sec.key} className="overflow-hidden rounded-xl border border-border-light bg-white shadow-card">
+          {sections && (
+            <button type="button"
+              aria-expanded={!collapsedGroups.has(`${groupBy}:${sec.key}`)}
+              onClick={() => setCollapsedGroups(previous => {
+                const next = new Set(previous);
+                const key = `${groupBy}:${sec.key}`;
+                if (next.has(key)) next.delete(key); else next.add(key);
+                return next;
+              })}
+              className="flex w-full items-center gap-2.5 px-4 py-3 text-left transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-blue-primary">
+              {groupBy === "owner" ? (
+                sec.key === "No owner"
+                  ? <UserRound size={20} className="text-text-tertiary" />
+                  : <Avatar name={sec.key} className="h-8 w-8 shrink-0 text-[10px]" />
+              ) : (
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: groupBy === "status" ? leadStatusColor(sec.items[0].status) : leadSourceColor(sec.items[0].source) }} />
+              )}
+              <span className="text-[14px] font-semibold text-text-primary">{sec.key}</span>
+              <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium text-text-secondary tnum">{sec.items.length} {sec.items.length === 1 ? "lead" : "leads"}</span>
+              <ChevronDown size={17} className={cn("ml-auto shrink-0 text-text-tertiary transition-transform", collapsedGroups.has(`${groupBy}:${sec.key}`) && "-rotate-90")} />
+            </button>
+          )}
           {/* The header row stays put while you scroll, the same as Team and
               Solutioning (Anir, Aug 9: "there should be an option to pin the
               row headers and the column headers if I want"). */}
-          <PinnableTable id="leads-table">
+          {(!sections || !collapsedGroups.has(`${groupBy}:${sec.key}`)) && (
+          <div className={sections ? "border-t border-border-light" : undefined}>
+          <PinnableTable id={sections ? `leads-table-${groupBy}-${sec.key}` : "leads-table"}>
           <table className="w-full min-w-[960px] text-left">
             <thead>
               <tr className="border-b border-border-light bg-surface/40 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:whitespace-nowrap [&>th]:px-4 [&>th]:py-2.5">
@@ -541,20 +597,7 @@ export function LeadsModule({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
-              {(sections ?? [{ key: "__all", items: shown }]).flatMap((sec) => [
-                ...(sections
-                  ? [
-                      <tr key={`group-${sec.key}`} className="bg-surface">
-                        <td colSpan={7} className="px-4 py-2 text-[12px] font-bold text-text-secondary">
-                          {sec.key}
-                          <span className="ml-1.5 tnum font-semibold opacity-70">
-                            {sec.items.length}
-                          </span>
-                        </td>
-                      </tr>,
-                    ]
-                  : []),
-                ...sec.items.map((lead) => {
+              {sec.items.map((lead) => {
                 const age = leadAgeDays(lead);
                 const isStale = isOpenLead(lead) && age >= 21;
                 const open = openRow === lead.id;
@@ -773,56 +816,56 @@ export function LeadsModule({
                                     </button>
                                   )}
                                 </div>
-                                <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
-                                  <span className="min-w-0">
-                                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"><Mail size={12} strokeWidth={2} aria-hidden="true" /> Email</span>
+                                <div className="mt-3 grid grid-cols-2 items-start gap-x-6 gap-y-4">
+                                  <span className="flex min-w-0 flex-col">
+                                    <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><Mail size={12} strokeWidth={2} aria-hidden="true" /> Email</span>
                                     {lead.email ? (
-                                      <a href={`mailto:${lead.email}`} onClick={(event) => event.stopPropagation()} className="mt-1 block min-w-0 text-[12.5px] font-semibold leading-snug text-blue-primary hover:underline">
-                                        <span className="min-w-0 break-words [overflow-wrap:anywhere]">{lead.email}</span>
+                                      <a href={`mailto:${lead.email}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-h-5 min-w-0 items-start leading-5 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                        <span className="min-w-0 truncate" title={lead.email}>{lead.email}</span>
                                       </a>
-                                    ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not added</span>}
+                                    ) : <span className="mt-1 flex min-h-5 items-center text-[12px] leading-5 text-text-tertiary">Not added</span>}
                                   </span>
-                                  <span className="min-w-0">
-                                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"><Phone size={12} strokeWidth={2} aria-hidden="true" /> Phone</span>
+                                  <span className="flex min-w-0 flex-col">
+                                    <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><Phone size={12} strokeWidth={2} aria-hidden="true" /> Phone</span>
                                     {lead.phone ? (
-                                      <a href={`tel:${lead.phone}`} onClick={(event) => event.stopPropagation()} className="mt-1 block min-w-0 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                      <a href={`tel:${lead.phone}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-h-5 min-w-0 items-start leading-5 text-[12.5px] font-semibold text-blue-primary hover:underline">
                                         <span className="min-w-0">{formatPhoneNumber(lead.phone)}</span>
                                       </a>
-                                    ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not added</span>}
+                                    ) : <span className="mt-1 flex min-h-5 items-center text-[12px] leading-5 text-text-tertiary">Not added</span>}
                                   </span>
-                                  <span className="min-w-0">
-                                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"><MapPin size={12} strokeWidth={2} aria-hidden="true" /> Country</span>
+                                  <span className="flex min-w-0 flex-col">
+                                    <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><MapPin size={12} strokeWidth={2} aria-hidden="true" /> Country</span>
                                     {lead.country ? (
-                                      <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
+                                      <span className="mt-1 flex min-h-5 min-w-0 leading-5 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
                                         <span className="text-[17px] leading-none" role="img" aria-label={`${lead.country} flag`}>{countryFlag(lead.country)}</span>
                                         <span className="min-w-0 truncate">{lead.country}</span>
                                       </span>
-                                    ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not added</span>}
+                                    ) : <span className="mt-1 flex min-h-5 items-center text-[12px] leading-5 text-text-tertiary">Not added</span>}
                                   </span>
-                                  <span className="min-w-0">
-                                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"><RadioTower size={12} strokeWidth={2} aria-hidden="true" /> Source</span>
-                                    <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
+                                  <span className="flex min-w-0 flex-col">
+                                    <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><RadioTower size={12} strokeWidth={2} aria-hidden="true" /> Source</span>
+                                    <span className="mt-1 flex min-h-5 min-w-0 leading-5 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
                                       <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: leadSourceColor(lead.source) }} aria-hidden="true" />
                                       <span className="min-w-0 truncate">{lead.source}</span>
                                     </span>
                                   </span>
-                                  <span className="min-w-0">
-                                    <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Account match</span>
+                                  <span className="flex min-w-0 flex-col">
+                                    <span className="flex h-4 shrink-0 items-center whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary">Account match</span>
                                     {linkedCustomer ? (
-                                      <Link href={`/customers/${linkedCustomer.id}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                      <Link href={`/customers/${linkedCustomer.id}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-h-5 min-w-0 leading-5 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
                                         <CompanyLogo name={linkedCustomer.name} className="h-5 w-5 shrink-0 rounded-md text-[7px]" />
                                         <span className="min-w-0 truncate">{linkedCustomer.name}</span>
                                       </Link>
-                                    ) : <span className="mt-1 block text-[12px] text-text-tertiary">Not matched</span>}
+                                    ) : <span className="mt-1 flex min-h-5 items-center text-[12px] leading-5 text-text-tertiary">Not matched</span>}
                                   </span>
-                                  <span className="min-w-0">
-                                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"><UserRound size={12} strokeWidth={2} aria-hidden="true" /> Owner</span>
+                                  <span className="flex min-w-0 flex-col">
+                                    <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><UserRound size={12} strokeWidth={2} aria-hidden="true" /> Owner</span>
                                     {lead.owner ? (
-                                      <Link href={`/analytics/reps/${repSlug(lead.owner)}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                      <Link href={`/analytics/reps/${repSlug(lead.owner)}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-h-5 min-w-0 leading-5 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
                                         <Avatar name={lead.owner} className="h-5 w-5 shrink-0 text-[7px]" />
                                         <span className="min-w-0 truncate">{lead.owner}</span>
                                       </Link>
-                                    ) : <span className="mt-1 block text-[12px] text-text-tertiary">Unassigned</span>}
+                                    ) : <span className="mt-1 flex min-h-5 items-center text-[12px] leading-5 text-text-tertiary">Unassigned</span>}
                                   </span>
                                 </div>
 
@@ -857,11 +900,14 @@ export function LeadsModule({
                     )}
                   </Fragment>
                 );
-                }),
-              ])}
+                })}
             </tbody>
           </table>
           </PinnableTable>
+          </div>
+          )}
+        </section>
+        ))}
         </div>
       )}
 
@@ -1026,9 +1072,9 @@ export function LeadsModule({
                   const hit = dialOptions().find((d) => d.label.endsWith(v));
                   const parsed = splitPhone(editing.phone);
                   const dial = editing.dialCode || parsed.dial;
-                  /* Choosing a country fills the dialling code, unless one is
-                     already set. */
-                  const nextDial = dial || hit?.value || "";
+                  /* With no number entered, follow the selected country instead of
+                     retaining the initial default. Preserve existing numbers. */
+                  const nextDial = parsed.number ? dial : hit?.value || dial;
                   setEditing({
                     ...editing,
                     country: v,
@@ -1075,14 +1121,11 @@ export function LeadsModule({
                       ariaLabel="Country dialling code"
                       collapsible={false}
                       minWidth={104}
-                      triggerLabel={dial || "Code"}
+                      triggerLabel={dial}
                       onChange={(v) =>
                         setEditing({ ...editing, dialCode: v, phone: joinPhone(v, number) })
                       }
-                      options={[
-                        { value: "", label: "Code", color: "#C7CDD6" },
-                        ...dialOptions(),
-                      ]}
+                      options={dialOptions()}
                     />
                     <Input
                       value={formatPhoneNumber(number)}

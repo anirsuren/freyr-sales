@@ -89,16 +89,14 @@ export function CommandPalette({
   open,
   onClose,
   anchored = false,
-  offeringsOnly = false,
-  customersReleased = false,
+  releasedOnly = false,
   moduleAccess = null,
 }: {
   open: boolean;
   onClose: () => void;
   // anchored = render as a dropdown under the top-bar search (no dark modal)
   anchored?: boolean;
-  offeringsOnly?: boolean;
-  customersReleased?: boolean;
+  releasedOnly?: boolean;
   /** This person's resolved module map — the same one the sidebar filters on. */
   moduleAccess?: Record<string, Access> | null;
 }) {
@@ -150,25 +148,18 @@ export function CommandPalette({
         const r = await fetch(`/api/search?q=${encodeURIComponent(asked)}`);
         const data = await r.json();
         if (latestQuery.current !== asked) return;
-        const next = data.results || [];
-        setResults(
-          offeringsOnly
-            ? next.filter(
-                (result: Result) =>
-                  result.type === "Offering" ||
-                  /* The server only returns a Market Intel company to someone who can
-                     open the module (Sep 11), so it passes the offerings-only gate. */
-                  result.type === "Market Intel" ||
-                  (customersReleased && result.type === "Customer")
-              )
-            : next
-        );
+        // The endpoint applies both the release allow-list and the current
+        // user's module privileges before creating any rows. A second client
+        // allow-list used to discard released Opportunity results in Ready
+        // now, so the dropdown disagreed with both the sidebar and direct
+        // navigation.
+        setResults(data.results || []);
       } catch {
         if (latestQuery.current === asked) setResults([]);
       }
     }, 140);
     return () => clearTimeout(t);
-  }, [customersReleased, offeringsOnly, q]);
+  }, [q]);
 
   const go = useCallback(
     (href: string) => {
@@ -243,9 +234,9 @@ export function CommandPalette({
           // not type any of them. The privilege table is the thing in charge
           // (Suren, Aug 29), so search has to read it too.
           canAccessModuleWith(n.href, me.role, moduleAccess) &&
-          (!offeringsOnly || isOfferingsReleasePath(n.href))
+          (!releasedOnly || isOfferingsReleasePath(n.href))
       ),
-    [offeringsOnly, q, me.role, moduleAccess]
+    [releasedOnly, q, me.role, moduleAccess]
   );
 
   const agentMatches = useMemo(
@@ -253,8 +244,8 @@ export function CommandPalette({
       (q.trim()
         ? AGENT_CMDS.filter((c) => c.label.toLowerCase().includes(q.toLowerCase()))
         : AGENT_CMDS
-      ).filter((c) => !offeringsOnly || RELEASED_AGENT_CMDS.has(c.key)),
-    [offeringsOnly, q]
+      ).filter((c) => !releasedOnly || RELEASED_AGENT_CMDS.has(c.key)),
+    [releasedOnly, q]
   );
 
   // Flat, ordered list of everything selectable — powers both render + keyboard nav.
@@ -343,7 +334,7 @@ export function CommandPalette({
         if (it) {
           e.preventDefault();
           it.run();
-        } else if (q.trim() && !offeringsOnly) {
+        } else if (q.trim() && !releasedOnly) {
           // /search is the everything-page: customers, contacts, sessions.
           // In the offerings-only release pressing Enter on a miss must not
           // walk someone into an unreleased module (the middleware would bounce
@@ -354,7 +345,7 @@ export function CommandPalette({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, items, sel, q, onClose, go, offeringsOnly]);
+  }, [open, items, sel, q, onClose, go, releasedOnly]);
 
   if (!open) return null;
 
@@ -383,7 +374,7 @@ export function CommandPalette({
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder={offeringsOnly ? "Search offerings…" : "Search, set a goal, or run a play…"}
+            placeholder={releasedOnly ? "Search available modules and records…" : "Search, set a goal, or run a play…"}
             className="flex-1 h-12 bg-transparent outline-none focus:shadow-none focus-visible:shadow-none text-[15px] text-text-primary placeholder:text-text-tertiary"
           />
           <span className="text-[11px] text-text-tertiary border border-border-light rounded px-1.5 py-0.5">
@@ -483,14 +474,14 @@ export function CommandPalette({
 
           {q.trim() && items.length === 0 && (
             <p className="px-4 py-3 text-[13px] text-text-tertiary">
-              {offeringsOnly
-                ? "No offerings match that."
+              {releasedOnly
+                ? "No available results match that."
                 : "No matches: press Enter to search everything."}
             </p>
           )}
         </div>
 
-        {q.trim() && !offeringsOnly && (
+        {q.trim() && !releasedOnly && (
           <button
             onClick={() => go(`/search?q=${encodeURIComponent(q.trim())}`)}
             className="w-full border-t border-border-light px-4 py-2.5 text-[13px] font-semibold text-blue-primary text-left hover:bg-surface transition-colors"

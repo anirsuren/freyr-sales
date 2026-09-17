@@ -52,8 +52,10 @@ function client() {
   });
 }
 
+function bookmarkPrefix() { return getDataMode() === "mock" ? "mi-bookmarks-mock" : "mi-bookmarks"; }
+
 function rowId(scope: WorkspaceMemberScope) {
-  return `mi-bookmarks:${scope.workspaceId}:${scope.userId}`;
+  return `${bookmarkPrefix()}:${scope.workspaceId}:${scope.userId}`;
 }
 
 function ids(value: unknown): string[] {
@@ -79,9 +81,9 @@ export async function readMarketIntelBookmarks(
     .eq("id", rowId(scope))
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data && getDataMode() === "mock") {
+  if (getDataMode() === "mock" && data?.catalog?.demoVersion !== 20260917) {
     const tracking = await (await import("./marketIntelTracking")).readMarketIntelTracking();
-    return writeBookmarks(scope, tracking.companies.map(c=>c.id), []);
+    return writeBookmarks(scope, [...new Set([...ids(data?.catalog?.companyIds), ...tracking.companies.map(c=>c.id)])], [...new Set([...ids(data?.catalog?.starredIds), ...tracking.companies.slice(0,4).map(c=>c.id)])]);
   }
   const catalog = data?.catalog as
     | { companyIds?: unknown; starredIds?: unknown; updatedAt?: unknown }
@@ -108,7 +110,7 @@ export async function readWorkspaceMarketIntelBookmarks(
   const { data, error } = await db
     .from("offering_catalog_state")
     .select("catalog")
-    .like("id", `mi-bookmarks:${workspaceId}:%`);
+    .like("id", `${bookmarkPrefix()}:${workspaceId}:%`);
   if (error) throw new Error(error.message);
   for (const row of data || []) {
     const catalog = row.catalog as {
@@ -199,7 +201,7 @@ export async function saveMarketIntelBookmarkChanges(
     const merged = applyBookmarkChanges(current, changes);
     const updatedAt = new Date().toISOString();
     const next = { ...merged, updatedAt };
-    const row = { id: rowId(scope), catalog: { workspaceId: scope.workspaceId, userId: scope.userId, ...next }, updated_at: updatedAt };
+    const row = { id: rowId(scope), catalog: { workspaceId: scope.workspaceId, userId: scope.userId, ...next, ...(getDataMode() === "mock" ? {demoVersion:20260917} : {}) }, updated_at: updatedAt };
     if (!data) {
       const { error: insertError } = await db.from("offering_catalog_state").insert(row);
       if (!insertError) return next;
@@ -234,6 +236,7 @@ async function writeBookmarks(
       catalog: {
         workspaceId: scope.workspaceId,
         userId: scope.userId,
+        ...(getDataMode() === "mock" ? {demoVersion:20260917} : {}),
         companyIds: next.companyIds,
         starredIds: next.starredIds,
         updatedAt: next.updatedAt,
@@ -258,7 +261,7 @@ export async function readMarketIntelFollowers(): Promise<Record<string, string[
   const { data, error } = await db
     .from("offering_catalog_state")
     .select("catalog")
-    .like("id", "mi-bookmarks:%");
+    .like("id", `${bookmarkPrefix()}:%`);
   if (error) throw new Error(error.message);
   const memberIds = await localMarketIntelMemberIds();
   for (const row of data || []) {
@@ -276,7 +279,7 @@ export async function forgetMarketIntelCompany(companyId: string): Promise<numbe
   const { data, error } = await db
     .from("offering_catalog_state")
     .select("id, catalog")
-    .like("id", "mi-bookmarks:%");
+    .like("id", `${bookmarkPrefix()}:%`);
   if (error) throw new Error(error.message);
   let touched = 0;
   for (const row of data || []) {

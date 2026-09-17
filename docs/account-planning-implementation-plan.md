@@ -1,6 +1,6 @@
 # Account Planning implementation plan
 
-Status: product and engineering plan, not implemented and not deployed  
+Status: Mock-mode review slice implemented locally; production data model and rollout remain unimplemented and undeployed
 Source: Suren's September 14, 2026 account-planning direction, plus a code review of the current Customers module
 
 ## Product definition

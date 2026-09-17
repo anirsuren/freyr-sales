@@ -101,7 +101,8 @@ export async function PUT(request: NextRequest) {
       const bookmarks = await saveMarketIntelBookmarkChanges(scope, changes);
       const waking = changes.filter((c) => c.on && hadNobody(c.id)).map((c) => c.id);
       if (getDataMode() === "live" && waking.length > 0) after(() => resumeCompaniesIfStale(waking));
-      return NextResponse.json({ ok: true, companyIds: bookmarks.companyIds, starredIds: bookmarks.starredIds });
+      const stopped = changes.filter(c => !c.on && !collectedAnyway.has(c.id) && !othersHaveIt(c.id)).length;
+      return NextResponse.json({ ok: true, companyIds: bookmarks.companyIds, starredIds: bookmarks.starredIds, stopped });
     }
 
     if (batch?.length) {

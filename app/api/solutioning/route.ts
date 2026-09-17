@@ -1,3 +1,4 @@
+import { canAssignSolutioning } from "@/lib/solutioningValidation";
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -99,15 +100,6 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  /* WRITE IS ITS OWN PERMISSION (Suren, Aug 29). Refuses before the
-     handler reads a body, so a person who may READ this module cannot
-     change it. Falls through to the old role rules while the privilege
-     table is not being enforced. */
-  {
-    const refusal = await moduleWriteRefusal("/solutioning");
-    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
-  }
-
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
@@ -122,6 +114,19 @@ export async function POST(req: NextRequest) {
   const fulfiller = managerial || me.role === "sol_member";
   const body = (await req.json().catch(() => ({}))) ?? {};
   const op = String(body.op ?? "");
+  const held = privilegesForPerson(await readPrivileges(), me.name);
+  const admin = me.role === "admin" || held.includes("admin");
+  // Assignment has its own owner permission, independent of request editing.
+  if (!admin && op !== "set-workstream") {
+    const refusal = await moduleWriteRefusal("/solutioning");
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+  }
+  if (!admin && op === "create" && !["submission", "presentation"].includes(String(body.type ?? "request")) &&
+      !held.some(role => role === "bd_owner" || role === "bd_member") &&
+      me.role !== "bd_owner" && me.role !== "bd_member") {
+    return NextResponse.json({ error: "Only BD Members and BD Owners can create requests." }, { status: 403 });
+  }
+
 
   try {
     if (op === "create") {
@@ -155,7 +160,7 @@ export async function POST(req: NextRequest) {
       const refusal = isDeliverable
         ? await moduleCreateRefusal(`/solutioning?tab=${rawTypeForGate}s`)
         : await moduleWriteRefusal("/solutioning");
-      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      if (!admin && refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       const kind = body.kind as SolutioningKind;
       if (!["submission", "presentation", "meeting"].includes(kind)) {
         return NextResponse.json(
@@ -420,12 +425,7 @@ export async function POST(req: NextRequest) {
          view access to the request itself, so this operation checks the
          person's explicit privilege instead of smuggling general edit access
          back in through the module row. Admin remains the workspace override. */
-      const held = privilegesForPerson(await readPrivileges(), me.name);
-      if (
-        me.role !== "admin" &&
-        !held.includes("admin") &&
-        !held.includes("sol_owner")
-      ) {
+      if (!canAssignSolutioning(me.role, held)) {
         return NextResponse.json(
           { error: "Only a Solutioning Owner can assign this request." },
           { status: 403 }
@@ -494,7 +494,12 @@ export async function POST(req: NextRequest) {
           doc.addedBy.trim().toLowerCase() === me.name.trim().toLowerCase(),
       });
     } else if (op === "update") {
-      if (!(iRequested || iOwn || managerial)) {
+      if (!admin && (target.type ?? "request") === "request" &&
+          !held.some(role => role === "bd_owner" || role === "bd_member") &&
+          me.role !== "bd_owner" && me.role !== "bd_member") {
+        return NextResponse.json({ error: "Only BD Members and BD Owners can edit requests." }, { status: 403 });
+      }
+      if (!admin && !(iRequested || iOwn || managerial)) {
         return NextResponse.json(
           { error: "Only the requester, the owner or a manager can edit this." },
           { status: 403 }

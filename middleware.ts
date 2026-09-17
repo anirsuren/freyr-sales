@@ -121,8 +121,15 @@ function loginUrl(request: NextRequest, authMode: string | undefined): URL {
   return url;
 }
 
-function offeringsOnly(_request: NextRequest) {
-  return process.env.NEXT_PUBLIC_RELEASE_MODE === "offerings";
+function readyNow(request: NextRequest) {
+  if (process.env.NEXT_PUBLIC_RELEASE_MODE === "offerings") return true;
+  if (process.env.DATA_MODE_LOCKED === "1") {
+    return process.env.DEFAULT_DATA_MODE !== "mock";
+  }
+  return (
+    !request.nextUrl.pathname.startsWith("/mock-mode") &&
+    request.cookies.get(DATA_MODE_COOKIE)?.value !== "mock"
+  );
 }
 
 function securityHeaders(response: NextResponse, requestId: string) {
@@ -365,7 +372,7 @@ export async function middleware(request: NextRequest) {
         : !!request.headers.get("x-ms-client-principal");
 
   if (
-    offeringsOnly(request) &&
+    readyNow(request) &&
     !pathname.startsWith("/api/") &&
     !isPublicPath(pathname) &&
     // The released module + the handful of non-module pages (sign-in, the
@@ -506,7 +513,8 @@ export async function middleware(request: NextRequest) {
     const left = appSession.exp - Math.floor(Date.now() / 1000);
     if (left > 0 && left < APP_SESSION_TTL_SECONDS / 2) {
       try {
-        const { exp: _dropped, ...user } = appSession;
+        const { exp: droppedExpiry, ...user } = appSession;
+        void droppedExpiry;
         response.cookies.set(APP_SESSION_COOKIE, await signAppSession(user), {
           httpOnly: true,
           sameSite: "lax",

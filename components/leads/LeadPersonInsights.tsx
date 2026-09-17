@@ -1,8 +1,9 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Clock3, Pencil, Target } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, AlertCircle, CheckCircle2, Clock3, Pencil, Target } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { isOpenLead, leadAgeDays, type Lead } from "@/lib/leadsShared";
+import { isOpenLead, leadAgeDays, leadStatusColor, type Lead } from "@/lib/leadsShared";
 
 const FOLLOW_UP_DAYS = 21;
 
@@ -44,81 +45,88 @@ export function LeadPersonInsights({
     ? lead.status === "Converted" ? "#15803D" : "var(--status-red)"
     : overdueBy > 0 ? "var(--ink-orange)" : "var(--ink-bright-blue)";
 
+  const statusColor = leadStatusColor(lead.status);
+  const explanation = lead.status === "Converted"
+    ? "This lead is now an opportunity. Manage the deal and its next steps there."
+    : lead.status === "Disqualified"
+      ? lead.disqualifiedReason || "This lead is closed. No further outreach is needed."
+      : {
+          New: "Reach out to understand what they need and who is involved.",
+          Contacted: "Clarify the scope, timing, and who makes the decision.",
+          Qualifying: "Review the requirements together and agree on the next step.",
+          Nurturing: "Keep the conversation moving with a relevant follow-up.",
+        }[lead.status];
+
   return (
-    <section className="rounded-xl border border-border-light bg-white p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Lead follow-up</span>
-          <p className="mt-1 text-[12px] text-text-secondary">
-            {open ? "What needs attention before this lead moves forward" : "The final state and any remaining record details"}
-          </p>
-        </div>
-        {missingChecks.length > 0 && (
-          <span className="rounded-full bg-[rgba(194,65,12,0.08)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--ink-orange)] tnum">
-            {missingChecks.length} {missingChecks.length === 1 ? "detail" : "details"} missing
-          </span>
-        )}
-      </div>
+    <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border-light bg-white">
+      <header className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
+        <h3 className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Lead follow-up</h3>
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10.5px] font-semibold"
+          style={{ color: statusColor, backgroundColor: `color-mix(in srgb, ${statusColor} 9%, transparent)` }}>
+          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
+          {lead.status}
+        </span>
+      </header>
 
-      {missingChecks.length > 0 ? (
-        <div className="mt-3 rounded-lg bg-[rgba(194,65,12,0.055)] p-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[color:var(--ink-orange)]">
-              <AlertCircle size={13} strokeWidth={2.2} />
-              Add the missing {missingChecks.length === 1 ? "detail" : "details"}
-            </p>
-            {onEdit && (
-              <button
-                type="button"
-                onClick={(event) => { event.stopPropagation(); onEdit(); }}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-blue-primary hover:bg-blue-light"
-              >
-                <Pencil size={12} strokeWidth={2.2} /> Edit lead
-              </button>
-            )}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {missingChecks.map((check) => (
-              <span key={check.label} className="rounded-md border border-[rgba(194,65,12,0.13)] bg-white px-2 py-1 text-[10.5px] font-medium text-text-secondary">
-                {check.label}
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#15803D]">
-          <CheckCircle2 size={13} strokeWidth={2.3} /> Contact and qualification details complete
-        </p>
-      )}
-
-      <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        <div className="rounded-lg border border-border-light bg-[var(--surface)] p-3">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-            <Clock3 size={12} strokeWidth={2.2} /> Follow-up timing
-            <InfoHint text="Time since the lead was last updated. Open leads should receive another touch within 21 days." />
-          </div>
-          <div className="mt-2 flex items-baseline justify-between gap-3">
-            <p className="text-[17px] font-bold leading-none text-text-primary tnum">{open ? `${age} ${age === 1 ? "day" : "days"}` : "Closed"}</p>
-            <span className="text-right text-[10.5px] font-semibold" style={{ color: clockColor }}>
-              {!open ? lead.status : overdueBy > 0 ? `${overdueBy}d overdue` : remaining === 0 ? "Due today" : `${remaining}d remaining`}
-            </span>
-          </div>
-          {open && (
-            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-border-light">
-              <div className="h-full rounded-full" style={{ width: `${activityPct}%`, background: clockColor }} />
-            </div>
+      <div className="flex items-start gap-3 px-4 py-4">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
+          {open ? <Target size={17} /> : <CheckCircle2 size={17} />}
+        </span>
+        <div className="min-w-0">
+          <h4 className="text-[15px] font-semibold leading-snug text-text-primary">{recommendedAction(lead)}</h4>
+          <p className="mt-1.5 text-[12px] leading-relaxed text-text-secondary">{explanation}</p>
+          {lead.status === "Converted" && lead.convertedOpportunityId && (
+            <Link href={`/opportunities/${lead.convertedOpportunityId}`}
+              onClick={event => event.stopPropagation()}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-primary px-3 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-blue-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-primary">
+              Open opportunity <ArrowRight size={14} />
+            </Link>
           )}
         </div>
-
-        <div className="rounded-lg border border-border-light bg-[var(--surface)] p-3">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-            <Target size={12} strokeWidth={2.2} /> Recommended action
-            <InfoHint text="A practical next step based on the lead's current status." />
-          </div>
-          <p className="mt-2 text-[13px] font-semibold leading-snug text-blue-primary">{recommendedAction(lead)}</p>
-          <p className="mt-1 text-[10.5px] text-text-tertiary">Suggested from the current {lead.status.toLowerCase()} status.</p>
-        </div>
       </div>
+
+      {open && (
+        <div className="mx-4 border-t border-border-light py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-text-secondary">
+              <Clock3 size={13} className="shrink-0" />
+              <span><strong className="font-semibold text-text-primary">{age} {age === 1 ? "day" : "days"}</strong> since last update</span>
+              <InfoHint text="Time since the lead was last updated. Open leads should receive another touch within 21 days." />
+            </span>
+            <span className="text-[11px] font-semibold tnum" style={{ color: clockColor }}>
+              {overdueBy > 0 ? `${overdueBy}d overdue` : remaining === 0 ? "Due today" : `${remaining}d remaining`}
+            </span>
+          </div>
+          <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-border-light">
+            <div className="h-full rounded-full" style={{ width: `${activityPct}%`, background: clockColor }} />
+          </div>
+        </div>
+      )}
+
+      <footer className="mt-auto border-t border-border-light px-4 py-3">
+        {missingChecks.length > 0 ? (
+          <>
+            <div className="flex items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[color:var(--ink-orange)]">
+                <AlertCircle size={13} className="shrink-0" />
+                {missingChecks.length} {missingChecks.length === 1 ? "detail" : "details"} to complete
+              </p>
+              {onEdit && (
+                <button type="button" onClick={event => { event.stopPropagation(); onEdit(); }}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-blue-primary hover:bg-blue-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+                  <Pencil size={12} /> Edit lead
+                </button>
+              )}
+            </div>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-text-secondary">{missingChecks.map(check => check.label).join(" · ")}</p>
+          </>
+        ) : (
+          <p className="flex items-center gap-2 text-[11px] text-text-secondary">
+            <CheckCircle2 size={14} className="shrink-0 text-[#15803D]" />
+            Contact and qualification details complete
+          </p>
+        )}
+      </footer>
     </section>
   );
 }

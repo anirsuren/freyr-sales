@@ -1,3 +1,4 @@
+import { validateNewSolutioningRequest } from "./solutioningValidation";
 import { getDataMode } from "./dataMode";
 import { mockFillSolutioning, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
 import { todayISO } from "@/lib/utils";
@@ -1075,6 +1076,7 @@ export async function createRequest(input: {
   /** One per division, pre-filled with the configured lead (SOL-008). */
   workstreams?: SolutionWorkstream[];
 }): Promise<SolutionRequest> {
+  validateNewSolutioningRequest(input, todayISO());
   return withWrite(async () => buildRecord(await readRow(), input, true));
 }
 
@@ -1092,15 +1094,6 @@ async function buildRecord(
 ): Promise<SolutionRequest> {
   {
     const title = str(input.title, 200);
-    /* A NEW request cannot already be late (Anir, Sep 6: "make sure this is
-       never possible. When I request it, the needed date should always be in
-       the future"). Only creation checks — an old request keeps its history,
-       and completing or editing one does not trip over a date that was fine
-       when it was set. Compared as dates, so "today" still counts: due later
-       today is a legitimate ask. */
-    const neededByInput = str(input.neededBy, 10);
-    if (neededByInput && neededByInput < todayISO())
-      throw new Error("The needed date has to be today or later.");
     if (!title) throw new Error("Give the request a title.");
     const customer = str(input.customer, 120);
     if (!customer) throw new Error("Pick the customer this is for.");

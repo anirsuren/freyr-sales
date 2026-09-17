@@ -1,3 +1,5 @@
+import { BD_COMPANY_LIMIT } from "@/lib/marketIntelCompanyLimit";
+import { marketIntelAddRefusal } from "@/lib/marketIntelAddAccess";
 import { ArrowLeft } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { ManageCompaniesPanel } from "@/components/market-intel/ManageCompaniesButton";
@@ -12,7 +14,7 @@ import {
 import { readMarketIntelSummaries } from "@/lib/marketIntelRead";
 import { buildManagedCompanies } from "@/lib/marketIntelManaged";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
-import { requireModuleAccess, moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +46,7 @@ export default async function ManageCompaniesPage({
   const { tab } = await searchParams;
   const group = tab === "competitors" ? "competitor" : "customer";
   /* Adding to the watch list is a write, and each add fires a paid scrape. */
-  const canTrack = !(await moduleWriteRefusal("/market-intel"));
+  const canTrack = !(await marketIntelAddRefusal());
   const [tracking, intel, followers, user, scope] = await Promise.all([
     readMarketIntelTracking({ fresh: true }).catch(() => ({ companies: [], people: [] })),
     readMarketIntelSummaries().catch(() => null),
@@ -77,6 +79,7 @@ export default async function ManageCompaniesPage({
         group={group}
         isAdmin={user.role === "admin"}
         canWrite={canTrack}
+        additionsRemaining={user.role === "bd_member" ? Math.max(0, BD_COMPANY_LIMIT - tracking.companies.filter(company => company.addedBy?.id === scope?.userId).length) : undefined}
         myIds={mine.companyIds}
         starredIds={mine.starredIds}
       />

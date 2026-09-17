@@ -5,6 +5,7 @@ import { getRole } from "@/lib/role";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { performanceRoomsForViewer } from "@/lib/performanceShared";
 
 export const metadata = { title: "Goals" };
 export const dynamic = "force-dynamic";
@@ -23,9 +24,10 @@ export default async function PerformanceIndex() {
     getCurrentUser(),
     getRole(),
   ]);
-  if (isManagerOrAdmin(role)) redirect("/performance/org");
-  const iHeadAGroup = state.groups.some(
-    (g) => g.head.trim().toLowerCase() === me.name.trim().toLowerCase()
+  const [firstRoom] = performanceRoomsForViewer(
+    state,
+    me.name,
+    isManagerOrAdmin(role)
   );
-  redirect(iHeadAGroup ? "/performance/groups" : "/performance/people");
+  redirect(`/performance/${firstRoom}`);
 }

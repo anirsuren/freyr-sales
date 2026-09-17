@@ -341,6 +341,19 @@ export async function PATCH(
       ? current
       : [...current, body.addOfferingInUse];
   }
+  // The offering page uses one checkbox per customer. A checked row adds this
+  // offering; clearing it removes only this offering and preserves every other
+  // customer relationship.
+  if (body.setOfferingInUse && typeof body.setOfferingInUse === "object") {
+    const offeringId = String(body.setOfferingInUse.offeringId || "").trim();
+    const on = body.setOfferingInUse.on === true;
+    if (offeringId) {
+      const current = customer.offerings_in_use || [];
+      patch.offerings_in_use = on
+        ? Array.from(new Set([...current, offeringId]))
+        : current.filter((id) => id !== offeringId);
+    }
+  }
   // Commercial detail per in-use offering: revenue
   // lines keyed by offering. Sanitized so bad input can't corrupt the store.
   // ADD ONE COMPONENT WITHOUT KNOWING THE REST. The FDL component page

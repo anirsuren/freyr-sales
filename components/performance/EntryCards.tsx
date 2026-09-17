@@ -748,7 +748,7 @@ export function SentBackWatchCard({
           </span>
         </span>
       </button>
-      {expanded && (
+      <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1260px] table-fixed border-collapse">
             <colgroup>
@@ -821,7 +821,7 @@ export function SentBackWatchCard({
             </tbody>
           </table>
         </div>
-      )}
+      </div>
     </Card>
   );
 }
@@ -887,7 +887,8 @@ export function SentBackCard({
           </span>
         </span>
       </button>
-      {expanded && <ul className="divide-y divide-border-light">
+      <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
+        <ul className="divide-y divide-border-light">
         {rejected.map((a) => {
           const goal = state.goals.find((g) => g.id === a.goalId);
           return (
@@ -952,7 +953,8 @@ export function SentBackCard({
             </li>
           );
         })}
-      </ul>}
+        </ul>
+      </div>
     </Card>
   );
 }
@@ -1096,10 +1098,12 @@ export function MyEntriesCard({
      header counts rejections wherever they are, so a ninth-newest sent-back
      claim was being announced by a table that then did not contain it — a
      fix nobody could reach from the one place that demands it. */
+  const resultPriority = (entry: PerfActual) =>
+    awaitingTheirFix(entry) ? 0 : entryStatus(entry) === "verified" ? 2 : 1;
   const mine = [
     ...all.slice(0, 8),
     ...all.slice(8).filter((a) => awaitingTheirFix(a)),
-  ];
+  ].sort((a, b) => resultPriority(a) - resultPriority(b));
   if (mine.length === 0) return null;
 
   return (
@@ -1156,7 +1160,8 @@ export function MyEntriesCard({
             {mine.length} {mine.length === 1 ? "entry" : "entries"}
           </span>
         </button>
-        {expanded && <div className="overflow-x-auto">
+        <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
+        <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] border-collapse">
             <thead>
               <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
@@ -1381,10 +1386,10 @@ export function MyEntriesCard({
                         </span>
                       </td>
                     </tr>
-                    {open && (
-                      <tr className="!border-t-0 bg-surface">
-                        <td
-                          colSpan={8}
+                    <tr className="!border-t-0 bg-surface">
+                        <td colSpan={8} className="max-w-0 p-0">
+                          <div className="freyr-fold" data-open={open ? "true" : "false"}>
+                          <div
                           className={cn(
                             /* max-w-0 pins the spanning cell to the width the
                                8 columns already have, so a wide expansion can
@@ -1395,8 +1400,7 @@ export function MyEntriesCard({
                             sentBack
                               ?"[box-shadow:inset_3px_0_0_0_#DC2626]"
                               :"[box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-                          )}
-                        >
+                          )}>
                           {/* THE REJECTION LEADS (Anir, Aug 19: "if it's sent
                               back it has to look more prominent than this").
                               It used to be a pale blue strip under everything
@@ -1608,16 +1612,17 @@ export function MyEntriesCard({
                                 ) : null}
                               </div>
                             )}
-
+                          </div>
+                          </div>
                         </td>
                       </tr>
-                    )}
                   </Fragment>
                 );
               })}
             </tbody>
           </table>
-        </div>}
+        </div>
+        </div>
       </Card>
       {/* THE SAME REVIEW POPUP THE QUEUE OPENS. One dialog for signing a
           claim off, wherever you happen to be standing when you decide to. */}
@@ -2149,7 +2154,9 @@ export function VerifyQueueCard({
         </span>
         )}
       </div>
-      {expanded && (queue.length === 0 ? (
+      <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
+      <div>
+      {queue.length === 0 ? (
         (() => {
           /* AN EMPTY QUEUE IS NOT ALWAYS AN EMPTY DESK. Claims this reader
              sent back left the queue on purpose — they wait on the person who
@@ -2314,7 +2321,9 @@ export function VerifyQueueCard({
             </tbody>
           </table>
         </div>
-      ))}
+      )}
+      </div>
+      </div>
       {confirmBulk && (() => {
         const chosen = queue.filter((q) => picked.has(q.id));
         /* The bulk confirm adds ONLY like with like (Aug 23 audit): this

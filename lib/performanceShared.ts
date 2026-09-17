@@ -380,6 +380,24 @@ export type PerformanceState = {
   seedVersion?: number;
 };
 
+/** The read-only performance rooms visible to one viewer. Keep this decision
+ * shared by the route, page tabs, and sidebar so the app never offers two
+ * conflicting versions of the same navigation. */
+export type PerformanceRoom = "org" | "groups" | "people";
+
+export function performanceRoomsForViewer(
+  state: Pick<PerformanceState, "groups">,
+  viewerName: string,
+  isManager: boolean
+): PerformanceRoom[] {
+  if (isManager) return ["org", "groups", "people"];
+  const normalizedViewer = viewerName.trim().toLowerCase();
+  const headsAGroup = state.groups.some(
+    (group) => group.head.trim().toLowerCase() === normalizedViewer
+  );
+  return headsAGroup ? ["groups", "people"] : ["people"];
+}
+
 /** The goal types exactly as they appear in Suren's goals.xlsx (Aug 11). */
 export const DEFAULT_GOAL_TYPES = [
   "Financial and Revenue Performance",

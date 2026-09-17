@@ -39,6 +39,9 @@ import {
   UserPen,
   X,
   History as HistoryIcon,
+  Shuffle,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import { FilterMenu } from "@/components/ui/FilterMenu";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -88,6 +91,7 @@ import {
   type DealOption,
 } from "@/components/accruals/AccrualPlanDialog";
 import { tint } from "@/lib/tint";
+import { DeviationOpportunityCard } from "./DeviationOpportunityCard";
 
 /**
  * REVENUE ACCRUALS (Suren, Aug 25): the month-by-month plan for money that has
@@ -114,6 +118,13 @@ const AMBER = ACCRUAL_AMBER;
 /* A FLAG IS RED, not amber (Anir, Sep 7). Amber still means "this month's
    money moved"; red means somebody has to go and fix this plan. */
 const RED = ACCRUAL_RED;
+const DEVIATION_GAIN = "var(--ink-green)";
+const exactDeviationMoney = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+}).format;
 
 /**
  * WHICH FINANCIAL YEAR A PLANNED MONTH LANDS IN.
@@ -921,6 +932,11 @@ export function RevenueAccrualsModule({
   const [tab, setTab] = useState<"plans" | "deviation">(() =>
     embeddedTab ?? (params.get("tab") === "deviation" ? "deviation" : "plans")
   );
+  const [sourceQuery, setSourceQuery] = useState("");
+  const [sourceCustomers, setSourceCustomers] = useState<string[]>([]);
+  const [sourceChanges, setSourceChanges] = useState<string[]>([]);
+  const [sourceSort, setSourceSort] = useState("movement");
+  const [closedDeviationCards, setClosedDeviationCards] = useState<Set<string>>(() => new Set());
   const [deviationView, setDeviationView] = useState<
     "records" | "months" | "sources"
   >("records");
@@ -1222,6 +1238,31 @@ export function RevenueAccrualsModule({
     () => buildDeviation(deviationPlans, snapshot),
     [deviationPlans, snapshot]
   );
+
+  const sourceCustomerOptions = useMemo(() =>
+    [...new Set(deviation.byDeal.map(deal => deal.customer))]
+      .sort((a, b) => a.localeCompare(b))
+      .map(customer => ({ value: customer, label: customer, logoName: customer })),
+    [deviation.byDeal]);
+  const sourceDeals = useMemo(() => {
+    const search = sourceQuery.trim().toLowerCase();
+    return deviation.byDeal.filter(deal => {
+      const change = deal.slipped ? "shifted" : deal.delta > 0 ? "increased" : "decreased";
+      return (!search || `${deal.opportunityName} ${deal.customer} ${deal.opportunityId}`.toLowerCase().includes(search))
+        && (!sourceCustomers.length || sourceCustomers.includes(deal.customer))
+        && (!sourceChanges.length || sourceChanges.includes(change));
+    }).sort((a, b) => {
+      if (sourceSort === "increase") return b.delta - a.delta || a.opportunityName.localeCompare(b.opportunityName);
+      if (sourceSort === "decrease") return a.delta - b.delta || a.opportunityName.localeCompare(b.opportunityName);
+      if (sourceSort === "name") return a.opportunityName.localeCompare(b.opportunityName);
+      return b.movement - a.movement || a.opportunityName.localeCompare(b.opportunityName);
+    });
+  }, [deviation.byDeal, sourceQuery, sourceCustomers, sourceChanges, sourceSort]);
+  const clearSourceFilters = () => {
+    setSourceQuery("");
+    setSourceCustomers([]);
+    setSourceChanges([]);
+  };
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -1567,6 +1608,7 @@ export function RevenueAccrualsModule({
           opportunities here, total all 79 deals" — plus the accrued total).
           No ACV anywhere on this page: when they sell, the rule takes the
           total contract value and splits it, so ACV has nothing to do here. */}
+      {tab === "plans" && (
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
           icon={Briefcase}
@@ -1608,6 +1650,8 @@ export function RevenueAccrualsModule({
             tab below already answers what moved, with the deals named. */}
 
       </div>
+
+      )}
 
       {/* TWO TABS, AND HE NAMED BOTH (Suren, Sep 1: "you call them as this is
           an accrual dashboard, okay? In the next tab, you call it deviations,
@@ -2313,7 +2357,7 @@ export function RevenueAccrualsModule({
                 aria-selected={deviationView === key}
                 onClick={() => setDeviationView(key)}
                 className={cn(
-                  "min-h-9 cursor-pointer rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors",
+                  "min-h-9 cursor-pointer rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-primary",
                   deviationView === key
                     ? "bg-white text-blue-primary shadow-[0_1px_3px_rgba(16,24,40,0.10)]"
                     : "text-text-secondary hover:bg-white/70 hover:text-text-primary"
@@ -2397,10 +2441,10 @@ export function RevenueAccrualsModule({
                             {monthLabel(m.month)}
                           </td>
                           <td className="py-2 text-[12.5px] tnum text-text-secondary">
-                            {formatMoney(m.was)}
+                            {exactDeviationMoney(m.was)}
                           </td>
                           <td className="py-2 text-[12.5px] tnum text-text-primary">
-                            {formatMoney(m.now)}
+                            {exactDeviationMoney(m.now)}
                           </td>
                           <td
                             className="py-2 text-[12.5px] font-semibold tnum"
@@ -2415,7 +2459,7 @@ export function RevenueAccrualsModule({
                           >
                             {m.delta === 0
                               ? "—"
-                              : `${m.delta > 0 ? "+" : "-"}${formatMoney(Math.abs(m.delta))}`}
+                              : `${m.delta > 0 ? "+" : "-"}${exactDeviationMoney(Math.abs(m.delta))}`}
                           </td>
                         </tr>
                       ))}
@@ -2430,102 +2474,143 @@ export function RevenueAccrualsModule({
                 <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
                   <AlertTriangle size={15} strokeWidth={2} style={{ color: AMBER }} />
                   Where the gap came from
-                  <InfoHint text="A total that fell tells you nothing you can act on. These are the deals whose plans changed since the sheet was frozen, biggest movement first, with the months that moved." />
+                  <InfoHint text="A total that fell tells you nothing you can act on. These are the deals whose plans changed since the sheet was frozen, with the months that moved." />
                 </h2>
                 <p className="mt-1 text-[12.5px] text-text-secondary">
-                  Each card is one opportunity. It compares the frozen plan with today so you can
-                  see which month lost money and where it went.
+                  See which opportunities created the variance, how their total changed, and the
+                  exact months that gained or lost planned revenue.
                 </p>
-                {deviation.byDeal.length === 0 ? (
+                {deviation.byDeal.length > 0 && (
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    {[
+                      {
+                        label: "Plan increased",
+                        value: sourceDeals.filter((deal) => deal.delta > 0).length,
+                        amount: sourceDeals
+                          .filter((deal) => deal.delta > 0)
+                          .reduce((sum, deal) => sum + deal.delta, 0),
+                        icon: TrendingUp,
+                        color: DEVIATION_GAIN,
+                      },
+                      {
+                        label: "Plan decreased",
+                        value: sourceDeals.filter((deal) => deal.delta < 0).length,
+                        amount: Math.abs(
+                          sourceDeals
+                            .filter((deal) => deal.delta < 0)
+                            .reduce((sum, deal) => sum + deal.delta, 0)
+                        ),
+                        icon: TrendingDown,
+                        color: AMBER,
+                      },
+                      {
+                        label: "Timing shifted",
+                        value: sourceDeals.filter((deal) => deal.slipped).length,
+                        amount: sourceDeals
+                          .filter((deal) => deal.slipped)
+                          .reduce((sum, deal) => sum + deal.movement, 0),
+                        icon: Shuffle,
+                        color: "var(--ink-violet-soft)",
+                      },
+                    ].map((summary) => {
+                      const Icon = summary.icon;
+                      return (
+                        <div
+                          key={summary.label}
+                          className="flex items-center gap-3 rounded-xl border border-border-light bg-surface/55 px-3.5 py-3"
+                        >
+                          <span
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                            style={{ background: tint(summary.color, 10), color: summary.color }}
+                          >
+                            <Icon size={17} strokeWidth={2.1} aria-hidden="true" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[10.5px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">
+                              {summary.label}
+                            </p>
+                            <p className="mt-0.5 text-[16px] font-bold tnum text-text-primary">
+                              {summary.value}{" "}
+                              <span className="text-[11.5px] font-semibold text-text-secondary">
+                                {summary.value === 1 ? "opportunity" : "opportunities"}
+                              </span>
+                            </p>
+                            <p
+                              className="mt-0.5 text-[13px] font-semibold tnum"
+                              style={{ color: summary.color }}
+                              title={exactDeviationMoney(summary.amount)}
+                            >
+                              {formatMoney(summary.amount)} {summary.label === "Timing shifted" ? "shifted" : "net change"}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <PageToolbar
+                  className="mt-4"
+                  query={sourceQuery}
+                  onQuery={setSourceQuery}
+                  placeholder="Search by opportunity, customer or ID…"
+                  searchAriaLabel="Search changed opportunities"
+                  filterAriaLabel="Filter changed opportunities"
+                  onClearAll={clearSourceFilters}
+                  groups={[
+                    { key: "customer", label: "Customer", values: sourceCustomers, onChange: setSourceCustomers, options: sourceCustomerOptions },
+                    { key: "change", label: "Change type", values: sourceChanges, onChange: setSourceChanges, options: [
+                      { value: "increased", label: "Plan increased", color: DEVIATION_GAIN },
+                      { value: "decreased", label: "Plan decreased", color: AMBER },
+                      { value: "shifted", label: "Timing shifted", color: "var(--ink-violet-soft)" },
+                    ] },
+                  ]}
+                  sort={<ColorSelect value={sourceSort} onChange={setSourceSort} ariaLabel="Sort changed opportunities" dense collapsible={false} options={[
+                    { value: "movement", label: "Largest movement" },
+                    { value: "increase", label: "Biggest increase" },
+                    { value: "decrease", label: "Biggest decrease" },
+                    { value: "name", label: "Opportunity A–Z" },
+                  ]} />}
+                  display={<span className="whitespace-nowrap text-[12px] text-text-secondary" aria-live="polite">{sourceDeals.length} of {deviation.byDeal.length} shown</span>}
+                  action={
+                      <button
+                        type="button"
+                        disabled={sourceDeals.length === 0}
+                        className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light px-3 text-[12px] font-semibold text-blue-primary hover:bg-surface disabled:cursor-default disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+                        onClick={() => setClosedDeviationCards(previous => {
+                          const next = new Set(previous);
+                          const close = sourceDeals.every(deal => !previous.has(deal.opportunityId));
+                          sourceDeals.forEach(deal => {
+                            if (close) next.add(deal.opportunityId);
+                            else next.delete(deal.opportunityId);
+                          });
+                          return next;
+                        })}
+                      >
+                        <ChevronDown size={14} aria-hidden="true" className={cn("transition-transform motion-reduce:transition-none", sourceDeals.length > 0 && sourceDeals.every(deal => !closedDeviationCards.has(deal.opportunityId)) && "rotate-180")} />
+                        {sourceDeals.length > 0 && sourceDeals.every(deal => !closedDeviationCards.has(deal.opportunityId)) ? "Close all" : "Open all"}
+                      </button>
+                  }
+                />
+                {sourceDeals.length === 0 ? (
                   <p className="mt-2 text-[13px] text-text-secondary">
-                    Nothing has moved since that sheet was frozen.
+                    {deviation.byDeal.length === 0 ? "Nothing has moved since that sheet was frozen." : "No opportunities match these filters."}
+                    {deviation.byDeal.length > 0 && <button type="button" onClick={clearSourceFilters} className="ml-2 cursor-pointer font-semibold text-blue-primary hover:underline">Clear filters</button>}
                   </p>
                 ) : (
                   <div className="mt-4 space-y-3">
-                    {deviation.byDeal.map((d) => {
-                      const monthsLosingMoney = d.months.filter((month) => month.delta < 0);
-                      const monthsGainingMoney = d.months.filter((month) => month.delta > 0);
-                      return (
-                        <article
-                          key={d.opportunityId}
-                          className="rounded-xl border border-border-light bg-surface/40 p-4"
-                          data-deviation-deal={d.opportunityId}
-                        >
-                          <div className="flex flex-wrap items-start gap-3">
-                            <CompanyLogo name={d.customer} className="h-9 w-9 shrink-0" />
-                            <div className="min-w-[220px] flex-1">
-                              <Link
-                                href={`/opportunities/${d.opportunityId}`}
-                                className="text-[13.5px] font-semibold text-text-primary hover:text-blue-primary hover:underline"
-                              >
-                                {d.opportunityName}
-                              </Link>
-                              <p className="mt-0.5 text-[12px] text-text-secondary">{d.customer}</p>
-                              <p className="mt-2 text-[12.5px] text-text-secondary">
-                                {d.slipped && monthsLosingMoney.length > 0 && monthsGainingMoney.length > 0
-                                  ? `${formatMoney(d.movement)} moved from ${monthsLosingMoney
-                                      .map((month) => monthLabel(month.month))
-                                      .join(", ")} to ${monthsGainingMoney
-                                      .map((month) => monthLabel(month.month))
-                                      .join(", ")}.`
-                                  : `The plan is ${formatMoney(Math.abs(d.delta))} ${
-                                      d.delta >= 0 ? "higher" : "lower"
-                                    } than the frozen sheet.`}
-                              </p>
-                            </div>
-                            <span
-                              className="shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-bold tnum"
-                              style={{
-                                background:
-                                  d.slipped || d.delta < 0
-                                    ? "rgba(180,83,9,0.10)"
-                                    : "rgba(22,163,74,0.10)",
-                                color: d.slipped || d.delta < 0 ? AMBER : "#16A34A",
-                              }}
-                            >
-                              {d.slipped
-                                ? `${formatMoney(d.movement)} moved later`
-                                : `${d.delta >= 0 ? "+" : "-"}${formatMoney(Math.abs(d.delta))}`}
-                            </span>
-                          </div>
-
-                          <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2 pl-12">
-                            {d.months.map((month) => {
-                              const increased = month.delta > 0;
-                              return (
-                                <div
-                                  key={month.month}
-                                  className="rounded-lg border border-border-light bg-white px-3 py-2.5"
-                                >
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span className="text-[12px] font-semibold text-text-primary">
-                                      {monthLabel(month.month)}
-                                    </span>
-                                    <span
-                                      className="text-[12px] font-bold tnum"
-                                      style={{ color: increased ? "#16A34A" : AMBER }}
-                                    >
-                                      {increased ? "+" : "-"}
-                                      {formatMoney(Math.abs(month.delta))}
-                                    </span>
-                                  </div>
-                                  <div className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-text-secondary tnum">
-                                    <span>{formatMoney(month.was)}</span>
-                                    <span aria-hidden="true">→</span>
-                                    <strong className="font-semibold text-text-primary">
-                                      {formatMoney(month.now)}
-                                    </strong>
-                                  </div>
-                                  <div className="mt-0.5 text-[10px] text-text-tertiary">
-                                    Frozen plan → today
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </article>
-                      );
-                    })}
+                    {sourceDeals.map(deal => (
+                      <DeviationOpportunityCard
+                        key={deal.opportunityId}
+                        deal={deal}
+                        open={!closedDeviationCards.has(deal.opportunityId)}
+                        onToggle={() => setClosedDeviationCards(previous => {
+                          const next = new Set(previous);
+                          if (next.has(deal.opportunityId)) next.delete(deal.opportunityId);
+                          else next.add(deal.opportunityId);
+                          return next;
+                        })}
+                      />
+                    ))}
                   </div>
                 )}
               </section>

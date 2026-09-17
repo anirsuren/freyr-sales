@@ -308,9 +308,9 @@ export function OrgPerformanceTab({
     "quarter",
     PERIOD_KEYS
   );
-  /** Which goals are expanded. A set, not one id, so Expand all can open them
-   *  together (Anir, Aug 16: "at the end it should be like [a button] to
-   *  expand all"). */
+  /** The one goal currently expanded. This remains a Set because the row and
+   *  chart APIs already consume it, but it is deliberately limited to zero or
+   *  one id. Category folding is handled separately by `shutTypes`. */
   const [openIds, setOpenIds] = useState<Set<string>>(
     /* ARRIVING ON A GOAL OPENS IT (Anir, Aug 25: he wanted to reach a goal's
        verifications from the Admin group card; a link that lands on the page
@@ -319,10 +319,8 @@ export function OrgPerformanceTab({
   );
   const toggleOpen = (id: string) =>
     setOpenIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+      if (prev.has(id)) return new Set();
+      return new Set([id]);
     });
   /**
    * PUT THE LINKED GOAL UNDER THE TOP BAR once its drawer exists. Measuring on
@@ -618,40 +616,10 @@ export function OrgPerformanceTab({
                       i === 6 && "w-[112px] !px-2"
                     )}
                   >
-                    {i === 6 ? (
-                      /* EXPAND EVERYTHING AT ONCE, from the head of the column
-                         the per-row buttons live in. */
-                      <div className="flex items-center gap-1.5">
-                        <span>{col.h}</span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenIds((prev) =>
-                              prev.size === sorted.length
-                                ? new Set()
-                                : new Set(sorted.map((g) => g.id))
-                            )
-                          }
-                          title={
-                            openIds.size === sorted.length
-                              ? "Collapse every goal"
-                              : "Expand every goal"
-                          }
-                          className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
-                        >
-                          {openIds.size === sorted.length ? (
-                            <ChevronsDownUp size={13.5} strokeWidth={2.2} />
-                          ) : (
-                            <ChevronsUpDown size={13.5} strokeWidth={2.2} />
-                          )}
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="flex items-center gap-1">
-                        {col.h}
-                        {col.hint && <InfoHint text={col.hint} />}
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1">
+                      {col.h}
+                      {col.hint && <InfoHint text={col.hint} />}
+                    </span>
                   </th>
                 ))}
               </tr>
@@ -1307,35 +1275,17 @@ export function OrgPerformanceTab({
               per-goal decision, which is the only place it has ever been
               useful.
 
-              When there is only one family there are no group headers to fold,
-              so it falls back to the goals themselves rather than becoming a
-              button that does nothing. */}
+              Individual goals always remain a single-open accordion. */}
           {shown.length > 0 && (() => {
-            const allIds = shown.map((g) => g.id);
             const allTypes = grouped.map(([type]) => type);
             const groupsFold = showTypeHeaders && allTypes.length > 0;
-            const anyOpen = groupsFold
-              ? allTypes.some((t) => !shutTypes.includes(t))
-              : allIds.some((id) => openIds.has(id));
+            if (!groupsFold) return null;
+            const anyOpen = allTypes.some((t) => !shutTypes.includes(t));
             return (
               <button
                 type="button"
-                aria-label={
-                  groupsFold
-                    ? anyOpen
-                      ? "Collapse every goal type"
-                      : "Expand every goal type"
-                    : anyOpen
-                      ? "Close every goal"
-                      : "Open every goal"
-                }
-                onClick={() => {
-                  if (groupsFold) {
-                    setShutTypes(anyOpen ? allTypes : []);
-                    return;
-                  }
-                  setOpenIds(anyOpen ? new Set() : new Set(allIds));
-                }}
+                aria-label={anyOpen ? "Collapse every goal type" : "Expand every goal type"}
+                onClick={() => setShutTypes(anyOpen ? allTypes : [])}
                 className="inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
               >
                 {anyOpen ? (
@@ -1424,11 +1374,11 @@ export function OrgPerformanceTab({
                     {goalsOfType.length === 1 ? "goal" : "goals"}
                   </span>
                 </button>
-                {!shut && (
-                  <div className="tab-panel overflow-x-auto border-t border-border-light">
+                <div className="freyr-fold" data-open={shut ? "false" : "true"}>
+                  <div className="overflow-x-auto border-t border-border-light">
                     {goalTable(goalsOfType)}
                   </div>
-                )}
+                </div>
               </Card>
             );
           })}
@@ -1999,8 +1949,7 @@ function GoalRows({
           </span>
         </td>
       </tr>
-      {open && (
-        <tr className="!border-t-0" data-goal-drawer={goal.id}>
+      <tr className="!border-t-0" data-goal-drawer={goal.id}>
           {/* No tint and no border on the drill-down (Anir, Aug 15: "there
               are so many lines here... remove the rectangle that houses the
               three cards"). The cards inside carry their own outlines; a box
@@ -2011,12 +1960,13 @@ function GoalRows({
               this is all part of the same goal"). The rail down the left is
               the goal's own type colour, the tint carries on from the open
               row, and the top padding is gone so the two touch. */}
-          <td
-            colSpan={7}
-            className="px-4 pb-4 pt-0 [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
-            style={{ ["--goal-accent" as string]: typeMeta(goal.type).color }}
-          >
-            <div className="tab-panel space-y-3 pb-3 pl-3.5 pt-1">
+          <td colSpan={7} className="p-0">
+            <div className="freyr-fold" data-open={open ? "true" : "false"}>
+              <div
+                className="px-4 pb-4 pt-0 [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                style={{ ["--goal-accent" as string]: typeMeta(goal.type).color }}
+              >
+              <div className="tab-panel space-y-3 pb-3 pl-3.5 pt-1">
               {/* The drill-down that used to need a separate page. Same
                   component, embedded, so the two can never diverge (Anir,
                   Aug 14: "when i click a goal make it a dropdown"). The link
@@ -2297,7 +2247,7 @@ function GoalRows({
                             </span>
                           </div>
 
-                          {open && (
+                          <div className="freyr-fold" data-open={open ? "true" : "false"}>
                             <div className="border-t border-border-light px-3 pb-3 pt-2.5">
                               <PersonGoalPanel
                                 goal={goal}
@@ -2307,7 +2257,7 @@ function GoalRows({
                                 state={state}
                               />
                             </div>
-                          )}
+                          </div>
                         </div>
                       );
                     })}
@@ -2692,10 +2642,11 @@ function GoalRows({
                   );
                 })
               )}
+              </div>
+              </div>
             </div>
           </td>
         </tr>
-      )}
     </Fragment>
   );
 }

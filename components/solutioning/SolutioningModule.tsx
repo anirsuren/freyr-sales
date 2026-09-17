@@ -3,7 +3,7 @@
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import { UploadProgress } from "@/components/ui/UploadProgress";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { withCommas } from "@/lib/currency";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import Link from "next/link";
@@ -178,6 +178,29 @@ export function SolutioningModule({
   const [statuses, setStatuses] = useState<string[]>([]);
   const [owners, setOwners] = useState<string[]>([]);
   const [customerPick, setCustomerPick] = useState<string[]>([]);
+  const [requestedByPick, setRequestedByPick] = useState<string[]>([]);
+  const [assigneePick, setAssigneePick] = useState<string[]>([]);
+  const [opportunityPick, setOpportunityPick] = useState<string[]>([]);
+  const [dueFrom, setDueFrom] = useState("");
+  const [dueTo, setDueTo] = useState("");
+  const [groupBy, setGroupBy] = useState("none");
+  const groupLabel = useCallback(
+    (r: SolutionRequest) =>
+      groupBy === "customer"
+        ? r.customer
+        : groupBy === "owner"
+          ? r.owner || "Unassigned"
+          : groupBy === "status"
+            ? solutionStatusLabel(
+                r,
+                !!r.neededBy &&
+                  !["completed", "cancelled"].includes(r.status) &&
+                  r.neededBy < todayISO(),
+              )
+            : "",
+    [groupBy],
+  );
+
   const [sort, setSort] = useState<"newest" | "needed">("newest");
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -250,6 +273,11 @@ export function SolutioningModule({
         if (!owners.includes(owner)) return false;
       }
       if (customerPick.length && !customerPick.includes(r.customer)) return false;
+      if (requestedByPick.length && !requestedByPick.includes(r.requestedBy)) return false;
+      if (assigneePick.length && !assigneePick.includes(r.completedBy || r.owner || "")) return false;
+      if (opportunityPick.length && !r.opportunityIds.some(id => opportunityPick.includes(id))) return false;
+      if (dueFrom && (!r.neededBy || r.neededBy < dueFrom)) return false;
+      if (dueTo && (!r.neededBy || r.neededBy > dueTo)) return false;
       if (q) {
         const hay = [
           r.ref,
@@ -268,6 +296,8 @@ export function SolutioningModule({
       return true;
     });
     return [...rows].sort((a, b) => {
+      const groupOrder = groupLabel(a).localeCompare(groupLabel(b));
+      if (groupOrder) return groupOrder;
       if (sort === "needed") {
         // Deadlines first, soonest first; the undated sink to the bottom.
         const an = a.neededBy ?? "9999-12-31";
@@ -276,7 +306,7 @@ export function SolutioningModule({
       }
       return a.requestedAt < b.requestedAt ? 1 : -1;
     });
-  }, [state.requests, query, kinds, statuses, owners, customerPick, sort, room]);
+  }, [state.requests, query, kinds, statuses, owners, customerPick, sort, room, requestedByPick, assigneePick, opportunityPick, dueFrom, dueTo, groupLabel]);
 
   /** What the split is standing on. Null means the first row on screen, so
    *  the right pane is never empty while the left has something in it — and a
@@ -466,8 +496,18 @@ export function SolutioningModule({
             setStatuses([]);
             setOwners([]);
             setCustomerPick([]);
+            setRequestedByPick([]); setAssigneePick([]); setOpportunityPick([]);
+            setDueFrom(""); setDueTo("");
           }}
+          filtersAfter={<>
+            <label className="text-xs text-text-secondary">Due from <input aria-label="Due from" type="date" value={dueFrom} onChange={e => setDueFrom(e.target.value)} className="rounded-lg border border-border-light bg-white p-2" /></label>
+            <label className="text-xs text-text-secondary">Due through <input aria-label="Due through" type="date" min={dueFrom || undefined} value={dueTo} onChange={e => setDueTo(e.target.value)} className="rounded-lg border border-border-light bg-white p-2" /></label>
+            <ColorSelect value={groupBy} onChange={setGroupBy} ariaLabel="Group requests" options={[{value:"none",label:"No grouping",color:"var(--ink-bright-blue)"},{value:"customer",label:"By customer",color:"var(--ink-violet-soft)"},{value:"owner",label:"By owner",color:"var(--ink-bright-blue)"},{value:"status",label:"By status",color:"var(--ink-violet-soft)"}]} />
+          </>}
           groups={[
+            {key:"requester",label:"BD member",values:requestedByPick,onChange:setRequestedByPick,options:[...new Set(state.requests.map(r => r.requestedBy))].map(value => ({value,label:value}))},
+            {key:"assignee",label:"Prepared by",values:assigneePick,onChange:setAssigneePick,options:members.map(value => ({value,label:value}))},
+            {key:"opportunity",label:"Opportunity",values:opportunityPick,onChange:setOpportunityPick,options:opportunities.map(o => ({value:o.id,label:o.label}))},
             {
               key: "kind",
               label: "Type",
@@ -601,7 +641,7 @@ export function SolutioningModule({
           className="tab-panel grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]"
         >
           <div className="max-h-[720px] overflow-y-auto rounded-xl border border-border-light bg-white">
-            {shown.map((r) => {
+            {shown.map((r, index) => {
               const on = picked?.id === r.id;
               const meta = KIND_META[r.kind];
               const overdue =
@@ -609,8 +649,9 @@ export function SolutioningModule({
                   ? r.neededBy < todayISO()
                   : false;
               return (
+                <Fragment key={r.id}>
+                {groupBy !== "none" && (index === 0 || groupLabel(shown[index - 1]) !== groupLabel(r)) && <div className="bg-surface px-3 py-2 text-xs font-semibold">{groupLabel(r)}</div>}
                 <button
-                  key={r.id}
                   type="button"
                   onClick={() => setPickedId(r.id)}
                   aria-current={on ? "true" : undefined}
@@ -660,6 +701,7 @@ export function SolutioningModule({
                     </span>
                   </span>
                 </button>
+                </Fragment>
               );
             })}
           </div>
@@ -734,7 +776,7 @@ export function SolutioningModule({
                     )}
                   </span>
                 </div>
-                <RequestPanel r={picked} room={room} />
+                <RequestPanel r={picked} />
               </>
             ) : (
               <p className="px-2 py-10 text-center text-[12.5px] text-text-secondary">
@@ -775,7 +817,9 @@ export function SolutioningModule({
                 </tr>
               </thead>
               <tbody>
-                {shown.map((r) => (
+                {shown.map((r, index) => (
+                  <Fragment key={r.id}>
+                  {groupBy !== "none" && (index === 0 || groupLabel(shown[index - 1]) !== groupLabel(r)) && <tr className="bg-surface"><td colSpan={14} className="px-4 py-2 text-sm font-semibold">{groupLabel(r)}</td></tr>}
                   <RequestRow
                     key={r.id}
                     request={r}
@@ -805,6 +849,7 @@ export function SolutioningModule({
                         : undefined
                     }
                   />
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -1207,7 +1252,7 @@ function RequestRow({
           className="max-w-0 pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
         >
           <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
-            <RequestPanel r={r} room={room} />
+            <RequestPanel r={r} />
           </div>
         </td>
       </tr>
@@ -1241,10 +1286,8 @@ const requestDocumentDownloadUrl = (requestId: string, docId: string) =>
 
 function RequestPanel({
   r,
-  room,
 }: {
   r: SolutionRequest;
-  room: "requests" | "submissions" | "presentations";
   /**
    * RENDER THE FORM WITHOUT ITS OWN FRAME.
    *
@@ -1928,23 +1971,7 @@ export function NewRequestDialog({
       }
       onBack={onBack}
     >
-      {/* ONE SIZE THE WHOLE WAY THROUGH (Anir, Aug 25: "when I click on
-          Solutioning New Request, I don't know why this is so small. Keep the
-          pop-up consistent the whole way in terms of dimensions"). Step one is
-          three tiles and step two is a full form, so the dialog used to snap
-          from a strip to a page between two clicks.
-
-          THE FIX FOR THAT WAS WORSE THAN THE PROBLEM (Anir, Aug 26: "this is
-          ugly, I think it should be at the top or something"). Holding a 460px
-          floor and centring three tiles in it bought a consistent height by
-          floating the cards in a field of white.
-
-          So the floor came down to a guard against a thin strip, the tiles sit
-          at the top, and step one gained the thing a first-time requester
-          actually needs: what happens to the request after they send it. Step
-          one is now ~410px against step two's ~520 — the dialog grows a little
-          as you go deeper, which is what a dialog is supposed to do, and it no
-          longer snaps from a strip to a page. */}
+      {/* All steps share a fixed frame; longer forms scroll inside it. */}
       <div className="flex min-h-[380px] flex-col">
       {sub ? (
         /* A PAGE OF THIS DIALOG. Same frame, same width, a back arrow where
@@ -2738,15 +2765,10 @@ function FrameOrNot({
   onBack?: () => void;
   children: React.ReactNode;
 }) {
-  /* ONE SIZE THROUGHOUT (Anir, Sep 6: "make sure the pop-up is the same size
-     as this pop-up when I click Create New Opportunity... it kind of just
-     takes away the consistency"). The sub-form is a panel INSIDE this dialog,
-     so without a floor the frame shrank to it and the whole thing jumped.
-     `tall` pins the height and the panels scroll within — the same rule the
-     app's other fixed-height dialogs follow. */
+  // A minimum height alone still lets longer panels resize the dialog.
   if (!chromeless)
     return (
-      <Modal open onClose={onClose} title={title} size="workflow" tall>
+      <Modal open onClose={onClose} title={title} size="workflow" dialogClassName="h-[min(720px,calc(100dvh-4rem))]">
         {children}
       </Modal>
     );
