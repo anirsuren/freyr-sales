@@ -1030,6 +1030,8 @@ An empty request timeline stays compact around its header and Add a comment acti
 
 Timeline sizing uses the final deduplicated entries that actually render, not the raw activity array. Hidden or collapsed activity can never make an apparently empty card stretch down the page. Completed locally, not deployed.
 
+When activity exists, the Timeline body itself owns the remaining card height and the event list scrolls inside it. The outer card never stretches while leaving its body collapsed at the top, and the list resets its scroll position when its entry count changes. Completed locally, not deployed.
+
 An empty timeline explicitly says “No activity yet” and explains that changes and comments will appear there. The empty message and comment action form one compact card instead of leaving an unexplained blank panel. Completed locally, not deployed.
 
 The request Owner menu uses its empty prompt only in the closed trigger. Its open list begins with real workspace people and does not repeat “Assign a Solutioning member” as a selectable first option. Completed locally, not deployed.

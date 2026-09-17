@@ -1400,7 +1400,7 @@ export function RequestDetail({
               )}
               bodyClassName={cn(
                 "flex min-h-0 flex-col",
-                hasTimelineItems && "h-full"
+                hasTimelineItems && "h-full flex-1"
               )}
             >
               {/* AN ACTUAL TIMELINE (Anir, Aug 27: "this has to be an actual
@@ -1441,7 +1441,13 @@ export function RequestDetail({
                   above the comment button. max-height does both jobs: it
                   shrinks to five rows and it still caps and scrolls at a
                   hundred. Roughly six rows at 52px each. */}
-              <ol className={cn("min-h-0 overflow-y-auto pr-1", hasTimelineItems && "flex-1")}>
+              <ol
+                key={timelineItems.length}
+                className={cn(
+                  "min-h-0 overflow-y-auto pr-1",
+                  hasTimelineItems && "flex-1"
+                )}
+              >
                 {timelineItems.map((a, i, all) => {
                   /* A COMMENT IS SOMEBODY TALKING, AN EVENT IS THE RECORD
                      MOVING. Same spine, different voice: a comment wears a
