@@ -717,18 +717,25 @@ function SelectField({
   );
 }
 
-/** The same shell around a free-text input, for fields that must stay typeable. */
+/** The same shell around free text fields, for values that must stay typeable. */
 function FieldShell({
   accent,
   icon: Icon,
   children,
+  className,
 }: {
   accent: string;
   icon: LucideIcon;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex h-10 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 transition-[border-color] hover:border-blue-subtle focus-within:border-blue-primary">
+    <div
+      className={cn(
+        "flex h-10 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 transition-[border-color] hover:border-blue-subtle focus-within:border-blue-primary",
+        className
+      )}
+    >
       <span
         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
         style={{ background: tint(accent, 12), color: accent }}
@@ -739,9 +746,6 @@ function FieldShell({
     </div>
   );
 }
-
-const BARE_INPUT =
-  "h-full min-w-0 flex-1 bg-transparent text-[13.5px] text-text-primary placeholder:text-text-tertiary outline-none focus:shadow-none";
 
 export function OfferingForm({
   relatedPool = [],
@@ -2436,13 +2440,19 @@ export function OfferingForm({
             )}
           </div>
           <div>
-            <label className={LABEL}>Availability comments</label>
-            <FieldShell accent="#4F46E5" icon={Clock}>
-              <input
-                className={BARE_INPUT}
+            <label className={LABEL}>Availability comments (optional)</label>
+            <FieldShell
+              accent="#4F46E5"
+              icon={Clock}
+              className="h-auto min-h-[88px] items-start py-2.5"
+            >
+              <textarea
+                rows={3}
+                maxLength={600}
+                className="min-h-[64px] min-w-0 flex-1 resize-y bg-transparent text-[13.5px] leading-5 text-text-primary placeholder:text-text-tertiary outline-none focus:shadow-none"
                 value={future}
                 onChange={(e) => setFuture(e.target.value)}
-                placeholder="e.g. Version 1 · pilot now · end of this year"
+                placeholder="Add one or two sentences about availability, delivery coverage, or constraints."
                 aria-label="Availability comments"
               />
             </FieldShell>

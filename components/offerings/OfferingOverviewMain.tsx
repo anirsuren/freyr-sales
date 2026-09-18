@@ -50,6 +50,13 @@ function availabilityNotes(text: string): { label: string | null; body: string }
     });
 }
 
+const VERSIONLESS_OFFERING_TYPES = new Set([
+  "freyr service",
+  "freyr services",
+  "freyr ai native service",
+  "freyr ai native services",
+]);
+
 /** Exported so the sections the page passes in through `beforeRelated`
  *  (Target segments, Markets) wear the exact same heading, not a copy of it. */
 export function SectionHeading({
@@ -201,6 +208,9 @@ export function OfferingOverviewMain({
   const roadmap = o.roadmap_details;
   const currentVersion =
     roadmap?.currentVersion?.trim() || currentVersionNote?.body.trim() || null;
+  const versionDoesNotApply = VERSIONLESS_OFFERING_TYPES.has(
+    o.offering_type.trim().toLowerCase()
+  );
   const futureAvailability = currentVersionNote
     ? upcomingAvailability.filter((note) => note !== currentVersionNote)
     : upcomingAvailability;
@@ -281,7 +291,11 @@ export function OfferingOverviewMain({
         <SectionHeading
           icon={CalendarCheck}
           title="Offering availability"
-          description="Whether a rep can sell this today, and the version customers are on."
+          description={
+            versionDoesNotApply
+              ? "Whether a rep can sell this today, plus any availability guidance from the owner."
+              : "Whether a rep can sell this today, the version customers are on, and any availability guidance from the owner."
+          }
         />
         <div className="mt-5 grid max-w-[640px] gap-4 pl-11 sm:grid-cols-2">
           <div>
@@ -296,13 +310,38 @@ export function OfferingOverviewMain({
               )}
             </div>
           </div>
-          <div>
+          {!versionDoesNotApply && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
+                Current version
+              </p>
+              <p className="mt-1.5 text-[15px] font-semibold text-text-primary">
+                {currentVersion || "Not recorded"}
+              </p>
+            </div>
+          )}
+          <div className={versionDoesNotApply ? "" : "sm:col-span-2"}>
             <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-              Current version
+              Availability comments
             </p>
-            <p className="mt-1.5 text-[15px] font-semibold text-text-primary">
-              {currentVersion || "Not recorded"}
-            </p>
+            {futureAvailability.length ? (
+              <div className="mt-1.5 space-y-1 text-[13px] leading-5 text-text-secondary">
+                {futureAvailability.map((note, index) => (
+                  <p key={`${note.label || "comment"}-${index}`}>
+                    {note.label && (
+                      <span className="font-semibold text-text-primary">
+                        {note.label}: {" "}
+                      </span>
+                    )}
+                    {note.body}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-1.5 text-[13px] text-text-tertiary">
+                No comments added.
+              </p>
+            )}
           </div>
         </div>
         {/* WHAT THIS ROADMAP USED TO SAY (product owner, Aug 20: "Every time

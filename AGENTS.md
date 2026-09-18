@@ -196,6 +196,13 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 18 Offering availability follow-up:** The Offering Overview availability
+  section again shows the optional owner-authored Availability comments for
+  every offering. The editor uses a short multiline field for the same stored
+  value. Current version is omitted when the offering type is Freyr Services
+  or Freyr AI Native Services, where a product version does not apply. Local
+  only, not deployed.
+
 - **Sep 17 interaction and Solutioning consistency pass:** Solutioning detail
   timelines keep a usable minimum viewport without crushing Owner or Where it
   stands, place comment creation in the header, normalize impossible legacy
