@@ -1452,7 +1452,7 @@ export function RequestDetail({
                 </button>
               }
               className={cn(hasTimelineItems && "flex min-h-[300px] flex-1 flex-col")}
-              bodyClassName={cn(hasTimelineItems && "flex min-h-0 flex-1 flex-col")}
+              bodyClassName={cn(hasTimelineItems && "flex min-h-0 flex-1 flex-col pb-0")}
             >
               {/* AN ACTUAL TIMELINE (Anir, Aug 27: "this has to be an actual
                   fucking timeline"). It was six identical blue documents in a
