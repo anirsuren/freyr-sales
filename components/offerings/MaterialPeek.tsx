@@ -225,7 +225,10 @@ export function MaterialPeek({
   return (
     <span
       ref={wrapRef}
-      className="contents"
+      // The preview already discloses the complete title and material details.
+      // Mark the trigger as its own hover surface so the app-wide truncation
+      // helper does not stack a second black title popup over the preview.
+      className="freyr-hover-trigger contents"
       onMouseEnter={reveal}
       onMouseLeave={scheduleClose}
       /* A CLICK ENDS THE PEEK (Anir, Sep 9, pressing the open-in-new-tab
