@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { HOVER_CLOSE_GRACE_MS, HOVER_DELAY_MS } from "@/lib/hoverPreferences";
+import { LinkMaterialPreview } from "@/components/offerings/LinkMaterialPreview";
 import { materialFormat, type OfferingMaterial } from "@/lib/offeringMaterials";
 
 /**
@@ -70,7 +71,6 @@ export function MaterialPeek({
    *  "when it's loading, it should load everything, and I should be able to
    *  scroll"). */
   const [everOpened, setEverOpened] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [loaded, setLoaded] = useState(false);
   /* A big video can take longer to render in the frame than anyone will
      wait. After a few seconds the spinner gives way to a line that says so,
@@ -311,32 +311,12 @@ export function MaterialPeek({
                 )}
               </div>
             ) : (
-              /* A pasted link has no file to render, so the card shows the
-                 one thing a rep wants from it: the address, and a one-click
-                 copy (Anir, Aug 8: "show the link right on top, and a button
-                 with the copy icon"). */
-              <div className="flex items-start gap-2 bg-white p-3">
-                <p className="min-h-0 max-h-32 min-w-0 flex-1 overflow-y-auto break-all font-mono text-[11.5px] leading-snug text-text-secondary">
-                  {material.url}
-                </p>
-                <button
-                  type="button"
-                  aria-label="Copy the link"
-                  title={copied ? "Copied" : "Copy the link"}
-                  onClick={() => {
-                    void navigator.clipboard.writeText(material.url).then(() => {
-                      setCopied(true);
-                      window.setTimeout(() => setCopied(false), 1500);
-                    });
-                  }}
-                  className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-light text-text-tertiary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
-                >
-                  {copied ? (
-                    <Check size={14} strokeWidth={2.4} className="text-success" />
-                  ) : (
-                    <Copy size={14} strokeWidth={2} />
-                  )}
-                </button>
+              /* Link-only materials still need a useful preview. A raw URL
+                 floating over the row looked like a broken tooltip, so show
+                 the material itself first and keep the destination/actions
+                 as quiet supporting information. */
+              <div className="h-[360px] overflow-hidden bg-white">
+                <LinkMaterialPreview material={material} compact />
               </div>
             )}
           </div>,

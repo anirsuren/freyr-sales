@@ -165,6 +165,7 @@ export type TabOffering = {
     kindKey?: string;
     label: string;
     url: string;
+    description?: string;
     /** Storage path means this is an uploaded file with an in-app preview. */
     docsPath?: string;
     journeyStage?: string;

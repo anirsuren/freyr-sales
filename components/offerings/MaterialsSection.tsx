@@ -1364,7 +1364,6 @@ export function MaterialsSection({
                                 hover, and in the viewer. */}
                             <span className="group/name flex min-w-0 items-start gap-1.5">
                               <span
-                                title={material.label}
                                 className="line-clamp-2 min-w-0 break-words text-[13px] font-semibold text-text-primary hover:text-blue-primary"
                               >
                                 {material.label}

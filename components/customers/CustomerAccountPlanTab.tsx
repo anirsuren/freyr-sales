@@ -28,6 +28,8 @@ import { Modal } from "@/components/ui/Modal";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
+import { MaterialViewer } from "@/components/offerings/MaterialViewer";
+import { LinkMaterialViewer } from "@/components/offerings/LinkMaterialPreview";
 import {
   PrioritySearchInput,
   SearchPriority,
@@ -48,6 +50,7 @@ import {
   asAccessLevel,
   asJourneyStage,
   asMaterialKind,
+  type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 
 type PlanStatus = "Active" | "Needs review" | "Draft";
@@ -329,6 +332,10 @@ export function CustomerAccountPlanTab({
   const [stakeholderSort, setStakeholderSort] = useState("priority");
   const [expandedStakeholder, setExpandedStakeholder] = useState<string | null>(null);
   const [planView, setPlanView] = useState<"plays" | "people" | "actions">("plays");
+  const [viewingMaterial, setViewingMaterial] = useState<{
+    offering: TabOffering;
+    material: OfferingMaterial;
+  } | null>(null);
 
   useEffect(() => {
     try {
@@ -397,6 +404,24 @@ export function CustomerAccountPlanTab({
 
   return (
     <div className="space-y-4">
+      {viewingMaterial?.material.docsPath ? (
+        <MaterialViewer
+          offeringId={viewingMaterial.offering.id}
+          offeringName={viewingMaterial.offering.name}
+          material={viewingMaterial.material}
+          path={viewingMaterial.material.docsPath}
+          label={viewingMaterial.material.label}
+          downloadUrl={viewingMaterial.material.url}
+          openInNewTabUrl={materialPreviewHref(viewingMaterial.offering.id, viewingMaterial.material)}
+          onClose={() => setViewingMaterial(null)}
+        />
+      ) : viewingMaterial ? (
+        <LinkMaterialViewer
+          material={viewingMaterial.material}
+          offeringName={viewingMaterial.offering.name}
+          onClose={() => setViewingMaterial(null)}
+        />
+      ) : null}
       <Card className="overflow-hidden border-blue-subtle p-0">
         <div className="relative bg-gradient-to-r from-blue-light/70 via-white to-white px-5 py-5">
           <div className="min-w-0 max-w-3xl sm:pr-28">
@@ -714,18 +739,21 @@ export function CustomerAccountPlanTab({
                                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
                                     {play.contacts.map((name) => <span key={name} className="inline-flex min-w-0 items-center gap-2 text-[12.5px] font-semibold text-text-primary"><Avatar name={name} className="h-7 w-7 shrink-0" /><span className="truncate">{name}</span></span>)}
                                   </div>
-                                  <div className="mt-3 overflow-hidden rounded-xl border border-border-light bg-white">
-                                    <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3 bg-surface px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[0.07em] text-text-tertiary"><span>Type</span><span>Linked record</span></div>
-                                    <div className="divide-y divide-border-light">
-                                      {linkedOpportunity && <a href={`/opportunities/${linkedOpportunity.id}`} className="group grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-blue-light/25"><span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-blue-primary"><Briefcase size={12} />Opportunity</span><span className="min-w-0"><span className="block truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">{linkedOpportunity.name}</span><span className="mt-0.5 block text-[10.5px] text-text-tertiary">{linkedOpportunity.stage} · {money(linkedOpportunity.value)}</span></span></a>}
-                                      {linkedActivities.map((activity) => {
-                                        const contact = contacts.find((person) => person.id === activity.contact_id);
-                                        const outcome = activity.outcome.replaceAll("_", " ");
-                                        return <a key={activity.id} href="/activity" className="group grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-blue-light/25"><span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-[color:var(--ink-teal-deep)]"><CalendarClock size={12} />Activity</span><span className="min-w-0"><span className="block truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">{activity.notes || `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}${contact ? ` with ${contact.full_name}` : ""}`}</span><span className="mt-0.5 block text-[10.5px] capitalize text-text-tertiary">{outcome} · {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(activity.created_at))}</span></span></a>;
-                                      })}
-                                      {!linkedOpportunity && linkedActivities.length === 0 && <div className="px-3 py-3 text-[11.5px] text-text-tertiary">No opportunity or activity is linked to this play yet.</div>}
+                                  {linkedOpportunity || linkedActivities.length > 0 ? (
+                                    <div className="mt-3 overflow-hidden rounded-xl border border-border-light bg-white">
+                                      <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3 bg-surface px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[0.07em] text-text-tertiary"><span>Type</span><span>Linked record</span></div>
+                                      <div className="divide-y divide-border-light">
+                                        {linkedOpportunity && <a href={`/opportunities/${linkedOpportunity.id}`} className="group grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-blue-light/25"><span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-blue-primary"><Briefcase size={12} />Opportunity</span><span className="min-w-0"><span className="block truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">{linkedOpportunity.name}</span><span className="mt-0.5 block text-[10.5px] text-text-tertiary">{linkedOpportunity.stage} · {money(linkedOpportunity.value)}</span></span></a>}
+                                        {linkedActivities.map((activity) => {
+                                          const contact = contacts.find((person) => person.id === activity.contact_id);
+                                          const outcome = activity.outcome.replaceAll("_", " ");
+                                          return <a key={activity.id} href="/activity" className="group grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-blue-light/25"><span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-[color:var(--ink-teal-deep)]"><CalendarClock size={12} />Activity</span><span className="min-w-0"><span className="block truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">{activity.notes || `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}${contact ? ` with ${contact.full_name}` : ""}`}</span><span className="mt-0.5 block text-[10.5px] capitalize text-text-tertiary">{outcome} · {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(activity.created_at))}</span></span></a>;
+                                        })}
+                                      </div>
                                     </div>
-                                  </div>
+                                  ) : (
+                                    <p className="mt-3 text-[11.5px] text-text-tertiary">No linked work yet.</p>
+                                  )}
                                 </div>
                                 <div className="mt-5 min-w-0 border-t border-border-light pt-4">
                                   <div className="mb-2 flex items-center justify-between gap-3"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Sales materials</p><span className="text-[10.5px] font-medium text-text-tertiary">{play.materials.length} {play.materials.length === 1 ? "file" : "files"}</span></div>
@@ -748,7 +776,10 @@ export function CustomerAccountPlanTab({
                                               kind: kind ?? "other" as const,
                                               label: material.label,
                                               url: material.url,
+                                              description: material.description,
                                               docsPath: material.docsPath,
+                                              journeyStage: stage ?? undefined,
+                                              accessLevel: access ?? undefined,
                                             }
                                           : null;
                                         const href =
@@ -759,7 +790,7 @@ export function CustomerAccountPlanTab({
                                                 ? `/offerings/${offering.id}?tab=materials`
                                                 : "/offerings");
                                         return (
-                                          <a key={item} href={href} target={material?.url ? "_blank" : undefined} rel={material?.url ? "noopener noreferrer" : undefined} className="group grid min-w-[760px] grid-cols-[minmax(260px,460px)_150px_190px_34px] items-center justify-start gap-3 px-3 py-2.5 transition-colors hover:bg-blue-light/25">
+                                          <div key={item} className="group grid min-w-[760px] grid-cols-[minmax(260px,460px)_150px_190px_34px] items-center justify-start gap-3 px-3 py-2.5 transition-colors hover:bg-blue-light/25">
                                             <span className="flex min-w-0 items-center gap-2.5">
                                               <Icon size={14} strokeWidth={2} className="shrink-0 text-blue-primary" />
                                               {peekMaterial && offering ? (
@@ -771,20 +802,26 @@ export function CustomerAccountPlanTab({
                                                       : null
                                                   }
                                                 >
-                                                  <span className="min-w-0 truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => setViewingMaterial({ offering, material: peekMaterial })}
+                                                    className="min-w-0 truncate text-left text-[12px] font-semibold text-text-primary hover:text-blue-primary"
+                                                  >
                                                     {item}
-                                                  </span>
+                                                  </button>
                                                 </MaterialPeek>
                                               ) : (
-                                                <span className="min-w-0 truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">
+                                                <a href={href} className="min-w-0 truncate text-[12px] font-semibold text-text-primary hover:text-blue-primary">
                                                   {item}
-                                                </span>
+                                                </a>
                                               )}
                                             </span>
                                             <span className="text-[11px] font-semibold" style={{ color: tone }}>{material?.kind || "Document"}</span>
                                             <span className="flex min-w-0 flex-wrap gap-1">{stage && <span className="rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold" style={{ color: JOURNEY_STAGE_META[stage].color, background: tint(JOURNEY_STAGE_META[stage].color, 8) }}>{JOURNEY_STAGE_META[stage].label}</span>}{access && <span className="rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold" style={{ color: ACCESS_LEVEL_META[access].color, background: tint(ACCESS_LEVEL_META[access].color, 8) }}>{ACCESS_LEVEL_META[access].label}</span>}{!stage && !access && <span className="text-[10.5px] text-text-tertiary">Not tagged</span>}</span>
-                                            <ExternalLink size={13} strokeWidth={1.8} className="justify-self-end text-text-tertiary group-hover:text-blue-primary" />
-                                          </a>
+                                            <a href={href} target={material?.url ? "_blank" : undefined} rel={material?.url ? "noopener noreferrer" : undefined} aria-label={`Open ${item}`} className="justify-self-end text-text-tertiary transition-colors hover:text-blue-primary">
+                                              <ExternalLink size={13} strokeWidth={1.8} />
+                                            </a>
+                                          </div>
                                         );
                                       })}
                                     </div>
