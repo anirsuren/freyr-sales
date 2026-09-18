@@ -2243,14 +2243,16 @@ function GoalRows({
                           </div>
 
                           <div className="freyr-fold" data-open={open ? "true" : "false"}>
-                            <div className="border-t border-border-light px-3 pb-3 pt-2.5">
-                              <PersonGoalPanel
-                                goal={goal}
-                                person={a.person}
-                                target={a.target}
-                                done={aActual}
-                                state={state}
-                              />
+                            <div>
+                              <div className="border-t border-border-light px-3 pb-3 pt-2.5">
+                                <PersonGoalPanel
+                                  goal={goal}
+                                  person={a.person}
+                                  target={a.target}
+                                  done={aActual}
+                                  state={state}
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ChevronDown,
   Columns2,
   Crown,
   LayoutGrid,
@@ -494,37 +495,47 @@ export function GroupPerformanceTab({
               return `${n} of ${members.length} ${members.length === 1 ? "person" : "people"}`;
             })()}
           </p>
-          <span className="inline-flex items-center gap-0.5 rounded-lg bg-surface p-0.5">
-            {(
-              [
-                { key: "list", label: "List", icon: Rows3 },
-                { key: "two", label: "Two columns", icon: Columns2 },
-                { key: "tiles", label: "Tiles", icon: LayoutGrid },
-                { key: "table", label: "Table", icon: Table2 },
-              ] as const
-            ).map((v) => {
-              const Icon = v.icon;
-              const on = rosterView === v.key;
-              return (
-                <button
-                  key={v.key}
-                  type="button"
-                  onClick={() => setRosterView(v.key)}
-                  aria-pressed={on}
-                  title={v.label}
-                  aria-label={v.label}
-                  className={cn(
-                    "flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors",
-                    on
-                      ? "bg-white text-blue-primary shadow-sm"
-                      : "text-text-tertiary hover:text-text-primary"
-                  )}
+          {(() => {
+            const views = [
+              { key: "list", label: "List", icon: Rows3 },
+              { key: "two", label: "Two columns", icon: Columns2 },
+              { key: "tiles", label: "Tiles", icon: LayoutGrid },
+              { key: "table", label: "Table", icon: Table2 },
+            ] as const;
+            const current = views.find((view) => view.key === rosterView) ?? views[0];
+            const CurrentIcon = current.icon;
+            return (
+              <label className="relative inline-flex shrink-0 items-center">
+                <span className="sr-only">How to show this group</span>
+                <CurrentIcon
+                  size={14}
+                  strokeWidth={2.1}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-2 text-text-secondary"
+                />
+                <select
+                  value={rosterView}
+                  onChange={(event) =>
+                    setRosterView(event.target.value as typeof rosterView)
+                  }
+                  aria-label="How to show this group"
+                  className="h-8 cursor-pointer appearance-none rounded-lg border border-border-light bg-white pl-7 pr-7 text-[12px] font-medium text-text-secondary outline-none transition-colors hover:bg-surface focus:border-blue-primary"
                 >
-                  <Icon size={14} strokeWidth={2.2} />
-                </button>
-              );
-            })}
-          </span>
+                  {views.map((view) => (
+                    <option key={view.key} value={view.key}>
+                      {view.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={13}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-2 text-text-tertiary"
+                />
+              </label>
+            );
+          })()}
         </div>
         <div
           className={cn(

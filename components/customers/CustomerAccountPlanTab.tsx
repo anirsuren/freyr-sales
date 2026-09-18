@@ -688,7 +688,8 @@ export function CustomerAccountPlanTab({
                         <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white transition-[border-color,color,transform]", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></span>
                       </button>
                       <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
-                        <div className="border-t border-blue-subtle bg-white px-5 pb-5 pt-4 [box-shadow:inset_3px_0_0_0_var(--ink-bright-blue)]">
+                        <div>
+                          <div className="border-t border-blue-subtle bg-white px-5 pb-5 pt-4 [box-shadow:inset_3px_0_0_0_var(--ink-bright-blue)]">
                             <div className="tab-panel">
                               <div className="grid gap-x-10 gap-y-5 lg:grid-cols-2">
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Why this fits</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.why}</p></div>
@@ -743,6 +744,7 @@ export function CustomerAccountPlanTab({
                                 </div>
                               </div>
                             </div>
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -680,6 +680,7 @@ export function TargetsTab({
               />
             </button>
             <div className="freyr-fold" data-open={openWho ? "true" : "false"}>
+            <div>
             <div className="grid gap-3.5 pt-3 sm:grid-cols-2">
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
@@ -774,6 +775,7 @@ export function TargetsTab({
                   ]}
                 />
               </div>
+            </div>
             </div>
             </div>
           </div>

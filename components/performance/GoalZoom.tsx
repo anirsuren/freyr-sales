@@ -1506,29 +1506,53 @@ export function GoalZoom({
                       const active = selGroup?.group.id === r2.group.id;
                       return (
                         r2.verified === 0 && r2.awaiting === 0 ? (
-                        <button
+                        <div
                           key={r2.group.id}
-                          type="button"
-                          onClick={(e) => toggleGroup(r2.group.id, e.shiftKey)}
                           className={cn(
-                            "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-colors",
-                            active
-                              ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
-                              : "hover:bg-surface",
-                            /* Same fade as every other row in this column. */
-                            openGroups.size > 0 && !active && "opacity-45 hover:opacity-100"
+                            "overflow-hidden rounded-lg border",
+                            active ? "border-blue-primary/40" : "border-transparent"
                           )}
                         >
-                          <span className="flex w-full items-center gap-2.5">
-                            <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
-                            <span className="min-w-0 flex-1">
-                              <GroupPill name={r2.group.name} size="sm" />
+                          <button
+                            type="button"
+                            aria-expanded={active}
+                            onClick={(e) => toggleGroup(r2.group.id, e.shiftKey)}
+                            className={cn(
+                              "flex w-full cursor-pointer flex-col gap-1.5 px-2.5 py-2 text-left transition-colors",
+                              active
+                                ? "bg-[rgba(0,113,227,0.08)]"
+                                : "rounded-lg hover:bg-surface",
+                              /* Same fade as every other row in this column. */
+                              openGroups.size > 0 && !active && "opacity-45 hover:opacity-100"
+                            )}
+                          >
+                            <span className="flex w-full items-center gap-2.5">
+                              <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
+                              <span className="min-w-0 flex-1">
+                                <GroupPill name={r2.group.name} size="sm" />
+                              </span>
+                              <b className="shrink-0 text-right text-[11.5px] tnum text-text-tertiary">
+                                {fmtAmount(goal.unit, 0)}
+                              </b>
+                              <ChevronDown
+                                size={13}
+                                strokeWidth={2.4}
+                                aria-hidden="true"
+                                className={cn(
+                                  "shrink-0 text-text-tertiary transition-transform",
+                                  active && "rotate-180 text-blue-primary"
+                                )}
+                              />
                             </span>
-                            <b className="shrink-0 text-right text-[11.5px] tnum text-text-tertiary">
-                              {fmtAmount(goal.unit, 0)}
-                            </b>
-                          </span>
-                        </button>
+                          </button>
+                          {active && (
+                            <div className="tab-panel border-t border-border-light bg-white p-2">
+                              <p className="flex min-h-[92px] items-center justify-center rounded-lg bg-surface/60 px-3 py-6 text-center text-[12.5px] text-text-tertiary">
+                                No deals logged in this period.
+                              </p>
+                            </div>
+                          )}
+                        </div>
                         ) : (
                         <Fragment key={r2.group.id}>
                         {/* ONE OUTLINE ROUND THE WHOLE THING (Anir, Aug 16:

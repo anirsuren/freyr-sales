@@ -2191,6 +2191,7 @@ function AssignGroupModal({
                         className="freyr-fold"
                         data-open={expanded ? "true" : "false"}
                       >
+                        <span>
                         <span
                           className="mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 border-t border-border-light pt-2"
                         >
@@ -2210,6 +2211,7 @@ function AssignGroupModal({
                               )}
                             </span>
                           ))}
+                        </span>
                         </span>
                       </span>
                     </span>
