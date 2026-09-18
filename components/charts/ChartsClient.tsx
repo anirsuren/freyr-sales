@@ -512,9 +512,23 @@ function PortalTip({
   // Never let free viewport room decide how big a tooltip gets — on a tall
   // screen that produced a 800px card for four records.
   maxHeight = Math.min(maxHeight, TIP_MAX_HEIGHT);
+  /**
+   * Keep the card inside the chart's horizontal lane when that lane is wide
+   * enough to hold it. The first bar sits close to the page's left rail, so a
+   * cursor-centred card used to spill across the sidebar (and visually detach
+   * from the chart) even though there was ample room to its right.
+   */
+  const viewportLeft = 8;
+  const viewportRight = vw - width - 8;
+  const chartLeft = Math.max(viewportLeft, chartRect.left + 8);
+  const chartRight = Math.min(viewportRight, chartRect.right - width - 8);
+  const canFitInsideChart = chartRight >= chartLeft;
   const left = Math.max(
-    8,
-    Math.min(vw - width - 8, currentAnchor.x - width / 2)
+    canFitInsideChart ? chartLeft : viewportLeft,
+    Math.min(
+      canFitInsideChart ? chartRight : viewportRight,
+      currentAnchor.x - width / 2
+    )
   );
   return createPortal(
     <div
