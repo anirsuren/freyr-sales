@@ -604,7 +604,11 @@ export function CustomerAccountPlanTab({
                 color: statusMeta(play.stage).color,
                 dotColor: statusMeta(play.stage).color,
                 caption: `${money(play.target)} target`,
-                tip: play.contacts.map((name) => ({ name, sub: `Key contact for ${play.offering}` })),
+                tip: play.contacts.map((name) => ({
+                  name,
+                  avatar: name,
+                  sub: `Key contact for ${play.offering}`,
+                })),
               }))}
               height={190}
               format="percent"
