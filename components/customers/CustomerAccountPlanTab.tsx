@@ -468,11 +468,6 @@ export function CustomerAccountPlanTab({
       >
         <div className="flex h-full min-h-0 flex-col">
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <div className="mb-5 rounded-xl border border-blue-subtle bg-blue-light/35 px-4 py-3">
-              <p className="text-[12.5px] font-semibold text-text-primary">Plan direction and ownership</p>
-              <p className="mt-0.5 text-[12px] text-text-secondary">Keep the objective, commercial target, owner, and review cadence current.</p>
-            </div>
-
             <div className="grid gap-4 md:grid-cols-2">
               <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Status
@@ -534,46 +529,47 @@ export function CustomerAccountPlanTab({
             <div className="my-5 border-t border-border-light" />
 
             <div>
-              <div className="mb-3">
+              <div className="mb-2.5 flex items-center justify-between gap-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">Next actions</p>
-                <p className="mt-0.5 text-[12px] text-text-tertiary">Update the work, owner, timing, and status here. The page remains read-only.</p>
+                <span className="rounded-full bg-surface px-2 py-0.5 text-[10.5px] font-semibold text-text-tertiary">{draft.actions.length} actions</span>
               </div>
-              <div className="space-y-3">
+              <div className="divide-y divide-border-light overflow-hidden rounded-xl border border-border-light bg-white">
                 {draft.actions.map((action, index) => (
-                  <div key={action.id} className="rounded-xl border border-border-light bg-surface/40 p-3.5">
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-light text-[10.5px] font-bold text-blue-primary">{index + 1}</span>
-                      <span className="text-[11.5px] font-semibold text-blue-primary">{action.play}</span>
+                  <div key={action.id} className="grid gap-3 px-4 py-3 md:grid-cols-[150px_minmax(0,1fr)]">
+                    <div className="flex min-w-0 items-center gap-2 self-start pt-0.5">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-light text-[10px] font-bold text-blue-primary">{index + 1}</span>
+                      <span className="truncate text-[11.5px] font-semibold text-blue-primary">{action.play}</span>
                     </div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                      Action
-                      <input value={action.action} onChange={(e) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, action: e.target.value } : item) })} className="mt-1.5 h-10 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
-                    </label>
-                    <div className="mt-3 grid gap-3 md:grid-cols-3">
-                      <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                        Owner
-                        <PeopleSelect value={action.owner} options={ownerOptions} onChange={(owner) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, owner } : item) })} allowUnassigned={false} className="mt-1.5 normal-case tracking-normal" />
-                      </label>
-                      <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                        Due date
-                        <input type="date" value={action.due} onChange={(e) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, due: e.target.value } : item) })} className="mt-1.5 h-9 w-full rounded-md border border-border bg-white px-2.5 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none focus:border-blue-primary" />
-                      </label>
-                      <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                        Status
-                        <ColorSelect
-                          value={action.status}
-                          onChange={(status) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, status: status as ActionStatus } : item) })}
-                          options={[
-                            { value: "Next", label: "Next", color: VIOLET, icon: Circle },
-                            { value: "In progress", label: "In progress", color: BLUE, icon: CalendarClock },
-                            { value: "Done", label: "Done", color: GREEN, icon: CheckCircle2 },
-                            { value: "Blocked", label: "Blocked", color: ORANGE, icon: AlertCircle },
-                          ]}
-                          fill
-                          minWidth={0}
-                          className="mt-1.5 normal-case tracking-normal"
-                        />
-                      </label>
+                    <div className="min-w-0">
+                      <label className="sr-only" htmlFor={`account-plan-action-${action.id}`}>Action {index + 1}</label>
+                      <input id={`account-plan-action-${action.id}`} value={action.action} onChange={(e) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, action: e.target.value } : item) })} className="h-9 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                      <div className="mt-2 grid items-start gap-2.5 md:grid-cols-3">
+                        <label className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                          Owner
+                          <PeopleSelect value={action.owner} options={ownerOptions} onChange={(owner) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, owner } : item) })} allowUnassigned={false} ariaLabel={`Owner for action ${index + 1}`} className="normal-case tracking-normal [&>button]:h-10 [&>button]:py-0" />
+                        </label>
+                        <label className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                          Due date
+                          <input aria-label={`Due date for action ${index + 1}`} type="date" value={action.due} onChange={(e) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, due: e.target.value } : item) })} className="h-10 w-full rounded-lg border border-border bg-white px-2.5 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                        </label>
+                        <label className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                          Status
+                          <ColorSelect
+                            value={action.status}
+                            onChange={(status) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, status: status as ActionStatus } : item) })}
+                            options={[
+                              { value: "Next", label: "Next", color: VIOLET, icon: Circle },
+                              { value: "In progress", label: "In progress", color: BLUE, icon: CalendarClock },
+                              { value: "Done", label: "Done", color: GREEN, icon: CheckCircle2 },
+                              { value: "Blocked", label: "Blocked", color: ORANGE, icon: AlertCircle },
+                            ]}
+                            fill
+                            minWidth={0}
+                            ariaLabel={`Status for action ${index + 1}`}
+                            className="normal-case tracking-normal"
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 ))}
