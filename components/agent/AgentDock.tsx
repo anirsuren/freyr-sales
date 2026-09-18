@@ -332,7 +332,6 @@ export function AgentDock({
   dockable = false,
   docked = false,
   onDockChange,
-  raised = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -347,8 +346,6 @@ export function AgentDock({
   dockable?: boolean;
   docked?: boolean;
   onDockChange?: (docked: boolean) => void;
-  /** Lift the floating controls above a fixed page footer, such as a form save bar. */
-  raised?: boolean;
 }) {
   const currentUser = useCurrentUser();
   const firstName = firstNameForUser(currentUser);
@@ -914,7 +911,7 @@ export function AgentDock({
             "flex min-h-0 flex-col overflow-hidden bg-white",
             embedded
               ? "h-full w-full border-l border-border-light shadow-[-8px_0_30px_rgba(16,24,40,0.06)]"
-              : `fixed right-5 z-[120] w-[min(400px,calc(100vw-2.5rem))] rounded-2xl slide-in-right print:hidden ${raised ? "bottom-44" : "bottom-24"} ${POPOVER_SURFACE}`
+              : `fixed bottom-24 right-5 z-[120] w-[min(400px,calc(100vw-2.5rem))] rounded-2xl slide-in-right print:hidden ${POPOVER_SURFACE}`
           )}
         >
           {/* Header */}
@@ -1105,10 +1102,7 @@ export function AgentDock({
             // floating dock simply never got it.
             embedded
               ? "mx-auto mb-5 mt-auto"
-              : cn(
-                  "fixed right-5 z-[120] print:hidden",
-                  raised ? "bottom-24" : "bottom-5"
-                ),
+              : "fixed bottom-5 right-5 z-[120] print:hidden",
             "bg-blue-primary hover:bg-blue-hover shadow-[0_8px_24px_-6px_rgba(0,113,227,0.55)] hover:shadow-[0_12px_30px_-6px_rgba(0,113,227,0.65)] hover:-translate-y-0.5"
           )}
         >

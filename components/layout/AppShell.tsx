@@ -108,9 +108,6 @@ export function AppShell({
   ].some((route) => route.test(pathname));
   const isEmbeddedMaterial =
     isDocumentPage && searchParams?.get("embed") === "1";
-  /** Any page whose whole job is a form you fill in and save. */
-  const isEditingForm =
-    pathname.endsWith("/edit") || pathname.endsWith("/new");
   const router = useRouter();
   const offeringsOnly = isOfferingsOnly(dataMode);
   const releasedOnly = isReleasedOnly(dataMode);
@@ -544,9 +541,9 @@ export function AppShell({
             only tells the dock to keep its answers inside what real mode can
             actually open. */}
         {/* Not on the agent's own page: a floating mini agent on top of the
-            full agent is the same thing twice (Anir, Jul 29). On edit/new
-            forms it stays available but is raised above the fixed save bar,
-            so the launcher never blocks the primary action. */}
+            full agent is the same thing twice (Anir, Jul 29). Save bars that
+            reach this corner reserve the launcher's lane, so the assistant
+            stays in its standard position everywhere. */}
         {!pathname.startsWith("/agent") && (
         <AgentDock
           open={visibleAgentOpen}
@@ -555,7 +552,6 @@ export function AppShell({
           onHide={hideAgent}
           pathname={pathname}
           offeringsOnly={offeringsOnly}
-          raised={isEditingForm}
         />
         )}
         <ProductTourProvider

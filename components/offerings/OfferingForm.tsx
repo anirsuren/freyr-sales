@@ -3191,7 +3191,7 @@ export function OfferingForm({
           on the left (Anir, Jul 28: "I don't know why the Save Changes button
           is on the left. Shouldn't it be on the right like normal?"). Sticky,
           because the form is five sections tall. */}
-      <div className="sticky bottom-0 z-20 -mx-1 rounded-xl border border-border-light bg-white/95 px-4 py-3 shadow-card backdrop-blur">
+      <div className="sticky bottom-4 z-20 -mx-1 rounded-xl border border-border-light bg-white/95 py-3 pl-4 pr-[92px] shadow-card backdrop-blur">
         {saveError && (
           <div
             role="alert"
