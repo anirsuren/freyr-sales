@@ -152,17 +152,24 @@ export function FormSection({
               {hint}
             </span>
           </span>
-          <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors group-hover:bg-white group-hover:text-blue-primary">
-            <ChevronDown
-              size={17}
-              strokeWidth={2}
-              className={cn("transition-transform duration-200", open && "rotate-180")}
-            />
-          </span>
         </button>
         {(open || alwaysShowAction) && action && (
           <div className="shrink-0">{action}</div>
         )}
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          aria-label={open ? `Collapse ${title}` : `Expand ${title}`}
+          aria-expanded={open}
+          aria-controls={panelId}
+          className="group flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-none transition-colors hover:bg-white hover:text-blue-primary focus-visible:ring-2 focus-visible:ring-blue-primary"
+        >
+          <ChevronDown
+            size={17}
+            strokeWidth={2}
+            className={cn("transition-transform duration-200", open && "rotate-180")}
+          />
+        </button>
       </header>
       {open && (
         <div
