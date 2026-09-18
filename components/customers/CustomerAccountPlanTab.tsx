@@ -390,8 +390,13 @@ export function CustomerAccountPlanTab({
   const mappedDecisionSteps = decisionPath.filter((step) => step.mapped).length;
   const weightedValue = plan.plays.reduce((sum, play) => sum + play.target * (play.progress / 100), 0);
   const completedActions = plan.actions.filter((action) => action.status === "Done").length;
+  const hasPlanChanges = useMemo(
+    () => JSON.stringify(draft) !== JSON.stringify(plan),
+    [draft, plan]
+  );
 
   function savePlan() {
+    if (!hasPlanChanges) return;
     setPlan(draft);
     window.localStorage.setItem(storageKey, JSON.stringify(draft));
     setEditing(false);
@@ -578,7 +583,14 @@ export function CustomerAccountPlanTab({
           </div>
           <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-light bg-surface/40 px-5 py-3.5">
             <Button variant="secondary" className="px-4 py-2 text-[12.5px]" onClick={cancelEdit}>Cancel</Button>
-            <Button className="px-4 py-2 text-[12.5px]" onClick={savePlan}><Check size={14} />Save plan</Button>
+            <Button
+              className="px-4 py-2 text-[12.5px]"
+              onClick={savePlan}
+              disabled={!hasPlanChanges}
+              title={hasPlanChanges ? "Save plan changes" : "Make a change to enable saving"}
+            >
+              <Check size={14} />Save plan
+            </Button>
           </div>
         </div>
       </Modal>
