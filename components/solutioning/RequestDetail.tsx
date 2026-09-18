@@ -1330,8 +1330,12 @@ export function RequestDetail({
             key={`rail-${tab}`}
             className={cn(
               "tab-panel tab-panel-stagger",
+              /* A definite desktop height is what makes the timeline's
+                 overflow area scroll. A min-height let the activity list keep
+                 enlarging the rail, so its card ran far below the Analysis
+                 tile instead of ending on the same baseline. */
               hasTimelineItems
-                ? "flex min-h-0 flex-col gap-4 lg:min-h-[var(--overview-main-height)]"
+                ? "flex min-h-0 flex-col gap-4 lg:h-[var(--overview-main-height)]"
                 : "space-y-4 self-start"
             )}
             style={
