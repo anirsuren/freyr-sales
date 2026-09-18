@@ -18,6 +18,7 @@ import {
   Search,
   Target,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { BarChart, DonutChart } from "@/components/charts/Charts";
@@ -118,9 +119,14 @@ const STAGE_READINESS_POINTS: Record<PlayStage, number> = {
 };
 
 type ReadinessPart = {
+  key: "stage" | "contact" | "opportunity" | "activity" | "material" | "actions";
   label: string;
   points: number;
+  maxPoints: number;
   detail: string;
+  color: string;
+  icon: LucideIcon;
+  nextLabel: string;
 };
 
 function playReadiness({
@@ -142,34 +148,64 @@ function playReadiness({
 }) {
   const parts: ReadinessPart[] = [
     {
+      key: "stage",
       label: `Stage · ${stage}`,
       points: STAGE_READINESS_POINTS[stage],
+      maxPoints: 50,
       detail: `${stage} contributes ${STAGE_READINESS_POINTS[stage]} of 50 stage points`,
+      color: statusMeta(stage).color,
+      icon: Target,
+      nextLabel: stage === "Commit" ? "Commit stage reached" : `Advance beyond ${stage}`,
     },
     {
+      key: "contact",
       label: "Key contact",
       points: contactCount > 0 ? 10 : 0,
+      maxPoints: 10,
       detail: contactCount > 0 ? `${contactCount} mapped` : "None mapped",
+      color: BLUE,
+      icon: Users,
+      nextLabel: "Map a key contact",
     },
     {
+      key: "opportunity",
       label: "Linked opportunity",
       points: hasOpportunity ? 15 : 0,
+      maxPoints: 15,
       detail: hasOpportunity ? "CRM opportunity linked" : "No opportunity linked",
+      color: VIOLET,
+      icon: Briefcase,
+      nextLabel: "Link an opportunity",
     },
     {
+      key: "activity",
       label: "Linked activity",
       points: activityCount > 0 ? 10 : 0,
+      maxPoints: 10,
       detail: activityCount > 0 ? `${activityCount} linked` : "No activity linked",
+      color: TEAL,
+      icon: CalendarClock,
+      nextLabel: "Link an activity",
     },
     {
+      key: "material",
       label: "Sales material",
       points: materialCount > 0 ? 5 : 0,
+      maxPoints: 5,
       detail: materialCount > 0 ? `${materialCount} assigned` : "None assigned",
+      color: ORANGE,
+      icon: FileText,
+      nextLabel: "Assign sales material",
     },
     {
+      key: "actions",
       label: "Completed actions",
       points: actionCount > 0 ? Math.round((completedActionCount / actionCount) * 10) : 0,
+      maxPoints: 10,
       detail: actionCount > 0 ? `${completedActionCount} of ${actionCount} done` : "No actions linked",
+      color: GREEN,
+      icon: CheckCircle2,
+      nextLabel: actionCount > 0 ? "Complete open actions" : "Add and complete an action",
     },
   ];
 
@@ -231,6 +267,86 @@ function StatusPill({ status }: { status: PlanStatus | ActionStatus | PlayStage 
       <Icon size={11} strokeWidth={2.4} />
       {status}
     </span>
+  );
+}
+
+function ReadinessBreakdown({ readiness }: { readiness: ReturnType<typeof playReadiness> }) {
+  const nextMoves = readiness.parts
+    .map((part) => ({ ...part, available: part.maxPoints - part.points }))
+    .filter((part) => part.available > 0)
+    .sort((a, b) => b.available - a.available)
+    .slice(0, 3);
+
+  return (
+    <div className="mt-4 border-t border-border-light pt-4">
+      <div className="grid items-center gap-5 lg:grid-cols-[150px_minmax(0,1fr)]">
+        <div className="flex justify-center lg:justify-start">
+          <div
+            className="relative flex h-[132px] w-[132px] items-center justify-center rounded-full"
+            style={{ background: `conic-gradient(${BLUE} ${readiness.score}%, var(--border-light) ${readiness.score}% 100%)` }}
+            role="img"
+            aria-label={`${readiness.score} out of 100 readiness points`}
+          >
+            <div className="flex h-[104px] w-[104px] flex-col items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_var(--border-light)]">
+              <span className="tnum text-[30px] font-bold leading-none text-text-primary">{readiness.score}</span>
+              <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">of 100 ready</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">How the score adds up</p>
+              <p className="mt-1 text-[14px] font-semibold text-text-primary">
+                {readiness.parts.map((part, index) => (
+                  <Fragment key={part.key}>
+                    {index > 0 && <span className="mx-1.5 text-text-tertiary">+</span>}
+                    <span className="tnum" style={{ color: part.color }}>{part.points}</span>
+                  </Fragment>
+                ))}
+                <span className="mx-1.5 text-text-tertiary">=</span>
+                <span className="tnum">{readiness.score}</span>
+              </p>
+            </div>
+            <p className="text-[10.5px] text-text-tertiary">Readiness signal · not win probability</p>
+          </div>
+
+          <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-border-light" aria-hidden="true">
+            {readiness.parts.filter((part) => part.points > 0).map((part) => (
+              <span key={part.key} style={{ width: `${part.points}%`, background: part.color }} />
+            ))}
+          </div>
+
+          <div className="mt-3 grid overflow-hidden rounded-xl border border-border-light bg-white sm:grid-cols-2 lg:grid-cols-3">
+            {readiness.parts.map((part) => {
+              const Icon = part.icon;
+              return (
+                <div key={part.key} className="flex min-w-0 items-center gap-2.5 border-b border-border-light px-3 py-2.5 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 lg:border-b lg:border-r lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-last-child(-n+3)]:border-b-0">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ color: part.color, background: tint(part.color, 9) }}><Icon size={15} strokeWidth={2.2} /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[10.5px] font-semibold text-text-primary">{part.label}</span>
+                    <span className="block truncate text-[9.5px] text-text-tertiary">{part.detail}</span>
+                  </span>
+                  <span className="tnum shrink-0 text-[12px] font-bold" style={{ color: part.color }}>+{part.points}<span className="text-[9px] font-medium text-text-tertiary">/{part.maxPoints}</span></span>
+                </div>
+              );
+            })}
+          </div>
+
+          {nextMoves.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[10.5px]">
+              <span className="font-semibold text-text-primary">Raise it next:</span>
+              {nextMoves.map((part) => (
+                <span key={part.key} className="inline-flex items-center gap-1 rounded-full border border-blue-subtle bg-blue-light px-2 py-1 font-medium text-blue-primary">
+                  {part.nextLabel} <span className="tnum font-bold">+{part.available}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -686,7 +802,7 @@ export function CustomerAccountPlanTab({
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-light px-5 py-3.5">
             <div>
               <div className="flex items-center gap-2"><Target size={16} className="text-blue-primary" /><h3 className="text-[15px] font-semibold text-text-primary">Growth play readiness</h3></div>
-              <p className="mt-0.5 text-[12px] text-text-secondary">Stage 50 pts · CRM evidence 40 pts · completed actions 10 pts.</p>
+              <p className="mt-0.5 text-[12px] text-text-secondary">Stage 50 pts · supporting evidence 40 pts · completed actions 10 pts.</p>
             </div>
             <div className="text-right"><p className="tnum text-[15px] font-bold text-text-primary">{averageReadiness}%</p><p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Average readiness</p></div>
           </div>
@@ -830,23 +946,7 @@ export function CustomerAccountPlanTab({
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Why this fits</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.why}</p></div>
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Strategy</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.strategy}</p></div>
                               </div>
-                              <div className="mt-4 border-t border-border-light pt-3">
-                                <div className="flex flex-wrap items-end justify-between gap-2">
-                                  <div>
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Readiness score</p>
-                                    <p className="mt-0.5 text-[11.5px] text-text-secondary">Stage: Explore 10, Shape 25, Validate 40, Commit 50. CRM evidence adds up to 40; completed actions add up to 10. This is not win probability.</p>
-                                  </div>
-                                  <p className="tnum text-[18px] font-bold text-text-primary">{readiness.score}<span className="text-[11px] font-semibold text-text-tertiary"> / 100</span></p>
-                                </div>
-                                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                                  {readiness.parts.map((part) => (
-                                    <div key={part.label} className="flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2">
-                                      <span className="min-w-0"><span className="block truncate text-[11px] font-semibold text-text-primary">{part.label}</span><span className="block truncate text-[10px] text-text-tertiary">{part.detail}</span></span>
-                                      <span className="tnum shrink-0 text-[11px] font-bold text-blue-primary">+{part.points}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
+                              <ReadinessBreakdown readiness={readiness} />
                               <div className="mt-4 border-t border-border-light pt-4">
                                 <div className="min-w-0">
                                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">People & linked work</p>
