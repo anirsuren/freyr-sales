@@ -2497,9 +2497,12 @@ export function CustomerTabs({
         <div
           id="customer-account-details"
           aria-label="Account details"
-          className="space-y-4 motion-safe:animate-[fadeIn_.2s_ease-out]"
+          className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm motion-safe:animate-[fadeIn_.2s_ease-out]"
         >
-        <div className="flex justify-end">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-light bg-white px-4 py-3">
+          <h2 className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">
+            Account details
+          </h2>
           <button
             type="button"
             onClick={() => setAccountRailOpen(false)}
@@ -2512,6 +2515,7 @@ export function CustomerTabs({
             Hide
           </button>
         </div>
+        <div className="space-y-4 p-4 pb-20">
         {/* Per-account agent entry — opens the account-scoped drawer (chat +
             quick actions) over the page, reachable from any tab. The global
             dock stays for cross-app asks; this one is pre-loaded with THIS
@@ -2677,6 +2681,7 @@ export function CustomerTabs({
         </Card>
         {/* The Deliverables tiles that used to sit here are gone — see the note
             at the top of this file. Agent asks belong in the dock. */}
+        </div>
         </div>
         )}
       </aside>
