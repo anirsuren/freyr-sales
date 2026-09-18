@@ -2556,7 +2556,7 @@ export function BarChart({
                 max-width, no "…", the column is wide enough, and the plot
                 scrolls if the columns outgrow the card. */}
             <span
-              className="mt-1 flex w-full shrink-0 flex-col items-center justify-start gap-1 px-0.5 text-center"
+              className="mt-1 flex w-full shrink-0 flex-col items-center justify-end gap-1 px-0.5 text-center"
               style={{ height: labelBlockHeight }}
             >
               {d.logo && (
