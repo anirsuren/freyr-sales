@@ -110,10 +110,73 @@ const TEAL = "var(--ink-teal-deep)";
 const VIOLET = "var(--ink-violet-soft)";
 const GREEN = "var(--ink-green)";
 const ORANGE = "var(--ink-orange)";
-const PLAY_STAGES: PlayStage[] = ["Explore", "Shape", "Validate", "Commit"];
+const STAGE_READINESS_POINTS: Record<PlayStage, number> = {
+  Explore: 10,
+  Shape: 25,
+  Validate: 40,
+  Commit: 50,
+};
 
-function playStageProgress(stage: PlayStage) {
-  return ((PLAY_STAGES.indexOf(stage) + 1) / PLAY_STAGES.length) * 100;
+type ReadinessPart = {
+  label: string;
+  points: number;
+  detail: string;
+};
+
+function playReadiness({
+  stage,
+  contactCount,
+  hasOpportunity,
+  activityCount,
+  materialCount,
+  actionCount,
+  completedActionCount,
+}: {
+  stage: PlayStage;
+  contactCount: number;
+  hasOpportunity: boolean;
+  activityCount: number;
+  materialCount: number;
+  actionCount: number;
+  completedActionCount: number;
+}) {
+  const parts: ReadinessPart[] = [
+    {
+      label: `Stage · ${stage}`,
+      points: STAGE_READINESS_POINTS[stage],
+      detail: `${stage} contributes ${STAGE_READINESS_POINTS[stage]} of 50 stage points`,
+    },
+    {
+      label: "Key contact",
+      points: contactCount > 0 ? 10 : 0,
+      detail: contactCount > 0 ? `${contactCount} mapped` : "None mapped",
+    },
+    {
+      label: "Linked opportunity",
+      points: hasOpportunity ? 15 : 0,
+      detail: hasOpportunity ? "CRM opportunity linked" : "No opportunity linked",
+    },
+    {
+      label: "Linked activity",
+      points: activityCount > 0 ? 10 : 0,
+      detail: activityCount > 0 ? `${activityCount} linked` : "No activity linked",
+    },
+    {
+      label: "Sales material",
+      points: materialCount > 0 ? 5 : 0,
+      detail: materialCount > 0 ? `${materialCount} assigned` : "None assigned",
+    },
+    {
+      label: "Completed actions",
+      points: actionCount > 0 ? Math.round((completedActionCount / actionCount) * 10) : 0,
+      detail: actionCount > 0 ? `${completedActionCount} of ${actionCount} done` : "No actions linked",
+    },
+  ];
+
+  return {
+    score: parts.reduce((sum, part) => sum + part.points, 0),
+    parts,
+  };
 }
 
 function money(value: number) {
@@ -391,7 +454,27 @@ export function CustomerAccountPlanTab({
     { label: "Procurement", name: "Not mapped", detail: "Needed for the P1 play", color: ORANGE, mapped: false },
   ];
   const mappedDecisionSteps = decisionPath.filter((step) => step.mapped).length;
-  const weightedValue = plan.plays.reduce((sum, play) => sum + play.target * (playStageProgress(play.stage) / 100), 0);
+  const playEvidence = plan.plays.map((play, playIndex) => {
+    const linkedOpportunity =
+      customer.account_deals?.find((deal) => deal.offering === play.offering) ||
+      (playIndex === 0 ? customer.account_deals?.[0] : undefined);
+    const linkedActivities = playIndex === 0 ? interactions.slice(0, 2) : [];
+    const linkedActions = plan.actions.filter((action) => action.play === play.offering);
+    const readiness = playReadiness({
+      stage: play.stage,
+      contactCount: play.contacts.length,
+      hasOpportunity: !!linkedOpportunity,
+      activityCount: linkedActivities.length,
+      materialCount: play.materials.length,
+      actionCount: linkedActions.length,
+      completedActionCount: linkedActions.filter((action) => action.status === "Done").length,
+    });
+    return { play, linkedOpportunity, linkedActivities, linkedActions, readiness };
+  });
+  const averageReadiness = playEvidence.length
+    ? Math.round(playEvidence.reduce((sum, item) => sum + item.readiness.score, 0) / playEvidence.length)
+    : 0;
+  const allocatedTarget = plan.plays.reduce((sum, play) => sum + play.target, 0);
   const completedActions = plan.actions.filter((action) => action.status === "Done").length;
   const hasPlanChanges = useMemo(
     () => JSON.stringify(draft) !== JSON.stringify(plan),
@@ -602,23 +685,24 @@ export function CustomerAccountPlanTab({
         <Card className="overflow-hidden p-0">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-light px-5 py-3.5">
             <div>
-              <div className="flex items-center gap-2"><Target size={16} className="text-blue-primary" /><h3 className="text-[15px] font-semibold text-text-primary">Growth play momentum</h3></div>
-              <p className="mt-0.5 text-[12px] text-text-secondary">Progress across the prioritized expansion plays.</p>
+              <div className="flex items-center gap-2"><Target size={16} className="text-blue-primary" /><h3 className="text-[15px] font-semibold text-text-primary">Growth play readiness</h3></div>
+              <p className="mt-0.5 text-[12px] text-text-secondary">Stage 50 pts · CRM evidence 40 pts · completed actions 10 pts.</p>
             </div>
-            <div className="text-right"><p className="tnum text-[15px] font-bold text-text-primary">{money(weightedValue)}</p><p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Weighted value</p></div>
+            <div className="text-right"><p className="tnum text-[15px] font-bold text-text-primary">{averageReadiness}%</p><p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Average readiness</p></div>
           </div>
           <div className="px-4 pb-3 pt-4">
             <BarChart
-              data={plan.plays.map((play) => ({
+              data={playEvidence.map(({ play, readiness }) => ({
                 label: play.offering,
-                value: playStageProgress(play.stage),
+                value: readiness.score,
                 color: statusMeta(play.stage).color,
                 dotColor: statusMeta(play.stage).color,
-                caption: `${money(play.target)} target`,
-                tip: play.contacts.map((name) => ({
-                  name,
-                  avatar: name,
-                  sub: `Key contact for ${play.offering}`,
+                caption: `${play.stage} · ${money(play.target)} target`,
+                tipNote: "Readiness is a 100-point operational score. It is not win probability.",
+                tip: readiness.parts.map((part) => ({
+                  name: part.label,
+                  value: `+${part.points} pts`,
+                  sub: part.detail,
                 })),
               }))}
               height={190}
@@ -626,6 +710,7 @@ export function CustomerAccountPlanTab({
               maxBarWidth={48}
               hideTipStats
               hideFullHeightGhost
+              tipRecordsLabel="How this score is calculated"
             />
           </div>
         </Card>
@@ -641,15 +726,15 @@ export function CustomerAccountPlanTab({
                 size={108}
                 thickness={11}
                 segments={[
-                  { label: "Weighted value", value: weightedValue, color: BLUE },
-                  { label: "Remaining target", value: Math.max(0, plan.target - weightedValue), color: "#E5E5EA" },
+                  { label: "Allocated to plays", value: Math.min(allocatedTarget, plan.target), color: BLUE },
+                  { label: "Still unallocated", value: Math.max(0, plan.target - allocatedTarget), color: "#E5E5EA" },
                 ]}
-                centerLabel={`${Math.round((weightedValue / Math.max(plan.target, 1)) * 100)}%`}
-                centerSub="covered"
+                centerLabel={`${Math.round((Math.min(allocatedTarget, plan.target) / Math.max(plan.target, 1)) * 100)}%`}
+                centerSub="allocated"
                 format="money"
               />
-              <p className="mt-2 text-[11.5px] font-semibold text-text-primary">Revenue coverage</p>
-              <p className="mt-0.5 text-[10.5px] text-text-tertiary">{money(weightedValue)} of {money(plan.target)}</p>
+              <p className="mt-2 text-[11.5px] font-semibold text-text-primary">Target allocation</p>
+              <p className="mt-0.5 text-[10.5px] text-text-tertiary">{money(allocatedTarget)} across plays</p>
             </div>
             <div className="flex min-w-0 flex-col items-center px-2 text-center">
               <DonutChart
@@ -700,18 +785,13 @@ export function CustomerAccountPlanTab({
           <div className="overflow-x-auto bg-surface/30 p-3">
             <div className="min-w-[760px]">
               <div className="grid grid-cols-[minmax(280px,1.8fr)_110px_90px_115px_150px_32px] items-center gap-3 px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                <span>Priority & offering</span><span>Stage</span><span>Target</span><span>Target date</span><span>Stage progress</span><span />
+                <span>Priority & offering</span><span>Stage</span><span>Target</span><span>Target date</span><span>Readiness</span><span />
               </div>
               <div className="space-y-2">
                 {plan.plays.map((play) => {
                   const expanded = expandedPlay === play.id;
-                  const progress = playStageProgress(play.stage);
-                  const stageIndex = PLAY_STAGES.indexOf(play.stage);
-                  const playIndex = plan.plays.findIndex((entry) => entry.id === play.id);
-                  const linkedOpportunity =
-                    customer.account_deals?.find((deal) => deal.offering === play.offering) ||
-                    (playIndex === 0 ? customer.account_deals?.[0] : undefined);
-                  const linkedActivities = playIndex === 0 ? interactions.slice(0, 2) : [];
+                  const evidence = playEvidence.find((item) => item.play.id === play.id)!;
+                  const { linkedOpportunity, linkedActivities, readiness } = evidence;
                   return (
                     <div
                       key={play.id}
@@ -739,7 +819,7 @@ export function CustomerAccountPlanTab({
                         <span><StatusPill status={play.stage} /></span>
                         <span className="tnum font-semibold text-text-primary">{money(play.target)}</span>
                         <span className="text-text-secondary">{prettyDate(play.targetDate)}</span>
-                        <span className="flex min-w-[108px] items-center gap-2"><span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-light"><span className="block h-full rounded-full bg-blue-primary" style={{ width: `${progress}%` }} /></span><span className="tnum text-[11px] font-semibold text-text-secondary">{progress}%</span></span>
+                        <span className="flex min-w-[108px] items-center gap-2"><span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-light"><span className="block h-full rounded-full bg-blue-primary" style={{ width: `${readiness.score}%` }} /></span><span className="tnum text-[11px] font-semibold text-text-secondary">{readiness.score}%</span></span>
                         <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white transition-[border-color,color,transform]", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></span>
                       </button>
                       <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
@@ -750,19 +830,22 @@ export function CustomerAccountPlanTab({
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Why this fits</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.why}</p></div>
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Strategy</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.strategy}</p></div>
                               </div>
-                              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-light pt-3">
-                                <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Stage progress</p>
-                                <div className="flex min-w-[180px] flex-1 gap-1" aria-hidden="true">
-                                  {PLAY_STAGES.map((stage, index) => (
-                                    <span
-                                      key={stage}
-                                      className={cn("h-1.5 flex-1 rounded-full", index <= stageIndex ? "bg-blue-primary" : "bg-border-light")}
-                                    />
+                              <div className="mt-4 border-t border-border-light pt-3">
+                                <div className="flex flex-wrap items-end justify-between gap-2">
+                                  <div>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Readiness score</p>
+                                    <p className="mt-0.5 text-[11.5px] text-text-secondary">Stage: Explore 10, Shape 25, Validate 40, Commit 50. CRM evidence adds up to 40; completed actions add up to 10. This is not win probability.</p>
+                                  </div>
+                                  <p className="tnum text-[18px] font-bold text-text-primary">{readiness.score}<span className="text-[11px] font-semibold text-text-tertiary"> / 100</span></p>
+                                </div>
+                                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                  {readiness.parts.map((part) => (
+                                    <div key={part.label} className="flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2">
+                                      <span className="min-w-0"><span className="block truncate text-[11px] font-semibold text-text-primary">{part.label}</span><span className="block truncate text-[10px] text-text-tertiary">{part.detail}</span></span>
+                                      <span className="tnum shrink-0 text-[11px] font-bold text-blue-primary">+{part.points}</span>
+                                    </div>
                                   ))}
                                 </div>
-                                <p className="text-[11.5px] font-medium text-text-secondary">
-                                  {play.stage} is step {stageIndex + 1} of {PLAY_STAGES.length} · {progress}%
-                                </p>
                               </div>
                               <div className="mt-4 border-t border-border-light pt-4">
                                 <div className="min-w-0">
