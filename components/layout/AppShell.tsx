@@ -544,16 +544,10 @@ export function AppShell({
             only tells the dock to keep its answers inside what real mode can
             actually open. */}
         {/* Not on the agent's own page: a floating mini agent on top of the
-            full agent is the same thing twice (Anir, Jul 29).
-
-            NOT ON AN EDIT FORM EITHER. A form ends in a Save button in the
-            bottom-right corner, which is exactly where the bubble floats — on
-            the offering editor it sat directly on top of "Save changes" (Anir,
-            Jul 30: "the save changes button is literally getting blocked by
-            the AI assistant. Also, we shouldn't even have an AI on this page
-            for the edit thing"). And there is nothing for it to answer while
-            you are typing your own catalogue in. */}
-        {!pathname.startsWith("/agent") && !isEditingForm && (
+            full agent is the same thing twice (Anir, Jul 29). On edit/new
+            forms it stays available but is raised above the fixed save bar,
+            so the launcher never blocks the primary action. */}
+        {!pathname.startsWith("/agent") && (
         <AgentDock
           open={visibleAgentOpen}
           onOpenChange={setAgentOpen}
@@ -561,6 +555,7 @@ export function AppShell({
           onHide={hideAgent}
           pathname={pathname}
           offeringsOnly={offeringsOnly}
+          raised={isEditingForm}
         />
         )}
         <ProductTourProvider
