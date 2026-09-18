@@ -111,18 +111,10 @@ const TEAL = "var(--ink-teal-deep)";
 const VIOLET = "var(--ink-violet-soft)";
 const GREEN = "var(--ink-green)";
 const ORANGE = "var(--ink-orange)";
-const STAGE_READINESS_POINTS: Record<PlayStage, number> = {
-  Explore: 10,
-  Shape: 25,
-  Validate: 40,
-  Commit: 50,
-};
-
-type ReadinessPart = {
-  key: "stage" | "contact" | "opportunity" | "activity" | "material" | "actions";
+type ReadinessCheck = {
+  key: "contact" | "opportunity" | "activity" | "material" | "actions";
   label: string;
-  points: number;
-  maxPoints: number;
+  ready: boolean;
   detail: string;
   color: string;
   icon: LucideIcon;
@@ -130,7 +122,6 @@ type ReadinessPart = {
 };
 
 function playReadiness({
-  stage,
   contactCount,
   hasOpportunity,
   activityCount,
@@ -138,7 +129,6 @@ function playReadiness({
   actionCount,
   completedActionCount,
 }: {
-  stage: PlayStage;
   contactCount: number;
   hasOpportunity: boolean;
   activityCount: number;
@@ -146,72 +136,62 @@ function playReadiness({
   actionCount: number;
   completedActionCount: number;
 }) {
-  const parts: ReadinessPart[] = [
-    {
-      key: "stage",
-      label: `Stage · ${stage}`,
-      points: STAGE_READINESS_POINTS[stage],
-      maxPoints: 50,
-      detail: `${stage} contributes ${STAGE_READINESS_POINTS[stage]} of 50 stage points`,
-      color: statusMeta(stage).color,
-      icon: Target,
-      nextLabel: stage === "Commit" ? "Commit stage reached" : `Advance beyond ${stage}`,
-    },
+  const checks: ReadinessCheck[] = [
     {
       key: "contact",
-      label: "Key contact",
-      points: contactCount > 0 ? 10 : 0,
-      maxPoints: 10,
-      detail: contactCount > 0 ? `${contactCount} mapped` : "None mapped",
-      color: BLUE,
+      label: "Buyer",
+      ready: contactCount > 0,
+      detail: contactCount > 0 ? `${contactCount} key contact${contactCount === 1 ? "" : "s"}` : "No key contact",
+      color: "#7C3AED",
       icon: Users,
-      nextLabel: "Map a key contact",
+      nextLabel: "Map a buyer",
     },
     {
       key: "opportunity",
-      label: "Linked opportunity",
-      points: hasOpportunity ? 15 : 0,
-      maxPoints: 15,
-      detail: hasOpportunity ? "CRM opportunity linked" : "No opportunity linked",
-      color: VIOLET,
+      label: "Opportunity",
+      ready: hasOpportunity,
+      detail: hasOpportunity ? "Linked" : "Not linked",
+      color: "#DB2777",
       icon: Briefcase,
       nextLabel: "Link an opportunity",
     },
     {
       key: "activity",
-      label: "Linked activity",
-      points: activityCount > 0 ? 10 : 0,
-      maxPoints: 10,
-      detail: activityCount > 0 ? `${activityCount} linked` : "No activity linked",
-      color: TEAL,
+      label: "Activity",
+      ready: activityCount > 0,
+      detail: activityCount > 0 ? `${activityCount} linked record${activityCount === 1 ? "" : "s"}` : "None linked",
+      color: "#0F766E",
       icon: CalendarClock,
-      nextLabel: "Link an activity",
+      nextLabel: "Log an activity",
     },
     {
       key: "material",
-      label: "Sales material",
-      points: materialCount > 0 ? 5 : 0,
-      maxPoints: 5,
-      detail: materialCount > 0 ? `${materialCount} assigned` : "None assigned",
-      color: ORANGE,
+      label: "Materials",
+      ready: materialCount > 0,
+      detail: materialCount > 0 ? `${materialCount} file${materialCount === 1 ? "" : "s"}` : "None assigned",
+      color: "#EA580C",
       icon: FileText,
-      nextLabel: "Assign sales material",
+      nextLabel: "Add sales material",
     },
     {
       key: "actions",
-      label: "Completed actions",
-      points: actionCount > 0 ? Math.round((completedActionCount / actionCount) * 10) : 0,
-      maxPoints: 10,
+      label: "Actions",
+      ready: actionCount > 0 && completedActionCount === actionCount,
       detail: actionCount > 0 ? `${completedActionCount} of ${actionCount} done` : "No actions linked",
-      color: GREEN,
+      color: "#16A34A",
       icon: CheckCircle2,
-      nextLabel: actionCount > 0 ? "Complete open actions" : "Add and complete an action",
+      nextLabel: actionCount > 0
+        ? `Complete ${actionCount - completedActionCount} open action${actionCount - completedActionCount === 1 ? "" : "s"}`
+        : "Add and complete an action",
     },
   ];
 
+  const completed = checks.filter((check) => check.ready).length;
   return {
-    score: parts.reduce((sum, part) => sum + part.points, 0),
-    parts,
+    completed,
+    total: checks.length,
+    percent: Math.round((completed / checks.length) * 100),
+    checks,
   };
 }
 
@@ -271,82 +251,45 @@ function StatusPill({ status }: { status: PlanStatus | ActionStatus | PlayStage 
 }
 
 function ReadinessBreakdown({ readiness }: { readiness: ReturnType<typeof playReadiness> }) {
-  const nextMoves = readiness.parts
-    .map((part) => ({ ...part, available: part.maxPoints - part.points }))
-    .filter((part) => part.available > 0)
-    .sort((a, b) => b.available - a.available)
-    .slice(0, 3);
+  const missingChecks = readiness.checks.filter((check) => !check.ready);
 
   return (
     <div className="mt-4 border-t border-border-light pt-4">
-      <div className="grid items-center gap-5 lg:grid-cols-[150px_minmax(0,1fr)]">
-        <div className="flex justify-center lg:justify-start">
-          <div
-            className="relative flex h-[132px] w-[132px] items-center justify-center rounded-full"
-            style={{ background: `conic-gradient(${BLUE} ${readiness.score}%, var(--border-light) ${readiness.score}% 100%)` }}
-            role="img"
-            aria-label={`${readiness.score} out of 100 readiness points`}
-          >
-            <div className="flex h-[104px] w-[104px] flex-col items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_var(--border-light)]">
-              <span className="tnum text-[30px] font-bold leading-none text-text-primary">{readiness.score}</span>
-              <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">of 100 ready</span>
-            </div>
-          </div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Readiness checks</p>
+          <p className="mt-1 text-[17px] font-semibold text-text-primary"><span className="tnum text-[24px] font-bold">{readiness.completed}</span> of {readiness.total} ready</p>
         </div>
-
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">How the score adds up</p>
-              <p className="mt-1 text-[14px] font-semibold text-text-primary">
-                {readiness.parts.map((part, index) => (
-                  <Fragment key={part.key}>
-                    {index > 0 && <span className="mx-1.5 text-text-tertiary">+</span>}
-                    <span className="tnum" style={{ color: part.color }}>{part.points}</span>
-                  </Fragment>
-                ))}
-                <span className="mx-1.5 text-text-tertiary">=</span>
-                <span className="tnum">{readiness.score}</span>
-              </p>
-            </div>
-            <p className="text-[10.5px] text-text-tertiary">Readiness signal · not win probability</p>
-          </div>
-
-          <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-border-light" aria-hidden="true">
-            {readiness.parts.filter((part) => part.points > 0).map((part) => (
-              <span key={part.key} style={{ width: `${part.points}%`, background: part.color }} />
-            ))}
-          </div>
-
-          <div className="mt-3 grid overflow-hidden rounded-xl border border-border-light bg-white sm:grid-cols-2 lg:grid-cols-3">
-            {readiness.parts.map((part) => {
-              const Icon = part.icon;
-              return (
-                <div key={part.key} className="flex min-w-0 items-center gap-2.5 border-b border-border-light px-3 py-2.5 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 lg:border-b lg:border-r lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-last-child(-n+3)]:border-b-0">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ color: part.color, background: tint(part.color, 9) }}><Icon size={15} strokeWidth={2.2} /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[10.5px] font-semibold text-text-primary">{part.label}</span>
-                    <span className="block truncate text-[9.5px] text-text-tertiary">{part.detail}</span>
-                  </span>
-                  <span className="tnum shrink-0 text-[12px] font-bold" style={{ color: part.color }}>+{part.points}<span className="text-[9px] font-medium text-text-tertiary">/{part.maxPoints}</span></span>
-                </div>
-              );
-            })}
-          </div>
-
-          {nextMoves.length > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[10.5px]">
-              <span className="font-semibold text-text-primary">Raise it next:</span>
-              {nextMoves.map((part) => (
-                <span key={part.key} className="inline-flex items-center gap-1 rounded-full border border-blue-subtle bg-blue-light px-2 py-1 font-medium text-blue-primary">
-                  {part.nextLabel} <span className="tnum font-bold">+{part.available}</span>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+        <p className="text-[11px] text-text-secondary">Based only on records linked to this play.</p>
       </div>
-    </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        {readiness.checks.map((check) => {
+          const Icon = check.icon;
+          return (
+            <div key={check.key} className={cn("relative min-w-0 rounded-xl border px-3 py-3", check.ready ? "border-border-light bg-white" : "border-dashed border-border bg-surface/60")}>
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg" style={{ color: check.color, background: tint(check.color, check.ready ? 9 : 5) }}><Icon size={14} strokeWidth={2.2} /></span>
+                <span className="min-w-0 flex-1"><span className="block truncate text-[10.5px] font-semibold text-text-primary">{check.label}</span><span className="block truncate text-[9.5px] text-text-tertiary">{check.detail}</span></span>
+                {check.ready ? <CheckCircle2 size={15} className="shrink-0 text-success" /> : <Circle size={15} className="shrink-0 text-text-tertiary" />}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {missingChecks.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg bg-surface px-3 py-2.5 text-[10.5px]">
+          <span className="font-semibold text-text-primary">Still needed:</span>
+          {missingChecks.map((check) => (
+            <span key={check.key} className="inline-flex items-center gap-1.5 font-medium text-text-secondary">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: check.color }} />
+              {check.nextLabel}
+            </span>
+          ))}
+        </div>
+      )}
+      </div>
   );
 }
 
@@ -577,7 +520,6 @@ export function CustomerAccountPlanTab({
     const linkedActivities = playIndex === 0 ? interactions.slice(0, 2) : [];
     const linkedActions = plan.actions.filter((action) => action.play === play.offering);
     const readiness = playReadiness({
-      stage: play.stage,
       contactCount: play.contacts.length,
       hasOpportunity: !!linkedOpportunity,
       activityCount: linkedActivities.length,
@@ -587,9 +529,8 @@ export function CustomerAccountPlanTab({
     });
     return { play, linkedOpportunity, linkedActivities, linkedActions, readiness };
   });
-  const averageReadiness = playEvidence.length
-    ? Math.round(playEvidence.reduce((sum, item) => sum + item.readiness.score, 0) / playEvidence.length)
-    : 0;
+  const readyCheckCount = playEvidence.reduce((sum, item) => sum + item.readiness.completed, 0);
+  const totalCheckCount = playEvidence.reduce((sum, item) => sum + item.readiness.total, 0);
   const allocatedTarget = plan.plays.reduce((sum, play) => sum + play.target, 0);
   const completedActions = plan.actions.filter((action) => action.status === "Done").length;
   const hasPlanChanges = useMemo(
@@ -802,23 +743,24 @@ export function CustomerAccountPlanTab({
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-light px-5 py-3.5">
             <div>
               <div className="flex items-center gap-2"><Target size={16} className="text-blue-primary" /><h3 className="text-[15px] font-semibold text-text-primary">Growth play readiness</h3></div>
-              <p className="mt-0.5 text-[12px] text-text-secondary">Stage 50 pts · supporting evidence 40 pts · completed actions 10 pts.</p>
+              <p className="mt-0.5 text-[12px] text-text-secondary">Buyer, opportunity, activity, materials, and actions—five checks per play.</p>
             </div>
-            <div className="text-right"><p className="tnum text-[15px] font-bold text-text-primary">{averageReadiness}%</p><p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Average readiness</p></div>
+            <div className="text-right"><p className="tnum text-[15px] font-bold text-text-primary">{readyCheckCount} of {totalCheckCount}</p><p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Checks ready</p></div>
           </div>
           <div className="px-4 pb-3 pt-4">
             <BarChart
               data={playEvidence.map(({ play, readiness }) => ({
                 label: play.offering,
-                value: readiness.score,
+                value: readiness.percent,
+                valueLabel: `${readiness.completed}/${readiness.total}`,
                 color: statusMeta(play.stage).color,
                 dotColor: statusMeta(play.stage).color,
-                caption: `${play.stage} · ${money(play.target)} target`,
-                tipNote: "Readiness is a 100-point operational score. It is not win probability.",
-                tip: readiness.parts.map((part) => ({
-                  name: part.label,
-                  value: `+${part.points} pts`,
-                  sub: part.detail,
+                caption: `${money(play.target)} target`,
+                tipNote: "Each linked-record check counts once. This is not win probability.",
+                tip: readiness.checks.map((check) => ({
+                  name: check.label,
+                  value: check.ready ? "Ready" : "Missing",
+                  sub: check.detail,
                 })),
               }))}
               height={190}
@@ -826,7 +768,7 @@ export function CustomerAccountPlanTab({
               maxBarWidth={48}
               hideTipStats
               hideFullHeightGhost
-              tipRecordsLabel="How this score is calculated"
+              tipRecordsLabel="Readiness checks"
             />
           </div>
         </Card>
@@ -901,7 +843,7 @@ export function CustomerAccountPlanTab({
           <div className="overflow-x-auto bg-surface/30 p-3">
             <div className="min-w-[760px]">
               <div className="grid grid-cols-[minmax(280px,1.8fr)_110px_90px_115px_150px_32px] items-center gap-3 px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                <span>Priority & offering</span><span>Stage</span><span>Target</span><span>Target date</span><span>Readiness</span><span />
+                <span>Priority & offering</span><span>Stage</span><span>Target</span><span>Target date</span><span>Checks ready</span><span />
               </div>
               <div className="space-y-2">
                 {plan.plays.map((play) => {
@@ -935,7 +877,10 @@ export function CustomerAccountPlanTab({
                         <span><StatusPill status={play.stage} /></span>
                         <span className="tnum font-semibold text-text-primary">{money(play.target)}</span>
                         <span className="text-text-secondary">{prettyDate(play.targetDate)}</span>
-                        <span className="flex min-w-[108px] items-center gap-2"><span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-light"><span className="block h-full rounded-full bg-blue-primary" style={{ width: `${readiness.score}%` }} /></span><span className="tnum text-[11px] font-semibold text-text-secondary">{readiness.score}%</span></span>
+                        <span className="flex min-w-[108px] items-center gap-2">
+                          <span className="flex gap-1" aria-hidden="true">{readiness.checks.map((check) => <span key={check.key} className="h-2 w-2 rounded-full" style={{ background: check.ready ? check.color : "var(--border)" }} />)}</span>
+                          <span className="tnum text-[11px] font-semibold text-text-secondary">{readiness.completed} of {readiness.total}</span>
+                        </span>
                         <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white transition-[border-color,color,transform]", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></span>
                       </button>
                       <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
