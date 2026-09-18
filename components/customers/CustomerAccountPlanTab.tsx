@@ -68,7 +68,6 @@ type OfferingPlay = {
   targetDate: string;
   contacts: string[];
   materials: string[];
-  progress: number;
 };
 
 type Stakeholder = {
@@ -111,6 +110,11 @@ const TEAL = "var(--ink-teal-deep)";
 const VIOLET = "var(--ink-violet-soft)";
 const GREEN = "var(--ink-green)";
 const ORANGE = "var(--ink-orange)";
+const PLAY_STAGES: PlayStage[] = ["Explore", "Shape", "Validate", "Commit"];
+
+function playStageProgress(stage: PlayStage) {
+  return ((PLAY_STAGES.indexOf(stage) + 1) / PLAY_STAGES.length) * 100;
+}
 
 function money(value: number) {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(value % 1_000_000 ? 1 : 0)}M`;
@@ -243,7 +247,6 @@ function initialPlan(customer: Customer, contacts: Contact[], offerings: TabOffe
       targetDate: addMonths(i + 1),
       contacts: person ? [person.full_name] : [owner],
       materials: materials.length ? materials : [`${offering.name} overview`, "Relevant customer story"],
-      progress: [68, 42, 20, 10][i] || 10,
     };
   });
   return {
@@ -388,7 +391,7 @@ export function CustomerAccountPlanTab({
     { label: "Procurement", name: "Not mapped", detail: "Needed for the P1 play", color: ORANGE, mapped: false },
   ];
   const mappedDecisionSteps = decisionPath.filter((step) => step.mapped).length;
-  const weightedValue = plan.plays.reduce((sum, play) => sum + play.target * (play.progress / 100), 0);
+  const weightedValue = plan.plays.reduce((sum, play) => sum + play.target * (playStageProgress(play.stage) / 100), 0);
   const completedActions = plan.actions.filter((action) => action.status === "Done").length;
   const hasPlanChanges = useMemo(
     () => JSON.stringify(draft) !== JSON.stringify(plan),
@@ -608,7 +611,7 @@ export function CustomerAccountPlanTab({
             <BarChart
               data={plan.plays.map((play) => ({
                 label: play.offering,
-                value: play.progress,
+                value: playStageProgress(play.stage),
                 color: statusMeta(play.stage).color,
                 dotColor: statusMeta(play.stage).color,
                 caption: `${money(play.target)} target`,
@@ -697,11 +700,13 @@ export function CustomerAccountPlanTab({
           <div className="overflow-x-auto bg-surface/30 p-3">
             <div className="min-w-[760px]">
               <div className="grid grid-cols-[minmax(280px,1.8fr)_110px_90px_115px_150px_32px] items-center gap-3 px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                <span>Priority & offering</span><span>Stage</span><span>Target</span><span>Target date</span><span>Progress</span><span />
+                <span>Priority & offering</span><span>Stage</span><span>Target</span><span>Target date</span><span>Stage progress</span><span />
               </div>
               <div className="space-y-2">
                 {plan.plays.map((play) => {
                   const expanded = expandedPlay === play.id;
+                  const progress = playStageProgress(play.stage);
+                  const stageIndex = PLAY_STAGES.indexOf(play.stage);
                   const playIndex = plan.plays.findIndex((entry) => entry.id === play.id);
                   const linkedOpportunity =
                     customer.account_deals?.find((deal) => deal.offering === play.offering) ||
@@ -734,7 +739,7 @@ export function CustomerAccountPlanTab({
                         <span><StatusPill status={play.stage} /></span>
                         <span className="tnum font-semibold text-text-primary">{money(play.target)}</span>
                         <span className="text-text-secondary">{prettyDate(play.targetDate)}</span>
-                        <span className="flex min-w-[108px] items-center gap-2"><span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-light"><span className="block h-full rounded-full bg-blue-primary" style={{ width: `${play.progress}%` }} /></span><span className="tnum text-[11px] font-semibold text-text-secondary">{play.progress}%</span></span>
+                        <span className="flex min-w-[108px] items-center gap-2"><span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-light"><span className="block h-full rounded-full bg-blue-primary" style={{ width: `${progress}%` }} /></span><span className="tnum text-[11px] font-semibold text-text-secondary">{progress}%</span></span>
                         <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white transition-[border-color,color,transform]", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></span>
                       </button>
                       <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
@@ -744,6 +749,20 @@ export function CustomerAccountPlanTab({
                               <div className="grid gap-x-10 gap-y-5 lg:grid-cols-2">
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Why this fits</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.why}</p></div>
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Strategy</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.strategy}</p></div>
+                              </div>
+                              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-light pt-3">
+                                <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Stage progress</p>
+                                <div className="flex min-w-[180px] flex-1 gap-1" aria-hidden="true">
+                                  {PLAY_STAGES.map((stage, index) => (
+                                    <span
+                                      key={stage}
+                                      className={cn("h-1.5 flex-1 rounded-full", index <= stageIndex ? "bg-blue-primary" : "bg-border-light")}
+                                    />
+                                  ))}
+                                </div>
+                                <p className="text-[11.5px] font-medium text-text-secondary">
+                                  {play.stage} is step {stageIndex + 1} of {PLAY_STAGES.length} · {progress}%
+                                </p>
                               </div>
                               <div className="mt-4 border-t border-border-light pt-4">
                                 <div className="min-w-0">
