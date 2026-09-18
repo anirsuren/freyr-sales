@@ -2090,8 +2090,8 @@ export function RequestDetail({
           setContributorQuery("");
         }}
         title="Add a contributor"
-        size="wide"
-        dialogClassName="min-h-[min(560px,calc(100vh-4rem))]"
+        size="workflow"
+        dialogClassName="!max-w-[880px] !h-[min(720px,calc(100vh-3rem))]"
         bodyClassName="flex flex-col"
       >
         {(() => {
@@ -2122,17 +2122,23 @@ export function RequestDetail({
                 Choose someone to support <b className="text-text-primary">{division ?? "this division"}</b>.
                 People who already have a role here are hidden.
               </p>
-              <label className="mt-5 flex h-[52px] items-center gap-3 rounded-xl border-2 border-border-light bg-white px-4 transition-colors focus-within:border-blue-primary">
-                <Search size={18} strokeWidth={2.1} className="shrink-0 text-text-secondary" />
+              <div className="relative mt-5 shrink-0">
+                <Search
+                  size={18}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary"
+                />
                 <input
+                  type="search"
                   autoFocus
                   value={contributorQuery}
                   onChange={(event) => setContributorQuery(event.target.value)}
                   placeholder="Search people…"
                   aria-label="Search contributors"
-                  className="min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-text-tertiary"
+                  className="h-[52px] w-full rounded-xl border border-border-light bg-white pl-11 pr-4 text-[14px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary hover:border-border focus:border-blue-primary"
                 />
-              </label>
+              </div>
               <div className="mt-4 flex items-center justify-between">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
                   Available people
