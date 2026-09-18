@@ -261,7 +261,6 @@ export function GroupPerformanceTab({
                 setRosterOpen(true);
               }}
               aria-label={`See everyone in ${g.name}`}
-              title={`See everyone in ${g.name}`}
               className="flex shrink-0 cursor-pointer items-center rounded-lg transition-opacity hover:opacity-80"
             >
             <PersonFan
