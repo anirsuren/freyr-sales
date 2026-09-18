@@ -1604,15 +1604,15 @@ function GoalRows({
         )}
         style={{ ["--goal-accent" as string]: typeMeta(goal.type).color }}
       >
-        <td className="px-4 py-2">
+        <td className="px-4 py-1.5">
           <span className="flex items-center gap-3">
-            <TypeIconTile type={goal.type} className="h-9 w-9 rounded-lg" />
+            <TypeIconTile type={goal.type} className="h-8 w-8 rounded-lg" />
             {/* THE MARKS SHARE ONE LINE (Anir, Aug 16: "this has to be on one
                 line. the 'financial...' thing is below lagging when it should
                 be in line with it"). The pace pill used to sit on the name's
                 line and wrap under it the moment the name was long, which put
                 three stacked rows in a cell that holds two things. */}
-            <span className="flex min-w-0 flex-col gap-1.5">
+            <span className="flex min-w-0 flex-col gap-0.5">
               {/* self-start, because in a flex COLUMN the link stretched to
                   the widest line under it — the category chip — so clicking
                   the empty space beside a short name hit an invisible link
@@ -1678,7 +1678,7 @@ function GoalRows({
             </span>
           </span>
         </td>
-        <td className="whitespace-nowrap px-4 py-2">
+        <td className="whitespace-nowrap px-4 py-1.5">
           {/* JUST THE NUMBER (Anir, Aug 20: "can you remove the edit button
               next to the target? I think it's useless"). Changing a target was
               given its own pencil here on Aug 15, but the row's Actions column
@@ -1706,7 +1706,7 @@ function GoalRows({
             <span className="text-[13px] text-text-tertiary">·</span>
           )}
         </td>
-        <td className="whitespace-nowrap px-4 py-2">
+        <td className="whitespace-nowrap px-4 py-1.5">
           <span className="block text-[13px] font-semibold text-text-primary tnum">
             {money(actual, goal.currency)}
           </span>
@@ -1717,7 +1717,7 @@ function GoalRows({
             </span>
           )}
         </td>
-        <td className="px-4 py-2">
+        <td className="px-4 py-1.5">
           {goal.target > 0 ? (
             <MetPill met={verifiedActual >= goal.target} size="sm" />
           ) : (
@@ -1730,7 +1730,7 @@ function GoalRows({
             The whole row used to broadcast, so crossing any of its seven cells
             lit the bar and its partner in the chart. */}
         <td
-          className="px-4 py-2"
+          className="px-4 py-1.5"
           onMouseEnter={() => donutSyncBroadcast(syncId, index)}
           onMouseLeave={() => donutSyncBroadcast(syncId, null)}
         >
@@ -1778,7 +1778,7 @@ function GoalRows({
           />
 
         </td>
-        <td className="px-4 py-2">
+        <td className="px-4 py-1.5">
           <VerifiedPill
             /**
              * SIGNED OFF IS SIGNED OFF (Anir, Aug 23: "we verified it, but it
@@ -1834,7 +1834,7 @@ function GoalRows({
             }
           />
         </td>
-        <td className="px-2 py-2">
+        <td className="px-2 py-1.5">
           {/* THE FIRST ICON STARTS WHERE THE HEADING DOES (Anir, Aug 16: "the
               a should line up with the first icon"). The heading was left
               aligned and the controls right aligned, so they sat on opposite
@@ -1876,32 +1876,6 @@ function GoalRows({
               <Pencil size={13.5} strokeWidth={2.2} />
             </button>
           )}
-          {/* THE OTHER WAY BACK (Anir, Aug 19: "I also want a red icon in the
-              actions column that sets it back"). The pill's own hover state
-              undoes a sign-off too; this is the version you can find without
-              hovering the thing you want to change, and it only exists while
-              there is a sign-off to take back. */}
-          {live && goal.verified && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setVerifying(true);
-              }}
-              /* SAY WHAT THE BUTTON ACTUALLY DOES. This promised the money
-                 "stops counting until it is verified again", but setVerified
-                 only sweeps entries when the flag goes ON — taking a sign-off
-                 back deliberately leaves every claim verified, because
-                 un-counting money people already banked on is a louder act
-                 than one button. The old text described a consequence the code
-                 refuses to have. */
-              title={`Undo the sign-off on ${goal.name}. The results underneath stay verified`}
-              aria-label={`Undo the sign-off on ${goal.name}`}
-              className="cursor-pointer rounded-md p-1 text-[#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
-            >
-              <ShieldX size={13.5} strokeWidth={2.2} />
-            </button>
-          )}
           {/* FULL SCREEN LIVES ON THE ROW (Anir, Aug 16: "Expand it. I don't
               see that button. It should be like a button. It should be an
               action column on this row"). Buried in the drill-down header it
@@ -1918,6 +1892,22 @@ function GoalRows({
           >
             <Maximize2 size={13.5} strokeWidth={2.2} />
           </button>
+          {/* Keep the destructive reset second-last, directly before the row
+              chevron, so its position is stable on every goal row. */}
+          {live && goal.verified && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setVerifying(true);
+              }}
+              title={`Undo the sign-off on ${goal.name}. The results underneath stay verified`}
+              aria-label={`Undo the sign-off on ${goal.name}`}
+              className="cursor-pointer rounded-md p-1 text-[#DC2626] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
+            >
+              <ShieldX size={13.5} strokeWidth={2.2} />
+            </button>
+          )}
           {/* THE KEYBOARD'S WAY IN (found Aug 16). The row answers the mouse;
               this answers Tab and Enter. It cannot be the row itself — a
               role="button" may not contain the verify pill and the target

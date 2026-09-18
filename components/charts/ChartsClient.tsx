@@ -340,9 +340,11 @@ function useChartHover() {
     setAnchor(at);
   }
 
-  /** Close synchronously when the pointer leaves the painted chart mark. */
+  /** Give the pointer time to cross from the painted mark into its portaled
+   * card. Entering the card cancels this timer, so long breakdowns can be
+   * scrolled instead of vanishing at the chart boundary. */
   const close = useCallback(
-    (graceMs = 0) => {
+    (graceMs = 180) => {
       keepOpen();
       stopOpening();
       setActive(null);
@@ -360,7 +362,7 @@ function useChartHover() {
     [keepOpen, stopOpening, setCard]
   );
 
-  return { hover, active, anchor, show, move, close };
+  return { hover, active, anchor, show, move, close, keepOpen };
 }
 
 // A tooltip rendered into <body> via a portal so it can NEVER be clipped by a
@@ -374,6 +376,8 @@ function PortalTip({
   anchor,
   wide,
   nearPoint,
+  onPointerEnter,
+  onPointerLeave,
   children,
 }: {
   anchor: ChartAnchor | null;
@@ -383,6 +387,8 @@ function PortalTip({
    *  way from the hovered point (Anir: "it should be right below where it is
    *  on the graph… or above… it shouldn't be that far away"). */
   nearPoint?: boolean;
+  onPointerEnter?: () => void;
+  onPointerLeave?: () => void;
   children: React.ReactNode;
 }) {
   const [ready, setReady] = useState(false);
@@ -513,7 +519,9 @@ function PortalTip({
   return createPortal(
     <div
       role="tooltip"
-      className="pointer-events-none fixed z-[9999]"
+      className="pointer-events-auto fixed z-[9999]"
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
       style={{
         left,
         top,
@@ -523,7 +531,7 @@ function PortalTip({
       }}
     >
       <div
-        className="pointer-events-none flex flex-col"
+        className="flex min-h-0 flex-col"
         style={{ maxHeight }}
       >
         {/* THE WHOLE CARD SCROLLS (Anir, Aug 19: "the container for this
@@ -604,17 +612,23 @@ function Tip({
   children,
   wide,
   nearPoint,
+  onPointerEnter,
+  onPointerLeave,
 }: {
   anchor: ChartAnchor | null;
   children: React.ReactNode;
   wide?: boolean;
   nearPoint?: boolean;
+  onPointerEnter?: () => void;
+  onPointerLeave?: () => void;
 }) {
   return (
     <PortalTip
       anchor={anchor}
       wide={wide}
       nearPoint={nearPoint}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
     >
       {children}
     </PortalTip>
@@ -1349,6 +1363,7 @@ export function AreaChart({
     anchor: mouse,
     show: showHover,
     close: closeTip,
+    keepOpen,
   } = useChartHover();
   const w = 600;
   const h = height;
@@ -1562,6 +1577,8 @@ export function AreaChart({
           anchor={mouse}
           wide={!!pointTips || goal != null}
           nearPoint
+          onPointerEnter={keepOpen}
+          onPointerLeave={() => closeTip()}
         >
           <TipHeader
             color={color}
@@ -1687,6 +1704,7 @@ export function DonutChart({
     show: showHover,
     move: moveTip,
     close: closeTip,
+    keepOpen,
   } = useChartHover();
   const linked = useDonutSync(syncId);
   // A slice is "lit" when the mouse is on it OR its legend row is hovered.
@@ -1835,6 +1853,8 @@ export function DonutChart({
         <PortalTip
           anchor={mouse}
           wide
+          onPointerEnter={keepOpen}
+          onPointerLeave={() => closeTip()}
         >
           <TipHeader
             icon={segments[hover].icon}
@@ -2041,6 +2061,7 @@ export function BarChart({
     show: showHover,
     move: moveTip,
     close: closeTip,
+    keepOpen,
   } = useChartHover();
   /**
    * A PERCENT CHART IS SCALED 0-100, ALWAYS. NOT TO ITS TALLEST BAR.
@@ -2298,6 +2319,8 @@ export function BarChart({
                 anchor={mouse}
                 wide
                 nearPoint
+                onPointerEnter={keepOpen}
+                onPointerLeave={() => closeTip()}
               >
                 <TipHeader
                   icon={d.icon}
@@ -2587,6 +2610,7 @@ export function LineChart({
     anchor: mouse,
     show: showHover,
     close: closeTip,
+    keepOpen,
   } = useChartHover();
   const w = 600;
   const h = height;
@@ -2725,6 +2749,8 @@ export function LineChart({
             <Tip
               anchor={mouse}
               wide
+              onPointerEnter={keepOpen}
+              onPointerLeave={() => closeTip()}
             >
               {series.length === 1 ? (
                 <div className="shrink-0">
@@ -2829,6 +2855,7 @@ export function Sparkline({
     anchor: mouse,
     show: showHover,
     close: closeTip,
+    keepOpen,
   } = useChartHover();
   const w = 120;
   const h = height;
@@ -2907,6 +2934,8 @@ export function Sparkline({
         <Tip
           anchor={mouse}
           wide
+          onPointerEnter={keepOpen}
+          onPointerLeave={() => closeTip()}
         >
           <div className="shrink-0">
             <TipHeader
@@ -3151,7 +3180,7 @@ export function MovementBarChart({ data, enabled = true }: {
   enabled?: boolean;
   data: { label: string; value: number; valueLabel: string; exactValue: string; color: string; description: string; tip: TipItem[] }[];
 }) {
-  const { hover, active, anchor, show, close } = useChartHover();
+  const { hover, active, anchor, show, close, keepOpen } = useChartHover();
   useEffect(() => { if (!enabled) close(0); }, [enabled, close]);
   const positiveMax = Math.max(0, ...data.map(row => row.value));
   const negativeMax = Math.max(0, ...data.map(row => -row.value));
@@ -3222,7 +3251,13 @@ export function MovementBarChart({ data, enabled = true }: {
         </div>
       </div>
       {enabled && selected && (
-        <PortalTip anchor={anchor} wide nearPoint>
+        <PortalTip
+          anchor={anchor}
+          wide
+          nearPoint
+          onPointerEnter={keepOpen}
+          onPointerLeave={() => close()}
+        >
           <TipHeader icon="money" color={selected.color} label={selected.label} value={selected.exactValue} note={selected.value >= 0 ? "Added to this month's plan" : "Removed from this month's plan"} />
           <TipBreakdown items={selected.tip} label="Frozen compared with today" />
         </PortalTip>

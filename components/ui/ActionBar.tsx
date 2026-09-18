@@ -88,7 +88,16 @@ export function ActionBar({
           disabled={a.disabled}
           title={a.title}
           onClick={a.onClick}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary disabled:cursor-not-allowed disabled:opacity-50"
+          className={cn(
+            "inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+            a.tone === "done"
+              ? "border-[color:#16A34A] bg-[color:#16A34A] text-white hover:border-[color:#15803D] hover:bg-[color:#15803D]"
+              : a.tone === "warn"
+                ? "border-[color:var(--ink-amber)] bg-[rgba(217,119,6,0.08)] text-[color:var(--ink-amber)] hover:bg-[rgba(217,119,6,0.14)]"
+                : a.tone === "stop"
+                  ? "border-[color:var(--status-red)] bg-red-50 text-[color:var(--status-red)] hover:bg-red-100"
+                  : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40 hover:text-blue-primary"
+          )}
         >
           <a.icon size={14} strokeWidth={2.2} />
           {a.label}
