@@ -497,37 +497,37 @@ export function CustomerAccountPlanTab({
 
             <div className="my-5 border-t border-border-light" />
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
+            <div className="grid items-start gap-4 md:grid-cols-3">
+              <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Revenue target
                 <MoneyInput
                   value={String(draft.target)}
                   onChange={(value) => setDraft({ ...draft, target: Number(value) || 0 })}
                   ariaLabel="Revenue target"
                   placeholder="0"
-                  className="mt-1.5 h-10 border-border font-medium normal-case tracking-normal focus:ring-2 focus:ring-blue-primary/10"
+                  className="box-border !h-10 border-border font-medium normal-case tracking-normal focus:ring-2 focus:ring-blue-primary/10"
                 />
               </label>
-              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
+              <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Next review
-                <input type="date" value={draft.reviewDate} onChange={(e) => setDraft({ ...draft, reviewDate: e.target.value })} className="mt-1.5 h-10 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                <input type="date" value={draft.reviewDate} onChange={(e) => setDraft({ ...draft, reviewDate: e.target.value })} className="box-border h-10 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
-              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
+              <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Target date
-                <input type="date" value={draft.targetDate} onChange={(e) => setDraft({ ...draft, targetDate: e.target.value })} className="mt-1.5 h-10 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                <input type="date" value={draft.targetDate} onChange={(e) => setDraft({ ...draft, targetDate: e.target.value })} className="box-border h-10 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
             </div>
 
             <div className="my-5 border-t border-border-light" />
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
+            <div className="grid items-start gap-4 md:grid-cols-2">
+              <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Account objective
-                <textarea value={draft.objective} onChange={(e) => setDraft({ ...draft, objective: e.target.value })} className="mt-1.5 min-h-[128px] w-full resize-none rounded-lg border border-border bg-white p-3 text-[13px] font-normal leading-5 normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                <textarea value={draft.objective} onChange={(e) => setDraft({ ...draft, objective: e.target.value })} className="box-border h-32 w-full resize-none rounded-lg border border-border bg-white p-3 text-[13px] font-normal leading-5 normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
-              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
+              <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Current position
-                <textarea value={draft.currentPosition} onChange={(e) => setDraft({ ...draft, currentPosition: e.target.value })} className="mt-1.5 min-h-[128px] w-full resize-none rounded-lg border border-border bg-white p-3 text-[13px] font-normal leading-5 normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                <textarea value={draft.currentPosition} onChange={(e) => setDraft({ ...draft, currentPosition: e.target.value })} className="box-border h-32 w-full resize-none rounded-lg border border-border bg-white p-3 text-[13px] font-normal leading-5 normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
             </div>
 
