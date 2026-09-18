@@ -1604,15 +1604,15 @@ function GoalRows({
         )}
         style={{ ["--goal-accent" as string]: typeMeta(goal.type).color }}
       >
-        <td className="px-4 py-1.5">
+        <td className="px-4 py-3 align-middle">
           <span className="flex items-center gap-3">
-            <TypeIconTile type={goal.type} className="h-8 w-8 rounded-lg" />
+            <TypeIconTile type={goal.type} className="h-9 w-9 rounded-lg" />
             {/* THE MARKS SHARE ONE LINE (Anir, Aug 16: "this has to be on one
                 line. the 'financial...' thing is below lagging when it should
                 be in line with it"). The pace pill used to sit on the name's
                 line and wrap under it the moment the name was long, which put
                 three stacked rows in a cell that holds two things. */}
-            <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="flex min-w-0 flex-col gap-1.5">
               {/* self-start, because in a flex COLUMN the link stretched to
                   the widest line under it — the category chip — so clicking
                   the empty space beside a short name hit an invisible link
@@ -1678,7 +1678,7 @@ function GoalRows({
             </span>
           </span>
         </td>
-        <td className="whitespace-nowrap px-4 py-1.5">
+        <td className="whitespace-nowrap px-4 py-3 align-middle">
           {/* JUST THE NUMBER (Anir, Aug 20: "can you remove the edit button
               next to the target? I think it's useless"). Changing a target was
               given its own pencil here on Aug 15, but the row's Actions column
@@ -1706,7 +1706,7 @@ function GoalRows({
             <span className="text-[13px] text-text-tertiary">·</span>
           )}
         </td>
-        <td className="whitespace-nowrap px-4 py-1.5">
+        <td className="whitespace-nowrap px-4 py-3 align-middle">
           <span className="block text-[13px] font-semibold text-text-primary tnum">
             {money(actual, goal.currency)}
           </span>
@@ -1717,7 +1717,7 @@ function GoalRows({
             </span>
           )}
         </td>
-        <td className="px-4 py-1.5">
+        <td className="px-4 py-3 align-middle">
           {goal.target > 0 ? (
             <MetPill met={verifiedActual >= goal.target} size="sm" />
           ) : (
@@ -1730,7 +1730,7 @@ function GoalRows({
             The whole row used to broadcast, so crossing any of its seven cells
             lit the bar and its partner in the chart. */}
         <td
-          className="px-4 py-1.5"
+          className="px-4 py-3 align-middle"
           onMouseEnter={() => donutSyncBroadcast(syncId, index)}
           onMouseLeave={() => donutSyncBroadcast(syncId, null)}
         >
@@ -1778,7 +1778,7 @@ function GoalRows({
           />
 
         </td>
-        <td className="px-4 py-1.5">
+        <td className="px-4 py-3 align-middle">
           <VerifiedPill
             /**
              * SIGNED OFF IS SIGNED OFF (Anir, Aug 23: "we verified it, but it
@@ -1834,7 +1834,7 @@ function GoalRows({
             }
           />
         </td>
-        <td className="px-2 py-1.5">
+        <td className="px-2 py-3 align-middle">
           {/* THE FIRST ICON STARTS WHERE THE HEADING DOES (Anir, Aug 16: "the
               a should line up with the first icon"). The heading was left
               aligned and the controls right aligned, so they sat on opposite
@@ -1953,10 +1953,15 @@ function GoalRows({
           <td colSpan={7} className="p-0">
             <div className="freyr-fold" data-open={open ? "true" : "false"}>
               <div
-                className="px-4 pb-4 pt-0 [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
+                className="[box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
                 style={{ ["--goal-accent" as string]: typeMeta(goal.type).color }}
               >
-              <div className="tab-panel space-y-3 pb-3 pl-3.5 pt-1">
+              {/* Padding cannot live on the immediate child of a 0fr fold:
+                  CSS grid collapses its content height, but the child's own
+                  padding survives and leaves a dead, non-clickable strip
+                  under every closed table row. Keep all spacing one level
+                  inside so a closed drawer is truly 0px tall. */}
+              <div className="tab-panel space-y-3 pb-7 pl-[30px] pr-4 pt-1">
               {/* The drill-down that used to need a separate page. Same
                   component, embedded, so the two can never diverge (Anir,
                   Aug 14: "when i click a goal make it a dropdown"). The link
