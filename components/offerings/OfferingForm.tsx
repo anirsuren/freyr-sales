@@ -717,36 +717,6 @@ function SelectField({
   );
 }
 
-/** The same shell around free text fields, for values that must stay typeable. */
-function FieldShell({
-  accent,
-  icon: Icon,
-  children,
-  className,
-}: {
-  accent: string;
-  icon: LucideIcon;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex h-10 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 transition-[border-color] hover:border-blue-subtle focus-within:border-blue-primary",
-        className
-      )}
-    >
-      <span
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-        style={{ background: tint(accent, 12), color: accent }}
-      >
-        <Icon size={13} strokeWidth={2.1} />
-      </span>
-      {children}
-    </div>
-  );
-}
-
 export function OfferingForm({
   relatedPool = [],
   customerTypes,
@@ -2441,21 +2411,15 @@ export function OfferingForm({
           </div>
           <div>
             <label className={LABEL}>Availability comments (optional)</label>
-            <FieldShell
-              accent="#4F46E5"
-              icon={Clock}
-              className="h-auto min-h-[88px] items-start py-2.5"
-            >
-              <textarea
-                rows={3}
-                maxLength={600}
-                className="min-h-[64px] min-w-0 flex-1 resize-y bg-transparent text-[13.5px] leading-5 text-text-primary placeholder:text-text-tertiary outline-none focus:shadow-none"
-                value={future}
-                onChange={(e) => setFuture(e.target.value)}
-                placeholder="Add one or two sentences about availability, delivery coverage, or constraints."
-                aria-label="Availability comments"
-              />
-            </FieldShell>
+            <textarea
+              rows={3}
+              maxLength={600}
+              className="block min-h-[88px] w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13.5px] leading-5 text-text-primary placeholder:text-text-tertiary outline-none transition-[border-color] hover:border-blue-subtle focus:border-blue-primary focus:shadow-none"
+              value={future}
+              onChange={(e) => setFuture(e.target.value)}
+              placeholder="Add one or two sentences about availability, delivery coverage, or constraints."
+              aria-label="Availability comments"
+            />
           </div>
         </div>
 
