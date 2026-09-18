@@ -967,7 +967,7 @@ const TABLE_CLASS =
                   }}
                   aria-expanded={!shut}
                   className={cn(
-                    "flex w-full cursor-pointer items-center gap-2 bg-blue-light/50 px-4 py-2.5 text-left shadow-[inset_3px_0_0_0_var(--blue-primary)] transition-colors hover:bg-blue-light/75",
+                    "grid w-full cursor-pointer grid-cols-[15px_300px_260px_auto] items-center gap-3 bg-blue-light/50 px-4 py-2.5 text-left shadow-[inset_3px_0_0_0_var(--blue-primary)] transition-colors hover:bg-blue-light/75",
                     /* Not border-b: a full-width rule paints across the rail
                        and breaks it. freyr-rule-inset starts 3px in. */
                     !shut && "freyr-rule-bottom-inset"
@@ -985,21 +985,19 @@ const TABLE_CLASS =
                       "remove these icons"). The name is the label and the
                       chevron is the control; a third glyph between them was
                       decoration. */}
-                  <b className="text-[13px] text-text-primary">{group.name}</b>
+                  <b className="truncate text-[13px] text-text-primary">{group.name}</b>
                   {/* THE CATEGORY, QUIETLY (Anir, Aug 26: "beside the main name
                       of the offering, add the offering category in small font,
                       between the offering name and the number of materials.
                       These three small things don't need to be very
                       highlighted"). */}
-                  {group.category && (
-                    <span className="truncate text-[11px] text-text-tertiary">
-                      {group.category}
-                    </span>
-                  )}
+                  <span className="truncate text-[11px] text-text-tertiary">
+                    {group.category ?? ""}
+                  </span>
                   {/* In brackets (Saras, Aug 27: "please put the 'X material'
                       part inside brackets... Eg: (25 materials)") — set off
                       from the offering name the way an aside reads. */}
-                  <span className="text-[11px] font-semibold text-text-tertiary tnum">
+                  <span className="whitespace-nowrap text-[11px] font-semibold text-text-tertiary tnum">
                     ({group.rows.length}{" "}
                     {group.rows.length === 1 ? "material" : "materials"}
                     {sumBytes(group.rows) > 0 ? ` · ${fmtBytes(sumBytes(group.rows))}` : ""})
