@@ -1485,10 +1485,6 @@ export function OfferingForm({
               ariaLabel="Offering category"
               fill
             />
-            <p className="mt-1 text-[11.5px] text-text-tertiary">
-              Manage the list under{" "}
-              <span className="font-medium">Offering categories</span>.
-            </p>
           </div>
           {/* No POC field. Every offering already names an OWNER, and the
               owner is who a rep calls (Anir, Aug 7: "we don't need POC, we
