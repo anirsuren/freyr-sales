@@ -167,6 +167,7 @@ export default async function CustomerDetailPage({
       kindKey: m.kind,
       label: m.label,
       url: m.url,
+      docsPath: m.docsPath,
       // CR-3 tags travel as raw values; the tab narrows them safely so
       // untagged legacy materials render without pills instead of crashing.
       journeyStage: m.journeyStage,

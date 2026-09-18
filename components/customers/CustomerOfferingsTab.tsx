@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { DateEcho } from "@/components/ui/DateEcho";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OfferingActivities } from "@/components/customers/OfferingActivities";
 import {
@@ -164,6 +165,8 @@ export type TabOffering = {
     kindKey?: string;
     label: string;
     url: string;
+    /** Storage path means this is an uploaded file with an in-app preview. */
+    docsPath?: string;
     journeyStage?: string;
     accessLevel?: string;
   }[];
@@ -436,14 +439,13 @@ function RevenueSection({
               />
             </label>
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-              {rType === "project" ? "Project revenue ($)" : "Revenue ($)"}
-              <input
-                aria-label="Revenue amount"
-                inputMode="numeric"
+              {rType === "project" ? "Project revenue" : "Revenue"}
+              <MoneyInput
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="250000"
-                className={`${inp} tnum`}
+                onChange={setAmount}
+                ariaLabel="Revenue amount"
+                placeholder="250,000"
+                className="h-10 font-medium normal-case tracking-normal"
               />
             </label>
           </div>

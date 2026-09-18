@@ -48,6 +48,7 @@ import {
 } from "@/lib/pipeline";
 import { tint } from "@/lib/tint";
 import { withCommas } from "@/lib/currency";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 
 const WIP_KEY = "freyr.pipeline.wip.v1";
@@ -1116,14 +1117,14 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[12px] font-medium text-text-secondary mb-1">
-                Annual value ($)
+                Annual value
               </label>
-              <input
-                inputMode="numeric"
+              <MoneyInput
                 value={addForm.value}
-                onChange={(e) => setAddForm({ ...addForm, value: e.target.value })}
-                placeholder="350000"
-                className={cn(inputCls, "tnum")}
+                onChange={(value) => setAddForm({ ...addForm, value })}
+                ariaLabel="Annual value"
+                placeholder="350,000"
+                className="h-10"
               />
             </div>
             <div>

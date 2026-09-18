@@ -11,8 +11,8 @@ import {
 } from "@/lib/customerProfilesShared";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Building2, ChevronDown, Tags, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Building2, ChevronDown, Plus, Tags, Trash2, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -21,7 +21,7 @@ import { industryMeta } from "@/components/ui/IndustryTag";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { SIZE_TIER_LABEL, cn } from "@/lib/utils";
 import { tint } from "@/lib/tint";
-import { countryOnlyGeography, flagForGeography } from "@/lib/countryFlags";
+import { countryOnlyGeography } from "@/lib/countryFlags";
 import type { Customer } from "@/lib/types";
 
 /**
@@ -166,12 +166,37 @@ export function CustomerEditForm({
   });
   const set = (k: keyof typeof draft) => (v: string) =>
     setDraft((d) => ({ ...d, [k]: v }));
-  const startHq = { ...blankAddress(), ...(profile?.hq ?? {}) };
+  const accountCountry = countryOnlyGeography(customer.geography ?? "");
+  const startHq = {
+    ...blankAddress(),
+    ...(profile?.hq ?? {}),
+    country: profile?.hq?.country || accountCountry,
+  };
   const startOther = { ...blankAddress(), ...(profile?.other ?? {}) };
   const startParent = profile?.parentId ?? "NA";
   const [hq, setHq] = useState<CustomerAddress>(startHq);
   const [other, setOther] = useState<CustomerAddress>(startOther);
   const [parentId, setParentId] = useState(startParent);
+  const initialIndustryIsCustom = Boolean(
+    customer.industry && !KNOWN_INDUSTRIES.includes(customer.industry)
+  );
+  const [customIndustryOpen, setCustomIndustryOpen] = useState(initialIndustryIsCustom);
+  const customIndustryRef = useRef<HTMLInputElement>(null);
+  const saveBarAnchorRef = useRef<HTMLDivElement>(null);
+  const [saveBarAtRest, setSaveBarAtRest] = useState(false);
+  useEffect(() => {
+    const anchor = saveBarAnchorRef.current;
+    if (!anchor) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setSaveBarAtRest(entry.isIntersecting),
+      { threshold: 0.01 }
+    );
+    observer.observe(anchor);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    if (customIndustryOpen) customIndustryRef.current?.focus();
+  }, [customIndustryOpen]);
 
   const coreDirty = Object.entries(draft).some(
     ([k, v]) => v !== ((customer as unknown as Record<string, string | null>)[k] ?? "")
@@ -188,7 +213,7 @@ export function CustomerEditForm({
       : addressHasAny(other) && !addressIsComplete(other)
         ? "Finish the other address with line 1, a city and a country, or clear it."
         : null;
-  const flag = flagForGeography(countryOnlyGeography(draft.geography));
+  const selectedCountry = countryOnlyGeography(draft.geography);
 
   /**
    * DELETE THE ACCOUNT (Anir, Sep 6: "if I click into a customer and then I
@@ -294,21 +319,20 @@ export function CustomerEditForm({
               />
             </div>
             <div>
-              <Label text="Locations" />
-              <span className="relative flex items-center">
-                {flag && (
-                  <span aria-hidden="true" className="pointer-events-none absolute left-3 text-[14px]">
-                    {flag}
-                  </span>
-                )}
-                <input
-                  value={draft.geography}
-                  onChange={(e) => set("geography")(e.target.value)}
-                  className={cn(INPUT, flag && "pl-9")}
-                  placeholder="e.g. Switzerland"
-                  aria-label="Locations"
-                />
-              </span>
+              <Label text="Country" />
+              <ColorSelect
+                value={selectedCountry}
+                ariaLabel="Account country"
+                className="w-full"
+                collapsible={false}
+                fill
+                searchable
+                onChange={(country) => {
+                  set("geography")(country);
+                  setHq((address) => ({ ...address, country }));
+                }}
+                options={[{ value: "", label: "Choose country", noMark: true }, ...countryOptions()]}
+              />
             </div>
           </div>
         </Room>
@@ -328,19 +352,20 @@ export function CustomerEditForm({
               <fieldset key={title} className="rounded-xl border border-border-light p-3.5">
                 <legend className="px-1 text-[12.5px] font-semibold text-text-primary">{title}</legend>
                 <div className="grid grid-cols-2 gap-2.5">
-                  <AddressLineLookup title={title} value={value} onChange={setValue} inputClassName={INPUT} className="col-span-2" />
-                  <input className={cn(INPUT, "col-span-2")} placeholder="Line 2" aria-label={`${title} line 2`} value={value.line2 ?? ""} onChange={(e) => setValue({ ...value, line2: e.target.value })} />
-                  <input className={INPUT} placeholder="City" aria-label={`${title} city`} value={value.city} onChange={(e) => setValue({ ...value, city: e.target.value })} />
-                  <input className={INPUT} placeholder="State" aria-label={`${title} state`} value={value.state ?? ""} onChange={(e) => setValue({ ...value, state: e.target.value })} />
                   <ColorSelect
                     value={value.country}
                     ariaLabel={`${title} country`}
-                    className="w-full"
+                    className="col-span-2 w-full"
                     collapsible={false}
                     fill
+                    searchable
                     onChange={(v) => setValue({ ...value, country: v })}
-                    options={[{ value: "", label: "Country", color: "#C7CDD6" }, ...countryOptions()]}
+                    options={[{ value: "", label: "Choose country", noMark: true }, ...countryOptions()]}
                   />
+                  <AddressLineLookup title={title} value={value} country={value.country} onChange={setValue} inputClassName={INPUT} className="col-span-2" />
+                  <input className={cn(INPUT, "col-span-2")} placeholder="Line 2" aria-label={`${title} line 2`} value={value.line2 ?? ""} onChange={(e) => setValue({ ...value, line2: e.target.value })} />
+                  <input className={INPUT} placeholder="City" aria-label={`${title} city`} value={value.city} onChange={(e) => setValue({ ...value, city: e.target.value })} />
+                  <input className={INPUT} placeholder="State" aria-label={`${title} state`} value={value.state ?? ""} onChange={(e) => setValue({ ...value, state: e.target.value })} />
                   <input className={INPUT} placeholder="ZIP" aria-label={`${title} ZIP`} value={value.zip ?? ""} onChange={(e) => setValue({ ...value, zip: e.target.value })} />
                 </div>
               </fieldset>
@@ -382,7 +407,10 @@ export function CustomerEditForm({
                   <button
                     key={name}
                     type="button"
-                    onClick={() => set("industry")(on ? "" : name)}
+                    onClick={() => {
+                      set("industry")(on ? "" : name);
+                      setCustomIndustryOpen(false);
+                    }}
                     aria-pressed={on}
                     className={cn(
                       "inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-lg border px-3.5 text-[13px] font-semibold transition-colors",
@@ -397,13 +425,38 @@ export function CustomerEditForm({
                   </button>
                 );
               })}
-              <input
-                value={KNOWN_INDUSTRIES.includes(draft.industry) ? "" : draft.industry}
-                onChange={(e) => set("industry")(e.target.value)}
-                placeholder="or type another…"
-                className={cn(INPUT, "w-[190px]")}
-                aria-label="Another industry"
-              />
+              {customIndustryOpen ? (
+                <span className="relative w-[250px]">
+                  <input
+                    ref={customIndustryRef}
+                    value={KNOWN_INDUSTRIES.includes(draft.industry) ? "" : draft.industry}
+                    onChange={(e) => set("industry")(e.target.value)}
+                    placeholder="Custom industry"
+                    className={cn(INPUT, "pr-9")}
+                    aria-label="Custom industry"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      set("industry")("");
+                      setCustomIndustryOpen(false);
+                    }}
+                    aria-label="Remove custom industry"
+                    className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary hover:bg-surface hover:text-text-primary"
+                  >
+                    <X size={14} strokeWidth={2.2} />
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCustomIndustryOpen(true)}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-dashed border-border-light px-3.5 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                >
+                  <Plus size={14} strokeWidth={2.2} />
+                  Custom industry
+                </button>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-4">
@@ -505,7 +558,13 @@ export function CustomerEditForm({
 
       {/* The offering edit page's footer: the page's state on the left, the
           two buttons on the right, riding the bottom of the window. */}
-      <div className="sticky bottom-0 z-10 mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-t-xl border border-border-light bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
+      <div ref={saveBarAnchorRef} className="h-px" aria-hidden="true" />
+      <div
+        className={cn(
+          "sticky bottom-4 z-20 mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border-light bg-white/95 py-3 pl-4 shadow-card backdrop-blur transition-[padding-right] duration-300 ease-out",
+          saveBarAtRest ? "pr-4" : "pr-[92px]"
+        )}
+      >
         <span
           className={cn(
             "text-[12.5px]",

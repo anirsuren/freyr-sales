@@ -749,6 +749,7 @@ export function OfferingForm({
     offering_description?: string;
     service_card_styles?: ServiceCardStyle[];
     current_availability?: string;
+    current_version?: string;
     future_availability?: string;
     poc?: string;
     customer_type_ids?: string[];
@@ -833,6 +834,9 @@ export function OfferingForm({
     }
   }, [params]);
   const [offeringType, setOfferingType] = useState(initial?.offering_type ?? "");
+  const isServiceOffering =
+    offeringType === "Freyr Services" ||
+    offeringType === "Freyr AI Native Services";
   const [offeringCategory, setOfferingCategory] = useState(
     initial?.offering_category ?? ""
   );
@@ -1010,7 +1014,15 @@ export function OfferingForm({
   const [availMonth, setAvailMonth] = useState(initAvail.month);
   const [availYear, setAvailYear] = useState(initAvail.year);
   const current = buildAvailability(availMode, availMonth, availYear);
-  const [future, setFuture] = useState(initial?.future_availability ?? "");
+  const legacyVersion = !isServiceOffering && /^version\b/i.test(initial?.future_availability?.trim() ?? "")
+    ? initial?.future_availability?.trim() ?? ""
+    : "";
+  const [currentVersion, setCurrentVersion] = useState(
+    initial?.current_version ?? legacyVersion
+  );
+  const [future, setFuture] = useState(
+    !initial?.current_version && legacyVersion ? "" : initial?.future_availability ?? ""
+  );
   const [poc, setPoc] = useState(initial?.poc ?? "");
   // `poc` stays ONE string on the record (every card, the CSV export and search
   // read it); the picker just works in list form.
@@ -1107,6 +1119,7 @@ export function OfferingForm({
     serviceCardStyles,
     current,
     future,
+    currentVersion,
     poc,
     ctIds,
     mktIds,
@@ -1127,7 +1140,10 @@ export function OfferingForm({
       initAvail.month,
       initAvail.year
     ),
-    future: initial?.future_availability ?? "",
+    future: !initial?.current_version && legacyVersion
+      ? ""
+      : initial?.future_availability ?? "",
+    currentVersion: initial?.current_version ?? legacyVersion,
     poc: initial?.poc ?? "",
     ctIds: initial?.customer_type_ids ?? [],
     mktIds: initial?.market_ids ?? [],
@@ -1266,6 +1282,7 @@ export function OfferingForm({
             offering_description: description,
             service_card_styles: serviceCardStyles,
             current_availability: current,
+            current_version: isServiceOffering ? "" : currentVersion,
             future_availability: future,
             poc,
             customer_type_ids: ctIds,
@@ -2417,6 +2434,18 @@ export function OfferingForm({
               </div>
             )}
           </div>
+          {!isServiceOffering && (
+            <div>
+              <label className={LABEL}>Current version</label>
+              <input
+                value={currentVersion}
+                onChange={(event) => setCurrentVersion(event.target.value)}
+                className={FIELD}
+                placeholder="e.g. Version 2.5"
+                aria-label="Current version"
+              />
+            </div>
+          )}
           <div>
             <label className={LABEL}>Availability comments (optional)</label>
             <textarea

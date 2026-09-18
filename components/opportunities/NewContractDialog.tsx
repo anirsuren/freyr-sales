@@ -7,6 +7,7 @@ import { useState } from "react";
 import { ArrowLeft, Check, File, FileSpreadsheet, FileText, Loader2, Plus, Presentation, Trash2, UploadCloud, type LucideIcon } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import type { Opportunity } from "@/lib/opportunitiesShared";
 import { tint } from "@/lib/tint";
 
@@ -247,12 +248,12 @@ export function NewContractDialog({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Value">
-            <input
+            <MoneyInput
               value={value}
-              onChange={(e) => setValue(e.target.value)}
-              inputMode="numeric"
-              className={INPUT}
-              placeholder="180000"
+              onChange={setValue}
+              ariaLabel="Contract value"
+              className="h-10"
+              placeholder="180,000"
             />
           </Field>
           <Field label="Status">

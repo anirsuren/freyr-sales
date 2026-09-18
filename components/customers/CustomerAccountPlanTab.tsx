@@ -25,7 +25,17 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Modal } from "@/components/ui/Modal";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
+import { MaterialPeek } from "@/components/offerings/MaterialPeek";
+import {
+  PrioritySearchInput,
+  SearchPriority,
+} from "@/components/ui/SearchPriority";
+import {
+  isUploadedMaterial,
+  materialPreviewHref,
+} from "@/components/offerings/materialActions";
 import type { TabOffering } from "@/components/customers/CustomerOfferingsTab";
 import type { Contact, Customer, Interaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -361,9 +371,6 @@ export function CustomerAccountPlanTab({
         return priorityOrder[a.priority] - priorityOrder[b.priority] || a.name.localeCompare(b.name);
       });
   }, [stakeholderRelationship, stakeholderRole, stakeholderSearch, stakeholderSort, stakeholders]);
-  const stakeholderFiltersActive = Boolean(
-    stakeholderSearch || stakeholderRole !== "all" || stakeholderRelationship !== "all" || stakeholderSort !== "priority"
-  );
   const champion = stakeholders.find((person) => person.buyingRole === "Champion") || stakeholders[0];
   const decisionMaker = stakeholders.find((person) => person.buyingRole === "Decision-maker") || stakeholders[1];
   const decisionPath = [
@@ -468,7 +475,13 @@ export function CustomerAccountPlanTab({
             <div className="grid gap-4 md:grid-cols-3">
               <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Revenue target
-                <div className="relative mt-1.5"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-semibold text-text-tertiary">$</span><input type="number" min={0} step={50000} value={draft.target} onChange={(e) => setDraft({ ...draft, target: Number(e.target.value) || 0 })} className="h-10 w-full rounded-lg border border-border bg-white pl-7 pr-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" /></div>
+                <MoneyInput
+                  value={String(draft.target)}
+                  onChange={(value) => setDraft({ ...draft, target: Number(value) || 0 })}
+                  ariaLabel="Revenue target"
+                  placeholder="0"
+                  className="mt-1.5 h-10 border-border font-medium normal-case tracking-normal focus:ring-2 focus:ring-blue-primary/10"
+                />
               </label>
               <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Next review
@@ -729,10 +742,45 @@ export function CustomerAccountPlanTab({
                                         const tone = kind ? MATERIAL_COLOR[kind] : BLUE;
                                         const stage = asJourneyStage(material?.journeyStage);
                                         const access = asAccessLevel(material?.accessLevel);
-                                        const href = material?.url || (offering ? `/offerings/${offering.id}?tab=materials` : "/offerings");
+                                        const peekMaterial = material
+                                          ? {
+                                              id: material.id,
+                                              kind: kind ?? "other" as const,
+                                              label: material.label,
+                                              url: material.url,
+                                              docsPath: material.docsPath,
+                                            }
+                                          : null;
+                                        const href =
+                                          material && offering && isUploadedMaterial(material)
+                                            ? materialPreviewHref(offering.id, material)
+                                            : material?.url ||
+                                              (offering
+                                                ? `/offerings/${offering.id}?tab=materials`
+                                                : "/offerings");
                                         return (
                                           <a key={item} href={href} target={material?.url ? "_blank" : undefined} rel={material?.url ? "noopener noreferrer" : undefined} className="group grid min-w-[760px] grid-cols-[minmax(260px,460px)_150px_190px_34px] items-center justify-start gap-3 px-3 py-2.5 transition-colors hover:bg-blue-light/25">
-                                            <span className="flex min-w-0 items-center gap-2.5"><Icon size={14} strokeWidth={2} className="shrink-0 text-blue-primary" /><span className="min-w-0 truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">{item}</span></span>
+                                            <span className="flex min-w-0 items-center gap-2.5">
+                                              <Icon size={14} strokeWidth={2} className="shrink-0 text-blue-primary" />
+                                              {peekMaterial && offering ? (
+                                                <MaterialPeek
+                                                  material={peekMaterial}
+                                                  previewUrl={
+                                                    isUploadedMaterial(peekMaterial)
+                                                      ? `${materialPreviewHref(offering.id, peekMaterial)}?embed=1`
+                                                      : null
+                                                  }
+                                                >
+                                                  <span className="min-w-0 truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">
+                                                    {item}
+                                                  </span>
+                                                </MaterialPeek>
+                                              ) : (
+                                                <span className="min-w-0 truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">
+                                                  {item}
+                                                </span>
+                                              )}
+                                            </span>
                                             <span className="text-[11px] font-semibold" style={{ color: tone }}>{material?.kind || "Document"}</span>
                                             <span className="flex min-w-0 flex-wrap gap-1">{stage && <span className="rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold" style={{ color: JOURNEY_STAGE_META[stage].color, background: tint(JOURNEY_STAGE_META[stage].color, 8) }}>{JOURNEY_STAGE_META[stage].label}</span>}{access && <span className="rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold" style={{ color: ACCESS_LEVEL_META[access].color, background: tint(ACCESS_LEVEL_META[access].color, 8) }}>{ACCESS_LEVEL_META[access].label}</span>}{!stage && !access && <span className="text-[10.5px] text-text-tertiary">Not tagged</span>}</span>
                                             <ExternalLink size={13} strokeWidth={1.8} className="justify-self-end text-text-tertiary group-hover:text-blue-primary" />
@@ -823,14 +871,21 @@ export function CustomerAccountPlanTab({
         <div className="border-b border-border-light px-5 py-3.5">
           <div><div className="flex items-center gap-2"><Users size={16} className="text-[color:var(--ink-teal-deep)]" /><h3 className="text-[15px] font-semibold text-text-primary">Stakeholder map</h3></div><p className="mt-0.5 text-[12px] text-text-secondary">Who matters, where they stand and the next relationship move.</p></div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 border-b border-border-light bg-surface/35 px-5 py-3">
-          <div className="relative min-w-[240px] flex-[1_1_320px]"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" /><input value={stakeholderSearch} onChange={(e) => setStakeholderSearch(e.target.value)} placeholder="Search stakeholders…" className="h-9 w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[12.5px] outline-none transition-[border-color,box-shadow] focus:border-blue-primary focus:shadow-input-focus" /></div>
-          <ColorSelect value={stakeholderRole} onChange={setStakeholderRole} ariaLabel="Filter by buying role" collapsible={false} dense options={[{ value: "all", label: "All buying roles", noMark: true }, { value: "Champion", label: "Champion", noMark: true }, { value: "Decision-maker", label: "Decision-maker", noMark: true }, { value: "Influencer", label: "Influencer", noMark: true }, { value: "Introducer", label: "Introducer", noMark: true }, { value: "Blocker", label: "Blocker", noMark: true }]} />
-          <ColorSelect value={stakeholderRelationship} onChange={setStakeholderRelationship} ariaLabel="Filter by relationship" collapsible={false} dense options={[{ value: "all", label: "All relationships", noMark: true }, { value: "Strong", label: "Strong", noMark: true }, { value: "Developing", label: "Developing", noMark: true }, { value: "Unclear", label: "Unclear", noMark: true }]} />
-          <ColorSelect value={stakeholderSort} onChange={setStakeholderSort} ariaLabel="Sort stakeholders" collapsible={false} dense options={[{ value: "priority", label: "Priority first", noMark: true }, { value: "relationship", label: "Relationship", noMark: true }, { value: "name", label: "Name A–Z", noMark: true }]} />
-          <span className="ml-auto whitespace-nowrap text-[11.5px] font-medium text-text-tertiary">{visibleStakeholders.length} of {stakeholders.length}</span>
-          {stakeholderFiltersActive && <button type="button" onClick={() => { setStakeholderSearch(""); setStakeholderRole("all"); setStakeholderRelationship("all"); setStakeholderSort("priority"); }} className="h-9 rounded-lg px-2.5 text-[12px] font-semibold text-blue-primary transition-colors hover:bg-blue-light/60">Clear</button>}
-        </div>
+        <SearchPriority query={stakeholderSearch} className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-border-light bg-surface/35 px-5 py-3">
+          <PrioritySearchInput
+            value={stakeholderSearch}
+            onChange={setStakeholderSearch}
+            placeholder="Search stakeholders…"
+            ariaLabel="Search stakeholders"
+            grow
+            clearable
+            className="min-w-[240px] flex-1 basis-0"
+            inputClassName="h-9 w-full rounded-lg border border-border-light bg-white pl-8 pr-9 text-[12.5px] outline-none transition-[border-color,box-shadow] focus:border-blue-primary focus:shadow-input-focus"
+          />
+          <ColorSelect value={stakeholderRole} onChange={setStakeholderRole} ariaLabel="Filter by buying role" dense options={[{ value: "all", label: "All buying roles", icon: Users, color: BLUE }, { value: "Champion", label: "Champion", icon: Users, color: BLUE }, { value: "Decision-maker", label: "Decision-maker", icon: Users, color: BLUE }, { value: "Influencer", label: "Influencer", icon: Users, color: BLUE }, { value: "Introducer", label: "Introducer", icon: Users, color: BLUE }, { value: "Blocker", label: "Blocker", icon: Users, color: BLUE }]} />
+          <ColorSelect value={stakeholderRelationship} onChange={setStakeholderRelationship} ariaLabel="Filter by relationship" dense options={[{ value: "all", label: "All relationships", icon: Route, color: TEAL }, { value: "Strong", label: "Strong", icon: Route, color: TEAL }, { value: "Developing", label: "Developing", icon: Route, color: TEAL }, { value: "Unclear", label: "Unclear", icon: Route, color: TEAL }]} />
+          <ColorSelect value={stakeholderSort} onChange={setStakeholderSort} ariaLabel="Sort stakeholders" dense options={[{ value: "priority", label: "Priority first", icon: Flag, color: VIOLET }, { value: "relationship", label: "Relationship", icon: Flag, color: VIOLET }, { value: "name", label: "Name A–Z", icon: Flag, color: VIOLET }]} />
+        </SearchPriority>
         <div className="max-h-[430px] overflow-auto">
           <table className="w-full min-w-[720px] border-collapse text-left">
             <thead className="sticky top-0 z-10 bg-white"><tr className="border-b border-border-light text-[10.5px] uppercase tracking-[0.08em] text-text-tertiary"><th className="px-5 py-2.5">Stakeholder</th><th className="px-3 py-2.5">Buying role</th><th className="px-3 py-2.5">Relationship</th><th className="px-3 py-2.5">Next move</th><th className="w-10 px-3 py-2.5" /></tr></thead>

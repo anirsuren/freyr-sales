@@ -27,6 +27,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn, plural } from "@/lib/utils";
+import { withCommas } from "@/lib/currency";
 import { GROUP_TYPE_META } from "@/lib/privileges";
 import {
   PersonProgress,
@@ -852,7 +853,7 @@ export function GroupDetail({
             </p>
             <input
               autoFocus
-              value={targetDraft}
+              value={withCommas(targetDraft)}
               onChange={(e) => setTargetDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") saveTarget();

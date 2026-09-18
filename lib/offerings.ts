@@ -111,6 +111,8 @@ export interface Offering {
    *  icon and colour the card has always used. */
   service_card_styles?: ServiceCardStyle[];
   current_availability: string;
+  /** Release/version label for product offerings. Service offerings omit it. */
+  current_version?: string;
   future_availability: string; // "Availability comments" in the UI
   poc: string; // SME / service-delivery POC named on Suren's master sheet
   /** THE PEOPLE BEHIND THIS OFFERING, as records you can add to and remove
@@ -668,6 +670,7 @@ function off(
     // Defaults are blank to mirror Suren's sheet (most rows are unfilled — he
     // populates them via the entry screen). Populated rows pass values in.
     current_availability: opts.current_availability ?? "",
+    current_version: opts.current_version ?? "",
     future_availability: opts.future_availability ?? "",
     poc: opts.poc ?? "",
     customer_type_ids: opts.customer_type_ids ?? [],
@@ -5132,6 +5135,7 @@ export function createOffering(data: Partial<Offering>): Offering {
     offering_description: normalizeOfferingDescription(data.offering_description),
     service_card_styles: normalizeServiceCardStyles(data.service_card_styles),
     current_availability: data.current_availability || "",
+    current_version: data.current_version || "",
     future_availability: data.future_availability || "",
     poc: data.poc || "",
     customer_type_ids: data.customer_type_ids || [],

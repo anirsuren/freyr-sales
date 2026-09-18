@@ -34,7 +34,7 @@ import {
   type PerfActual,
   type PerformanceState,
 } from "@/lib/performanceShared";
-import { currencyMeta } from "@/lib/currency";
+import { currencyMeta, withCommas } from "@/lib/currency";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyFan } from "@/components/ui/CompanyFan";
 import { EvidencePeek, EvidencePreview } from "./EvidenceViewer";
@@ -1765,7 +1765,7 @@ export function MyEntriesCard({
                     </span>
                     <input
                       autoFocus
-                      value={draft.amount}
+                      value={withCommas(draft.amount)}
                       placeholder="0"
                       aria-invalid={amountInvalid}
                       onChange={(e) =>

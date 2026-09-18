@@ -795,7 +795,7 @@ export function OfferingActivities({
                   setAmount(expandMoneyShorthand(event.target.value, { integer: true }))
                 }
                 inputMode="numeric"
-                placeholder="250000"
+                placeholder="250,000"
                 className={`${FIELD} tnum`}
               />
             </div>

@@ -1042,7 +1042,7 @@ export function OfferingsBrowser({
                     </p>
                     {/* Every company wears its own mark (standing rule: a
                         company on screen always brings its logo). */}
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex shrink-0 items-center">
                       <span className="flex items-center -space-x-1.5">
                         {payingCustomers.map((c) => (
                           <CompanyLogo
@@ -1057,19 +1057,6 @@ export function OfferingsBrowser({
                           </span>
                         )}
                       </span>
-                      <ExpandedChartModal
-                        title={`${o.offering_name} customers`}
-                        subtitle="Revenue split across the customer accounts currently paying for this offering."
-                        chart={{
-                          kind: "donut",
-                          segments: revenueSegments,
-                          centerLabel: String(com.customerCount),
-                          centerSub:
-                            com.customerCount === 1 ? "customer" : "customers",
-                          format: "money",
-                        }}
-                        className="h-8 px-2.5 text-[11px]"
-                      />
                     </div>
                   </div>
                   {/* ONE row: the ring, and its key beside it. The licensed-seats

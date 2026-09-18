@@ -10,7 +10,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/utils";
 
@@ -139,6 +139,7 @@ export function PrioritySearchInput({
   inputClassName,
   iconClassName,
   iconSize = 15,
+  clearable = false,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -170,6 +171,8 @@ export function PrioritySearchInput({
   inputClassName?: string;
   iconClassName?: string;
   iconSize?: number;
+  /** Show a compact clear button inside the field while it has a value. */
+  clearable?: boolean;
 }) {
   const handle = useContext(SearchPriorityContext);
   const active = handle?.active ?? false;
@@ -283,6 +286,20 @@ export function PrioritySearchInput({
         >
           {shown}
         </span>
+      )}
+      {clearable && value && (
+        <button
+          type="button"
+          aria-label="Clear search"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            onChange("");
+            inputRef.current?.focus();
+          }}
+          className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
+        >
+          <X size={14} strokeWidth={2} />
+        </button>
       )}
     </div>
   );

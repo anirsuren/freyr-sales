@@ -60,6 +60,7 @@ import {
   BASE_CURRENCY,
   CURRENCIES,
   currencyMeta,
+  withCommas,
   type CurrencyCode,
 } from "@/lib/currency";
 import { EvidencePicker } from "./EvidencePicker";
@@ -1906,7 +1907,7 @@ function GroupSplitPanel({
             </p>
             <input
               autoFocus
-              value={targetDraft}
+              value={withCommas(targetDraft)}
               onChange={(e) => setTargetDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") void saveTarget();
@@ -3767,7 +3768,7 @@ function GoalEditorFields({
             {unit === "currency" ? "$" : unit === "percent" ? "%" : "#"}
           </span>
           <input
-            value={target}
+            value={withCommas(target)}
             onChange={(e) => setTarget(e.target.value)}
             placeholder={unit === "currency" ? "e.g. 100M" : unit === "percent" ? "e.g. 45" : "e.g. 1,200"}
             className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
@@ -3903,7 +3904,7 @@ function GoalEditorFields({
                               </span>
                             )}
                             <input
-                              value={m.amount}
+                              value={withCommas(m.amount)}
                               onChange={(e) =>
                                 setMilestones((prev) =>
                                   prev.map((x, i) =>
@@ -4262,7 +4263,7 @@ function SubgoalEditorFields({
               {goal.unit === "currency" ? "$" : goal.unit === "percent" ? "%" : "#"}
             </span>
             <input
-              value={target}
+              value={withCommas(target)}
               onChange={(e) => setTarget(e.target.value)}
               placeholder={goal.unit === "currency" ? "e.g. 40M" : "e.g. 700"}
               className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
@@ -4524,7 +4525,7 @@ function SubgoalEditorFields({
                   const over = personCeiling > 0 && own > personCeiling;
                   return (
                     <input
-                      value={r.target}
+                      value={withCommas(r.target)}
                       onChange={(e) =>
                         setRows(
                           rows.map((x, xi) =>
@@ -5462,7 +5463,7 @@ function LogActualModal({
                       : "#"}
                 </span>
                 <input
-                  value={amount}
+                  value={withCommas(amount)}
                   onChange={(e) => {
                     setPickedChip(null);
                     setAmount(e.target.value);

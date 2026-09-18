@@ -27,6 +27,8 @@ import {
   Mail,
   Phone,
   Briefcase,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -45,6 +47,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Field, Input } from "@/components/ui/Input";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
@@ -299,6 +302,7 @@ export function CustomerTabs({
      mode because it was not rendered there at all; now that it is, landing
      anywhere else means arriving at a band instead of at the account. */
   const [tab, setTabState] = useState("overview");
+  const [accountRailOpen, setAccountRailOpen] = useState(true);
   // Persist the active tab in the URL (?tab=) so it's always clear which tab
   // you're on AND browser-back from a deal/session returns to the SAME tab, not
   // Overview (Suren, Jul 8). replaceState keeps tab-switches out of history.
@@ -767,12 +771,15 @@ export function CustomerTabs({
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-8",
+        "grid grid-cols-1 gap-8 transition-[grid-template-columns] duration-200",
         // The right rail exists only in mock: in real mode the Components and
         // Activity tables take the entire width instead of being squeezed by
         // the snapshot/owner cards (Anir, Aug 12: "the table has to take up
         // the entire space... move it to Mock-mode").
-        includeDemoTeam && "lg:grid-cols-[minmax(0,1fr)_280px]"
+        includeDemoTeam &&
+          (accountRailOpen
+            ? "lg:grid-cols-[minmax(0,1fr)_280px]"
+            : "lg:grid-cols-[minmax(0,1fr)_40px]")
       )}
     >
       {/* `min-w-0`, AND THE COLUMN DECLARED AS minmax(0,1fr) (Anir, Sep 4:
@@ -2473,7 +2480,38 @@ export function CustomerTabs({
          the health, the owner and the competitor on screen. `self-start` so
          the aside is its own height and not stretched by the grid row, which
          is what makes sticky do nothing. */
-      <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+      <aside className="lg:sticky lg:top-4 lg:self-start">
+        {!accountRailOpen ? (
+          <button
+            type="button"
+            aria-label="Show account details"
+            aria-expanded={false}
+            aria-controls="customer-account-details"
+            onClick={() => setAccountRailOpen(true)}
+            className="flex w-10 cursor-pointer flex-col items-center gap-3 rounded-l-xl border border-r-0 border-border-light bg-white py-4 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
+          >
+            <PanelRightOpen size={16} className="shrink-0" />
+            <span className="whitespace-nowrap [writing-mode:vertical-rl]">Account details</span>
+          </button>
+        ) : (
+        <div
+          id="customer-account-details"
+          aria-label="Account details"
+          className="space-y-4 motion-safe:animate-[fadeIn_.2s_ease-out]"
+        >
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setAccountRailOpen(false)}
+            aria-label="Hide account details"
+            aria-expanded={true}
+            aria-controls="customer-account-details"
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light"
+          >
+            <PanelRightClose size={14} className="shrink-0" />
+            Hide
+          </button>
+        </div>
         {/* Per-account agent entry — opens the account-scoped drawer (chat +
             quick actions) over the page, reachable from any tab. The global
             dock stays for cross-app asks; this one is pre-loaded with THIS
@@ -2639,6 +2677,8 @@ export function CustomerTabs({
         </Card>
         {/* The Deliverables tiles that used to sit here are gone — see the note
             at the top of this file. Agent asks belong in the dock. */}
+        </div>
+        )}
       </aside>
       )}
 
@@ -2710,13 +2750,13 @@ export function CustomerTabs({
                   />
                 </div>
                 <div>
-                  <label className={lbl}>Value ($)</label>
-                  <input
-                    inputMode="numeric"
+                  <label className={lbl}>Value</label>
+                  <MoneyInput
                     value={dealForm.value}
-                    onChange={(e) => set("value", e.target.value)}
-                    placeholder="350000"
-                    className={`${fld} tnum`}
+                    onChange={(value) => set("value", value)}
+                    ariaLabel="Deal value"
+                    placeholder="350,000"
+                    className="h-10"
                   />
                 </div>
               </div>

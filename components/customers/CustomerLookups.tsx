@@ -210,6 +210,7 @@ export function CompanyNameLookup({
 export function AddressLineLookup({
   title,
   value,
+  country,
   onChange,
   inputClassName,
   className,
@@ -218,6 +219,8 @@ export function AddressLineLookup({
 }: {
   title: string;
   value: CustomerAddress;
+  /** Narrows the map search to the country chosen immediately above it. */
+  country?: string;
   onChange: Dispatch<SetStateAction<CustomerAddress>>;
   inputClassName: string;
   className?: string;
@@ -228,8 +231,9 @@ export function AddressLineLookup({
   const offered = useRef(new Map<string, AddressSuggestion>());
 
   const load = async (query: string, signal: AbortSignal): Promise<LookupAnswer> => {
+    const locatedQuery = country?.trim() ? `${query}, ${country.trim()}` : query;
     const response = await fetch(
-      `/api/lookup/addresses?q=${encodeURIComponent(query)}&session=${session.current}`,
+      `/api/lookup/addresses?q=${encodeURIComponent(locatedQuery)}&session=${session.current}`,
       { signal }
     );
     const data = await readJson(response);
@@ -287,7 +291,7 @@ export function AddressLineLookup({
       load={load}
       onPick={(option) => void pick(option)}
       ariaLabel={`${title} line 1`}
-      placeholder="Line 1, type to look it up"
+      placeholder={country ? `Search ${country} addresses` : "Choose a country, then search the address"}
       minChars={3}
       inputClassName={inputClassName}
       className={className}
