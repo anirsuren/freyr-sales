@@ -1140,3 +1140,6 @@ After choosing Submission, Presentation, or Meeting from All Solutioning Request
 
 ### Sep 19: solutioning people filters show profile pictures
 The BD member and Prepared by filter options use the same profile pictures as the request table. People remain recognizable while filtering instead of appearing as an undifferentiated text list. Completed locally, not deployed.
+
+### Sep 19: customer relationship tables keep every column readable
+Customer opportunity bands reserve enough width for Stage, Status, Confidence, Owner, Expected to sign, and Value, with consistent horizontal padding between each fact. Status badges wrap inside their own cell instead of overlapping the next column. Customer solutioning-request names may use two lines, so long request titles remain readable instead of ending in a premature ellipsis. Completed locally, not deployed.
