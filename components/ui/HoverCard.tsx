@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import {
+  CHART_HOVER_CLOSE_GRACE_MS,
   HOVER_CLOSE_GRACE_MS,
   HOVER_DELAY_MS,
   HOVER_HINT_DELAY_MS,
@@ -173,7 +174,14 @@ export function HoverCard({
   function scheduleHide() {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setPos(null), HOVER_CLOSE_GRACE_MS);
+    // Graph cards can sit well above or beside a small painted mark. Give the
+    // pointer enough time to cross that distance; entering the card cancels
+    // this timer. Ordinary content previews retain the app-wide close rule.
+    const closeGrace =
+      delayOverride === 0 || triggerSelector
+        ? CHART_HOVER_CLOSE_GRACE_MS
+        : HOVER_CLOSE_GRACE_MS;
+    hideTimer.current = setTimeout(() => setPos(null), closeGrace);
   }
 
   function onBlur(event: React.FocusEvent<HTMLDivElement>) {
@@ -221,7 +229,7 @@ export function HoverCard({
         createPortal(
           <div
             role="tooltip"
-            className={cn("fixed z-[9999]", triggerSelector && "pointer-events-none")}
+            className="fixed z-[9999] pointer-events-auto"
             style={{
               left: pos.left,
               top: pos.top,
@@ -237,8 +245,8 @@ export function HoverCard({
                   ? `calc(100vh - ${pos.top + 12}px)`
                   : `calc(100vh - ${pos.bottom! + 12}px)`,
             }}
-            onMouseEnter={triggerSelector ? undefined : show}
-            onMouseLeave={triggerSelector ? undefined : scheduleHide}
+            onMouseEnter={show}
+            onMouseLeave={scheduleHide}
           >
             {/* pt/pb (not mt/mb) so the gap to the trigger is inside this
                 hoverable element, the cursor never crosses a dead margin. */}

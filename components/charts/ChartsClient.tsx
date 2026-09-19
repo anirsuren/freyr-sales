@@ -42,6 +42,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { VIZ } from "./palette";
 import { tint } from "@/lib/tint";
+import { CHART_HOVER_CLOSE_GRACE_MS } from "@/lib/hoverPreferences";
 
 // Series icons for tooltips + legends, keyed by SHORT STRINGS so server
 // components can request one (Suren: "put an icon instead of just a purple
@@ -160,11 +161,10 @@ const TIP_MAX_HEIGHT = 340;
  *  looks like maybe it's getting covered up"). */
 const POINT_MARKER_CLEARANCE = 16;
 
-/** Expanded charts have room for a real, inspectable record card. Their tips
- * stay open while the pointer crosses into them, show the full record list,
- * and scroll. Compact dashboard charts keep the instant-close hover behavior
- * that prevents a stale card lingering over the page. */
-const InteractiveChartTipContext = createContext(false);
+/** Every chart popup is a real, inspectable record card. This defaults to true
+ * at the shared chart layer so a graph can never silently fall back to a
+ * display-only tooltip just because a page forgot a wrapper. */
+const InteractiveChartTipContext = createContext(true);
 
 export function InteractiveChartTipProvider({ children }: { children: ReactNode }) {
   return (
@@ -274,7 +274,7 @@ function PointGuide({ left, color }: { left: string; color: string }) {
   );
 }
 // Hover state for one chart: which index is lit and where its tip is anchored.
-// The popup itself never owns hover; leaving the painted mark closes it.
+// The popup owns hover too, so it remains available for scrolling and reading.
 /** Every graph tooltip in this app waits this long before it opens. No chart
  *  gets to opt out, and there is no user setting for it any more (Anir, Jul 28:
  *  "we need it where it's 0.5 seconds on every single graph. There should not
@@ -364,11 +364,10 @@ function useChartHover() {
     setAnchor(at);
   }
 
-  /** Compact cards close the instant the pointer leaves the painted mark.
-   * Expanded charts allow a short bridge into their interactive tooltip; once
-   * the pointer reaches the card, `keepOpen` cancels this timer. */
+  /** Give the pointer a reliable bridge from any painted mark into its popup;
+   * once the pointer reaches the card, `keepOpen` cancels this timer. */
   const close = useCallback(
-    (graceMs = interactiveTip ? 220 : 0) => {
+    (graceMs = interactiveTip ? CHART_HOVER_CLOSE_GRACE_MS : 0) => {
       keepOpen();
       stopOpening();
       setActive(null);
@@ -475,8 +474,9 @@ function PortalTip({
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const sideGap = 12;
-  // The popup is display-only. It must never extend the hovered mark's hit
-  // area: leaving the dot, bar, slice, or endpoint closes it immediately.
+  // The popup is interactive. The chart still anchors it to the painted mark,
+  // while the close grace lets the pointer cross into the card without losing
+  // the record list on the way.
   const anchorElement = anchor.element;
   /**
    * The box the card must clear. `data-chart-root` marks the whole CARD where
@@ -2283,7 +2283,12 @@ export function BarChart({
         // either way.
         height: fillCard ? "100%" : height,
         minHeight: undefined,
-        paddingBottom: fillCard ? SCROLLBAR_STRIP : undefined,
+        // Always reserve a strip below the axis labels. Contracts uses the
+        // ordinary fixed-height chart (no `fillCard`) and macOS's overlay
+        // scrollbar was drawing directly through "Aug '27" and the other
+        // month labels. Keeping the strip inside the scrolling content moves
+        // the thumb below every label in every bar chart.
+        paddingBottom: SCROLLBAR_STRIP,
         gridTemplateColumns: `repeat(${Math.max(
           data.length,
           1

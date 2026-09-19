@@ -42,18 +42,19 @@ export const CURRENCIES: {
   code: CurrencyCode;
   symbol: string;
   name: string;
+  flag: string;
   /** Yen and rupee are usually quoted whole; the rest take cents. */
   whole?: boolean;
 }[] = [
-  { code: "USD", symbol: "$", name: "US dollar" },
-  { code: "EUR", symbol: "€", name: "Euro" },
-  { code: "GBP", symbol: "£", name: "Pound sterling" },
-  { code: "INR", symbol: "₹", name: "Indian rupee", whole: true },
-  { code: "JPY", symbol: "¥", name: "Japanese yen", whole: true },
-  { code: "CHF", symbol: "CHF ", name: "Swiss franc" },
-  { code: "CAD", symbol: "C$", name: "Canadian dollar" },
-  { code: "AUD", symbol: "A$", name: "Australian dollar" },
-  { code: "SGD", symbol: "S$", name: "Singapore dollar" },
+  { code: "USD", symbol: "$", name: "US dollar", flag: "🇺🇸" },
+  { code: "EUR", symbol: "€", name: "Euro", flag: "🇪🇺" },
+  { code: "GBP", symbol: "£", name: "Pound sterling", flag: "🇬🇧" },
+  { code: "INR", symbol: "₹", name: "Indian rupee", flag: "🇮🇳", whole: true },
+  { code: "JPY", symbol: "¥", name: "Japanese yen", flag: "🇯🇵", whole: true },
+  { code: "CHF", symbol: "CHF ", name: "Swiss franc", flag: "🇨🇭" },
+  { code: "CAD", symbol: "C$", name: "Canadian dollar", flag: "🇨🇦" },
+  { code: "AUD", symbol: "A$", name: "Australian dollar", flag: "🇦🇺" },
+  { code: "SGD", symbol: "S$", name: "Singapore dollar", flag: "🇸🇬" },
 ];
 
 export const CURRENCY_CODES = CURRENCIES.map((c) => c.code);

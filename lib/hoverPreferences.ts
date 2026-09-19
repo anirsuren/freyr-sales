@@ -26,7 +26,15 @@ export const HOVER_DELAY_MS = 1000;
 export const HOVER_HINT_DELAY_MS = 250;
 
 /**
- * Ordinary rich hover popups close as soon as the pointer leaves them. Chart
- * popups are display-only and close when the pointer leaves the painted mark.
+ * Ordinary rich hover popups close as soon as the pointer leaves them.
  */
 export const HOVER_CLOSE_GRACE_MS = 0;
+
+/**
+ * Every graph popup is inspectable. A mark can be tiny and its popup may sit
+ * above the entire plot, so the pointer gets a reliable bridge from the mark
+ * into the card. Once it reaches the card, the card owns hover and cancels the
+ * pending close. This is shared by the SVG chart library and custom graph
+ * HoverCards so no page can quietly regress to an un-enterable popup.
+ */
+export const CHART_HOVER_CLOSE_GRACE_MS = 1200;

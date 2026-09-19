@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { AlertTriangle, CalendarRange } from "lucide-react";
 import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
@@ -391,11 +392,13 @@ function ReadValue({
   text,
   tone,
   empty = false,
+  leading,
 }: {
   text: string;
   /** A colour-coded chip for the fields that are categories. */
   tone?: string;
   empty?: boolean;
+  leading?: React.ReactNode;
 }) {
   if (tone && !empty) {
     /* THE AGENT'S FACE INSTEAD OF THE DOT (Anir, Sep 3: "offering still does
@@ -425,7 +428,8 @@ function ReadValue({
     );
   }
   return (
-    <span className="flex h-10 items-center">
+    <span className="flex h-10 min-w-0 items-center gap-2">
+      {leading}
       <span
         className={cn(
           "truncate text-[13px]",
@@ -1116,7 +1120,18 @@ export function DealOverviewEditor({
                   account name from inside an existing deal would re-parent a
                   live record onto an account nobody created. */}
               {ro || customers.length === 0 ? (
-                <ReadValue text={deal.customer || "No account"} empty={!deal.customer} />
+                <ReadValue
+                  text={deal.customer || "No account"}
+                  empty={!deal.customer}
+                  leading={
+                    deal.customer ? (
+                      <CompanyLogo
+                        name={deal.customer}
+                        className="h-7 w-7 shrink-0 text-[9px]"
+                      />
+                    ) : undefined
+                  }
+                />
               ) : (
                 <ColorSelect
                   value={resolvedCustomerId || "__current"}
@@ -1499,7 +1514,7 @@ export function DealOverviewEditor({
                          this card is written with the symbol, so the cell that
                          names the currency should be readable in the same
                          terms rather than making you translate USD into $. */
-                      text={`${currencyMeta(currency).symbol.trim()} ${currency} ${currencyMeta(currency).name}`}
+                      text={`${currencyMeta(currency).flag} ${currencyMeta(currency).symbol.trim()} ${currency} ${currencyMeta(currency).name}`}
                     />
                   ) : (
                     <ColorSelect
@@ -1515,7 +1530,7 @@ export function DealOverviewEditor({
                       }}
                       options={CURRENCIES.map((c) => ({
                         value: c.code,
-                        label: `${c.code} ${c.name}`,
+                        label: `${c.flag} ${c.code} ${c.name}`,
                         color: c.code === BASE_CURRENCY ? "var(--ink-bright-blue)" : "var(--ink-teal-deep)",
                         short: c.symbol.trim(),
                         icon: currencyGlyph(c.symbol),
