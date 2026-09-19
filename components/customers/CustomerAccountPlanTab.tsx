@@ -18,10 +18,9 @@ import {
   Search,
   Target,
   Users,
-  type LucideIcon,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
-import { BarChart, DonutChart } from "@/components/charts/Charts";
+import { DonutChart } from "@/components/charts/Charts";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
@@ -111,89 +110,6 @@ const TEAL = "var(--ink-teal-deep)";
 const VIOLET = "var(--ink-violet-soft)";
 const GREEN = "var(--ink-green)";
 const ORANGE = "var(--ink-orange)";
-type ReadinessCheck = {
-  key: "contact" | "opportunity" | "activity" | "material" | "actions";
-  label: string;
-  ready: boolean;
-  detail: string;
-  color: string;
-  icon: LucideIcon;
-  nextLabel: string;
-};
-
-function playReadiness({
-  contactCount,
-  hasOpportunity,
-  activityCount,
-  materialCount,
-  actionCount,
-  completedActionCount,
-}: {
-  contactCount: number;
-  hasOpportunity: boolean;
-  activityCount: number;
-  materialCount: number;
-  actionCount: number;
-  completedActionCount: number;
-}) {
-  const checks: ReadinessCheck[] = [
-    {
-      key: "contact",
-      label: "Buyer",
-      ready: contactCount > 0,
-      detail: contactCount > 0 ? `${contactCount} key contact${contactCount === 1 ? "" : "s"}` : "No key contact",
-      color: "#7C3AED",
-      icon: Users,
-      nextLabel: "Map a buyer",
-    },
-    {
-      key: "opportunity",
-      label: "Opportunity",
-      ready: hasOpportunity,
-      detail: hasOpportunity ? "Linked" : "Not linked",
-      color: "#DB2777",
-      icon: Briefcase,
-      nextLabel: "Link an opportunity",
-    },
-    {
-      key: "activity",
-      label: "Activity",
-      ready: activityCount > 0,
-      detail: activityCount > 0 ? `${activityCount} linked record${activityCount === 1 ? "" : "s"}` : "None linked",
-      color: "#0F766E",
-      icon: CalendarClock,
-      nextLabel: "Log an activity",
-    },
-    {
-      key: "material",
-      label: "Materials",
-      ready: materialCount > 0,
-      detail: materialCount > 0 ? `${materialCount} file${materialCount === 1 ? "" : "s"}` : "None assigned",
-      color: "#EA580C",
-      icon: FileText,
-      nextLabel: "Add sales material",
-    },
-    {
-      key: "actions",
-      label: "Actions",
-      ready: actionCount > 0 && completedActionCount === actionCount,
-      detail: actionCount > 0 ? `${completedActionCount} of ${actionCount} done` : "No actions linked",
-      color: "#16A34A",
-      icon: CheckCircle2,
-      nextLabel: actionCount > 0
-        ? `Complete ${actionCount - completedActionCount} open action${actionCount - completedActionCount === 1 ? "" : "s"}`
-        : "Add and complete an action",
-    },
-  ];
-
-  const completed = checks.filter((check) => check.ready).length;
-  return {
-    completed,
-    total: checks.length,
-    percent: Math.round((completed / checks.length) * 100),
-    checks,
-  };
-}
 
 function money(value: number) {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(value % 1_000_000 ? 1 : 0)}M`;
@@ -247,43 +163,6 @@ function StatusPill({ status }: { status: PlanStatus | ActionStatus | PlayStage 
       <Icon size={11} strokeWidth={2.4} />
       {status}
     </span>
-  );
-}
-
-function ReadinessBreakdown({ readiness }: { readiness: ReturnType<typeof playReadiness> }) {
-  const readyChecks = readiness.checks.filter((check) => check.ready);
-  const missingChecks = readiness.checks.filter((check) => !check.ready);
-
-  return (
-    <div className="mt-4 border-t border-border-light pt-4">
-      <div className="flex items-baseline gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Readiness</p>
-        <p className="text-[13px] font-semibold text-text-primary"><span className="tnum">{readiness.completed}</span> of {readiness.total} ready</p>
-      </div>
-
-      <div className="mt-2 overflow-hidden rounded-xl border border-border-light bg-white text-[11px]">
-        <div className="grid gap-2 px-3 py-2.5 sm:grid-cols-[64px_minmax(0,1fr)]">
-          <span className="font-semibold text-success">Ready</span>
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            {readyChecks.map((check) => {
-              const Icon = check.icon;
-              return <span key={check.key} className="inline-flex items-center gap-1.5 font-medium text-text-primary"><Icon size={13} style={{ color: check.color }} /><span>{check.label}</span><span className="text-text-tertiary">· {check.detail}</span></span>;
-            })}
-          </div>
-        </div>
-        {missingChecks.length > 0 && <div className="grid gap-2 border-t border-border-light bg-surface/45 px-3 py-2.5 sm:grid-cols-[64px_minmax(0,1fr)]">
-          <span className="font-semibold text-text-secondary">Next</span>
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            {missingChecks.map((check) => (
-              <span key={check.key} className="inline-flex items-center gap-1.5 font-medium text-text-primary">
-                <Circle size={12} style={{ color: check.color }} />
-                {check.nextLabel}
-              </span>
-            ))}
-          </div>
-        </div>}
-      </div>
-    </div>
   );
 }
 
@@ -512,19 +391,8 @@ export function CustomerAccountPlanTab({
       customer.account_deals?.find((deal) => deal.offering === play.offering) ||
       (playIndex === 0 ? customer.account_deals?.[0] : undefined);
     const linkedActivities = playIndex === 0 ? interactions.slice(0, 2) : [];
-    const linkedActions = plan.actions.filter((action) => action.play === play.offering);
-    const readiness = playReadiness({
-      contactCount: play.contacts.length,
-      hasOpportunity: !!linkedOpportunity,
-      activityCount: linkedActivities.length,
-      materialCount: play.materials.length,
-      actionCount: linkedActions.length,
-      completedActionCount: linkedActions.filter((action) => action.status === "Done").length,
-    });
-    return { play, linkedOpportunity, linkedActivities, linkedActions, readiness };
+    return { play, linkedOpportunity, linkedActivities };
   });
-  const readyCheckCount = playEvidence.reduce((sum, item) => sum + item.readiness.completed, 0);
-  const totalCheckCount = playEvidence.reduce((sum, item) => sum + item.readiness.total, 0);
   const allocatedTarget = plan.plays.reduce((sum, play) => sum + play.target, 0);
   const completedActions = plan.actions.filter((action) => action.status === "Done").length;
   const hasPlanChanges = useMemo(
@@ -732,45 +600,11 @@ export function CustomerAccountPlanTab({
         </div>
       </Modal>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(310px,0.75fr)]">
-        <Card className="overflow-hidden p-0">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-light px-5 py-3.5">
-            <div>
-              <div className="flex items-center gap-2"><Target size={16} className="text-blue-primary" /><h3 className="text-[15px] font-semibold text-text-primary">Growth play readiness</h3></div>
-              <p className="mt-0.5 text-[12px] text-text-secondary">Buyer, opportunity, activity, materials, and actions—five checks per play.</p>
-            </div>
-            <div className="text-right"><p className="tnum text-[15px] font-bold text-text-primary">{readyCheckCount} of {totalCheckCount}</p><p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Checks ready</p></div>
-          </div>
-          <div className="px-4 pb-3 pt-4">
-            <BarChart
-              data={playEvidence.map(({ play, readiness }) => ({
-                label: play.offering,
-                value: readiness.percent,
-                valueLabel: `${readiness.completed}/${readiness.total}`,
-                color: statusMeta(play.stage).color,
-                dotColor: statusMeta(play.stage).color,
-                caption: `${money(play.target)} target`,
-                tipNote: "Each linked-record check counts once. This is not win probability.",
-                tip: readiness.checks.map((check) => ({
-                  name: check.label,
-                  value: check.ready ? "Ready" : "Missing",
-                  sub: check.detail,
-                })),
-              }))}
-              height={190}
-              format="percent"
-              maxBarWidth={48}
-              hideTipStats
-              hideFullHeightGhost
-              tipRecordsLabel="Readiness checks"
-            />
-          </div>
-        </Card>
-
+      <div>
         <Card className="overflow-hidden p-0">
           <div className="border-b border-border-light px-5 py-3.5">
             <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-[color:var(--ink-teal-deep)]" /><h3 className="text-[15px] font-semibold text-text-primary">Plan coverage</h3></div>
-            <p className="mt-0.5 text-[12px] text-text-secondary">Commercial progress and execution readiness.</p>
+            <p className="mt-0.5 text-[12px] text-text-secondary">How the revenue target is allocated and how much planned work is complete.</p>
           </div>
           <div className="grid grid-cols-2 divide-x divide-border-light px-2 py-4">
             <div className="flex min-w-0 flex-col items-center px-2 text-center">
@@ -800,7 +634,7 @@ export function CustomerAccountPlanTab({
                 centerSub="done"
                 format="number"
               />
-              <p className="mt-2 text-[11.5px] font-semibold text-text-primary">Action readiness</p>
+              <p className="mt-2 text-[11.5px] font-semibold text-text-primary">Actions completed</p>
               <p className="mt-0.5 text-[10.5px] text-text-tertiary">{plan.actions.length - completedActions} actions still open</p>
             </div>
           </div>
@@ -836,14 +670,14 @@ export function CustomerAccountPlanTab({
           </div>
           <div className="overflow-x-auto bg-surface/30 p-3">
             <div className="min-w-[760px]">
-              <div className="grid grid-cols-[minmax(280px,1.8fr)_110px_90px_115px_150px_32px] items-center gap-3 px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                <span>Priority & offering</span><span>Stage</span><span>Target</span><span>Target date</span><span>Checks ready</span><span />
+              <div className="grid grid-cols-[minmax(320px,1.8fr)_120px_110px_140px_32px] items-center gap-4 px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                <span>Priority & offering</span><span>Stage</span><span>Target</span><span>Target date</span><span />
               </div>
               <div className="space-y-2">
                 {plan.plays.map((play) => {
                   const expanded = expandedPlay === play.id;
                   const evidence = playEvidence.find((item) => item.play.id === play.id)!;
-                  const { linkedOpportunity, linkedActivities, readiness } = evidence;
+                  const { linkedOpportunity, linkedActivities } = evidence;
                   return (
                     <div
                       key={play.id}
@@ -860,7 +694,7 @@ export function CustomerAccountPlanTab({
                         aria-expanded={expanded}
                         onClick={() => setExpandedPlay(expanded ? null : play.id)}
                         className={cn(
-                          "grid w-full cursor-pointer grid-cols-[minmax(280px,1.8fr)_110px_90px_115px_150px_32px] items-center gap-3 px-4 py-3 text-left text-[12.5px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary/30",
+                          "grid w-full cursor-pointer grid-cols-[minmax(320px,1.8fr)_120px_110px_140px_32px] items-center gap-4 px-4 py-3 text-left text-[12.5px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary/30",
                           expanded ? "bg-blue-light/55" : "hover:bg-surface/70"
                         )}
                       >
@@ -871,10 +705,6 @@ export function CustomerAccountPlanTab({
                         <span><StatusPill status={play.stage} /></span>
                         <span className="tnum font-semibold text-text-primary">{money(play.target)}</span>
                         <span className="text-text-secondary">{prettyDate(play.targetDate)}</span>
-                        <span className="flex min-w-[108px] items-center gap-2">
-                          <CheckCircle2 size={13} className="shrink-0 text-blue-primary" />
-                          <span className="tnum text-[11px] font-semibold text-text-secondary">{readiness.completed} of {readiness.total}</span>
-                        </span>
                         <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white transition-[border-color,color,transform]", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></span>
                       </button>
                       <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
@@ -885,7 +715,6 @@ export function CustomerAccountPlanTab({
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Why this fits</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.why}</p></div>
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Strategy</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.strategy}</p></div>
                               </div>
-                              <ReadinessBreakdown readiness={readiness} />
                               <div className="mt-4 border-t border-border-light pt-4">
                                 <div className="min-w-0">
                                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">People & linked work</p>
