@@ -188,3 +188,7 @@ In Org performance assigned-person rows, derive the visible amount, percent, pro
 Performance pace timelines keep endpoint labels directly above the track and use measured collision detection to lift only an endpoint that overlaps the schedule annotation. Recalculate on resize instead of using fixed percentage guesses or permanently distant label lanes.
 
 Goal progress rails stay green throughout the Goals module: verified portions are solid green, waiting-for-verification portions are striped green, and only sent-back portions are red. Blue may label a waiting workflow state, but it must not tint the progress rail.
+
+When one goal bar contains multiple workflow statuses, render each status as its own proportional segment and keep the visible stack consistent with the tooltip total. Waiting-for-verification is striped green and sent-back is striped red.
+
+Require customer HQ line 1, city, and country in both create and edit flows, with a visible required star, blocked form actions, and matching API validation. Do not invent an address for incomplete legacy or mock customers.

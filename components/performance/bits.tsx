@@ -1506,6 +1506,19 @@ export function PersonGoalPanel({
         value: cell.value,
         pending,
         color: ENTRY_COLOR.verified,
+        /* Top to bottom: red sent-back work, then green waiting work beside
+           the solid verified base. A single pendingColor made a month with
+           5 waiting and 3 sent back look as though all 8 were sent back. */
+        pendingBands: [
+          {
+            value: cell.sentBack,
+            color: GOAL_PROGRESS_COLOR.sent_back,
+          },
+          {
+            value: cell.reported,
+            color: GOAL_PROGRESS_COLOR.reported,
+          },
+        ].filter((band) => band.value > 0),
         pendingColor:
           cell.sentBack > 0
             ? GOAL_PROGRESS_COLOR.sent_back

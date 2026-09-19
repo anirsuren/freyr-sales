@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 /**
  * A CUSTOMER'S ADDRESSES AND PARENT COMPANY, EDITED (Manoj, Sep 10). The same
  * two locks the account's own PATCH has: write on Customers, and write on this
- * account. An address may be left empty, but a started one has to have line
- * 1, a city and a country. A parent can never be the customer itself, or a
- * customer that already sits under it.
+ * account. HQ is required here just as it is in the create flow: line 1, city
+ * and country. The other address may be empty, but a started one has to be
+ * complete. A parent can never be the customer itself, or a customer that
+ * already sits under it.
  */
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const refusal = await moduleWriteRefusal("/customers");
@@ -32,8 +33,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!body) return NextResponse.json({ error: "Bad request." }, { status: 400 });
 
   const hq = normalizeAddress(body.hq);
-  if (hq && !addressIsComplete(hq))
-    return NextResponse.json({ error: "Finish the HQ address with line 1, a city and a country, or clear it." }, { status: 400 });
+  if (!hq || !addressIsComplete(hq))
+    return NextResponse.json({ error: "The HQ address needs line 1, a city and a country." }, { status: 400 });
   const other = normalizeAddress(body.other);
   if (other && !addressIsComplete(other))
     return NextResponse.json({ error: "Finish the other address with line 1, a city and a country, or clear it." }, { status: 400 });

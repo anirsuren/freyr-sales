@@ -2007,6 +2007,16 @@ export function BarChart({
      */
     pending?: number;
     /**
+     * Optional status slices within the pending cap. Use this when the same
+     * bar contains both work waiting for verification and work that was sent
+     * back; collapsing them into one pendingColor makes the whole total look
+     * like it has the same status.
+     *
+     * Bands are supplied from top to bottom. Their values should add up to
+     * `pending`; any remainder falls back to pendingColor.
+     */
+    pendingBands?: { value: number; color: string }[];
+    /**
      * The unverified cap's own hue (Anir, Aug 20: "the top of the bar should
      * be the same color not that blue stripe"). Rejected money read as the
      * same friendly blue as the signed-off money below it, while the tip and
@@ -2319,9 +2329,15 @@ export function BarChart({
          * pointed at it — the same lie the blue glow told over the red stripes
          * on the goal rails. The ring follows the bigger slice instead.
          */
+        const dominantPendingBand = d.pendingBands
+          ?.filter((band) => band.value > 0)
+          .reduce<{ value: number; color: string } | undefined>(
+            (largest, band) => (!largest || band.value > largest.value ? band : largest),
+            undefined
+          );
         const ringColor =
           d.value > 0 && (d.pending ?? 0) > d.value / 2
-            ? (d.pendingColor ?? d.color ?? VIZ.blue)
+            ? (dominantPendingBand?.color ?? d.pendingColor ?? d.color ?? VIZ.blue)
             : (d.color || VIZ.blue);
         return (
           <div
@@ -2567,33 +2583,49 @@ export function BarChart({
                       size (Anir, Aug 15: "whatever that fucking design for
                       that bar is, it's horrible"). A pale band with a crisp
                       edge says "not counted yet" without the barber pole. */}
-                  {!!d.pending && d.value > 0 && (
-                    <span
-                      aria-hidden="true"
-                      className="unverified-fill absolute inset-x-0 top-0"
-                      style={{
-                        height: `${Math.min(100, (plotted(d.pending) / plotted(d.value)) * 100)}%`,
-                        /**
-                         * NOT SIGNED OFF = STRIPED (Anir, Aug 15: "if it's not
-                         * verified, show it like a stripe").
-                         *
-                         * Third time on this. The first stripe was a barber
-                         * pole — full-strength colour against white, 50/50, at
-                         * a size you could read from across the room. Then a
-                         * flat wash, which said nothing. Then a coloured cap,
-                         * which read as a stray line.
-                         *
-                         * These are two WHITE veils over the bar's own colour,
-                         * a few percent apart, so the stripe is the same hue
-                         * twice and only shows up close. The bar still reads as
-                         * one colour at a glance and as provisional when you
-                         * look at it.
-                         */
-                        ["--fill" as string]:
-                          d.pendingColor ?? d.color ?? VIZ.blue,
-                      }}
-                    />
-                  )}
+                  {!!d.pending && d.value > 0 && (() => {
+                    const supplied = (d.pendingBands ?? []).filter(
+                      (band) => band.value > 0
+                    );
+                    const suppliedTotal = supplied.reduce(
+                      (sum, band) => sum + band.value,
+                      0
+                    );
+                    const remainder = Math.max(0, d.pending - suppliedTotal);
+                    const bands = [
+                      ...supplied,
+                      ...(remainder > 0
+                        ? [
+                            {
+                              value: remainder,
+                              color:
+                                d.pendingColor ?? d.color ?? VIZ.blue,
+                            },
+                          ]
+                        : []),
+                    ];
+                    return (
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-x-0 top-0 flex flex-col overflow-hidden"
+                        style={{
+                          height: `${Math.min(100, (plotted(d.pending) / plotted(d.value)) * 100)}%`,
+                        }}
+                      >
+                        {bands.map((band, bandIndex) => (
+                          <span
+                            key={`${band.color}-${bandIndex}`}
+                            className="unverified-fill block w-full min-h-0"
+                            style={{
+                              flexGrow: band.value,
+                              flexBasis: 0,
+                              ["--fill" as string]: band.color,
+                            }}
+                          />
+                        ))}
+                      </span>
+                    );
+                  })()}
                 </div>
                 </div>
               </div>

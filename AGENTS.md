@@ -1179,3 +1179,7 @@ Assigned-person progress rows on Org performance use the same full goal-family r
 Performance pace timelines place the 0 and target endpoint labels in the lane immediately above the track by default. They measure the rendered schedule annotation and move only the endpoint that would actually collide into the upper lane, recalculating on resize; labels must not remain detached from the bar merely because a second lane exists. Completed locally, not deployed.
 
 Goal progress rails use green for achieved work across the entire Goals module. Verified progress is solid green; progress waiting for verification is striped green; sent-back progress remains red. Blue may describe a waiting workflow status in text or a badge, but it must not blend into a goal's green progress bar. Completed locally, not deployed.
+
+Mixed-status goal bars preserve each status as its own proportional segment. A monthly total containing work waiting for verification and work sent back must show both green-striped and red-striped portions, and those visible portions must add up to the same total shown in the tooltip. Completed locally, not deployed.
+
+Customer HQ address requirements are enforced at both UI and API boundaries for creation and editing. Line 1, city, and country are required; legacy or mock customers without them remain blocked from saving until completed, and the app never invents address data. Completed locally, not deployed.
