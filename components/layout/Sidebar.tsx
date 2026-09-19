@@ -343,10 +343,17 @@ export function Sidebar({
       <div
         className={cn(
           "mb-5 flex items-center",
-          collapsed ? "px-0 flex-col gap-3" : "px-6 justify-between"
+          collapsed ? "px-3 flex-col gap-3" : "px-6 justify-between"
         )}
       >
-        <Link href={getHomePath(dataMode)} className="flex items-center gap-2.5" title="Freyr">
+        <Link
+          href={getHomePath(dataMode)}
+          className={cn(
+            "flex items-center",
+            collapsed ? "w-full flex-col gap-1.5" : "gap-2.5"
+          )}
+          title="Freyr"
+        >
           {/* The Freyr "f" mark, not a generic pulse glyph — the brand's own
               letterform on the wordmark's blue (Anir, Jul 26: "it should just be
               the F… you can put that instead of the logo"). */}
@@ -383,7 +390,11 @@ export function Sidebar({
             </span>
           )}
           {collapsed && isDev && (
-            <span className="rounded bg-[rgba(217,119,6,0.12)] px-1 text-[8.5px] font-bold uppercase tracking-[0.06em] text-[color:#B45309]">
+            /* The badge used to share the logo's horizontal row. Together they
+               were wider than the 72px rail, pushing the mark against the
+               viewport edge. Stack the environment label under the centered
+               mark so both keep deliberate breathing room. */
+            <span className="rounded bg-[rgba(217,119,6,0.12)] px-1.5 py-0.5 text-[8.5px] font-bold uppercase leading-none tracking-[0.06em] text-[color:#B45309]">
               Dev
             </span>
           )}

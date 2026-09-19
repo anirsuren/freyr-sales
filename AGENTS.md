@@ -196,6 +196,11 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 19 collapsed sidebar brand spacing:** The collapsed 72px sidebar now
+  centers the Freyr mark with real side padding and stacks the DEV environment
+  badge beneath it. The badge no longer forces the logo against the viewport
+  edge. Local only, not deployed.
+
 - **Sep 19 Lead source and status icons:** Lead source and status pickers now
   use channel-specific and workflow-specific icons instead of generic colour
   dots. The same icon language carries through the Leads filters, grouped
