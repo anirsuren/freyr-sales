@@ -196,8 +196,8 @@ export function CustomerEditForm({
   const dirty = coreDirty || profileDirty;
   const problem = !draft.company_name.trim()
     ? "The account needs a name."
-    : addressHasAny(hq) && !addressIsComplete(hq)
-      ? "Finish the HQ address with line 1, a city and a country, or clear it."
+    : !addressIsComplete(hq)
+      ? "Finish the required HQ address with line 1, a city and a country."
       : addressHasAny(other) && !addressIsComplete(other)
         ? "Finish the other address with line 1, a city and a country, or clear it."
         : null;
@@ -333,12 +333,19 @@ export function CustomerEditForm({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {(
               [
-                ["HQ address", hq, setHq],
-                ["Other address", other, setOther],
+                ["HQ address", hq, setHq, true],
+                ["Other address", other, setOther, false],
               ] as const
-            ).map(([title, value, setValue]) => (
-              <fieldset key={title} className="rounded-xl border border-border-light p-3.5">
-                <legend className="px-1 text-[12.5px] font-semibold text-text-primary">{title}</legend>
+            ).map(([title, value, setValue, required]) => (
+              <fieldset key={title} aria-required={required} className="rounded-xl border border-border-light p-3.5">
+                <legend className="px-1 text-[12.5px] font-semibold text-text-primary">
+                  {title}
+                  {required && (
+                    <span aria-label="required" title="Required" className="ml-0.5 text-[color:var(--status-red)]">
+                      *
+                    </span>
+                  )}
+                </legend>
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                   <ColorSelect
                     value={value.country}

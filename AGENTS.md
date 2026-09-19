@@ -1165,3 +1165,5 @@ Sticky save and form-action bars coordinate with the shared Freyr AI launcher. T
 Customer and address lookup locations use the app's blue information treatment. Map pins in company-office results, address suggestions, and add-customer address headings no longer use warning orange for neutral search results. Completed locally, not deployed.
 
 Customer address cards use a consistent postal layout: country and both street lines span the card, followed by one City, State, ZIP row. The same structure is used when adding and editing a customer, and collapses to one column on narrow screens. Completed locally, not deployed.
+
+Required fields and required grouped sections display a red star everywhere they appear. Customer HQ address is required in both the add and edit flows (line 1, city, and country); Other address remains optional and has no star. Completed locally, not deployed.
