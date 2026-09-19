@@ -193,6 +193,8 @@ When one goal bar contains multiple workflow statuses, render each status as its
 
 Verification pills keep the same resting label, icon, dimensions, border, and state color across goal, group, person, and detail views. Click permission may reveal an action on hover, but must not create a second visual style for the same verification state. Detail progress rails follow the same green/amber/red status segmentation as summary rails.
 
+Goal-level verification is green when Verified and red when Not verified across pills and filters. Do not use blue for a negative verification state; entry-level waiting for review remains amber.
+
 Render inline owner identities as crown, profile picture, then name. Keep the profile picture immediately beside the name as part of the person's identity.
 
 Keep a search field directly above the logged-entry list in the goal verification dialog. Search across every visible record detail and report the filtered count without changing the underlying sign-off totals.

@@ -1296,7 +1296,7 @@ export function OrgPerformanceTab({
                 onChange: (next) => setVerFilter(next[next.length - 1] ?? "all"),
                 options: [
                   { value: "verified", label: "Verified", color: "#16A34A" },
-                  { value: "unverified", label: "Not verified", color: "var(--ink-blue-soft)" },
+                  { value: "unverified", label: "Not verified", color: "var(--entry-sent-back-ink)" },
                 ],
               },
             ]}

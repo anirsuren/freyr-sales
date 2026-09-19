@@ -532,10 +532,10 @@ export function VerifiedPill({
      people list. Keep the resting state identical; interaction is revealed by
      the hover label and cursor only. */
   const stateClass = verified
-    ? "border-[rgba(22,163,74,0.35)] text-[#16A34A]"
-    : "border-[rgba(0,113,227,0.35)] text-[var(--ink-blue-soft)]";
+    ? "border-[rgba(22,163,74,0.35)] bg-white text-[#16A34A]"
+    : "border-[rgba(220,38,38,0.38)] bg-[rgba(220,38,38,0.08)] text-[color:var(--entry-sent-back-ink)]";
   const pillClass = cn(
-    "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-white font-bold leading-none shadow-sm",
+    "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border font-bold leading-none shadow-sm",
     size === "sm" ? "px-2 py-1 text-[10px]" : "px-2.5 py-1 text-[10.5px]",
     stateClass
   );
@@ -599,10 +599,7 @@ export function VerifiedPill({
         "group/vp cursor-pointer transition-all hover:-translate-y-px hover:shadow active:translate-y-0 active:shadow-none",
         verified
           ? "hover:border-[rgba(220,38,38,0.45)] hover:bg-[rgba(220,38,38,0.08)] hover:text-[#DC2626]"
-          // Fills light blue under the cursor rather than only swapping its
-          // words (Anir, Aug 19: "should be light filled in blue when I hover
-          // over it").
-          : "hover:border-blue-primary hover:bg-blue-light"
+          : "hover:border-[rgba(220,38,38,0.55)] hover:bg-[rgba(220,38,38,0.14)]"
       )}
     >
       <span className="grid shrink-0 place-items-center">

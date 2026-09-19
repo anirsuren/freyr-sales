@@ -1184,6 +1184,8 @@ Mixed-status goal bars preserve each status as its own proportional segment. A m
 
 Verification pills use one identical resting treatment at the goal, group, person, and expanded-detail levels. Permission to click a pill may change its hover action, but it must not change the state label's size, border, icon, or color. Person-detail progress rails use the same solid-green verified, striped-amber waiting, and striped-red sent-back segments as the rest of Goals. Completed locally, not deployed.
 
+Goal-level verification uses green for Verified and red for Not verified everywhere, including read-only pills, actionable pills, group/person rows, and verification filters. Blue is reserved for neutral navigation and selection, while entry-level work waiting for review remains amber. Completed locally, not deployed.
+
 Inline owner identities on Goals always read crown, profile picture, then name. The avatar and name stay adjacent as one person identity; the ownership crown precedes that identity instead of splitting the face from the name. Completed locally, not deployed.
 
 The goal verification dialog places a full-width search field immediately above its logged-entry list. It filters the review log by person, customer, date, amount, status, notes, actors, currency, and evidence while preserving the complete entry count and showing the number of matches. Completed locally, not deployed.
