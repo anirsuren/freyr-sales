@@ -62,38 +62,56 @@ import { expandMoneyShorthand } from "@/lib/moneyShorthand";
  * owner, everything waiting on them.
  */
 
-function goalChip(state: PerformanceState, goalId: string) {
+function goalChip(
+  state: PerformanceState,
+  goalId: string,
+  { compact = false }: { compact?: boolean } = {}
+) {
   const goal = state.goals.find((g) => g.id === goalId);
   if (!goal) return null;
   const meta = typeMeta(goal.type);
   return (
     <span
-      className="inline-flex max-w-[340px] items-center gap-1 whitespace-normal rounded-xl px-2.5 py-1 text-[12px] font-semibold leading-4"
+      className={cn(
+        "inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-[12px] font-semibold leading-4",
+        compact
+          ? "max-w-full whitespace-nowrap"
+          : "max-w-[340px] whitespace-normal"
+      )}
       style={{ background: tint(meta.color, 10), color: meta.color }}
+      title={compact ? goal.name : undefined}
     >
-      {goal.name}
+      <span className={compact ? "truncate" : undefined}>{goal.name}</span>
     </span>
   );
 }
 
 function EvidenceLinks({
   entry,
+  compact = false,
 }: {
   entry: PerfActual;
+  compact?: boolean;
 }) {
   if (!entry.evidence?.length) {
     return (
-      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] text-text-tertiary">
+      <span
+        className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] text-text-tertiary"
+        title="No attachment"
+      >
         <Paperclip size={12} strokeWidth={2} aria-hidden="true" />
-        No attachment
+        {compact ? "None" : "No attachment"}
       </span>
     );
   }
   const count = entry.evidence.length;
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold text-blue-primary">
+    <span
+      className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-semibold text-blue-primary"
+      title={`${count} ${count === 1 ? "document" : "documents"}`}
+    >
       <Paperclip size={12} strokeWidth={2.2} aria-hidden="true" />
-      {count} {count === 1 ? "document" : "documents"}
+      {compact ? `${count} ${count === 1 ? "file" : "files"}` : `${count} ${count === 1 ? "document" : "documents"}`}
     </span>
   );
 }
@@ -103,10 +121,12 @@ function CustomerCell({
   customer,
   customerId,
   logoClassName,
+  max = 6,
 }: {
   customer?: string;
   customerId?: string;
   logoClassName?: string;
+  max?: number;
 }) {
   const names = (customer ?? "")
     .split(/\s*\+\s*/)
@@ -115,6 +135,7 @@ function CustomerCell({
   return (
     <CompanyFan
       logoClassName={logoClassName}
+      max={max}
       companies={names.map((raw, i) => {
         const [name, ...relationship] = raw.split(/\s*·\s*/);
         return {
@@ -129,6 +150,12 @@ function CustomerCell({
       })}
     />
   );
+}
+
+function compactPersonName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return name;
+  return `${parts[0]} ${parts.at(-1)?.charAt(0)}.`;
 }
 
 export function StatusPill({
@@ -2202,24 +2229,24 @@ export function VerifyQueueCard({
            there are two things, they would be really hard to see"). Same
            column rhythm as Logged results below it, so the two read as one
            system. */
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1280px] table-fixed border-collapse">
+        <div className="overflow-hidden">
+          <table className="w-full table-fixed border-collapse">
             <colgroup>
-              <col className="w-12" />
-              <col className="w-14" />
-              <col className="w-[210px]" />
-              <col className="w-[320px]" />
-              <col className="w-[110px]" />
-              <col className="w-[150px]" />
-              <col className="w-[210px]" />
-              <col className="w-[190px]" />
-              <col className="w-[120px]" />
+              <col className="w-10" />
+              <col className="w-9" />
+              <col className="w-[156px]" />
+              <col />
+              <col className="w-[86px]" />
+              <col className="w-[92px]" />
+              <col className="w-[116px]" />
+              <col className="w-[90px]" />
+              <col className="w-[92px]" />
             </colgroup>
             <thead>
               <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
                 <th className="w-9 p-0">
                   <label
-                    className="flex cursor-pointer items-center px-4 py-2.5"
+                    className="flex cursor-pointer items-center px-3 py-2.5"
                     title="Select every claim waiting on you"
                   >
                     <input
@@ -2238,14 +2265,14 @@ export function VerifyQueueCard({
                     />
                   </label>
                 </th>
-                <th className="w-10 px-4 py-2.5">#</th>
-                <th className="px-4 py-2.5">Logged by</th>
-                <th className="px-4 py-2.5">Goal</th>
-                <th className="px-4 py-2.5">Amount</th>
-                <th className="px-4 py-2.5">Customer</th>
-                <th className="px-4 py-2.5">Date</th>
-                <th className="px-4 py-2.5">Evidence</th>
-                <th className="px-4 py-2.5">Your call</th>
+                <th className="px-2.5 py-2.5">#</th>
+                <th className="px-2.5 py-2.5">Logged by</th>
+                <th className="px-2.5 py-2.5">Goal</th>
+                <th className="px-2.5 py-2.5">Amount</th>
+                <th className="px-2.5 py-2.5">Customer</th>
+                <th className="px-2.5 py-2.5">Date</th>
+                <th className="px-2.5 py-2.5">Evidence</th>
+                <th className="px-2.5 py-2.5">Your call</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -2265,7 +2292,7 @@ export function VerifyQueueCard({
                           you hit; the label wraps the padding so anywhere in
                           the column counts as the click. */}
                       <td className="p-0">
-                        <label className="flex cursor-pointer items-center px-4 py-3.5">
+                        <label className="flex cursor-pointer items-center px-3 py-3">
                           <input
                             type="checkbox"
                             aria-label={`Select ${a.person}'s claim`}
@@ -2282,50 +2309,51 @@ export function VerifyQueueCard({
                           />
                         </label>
                       </td>
-                      <td className="px-4 py-3.5 text-[13px] font-bold text-text-tertiary tnum">
+                      <td className="px-2.5 py-3 text-[12px] font-bold text-text-tertiary tnum">
                         {i + 1}
                       </td>
-                      <td className="px-4 py-3.5">
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          <Avatar name={a.person} className="h-8 w-8 shrink-0 text-[11px]" />
-                          <span className="truncate text-[13.5px] font-semibold text-text-primary">
-                            {a.person}
+                      <td className="px-2.5 py-3">
+                        <span className="flex min-w-0 items-center gap-2" title={a.person}>
+                          <Avatar name={a.person} className="h-7 w-7 shrink-0 text-[10px]" />
+                          <span className="truncate text-[13px] font-semibold text-text-primary">
+                            {compactPersonName(a.person)}
                           </span>
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">{goalChip(state, a.goalId)}</td>
-                      <td className="whitespace-nowrap px-4 py-3.5 text-[14px] font-semibold text-text-primary tnum">
+                      <td className="min-w-0 px-2.5 py-3">{goalChip(state, a.goalId, { compact: true })}</td>
+                      <td className="whitespace-nowrap px-2.5 py-3 text-[13px] font-semibold text-text-primary tnum">
                         {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
                       </td>
-                      <td className="px-4 py-3.5">
-                        <CustomerCell customer={a.customer} customerId={a.customerId} />
+                      <td className="px-2.5 py-3">
+                        <CustomerCell
+                          customer={a.customer}
+                          customerId={a.customerId}
+                          logoClassName="h-7 w-7 text-[9px]"
+                          max={3}
+                        />
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-text-secondary tnum">
+                      <td
+                        className="whitespace-nowrap px-2.5 py-3 text-[12px] text-text-secondary tnum"
+                        title={a.addedAt ? `Logged ${stampedAt(a.addedAt)}` : undefined}
+                      >
                         <span className="block"><DateText value={a.date} /></span>
-                        {/* When it actually landed in your queue. Same
-                            reason as the rep's table: on a day with two
-                            claims, the day alone says nothing. */}
-                        {stamp(a.addedAt).day && (
-                          <span className="block text-[10.5px] text-text-tertiary">
-                            logged{" "}
-                            {stamp(a.addedAt).day === a.date
-                              ? ""
-                              : `${stamp(a.addedAt).label} `}
-                            {stamp(a.addedAt).time ?? ""}
+                        {stamp(a.addedAt).time && (
+                          <span className="block text-[10px] text-text-tertiary">
+                            Logged {stamp(a.addedAt).time}
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5">
-                        <EvidenceLinks entry={a} />
+                      <td className="px-2.5 py-3">
+                        <EvidenceLinks entry={a} compact />
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-2.5 py-3">
                         {/* ONE BUTTON: READ IT, THEN DECIDE. */}
                         <button
                           type="button"
                           onClick={() => {
                             setReviewId(a.id);
                           }}
-                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[rgba(0,113,227,0.28)] bg-white px-3 py-1.5 text-[12.5px] font-bold text-blue-primary transition-all hover:bg-blue-light active:scale-[0.97]"
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[rgba(0,113,227,0.28)] bg-white px-2.5 py-1.5 text-[12px] font-bold text-blue-primary transition-all hover:bg-blue-light active:scale-[0.97]"
                         >
                           <Eye size={13} strokeWidth={2.4} /> Review
                         </button>
