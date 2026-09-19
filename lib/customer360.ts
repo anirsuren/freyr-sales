@@ -268,6 +268,7 @@ export async function buildCustomer360(
         .map<Customer360Item>((l) => ({
           id: l.id,
           title: l.name || l.company,
+          face: l.name || undefined,
           code: l.ref || undefined,
           sub: [l.ref, l.source, l.status].filter(Boolean).join(" · "),
           cells: {

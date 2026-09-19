@@ -5,7 +5,11 @@ import Link from "next/link";
 import {
   Banknote,
   CalendarClock,
+  CalendarDays,
   CalendarPlus,
+  BadgeCheck,
+  Ban,
+  CircleEllipsis,
   Contact as ContactIcon,
   FileSignature,
   FileText,
@@ -17,7 +21,15 @@ import {
   TrendingUp,
   Search,
   FlaskConical,
+  Globe2,
+  Handshake,
+  Mail,
+  Megaphone,
+  MessageCircle,
   Send,
+  SearchCheck,
+  Sparkles,
+  Sprout,
   Hourglass,
   PauseCircle,
   Trophy,
@@ -26,6 +38,7 @@ import {
   Presentation,
   Target,
   UserPlus,
+  UserRoundCheck,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -69,6 +82,12 @@ import { formatMoney } from "@/lib/pipeline";
 import { cn, formatDate } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 import { statusColor } from "@/lib/opportunitiesShared";
+import {
+  leadSourceColor,
+  leadStatusColor,
+  type LeadSource,
+  type LeadStatus,
+} from "@/lib/leadsShared";
 
 const OPPORTUNITY_LEVEL_COLOR: Record<string, string> = {
   Pipeline: "var(--ink-bright-blue)",
@@ -115,6 +134,29 @@ const SOLUTION_STATUS_ICON: Record<string, LucideIcon> = {
   "Submitted to customer": Send,
   Completed: CheckCircle2,
   Cancelled: CircleSlash,
+};
+
+/* The customer tab is another view of the same lead records, so Source and
+   Status keep the exact marks used in the Leads module. A channel and a
+   lifecycle state should never collapse back into two gray words here. */
+const LEAD_SOURCE_ICON: Record<string, LucideIcon> = {
+  Website: Globe2,
+  Conference: CalendarDays,
+  Referral: UserRoundCheck,
+  Campaign: Megaphone,
+  "Inbound email": Mail,
+  Partner: Handshake,
+  Outbound: Send,
+  Other: CircleEllipsis,
+};
+
+const LEAD_STATUS_ICON: Record<string, LucideIcon> = {
+  New: Sparkles,
+  Contacted: MessageCircle,
+  Qualifying: SearchCheck,
+  Nurturing: Sprout,
+  Converted: BadgeCheck,
+  Disqualified: Ban,
 };
 
 /**
@@ -978,12 +1020,18 @@ export function Customer360({
                                 active.key === "opportunities" && c.key === "status";
                               const solutionStatus =
                                 solutionArtifactTable && c.key === "status";
+                              const leadSource = active.key === "leads" && c.key === "source";
+                              const leadStatus = active.key === "leads" && c.key === "status";
                               const identityColor = opportunityStage
                                 ? OPPORTUNITY_LEVEL_COLOR[v] ?? "#8E98A8"
                                 : opportunityStatus
                                   ? statusColor(v)
                                   : solutionStatus
                                     ? SOLUTION_STATUS_COLOR[v] ?? "#64748B"
+                                    : leadSource
+                                      ? leadSourceColor(v as LeadSource)
+                                      : leadStatus
+                                        ? leadStatusColor(v as LeadStatus)
                                   : null;
                               const IdentityIcon = opportunityStage
                                 ? OPPORTUNITY_LEVEL_ICON[v] ?? Workflow
@@ -991,6 +1039,10 @@ export function Customer360({
                                   ? OPPORTUNITY_STATUS_ICON[v] ?? Hourglass
                                   : solutionStatus
                                     ? SOLUTION_STATUS_ICON[v] ?? Hourglass
+                                    : leadSource
+                                      ? LEAD_SOURCE_ICON[v] ?? CircleEllipsis
+                                      : leadStatus
+                                        ? LEAD_STATUS_ICON[v] ?? Hourglass
                                   : null;
                               return (
                                 <td
@@ -1008,7 +1060,8 @@ export function Customer360({
                                         "inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold",
                                         opportunityStage && "whitespace-nowrap",
                                         opportunityStatus && "whitespace-normal leading-[1.15]",
-                                        solutionStatus && "whitespace-nowrap"
+                                        solutionStatus && "whitespace-nowrap",
+                                        (leadSource || leadStatus) && "whitespace-nowrap"
                                       )}
                                       style={{
                                         color: identityColor,
