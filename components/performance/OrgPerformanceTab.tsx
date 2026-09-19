@@ -43,7 +43,6 @@ import {
   PERIODS,
   actualValue,
   entryStatus,
-  entryStatusLabel,
   familyValue,
   goalAuthor,
   goalCreatedOn,
@@ -69,6 +68,7 @@ import {
   DonutLegend,
   donutSyncBroadcast,
   useDonutSync,
+  type TipItem,
 } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -162,6 +162,154 @@ const TYPE_TIP_ICON: Record<string, string> = {
   "sales activity & engagement": "goalActivity",
   "proposal & deal execution": "goalProposal",
 };
+
+/**
+ * A CHART HOVER IS A SUMMARY, NOT THE AUDIT LOG.
+ *
+ * Repeated results across the year power period filters, verification queues
+ * and timelines. Passing every one into a bar hover produced 80–130 nearly
+ * identical rows for a single goal. Group by contributor and source, then
+ * keep the card bounded. The complete history remains in the goal drawer.
+ */
+const MAX_TIP_CONTRIBUTORS = 8;
+
+function contributorTips(
+  state: PerformanceState,
+  goal: PrimaryGoal,
+  total: number
+): TipItem[] {
+  type Status = "verified" | "sent_back" | "reported";
+  type Bucket = {
+    person: string;
+    source: string;
+    logo?: string;
+    loggedOn?: PrimaryGoal;
+    amount: number;
+    count: number;
+    latest: string;
+    statuses: Record<Status, number>;
+  };
+
+  const buckets = new Map<string, Bucket>();
+  for (const entry of goalFamilyActuals(state, goal)) {
+    const loggedOn = state.goals.find((candidate) => candidate.id === entry.goalId);
+    const source =
+      entry.customer ??
+      entry.dealLabel ??
+      loggedOn?.name ??
+      entry.note ??
+      "Logged result";
+    const key = `${entry.person}\u0000${source}\u0000${loggedOn?.id ?? ""}`;
+    const status = entryStatus(entry);
+    const current = buckets.get(key) ?? {
+      person: entry.person,
+      source,
+      logo: entry.customer ?? undefined,
+      loggedOn,
+      amount: 0,
+      count: 0,
+      latest: entry.date,
+      statuses: { verified: 0, sent_back: 0, reported: 0 },
+    };
+    current.amount += entry.amount;
+    current.count += 1;
+    current.latest = entry.date > current.latest ? entry.date : current.latest;
+    current.statuses[status] += 1;
+    buckets.set(key, current);
+  }
+
+  const statusTag = (
+    status: Status,
+    count: number
+  ): NonNullable<TipItem["tags"]>[number] => ({
+    label:
+      status === "verified"
+        ? `${count} verified`
+        : status === "sent_back"
+          ? `${count} sent back`
+          : `${count} waiting`,
+    color: ENTRY_COLOR[status],
+    icon:
+      status === "verified"
+        ? "verified"
+        : status === "sent_back"
+          ? "sentBack"
+          : "waiting",
+  });
+
+  const rows = [...buckets.values()].sort((a, b) => b.amount - a.amount);
+  const shown = rows.slice(0, MAX_TIP_CONTRIBUTORS).map<TipItem>((bucket) => {
+    const share =
+      goal.target > 0
+        ? pctMet(bucket.amount, goal.target)
+        : total > 0
+          ? (bucket.amount / total) * 100
+          : 0;
+    const dominantStatus = (Object.entries(bucket.statuses) as [Status, number][])
+      .sort((a, b) => b[1] - a[1])[0]?.[0] ?? "reported";
+    return {
+      name: bucket.logo ? bucket.source : bucket.person,
+      value: fmtAmount(goal.unit, bucket.amount),
+      logo: bucket.logo,
+      avatar: bucket.person,
+      bar: {
+        pct: share,
+        color: ENTRY_COLOR[dominantStatus],
+        striped: dominantStatus !== "verified",
+        caption:
+          goal.target > 0
+            ? `${Math.round(share)}% of target`
+            : `${Math.round(share)}% of this bar`,
+      },
+      tags: [
+        ...(bucket.loggedOn && bucket.loggedOn.id !== goal.id
+          ? [
+              {
+                label: bucket.loggedOn.name,
+                color: typeMeta(bucket.loggedOn.type).color,
+                icon: TYPE_TIP_ICON[bucket.loggedOn.type.trim().toLowerCase()],
+              },
+            ]
+          : []),
+        ...(Object.entries(bucket.statuses) as [Status, number][])
+          .filter(([, count]) => count > 0)
+          .map(([status, count]) => statusTag(status, count)),
+      ],
+      sub: [
+        ...(bucket.logo ? [bucket.person] : [bucket.source]),
+        `${bucket.count} ${bucket.count === 1 ? "result" : "results"}`,
+        `latest ${formatDate(bucket.latest)}`,
+      ].join(" · "),
+    };
+  });
+
+  const hidden = rows.slice(MAX_TIP_CONTRIBUTORS);
+  if (hidden.length > 0) {
+    const amount = hidden.reduce((sum, bucket) => sum + bucket.amount, 0);
+    const results = hidden.reduce((sum, bucket) => sum + bucket.count, 0);
+    const share =
+      goal.target > 0
+        ? pctMet(amount, goal.target)
+        : total > 0
+          ? (amount / total) * 100
+          : 0;
+    shown.push({
+      name: `${hidden.length} other contributors`,
+      value: fmtAmount(goal.unit, amount),
+      sub: `${results} results combined · open the goal below for the full history`,
+      bar: {
+        pct: share,
+        color: MONEY,
+        caption:
+          goal.target > 0
+            ? `${Math.round(share)}% of target`
+            : `${Math.round(share)}% of this bar`,
+      },
+    });
+  }
+
+  return shown;
+}
 
 /** The four windows, widest to narrowest, each with its own mark. */
 const PERIOD_META: Record<PeriodKey, { color: string; icon: typeof CalendarDays }> = {
@@ -732,7 +880,7 @@ export function OrgPerformanceTab({
             <div className="flex items-start justify-between gap-3">
               <p className="flex items-center gap-1 text-[13px] font-semibold text-text-primary">
                 {words?.barTitle ?? "How far along each goal is"}
-                <InfoHint text="Each bar is one tracked goal: how much of its annual target is achieved so far. Hover a bar to see the subgoals behind it." />
+                <InfoHint text="Each bar is one tracked goal: how much of its annual target is achieved so far. Hover a bar to see the main contributors; open the goal below for every dated result." />
               </p>
               <ExpandedChartModal
                 title={expandedBarTitle}
@@ -781,7 +929,7 @@ export function OrgPerformanceTab({
                 height={200}
                 fillCard={20}
                 format="percent"
-                tipRecordsLabel="What this is made of"
+                tipRecordsLabel="Contributors"
                 syncId={syncId}
                 /* Click a column, open that goal's row underneath and go to
                    it. Same list twice, so the click closes the loop the
@@ -962,100 +1110,10 @@ export function OrgPerformanceTab({
                           : []),
                       ],
                     },
-                    /**
-                     * WHERE THE MONEY CAME FROM, NOT WHAT IT WAS FILED UNDER
-                     * (Anir, Aug 19: "where the fuck is that money coming
-                     * from? That's not giving me that idea right now").
-                     *
-                     * This used to list the goal's subgoals, so a bar reading
-                     * $250K opened onto a subgoal at $0 with no target — the
-                     * cabinet the money is filed in, never the money. Now
-                     * every entry that adds up to the bar is named: the
-                     * customer it came from, who logged it, and whether it
-                     * has been signed off yet.
-                     */
-                    tip: goalFamilyActuals(state, g)
-                      .slice()
-                      .sort((x, y) => y.amount - x.amount)
-                      .map((entry) => {
-                        const loggedOn = state.goals.find(
-                          (x) => x.id === entry.goalId
-                        );
-                        const from =
-                          entry.customer ??
-                          entry.dealLabel ??
-                          loggedOn?.name ??
-                          entry.note ??
-                          "Logged result";
-                        const st = entryStatus(entry);
-                        const share =
-                          g.target > 0
-                            ? pctMet(entry.amount, g.target)
-                            : a > 0
-                              ? (entry.amount / a) * 100
-                              : 0;
-                        return {
-                          name: from,
-                          value: fmtAmount(g.unit, entry.amount),
-                          // The faces and the marks the rest of the app uses
-                          // (Anir, Aug 19: "I need to see the people's profile
-                          // pictures and the logos"). The customer carries the
-                          // company mark; the person travels with their name.
-                          logo: entry.customer ?? undefined,
-                          avatar: entry.person,
-                          bar: {
-                            pct: share,
-                            /* Same three colours as this row's own status
-                               chip, so the bar and the chip beside it never
-                               tell two different stories: signed off is the
-                               money colour, sent back is red, waiting its turn
-                               is burnt orange. */
-                            color: ENTRY_COLOR[st],
-                            /* Striped unless it is signed off — the hover card
-                               obeys the same law as every bar on the page. */
-                            striped: st !== "verified",
-                            caption:
-                              g.target > 0
-                                ? `${Math.round(share)}% of target`
-                                : `${Math.round(share)}% of this bar`,
-                          },
-                          /**
-                           * THE GOAL AND THE STATUS ARE CHIPS, NOT SENTENCES
-                           * (Anir, Aug 19: "when you say 'via renewals', you
-                           * have to put the icon for the financial and revenue
-                           * performance thing... when you're saying 'waiting
-                           * to be verified', that should be like a tag").
-                           * A category in this app is never flat grey text.
-                           */
-                          tags: [
-                            ...(loggedOn && loggedOn.id !== g.id
-                              ? [
-                                  {
-                                    label: loggedOn.name,
-                                    color: typeMeta(loggedOn.type).color,
-                                    icon: TYPE_TIP_ICON[loggedOn.type.trim().toLowerCase()],
-                                  },
-                                ]
-                              : []),
-                            {
-                              label: entryStatusLabel(entry),
-                              color: ENTRY_COLOR[st],
-                              icon:
-                                st === "verified"
-                                  ? "verified"
-                                  : st === "sent_back"
-                                    ? "sentBack"
-                                    : "waiting",
-                            },
-                          ],
-                          // Who and when stay as plain text under the chips.
-                          /* formatDate, not the raw record (found in the loop,
-                             Sep 4: this hover card printed "2026-08-17" under
-                             the Verified chip while the rest of the app writes
-                             "Aug 17, 2026"). */
-                          sub: [entry.person, formatDate(entry.date)].join(" · "),
-                        };
-                      }),
+                    /* The chart summarizes repeated dated results by
+                       contributor. The complete audit trail lives in the goal
+                       drawer below, where a long list belongs. */
+                    tip: contributorTips(state, g, a),
                   };
                 })}
               />
