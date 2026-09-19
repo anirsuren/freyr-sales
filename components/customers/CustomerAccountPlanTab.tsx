@@ -111,6 +111,37 @@ const VIOLET = "var(--ink-violet-soft)";
 const GREEN = "var(--ink-green)";
 const ORANGE = "var(--ink-orange)";
 
+function playProgress({
+  contactCount,
+  hasOpportunity,
+  activityCount,
+  materialCount,
+  actionCount,
+  completedActionCount,
+}: {
+  contactCount: number;
+  hasOpportunity: boolean;
+  activityCount: number;
+  materialCount: number;
+  actionCount: number;
+  completedActionCount: number;
+}) {
+  const items = [
+    { label: "Buyer mapped", complete: contactCount > 0, next: "Map a buyer" },
+    { label: "Opportunity linked", complete: hasOpportunity, next: "Link an opportunity" },
+    { label: "Activity logged", complete: activityCount > 0, next: "Log an activity" },
+    { label: "Materials added", complete: materialCount > 0, next: "Add sales material" },
+    {
+      label: "Actions complete",
+      complete: actionCount > 0 && completedActionCount === actionCount,
+      next: actionCount > 0
+        ? `Complete ${actionCount - completedActionCount} open action${actionCount - completedActionCount === 1 ? "" : "s"}`
+        : "Add a next action",
+    },
+  ];
+  return { items, complete: items.filter((item) => item.complete).length };
+}
+
 function money(value: number) {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(value % 1_000_000 ? 1 : 0)}M`;
   return `$${Math.round(value / 1_000)}K`;
@@ -391,7 +422,16 @@ export function CustomerAccountPlanTab({
       customer.account_deals?.find((deal) => deal.offering === play.offering) ||
       (playIndex === 0 ? customer.account_deals?.[0] : undefined);
     const linkedActivities = playIndex === 0 ? interactions.slice(0, 2) : [];
-    return { play, linkedOpportunity, linkedActivities };
+    const linkedActions = plan.actions.filter((action) => action.play === play.offering);
+    const progress = playProgress({
+      contactCount: play.contacts.length,
+      hasOpportunity: !!linkedOpportunity,
+      activityCount: linkedActivities.length,
+      materialCount: play.materials.length,
+      actionCount: linkedActions.length,
+      completedActionCount: linkedActions.filter((action) => action.status === "Done").length,
+    });
+    return { play, linkedOpportunity, linkedActivities, progress };
   });
   const allocatedTarget = plan.plays.reduce((sum, play) => sum + play.target, 0);
   const completedActions = plan.actions.filter((action) => action.status === "Done").length;
@@ -670,14 +710,14 @@ export function CustomerAccountPlanTab({
           </div>
           <div className="overflow-x-auto bg-surface/30 p-3">
             <div className="min-w-[760px]">
-              <div className="grid grid-cols-[minmax(320px,1.8fr)_120px_110px_140px_32px] items-center gap-4 px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                <span>Priority & offering</span><span>Stage</span><span>Target</span><span>Target date</span><span />
+              <div className="grid grid-cols-[minmax(290px,1.8fr)_115px_100px_125px_145px_32px] items-center gap-3 px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                <span>Priority & offering</span><span>Stage</span><span>Target</span><span>Target date</span><span>Progress</span><span />
               </div>
               <div className="space-y-2">
                 {plan.plays.map((play) => {
                   const expanded = expandedPlay === play.id;
                   const evidence = playEvidence.find((item) => item.play.id === play.id)!;
-                  const { linkedOpportunity, linkedActivities } = evidence;
+                  const { linkedOpportunity, linkedActivities, progress } = evidence;
                   return (
                     <div
                       key={play.id}
@@ -694,7 +734,7 @@ export function CustomerAccountPlanTab({
                         aria-expanded={expanded}
                         onClick={() => setExpandedPlay(expanded ? null : play.id)}
                         className={cn(
-                          "grid w-full cursor-pointer grid-cols-[minmax(320px,1.8fr)_120px_110px_140px_32px] items-center gap-4 px-4 py-3 text-left text-[12.5px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary/30",
+                          "grid w-full cursor-pointer grid-cols-[minmax(290px,1.8fr)_115px_100px_125px_145px_32px] items-center gap-3 px-4 py-3 text-left text-[12.5px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary/30",
                           expanded ? "bg-blue-light/55" : "hover:bg-surface/70"
                         )}
                       >
@@ -705,6 +745,10 @@ export function CustomerAccountPlanTab({
                         <span><StatusPill status={play.stage} /></span>
                         <span className="tnum font-semibold text-text-primary">{money(play.target)}</span>
                         <span className="text-text-secondary">{prettyDate(play.targetDate)}</span>
+                        <span className="flex items-center gap-2.5">
+                          <span className="h-1.5 w-20 overflow-hidden rounded-full bg-border-light"><span className="block h-full rounded-full bg-blue-primary" style={{ width: `${progress.complete * 20}%` }} /></span>
+                          <span className="tnum whitespace-nowrap text-[11px] font-semibold text-text-secondary">{progress.complete} of 5</span>
+                        </span>
                         <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white transition-[border-color,color,transform]", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></span>
                       </button>
                       <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
@@ -714,6 +758,21 @@ export function CustomerAccountPlanTab({
                               <div className="grid gap-x-10 gap-y-5 lg:grid-cols-2">
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Why this fits</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.why}</p></div>
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Strategy</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.strategy}</p></div>
+                              </div>
+                              <div className="mt-4 border-t border-border-light pt-4">
+                                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Play progress</p>
+                                  <p className="text-[11px] text-text-secondary"><strong className="tnum text-text-primary">{progress.complete} of 5</strong> essentials in place</p>
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+                                  {progress.items.map((item) => (
+                                    <span key={item.label} className={cn("inline-flex items-center gap-1.5 text-[11px] font-medium", item.complete ? "text-text-primary" : "text-text-tertiary")}>
+                                      {item.complete ? <CheckCircle2 size={13} className="text-blue-primary" /> : <Circle size={13} />}
+                                      {item.label}
+                                    </span>
+                                  ))}
+                                </div>
+                                {progress.complete < 5 && <p className="mt-2 text-[11px] text-text-secondary"><span className="font-semibold text-text-primary">Next:</span> {progress.items.filter((item) => !item.complete).map((item) => item.next).join(" · ")}</p>}
                               </div>
                               <div className="mt-4 border-t border-border-light pt-4">
                                 <div className="min-w-0">
