@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -254,23 +254,6 @@ export function RequestDetail({
   const { toast } = useToast();
   const [r, setR] = useState(initial);
   const [tab, setTab] = useState<"overview" | DocCategory>("overview");
-  const overviewMainRef = useRef<HTMLDivElement>(null);
-  const [overviewMainHeight, setOverviewMainHeight] = useState<number>();
-
-  useEffect(() => {
-    if (tab !== "overview") return;
-    const main = overviewMainRef.current;
-    if (!main) return;
-    const measure = () => setOverviewMainHeight(main.getBoundingClientRect().height);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(main);
-    window.addEventListener("resize", measure);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [tab]);
   const [adding, setAdding] = useState(false);
   const [comment, setComment] = useState("");
   const [commenting, setCommenting] = useState(false);
@@ -895,7 +878,7 @@ export function RequestDetail({
               are SIBLINGS — keying both on `tab` gave React two children keyed
               "overview" and it warned that one may be dropped. Prefixed, so
               each still remounts on a switch and neither collides. */}
-          <div ref={overviewMainRef} key={`main-${tab}`} className="tab-panel tab-panel-stagger">
+          <div key={`main-${tab}`} className="tab-panel tab-panel-stagger">
             <section className="border-b border-border-light pb-7">
               <SectionHeading
                 icon={FileText}
@@ -1328,30 +1311,7 @@ export function RequestDetail({
           {/* ------------------------------------------------- SIDE rail */}
           <div
             key={`rail-${tab}`}
-            className={cn(
-              "tab-panel tab-panel-stagger",
-              /* A definite desktop height is what makes the timeline's
-                 overflow area scroll. A min-height let the activity list keep
-                 enlarging the rail, so its card ran far below the Analysis
-                 tile instead of ending on the same baseline. */
-              hasTimelineItems
-                ? "flex min-h-0 flex-col gap-4 lg:h-[var(--overview-main-height)]"
-                : "space-y-4 self-start"
-            )}
-            style={
-              overviewMainHeight
-                ? ({
-                    /* A short overview used to make the flex rail steal height
-                       from Where it stands so the Requested / Needed labels
-                       were visibly cut off. Seven hundred pixels is the
-                       compact rail's real minimum: owner + deadline + the
-                       Timeline's useful 300px window + the two gaps. Taller
-                       overview pages still set the height and align both
-                       columns exactly as before. */
-                    "--overview-main-height": `${Math.max(overviewMainHeight, 700)}px`,
-                  } as CSSProperties)
-                : undefined
-            }
+            className="tab-panel tab-panel-stagger space-y-4 self-start"
           >
             {/* This picker opens beyond the card's body. SectionCard normally
                 clips its rounded corners, which also clipped this menu before
@@ -1461,8 +1421,8 @@ export function RequestDetail({
                   <Plus size={15} strokeWidth={2.5} />
                 </button>
               }
-              className={cn(hasTimelineItems && "flex min-h-[300px] flex-1 flex-col")}
-              bodyClassName={cn(hasTimelineItems && "flex min-h-0 flex-1 flex-col pb-0")}
+              className="shrink-0"
+              bodyClassName={cn(hasTimelineItems && "max-h-[344px] overflow-y-auto")}
             >
               {/* AN ACTUAL TIMELINE (Anir, Aug 27: "this has to be an actual
                   fucking timeline"). It was six identical blue documents in a
@@ -1473,12 +1433,8 @@ export function RequestDetail({
               {/* THE TIMELINE IS A WINDOW, NOT A LEDGER THAT GROWS (Suren,
                   Aug 28: "this thing's getting longer and longer and longer,
                   right? The timeline has to be stuck there, and then obviously
-                  I can scroll inside").
-
-                  max-h alone was not enough: the card around it had no height
-                  of its own, so a hundred entries still pushed the comment box
-                  and everything under it off the page. A FIXED height pins the
-                  card wherever it sits and scrolls the events inside it. */}
+                  I can scroll inside"). The body is content-sized for short
+                  histories and capped for long ones, where it scrolls. */}
               {/* ONE MINUTE OF FIDDLING IS ONE ENTRY, NOT SIX (Suren, Aug 28:
                   "this should show like 5 not 7").
 
@@ -1491,23 +1447,12 @@ export function RequestDetail({
                   So a repeat of the same action, by the same person, inside
                   the same minute shows once. A COMMENT is never folded — the
                   same sentence typed twice is two things somebody said. */}
-              {/* IT TAKES THE ROOM IT NEEDS, AND NO MORE (Anir, Aug 28: "why
-                  is it so big? This should only take up five or six, and then
-                  it should be scrolling within that").
-
-                  A FIXED 360px pinned the card so a hundred entries could not
-                  push the comment box off the page — which was the right
-                  problem to solve and the wrong way to solve it: five entries
-                  then reserved the same 360px and left a hand's width of white
-                  above the comment button. max-height does both jobs: it
-                  shrinks to five rows and it still caps and scrolls at a
-                  hundred. Roughly six rows at 52px each. */}
+              {/* IT TAKES THE ROOM IT NEEDS, AND NO MORE. Two events end after
+                  the second event; a long history gets roughly six rows before
+                  the body becomes its own scroll area. */}
               <ol
                 key={timelineItems.length}
-                className={cn(
-                  "overflow-y-auto pr-1",
-                  hasTimelineItems && "min-h-0 flex-1"
-                )}
+                className="pr-1"
               >
                 {timelineItems.map((a, i, all) => {
                   /* A COMMENT IS SOMEBODY TALKING, AN EVENT IS THE RECORD
