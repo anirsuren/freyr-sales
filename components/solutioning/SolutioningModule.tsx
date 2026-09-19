@@ -1416,7 +1416,7 @@ function RequestPanel({
                 const kind = docKind(doc.fileName ?? doc.name);
                 const DocIcon = kind.icon;
                 return (
-                  <div key={doc.id} className="flex min-w-0 items-center gap-2 px-3 py-2">
+                  <div key={doc.id} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ color: kind.color, background: tint(kind.color, 10) }}>
                       <DocIcon size={14} strokeWidth={2} />
                     </span>
@@ -1429,6 +1429,24 @@ function RequestPanel({
                       {doc.name}
                     </button>
                     <span className="shrink-0 text-[10.5px] text-text-tertiary">v{doc.version}</span>
+                    {doc.assignedTo ? (
+                      <span className="flex min-w-[148px] shrink-0 items-center gap-2 rounded-lg bg-blue-light/70 px-2.5 py-1.5">
+                        <Avatar name={doc.assignedTo} className="h-5 w-5 shrink-0 text-[7px]" />
+                        <span className="min-w-0 leading-tight">
+                          <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-blue-primary">
+                            Working on it
+                          </span>
+                          <span className="block max-w-[132px] truncate text-[11px] font-semibold text-text-primary">
+                            {doc.assignedTo}
+                          </span>
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="flex min-w-[148px] shrink-0 items-center gap-2 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[11px] font-medium text-text-secondary">
+                        <CircleDashed size={15} strokeWidth={2} className="shrink-0 text-text-tertiary" />
+                        No one assigned
+                      </span>
+                    )}
                     {isFile ? (
                       <Link href={previewPage} target="_blank" rel="noopener noreferrer" aria-label={`Open ${doc.name} on its own page`} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary">
                         <ArrowUpRight size={13} strokeWidth={2.2} />

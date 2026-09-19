@@ -1095,6 +1095,8 @@ Solutioning request details do not repeat an “Open [title]” header action fo
 
 Expanded Solutioning previews render Recent activity as a true compact timeline. The three newest events use the same connected vertical spine and event-specific markers as the full record, followed by the earlier-update count. Completed locally, not deployed.
 
+Expanded Solutioning previews now show document responsibility directly in every visible document row. An assigned document names the person under a clear “Working on it” label; an unassigned document says “No one assigned.” The compact preview therefore answers who is handling each customer document without requiring the full record. Completed locally, not deployed.
+
 Request details label the linked context explicitly. “What this is for” uses one restrained panel with Customer, Opportunities, and Contacts columns, preserving the existing links and showing “None linked” where a relationship is absent. Completed locally, not deployed.
 
 ### Sep 17: customer band tabs omit redundant actions
