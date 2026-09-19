@@ -14,5 +14,6 @@ export {
   DonutLegend,
   donutSyncBroadcast,
   useDonutSync,
+  InteractiveChartTipProvider,
 } from "./ChartsClient";
 export type { TipItem } from "./ChartsClient";

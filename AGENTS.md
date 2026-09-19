@@ -1092,3 +1092,6 @@ Request details label the linked context explicitly. “What this is for” uses
 
 ### Sep 17: customer band tabs omit redundant actions
 Customer connection tabs no longer repeat record-team editing controls or links such as “The team” and “All deals” beside the active band summary. The selected tab already identifies and opens that destination, so the duplicated action row is removed across all customer band tabs. Completed locally, not deployed.
+
+### Sep 19: expanded chart record popups are inspectable
+Expanded chart popups are wider, expose their complete record list, and remain open while the pointer moves from the chart into the popup so the list can be scrolled. Compact page-chart hovers retain their instant-close behavior. The lead Company picker now says “Choose a company” and uses one explicit blue “Add a company not on the list” action; typing a name clearly states that it updates the lead only and does not create a customer account. Completed locally, not deployed.

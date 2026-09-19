@@ -147,8 +147,9 @@ const BLANK = {
   note: "",
   customerId: "",
   disqualifiedReason: "",
-  /* The person chose "Not on the list. Type it", so keep the text box open
-     even while the name is still empty. Never saved. */
+  /* The person chose the explicit blue "Add a company not on the list"
+     action, so keep the text box open even while the name is still empty.
+     This UI-only flag is never saved. */
   companyOther: false,
   /* The dialling code lives beside the number rather than inside it, so
      choosing a country can set the code before any digits are typed. A phone
@@ -1074,32 +1075,37 @@ export function LeadsModule({
                   you're not doing that either" — on the picker showing no
                   logos). This was an <input list> wearing a datalist, which
                   renders as the browser's grey autocomplete and looks nothing
-                  like the rest of the app. Same control and same escape hatch
-                  as the opportunity form: pick one of ours, or say it is not
-                  on the list and type it. */}
+                  like the rest of the app. Pick a customer account, or use the
+                  explicit blue add action to type a company name on this lead.
+                  Typed names do not silently create customer accounts. */}
               {(() => {
                 const known = customers.find((c) => c.name === editing.company);
                 const typing = editing.companyOther || (!!editing.company && !known);
                 if (typing)
                   return (
-                    <div className="flex items-center gap-1.5">
-                      <Input
-                        value={editing.company}
-                        onChange={(e) =>
-                          setEditing({ ...editing, company: e.target.value, companyOther: true })
-                        }
-                        placeholder="Their organisation"
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEditing({ ...editing, company: "", companyOther: false })
-                        }
-                        className="shrink-0 cursor-pointer rounded-lg border border-border-light bg-white px-2 py-2 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-                      >
-                        Pick from list
-                      </button>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          value={editing.company}
+                          onChange={(e) =>
+                            setEditing({ ...editing, company: e.target.value, companyOther: true })
+                          }
+                          placeholder="Type the company name…"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditing({ ...editing, company: "", companyOther: false })
+                          }
+                          className="shrink-0 cursor-pointer rounded-lg border border-border-light bg-white px-2 py-2 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                        >
+                          Pick from list
+                        </button>
+                      </div>
+                      <p className="mt-1.5 text-[11.5px] leading-4 text-text-tertiary">
+                        Adds the name to this lead only. It won&apos;t create a customer account.
+                      </p>
                     </div>
                   );
                 return (
@@ -1109,20 +1115,15 @@ export function LeadsModule({
                     className="w-full"
                     collapsible={false}
                     fill
-                    onChange={(v) => {
-                      if (v === "__other") {
-                        setEditing({ ...editing, company: "", companyOther: true });
-                        return;
-                      }
-                      setEditing({ ...editing, company: v, companyOther: false });
-                    }}
+                    onChange={(v) =>
+                      setEditing({ ...editing, company: v, companyOther: false })
+                    }
+                    createLabel="Add a company not on the list"
+                    onCreate={() =>
+                      setEditing({ ...editing, company: "", companyOther: true })
+                    }
                     options={[
-                      { value: "", label: "Their organisation", color: "#C7CDD6" },
-                      {
-                        value: "__other",
-                        label: "Not on the list. Type it",
-                        color: "#8E98A8",
-                      },
+                      { value: "", label: "Choose a company", noMark: true },
                       ...customers.map((c) => ({
                         value: c.name,
                         label: c.name,

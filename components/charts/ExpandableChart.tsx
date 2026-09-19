@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Maximize2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ChartExpansionSuppressionProvider } from "@/components/charts/ExpandedChartModal";
+import { InteractiveChartTipProvider } from "@/components/charts/Charts";
 import { cn } from "@/lib/utils";
 
 export type ChartDetailRow = {
@@ -76,9 +77,11 @@ export function ExpandableChart({
           <p className="mb-4 text-[13px] text-text-secondary">{subtitle}</p>
         )}
         <div className="mb-5 flex justify-center">
-          <ChartExpansionSuppressionProvider>
-            {children(true)}
-          </ChartExpansionSuppressionProvider>
+          <InteractiveChartTipProvider>
+            <ChartExpansionSuppressionProvider>
+              {children(true)}
+            </ChartExpansionSuppressionProvider>
+          </InteractiveChartTipProvider>
         </div>
 
         {rows && rows.length > 0 && (

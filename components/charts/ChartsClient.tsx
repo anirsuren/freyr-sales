@@ -5,7 +5,15 @@
 // prop accepts a serializable kind ("money" | "duration" | "percent" | …) so
 // SERVER components can use it (a function can't cross the client boundary), or
 // a function for client callers.
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   Sparkles,
@@ -151,6 +159,20 @@ const TIP_MAX_HEIGHT = 340;
  *  looks like maybe it's getting covered up"). */
 const POINT_MARKER_CLEARANCE = 16;
 
+/** Expanded charts have room for a real, inspectable record card. Their tips
+ * stay open while the pointer crosses into them, show the full record list,
+ * and scroll. Compact dashboard charts keep the instant-close hover behavior
+ * that prevents a stale card lingering over the page. */
+const InteractiveChartTipContext = createContext(false);
+
+export function InteractiveChartTipProvider({ children }: { children: ReactNode }) {
+  return (
+    <InteractiveChartTipContext.Provider value>
+      {children}
+    </InteractiveChartTipContext.Provider>
+  );
+}
+
 /**
  * The marker for the point being read, on every point-based chart. Three
  * things make it findable where a bare dot was not: it grows when it is the
@@ -271,6 +293,7 @@ export const CHART_TIP_OPEN_MS = 250;
 const TIP_SKIP_DELAY_MS = 400;
 
 function useChartHover() {
+  const interactiveTip = useContext(InteractiveChartTipContext);
   const [hover, setHover] = useState<number | null>(null);
   // The dot follows the cursor AT ONCE; only the card waits out the dwell
   // (Anir, Jul 28: "for the hover thing, you can show the dot. You just can't
@@ -340,13 +363,11 @@ function useChartHover() {
     setAnchor(at);
   }
 
-  /** Close the card the instant the pointer leaves the painted mark. Chart
-   * popups describe the mark under the cursor; they must never linger over a
-   * different part of the page after that relationship ends. A positive
-   * grace remains available for exceptional callers, but every graph uses the
-   * immediate default. */
+  /** Compact cards close the instant the pointer leaves the painted mark.
+   * Expanded charts allow a short bridge into their interactive tooltip; once
+   * the pointer reaches the card, `keepOpen` cancels this timer. */
   const close = useCallback(
-    (graceMs = 0) => {
+    (graceMs = interactiveTip ? 220 : 0) => {
       keepOpen();
       stopOpening();
       setActive(null);
@@ -361,7 +382,7 @@ function useChartHover() {
         setAnchor(null);
       }, Math.max(0, graceMs));
     },
-    [keepOpen, stopOpening, setCard]
+    [interactiveTip, keepOpen, stopOpening, setCard]
   );
 
   return { hover, active, anchor, show, move, close, keepOpen };
@@ -393,6 +414,7 @@ function PortalTip({
   onPointerLeave?: () => void;
   children: React.ReactNode;
 }) {
+  const interactiveTip = useContext(InteractiveChartTipContext);
   const [ready, setReady] = useState(false);
   const [, refreshPosition] = useState(0);
   const frameRef = useRef<number | null>(null);
@@ -448,7 +470,7 @@ function PortalTip({
   // Wider than the old 260: these cards carry logo + name + contact + money on
   // every row, and 300px is the width the app's other hover popovers use
   // (HoverCard's default), so a chart tip now reads as the same object.
-  const width = wide ? 300 : 224;
+  const width = interactiveTip ? 390 : wide ? 300 : 224;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const sideGap = 12;
@@ -513,7 +535,7 @@ function PortalTip({
   }
   // Never let free viewport room decide how big a tooltip gets — on a tall
   // screen that produced a 800px card for four records.
-  maxHeight = Math.min(maxHeight, TIP_MAX_HEIGHT);
+  maxHeight = Math.min(maxHeight, interactiveTip ? 480 : TIP_MAX_HEIGHT);
   /**
    * Keep the card inside the chart's horizontal lane when that lane is wide
    * enough to hold it. The first bar sits close to the page's left rail, so a
@@ -825,11 +847,11 @@ function TipBreakdown({
   items?: TipItem[];
   label?: string;
 }) {
+  const interactiveTip = useContext(InteractiveChartTipContext);
   if (!items || items.length === 0) return null;
-  // Chart cards are display-only: the pointer must remain on the painted mark
-  // to keep them open. Keep the breakdown useful without pretending it is a
-  // separate scroll target.
-  const rows = items.slice(0, TIP_INLINE_ROWS);
+  // Compact chart cards remain a concise preview. Expanded-chart cards are a
+  // reachable scroll target, so they expose the complete record list.
+  const rows = interactiveTip ? items : items.slice(0, TIP_INLINE_ROWS);
   const hidden = items.length - rows.length;
   return (
     // Full-bleed section. Two things fall out of that: the hairline above the

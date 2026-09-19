@@ -23,6 +23,7 @@ import {
   DonutChart,
   DonutLegend,
   LineChart,
+  InteractiveChartTipProvider,
   type TipItem,
 } from "@/components/charts/Charts";
 import { VIZ, VIZ_SERIES } from "@/components/charts/palette";
@@ -369,9 +370,11 @@ export function ExpandedChartControl({
             </div>
           ) : (
             <div className="mt-4 min-h-[390px] rounded-2xl border border-border-light bg-surface p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.38)]">
-              <ChartExpansionSuppressionProvider>
-                {renderExpanded(shownKeys)}
-              </ChartExpansionSuppressionProvider>
+              <InteractiveChartTipProvider>
+                <ChartExpansionSuppressionProvider>
+                  {renderExpanded(shownKeys)}
+                </ChartExpansionSuppressionProvider>
+              </InteractiveChartTipProvider>
             </div>
           )}
         </div>
