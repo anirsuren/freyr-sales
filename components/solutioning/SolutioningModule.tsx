@@ -5,6 +5,7 @@ import { UploadProgress } from "@/components/ui/UploadProgress";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { withCommas } from "@/lib/currency";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -2082,7 +2083,9 @@ export function NewRequestDialog({
                     value={withCommas(subTcv)}
                     inputMode="numeric"
                     onChange={(e) =>
-                      setSubTcv(e.target.value.replace(/[^0-9]/g, ""))
+                      setSubTcv(
+                        expandMoneyShorthand(e.target.value, { integer: true })
+                      )
                     }
                     placeholder="0"
                     className="h-10 w-full rounded-lg border border-border-light bg-white pl-7 pr-3 text-[13px] tnum outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"

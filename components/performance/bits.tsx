@@ -51,6 +51,8 @@ import {
 } from "@/lib/performanceShared";
 import { BarChart } from "@/components/charts/Charts";
 import { tint } from "@/lib/tint";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
+import { withCommas } from "@/lib/currency";
 
 /**
  * Shared chips, pills and bars for the Performance module. Goal types are
@@ -1794,8 +1796,14 @@ export function SetShareModal({
           </span>
           <input
             autoFocus
-            value={text}
-            onChange={(e) => setText(e.target.value)}
+            value={unit === "currency" ? withCommas(text) : text}
+            onChange={(e) =>
+              setText(
+                unit === "currency"
+                  ? expandMoneyShorthand(e.target.value, { integer: true })
+                  : e.target.value
+              )
+            }
             onKeyDown={(e) => {
               if (e.key === "Enter" && parsed !== null && parsed > 0 && !busy) {
                 e.preventDefault();

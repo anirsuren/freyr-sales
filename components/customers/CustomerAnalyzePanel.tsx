@@ -18,10 +18,12 @@ import {
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { useToast } from "@/components/ui/Toast";
 import { segmentColor } from "@/components/customers/CustomerOfferingsTab";
 import { tint } from "@/lib/tint";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 
 // Ownership is a category, so Public and Private each get their own colour AND
 // their own icon — never the same gray tile with different words in it (Suren,
@@ -131,7 +133,7 @@ export function CustomerAnalyzePanel({
         const a: Analysis = data.analysis;
         setPType(a.customer_type);
         setPOwnership(a.ownership);
-        setPRevenue(a.revenue);
+        setPRevenue(expandMoneyShorthand(a.revenue, { integer: true }));
         setRationale(a.rationale);
         setMeta({ source: a.source, confidence: a.confidence, sources: a.sources });
         setOpen(true);
@@ -296,12 +298,12 @@ export function CustomerAnalyzePanel({
           </div>
           <div>
             <label className={labelCls}>Revenue</label>
-            <input
-              className={field}
+            <MoneyInput
+              className="h-10 text-[13px] font-normal"
               value={pRevenue}
-              placeholder="e.g. $250M"
-              aria-label="Revenue"
-              onChange={(e) => setPRevenue(e.target.value)}
+              placeholder="e.g. 250,000,000"
+              ariaLabel="Revenue"
+              onChange={setPRevenue}
             />
           </div>
         </div>

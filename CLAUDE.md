@@ -175,3 +175,5 @@ The mobile meeting flow should record a meeting, generate notes, extract its
 outcomes, and automatically create or update opportunities from the transcript.
 Treat this as a 1–2 year product roadmap after the base release, not as scope to
 add before the transactional foundation is ready.
+
+Exact money fields accept `K`, `M`, or `B` as typing shortcuts, then immediately replace the shortcut with the full comma-separated number (`337M` becomes `337,000,000`). Stored or pasted symbols and currency codes are normalized too. Descriptive text such as a customer-type range (“Under $500M”) stays free-form. Completed locally, not deployed.

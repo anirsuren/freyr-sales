@@ -106,6 +106,7 @@ import { OrgPerformanceTab } from "./OrgPerformanceTab";
 import { PeopleTab } from "./PeopleTab";
 import { GroupPerformanceTab } from "./GroupPerformanceTab";
 import { tint } from "@/lib/tint";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 
 /**
  * THE PERFORMANCE MANAGEMENT MODULE (Suren, Aug 11 — voice notes +
@@ -1908,7 +1909,13 @@ function GroupSplitPanel({
             <input
               autoFocus
               value={withCommas(targetDraft)}
-              onChange={(e) => setTargetDraft(e.target.value)}
+              onChange={(e) =>
+                setTargetDraft(
+                  goal.unit === "currency"
+                    ? expandMoneyShorthand(e.target.value, { integer: true })
+                    : e.target.value
+                )
+              }
               onKeyDown={(e) => {
                 if (e.key === "Enter") void saveTarget();
               }}
@@ -3769,7 +3776,13 @@ function GoalEditorFields({
           </span>
           <input
             value={withCommas(target)}
-            onChange={(e) => setTarget(e.target.value)}
+            onChange={(e) =>
+              setTarget(
+                unit === "currency"
+                  ? expandMoneyShorthand(e.target.value, { integer: true })
+                  : e.target.value
+              )
+            }
             placeholder={unit === "currency" ? "e.g. 100M" : unit === "percent" ? "e.g. 45" : "e.g. 1,200"}
             className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
           />
@@ -3908,7 +3921,17 @@ function GoalEditorFields({
                               onChange={(e) =>
                                 setMilestones((prev) =>
                                   prev.map((x, i) =>
-                                    i === idx ? { ...x, amount: e.target.value } : x
+                                    i === idx
+                                      ? {
+                                          ...x,
+                                          amount:
+                                            unit === "currency"
+                                              ? expandMoneyShorthand(e.target.value, {
+                                                  integer: true,
+                                                })
+                                              : e.target.value,
+                                        }
+                                      : x
                                   )
                                 )
                               }
@@ -4263,7 +4286,13 @@ function SubgoalEditorFields({
             </span>
             <input
               value={withCommas(target)}
-              onChange={(e) => setTarget(e.target.value)}
+              onChange={(e) =>
+                setTarget(
+                  goal.unit === "currency"
+                    ? expandMoneyShorthand(e.target.value, { integer: true })
+                    : e.target.value
+                )
+              }
               placeholder={goal.unit === "currency" ? "e.g. 40M" : "e.g. 700"}
               className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
             />
@@ -4528,7 +4557,17 @@ function SubgoalEditorFields({
                       onChange={(e) =>
                         setRows(
                           rows.map((x, xi) =>
-                            xi === i ? { ...x, target: e.target.value } : x
+                            xi === i
+                              ? {
+                                  ...x,
+                                  target:
+                                    goal.unit === "currency"
+                                      ? expandMoneyShorthand(e.target.value, {
+                                          integer: true,
+                                        })
+                                      : e.target.value,
+                                }
+                              : x
                           )
                         )
                       }
@@ -5465,7 +5504,11 @@ function LogActualModal({
                   value={withCommas(amount)}
                   onChange={(e) => {
                     setPickedChip(null);
-                    setAmount(e.target.value);
+                    setAmount(
+                      unit === "currency"
+                        ? expandMoneyShorthand(e.target.value, { integer: true })
+                        : e.target.value
+                    );
                   }}
                   placeholder={
                     unit === "currency"

@@ -95,6 +95,8 @@ import type {
 import type { FdlComponent } from "@/lib/offerings";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { withCommas } from "@/lib/currency";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 
 // "Ask Agent" is no longer a tab — the agent rides in a right-side drawer so
 // it's reachable from every tab without hiding the account (Anir, Jul 3).
@@ -1253,7 +1255,9 @@ export function CustomerTabs({
                 <EditableFact
                   stacked
                   label="Revenue"
-                  value={customer.revenue ?? ""}
+                  value={expandMoneyShorthand(customer.revenue ?? "", { integer: true })}
+                  kind="money"
+                  format={(value) => `$${withCommas(value)}`}
                   canEdit={canEditFacts && editingAbout}
                   onSave={async (v) =>
                     (await patchCustomer({ revenue: v })) ? null : "That didn't save."

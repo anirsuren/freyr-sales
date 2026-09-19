@@ -1167,3 +1167,5 @@ Customer and address lookup locations use the app's blue information treatment. 
 Customer address cards use a consistent postal layout: country and both street lines span the card, followed by one City, State, ZIP row. The same structure is used when adding and editing a customer, and collapses to one column on narrow screens. Completed locally, not deployed.
 
 Required fields and required grouped sections display a red star everywhere they appear. Customer HQ address is required in both the add and edit flows (line 1, city, and country); Other address remains optional and has no star. Completed locally, not deployed.
+
+Exact money fields accept `K`, `M`, or `B` as typing shortcuts, then immediately replace the shortcut with the full comma-separated number (`337M` becomes `337,000,000`). Stored or pasted symbols and currency codes are normalized too. Descriptive text such as a customer-type range (“Under $500M”) stays free-form. Completed locally, not deployed.

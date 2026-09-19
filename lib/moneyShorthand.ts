@@ -33,7 +33,13 @@ export function expandMoneyShorthand(
   raw: string,
   opts: { integer?: boolean } = {}
 ): string {
-  const typed = String(raw ?? "").replace(/[\s,]/g, "");
+  const typed = String(raw ?? "")
+    .replace(/[\s,]/g, "")
+    /* Old records and pasted values sometimes carry a symbol or an ISO code.
+       Strip that decoration BEFORE looking for the suffix, otherwise `$337M`
+       falls through to the ordinary digit cleaner and becomes `337`. */
+    .replace(/^(?:USD|EUR|GBP|INR|JPY|CHF|CAD|AUD|SGD)/i, "")
+    .replace(/^[^0-9.]*/, "");
   /* THE SUFFIX ONLY COUNTS AT THE END, and only on a number that is otherwise
      complete. "1.5m" expands; "1m5" is somebody still typing and is left
      alone rather than guessed at. */

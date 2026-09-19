@@ -28,6 +28,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn, plural } from "@/lib/utils";
 import { withCommas } from "@/lib/currency";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { GROUP_TYPE_META } from "@/lib/privileges";
 import {
   PersonProgress,
@@ -109,6 +110,7 @@ export function GroupDetail({
     kind: "group" | "person";
     goalId: string;
     goalName: string;
+    unit: PrimaryGoal["unit"];
     person?: string;
     current: number;
   } | null>(null);
@@ -483,6 +485,7 @@ export function GroupDetail({
                               kind: "group",
                               goalId: g.id,
                               goalName: g.name,
+                              unit: g.unit,
                               current: targetFor(g),
                             })
                           }
@@ -646,6 +649,7 @@ export function GroupDetail({
                                               kind: "person",
                                               goalId: g.id,
                                               goalName: g.name,
+                                              unit: g.unit,
                                               person,
                                               current: mine?.target ?? 0,
                                             })
@@ -854,7 +858,13 @@ export function GroupDetail({
             <input
               autoFocus
               value={withCommas(targetDraft)}
-              onChange={(e) => setTargetDraft(e.target.value)}
+              onChange={(e) =>
+                setTargetDraft(
+                  editingTarget.unit === "currency"
+                    ? expandMoneyShorthand(e.target.value, { integer: true })
+                    : e.target.value
+                )
+              }
               onKeyDown={(e) => {
                 if (e.key === "Enter") saveTarget();
               }}

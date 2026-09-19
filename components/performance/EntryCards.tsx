@@ -49,6 +49,7 @@ import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { useStoredView } from "@/lib/useStoredView";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 
 /**
  * THE EVIDENCE-AND-VERIFICATION SURFACES (Suren, Aug 13).
@@ -1779,7 +1780,13 @@ export function MyEntriesCard({
                       placeholder="0"
                       aria-invalid={amountInvalid}
                       onChange={(e) =>
-                        setDraft((d) => ({ ...d, amount: e.target.value }))
+                        setDraft((d) => ({
+                          ...d,
+                          amount:
+                            goal?.unit === "currency"
+                              ? expandMoneyShorthand(e.target.value, { integer: true })
+                              : e.target.value,
+                        }))
                       }
                       className={cn(
                         "h-11 w-full rounded-xl border bg-white pl-9 pr-3 text-[14px] outline-none transition-shadow focus:ring-2 tnum",

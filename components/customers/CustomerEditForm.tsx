@@ -17,12 +17,14 @@ import type { LucideIcon } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ColorSelect } from "@/components/ui/ColorSelect";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { industryMeta } from "@/components/ui/IndustryTag";
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { SIZE_TIER_LABEL, cn } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 import { countryOnlyGeography } from "@/lib/countryFlags";
 import type { Customer } from "@/lib/types";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 
 /**
  * THE ACCOUNT'S EDIT PAGE, COPIED FROM THE DEAL'S (Anir, Sep 4, after two
@@ -154,6 +156,7 @@ export function CustomerEditForm({
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const startingRevenue = expandMoneyShorthand(customer.revenue ?? "", { integer: true });
   const [draft, setDraft] = useState({
     company_name: customer.company_name ?? "",
     industry: customer.industry ?? "",
@@ -162,7 +165,7 @@ export function CustomerEditForm({
     website_url: customer.website_url ?? "",
     customer_type: customer.customer_type ?? "",
     ownership: customer.ownership ?? "",
-    revenue: customer.revenue ?? "",
+    revenue: startingRevenue,
   });
   const set = (k: keyof typeof draft) => (v: string) =>
     setDraft((d) => ({ ...d, [k]: v }));
@@ -186,9 +189,13 @@ export function CustomerEditForm({
     if (customIndustryOpen) customIndustryRef.current?.focus();
   }, [customIndustryOpen]);
 
-  const coreDirty = Object.entries(draft).some(
-    ([k, v]) => v !== ((customer as unknown as Record<string, string | null>)[k] ?? "")
-  );
+  const coreDirty = Object.entries(draft).some(([k, v]) => {
+    const original =
+      k === "revenue"
+        ? startingRevenue
+        : ((customer as unknown as Record<string, string | null>)[k] ?? "");
+    return v !== original;
+  });
   const profileDirty =
     JSON.stringify(hq) !== JSON.stringify(startHq) ||
     JSON.stringify(other) !== JSON.stringify(startOther) ||
@@ -539,12 +546,12 @@ export function CustomerEditForm({
             </div>
             <div>
               <Label text="Revenue" />
-              <input
+              <MoneyInput
                 value={draft.revenue}
-                onChange={(e) => set("revenue")(e.target.value)}
-                className={INPUT}
-                placeholder="e.g. $4.1B"
-                aria-label="Revenue"
+                onChange={set("revenue")}
+                className="h-10 text-[13px] font-normal focus:shadow-input-focus"
+                placeholder="e.g. 337,000,000"
+                ariaLabel="Revenue"
               />
             </div>
           </div>

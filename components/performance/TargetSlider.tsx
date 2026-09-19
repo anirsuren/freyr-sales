@@ -7,6 +7,8 @@ import {
   parseAmountInput,
   type GoalUnit,
 } from "@/lib/performanceShared";
+import { expandMoneyShorthand } from "@/lib/moneyShorthand";
+import { withCommas } from "@/lib/currency";
 
 /**
  * A TARGET YOU CAN DRAG, OR TYPE — drawn against everything already promised.
@@ -157,8 +159,14 @@ export function TargetSlider({
             </span>
           )}
           <input
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
+            value={unit === "currency" ? withCommas(value) : value}
+            onChange={(e) =>
+              onChange(
+                unit === "currency"
+                  ? expandMoneyShorthand(e.target.value, { integer: true })
+                  : e.target.value
+              )
+            }
             inputMode="decimal"
             placeholder={placeholder ?? (unit === "currency" ? "e.g. 900k" : "e.g. 120")}
             aria-label={`${label}. Type an exact figure`}
