@@ -2004,6 +2004,7 @@ export function NewRequestDialog({
             : "What do you need?"
       }
       onBack={onBack}
+      stepBack={!directKind && kind && !sub ? () => setKind(null) : undefined}
     >
       {/* All steps share a fixed frame; longer forms scroll inside it. */}
       <div className="flex min-h-[380px] flex-col">
@@ -2791,27 +2792,36 @@ function FrameOrNot({
   onClose,
   title,
   onBack,
+  stepBack,
   children,
 }: {
   chromeless: boolean;
   onClose: () => void;
   title: string;
   onBack?: () => void;
+  stepBack?: () => void;
   children: React.ReactNode;
 }) {
   // A minimum height alone still lets longer panels resize the dialog.
   if (!chromeless)
     return (
-      <Modal open onClose={onClose} title={title} size="workflow" dialogClassName="h-[min(720px,calc(100dvh-4rem))]">
+      <Modal
+        open
+        onClose={onClose}
+        onBack={stepBack}
+        title={title}
+        size="workflow"
+        dialogClassName="h-[min(720px,calc(100dvh-4rem))]"
+      >
         {children}
       </Modal>
     );
   return (
     <div>
-      {onBack && (
+      {(stepBack || onBack) && (
         <button
           type="button"
-          onClick={onBack}
+          onClick={stepBack || onBack}
           className="mb-3 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-text-secondary transition-colors hover:text-blue-primary"
         >
           <ArrowLeft size={15} strokeWidth={2.2} />

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { Button } from "./Button";
 
 const FOCUSABLE =
@@ -11,6 +11,7 @@ const FOCUSABLE =
 export function Modal({
   open,
   onClose,
+  onBack,
   title,
   children,
   size = "default",
@@ -24,6 +25,8 @@ export function Modal({
 }: {
   open: boolean;
   onClose: () => void;
+  /** Return to the previous step inside a multi-step dialog. */
+  onBack?: () => void;
   title: string;
   children: React.ReactNode;
   // "wide" for content-heavy dialogs (editors, recipient pickers) — 640px.
@@ -201,7 +204,17 @@ export function Modal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border-light shrink-0">
-          <span className="flex min-w-0 items-center gap-1.5">
+          <span className="flex min-w-0 items-center gap-2">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label="Go back"
+                className="-ml-1 inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface-subtle hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30"
+              >
+                <ArrowLeft size={18} strokeWidth={2.2} />
+              </button>
+            )}
             <h2 className="min-w-0 truncate text-[16px] font-semibold text-text-primary">{title}</h2>
             {titleAfter}
           </span>
