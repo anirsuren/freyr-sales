@@ -1110,3 +1110,6 @@ All 137 InfoHint question marks now use one structured help renderer: each idea 
 
 ### Sep 19: milestone removal uses the destructive treatment
 The milestone-removal confirmation uses the app's red warning icon and red primary action so the destructive choice is unmistakable. The editor mounts one shared confirmation instead of one per milestone, preventing stacked backdrops from making the screen nearly black. Completed locally, not deployed.
+
+### Sep 19: logged-result rows use clean table dividers
+Collapsed Logged results rows are separated by one subtle border. Hidden expansion panels no longer retain surface-colored padding that appeared as thick gray bands between every row. Completed locally, not deployed.

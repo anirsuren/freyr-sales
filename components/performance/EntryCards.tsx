@@ -771,7 +771,7 @@ export function SentBackWatchCard({
                 <th className="px-4 py-2.5">Your note</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-light">
+            <tbody>
               {waiting.map((a, index) => {
                 const goal = state.goals.find((g) => g.id === a.goalId);
                 return (
@@ -1202,7 +1202,7 @@ export function MyEntriesCard({
                          rows open onto plain surface with a blue rail down the
                          left, so this now does too. */
                       className={cn(
-                        "cursor-pointer transition-colors",
+                        "cursor-pointer border-b border-border-light transition-colors",
                         /* A rejected claim wears its rail whether the row is
                            open or not — closed is exactly when it needs to be
                            spotted from across the table. */
@@ -1389,17 +1389,20 @@ export function MyEntriesCard({
                     <tr className="!border-t-0 bg-surface">
                         <td colSpan={8} className="max-w-0 p-0">
                           <div className="freyr-fold" data-open={open ? "true" : "false"}>
+                          <div className="min-w-0">
                           <div
                           className={cn(
-                            /* max-w-0 pins the spanning cell to the width the
-                               8 columns already have, so a wide expansion can
-                               never stretch the TABLE itself — expanding a
-                               row used to shove every column sideways and cut
-                               the last header off the card (Anir, Aug 22:"fix the column, it's not aligned — the last
-                               one"). */"max-w-0 pb-4 pl-7 pr-4 pt-1",
+                            /* The spanning cell above is width-constrained so
+                               the expansion cannot stretch the table. The panel
+                               itself still fills that cell; max-width:0 here
+                               squeezed every sentence into one character per
+                               line. This padded panel sits inside an unpadded
+                               collapse wrapper; putting padding on the grid child
+                               itself left a thick gray band while closed. */
+                            "min-w-0 w-full pb-4 pl-7 pr-4 pt-1",
                             sentBack
-                              ?"[box-shadow:inset_3px_0_0_0_#DC2626]"
-                              :"[box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                              ? "[box-shadow:inset_3px_0_0_0_#DC2626]"
+                              : "[box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                           )}>
                           {/* THE REJECTION LEADS (Anir, Aug 19: "if it's sent
                               back it has to look more prominent than this").
@@ -1612,6 +1615,7 @@ export function MyEntriesCard({
                                 ) : null}
                               </div>
                             )}
+                          </div>
                           </div>
                           </div>
                         </td>
