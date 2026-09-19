@@ -12,7 +12,7 @@ import {
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Building2, ChevronDown, Plus, Tags, Trash2, X } from "lucide-react";
+import { Building2, Check, ChevronDown, Plus, Tags, Trash2, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -190,7 +190,10 @@ export function CustomerEditForm({
   const initialIndustryIsCustom = Boolean(
     customer.industry && !KNOWN_INDUSTRIES.includes(customer.industry)
   );
-  const [customIndustryOpen, setCustomIndustryOpen] = useState(initialIndustryIsCustom);
+  const [customIndustryOpen, setCustomIndustryOpen] = useState(false);
+  const [customIndustryDraft, setCustomIndustryDraft] = useState(
+    initialIndustryIsCustom ? (customer.industry ?? "") : ""
+  );
   const customIndustryRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (customIndustryOpen) customIndustryRef.current?.focus();
@@ -216,6 +219,17 @@ export function CustomerEditForm({
         ? "Finish the other address with line 1, a city and a country, or clear it."
         : null;
   const selectedCountry = countryOnlyGeography(draft.geography);
+  const customIndustrySelected = Boolean(
+    draft.industry && !KNOWN_INDUSTRIES.includes(draft.industry)
+  );
+
+  function confirmCustomIndustry() {
+    const value = customIndustryDraft.trim();
+    if (!value) return;
+    set("industry")(value);
+    setCustomIndustryDraft(value);
+    setCustomIndustryOpen(false);
+  }
 
   /**
    * DELETE THE ACCOUNT (Anir, Sep 6: "if I click into a customer and then I
@@ -432,6 +446,7 @@ export function CustomerEditForm({
                     onClick={() => {
                       set("industry")(on ? "" : name);
                       setCustomIndustryOpen(false);
+                      setCustomIndustryDraft("");
                     }}
                     aria-pressed={on}
                     className={cn(
@@ -447,24 +462,68 @@ export function CustomerEditForm({
                   </button>
                 );
               })}
-              {customIndustryOpen ? (
-                <span className="relative w-[250px]">
-                  <input
-                    ref={customIndustryRef}
-                    value={KNOWN_INDUSTRIES.includes(draft.industry) ? "" : draft.industry}
-                    onChange={(e) => set("industry")(e.target.value)}
-                    placeholder="Custom industry"
-                    className={cn(INPUT, "pr-9")}
-                    aria-label="Custom industry"
-                  />
+              {customIndustrySelected && !customIndustryOpen ? (
+                <span
+                  className="inline-flex h-10 items-center overflow-hidden rounded-lg border border-blue-subtle bg-blue-light text-[13px] font-semibold text-blue-primary"
+                >
+                  <span className="inline-flex min-w-0 items-center gap-1.5 pl-3.5 pr-2">
+                    {(() => {
+                      const Icon = industryMeta(draft.industry).icon;
+                      return <Icon size={14} strokeWidth={2.2} className="shrink-0" />;
+                    })()}
+                    <span className="max-w-[220px] truncate">{draft.industry}</span>
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
                       set("industry")("");
+                      setCustomIndustryDraft("");
+                    }}
+                    aria-label={`Remove ${draft.industry} industry`}
+                    className="inline-flex h-full w-9 shrink-0 items-center justify-center border-l border-blue-subtle text-blue-primary transition-colors hover:bg-blue-subtle/40"
+                  >
+                    <X size={14} strokeWidth={2.2} />
+                  </button>
+                </span>
+              ) : customIndustryOpen ? (
+                <span className="flex w-[300px] items-center gap-1.5">
+                  <input
+                    ref={customIndustryRef}
+                    value={customIndustryDraft}
+                    onChange={(e) => setCustomIndustryDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        confirmCustomIndustry();
+                      }
+                      if (e.key === "Escape") {
+                        setCustomIndustryDraft("");
+                        setCustomIndustryOpen(false);
+                      }
+                    }}
+                    placeholder="Enter an industry"
+                    className={INPUT}
+                    aria-label="Custom industry"
+                  />
+                  <button
+                    type="button"
+                    disabled={!customIndustryDraft.trim()}
+                    onClick={confirmCustomIndustry}
+                    aria-label="Confirm custom industry"
+                    title="Use this industry"
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-primary text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Check size={16} strokeWidth={2.4} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomIndustryDraft("");
                       setCustomIndustryOpen(false);
                     }}
-                    aria-label="Remove custom industry"
-                    className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary hover:bg-surface hover:text-text-primary"
+                    aria-label="Cancel custom industry"
+                    title="Cancel"
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-light bg-white text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
                   >
                     <X size={14} strokeWidth={2.2} />
                   </button>
@@ -472,7 +531,10 @@ export function CustomerEditForm({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setCustomIndustryOpen(true)}
+                  onClick={() => {
+                    setCustomIndustryDraft("");
+                    setCustomIndustryOpen(true);
+                  }}
                   className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-dashed border-border-light px-3.5 text-[13px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
                 >
                   <Plus size={14} strokeWidth={2.2} />

@@ -202,3 +202,5 @@ Require customer HQ line 1, city, and country in both create and edit flows, wit
 Standalone subgoal editors must immediately identify the action, subgoal, parent goal, and parent target. Organize the controls as Details, Owner, Groups, and People and targets, and keep Cancel and Save changes visible in a sticky footer; retain the compact treatment for inline editing.
 
 When the customer edit form becomes dirty, show a Save changes action in the Account section header without displacing that row's title, hint, or disclosure control. Keep it governed by the same validation and busy state as the sticky footer action, and hide it when no changes are pending.
+
+Custom industries in customer forms use a draft-and-confirm interaction: open a labelled input, confirm with a check mark or Enter, and cancel with the X or Escape. Render the confirmed value as a selected removable industry chip; typing in the draft must not silently replace the current selection.
