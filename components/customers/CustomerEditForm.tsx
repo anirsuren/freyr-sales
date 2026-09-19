@@ -182,18 +182,6 @@ export function CustomerEditForm({
   );
   const [customIndustryOpen, setCustomIndustryOpen] = useState(initialIndustryIsCustom);
   const customIndustryRef = useRef<HTMLInputElement>(null);
-  const saveBarAnchorRef = useRef<HTMLDivElement>(null);
-  const [saveBarAtRest, setSaveBarAtRest] = useState(false);
-  useEffect(() => {
-    const anchor = saveBarAnchorRef.current;
-    if (!anchor) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setSaveBarAtRest(entry.isIntersecting),
-      { threshold: 0.01 }
-    );
-    observer.observe(anchor);
-    return () => observer.disconnect();
-  }, []);
   useEffect(() => {
     if (customIndustryOpen) customIndustryRef.current?.focus();
   }, [customIndustryOpen]);
@@ -558,12 +546,9 @@ export function CustomerEditForm({
 
       {/* The offering edit page's footer: the page's state on the left, the
           two buttons on the right, riding the bottom of the window. */}
-      <div ref={saveBarAnchorRef} className="h-px" aria-hidden="true" />
       <div
-        className={cn(
-          "sticky bottom-4 z-20 mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border-light bg-white/95 py-3 pl-4 shadow-card backdrop-blur transition-[padding-right] duration-300 ease-out",
-          saveBarAtRest ? "pr-4" : "pr-[92px]"
-        )}
+        data-agent-dock-clearance
+        className="sticky bottom-4 z-20 mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border-light bg-white/95 py-3 pl-4 pr-4 shadow-card backdrop-blur"
       >
         <span
           className={cn(

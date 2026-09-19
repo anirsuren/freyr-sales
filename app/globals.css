@@ -2310,6 +2310,17 @@ tr.mi-collecting-row {
   background-size: 200% 100%;
   animation: mi-collection-sweep 2.8s linear infinite;
 }
+
+/* Sticky save/action bars may share the lower-right viewport corner with the
+   Freyr AI launcher. AgentDock adds the collision attribute from the rendered
+   rectangles, so the controls move only when the two surfaces actually meet. */
+[data-agent-dock-clearance] {
+  transition: padding-right 180ms ease-out;
+}
+[data-agent-dock-clearance][data-agent-dock-collision] {
+  padding-right: 92px !important;
+}
 @media (prefers-reduced-motion: reduce) {
   tr.mi-collecting-row { animation: none; background-image: none; }
+  [data-agent-dock-clearance] { transition: none; }
 }

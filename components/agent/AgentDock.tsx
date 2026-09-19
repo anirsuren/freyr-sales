@@ -867,6 +867,7 @@ export function AgentDock({
    * only; the embedded side panel is a deliberate workspace and stays.
    */
   const floatPanelRef = useRef<HTMLDivElement | null>(null);
+  const launcherRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     if (!open || embedded) return;
     const onDown = (event: MouseEvent) => {
@@ -878,6 +879,79 @@ export function AgentDock({
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [open, embedded, onOpenChange]);
+
+  /**
+   * Sticky form actions share the launcher's corner. Measure the real rendered
+   * rectangles instead of reserving a permanent empty gutter: the action bar
+   * only moves its controls left at the exact point the launcher reaches it.
+   * One coordinator here keeps every form in sync with the single floating
+   * control, including bars mounted later by dialogs or route changes.
+   */
+  useEffect(() => {
+    const selector = "[data-agent-dock-clearance]";
+    const clearCollisions = () => {
+      document.querySelectorAll<HTMLElement>(selector).forEach((element) => {
+        element.removeAttribute("data-agent-dock-collision");
+      });
+    };
+
+    if (hidden || embedded) {
+      clearCollisions();
+      return;
+    }
+
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const launcher = launcherRef.current;
+      const actionBars = Array.from(
+        document.querySelectorAll<HTMLElement>(selector)
+      );
+      if (!launcher) {
+        actionBars.forEach((element) =>
+          element.removeAttribute("data-agent-dock-collision")
+        );
+        return;
+      }
+
+      const launcherRect = launcher.getBoundingClientRect();
+      actionBars.forEach((element) => {
+        const rect = element.getBoundingClientRect();
+        const overlaps =
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.right > launcherRect.left &&
+          rect.left < launcherRect.right &&
+          rect.bottom > launcherRect.top &&
+          rect.top < launcherRect.bottom;
+        element.toggleAttribute("data-agent-dock-collision", overlaps);
+      });
+    };
+    const scheduleMeasure = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+
+    const mutationObserver = new MutationObserver(scheduleMeasure);
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+    const resizeObserver = new ResizeObserver(scheduleMeasure);
+    if (launcherRef.current) resizeObserver.observe(launcherRef.current);
+    document.querySelectorAll<HTMLElement>(selector).forEach((element) =>
+      resizeObserver.observe(element)
+    );
+    window.addEventListener("scroll", scheduleMeasure, true);
+    window.addEventListener("resize", scheduleMeasure);
+    scheduleMeasure();
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+      window.removeEventListener("scroll", scheduleMeasure, true);
+      window.removeEventListener("resize", scheduleMeasure);
+      clearCollisions();
+    };
+  }, [embedded, hidden, pathname]);
 
   if (hidden) return null;
 
@@ -1088,6 +1162,7 @@ export function AgentDock({
       {/* Bubble */}
       {(!embedded || !open) && (
         <button
+          ref={launcherRef}
           data-agent-dock-launcher
           onClick={() => onOpenChange(!open)}
           aria-label={open ? "Close your agent" : "Open your agent"}

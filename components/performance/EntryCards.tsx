@@ -1898,7 +1898,7 @@ export function MyEntriesCard({
                 </section>
               </div>
 
-              <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-border-light bg-surface/95 px-6 py-4 backdrop-blur-sm">
+              <div data-agent-dock-clearance className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-border-light bg-surface/95 px-6 py-4 backdrop-blur-sm">
                 <p className="max-w-[460px] text-[11.5px] leading-5 text-text-secondary">
                   {fixing
                     ? `${a.sentBackBy ?? "Your group owner"} will be notified and can verify the corrected result.`

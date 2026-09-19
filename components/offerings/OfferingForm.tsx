@@ -774,18 +774,6 @@ export function OfferingForm({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const saveBarAnchorRef = useRef<HTMLDivElement>(null);
-  const [saveBarAtRest, setSaveBarAtRest] = useState(false);
-  useEffect(() => {
-    const anchor = saveBarAnchorRef.current;
-    if (!anchor) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setSaveBarAtRest(entry.isIntersecting),
-      { threshold: 0.01 }
-    );
-    observer.observe(anchor);
-    return () => observer.disconnect();
-  }, []);
   // Adding a material opens a proper dialog. It used to append a blank row
   // straight into the list, so the "form" was a wall of half-filled rows
   // (Anir, Jul 28: "the add material thing... that's not the way we work. It
@@ -3232,12 +3220,9 @@ export function OfferingForm({
           on the left (Anir, Jul 28: "I don't know why the Save Changes button
           is on the left. Shouldn't it be on the right like normal?"). Sticky,
           because the form is five sections tall. */}
-      <div ref={saveBarAnchorRef} className="h-px" aria-hidden="true" />
       <div
-        className={cn(
-          "sticky bottom-4 z-20 -mx-1 rounded-xl border border-border-light bg-white/95 py-3 pl-4 shadow-card backdrop-blur transition-[padding-right] duration-300 ease-out",
-          saveBarAtRest ? "pr-4" : "pr-[92px]"
-        )}
+        data-agent-dock-clearance
+        className="sticky bottom-4 z-20 -mx-1 rounded-xl border border-border-light bg-white/95 py-3 pl-4 pr-4 shadow-card backdrop-blur"
       >
         {saveError && (
           <div

@@ -2195,7 +2195,7 @@ export function DealOverviewEditor({
           you think you edited. */}
       {!ro && dirtyTotal > 0 && (
         <div className="sticky bottom-0 z-30 -mx-1 mt-2 px-1 pb-1">
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white/95 px-4 py-3 shadow-[0_-2px_18px_-6px_rgba(16,22,30,0.22)] backdrop-blur">
+          <div data-agent-dock-clearance className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white/95 px-4 py-3 shadow-[0_-2px_18px_-6px_rgba(16,22,30,0.22)] backdrop-blur">
             <span className="text-[13px] font-semibold text-text-primary">
               {dirtyTotal} unsaved change{dirtyTotal === 1 ? "" : "s"}
             </span>

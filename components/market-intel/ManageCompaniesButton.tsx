@@ -596,7 +596,7 @@ export function ManageCompaniesPanel({
         </div>
       </div>
 
-      <div className="sticky bottom-4 z-20 mt-4 flex w-full flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white px-4 py-3 pr-[92px] shadow-lg" aria-live="polite">
+      <div data-agent-dock-clearance className="sticky bottom-4 z-20 mt-4 flex w-full flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white px-4 py-3 shadow-lg" aria-live="polite">
         <span className="mr-auto text-[13px] font-medium text-text-secondary">
           {/* "1 companies" read wrong on the first tick (Sep 13 loop). */}
           {dirty ? `${plural(rows.filter((c) => c.group === group && mine.has(c.id)).length)} selected · Unsaved changes`

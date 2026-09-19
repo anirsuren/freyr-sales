@@ -1681,7 +1681,7 @@ export function OfferingReleasesTab({
               canSeeNext={canSeeNext}
             />
 
-            <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border-light bg-white py-4">
+            <div data-agent-dock-clearance className="sticky bottom-0 flex justify-end gap-2 border-t border-border-light bg-white py-4">
               <Button type="submit" loading={busy}>
                 Save roadmap
               </Button>

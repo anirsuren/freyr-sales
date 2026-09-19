@@ -3624,7 +3624,7 @@ export function OpportunitiesBrowser({
                 (Anir, Aug 17: "the save changes button in the bottom right…
                 doesn't even show up"). Sticky inside the modal's scroller,
                 white over the content it floats above. */}
-            <div className="sticky bottom-[-20px] -mx-5 -mb-5 mt-auto flex items-center justify-end gap-3 border-t border-border-light bg-white px-5 pb-5 pt-3">
+            <div data-agent-dock-clearance className="sticky bottom-[-20px] -mx-5 -mb-5 mt-auto flex items-center justify-end gap-3 border-t border-border-light bg-white px-5 pb-5 pt-3">
               {editing.id && canCreate && (
                 <button
                   type="button"
