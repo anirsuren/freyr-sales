@@ -271,7 +271,7 @@ export function StatusPill({
           onVerify();
         }}
         title="Check this claim and sign it off"
-        className="group/st inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[rgba(0,113,227,0.12)] px-2.5 py-1 text-[11.5px] font-bold text-[color:var(--ink-blue-soft)] transition-colors hover:bg-[rgba(22,163,74,0.12)] hover:text-[color:#16A34A]"
+        className="group/st inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-[color:var(--entry-waiting-bg)] px-2.5 py-1 text-[11.5px] font-bold text-[color:var(--entry-waiting-ink)] transition-colors hover:bg-[rgba(22,163,74,0.12)] hover:text-[color:#16A34A]"
       >
         <Hourglass size={12} strokeWidth={2.4} className="group-hover/st:hidden" />
         <CheckCircle2
@@ -303,7 +303,7 @@ export function StatusPill({
           ? `Waiting for ${heads.join(" or ")} to verify`
           : undefined
       }
-      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[rgba(0,113,227,0.12)] py-1 pl-2.5 pr-1.5 text-[11.5px] font-bold text-[color:var(--ink-blue-soft)]"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[color:var(--entry-waiting-bg)] py-1 pl-2.5 pr-1.5 text-[11.5px] font-bold text-[color:var(--entry-waiting-ink)]"
     >
       <Hourglass size={12} strokeWidth={2.4} className="shrink-0" />
       {waitingOnMe ? "Waiting for you to verify" : "Waiting for the group owner"}
@@ -485,10 +485,8 @@ export function EntryTimeline({
           who: owners?.[0],
           done: false,
           icon: Hourglass,
-          // Waiting is BLUE in the app-wide scheme (green counts, red was
-          // refused, blue waits its turn). This step wore caution orange from
-          // before the scheme existed — the one surface still colouring
-          // "unread" as if it were trouble (found in the Aug 20 colour sweep).
+          // Waiting is amber in the app-wide scheme (green counts and red was
+          // refused), matching the pill and striped progress segment.
           color: ENTRY_COLOR.reported,
         }
   );
@@ -2537,7 +2535,7 @@ export function ClaimReviewDialog({
                 This one now uses the same SegmentValues component, so it
                 cannot drift from them again.
 
-                Solid green is signed off; striped green is still waiting;
+                Solid green is signed off; striped amber is still waiting;
                 red means sent back. "% there" counts verified money only — the one
                 dialog whose entire job is deciding what counts must not
                 announce a number that includes what it has not yet counted. */}

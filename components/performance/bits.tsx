@@ -1159,7 +1159,7 @@ export function PaceTimeline({
                   just red"). Unverified money was a flat 32% wash here while
                   the bar chart above it striped the identical figure, so the
                   two panels described one fact in two visual languages. Red
-                  means it was sent back; striped green means it is still
+                  means it was sent back; striped amber means it is still
                   waiting for verification. */}
               <span
                 className="unverified-fill absolute inset-y-0 left-0 rounded-full"
@@ -1563,9 +1563,8 @@ export function PersonGoalPanel({
     <div className="border-t border-border-light bg-white px-3 py-3">
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {card("Target", target > 0 ? fmtAmount(goal.unit, target) : "Not set")}
-        {/* The tiles describe workflow state in text colours. The progress
-            rail below stays green for achieved work, using a stripe to show
-            what has not been verified yet. */}
+        {/* The tiles and rail use the same status colours: green is counted,
+            amber is waiting for review, and red was sent back. */}
         {card(
           "Counted",
           fmtAmount(goal.unit, done),
@@ -1577,7 +1576,7 @@ export function PersonGoalPanel({
           waiting > 0
             ? sentBackMine > 0
               ? "text-[color:var(--entry-sent-back-ink)]"
-              : "text-[color:var(--entry-waiting)]"
+              : "text-[color:var(--entry-waiting-ink)]"
             : undefined
         )}
         {card(
@@ -1759,7 +1758,7 @@ export function PersonGoalPanel({
                               ? "bg-[rgba(22,163,74,0.10)] text-[color:var(--entry-verified-ink)]"
                               : status === "sent_back"
                                 ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--entry-sent-back-ink)]"
-                                : "bg-[rgba(194,65,12,0.10)] text-[color:var(--entry-waiting)]"
+                                : "bg-[color:var(--entry-waiting-bg)] text-[color:var(--entry-waiting-ink)]"
                           )}
                         >
                           {status === "reported" ? "Waiting" : entryStatusLabel(a)}

@@ -68,7 +68,7 @@
 
        SOLID means it counts. STRIPED means it does not, yet.
        GREEN  — verified. Signed off, locked, rolls up. The only solid fill.
-       BLUE   — claimed, waiting on the group owner. Striped.
+       AMBER  — claimed, waiting on the group owner. Striped.
        RED    — sent back, waiting on the person who claimed it. Striped.
 
      So the fill answers "does this count" and the hue answers "whose move is
@@ -80,7 +80,9 @@
   --entry-verified-ink: #15803d;
   --entry-sent-back: #dc2626;
   --entry-sent-back-ink: #b02020;
-  --entry-waiting: var(--blue-primary);
+  --entry-waiting: #d97706;
+  --entry-waiting-ink: #a8550a;
+  --entry-waiting-bg: rgba(245, 158, 11, 0.14);
 }
 
 html,

@@ -75,9 +75,7 @@ import { tint } from "@/lib/tint";
  * feature exists. Nothing is invented.
  */
 
-/** Reported-but-unverified, drawn as hatched brand blue: the same colour as a
- *  signed-off number because it is the same measurement, striped because it is
- *  not confirmed yet. */
+/** Reported-but-unverified is striped amber throughout the Goals module. */
 /** One identity colour per line item, matched between a bar's segments and
  *  the rows under it (Anir, Aug 16: "On the progress bar, show this, this,
  *  this, and then color-code it, and then the line items for each below").
@@ -808,11 +806,11 @@ export function GoalZoom({
                 background:
                   yearSentBack > 0
                     ? "rgba(220,38,38,0.12)"
-                    : "rgba(0,113,227,0.12)",
+                    : "var(--entry-waiting-bg)",
                 color:
                   yearSentBack > 0
                     ? "var(--entry-sent-back-ink)"
-                    : "var(--entry-waiting)",
+                    : "var(--entry-waiting-ink)",
               }}
             >
               {fmtAmount(goal.unit, yearAwaiting)}{" "}
@@ -915,7 +913,7 @@ export function GoalZoom({
                 <p className="mt-2.5 text-[21px] font-extrabold tnum">
                   {fmtAmount(c.unit, cVerified)}
                   {cAwaiting > 0 && (
-                    <span className="ml-2 align-middle text-[11px] font-bold text-[color:var(--ink-blue-soft)] tnum">
+                    <span className="ml-2 align-middle text-[11px] font-bold text-[color:var(--entry-waiting-ink)] tnum">
                       +{fmtAmount(c.unit, cAwaiting)} waiting
                     </span>
                   )}
@@ -2218,7 +2216,7 @@ export function GoalZoom({
           </b>
           {waiting.length > 0 &&
             pill(
-              "bg-[rgba(0,113,227,0.12)] text-[color:var(--ink-blue-soft)]",
+              "bg-[color:var(--entry-waiting-bg)] text-[color:var(--entry-waiting-ink)]",
               String(waiting.length)
             )}
           <span className="ml-auto text-[10.5px] text-text-tertiary">

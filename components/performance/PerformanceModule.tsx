@@ -4223,7 +4223,7 @@ function SubgoalEditorFields({
                 much more we have. Show it visually"). Solid is what the other
                 subgoals already claim, the pale segment is THIS one growing
                 live as the target is typed, and the grey is what is left.
-                Same one-blue-two-strengths idiom as verified vs waiting. */}
+                Two strengths of the allocation blue distinguish the slices. */}
             <div className="mt-2.5 flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
               <span
                 className="block h-full bg-blue-primary transition-all"

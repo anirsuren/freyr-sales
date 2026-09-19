@@ -1157,18 +1157,14 @@ export const ENTRY_COLOR: Record<EntryStatus, string> = {
 };
 
 /**
- * Goal progress is one green measure. Verification changes the treatment,
- * not the hue: signed-off progress is solid and progress still waiting for
- * review is striped. A sent-back result stays red because it needs a fix.
- *
- * Keep this separate from ENTRY_COLOR. Waiting badges and audit rows may use
- * blue to describe workflow state, but that blue must not bleed into a goal's
- * green progress rail.
+ * Goal progress uses the same status language everywhere: signed-off progress
+ * is solid green, progress waiting for review is striped amber, and a
+ * sent-back result is striped red because it needs a fix.
  */
 export const GOAL_PROGRESS_COLOR: Record<EntryStatus, string> = {
   verified: "var(--entry-verified)",
   sent_back: "var(--entry-sent-back)",
-  reported: "var(--entry-verified)",
+  reported: "var(--entry-waiting)",
 };
 
 export function goalProgressColor(
@@ -1181,7 +1177,7 @@ export function goalProgressColor(
 export const ENTRY_INK: Record<EntryStatus, string> = {
   verified: "var(--entry-verified-ink)",
   sent_back: "var(--entry-sent-back-ink)",
-  reported: "var(--entry-waiting)",
+  reported: "var(--entry-waiting-ink)",
 };
 
 export function entryColor(entry: Pick<PerfActual, "status">): string {
