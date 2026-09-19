@@ -10,6 +10,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useId,
   useRef,
   useCallback,
   type ReactNode,
@@ -1403,16 +1404,29 @@ export function AreaChart({
     close: closeTip,
     keepOpen,
   } = useChartHover();
+  // A page can render several area charts at once. SVG paint-server ids are
+  // document-wide, so a shared fallback such as `ac` lets the first chart's
+  // gradient leak into every later chart (the blue Activity line used the
+  // green Relationship health fill). Keep the caller's readable prefix while
+  // making the actual id unique for this mounted chart.
+  const generatedId = useId();
+  const gradientId = `${id}-${generatedId}`.replace(/[^a-zA-Z0-9_-]/g, "");
   const w = 600;
   const h = height;
   const pad = 6;
   // Big enough to carry axes + always-visible dots (vs. a tiny inline sparkline).
   const showAxes = height >= 140;
   const dataMax = Math.max(...data, goal ?? 0, 1);
-  // Auto-scaled charts get ~10% headroom so the stroke never runs under the
-  // max-value axis chip (a series that STARTS at its max drew the line right
-  // through the label). Bounded metrics (yMax, e.g. /100 health) stay exact.
-  const max = yMax != null ? Math.max(dataMax, yMax) : dataMax * 1.1;
+  // Counts have discrete values, so their axes must also stop on a whole
+  // number. A single logged touch previously produced the nonsensical label
+  // “1.1 touches”. Continuous measures retain a little visual headroom, while
+  // bounded metrics (yMax, e.g. /100 health) stay exact.
+  const max =
+    yMax != null
+      ? Math.max(dataMax, yMax)
+      : format === "number"
+        ? Math.ceil(dataMax)
+        : dataMax * 1.1;
   const min = Math.min(...data, 0);
   const range = max - min || 1;
   const n = data.length;
@@ -1453,7 +1467,7 @@ export function AreaChart({
         }`}
       >
         <defs>
-          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.28" />
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
@@ -1474,7 +1488,7 @@ export function AreaChart({
               />
             );
           })}
-        <path d={area} fill={`url(#${id})`} className="chart-area" />
+        <path d={area} fill={`url(#${gradientId})`} className="chart-area" />
         <path
           d={line}
           fill="none"
@@ -1564,7 +1578,7 @@ export function AreaChart({
               vanished on every area/line chart in dark mode. */}
           <span className={AXIS_CHIP + " top-1 font-semibold"}>
             {fmt(format, max)}
-            {unit ? ` ${unit}` : ""}
+            {unit ? ` ${unit === "touches" && max === 1 ? "touch" : unit}` : ""}
           </span>
           <span className={AXIS_CHIP + " bottom-1"}>
             {fmt(format, Math.round(min))}
@@ -1622,7 +1636,11 @@ export function AreaChart({
             color={color}
             dot
             label={xLabels?.[hi] || `Point ${hi + 1} of ${n}`}
-            value={`${fmt(format, data[hi])}${unit ? ` ${unit}` : ""}`}
+            value={`${fmt(format, data[hi])}${
+              unit
+                ? ` ${unit === "touches" && data[hi] === 1 ? "touch" : unit}`
+                : ""
+            }`}
           />
           <div className="mt-3 shrink-0 space-y-1.5 rounded-lg bg-surface px-2.5 py-2 text-[11px]">
             <TipStat

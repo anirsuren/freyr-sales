@@ -1912,6 +1912,7 @@ export function CustomerTabs({
                         <AreaChart
                           data={activity}
                           height={160}
+                          color="var(--ink-bright-blue)"
                           format="number"
                           unit="touches"
                           pointTips={activityTips}

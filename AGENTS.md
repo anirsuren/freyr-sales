@@ -1149,3 +1149,5 @@ Customer Submission, Presentation, and Meeting request bands switch to a true fi
 Customer Lead bands use person avatars for the lead and the same semantic Source and Status chips as the main Leads module. Conference, Referral, Qualifying, Nurturing, and every other lead channel or state retain their own icon and color instead of reverting to generic package marks and gray text. Completed locally, not deployed.
 
 The expanded Account pipeline momentum view explains the movement instead of stretching a sparse step line across a large dialog. It leads with current open value, the 12-week change, and the latest change date, then shows a compact before/after story beside the live opportunities responsible for the value. Single-opportunity accounts no longer open into a mostly empty chart or a meaningless one-series visibility control. Completed locally, not deployed.
+
+Customer activity charts use whole-number count scales, including the singular “1 touch.” Every area-chart gradient has a unique SVG id, so adjacent charts cannot borrow one another's fill color; Activity uses blue in both its card and expanded view. Completed locally, not deployed.
