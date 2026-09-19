@@ -323,6 +323,8 @@ export function Customer360({
     "presentations",
     "meetingRequests",
   ].includes(active?.key ?? "");
+  const compactSolutionArtifactTable =
+    solutionArtifactTable && cols.length === 3 && anyWhen;
   const shownItems =
     active?.key === "solutionRequests" && solutioningControls
       ? active.items.filter((item) => {
@@ -822,7 +824,21 @@ export function Customer360({
                       <col style={{ width: "7%" }} />
                     </colgroup>
                   )}
-                  {solutionArtifactTable && (
+                  {solutionArtifactTable && compactSolutionArtifactTable && (
+                    /* Some request types have no subtype, so Type disappears.
+                       Give the remaining five columns their own proportions
+                       instead of leaving them in the six-column grid, which
+                       used to truncate Owner while the row still had empty
+                       space. */
+                    <colgroup>
+                      <col style={{ width: "42%" }} />
+                      <col style={{ width: "14%" }} />
+                      <col style={{ width: "18%" }} />
+                      <col style={{ width: "13%" }} />
+                      <col style={{ width: "13%" }} />
+                    </colgroup>
+                  )}
+                  {solutionArtifactTable && !compactSolutionArtifactTable && (
                     /* Keep the record name useful without letting it consume
                        the space required by Requested and When. Both dates
                        stay readable on one line at ordinary desktop widths. */
@@ -961,7 +977,7 @@ export function Customer360({
                               const opportunityStatus =
                                 active.key === "opportunities" && c.key === "status";
                               const solutionStatus =
-                                active.key === "solutionRequests" && c.key === "status";
+                                solutionArtifactTable && c.key === "status";
                               const identityColor = opportunityStage
                                 ? OPPORTUNITY_LEVEL_COLOR[v] ?? "#8E98A8"
                                 : opportunityStatus
@@ -992,7 +1008,7 @@ export function Customer360({
                                         "inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold",
                                         opportunityStage && "whitespace-nowrap",
                                         opportunityStatus && "whitespace-normal leading-[1.15]",
-                                        solutionStatus && "whitespace-nowrap capitalize"
+                                        solutionStatus && "whitespace-nowrap"
                                       )}
                                       style={{
                                         color: identityColor,

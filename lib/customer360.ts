@@ -33,6 +33,18 @@ import {
 const eq = (a: string | undefined, b: string) =>
   (a ?? "").trim().toLowerCase() === b.trim().toLowerCase();
 
+/* Customer relationship bands use the same plain-language lifecycle as the
+   Solutioning module. Raw store keys such as `initiated` and `in_progress`
+   are implementation values, not labels a sales rep should have to decode. */
+const solutionStatusLabel = (status: string) =>
+  ({
+    initiated: "Request initiated",
+    assigned: "Assigned",
+    in_progress: "Work in progress",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  })[status] ?? status.replace(/_/g, " ");
+
 export async function buildCustomer360(
   customerId: string,
   companyName: string,
@@ -187,7 +199,7 @@ export async function buildCustomer360(
               .join(" · "),
             cells: {
               type: r.subtype || "",
-              status: r.status.replace(/_/g, " "),
+              status: solutionStatusLabel(r.status),
               owner: r.owner || "Unassigned",
               asked: r.requestedAt ? formatDate(r.requestedAt) : "",
             },
