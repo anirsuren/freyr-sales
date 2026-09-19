@@ -774,15 +774,30 @@ export function CustomerAccountPlanTab({
                                       <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Play progress</p>
                                       <p className="text-[11px] font-semibold text-text-primary">{progress.complete} of 5 complete</p>
                                     </div>
-                                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
-                                      {progress.items.map((item) => (
-                                        <span key={item.label} className={cn("inline-flex items-center gap-1.5 text-[11px] font-medium", item.complete ? "text-text-primary" : "text-text-tertiary")}>
-                                          {item.complete ? <CheckCircle2 size={13} className="text-blue-primary" /> : <Circle size={13} />}
-                                          {item.label}
-                                        </span>
-                                      ))}
+                                    <div className="mt-2 grid overflow-hidden rounded-lg border border-border-light bg-white sm:grid-cols-2 sm:divide-x sm:divide-border-light">
+                                      <div className="px-3 py-2.5">
+                                        <p className="text-[9.5px] font-bold uppercase tracking-[0.07em] text-blue-primary">In place · {progress.complete}</p>
+                                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+                                          {progress.items.filter((item) => item.complete).map((item) => (
+                                            <span key={item.label} className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-text-primary">
+                                              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-blue-primary text-white"><Check size={10} strokeWidth={3} /></span>
+                                              {item.label}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                      <div className="border-t border-border-light px-3 py-2.5 sm:border-t-0" style={{ background: tint(ORANGE, 5) }}>
+                                        <p className="text-[9.5px] font-bold uppercase tracking-[0.07em]" style={{ color: ORANGE }}>Still needed · {5 - progress.complete}</p>
+                                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+                                          {progress.items.filter((item) => !item.complete).map((item) => (
+                                            <span key={item.label} className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-text-primary">
+                                              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border-2" style={{ borderColor: ORANGE }} />
+                                              {item.next}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
                                     </div>
-                                    {progress.complete < 5 && <div className="mt-2 rounded-lg bg-blue-light/65 px-3 py-2 text-[11px] text-text-secondary"><span className="font-semibold text-blue-primary">Next:</span> {progress.items.filter((item) => !item.complete).map((item) => item.next).join(" · ")}</div>}
                                   </div>
                                 </div>
                               </div>
