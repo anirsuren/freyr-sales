@@ -204,3 +204,5 @@ Standalone subgoal editors must immediately identify the action, subgoal, parent
 When the customer edit form becomes dirty, show a Save changes action in the Account section header without displacing that row's title, hint, or disclosure control. Keep it governed by the same validation and busy state as the sticky footer action, and hide it when no changes are pending.
 
 Custom industries in customer forms use a draft-and-confirm interaction: open a labelled input, confirm with a check mark or Enter, and cancel with the X or Escape. Render the confirmed value as a selected removable industry chip; typing in the draft must not silently replace the current selection.
+
+Treat the goal verification dialog as an action queue. Approval mode lists only entries awaiting review; summarize already-counted and sent-back work once above it. Keep search immediately above the actionable list, aggregate missing-evidence counts, omit repeated status and attachment copy, and show zero, current countable progress, and the goal endpoint directly on the segmented progress rail.

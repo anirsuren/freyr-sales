@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 
 import {
-  CheckCircle2,
-  Hourglass,
   Paperclip,
   Search,
   ShieldCheck,
@@ -14,10 +12,8 @@ import {
   ENTRY_COLOR,
   GOAL_PROGRESS_COLOR,
   entryStatus,
-  familyValue,
   fmtAmount,
   goalFamilyActuals,
-  pctMet,
   type PerformanceState,
   type PrimaryGoal,
   resultWhen,
@@ -26,7 +22,6 @@ import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import { EvidenceLinkRow } from "./EvidenceViewer";
-import { stamp } from "./EntryCards";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import type { RunOp } from "./PerformanceModule";
 
@@ -94,25 +89,27 @@ export function VerifyGoalModal({
   const entries = goalFamilyActuals(state, goal)
     .filter(inScope)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
-  const sum = (want: "verified" | "waiting") =>
-    entries
-      .filter((a) =>
-        want === "verified"
-          ? entryStatus(a) === "verified"
-          : entryStatus(a) !== "verified"
-      )
-      .reduce((t, a) => t + (a.amount || 0), 0);
-  const verified = scope ? sum("verified") : familyValue(state, goal, { verifiedOnly: true });
-  const waiting = scope ? sum("waiting") : familyValue(state, goal, { reportedOnly: true });
-  const total = verified + waiting;
-  const sentBack = entries
-    .filter((a) => entryStatus(a) === "sent_back")
-    .reduce((sum, a) => sum + a.amount, 0);
   const undoing = scope ? scope.verified : goal.verified;
   const subjectName = scope ? scope.label : goal.name;
+  const verifiedEntries = entries.filter((a) => entryStatus(a) === "verified");
+  const pendingEntries = entries.filter((a) => entryStatus(a) === "reported");
+  const sentBackEntries = entries.filter((a) => entryStatus(a) === "sent_back");
+  const reviewEntries = undoing
+    ? verifiedEntries
+    : pendingEntries;
+  const sumEntries = (list: typeof entries) =>
+    list.reduce((sum, entry) => sum + (entry.amount || 0), 0);
+  const verified = sumEntries(verifiedEntries);
+  const waiting = sumEntries(pendingEntries);
+  const sentBack = sumEntries(sentBackEntries);
+  const total = verified + waiting + sentBack;
+  const countableTotal = verified + waiting;
+  const target = goal.target || 0;
+  const progressPercent = target > 0 ? Math.min(100, (countableTotal / target) * 100) : 0;
+  const markerPercent = Math.min(96, Math.max(4, progressPercent));
   const normalizedQuery = entryQuery.trim().toLowerCase();
   const visibleEntries = normalizedQuery
-    ? entries.filter((entry) => {
+    ? reviewEntries.filter((entry) => {
         const status =
           entryStatus(entry) === "verified"
             ? "verified"
@@ -132,7 +129,6 @@ export function VerifyGoalModal({
           entry.sentBackBy,
           entry.date,
           resultWhen(entry),
-          stamp(entry.addedAt).time,
           fmtAmount(goal.unit, entry.amount, entry.currency),
           entry.currency,
           status,
@@ -143,7 +139,10 @@ export function VerifyGoalModal({
           .toLowerCase()
           .includes(normalizedQuery);
       })
-    : entries;
+    : reviewEntries;
+  const missingEvidenceCount = visibleEntries.filter(
+    (entry) => !entry.evidence?.length
+  ).length;
 
   return (
     <Modal
@@ -179,55 +178,82 @@ export function VerifyGoalModal({
           </span>
         </div>
 
-        <div className="mt-2.5 flex h-3 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+        <div className="relative mt-3 pb-7 pt-5">
+          <span className="absolute left-0 top-0 text-[10.5px] font-semibold text-text-tertiary tnum">
+            0
+          </span>
+          {target > 0 && (
+            <span className="absolute right-0 top-0 text-[10.5px] font-bold text-text-primary tnum">
+              Goal {fmtAmount(goal.unit, target)}
+            </span>
+          )}
+          <div className="relative flex h-3 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
           {/* The same goal-progress treatment as every other bar: solid green
               counts, striped green waits, and red needs a fix. */}
+            <span
+              className="block h-full"
+              style={{
+                width: `${target > 0 ? Math.min(100, (verified / target) * 100) : verified > 0 ? (verified / total) * 100 : 0}%`,
+                background: ENTRY_COLOR.verified,
+              }}
+            />
+            <span
+              className="unverified-fill block h-full"
+              style={{
+                width: `${target > 0 ? Math.min(100, (waiting / target) * 100) : waiting > 0 ? (waiting / total) * 100 : 0}%`,
+                ["--fill" as string]: GOAL_PROGRESS_COLOR.reported,
+              }}
+            />
+            <span
+              className="sent-back-fill block h-full"
+              style={{
+                width: `${target > 0 ? Math.min(100, (sentBack / target) * 100) : sentBack > 0 ? (sentBack / total) * 100 : 0}%`,
+                ["--fill" as string]: GOAL_PROGRESS_COLOR.sent_back,
+              }}
+            />
+          </div>
+          <span className="absolute left-0 top-[18px] h-5 w-px bg-text-tertiary/60" />
+          {target > 0 && (
+            <span className="absolute right-0 top-[17px] h-6 w-0.5 rounded-full bg-text-primary" />
+          )}
+          {target > 0 && (
+            <span
+              className="absolute top-[17px] h-4 w-4 -translate-x-1/2 rounded-full border-[3px] border-white shadow-sm"
+              style={{ left: `${markerPercent}%`, background: ENTRY_COLOR.verified }}
+              aria-label={`${fmtAmount(goal.unit, countableTotal)} of ${fmtAmount(goal.unit, target)}`}
+            />
+          )}
           <span
-            className="block h-full"
-            style={{
-              width: `${goal.target > 0 ? Math.min(100, (verified / goal.target) * 100) : verified > 0 ? (verified / total) * 100 : 0}%`,
-              background: ENTRY_COLOR.verified,
-            }}
-          />
-          <span
-            className="unverified-fill block h-full"
-            style={{
-              width: `${goal.target > 0 ? Math.min(100, (waiting / goal.target) * 100) : waiting > 0 ? (waiting / total) * 100 : 0}%`,
-              ["--fill" as string]:
-                sentBack > 0
-                  ? GOAL_PROGRESS_COLOR.sent_back
-                  : GOAL_PROGRESS_COLOR.reported,
-            }}
-          />
+            className="absolute bottom-0 -translate-x-1/2 text-[10.5px] font-bold tnum"
+            style={{ left: `${markerPercent}%`, color: ENTRY_COLOR.verified }}
+          >
+            {fmtAmount(goal.unit, countableTotal)}
+          </span>
         </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
             <span
               className="h-2 w-2 rounded-full"
               style={{ background: ENTRY_COLOR.verified }}
             />
-            Verified
+            Counted
             <b className="text-text-primary tnum">{fmtAmount(goal.unit, verified)}</b>
           </span>
-          <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
+          {waiting > 0 && (
+            <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
             <span
               className="h-2 w-2 rounded-full"
-              style={{
-                background:
-                  sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
-              }}
+              style={{ background: ENTRY_COLOR.reported }}
             />
-            {sentBack > 0 ? "Sent back" : "Waiting"}
+            Needs review
             <b className="text-text-primary tnum">{fmtAmount(goal.unit, waiting)}</b>
           </span>
-          {goal.target > 0 && (
-            <span className="ml-auto text-[11.5px] text-text-tertiary tnum">
-              {/* VERIFIED, not everything logged. This line sat beside a bar
-                  that says "$80K verified, $120K sent back" and announced
-                  "40% there" — counting the rejected money, in the one dialog
-                  whose whole job is deciding what counts. */}
-              Goal {fmtAmount(goal.unit, goal.target)} ·{" "}
-              {Math.min(100, Math.round(pctMet(verified, goal.target)))}% there
+          )}
+          {sentBack > 0 && (
+            <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
+              <span className="h-2 w-2 rounded-full bg-[color:var(--entry-sent-back-ink)]" />
+              Sent back
+              <b className="text-text-primary tnum">{fmtAmount(goal.unit, sentBack)}</b>
             </span>
           )}
         </div>
@@ -247,30 +273,7 @@ export function VerifyGoalModal({
           </span>
         </p>
       )}
-      {/* TWO DIFFERENT WARNINGS FOR TWO DIFFERENT KINDS OF MONEY (Anir,
-          Aug 20: "That text is misleading, right? It sounds like a much
-          bigger deal than it is"). Unread money is swept in by this sign-off,
-          so that gets the alarm. Sent-back money is NOT — a rejection you
-          already made stays made — so it gets a calm note instead of an
-          error dressed as one. */}
-      {waiting - sentBack > 0 && !undoing && (
-        <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[color:var(--ink-orange)]">
-          <TriangleAlert size={12} strokeWidth={2.4} className="mt-[3px] shrink-0" />
-          <span>
-            {fmtAmount(goal.unit, waiting - sentBack)} below has not been
-            checked yet. Signing off here signs off that too.
-          </span>
-        </p>
-      )}
-      {sentBack > 0 && !undoing && (
-        <p className="mt-2 text-[11.5px] leading-relaxed text-text-secondary">
-          The {fmtAmount(goal.unit, sentBack)} you sent back stays sent back —
-          this sign-off does not count it. It returns through its own claim
-          once it is fixed.
-        </p>
-      )}
-
-      {entries.length > 0 && (
+      {reviewEntries.length > 0 && (
         <label className="relative mt-4 block">
           <span className="sr-only">Search logged entries</span>
           <Search
@@ -283,24 +286,32 @@ export function VerifyGoalModal({
             type="search"
             value={entryQuery}
             onChange={(event) => setEntryQuery(event.target.value)}
-            placeholder="Search people, customers, dates, amounts, statuses, or notes…"
+            placeholder="Search entries to review…"
             className="h-10 w-full rounded-xl border border-border-light bg-white pl-9 pr-3 text-[12.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary focus:ring-2 focus:ring-blue-light"
           />
         </label>
       )}
 
-      <p className={cn("text-[11px] font-bold uppercase tracking-[0.02em] text-text-tertiary", entries.length > 0 ? "mt-2.5" : "mt-4")}>
-        What was logged · {entries.length}{" "}
-        {entries.length === 1 ? "entry" : "entries"}
+      <p className={cn("text-[11px] font-bold uppercase tracking-[0.02em] text-text-tertiary", reviewEntries.length > 0 ? "mt-2.5" : "mt-4")}>
+        {undoing ? "Included in this approval" : "Needs your review"} · {reviewEntries.length}{" "}
+        {reviewEntries.length === 1 ? "entry" : "entries"}
         {normalizedQuery && (
           <span className="ml-1 normal-case tracking-normal text-text-secondary">
             · {visibleEntries.length} shown
           </span>
         )}
+        {missingEvidenceCount > 0 && (
+          <span className="ml-2 inline-flex items-center gap-1 normal-case tracking-normal text-text-secondary">
+            <Paperclip size={10} strokeWidth={2.2} />
+            {missingEvidenceCount} without evidence
+          </span>
+        )}
       </p>
-      {entries.length === 0 ? (
+      {reviewEntries.length === 0 ? (
         <p className="mt-1.5 rounded-xl bg-surface px-3 py-4 text-center text-[12.5px] text-text-secondary">
-          Nothing has been logged against this goal.
+          {undoing
+            ? "No counted entries are attached to this approval."
+            : "Nothing is waiting for your review."}
         </p>
       ) : visibleEntries.length === 0 ? (
         <p className="mt-1.5 rounded-xl bg-surface px-3 py-5 text-center text-[12.5px] text-text-secondary">
@@ -309,7 +320,6 @@ export function VerifyGoalModal({
       ) : (
         <div className="mt-1.5 max-h-[340px] space-y-2.5 overflow-y-auto pr-1">
           {visibleEntries.slice(0, 40).map((a) => {
-            const locked = entryStatus(a) === "verified";
             return (
               <div key={a.id}>
                 {/* ONE CARD, TWO SIDES (Anir, Aug 20: "I like the entry, but
@@ -337,7 +347,6 @@ export function VerifyGoalModal({
                       <span className="shrink-0 text-text-tertiary tnum">
                         {a.customer ? "· " : ""}
                         {resultWhen(a)}
-                        {stamp(a.addedAt).time ? ` · ${stamp(a.addedAt).time}` : ""}
                       </span>
                     </span>
                   </span>
@@ -345,30 +354,6 @@ export function VerifyGoalModal({
                     <b className="block text-[14px] text-text-primary tnum">
                       {fmtAmount(goal.unit, a.amount, a.currency)}
                     </b>
-                  <span
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-bold",
-                      locked
-                        ? "bg-[rgba(22,163,74,0.12)] text-[color:var(--entry-verified-ink)]"
-                        : entryStatus(a) === "sent_back"
-                          ? "bg-[rgba(220,38,38,0.10)] text-[color:var(--entry-sent-back-ink)]"
-                          : "bg-[rgba(0,113,227,0.12)] text-[color:var(--entry-waiting)]"
-                    )}
-                  >
-                    {locked ? (
-                      <>
-                        <CheckCircle2 size={11} strokeWidth={2.4} /> verified
-                      </>
-                    ) : entryStatus(a) === "sent_back" ? (
-                      <>
-                        <TriangleAlert size={11} strokeWidth={2.4} /> sent back
-                      </>
-                    ) : (
-                      <>
-                        <Hourglass size={11} strokeWidth={2.4} /> waiting
-                      </>
-                    )}
-                  </span>
                   </span>
                 </div>
 
@@ -387,12 +372,7 @@ export function VerifyGoalModal({
                       <EvidenceLinkRow key={e.url} file={e} />
                     ))}
                   </div>
-                ) : (
-                  <p className="mt-1 flex items-center gap-1.5 pl-8 text-[11.5px] text-[color:var(--ink-orange)]">
-                    <Paperclip size={11} strokeWidth={2.4} />
-                    Nothing attached. There is no proof to read for this one.
-                  </p>
-                )}
+                ) : null}
               </div>
             );
           })}
