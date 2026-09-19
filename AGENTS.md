@@ -1098,3 +1098,6 @@ Expanded chart popups are wider, expose their complete record list, and remain o
 
 ### Sep 19: record-connection pickers use full-size searchable dialogs
 Component connection pickers on customers and offerings use a 720px-wide, fixed-height selection dialog with a full search field, larger selection rows, a scrolling list, and a visible selected count. The matching offering picker on an FDL component uses the same dimensions so record-connection workflows no longer fall back to the cramped default modal. Completed locally, not deployed.
+
+### Sep 19: saved views restore before paint
+Browser-saved view and panel preferences now restore in a layout effect. Navigating to People performance no longer paints the three claims panels open first and then visibly snaps them to the user's saved closed state; the same fix applies to every screen using the shared stored-view helper. Completed locally, not deployed.

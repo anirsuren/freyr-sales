@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 /**
  * A VIEW TOGGLE THAT REMEMBERS.
@@ -12,11 +12,12 @@ import { useEffect, useState } from "react";
  * Choosing a layout is a statement about how you read, not about this one
  * page, so it belongs in storage rather than in a component that unmounts.
  *
- * Reading happens in an effect rather than in the initial state, on purpose:
+ * Reading happens after hydration rather than in the initial state, on purpose:
  * the server renders without localStorage, so seeding state from it directly
  * would hand React a different first paint than the HTML it is hydrating.
- * Starting on the default and correcting immediately after mount is the only
- * version of this that does not warn.
+ * A layout effect restores the saved value before the browser paints the
+ * hydrated screen. A normal effect briefly showed the fallback view first,
+ * then visibly snapped panels and layouts to their saved state.
  *
  * Storage failures are swallowed. Private browsing throwing on setItem is not
  * a reason for a page to stop working; it just means this browser will not
@@ -36,7 +37,7 @@ export function useStoredView<T extends string>(
    * of one wrong view. Existing two-element destructurings are untouched. */
   const [hydrated, setHydrated] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     try {
       const saved = window.localStorage.getItem(key);
       if (saved && (allowed as readonly string[]).includes(saved)) {
@@ -84,7 +85,7 @@ export function useStoredSet(
   const [items, setItems] = useState<string[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     try {
       const saved = window.localStorage.getItem(key);
       if (saved) {

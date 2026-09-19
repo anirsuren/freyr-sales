@@ -683,7 +683,7 @@ export function SentBackWatchCard({
 }) {
   const [panelView, setPanelView] = useStoredView<"open" | "closed">(
     "freyr.performance.sent-back-watch",
-    "open",
+    "closed",
     ["open", "closed"]
   );
   const expanded = panelView === "open";
@@ -839,7 +839,7 @@ export function SentBackCard({
 }) {
   const [panelView, setPanelView] = useStoredView<"open" | "closed">(
     "freyr.performance.sent-back",
-    "open",
+    "closed",
     ["open", "closed"]
   );
   const expanded = panelView === "open";
@@ -1993,7 +1993,7 @@ export function VerifyQueueCard({
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [panelView, setPanelView] = useStoredView<"open" | "closed">(
     "freyr.performance.verification-queue",
-    "open",
+    "closed",
     ["open", "closed"]
   );
   const expanded = panelView === "open";
