@@ -199,7 +199,9 @@ what was written back, `deleted-test-customers.json`).
 - **Sep 19 collapsed sidebar brand spacing:** The collapsed 72px sidebar now
   centers the Freyr mark with real side padding and stacks the DEV environment
   badge beneath it. The badge no longer forces the logo against the viewport
-  edge. Local only, not deployed.
+  edge. Normal desktop pages also gain a 24px workspace gutter beside the
+  compact rail while retaining the established 16px gutter beside the full
+  sidebar. Local only, not deployed.
 
 - **Sep 19 Lead source and status icons:** Lead source and status pickers now
   use channel-specific and workflow-specific icons instead of generic colour

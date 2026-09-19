@@ -31,6 +31,7 @@ import {
   type AskAgentDetail,
 } from "@/lib/agentEvents";
 import { FeedbackButton } from "@/components/feedback/FeedbackButton";
+import { cn } from "@/lib/utils";
 
 const AGENT_HIDDEN_KEY = "freyr.assistant.hidden.v1";
 
@@ -124,6 +125,7 @@ export function AppShell({
     pathname === "/access-pending";
   const restrictedPath = !standalonePublicPath && !isReleasedPath(pathname, dataMode);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const agentHiddenStorageKey = userScopedStorageKey(
     AGENT_HIDDEN_KEY,
     currentUser.id
@@ -466,6 +468,7 @@ export function AppShell({
             dataMode={dataMode}
             mobileOpen={mobileNavOpen}
             onMobileClose={() => setMobileNavOpen(false)}
+            onCollapsedChange={setSidebarCollapsed}
             moduleAccess={moduleAccess}
             performanceRooms={performanceRooms}
           />
@@ -525,7 +528,14 @@ export function AppShell({
                      account snapshot should go till there"). A 32px gutter on
                      both flanks read as the page being cut off; 16px keeps a
                      breath without the dead margins. */
-                  className="px-4 pt-6 pb-28 page-in"
+                  className={cn(
+                    "px-4 pt-6 pb-28 page-in",
+                    // The full sidebar already gives the page a strong left
+                    // boundary. Beside the 72px icon rail, the same 16px inset
+                    // made large cards feel pinned to the edge. Add one small
+                    // spacing step on desktop for every normal page.
+                    sidebarCollapsed && "lg:px-6"
+                  )}
                 >
                   {children}
                 </div>

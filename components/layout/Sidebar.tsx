@@ -73,12 +73,15 @@ export function Sidebar({
   dataMode,
   mobileOpen = false,
   onMobileClose,
+  onCollapsedChange,
   moduleAccess = null,
   performanceRooms,
 }: {
   dataMode: DataMode;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  /** Lets the shared page shell give the compact rail a slightly wider gutter. */
+  onCollapsedChange?: (collapsed: boolean) => void;
   /** Resolved server-side in app/layout. Null = the role rules still decide. */
   moduleAccess?: Record<string, Access> | null;
   /** Server-resolved with the same group ownership rule as the page tabs. */
@@ -143,6 +146,10 @@ export function Sidebar({
       setCollapsed(localStorage.getItem(collapseStorageKey) === "1");
     } catch {}
   }, [collapseStorageKey]);
+
+  useEffect(() => {
+    onCollapsedChange?.(collapsed);
+  }, [collapsed, onCollapsedChange]);
 
   // same, for the folded sections
   useEffect(() => {
@@ -327,6 +334,7 @@ export function Sidebar({
   return (
     <aside
       data-tour="sidebar"
+      data-collapsed={collapsed ? "true" : "false"}
       className={cn(
         "border-r border-border-light bg-white flex flex-col pt-6 pb-0 transition-transform duration-200 overflow-y-auto",
         // mobile: fixed off-canvas drawer
