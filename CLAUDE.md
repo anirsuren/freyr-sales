@@ -205,6 +205,8 @@ Keep the standalone subgoal editor as one allocation workflow: parent context an
 
 Keep Solutioning result counts out of the search/filter toolbar. Show no count when the complete room is visible; show the narrowed match count beneath the toolbar only while search or filters reduce the list.
 
+Render documents in the compact Solutioning request preview as a Sales Materials-style table with Document, Version, Assigned to, and Open columns. The current model has one primary assignee per document; display that person as an ordinary avatar-and-name cell and never use a large “Working on it” badge.
+
 Render inline owner identities as crown, profile picture, then name. Keep the profile picture immediately beside the name as part of the person's identity.
 
 Keep a search field directly above the logged-entry list in the goal verification dialog. Search across every visible record detail and report the filtered count without changing the underlying sign-off totals.

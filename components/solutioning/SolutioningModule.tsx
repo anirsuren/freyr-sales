@@ -1462,61 +1462,89 @@ function RequestPanel({
               <FileText size={15} strokeWidth={1.9} /> No documents yet
             </div>
           ) : (
-            <div className="mt-1.5 divide-y divide-border-light overflow-hidden rounded-lg border border-border-light bg-white">
+            <div className="mt-1.5 overflow-hidden rounded-lg border border-border-light bg-white">
+              <table className="w-full table-fixed border-collapse text-left">
+                <colgroup>
+                  <col />
+                  <col className="w-[72px]" />
+                  <col className="w-[180px]" />
+                  <col className="w-[64px]" />
+                </colgroup>
+                <thead className="border-b border-border-light bg-surface/70 text-[9.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  <tr>
+                    <th className="px-3 py-2">Document</th>
+                    <th className="px-3 py-2">Version</th>
+                    <th className="px-3 py-2">Assigned to</th>
+                    <th className="px-3 py-2">Open</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-light">
               {documents.slice(0, 3).map((doc) => {
                 const isFile = Boolean(doc.docsPath || doc.ref);
                 const previewPage = `/solutioning/${encodeURIComponent(r.id)}/documents/${encodeURIComponent(doc.id)}`;
                 const kind = docKind(doc.fileName ?? doc.name);
                 const DocIcon = kind.icon;
                 return (
-                  <div key={doc.id} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ color: kind.color, background: tint(kind.color, 10) }}>
-                      <DocIcon size={14} strokeWidth={2} />
-                    </span>
-                    <button
-                      type="button"
-                      disabled={!isFile}
-                      onClick={() => isFile && setViewingDocument(doc)}
-                      className="min-w-0 flex-1 truncate text-left text-[12px] font-semibold text-text-primary enabled:hover:text-blue-primary enabled:hover:underline disabled:cursor-default"
-                    >
-                      {doc.name}
-                    </button>
-                    <span className="shrink-0 text-[10.5px] text-text-tertiary">v{doc.version}</span>
-                    {doc.assignedTo ? (
-                      <span className="flex min-w-[148px] shrink-0 items-center gap-2 rounded-lg bg-blue-light/70 px-2.5 py-1.5">
-                        <Avatar name={doc.assignedTo} className="h-5 w-5 shrink-0 text-[7px]" />
-                        <span className="min-w-0 leading-tight">
-                          <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-blue-primary">
-                            Working on it
-                          </span>
-                          <span className="block max-w-[132px] truncate text-[11px] font-semibold text-text-primary">
+                  <tr key={doc.id} className="transition-colors hover:bg-blue-light/20">
+                    <td className="min-w-0 px-3 py-2.5">
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ color: kind.color, background: tint(kind.color, 10) }}>
+                          <DocIcon size={14} strokeWidth={2} />
+                        </span>
+                        <button
+                          type="button"
+                          disabled={!isFile}
+                          onClick={() => isFile && setViewingDocument(doc)}
+                          className="min-w-0 truncate text-left text-[12px] font-semibold text-text-primary enabled:hover:text-blue-primary enabled:hover:underline disabled:cursor-default"
+                          title={doc.name}
+                        >
+                          {doc.name}
+                        </button>
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-[11px] font-medium text-text-secondary tnum">
+                      v{doc.version}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {doc.assignedTo ? (
+                        <span className="flex min-w-0 items-center gap-2" title={doc.assignedTo}>
+                          <Avatar name={doc.assignedTo} className="h-6 w-6 shrink-0 text-[8px]" />
+                          <span className="truncate text-[11.5px] font-medium text-text-primary">
                             {doc.assignedTo}
                           </span>
                         </span>
-                      </span>
-                    ) : (
-                      <span className="flex min-w-[148px] shrink-0 items-center gap-2 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[11px] font-medium text-text-secondary">
-                        <CircleDashed size={15} strokeWidth={2} className="shrink-0 text-text-tertiary" />
-                        No one assigned
-                      </span>
-                    )}
-                    {isFile ? (
-                      <Link href={previewPage} target="_blank" rel="noopener noreferrer" aria-label={`Open ${doc.name} on its own page`} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary">
-                        <ArrowUpRight size={13} strokeWidth={2.2} />
-                      </Link>
-                    ) : doc.url ? (
-                      <a href={doc.url} target="_blank" rel="noreferrer" aria-label={`Open ${doc.name}`} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary">
-                        <ArrowUpRight size={13} strokeWidth={2.2} />
-                      </a>
-                    ) : null}
-                  </div>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                          <CircleDashed size={13} strokeWidth={2} className="shrink-0" />
+                          Unassigned
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {isFile ? (
+                        <Link href={previewPage} target="_blank" rel="noopener noreferrer" aria-label={`Open ${doc.name} on its own page`} className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary">
+                          <ArrowUpRight size={13} strokeWidth={2.2} />
+                        </Link>
+                      ) : doc.url ? (
+                        <a href={doc.url} target="_blank" rel="noreferrer" aria-label={`Open ${doc.name}`} className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:bg-blue-light hover:text-blue-primary">
+                          <ArrowUpRight size={13} strokeWidth={2.2} />
+                        </a>
+                      ) : (
+                        <span className="text-[11px] text-text-tertiary">—</span>
+                      )}
+                    </td>
+                  </tr>
                 );
               })}
               {documents.length > 3 && (
-                <div className="px-3 py-2 text-[11px] font-medium text-text-tertiary">
-                  +{documents.length - 3} more on the full record
-                </div>
+                <tr>
+                  <td colSpan={4} className="px-3 py-2 text-[11px] font-medium text-text-tertiary">
+                    +{documents.length - 3} more on the full record
+                  </td>
+                </tr>
               )}
+                </tbody>
+              </table>
             </div>
           )}
         </section>

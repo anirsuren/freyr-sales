@@ -1196,6 +1196,8 @@ The standalone subgoal editor uses one quiet allocation workspace: parent contex
 
 Solutioning result counts do not occupy the search/filter toolbar. Hide the count when the full room is visible; when search or filters narrow the list, show a compact matching-results line directly beneath the toolbar so the control row keeps its spacing. Completed locally, not deployed.
 
+The compact Solutioning request preview presents documents as a restrained Sales Materials-style table with Document, Version, Assigned to, and Open columns. A document has one primary assignee in the current data model; show that person as a normal avatar-and-name cell, never as an oversized “Working on it” badge. Completed locally, not deployed.
+
 Inline owner identities on Goals always read crown, profile picture, then name. The avatar and name stay adjacent as one person identity; the ownership crown precedes that identity instead of splitting the face from the name. Completed locally, not deployed.
 
 The goal verification dialog places a full-width search field immediately above its logged-entry list. It filters the review log by person, customer, date, amount, status, notes, actors, currency, and evidence while preserving the complete entry count and showing the number of matches. Completed locally, not deployed.
