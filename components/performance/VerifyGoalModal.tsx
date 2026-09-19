@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import {
   ENTRY_COLOR,
+  GOAL_PROGRESS_COLOR,
   entryStatus,
   familyValue,
   fmtAmount,
@@ -136,7 +137,8 @@ export function VerifyGoalModal({
         </div>
 
         <div className="mt-2.5 flex h-3 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
-          {/* The same three colours and the same stripe as every other bar. */}
+          {/* The same goal-progress treatment as every other bar: solid green
+              counts, striped green waits, and red needs a fix. */}
           <span
             className="block h-full"
             style={{
@@ -149,7 +151,9 @@ export function VerifyGoalModal({
             style={{
               width: `${goal.target > 0 ? Math.min(100, (waiting / goal.target) * 100) : waiting > 0 ? (waiting / total) * 100 : 0}%`,
               ["--fill" as string]:
-                sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+                sentBack > 0
+                  ? GOAL_PROGRESS_COLOR.sent_back
+                  : GOAL_PROGRESS_COLOR.reported,
             }}
           />
         </div>

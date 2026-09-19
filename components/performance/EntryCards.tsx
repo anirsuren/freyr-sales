@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import {
   ENTRY_COLOR,
+  GOAL_PROGRESS_COLOR,
   awaitingTheirFix,
   canVerifyEntry,
   stampedAt,
@@ -2536,8 +2537,8 @@ export function ClaimReviewDialog({
                 This one now uses the same SegmentValues component, so it
                 cannot drift from them again.
 
-                Solid green is signed off; the stripe is this claim in its own
-                status colour. "% there" counts verified money only — the one
+                Solid green is signed off; striped green is still waiting;
+                red means sent back. "% there" counts verified money only — the one
                 dialog whose entire job is deciding what counts must not
                 announce a number that includes what it has not yet counted. */}
             {/* THE TIMELINE IS A FULL-HEIGHT RAIL DOWN THE RIGHT (Anir,
@@ -2577,6 +2578,7 @@ export function ClaimReviewDialog({
                   : status === "sent_back"
                     ? ENTRY_COLOR.sent_back
                     : ENTRY_COLOR.reported;
+              const claimProgressColor = GOAL_PROGRESS_COLOR[status];
               const claimWord =
                 status === "verified"
                   ? "this claim"
@@ -2647,7 +2649,7 @@ export function ClaimReviewDialog({
                         className="unverified-fill block h-full"
                         style={{
                           width: `${share(a.amount)}%`,
-                          ["--fill" as string]: claimColor,
+                          ["--fill" as string]: claimProgressColor,
                         }}
                       />
                     )}
@@ -2665,7 +2667,7 @@ export function ClaimReviewDialog({
                         key: "claim",
                         value: a.amount,
                         pct: share(a.amount),
-                        color: claimColor,
+                        color: claimProgressColor,
                       },
                     ]}
                   />

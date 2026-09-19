@@ -30,9 +30,11 @@ import {
   type EntryStatus,
   type GoalUnit,
   ENTRY_COLOR,
+  GOAL_PROGRESS_COLOR,
   entryStatus,
   entryStatusLabel,
   ENTRY_INK,
+  goalProgressColor,
   isPending,
   familyValue,
   fiscalLabel,
@@ -1407,10 +1409,10 @@ export function GoalZoom({
                                   ["--fill" as string]:
                                     r.sentBack > 0
                                       ? ENTRY_COLOR.sent_back
-                                      : ENTRY_COLOR.reported,
+                                      : GOAL_PROGRESS_COLOR.reported,
                                   ["--bar-glow" as string]: r.sentBack > 0
                                       ? ENTRY_COLOR.sent_back
-                                      : ENTRY_COLOR.reported,
+                                      : GOAL_PROGRESS_COLOR.reported,
                                 }}
                               />
                             </>
@@ -1650,11 +1652,10 @@ export function GoalZoom({
                                   ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
                                 }}
                               />
-                              {/* WAITING IS THE SAME BLUE, WASHED OUT — not
-                                  amber, and not stripes either: both were
-                                  rejected (Anir, Aug 15). One colour, two
-                                  strengths, so a bar still measures one thing
-                                  while saying how much of it is signed off. */}
+                              {/* ONE GREEN MEASURE. Signed-off work is solid;
+                                  work waiting for verification is striped.
+                                  Only a sent-back result changes the rail to
+                                  red because that work needs a fix. */}
                               <span
                                 className={cn("unverified-fill-sm block h-full", lit && "bar-lit")}
                                 style={{
@@ -1662,10 +1663,10 @@ export function GoalZoom({
                                   ["--fill" as string]:
                                     r2.sentBack > 0
                                       ? ENTRY_COLOR.sent_back
-                                      : ENTRY_COLOR.reported,
+                                      : GOAL_PROGRESS_COLOR.reported,
                                   ["--bar-glow" as string]: r2.sentBack > 0
                                       ? ENTRY_COLOR.sent_back
-                                      : ENTRY_COLOR.reported,
+                                      : GOAL_PROGRESS_COLOR.reported,
                                 }}
                               />
                             </span>
@@ -1864,10 +1865,10 @@ export function GoalZoom({
                                               ["--fill" as string]:
                                                 sb > 0
                                                   ? ENTRY_COLOR.sent_back
-                                                  : ENTRY_COLOR.reported,
+                                                  : GOAL_PROGRESS_COLOR.reported,
                                               ["--bar-glow" as string]: sb > 0
                                                   ? ENTRY_COLOR.sent_back
-                                                  : ENTRY_COLOR.reported,
+                                                  : GOAL_PROGRESS_COLOR.reported,
                                             }}
                                           />
                                         </span>
@@ -2098,10 +2099,10 @@ export function GoalZoom({
                                     width: `${Math.min(100, (a.amount / maxP) * 100)}%`,
                                     background:
                                       entryStatus(a) === "verified"
-                                        ? entryColor(a)
+                                        ? goalProgressColor(a)
                                         : undefined,
-                                    ["--fill" as string]: entryColor(a),
-                                    ["--bar-glow" as string]: entryColor(a),
+                                    ["--fill" as string]: goalProgressColor(a),
+                                    ["--bar-glow" as string]: goalProgressColor(a),
                                   }}
                                 />
                               ))}
@@ -2123,10 +2124,10 @@ export function GoalZoom({
                                 ["--fill" as string]:
                                   p.sentBack > 0
                                     ? ENTRY_COLOR.sent_back
-                                    : ENTRY_COLOR.reported,
+                                    : GOAL_PROGRESS_COLOR.reported,
                                 ["--bar-glow" as string]: p.sentBack > 0
                                     ? ENTRY_COLOR.sent_back
-                                    : ENTRY_COLOR.reported,
+                                    : GOAL_PROGRESS_COLOR.reported,
                               }}
                             />
                           </span>

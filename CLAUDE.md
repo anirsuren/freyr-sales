@@ -186,3 +186,5 @@ Keep dropdown triggers in form rows and field grids one line and 40px tall. Rich
 In Org performance assigned-person rows, derive the visible amount, percent, progress bar, and expanded totals from the same full goal-family rollup, including subgoal and component-goal results. Never show a filled progress bar beside a zero label.
 
 Performance pace timelines keep endpoint labels directly above the track and use measured collision detection to lift only an endpoint that overlaps the schedule annotation. Recalculate on resize instead of using fixed percentage guesses or permanently distant label lanes.
+
+Goal progress rails stay green throughout the Goals module: verified portions are solid green, waiting-for-verification portions are striped green, and only sent-back portions are red. Blue may label a waiting workflow state, but it must not tint the progress rail.

@@ -33,6 +33,7 @@ import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn } from "@/lib/utils";
 import {
   ENTRY_COLOR,
+  GOAL_PROGRESS_COLOR,
   entryStatus,
   entryStatusLabel,
   isPending,
@@ -1155,14 +1156,16 @@ export function PaceTimeline({
                   just red"). Unverified money was a flat 32% wash here while
                   the bar chart above it striped the identical figure, so the
                   two panels described one fact in two visual languages. Red
-                  when a group owner refused it, burnt orange while it simply
-                  waits its turn. */}
+                  means it was sent back; striped green means it is still
+                  waiting for verification. */}
               <span
                 className="unverified-fill absolute inset-y-0 left-0 rounded-full"
                 style={{
                   width: `${aPct}%`,
                   ["--fill" as string]:
-                    sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+                    sentBack > 0
+                      ? GOAL_PROGRESS_COLOR.sent_back
+                      : GOAL_PROGRESS_COLOR.reported,
                 }}
               />
               {/* Signed off is GREEN and solid, everywhere (Anir, Aug 20:
@@ -1182,8 +1185,8 @@ export function PaceTimeline({
                     awaiting <= 0
                       ? ENTRY_COLOR.verified
                       : sentBack > 0
-                        ? ENTRY_COLOR.sent_back
-                        : ENTRY_COLOR.reported,
+                        ? GOAL_PROGRESS_COLOR.sent_back
+                        : GOAL_PROGRESS_COLOR.reported,
                 }}
                 aria-hidden="true"
               />
@@ -1237,7 +1240,9 @@ export function PaceTimeline({
                       value: awaiting,
                       pct: Math.max(0, aPct - vPct),
                       color:
-                        sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+                        sentBack > 0
+                          ? GOAL_PROGRESS_COLOR.sent_back
+                          : GOAL_PROGRESS_COLOR.reported,
                     },
                   ]}
                 />
@@ -1484,7 +1489,7 @@ export function PersonGoalPanel({
         {
           name: "Waiting to be verified",
           amount: cell.reported,
-          color: ENTRY_COLOR.reported,
+          color: GOAL_PROGRESS_COLOR.reported,
           striped: true,
         },
         {
@@ -1502,7 +1507,9 @@ export function PersonGoalPanel({
         pending,
         color: ENTRY_COLOR.verified,
         pendingColor:
-          cell.sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+          cell.sentBack > 0
+            ? GOAL_PROGRESS_COLOR.sent_back
+            : GOAL_PROGRESS_COLOR.reported,
         tip: breakdown.map((part) => ({
           name: part.name,
           value: fmtAmount(goal.unit, part.amount),
@@ -1540,9 +1547,9 @@ export function PersonGoalPanel({
     <div className="border-t border-border-light bg-white px-3 py-3">
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {card("Target", target > 0 ? fmtAmount(goal.unit, target) : "Not set")}
-        {/* The tiles read in the same three colours the bars do: what counts
-            is green, what is still owed to somebody wears the colour of whose
-            move it is. */}
+        {/* The tiles describe workflow state in text colours. The progress
+            rail below stays green for achieved work, using a stripe to show
+            what has not been verified yet. */}
         {card(
           "Counted",
           fmtAmount(goal.unit, done),
@@ -1589,7 +1596,9 @@ export function PersonGoalPanel({
               style={{
                 width: `${target > 0 ? Math.min(100 - Math.min(100, (verified / target) * 100), (waiting / target) * 100) : 0}%`,
                 ["--fill" as string]:
-                  sentBackMine > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported,
+                  sentBackMine > 0
+                    ? GOAL_PROGRESS_COLOR.sent_back
+                    : GOAL_PROGRESS_COLOR.reported,
               }}
             />
           </span>
@@ -1993,7 +2002,9 @@ export function MiniBar({
   const pct = Math.min(100, pctMet(actual, target));
   const claimedPct = Math.min(100, pctMet(all, target));
   const unverifiedColor =
-    sentBack > 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.reported;
+    sentBack > 0
+      ? GOAL_PROGRESS_COLOR.sent_back
+      : GOAL_PROGRESS_COLOR.reported;
   return (
     <span className="flex items-center gap-2">
       <span

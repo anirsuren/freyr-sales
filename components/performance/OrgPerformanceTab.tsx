@@ -49,6 +49,7 @@ import {
   verifiedValue,
   goalFamilyActuals,
   ENTRY_COLOR,
+  GOAL_PROGRESS_COLOR,
   canVerifyEntry,
   fmtAmount,
   headedGroups,
@@ -2241,11 +2242,11 @@ function GoalRows({
                                           width: `${a.target > 0 ? Math.max(0, Math.min(100, share) - Math.min(100, pctMet(aVerified, a.target))) : 0}%`,
                                           ["--fill" as string]:
                                             aSentBack > 0
-                                              ? ENTRY_COLOR.sent_back
-                                              : ENTRY_COLOR.reported,
+                                              ? GOAL_PROGRESS_COLOR.sent_back
+                                              : GOAL_PROGRESS_COLOR.reported,
                                           ["--bar-glow" as string]: aSentBack > 0
-                                              ? ENTRY_COLOR.sent_back
-                                              : ENTRY_COLOR.reported,
+                                              ? GOAL_PROGRESS_COLOR.sent_back
+                                              : GOAL_PROGRESS_COLOR.reported,
                                         }}
                                       />
                                     </span>
@@ -2258,10 +2259,10 @@ function GoalRows({
                                         left: `clamp(6px, ${share}%, calc(100% - 6px))`,
                                         background:
                                           aSentBack > 0
-                                            ? ENTRY_COLOR.sent_back
+                                            ? GOAL_PROGRESS_COLOR.sent_back
                                             : aVerified >= aActual
-                                              ? ENTRY_COLOR.verified
-                                              : ENTRY_COLOR.reported,
+                                              ? GOAL_PROGRESS_COLOR.verified
+                                              : GOAL_PROGRESS_COLOR.reported,
                                       }}
                                     />
                                   </span>
