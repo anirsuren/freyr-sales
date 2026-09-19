@@ -1137,3 +1137,6 @@ Logged-result customer hovers separate the account name from its relationship no
 
 ### Sep 19: solutioning request forms have an obvious way back
 After choosing Submission, Presentation, or Meeting from All Solutioning Requests, the request form shows a back arrow beside its title. It returns to the type picker without clearing anything already entered, so choosing the wrong request type is easy to undo. Completed locally, not deployed.
+
+### Sep 19: solutioning people filters show profile pictures
+The BD member and Prepared by filter options use the same profile pictures as the request table. People remain recognizable while filtering instead of appearing as an undifferentiated text list. Completed locally, not deployed.

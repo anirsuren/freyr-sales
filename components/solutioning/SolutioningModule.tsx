@@ -579,8 +579,8 @@ export function SolutioningModule({
                 </div>
               ),
             },
-            {key:"requester",label:"BD member",values:requestedByPick,onChange:setRequestedByPick,options:[...new Set(state.requests.map(r => r.requestedBy))].map(value => ({value,label:value}))},
-            {key:"assignee",label:"Prepared by",values:assigneePick,onChange:setAssigneePick,options:members.map(value => ({value,label:value}))},
+            {key:"requester",label:"BD member",values:requestedByPick,onChange:setRequestedByPick,options:[...new Set(state.requests.map(r => r.requestedBy))].map(value => ({value,label:value,avatarName:value}))},
+            {key:"assignee",label:"Prepared by",values:assigneePick,onChange:setAssigneePick,options:members.map(value => ({value,label:value,avatarName:value}))},
             {key:"opportunity",label:"Opportunity",values:opportunityPick,onChange:setOpportunityPick,options:opportunities.map(o => ({value:o.id,label:o.label}))},
             {
               key: "status",
