@@ -1101,6 +1101,8 @@ The Solutioning overview rail now keeps the Owner and Where it stands cards at t
 
 The Solutioning activity Timeline now ends immediately after its final visible event on short histories instead of stretching to fill the overview rail. Longer histories are capped to a compact window and scroll inside the card, preserving access without leaving a large empty panel. Completed locally, not deployed.
 
+Expanded Solutioning previews now place the document count directly in the section label, for example “Documents (2),” instead of separating the number at the far edge of the panel. Completed locally, not deployed.
+
 Request details label the linked context explicitly. “What this is for” uses one restrained panel with Customer, Opportunities, and Contacts columns, preserving the existing links and showing “None linked” where a relationship is absent. Completed locally, not deployed.
 
 ### Sep 17: customer band tabs omit redundant actions

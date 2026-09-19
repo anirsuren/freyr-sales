@@ -1400,9 +1400,10 @@ function RequestPanel({
         </div>
 
         <section className="mt-3 min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Documents</span>
-            <span className="text-[11px] text-text-tertiary">{documents.length}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+              Documents ({documents.length})
+            </span>
           </div>
           {documents.length === 0 ? (
             <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-border-light px-3 py-2.5 text-[12px] text-text-tertiary">
