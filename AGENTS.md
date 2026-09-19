@@ -1151,3 +1151,5 @@ Customer Lead bands use person avatars for the lead and the same semantic Source
 The expanded Account pipeline momentum view explains the movement instead of stretching a sparse step line across a large dialog. It leads with current open value, the 12-week change, and the latest change date, then shows a compact before/after story beside the live opportunities responsible for the value. Single-opportunity accounts no longer open into a mostly empty chart or a meaningless one-series visibility control. Completed locally, not deployed.
 
 Customer activity charts use whole-number count scales, including the singular “1 touch.” Every area-chart gradient has a unique SVG id, so adjacent charts cannot borrow one another's fill color; Activity uses blue in both its card and expanded view. Completed locally, not deployed.
+
+Pipeline ownership scope lives in Views. The duplicate Team / My deals toggle was removed from the right side of the toolbar; All deals and My deals remain available as built-in views, saved views still preserve their ownership scope, and the Views trigger names the active matching view. Completed locally, not deployed.

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight,
   Flame,
   Plus,
   CheckSquare,
@@ -11,7 +10,6 @@ import {
   X,
   ChevronDown,
   SlidersHorizontal,
-  Sparkles,
   Layers,
   UserRound,
   Bookmark,
@@ -147,6 +145,13 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
   const [viewsOpen, setViewsOpen] = useState(false);
   const [showSaveView, setShowSaveView] = useState(false);
   const [viewName, setViewName] = useState("");
+  const activeViewName = useMemo(() => {
+    const sameSize = (left: string[], right: string[]) =>
+      left.length === right.length && left.every((value) => right.includes(value));
+    return [...BUILTIN_VIEWS, ...savedViews].find(
+      (view) => view.q === q && view.mine === mine && sameSize(view.size, size)
+    )?.name;
+  }, [mine, q, savedViews, size]);
 
   // Click-away for the Views menu, done the way ColorSelect does it: a document
   // listener on a ref, not a `fixed inset-0` scrim. The scrim had to go — the
@@ -474,7 +479,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
             className={cn(controlCls, viewsOpen && "border-blue-primary text-text-primary")}
           >
             <SlidersHorizontal size={15} strokeWidth={1.8} className="text-blue-primary" />
-            Views
+            {activeViewName || "Views"}
             <ChevronDown
               size={14}
               strokeWidth={2}
@@ -570,8 +575,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
           inputClassName="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary outline-none transition-[border-color,box-shadow] hover:border-blue-subtle focus:border-blue-primary focus:shadow-focus"
         />
         {/* Company size is one dropdown, not four chips. Four always-on buttons
-            ate most of the toolbar, squeezed the search box and pushed the
-            Team/My-deals control into wrapping onto two lines (Anir, Jul 26:
+            ate most of the toolbar and squeezed the search box (Anir, Jul 26:
             "choosing by company size should be in a dropdown, just like for
             views, because it's just taking up a lot of space"). Each option
             keeps its size colour + glyph and its live count. */}
@@ -616,33 +620,6 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
               {formatMoney(openValue)}
             </span>
           </span>
-          <div
-            role="group"
-            aria-label="Deal ownership"
-            className="h-10 inline-flex items-center gap-1 rounded-lg border border-border-light bg-white p-1"
-          >
-            {[
-              { k: false, l: "Team" },
-              { k: true, l: "My deals" },
-            ].map((o) => (
-              <button
-                key={o.l}
-                onClick={() => {
-                  keepScroll();
-                  setMine(o.k);
-                }}
-                aria-pressed={mine === o.k}
-                className={cn(
-                  "h-8 px-3 rounded-md text-[12.5px] font-semibold transition-colors",
-                  mine === o.k
-                    ? "bg-blue-light text-blue-primary"
-                    : "text-text-secondary hover:text-text-primary hover:bg-surface"
-                )}
-              >
-                {o.l}
-              </button>
-            ))}
-          </div>
           <PriorityTooltip label={selectMode ? "Done selecting" : "Select deals"}>
             <button
               onClick={() => {
@@ -1164,8 +1141,8 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
       {/* Save view modal (#4) */}
       <Modal open={showSaveView} onClose={() => setShowSaveView(false)} title="Save view">
         <p className="text-[13px] text-text-secondary mb-3">
-          Saves the current search, size filter, and Team / My-deals toggle as a
-          reusable view.
+          Saves the current search, size filter, and ownership scope as a reusable
+          view.
         </p>
         <input
           autoFocus
