@@ -1735,6 +1735,7 @@ export function AccrualPlanDialog({
           value={editing.opportunityId}
           ariaLabel="Which deal are you planning"
           collapsible={false}
+          compactTrigger
           /* One line per deal (Anir, Aug 28). The menu runs the full
              width of its field, so stacking the name over its customer
              and value wasted that room and showed four deals where it

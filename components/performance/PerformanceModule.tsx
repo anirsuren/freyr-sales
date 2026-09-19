@@ -4465,6 +4465,7 @@ function SubgoalEditorFields({
                 value=""
                 ariaLabel="Add a group to this subgoal"
                 collapsible={false}
+                compactTrigger
                 className="w-full"
                 onChange={(groupId) => {
                   if (!groupId) return;
@@ -5315,6 +5316,7 @@ function LogActualModal({
               value={link}
               onChange={pickLink}
               ariaLabel="Opportunity"
+              compactTrigger
               minWidth={430}
               options={[
                 { value: "", label: "Not linked to a deal", color: "#8E98A8" },

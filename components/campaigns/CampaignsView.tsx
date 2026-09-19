@@ -565,6 +565,7 @@ export function CampaignsView({
                       value={objective}
                       ariaLabel="Campaign objective"
                       className="w-full"
+                      compactTrigger
                       onChange={(v) => setObjective(v as CampaignObjective)}
                       options={OBJECTIVES.map<ColorOption>((item) => ({
                         value: item.value,

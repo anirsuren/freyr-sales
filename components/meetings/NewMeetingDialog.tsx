@@ -478,6 +478,7 @@ export function NewMeetingDialog({
               value={customerId}
               ariaLabel="Customer"
               collapsible={false}
+              compactTrigger
               dense
               searchable
               inlineDescription

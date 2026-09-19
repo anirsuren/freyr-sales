@@ -1171,3 +1171,5 @@ Required fields and required grouped sections display a red star everywhere they
 Exact money fields accept `K`, `M`, or `B` as typing shortcuts, then immediately replace the shortcut with the full comma-separated number (`337M` becomes `337,000,000`). Stored or pasted symbols and currency codes are normalized too. Descriptive text such as a customer-type range (“Under $500M”) stays free-form. Completed locally, not deployed.
 
 Performance chart popups summarize repeated dated results by contributor and source. They show the eight largest contributors plus one combined remainder row; the full audit history stays in the goal drawer instead of dumping 80–130 records into a hover card. Completed locally, not deployed.
+
+Dropdown triggers that share a form row or field grid stay one line and 40px tall, even when their menus include richer descriptions. The extra description belongs in the opened menu; it must not make one closed selector taller or move its chevron inward relative to adjacent fields. Applied to performance results, customer ownership, meetings, solutioning, contracts, campaigns, and accruals. Completed locally, not deployed.

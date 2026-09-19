@@ -2368,6 +2368,7 @@ export function NewRequestDialog({
                     setCustomerId(nextCustomerId);
                   }}
                   ariaLabel="Customer"
+                  compactTrigger
                   minWidth={220}
                   searchable
                   inlineDescription

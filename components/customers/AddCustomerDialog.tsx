@@ -384,6 +384,7 @@ export function AddCustomerDialog({
               ariaLabel="Owner"
               className="w-full"
               collapsible={false}
+              compactTrigger
               fill
               searchable
               onChange={setOwner}

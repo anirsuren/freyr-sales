@@ -586,6 +586,7 @@ function DeviationsTable({
             value={opportunityId}
             onChange={onOpportunityId}
             ariaLabel="Filter by opportunity"
+            compactTrigger
             minWidth={250}
             searchable
             inlineDescription

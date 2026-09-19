@@ -180,3 +180,5 @@ Exact money fields accept `K`, `M`, or `B` as typing shortcuts, then immediately
 
 Performance chart popups summarize repeated dated results by contributor and source. They show the eight largest contributors plus one combined remainder row; the full audit history stays in the goal drawer instead of dumping 80–130 records into a hover card. Completed locally, not deployed.
 Every graph popup must keep a short bridge only while the cursor moves from the chart mark into the popup. Entering the popup cancels the bridge; leaving the popup itself closes it immediately. Apply this through the shared chart tooltip and HoverCard layers so compact and expanded graphs behave consistently.
+
+Keep dropdown triggers in form rows and field grids one line and 40px tall. Rich option descriptions stay in the opened menu and must not make the closed trigger taller or inset its chevron relative to neighboring fields.

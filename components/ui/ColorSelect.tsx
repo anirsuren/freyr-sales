@@ -709,7 +709,7 @@ export function ColorSelect({
             )}
           </PriorityLabel>
           {selected?.badge && (
-            <PriorityLabel collapsed={compact} gap={detailed ? false : "ml-2"} className="shrink-0">
+            <PriorityLabel collapsed={compact} gap={showDetailedTrigger ? false : "ml-2"} className="shrink-0">
               <span
                 className="semantic-color-pill block rounded-md px-2 py-0.5 text-[10px] font-semibold"
                 style={
@@ -725,8 +725,8 @@ export function ColorSelect({
               </span>
             </PriorityLabel>
           )}
-          <PriorityLabel collapsed={compact} gap={detailed ? false : dense ? "ml-1.5" : "ml-2"} className="shrink-0">
-            <span className={cn("flex items-center justify-center", detailed && "w-7 h-7 rounded-md bg-surface")}>
+          <PriorityLabel collapsed={compact} gap={showDetailedTrigger ? false : dense ? "ml-1.5" : "ml-2"} className="shrink-0">
+            <span className={cn("flex items-center justify-center", showDetailedTrigger && "w-7 h-7 rounded-md bg-surface")}>
               <ChevronDown
                 size={dense ? 13 : 15}
                 strokeWidth={2}

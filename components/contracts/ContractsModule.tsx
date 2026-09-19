@@ -1461,6 +1461,7 @@ export function ContractsModule({
                 ariaLabel="Opportunity"
                 className="w-full"
                 collapsible={false}
+                compactTrigger
                 dense
                 searchable
                 onChange={(v) => {
