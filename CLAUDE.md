@@ -191,4 +191,6 @@ Goal progress rails stay green throughout the Goals module: verified portions ar
 
 When one goal bar contains multiple workflow statuses, render each status as its own proportional segment and keep the visible stack consistent with the tooltip total. Waiting-for-verification is striped green and sent-back is striped red.
 
+Verification pills keep the same resting label, icon, dimensions, border, and state color across goal, group, person, and detail views. Click permission may reveal an action on hover, but must not create a second visual style for the same verification state. Detail progress rails follow the same green/red status segmentation as summary rails.
+
 Require customer HQ line 1, city, and country in both create and edit flows, with a visible required star, blocked form actions, and matching API validation. Do not invent an address for incomplete legacy or mock customers.

@@ -2533,10 +2533,25 @@ function GoalRows({
                            Anir asked to collapse into a single lane. */
                         <div className="mt-2.5 space-y-2">
                           {s.people.map((p) => {
+                            const pActuals = actuals.filter(
+                              (entry) => entry.subgoalId === s.id
+                            );
                             const pActual = actualValue(actuals, goal, {
                               subgoalId: s.id,
                               person: p.name,
                             });
+                            const pVerified = familyValue({ actuals: pActuals }, goal, {
+                              person: p.name,
+                              verifiedOnly: true,
+                            });
+                            const pSentBack = familyValue({ actuals: pActuals }, goal, {
+                              person: p.name,
+                              sentBackOnly: true,
+                            });
+                            const pWaiting = Math.max(
+                              0,
+                              pActual - pVerified - pSentBack
+                            );
                             const pShare =
                               p.target > 0
                                 ? Math.min(100, pctMet(pActual, p.target))
@@ -2591,15 +2606,44 @@ function GoalRows({
                                   {pShare !== null ? (
                                     <>
                                       <span className="relative mt-1.5 block h-3">
-                                        <span className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+                                        <span className="absolute inset-x-0 top-1/2 flex h-2 -translate-y-1/2 overflow-hidden rounded-full bg-[color:var(--border-light)]">
                                           <span
-                                            className="block h-full rounded-full bg-blue-primary opacity-[0.55] transition-[width] duration-300"
-                                            style={{ width: `${pShare}%` }}
+                                            className="block h-full transition-[width] duration-300"
+                                            style={{
+                                              width: `${p.target > 0 ? Math.min(100, pctMet(pVerified, p.target)) : 0}%`,
+                                              background: GOAL_PROGRESS_COLOR.verified,
+                                            }}
                                           />
+                                          {pWaiting > 0 && (
+                                            <span
+                                              className="unverified-fill block h-full transition-[width] duration-300"
+                                              style={{
+                                                width: `${p.target > 0 ? Math.min(100, pctMet(pWaiting, p.target)) : 0}%`,
+                                                ["--fill" as string]: GOAL_PROGRESS_COLOR.reported,
+                                              }}
+                                            />
+                                          )}
+                                          {pSentBack > 0 && (
+                                            <span
+                                              className="unverified-fill block h-full transition-[width] duration-300"
+                                              style={{
+                                                width: `${p.target > 0 ? Math.min(100, pctMet(pSentBack, p.target)) : 0}%`,
+                                                ["--fill" as string]: GOAL_PROGRESS_COLOR.sent_back,
+                                              }}
+                                            />
+                                          )}
                                         </span>
                                         <span
-                                          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-primary shadow-[0_1px_3px_rgba(0,0,0,0.22)] transition-[left] duration-300"
-                                          style={{ left: `clamp(6px, ${pShare}%, calc(100% - 6px))` }}
+                                          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_1px_3px_rgba(0,0,0,0.22)] transition-[left] duration-300"
+                                          style={{
+                                            left: `clamp(6px, ${pShare}%, calc(100% - 6px))`,
+                                            background:
+                                              pSentBack > 0
+                                                ? GOAL_PROGRESS_COLOR.sent_back
+                                                : pWaiting > 0
+                                                  ? GOAL_PROGRESS_COLOR.reported
+                                                  : GOAL_PROGRESS_COLOR.verified,
+                                          }}
                                         />
                                       </span>
                                       <span className="mt-1 flex items-baseline justify-between text-[10.5px] text-text-tertiary tnum">

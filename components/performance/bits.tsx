@@ -526,6 +526,19 @@ export function VerifiedPill({
   size?: "sm" | "md";
 }) {
   const Icon = verified ? ShieldCheck : ShieldQuestion;
+  /* A verification state must not change its appearance according to whether
+     the current viewer is allowed to click it. That permission difference
+     made one "Verified" pill filled and the next one outlined in the same
+     people list. Keep the resting state identical; interaction is revealed by
+     the hover label and cursor only. */
+  const stateClass = verified
+    ? "border-[rgba(22,163,74,0.35)] text-[#16A34A]"
+    : "border-[rgba(0,113,227,0.35)] text-[var(--ink-blue-soft)]";
+  const pillClass = cn(
+    "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-white font-bold leading-none shadow-sm",
+    size === "sm" ? "px-2 py-1 text-[10px]" : "px-2.5 py-1 text-[10.5px]",
+    stateClass
+  );
   if (!onToggle && nothingToVerify && !verified) {
     return (
       <span
@@ -544,19 +557,9 @@ export function VerifiedPill({
   if (!onToggle) {
     return (
       <span
-        className={cn(
-          // whitespace-nowrap: "Not verified" is two words and the Verified
-          // column is narrow, so it broke across two lines inside the pill and
-          // made that one row taller than every other (Anir, Aug 14, with a
-          // screenshot). The label is short; it should never wrap.
-          "inline-flex items-center gap-1 whitespace-nowrap rounded-full font-bold",
-          size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[10.5px]"
-        )}
-        style={
-          verified
-            ? { color: "#16A34A", background: "rgba(22,163,74,0.10)" }
-            : { color: "var(--ink-blue-soft)", background: "rgba(0,113,227,0.10)" }
-        }
+        // "Not verified" stays on one line, and this read-only state uses the
+        // exact same dimensions and treatment as the interactive version.
+        className={pillClass}
       >
         <Icon size={size === "sm" ? 10 : 11} strokeWidth={2.4} />
         {verified ? "Verified" : "Not verified"}
@@ -592,14 +595,14 @@ export function VerifiedPill({
           : "Click when leadership has checked this number"
       }
       className={cn(
-        "group/vp inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border bg-white font-bold shadow-sm transition-all hover:-translate-y-px hover:shadow active:translate-y-0 active:shadow-none",
+        pillClass,
+        "group/vp cursor-pointer transition-all hover:-translate-y-px hover:shadow active:translate-y-0 active:shadow-none",
         verified
-          ? "border-[rgba(22,163,74,0.35)] text-[#16A34A] hover:border-[rgba(220,38,38,0.45)] hover:bg-[rgba(220,38,38,0.08)] hover:text-[#DC2626]"
+          ? "hover:border-[rgba(220,38,38,0.45)] hover:bg-[rgba(220,38,38,0.08)] hover:text-[#DC2626]"
           // Fills light blue under the cursor rather than only swapping its
           // words (Anir, Aug 19: "should be light filled in blue when I hover
           // over it").
-          : "border-[rgba(0,113,227,0.35)] text-[var(--ink-blue-soft)] hover:border-blue-primary hover:bg-blue-light",
-        size === "sm" ? "px-2 py-1 text-[10px]" : "px-2.5 py-1 text-[10.5px]"
+          : "hover:border-blue-primary hover:bg-blue-light"
       )}
     >
       <span className="grid shrink-0 place-items-center">

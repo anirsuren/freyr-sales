@@ -1182,4 +1182,6 @@ Goal progress rails use green for achieved work across the entire Goals module. 
 
 Mixed-status goal bars preserve each status as its own proportional segment. A monthly total containing work waiting for verification and work sent back must show both green-striped and red-striped portions, and those visible portions must add up to the same total shown in the tooltip. Completed locally, not deployed.
 
+Verification pills use one identical resting treatment at the goal, group, person, and expanded-detail levels. Permission to click a pill may change its hover action, but it must not change the state label's size, border, icon, or color. Person-detail progress rails use the same solid-green verified, striped-green waiting, and striped-red sent-back segments as the rest of Goals. Completed locally, not deployed.
+
 Customer HQ address requirements are enforced at both UI and API boundaries for creation and editing. Line 1, city, and country are required; legacy or mock customers without them remain blocked from saving until completed, and the app never invents address data. Completed locally, not deployed.
