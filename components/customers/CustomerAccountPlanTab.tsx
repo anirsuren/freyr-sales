@@ -760,19 +760,31 @@ export function CustomerAccountPlanTab({
                                 <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Strategy</p><p className="mt-1.5 text-[13px] leading-5 text-text-primary">{play.strategy}</p></div>
                               </div>
                               <div className="mt-4 border-t border-border-light pt-4">
-                                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Play progress</p>
-                                  <p className="text-[11px] text-text-secondary"><strong className="tnum text-text-primary">{progress.complete} of 5</strong> essentials in place</p>
+                                <div className="grid gap-4 rounded-xl border border-border-light bg-surface/30 p-3 sm:grid-cols-[76px_minmax(0,1fr)] sm:items-center">
+                                  <div
+                                    className="relative h-[68px] w-[68px] rounded-full"
+                                    style={{ background: `conic-gradient(${BLUE} ${progress.complete * 20}%, #E5E5EA 0)` }}
+                                    role="img"
+                                    aria-label={`${progress.complete} of 5 play requirements complete`}
+                                  >
+                                    <span className="absolute inset-[7px] flex items-center justify-center rounded-full bg-white tnum text-[16px] font-bold text-text-primary">{progress.complete}/5</span>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                                      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Play progress</p>
+                                      <p className="text-[11px] font-semibold text-text-primary">{progress.complete} of 5 complete</p>
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+                                      {progress.items.map((item) => (
+                                        <span key={item.label} className={cn("inline-flex items-center gap-1.5 text-[11px] font-medium", item.complete ? "text-text-primary" : "text-text-tertiary")}>
+                                          {item.complete ? <CheckCircle2 size={13} className="text-blue-primary" /> : <Circle size={13} />}
+                                          {item.label}
+                                        </span>
+                                      ))}
+                                    </div>
+                                    {progress.complete < 5 && <div className="mt-2 rounded-lg bg-blue-light/65 px-3 py-2 text-[11px] text-text-secondary"><span className="font-semibold text-blue-primary">Next:</span> {progress.items.filter((item) => !item.complete).map((item) => item.next).join(" · ")}</div>}
+                                  </div>
                                 </div>
-                                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
-                                  {progress.items.map((item) => (
-                                    <span key={item.label} className={cn("inline-flex items-center gap-1.5 text-[11px] font-medium", item.complete ? "text-text-primary" : "text-text-tertiary")}>
-                                      {item.complete ? <CheckCircle2 size={13} className="text-blue-primary" /> : <Circle size={13} />}
-                                      {item.label}
-                                    </span>
-                                  ))}
-                                </div>
-                                {progress.complete < 5 && <p className="mt-2 text-[11px] text-text-secondary"><span className="font-semibold text-text-primary">Next:</span> {progress.items.filter((item) => !item.complete).map((item) => item.next).join(" · ")}</p>}
                               </div>
                               <div className="mt-4 border-t border-border-light pt-4">
                                 <div className="min-w-0">
