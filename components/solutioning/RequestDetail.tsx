@@ -35,7 +35,11 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/Textarea";
 import { Field, Input } from "@/components/ui/Input";
-import { SmartBack } from "@/components/ui/BackButton";
+import {
+  SmartBack,
+  sectionLabelFor,
+  useBackTrail,
+} from "@/components/ui/BackButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -47,15 +51,10 @@ import { ActionBar, type BarAction } from "@/components/ui/ActionBar";
 import { UploadProgress } from "@/components/ui/UploadProgress";
 import { DocumentPeek } from "@/components/ui/DocumentPeek";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
-import {
-  OverflowMenu,
-  OVERFLOW_ITEM,
-  OVERFLOW_ITEM_DANGER,
-} from "@/components/ui/OverflowMenu";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { useToast } from "@/components/ui/Toast";
-import {cn, formatDate, todayISO} from "@/lib/utils";
+import { cn, todayISO } from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
 import type {
   DocCategory,
@@ -251,6 +250,8 @@ export function RequestDetail({
   }[];
 }) {
   const router = useRouter();
+  const backTrail = useBackTrail();
+  const originSection = backTrail ? sectionLabelFor(backTrail) : null;
   const { toast } = useToast();
   const [r, setR] = useState(initial);
   const [tab, setTab] = useState<"overview" | DocCategory>("overview");
@@ -504,11 +505,13 @@ export function RequestDetail({
         className="mb-4 inline-flex cursor-pointer items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary"
       >
         <ArrowLeft size={15} strokeWidth={1.8} />{" "}
-        {r.type === "submission"
-          ? "All submissions"
-          : r.type === "presentation"
-            ? "All presentations"
-            : "All requests"}
+        {originSection
+          ? `Back to ${originSection}`
+          : r.type === "submission"
+            ? "All submissions"
+            : r.type === "presentation"
+              ? "All presentations"
+              : "All requests"}
       </SmartBack>
 
       {/* ------------- header: identity left, primary actions right --------- */}

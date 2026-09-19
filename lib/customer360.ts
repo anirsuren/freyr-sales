@@ -204,7 +204,11 @@ export async function buildCustomer360(
               asked: r.requestedAt ? formatDate(r.requestedAt) : "",
             },
             when: r.meetingAt || r.requestedAt,
-            href: `/solutioning?open=${encodeURIComponent(r.id)}`,
+            // A row is one specific request, so open that request's real
+            // detail route. The retired `?open=` list convention was ignored
+            // by the Solutioning page and dumped the reader into all 443
+            // requests instead.
+            href: `/solutioning/${encodeURIComponent(r.id)}`,
           })),
       });
     }

@@ -272,7 +272,9 @@ export async function buildPerson360(
               .filter(Boolean)
               .join(" · "),
             when: r.meetingAt || r.requestedAt,
-            href: `/solutioning?open=${encodeURIComponent(r.id)}`,
+            // Relationship pages must deep-link to the record they name. The
+            // old list-page `?open=` parameter is no longer a supported route.
+            href: `/solutioning/${encodeURIComponent(r.id)}`,
           })),
       });
     }

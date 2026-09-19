@@ -1153,3 +1153,5 @@ The expanded Account pipeline momentum view explains the movement instead of str
 Customer activity charts use whole-number count scales, including the singular “1 touch.” Every area-chart gradient has a unique SVG id, so adjacent charts cannot borrow one another's fill color; Activity uses blue in both its card and expanded view. Completed locally, not deployed.
 
 Pipeline ownership scope lives in Views. The duplicate Team / My deals toggle was removed from the right side of the toolbar; All deals and My deals remain available as built-in views, saved views still preserve their ownership scope, and the Views trigger names the active matching view. Completed locally, not deployed.
+
+Solutioning-request rows on customer and person relationship pages open the named request's detail route instead of sending the reader to the unfiltered All Solutioning Requests list with an ignored `?open=` parameter. The detail page's SmartBack arrow returns through the app's navigation trail and names the originating section, so cross-module record links can return to the exact page they came from. Completed locally, not deployed.
