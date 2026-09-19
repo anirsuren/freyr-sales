@@ -3960,9 +3960,7 @@ function GoalEditorFields({
                         title="Remove this milestone?"
                         body="It comes off the goal's schedule."
                         detail="Nothing changes until you save the schedule."
-                        /* Red is for what cannot be taken back. This only edits
-                           the unsaved form, so it wears the ordinary blue. */
-                        tone="primary"
+                        tone="destructive"
                         confirmLabel="Remove it"
                       />
                       {faulted && (
