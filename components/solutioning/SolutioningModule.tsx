@@ -3,7 +3,7 @@
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import { UploadProgress } from "@/components/ui/UploadProgress";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { withCommas } from "@/lib/currency";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import Link from "next/link";
@@ -80,6 +80,7 @@ type OpportunityOption = {
 };
 
 const KIND_ORDER: SolutioningKind[] = ["submission", "presentation", "meeting"];
+const REQUEST_ROW_BATCH = 80;
 
 /** What each room is, in the words that belong on its own page. */
 const ROOM_META: Record<
@@ -317,6 +318,42 @@ export function SolutioningModule({
       return a.requestedAt < b.requestedAt ? 1 : -1;
     });
   }, [state.requests, query, kinds, statuses, owners, assignment, customerPick, sort, room, requestedByPick, assigneePick, opportunityPick, dueFrom, dueTo, groupLabel, limitToOwn, meName]);
+
+  /* DO NOT MOUNT 443 FULL TABLE ROWS BEFORE SOMEBODY SCROLLS TO THEM.
+   *
+   * Each request row contains linked people, account marks, status pills and
+   * controls. Mounting the whole mock workspace produced more than 15,000 DOM
+   * nodes and made an ordinary trackpad gesture repaint work that was dozens of
+   * screens away. Keep a generous runway, then append the next batch before the
+   * reader reaches it. This preserves one continuous list and every matching
+   * result while making the first and most common part of the list inexpensive. */
+  const [renderLimit, setRenderLimit] = useState(REQUEST_ROW_BATCH);
+  const loadMoreRef = useRef<HTMLTableRowElement>(null);
+  const renderedRows = useMemo(
+    () => shown.slice(0, renderLimit),
+    [shown, renderLimit]
+  );
+
+  useEffect(() => {
+    setRenderLimit(REQUEST_ROW_BATCH);
+  }, [shown]);
+
+  useEffect(() => {
+    const marker = loadMoreRef.current;
+    if (!marker || renderLimit >= shown.length) return;
+    const page = document.getElementById("main-content");
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setRenderLimit((current) =>
+          Math.min(current + REQUEST_ROW_BATCH, shown.length)
+        );
+      },
+      { root: page, rootMargin: "1200px 0px", threshold: 0 }
+    );
+    observer.observe(marker);
+    return () => observer.disconnect();
+  }, [renderLimit, shown.length]);
 
   /** What the split is standing on. Null means the first row on screen, so
    *  the right pane is never empty while the left has something in it — and a
@@ -843,7 +880,7 @@ export function SolutioningModule({
                 </tr>
               </thead>
               <tbody>
-                {shown.map((r, index) => (
+                {renderedRows.map((r, index) => (
                   <Fragment key={r.id}>
                   {groupBy !== "none" && (index === 0 || groupLabel(shown[index - 1]) !== groupLabel(r)) && <tr className="bg-surface"><td colSpan={14} className="px-4 py-2 text-sm font-semibold">{groupLabel(r)}</td></tr>}
                   <RequestRow
@@ -877,6 +914,11 @@ export function SolutioningModule({
                   />
                   </Fragment>
                 ))}
+                {renderLimit < shown.length && (
+                  <tr ref={loadMoreRef} aria-hidden="true">
+                    <td colSpan={14} className="h-px p-0" />
+                  </tr>
+                )}
               </tbody>
             </table>
           </PinnableTable>

@@ -238,10 +238,10 @@ export function PinnableTable({
     if (!scroller) return;
     const page =
       (document.getElementById("main-content") as HTMLElement | null) || null;
+    const table = scroller.querySelector("table");
+    const head = table?.querySelector("thead");
 
     const measure = () => {
-      const table = scroller.querySelector("table");
-      const head = table?.querySelector("thead");
       if (!table || !head) {
         setFloating(null);
         return;
@@ -280,18 +280,29 @@ export function PinnableTable({
     };
 
     measure();
-    const onScroll = () => measure();
-    page?.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("scroll", onScroll, true);
-    window.addEventListener("resize", measure);
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    const observer = new ResizeObserver(measure);
+    /* ONE MEASUREMENT PER PAINT, EVEN ON A LONG TABLE.
+     *
+     * A scroll inside #main-content is also seen by the window's capture-phase
+     * listener. Listening to the page, the table scroller, and window therefore
+     * measured the same 443-row table two or three times for one wheel tick.
+     * Track the event once at the top and coalesce trackpad bursts into the next
+     * animation frame so header pinning never competes with the scroll itself. */
+    let frame: number | null = null;
+    const scheduleMeasure = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        measure();
+      });
+    };
+    window.addEventListener("scroll", scheduleMeasure, { capture: true, passive: true });
+    window.addEventListener("resize", scheduleMeasure);
+    const observer = new ResizeObserver(scheduleMeasure);
     observer.observe(scroller);
     return () => {
-      page?.removeEventListener("scroll", onScroll);
-      window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("resize", measure);
-      scroller.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", scheduleMeasure, true);
+      window.removeEventListener("resize", scheduleMeasure);
+      if (frame !== null) window.cancelAnimationFrame(frame);
       observer.disconnect();
     };
   }, [pinned]);
@@ -378,16 +389,25 @@ export function PinnableTable({
     };
 
     measure();
-    const page = document.getElementById("main-content");
-    page?.addEventListener("scroll", measure, { passive: true });
-    window.addEventListener("scroll", measure, true);
-    window.addEventListener("resize", measure);
-    const observer = new ResizeObserver(measure);
+    // The capture listener sees the page's nested scroll container too. A
+    // requestAnimationFrame gate keeps the proxy rail from forcing layout more
+    // than once per painted frame during a trackpad gesture.
+    let frame: number | null = null;
+    const scheduleMeasure = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        measure();
+      });
+    };
+    window.addEventListener("scroll", scheduleMeasure, { capture: true, passive: true });
+    window.addEventListener("resize", scheduleMeasure);
+    const observer = new ResizeObserver(scheduleMeasure);
     observer.observe(scroller);
     return () => {
-      page?.removeEventListener("scroll", measure);
-      window.removeEventListener("scroll", measure, true);
-      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", scheduleMeasure, true);
+      window.removeEventListener("resize", scheduleMeasure);
+      if (frame !== null) window.cancelAnimationFrame(frame);
       observer.disconnect();
     };
   }, []);

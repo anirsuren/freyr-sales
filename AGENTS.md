@@ -1103,6 +1103,8 @@ The Solutioning activity Timeline now ends immediately after its final visible e
 
 Expanded Solutioning previews now place the document count directly in the section label, for example “Documents (2),” instead of separating the number at the far edge of the panel. Completed locally, not deployed.
 
+Long pinned tables now coalesce scroll measurements into one animation frame and listen through one capture path. The Solutioning request list also mounts its 443 detailed rows in generous batches as the reader approaches them instead of creating more than 15,000 elements up front. Scrolling stays continuous, and the floating header and bottom horizontal rail keep their existing behavior. Completed locally, not deployed.
+
 Request details label the linked context explicitly. “What this is for” uses one restrained panel with Customer, Opportunities, and Contacts columns, preserving the existing links and showing “None linked” where a relationship is absent. Completed locally, not deployed.
 
 ### Sep 17: customer band tabs omit redundant actions
