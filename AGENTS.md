@@ -1113,3 +1113,5 @@ The milestone-removal confirmation uses the app's red warning icon and red prima
 
 ### Sep 19: logged-result rows use clean table dividers
 Collapsed Logged results rows are separated by one subtle border. Hidden expansion panels no longer retain surface-colored padding that appeared as thick gray bands between every row. Completed locally, not deployed.
+
+Logged-result customer hovers separate the account name from its relationship note, show both in full in a wider preview, and never truncate the text into an unusable fragment. Expanded result details fill the table width while the spanning cell continues to constrain the table itself. Completed locally, not deployed.

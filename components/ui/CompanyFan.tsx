@@ -66,19 +66,19 @@ export function CompanyFan({
         >
           <HoverCard
             side="bottom"
-            width={260}
+            width={340}
             // A quarter second, like the chart hints — a full second on a
             // 28px mark feels broken (Anir, Aug 15: "why the fuck is it taking
             // 10 seconds… it should be 0.25 seconds").
             delayMs={0}
             content={
-              <div className="flex items-center gap-2.5">
-                <CompanyLogo name={c.name} className="h-9 w-9 text-[11px]" />
+              <div className="flex items-start gap-3">
+                <CompanyLogo name={c.name} className="h-10 w-10 shrink-0 text-[11px]" />
                 <span className="min-w-0">
-                  <span className="block truncate text-[13.5px] font-semibold text-text-primary">
+                  <span className="block break-words text-[14px] font-semibold leading-snug text-text-primary">
                     {c.name}
                   </span>
-                  <span className="block truncate text-[11.5px] text-text-tertiary">
+                  <span className="mt-1 block break-words text-[12px] leading-snug text-text-secondary">
                     {c.context ?? "Customer"}
                   </span>
                 </span>

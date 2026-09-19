@@ -113,12 +113,18 @@ function CustomerCell({
   return (
     <CompanyFan
       logoClassName={logoClassName}
-      companies={names.map((n, i) => ({
-        name: n,
-        // The id only ever belongs to the account that was picked, which is
-        // the first one named; the rest are free text.
-        id: i === 0 ? customerId : undefined,
-      }))}
+      companies={names.map((raw, i) => {
+        const [name, ...relationship] = raw.split(/\s*·\s*/);
+        return {
+          name: name.trim(),
+          context: relationship.length
+            ? `Customer · ${relationship.join(" · ")}`
+            : "Customer account",
+          // The id only ever belongs to the account that was picked, which is
+          // the first one named; the rest are free text.
+          id: i === 0 ? customerId : undefined,
+        };
+      })}
     />
   );
 }
