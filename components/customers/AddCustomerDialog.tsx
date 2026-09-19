@@ -215,7 +215,7 @@ export function AddCustomerDialog({
     return (
       <fieldset className="rounded-xl border border-border-light p-3.5">
         <legend className="flex items-center gap-1 px-1 text-[12.5px] font-semibold text-text-primary">
-          <MapPin size={13} strokeWidth={2.2} className="text-[color:var(--ink-orange)]" aria-hidden="true" />
+          <MapPin size={13} strokeWidth={2.2} className="text-[color:var(--ink-bright-blue)]" aria-hidden="true" />
           {title}
           {required && (
             <span className="text-[color:#DC2626]" aria-hidden="true">

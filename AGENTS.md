@@ -1161,3 +1161,5 @@ Every graph popup is interactive by default in the shared chart layer, on compac
 Bar charts always reserve a dedicated strip below their axis labels for an overlay scrollbar, including fixed-height charts such as the contract revenue schedule. The deal overview shows the company logo beside Customer and the relevant country or region flag beside every project currency. Completed locally, not deployed.
 
 Sticky save and form-action bars coordinate with the shared Freyr AI launcher. They keep their normal alignment until their rendered bounds reach the launcher, then reserve exactly the launcher corner so the final action stays fully visible; the rule applies to customer and offering editors, opportunity editors, performance edits, roadmap forms, and other sticky action bars. Completed locally, not deployed.
+
+Customer and address lookup locations use the app's blue information treatment. Map pins in company-office results, address suggestions, and add-customer address headings no longer use warning orange for neutral search results. Completed locally, not deployed.

@@ -153,7 +153,7 @@ export function CompanyNameLookup({
             main: result.name,
             detail: result.detail,
             icon: (
-              <Mark color="var(--ink-orange)">
+              <Mark color="var(--ink-bright-blue)">
                 <MapPin size={14} strokeWidth={2.2} />
               </Mark>
             ),
@@ -248,7 +248,7 @@ export function AddressLineLookup({
             main: result.main,
             detail: result.detail,
             icon: (
-              <Mark color="var(--ink-orange)">
+              <Mark color="var(--ink-bright-blue)">
                 <MapPin size={14} strokeWidth={2.2} />
               </Mark>
             ),
