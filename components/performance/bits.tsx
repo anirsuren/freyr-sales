@@ -952,6 +952,40 @@ export function PaceTimeline({
     ? Math.min(100, Math.max(0, (mustBe / target) * 100))
     : 0;
   const ahead = verified + awaiting - mustBe;
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const zeroLabelRef = useRef<HTMLSpanElement>(null);
+  const targetLabelRef = useRef<HTMLSpanElement>(null);
+  const scheduleLabelRef = useRef<HTMLSpanElement>(null);
+  const [raisedEnds, setRaisedEnds] = useState({ left: false, right: false });
+
+  /* Keep endpoint numbers in the lane nearest the track unless the schedule
+   * annotation actually occupies that horizontal space. Measuring the real
+   * rendered labels avoids guessing from percentages or character counts:
+   * long currency values, narrow cards and translated copy all make those
+   * guesses wrong. Only the colliding endpoint moves to the upper lane. */
+  useEffect(() => {
+    const root = timelineRef.current;
+    if (!root || !hasSchedule) {
+      setRaisedEnds({ left: false, right: false });
+      return;
+    }
+    const measure = () => {
+      const schedule = scheduleLabelRef.current?.getBoundingClientRect();
+      const left = zeroLabelRef.current?.getBoundingClientRect();
+      const right = targetLabelRef.current?.getBoundingClientRect();
+      if (!schedule || !left || !right) return;
+      const overlaps = (a: DOMRect) =>
+        a.right + 8 > schedule.left && a.left - 8 < schedule.right;
+      const next = { left: overlaps(left), right: overlaps(right) };
+      setRaisedEnds((current) =>
+        current.left === next.left && current.right === next.right ? current : next
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [compact, hasSchedule, marker, mustBe, target, unit]);
 
   /* THE FDL VERSION TIMELINE, FOR A NUMBER (Anir, Aug 15: "look at what you
    * did on the timeline for the FDL components. It looks a lot better.
@@ -1017,37 +1051,23 @@ export function PaceTimeline({
       {target > 0 ? (
         <>
           <div
+            ref={timelineRef}
             className={compact ? "relative mt-1" : "relative mt-3.5"}
-            /* The schedule label occupies the lower lane immediately above
-               its marker; the endpoints use the upper lane. Without a
-               schedule, the current result uses the upper lane instead. */
-            /* TWO LANES, NOT ONE (Anir, Aug 23: first "the endpoints text, 0
-               and 400, you got to move it up a little bit… make sure it
-               doesn't touch the circle", then — when I lifted them — "bro,
-               what is this, do you even look at what you did", with 4,567 ·
-               100% printed straight through the 450).
-
-               There are two different labels above this track: where you have
-               got to, which rides over the fill and therefore ends up at the
-               right edge on a goal that is met, and the two end markers. I
-               raised the end markers into the first one's lane and made them
-               collide at exactly the moment a goal is finished — the moment
-               anyone most wants to read it.
-
-               So they get a lane each: progress on top, the ends beneath it,
-               the track below that, and every one of them clear of the
-               circles. */
+            /* Two lanes are reserved, but an endpoint only uses the upper one
+               when the measured schedule label would collide with it. Empty
+               space is not a reason to detach 0 or the target from the track. */
             style={{ paddingTop: LANE + 18 }}
           >
             {/* THE ZERO END, SAID ONCE, UP TOP (Anir, Aug 20: "where you say
                 $0, put that $0 on top... you can move it up for sure"). The
                 left end needs no circle and no bottom row of its own. */}
             <span
+              ref={zeroLabelRef}
               className={cn(
                 "absolute left-0 font-semibold text-text-tertiary tnum",
                 compact ? "text-[9.5px]" : "text-[11px]"
               )}
-              style={{ top: hasSchedule ? 0 : LANE - (compact ? 2 : 1) }}
+              style={{ top: raisedEnds.left ? 0 : LANE - (compact ? 2 : 1) }}
             >
               {fmtAmount(unit, 0)}
             </span>
@@ -1057,11 +1077,12 @@ export function PaceTimeline({
                 zero: pinned over the track's right terminus, the circle it
                 labels, instead of leading a sentence that dragged it left. */}
             <span
+              ref={targetLabelRef}
               className={cn(
                 "absolute right-0 font-bold text-text-primary tnum",
                 compact ? "text-[9.5px]" : "text-[11px]"
               )}
-              style={{ top: hasSchedule ? 0 : LANE - (compact ? 2 : 1) }}
+              style={{ top: raisedEnds.right ? 0 : LANE - (compact ? 2 : 1) }}
             >
               {fmtAmount(unit, target)}
             </span>
@@ -1107,6 +1128,7 @@ export function PaceTimeline({
             {/* WHERE THE GOAL'S OWN SCHEDULE SAYS IT SHOULD BE. */}
             {hasSchedule && (
             <span
+              ref={scheduleLabelRef}
               className="absolute flex flex-col items-center"
               style={{ ...labelPos(marker), top: LANE }}
             >

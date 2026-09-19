@@ -184,3 +184,5 @@ Every graph popup must keep a short bridge only while the cursor moves from the 
 Keep dropdown triggers in form rows and field grids one line and 40px tall. Rich option descriptions stay in the opened menu and must not make the closed trigger taller or inset its chevron relative to neighboring fields.
 
 In Org performance assigned-person rows, derive the visible amount, percent, progress bar, and expanded totals from the same full goal-family rollup, including subgoal and component-goal results. Never show a filled progress bar beside a zero label.
+
+Performance pace timelines keep endpoint labels directly above the track and use measured collision detection to lift only an endpoint that overlaps the schedule annotation. Recalculate on resize instead of using fixed percentage guesses or permanently distant label lanes.
