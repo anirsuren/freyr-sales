@@ -340,11 +340,13 @@ function useChartHover() {
     setAnchor(at);
   }
 
-  /** Give the pointer time to cross from the painted mark into its portaled
-   * card. Entering the card cancels this timer, so long breakdowns can be
-   * scrolled instead of vanishing at the chart boundary. */
+  /** Close the card the instant the pointer leaves the painted mark. Chart
+   * popups describe the mark under the cursor; they must never linger over a
+   * different part of the page after that relationship ends. A positive
+   * grace remains available for exceptional callers, but every graph uses the
+   * immediate default. */
   const close = useCallback(
-    (graceMs = 180) => {
+    (graceMs = 0) => {
       keepOpen();
       stopOpening();
       setActive(null);
