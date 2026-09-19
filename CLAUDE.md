@@ -197,6 +197,8 @@ Goal-level verification is green when Verified and red when Not verified across 
 
 Keep a compact search field under the Groups header in the Goals drill-down. Filter the current period's group list by group name or owner, show visible/total while filtering, offer a clear action and empty result, and preserve the existing selection and three-column layout.
 
+Expanded chart dialogs preserve the source chart's exact color and segmentation semantics. Goals progress remains solid green when verified, striped amber while waiting, and striped red when sent back; goal-type colors appear only as identity dots. Do not simplify expanded chart data in a way that drops pending bands, labels, captions, or tooltip details.
+
 Render inline owner identities as crown, profile picture, then name. Keep the profile picture immediately beside the name as part of the person's identity.
 
 Keep a search field directly above the logged-entry list in the goal verification dialog. Search across every visible record detail and report the filtered count without changing the underlying sign-off totals.

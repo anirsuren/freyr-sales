@@ -422,10 +422,23 @@ export type ExpandedBarChart = {
   data: Array<
     VisibilityDatum & {
       value: number;
+      valueLabel?: string;
+      pending?: number;
+      pendingBands?: { value: number; color: string }[];
+      pendingColor?: string;
+      dotColor?: string;
       icon?: string;
       caption?: string;
       tipNote?: string;
       tip?: TipItem[];
+      tipBar?: {
+        bands?: { color: string; label: string; value: string; faded?: boolean }[];
+        done: number;
+        pending?: number;
+        color?: string;
+        pendingColor?: string;
+        caption?: string;
+      };
       logo?: string;
     }
   >;

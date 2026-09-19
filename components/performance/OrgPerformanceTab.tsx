@@ -636,13 +636,93 @@ export function OrgPerformanceTab({
   ).length;
   const verifiedCount = shown.filter((g) => g.verified).length;
   const goalProgressBars = sorted.map((goal) => {
+    const actual = actualValue(state.actuals, goal, { rates: state.rates });
     const verified = verifiedValue(state, goal);
+    const awaiting = Math.max(0, actual - verified);
+    const sentBack = Math.min(
+      awaiting,
+      familyValue(state, goal, { sentBackOnly: true })
+    );
+    const waiting = Math.max(0, awaiting - sentBack);
     return {
       id: goal.id,
-      label: goal.name,
-      value: goal.target > 0 ? pctMet(verified, goal.target) : 0,
-      color: typeMeta(goal.type).color,
-      caption: `${fmtAmount(goal.unit, verified, goal.currency)} of ${fmtAmount(goal.unit, goal.target, goal.currency)}`,
+      label: chartName(goal.name),
+      value: goal.target > 0 ? Math.round(pctMet(actual, goal.target)) : 0,
+      valueLabel:
+        goal.target > 0
+          ? `${Math.min(100, Math.round(pctMet(verified, goal.target)))}% met`
+          : undefined,
+      pending:
+        goal.target > 0 && awaiting > 0
+          ? Math.round(pctMet(awaiting, goal.target))
+          : 0,
+      pendingBands:
+        goal.target > 0
+          ? [
+              ...(sentBack > 0
+                ? [
+                    {
+                      value: Math.round(pctMet(sentBack, goal.target)),
+                      color: GOAL_PROGRESS_COLOR.sent_back,
+                    },
+                  ]
+                : []),
+              ...(waiting > 0
+                ? [
+                    {
+                      value: Math.round(pctMet(waiting, goal.target)),
+                      color: GOAL_PROGRESS_COLOR.reported,
+                    },
+                  ]
+                : []),
+            ]
+          : [],
+      color: MONEY,
+      dotColor: typeMeta(goal.type).color,
+      caption:
+        goal.target > 0
+          ? `${fmtAmount(goal.unit, actual, goal.currency)} of ${fmtAmount(goal.unit, goal.target, goal.currency)}`
+          : actual > 0
+            ? `${fmtAmount(goal.unit, actual, goal.currency)} logged, no target set`
+            : "no target yet",
+      tipBar: {
+        done: goal.target > 0 ? pctMet(verified, goal.target) : 0,
+        pending: goal.target > 0 ? pctMet(awaiting, goal.target) : 0,
+        color: MONEY,
+        pendingColor: GOAL_PROGRESS_COLOR.reported,
+        caption:
+          goal.target > 0
+            ? `${fmtAmount(goal.unit, actual, goal.currency)} of ${fmtAmount(goal.unit, goal.target, goal.currency)}`
+            : actual > 0
+              ? `${fmtAmount(goal.unit, actual, goal.currency)} logged, no target set`
+              : "no target yet",
+        bands: [
+          {
+            color: ENTRY_COLOR.verified,
+            label: "Verified, counts now",
+            value: fmtAmount(goal.unit, verified),
+          },
+          ...(sentBack > 0
+            ? [
+                {
+                  color: ENTRY_COLOR.sent_back,
+                  label: "Sent back, needs a fix",
+                  value: fmtAmount(goal.unit, sentBack),
+                },
+              ]
+            : []),
+          ...(waiting > 0
+            ? [
+                {
+                  color: ENTRY_COLOR.reported,
+                  label: "Claimed, not checked yet",
+                  value: fmtAmount(goal.unit, waiting),
+                },
+              ]
+            : []),
+        ],
+      },
+      tip: contributorTips(state, goal, actual),
     };
   });
   const paceSegments = ([
@@ -969,11 +1049,10 @@ export function OrgPerformanceTab({
                    * agrees with the Actual column, but the part nobody has
                    * checked is drawn hatched instead of filled.
                    *
-                   * The colour is the goal's own type colour, never the pace
-                   * red: this chart is progress, and red on a progress bar
-                   * read as damage ("I have no idea why you are using red...
-                   * this is the progress, right?"). Lagging still shows in the
-                   * row's pace pill and the donut beside this card.
+                   * Green is verified work. The hatched cap preserves the two
+                   * unresolved states: amber is waiting and red is sent back.
+                   * The goal's type colour stays on the label dot, where it
+                   * identifies the goal without changing progress semantics.
                    */
                   const verified = verifiedValue(state, g);
                   const awaiting = Math.max(0, a - verified);
@@ -1022,19 +1101,37 @@ export function OrgPerformanceTab({
                       g.target > 0 && awaiting > 0
                         ? Math.round(pctMet(awaiting, g.target))
                         : 0,
+                    pendingBands:
+                      g.target > 0
+                        ? [
+                            ...(sentBack > 0
+                              ? [
+                                  {
+                                    value: Math.round(pctMet(sentBack, g.target)),
+                                    color: GOAL_PROGRESS_COLOR.sent_back,
+                                  },
+                                ]
+                              : []),
+                            ...(awaiting - sentBack > 0
+                              ? [
+                                  {
+                                    value: Math.round(
+                                      pctMet(awaiting - sentBack, g.target)
+                                    ),
+                                    color: GOAL_PROGRESS_COLOR.reported,
+                                  },
+                                ]
+                              : []),
+                          ]
+                        : [],
                     color: MONEY,
                     // The label dot keeps the goal TYPE's own colour, so green
                     // under the bars means "Financial" again instead of
                     // repeating the verified green of every bar above it.
                     dotColor: typeMeta(g.type).color,
-                    /* And the same red on the bar itself, not just in its
-                       tip (Anir, Aug 20: "the top of the bar should be the
-                       same color not that blue stripe"). */
-                    pendingColor: goalFamilyActuals(state, g).some(
-                      (e) => entryStatus(e) === "sent_back"
-                    )
-                      ? ENTRY_COLOR.sent_back
-                      : undefined,
+                    /* Amber is the safe fallback for unresolved work. Explicit
+                       pending bands above split sent-back work into red. */
+                    pendingColor: GOAL_PROGRESS_COLOR.reported,
                     /* THE AMOUNT, NOT A LEDGER (Anir, Aug 16: "Maybe just see
                        the amount in the bar chart... u dont need to say $0
                        verified"). Splitting it into verified and waiting put
@@ -1062,18 +1159,9 @@ export function OrgPerformanceTab({
                       done: g.target > 0 ? pctMet(verified, g.target) : 0,
                       pending: g.target > 0 ? pctMet(awaiting, g.target) : 0,
                       color: MONEY,
-                      /* THE COLOURS HAVE TO LINE UP (Anir, Aug 20: "if this
-                         was sent back, the colors should line up... it
-                         shouldn't be that blue thing, cuz that means I have to
-                         look at it"). The rows underneath already flagged a
-                         rejected claim in red while the bar above them stayed
-                         a calm blue, so the headline said "on track" about
-                         money somebody had refused. */
-                      pendingColor: goalFamilyActuals(state, g).some(
-                        (e) => entryStatus(e) === "sent_back"
-                      )
-                        ? ENTRY_COLOR.sent_back
-                        : MONEY,
+                      /* Bands below carry the exact status colours. Amber is
+                         the fallback if a caller cannot render the split. */
+                      pendingColor: GOAL_PROGRESS_COLOR.reported,
                       caption:
                         g.target > 0
                           ? `${fmtAmount(g.unit, a)} of ${fmtAmount(g.unit, g.target)}`
