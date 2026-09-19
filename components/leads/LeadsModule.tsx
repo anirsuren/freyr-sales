@@ -4,21 +4,35 @@ import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  BadgeCheck,
+  Ban,
+  CalendarDays,
   CheckCircle2,
   ChevronDown,
+  CircleEllipsis,
   ClipboardList,
+  Globe2,
+  Handshake,
   Mail,
   MapPin,
+  Megaphone,
+  MessageCircle,
   Pencil,
   Clock3,
   Phone,
   RadioTower,
   Plus,
+  SearchCheck,
+  Send,
+  Sparkles,
+  Sprout,
   Download,
   Trash2,
   UserPlus,
+  UserRoundCheck,
   UserRound,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatTile } from "@/components/ui/StatTile";
@@ -53,6 +67,8 @@ import {
   leadSourceColor,
   leadStatusColor,
   type Lead,
+  type LeadSource,
+  type LeadStatus,
   type LeadsState,
 } from "@/lib/leadsShared";
 
@@ -81,6 +97,40 @@ import { LeadJourney } from "@/components/leads/LeadJourney";
 import { repSlug } from "@/lib/team";
 
 type CustomerOption = { id: string; name: string };
+
+/**
+ * A source or status should explain itself before the label is read. Generic
+ * colour dots made Website, Referral, Qualifying and Converted look like the
+ * same kind of choice; these marks carry the channel or workflow meaning while
+ * preserving the app's existing semantic colours.
+ */
+const LEAD_SOURCE_ICONS: Record<LeadSource, LucideIcon> = {
+  Website: Globe2,
+  Conference: CalendarDays,
+  Referral: UserRoundCheck,
+  Campaign: Megaphone,
+  "Inbound email": Mail,
+  Partner: Handshake,
+  Outbound: Send,
+  Other: CircleEllipsis,
+};
+
+const LEAD_STATUS_ICONS: Record<LeadStatus, LucideIcon> = {
+  New: Sparkles,
+  Contacted: MessageCircle,
+  Qualifying: SearchCheck,
+  Nurturing: Sprout,
+  Converted: BadgeCheck,
+  Disqualified: Ban,
+};
+
+function leadSourceIcon(source: LeadSource): LucideIcon {
+  return LEAD_SOURCE_ICONS[source];
+}
+
+function leadStatusIcon(status: LeadStatus): LucideIcon {
+  return LEAD_STATUS_ICONS[status];
+}
 
 const BLANK = {
   id: "",
@@ -438,6 +488,7 @@ export function LeadsModule({
               value: s,
               label: s,
               color: leadStatusColor(s),
+              icon: leadStatusIcon(s),
             })),
           },
           {
@@ -449,6 +500,7 @@ export function LeadsModule({
               value: s,
               label: s,
               color: leadSourceColor(s),
+              icon: leadSourceIcon(s),
             })),
           },
           {
@@ -577,9 +629,24 @@ export function LeadsModule({
                 sec.key === "No owner"
                   ? <UserRound size={20} className="text-text-tertiary" />
                   : <Avatar name={sec.key} className="h-8 w-8 shrink-0 text-[10px]" />
-              ) : (
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: groupBy === "status" ? leadStatusColor(sec.items[0].status) : leadSourceColor(sec.items[0].source) }} />
-              )}
+              ) : (() => {
+                const groupedByStatus = groupBy === "status";
+                const color = groupedByStatus
+                  ? leadStatusColor(sec.items[0].status)
+                  : leadSourceColor(sec.items[0].source);
+                const Icon = groupedByStatus
+                  ? leadStatusIcon(sec.items[0].status)
+                  : leadSourceIcon(sec.items[0].source);
+                return (
+                  <span
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg"
+                    style={{ background: tint(color, 10), color }}
+                    aria-hidden="true"
+                  >
+                    <Icon size={14} strokeWidth={2.2} />
+                  </span>
+                );
+              })()}
               <span className="text-[14px] font-semibold text-text-primary">{sec.key}</span>
               <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium text-text-secondary tnum">{sec.items.length} {sec.items.length === 1 ? "lead" : "leads"}</span>
               <ChevronDown size={17} className={cn("ml-auto shrink-0 text-text-tertiary transition-transform", collapsedGroups.has(`${groupBy}:${sec.key}`) && "-rotate-90")} />
@@ -672,23 +739,31 @@ export function LeadsModule({
                       </td>
                       <td className="px-4 py-2.5">
                         <span
-                          className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
+                          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
                           style={{
                             background: tint(leadSourceColor(lead.source), 9),
                             color: leadSourceColor(lead.source),
                           }}
                         >
+                          {(() => {
+                            const Icon = leadSourceIcon(lead.source);
+                            return <Icon size={12} strokeWidth={2.2} aria-hidden="true" />;
+                          })()}
                           {lead.source}
                         </span>
                       </td>
                       <td className="px-4 py-2.5">
                         <span
-                          className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
+                          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold"
                           style={{
                             background: tint(leadStatusColor(lead.status), 9),
                             color: leadStatusColor(lead.status),
                           }}
                         >
+                          {(() => {
+                            const Icon = leadStatusIcon(lead.status);
+                            return <Icon size={12} strokeWidth={2.2} aria-hidden="true" />;
+                          })()}
                           {lead.status}
                         </span>
                       </td>
@@ -852,7 +927,10 @@ export function LeadsModule({
                                   <span className="flex min-w-0 flex-col">
                                     <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><RadioTower size={12} strokeWidth={2} aria-hidden="true" /> Source</span>
                                     <span className="mt-1 flex min-h-5 min-w-0 leading-5 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
-                                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: leadSourceColor(lead.source) }} aria-hidden="true" />
+                                      {(() => {
+                                        const Icon = leadSourceIcon(lead.source);
+                                        return <Icon size={14} strokeWidth={2.2} style={{ color: leadSourceColor(lead.source) }} aria-hidden="true" />;
+                                      })()}
                                       <span className="min-w-0 truncate">{lead.source}</span>
                                     </span>
                                   </span>
@@ -1180,6 +1258,7 @@ export function LeadsModule({
                   value: s,
                   label: s,
                   color: leadSourceColor(s),
+                  icon: leadSourceIcon(s),
                 }))}
               />
             </Field>
@@ -1195,6 +1274,7 @@ export function LeadsModule({
                   value: s,
                   label: s,
                   color: leadStatusColor(s),
+                  icon: leadStatusIcon(s),
                 }))}
               />
             </Field>

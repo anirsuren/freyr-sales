@@ -196,6 +196,11 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 19 Lead source and status icons:** Lead source and status pickers now
+  use channel-specific and workflow-specific icons instead of generic colour
+  dots. The same icon language carries through the Leads filters, grouped
+  sections, table badges, and expanded lead details. Local only, not deployed.
+
 - **Sep 18 Offering availability follow-up:** The Offering Overview availability
   section again shows the optional owner-authored Availability comments for
   every offering. The editor uses a short multiline field for the same stored
