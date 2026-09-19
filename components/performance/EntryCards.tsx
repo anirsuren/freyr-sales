@@ -750,15 +750,15 @@ export function SentBackWatchCard({
       </button>
       <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1260px] table-fixed border-collapse">
+          <table className="w-full min-w-[1080px] table-fixed border-collapse">
             <colgroup>
-              <col className="w-14" />
-              <col className="w-[120px]" />
-              <col className="w-[300px]" />
-              <col className="w-[150px]" />
-              <col className="w-[220px]" />
-              <col className="w-[220px]" />
-              <col />
+              <col className="w-[4%]" />
+              <col className="w-[8%]" />
+              <col className="w-[24%]" />
+              <col className="w-[10%]" />
+              <col className="w-[18%]" />
+              <col className="w-[16%]" />
+              <col className="w-[20%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
@@ -808,7 +808,7 @@ export function SentBackWatchCard({
                     </td>
                     <td className="px-4 py-3.5">
                       {a.managerNote ? (
-                        <span className="block rounded-lg bg-[rgba(180,83,9,0.06)] px-2.5 py-2 text-[12px] leading-4 text-text-secondary">
+                        <span className="block break-words rounded-lg bg-[rgba(180,83,9,0.06)] px-2.5 py-2 text-[12px] leading-4 text-text-secondary">
                           &ldquo;{a.managerNote}&rdquo;
                         </span>
                       ) : (

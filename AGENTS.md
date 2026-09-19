@@ -1101,3 +1101,6 @@ Component connection pickers on customers and offerings use a 720px-wide, fixed-
 
 ### Sep 19: saved views restore before paint
 Browser-saved view and panel preferences now restore in a layout effect. Navigating to People performance no longer paints the three claims panels open first and then visibly snaps them to the user's saved closed state; the same fix applies to every screen using the shared stored-view helper. Completed locally, not deployed.
+
+### Sep 19: sent-back claims table fits the performance workspace
+The People performance sent-back table uses proportional columns with a smaller desktop minimum width, so the final Your note column remains fully visible without horizontal scrolling at standard desktop widths. Long notes wrap inside their cell instead of being clipped at the edge. Completed locally, not deployed.
