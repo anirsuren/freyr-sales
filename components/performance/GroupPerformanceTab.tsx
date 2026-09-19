@@ -303,14 +303,14 @@ export function GroupPerformanceTab({
                   which of them runs it, in the same purple used everywhere
                   else for ownership. */}
               <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
-                <Avatar name={g.head} className="h-4 w-4 shrink-0 text-[6px]" />
-                <span className="truncate">{g.head}</span>
                 <Crown
                   size={10}
                   strokeWidth={2.8}
                   aria-label="Group owner"
                   className="shrink-0 text-[color:var(--ink-violet-soft)]"
                 />
+                <Avatar name={g.head} className="h-4 w-4 shrink-0 text-[6px]" />
+                <span className="truncate">{g.head}</span>
                 <span className="shrink-0 text-text-tertiary">
                   · {count} {count === 1 ? "person" : "people"}
                 </span>
@@ -604,10 +604,6 @@ export function GroupPerformanceTab({
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border-light px-3 py-2 last:border-b-0"
                   >
                     <span className="flex min-w-0 items-center gap-2.5">
-                      <Avatar name={m} className="h-6 w-6 shrink-0 text-[8px]" />
-                      <span className="truncate text-[13px] font-semibold text-text-primary">
-                        {m}
-                      </span>
                       {owner && (
                         <Crown
                           size={11}
@@ -616,6 +612,10 @@ export function GroupPerformanceTab({
                           aria-label="Group owner"
                         />
                       )}
+                      <Avatar name={m} className="h-6 w-6 shrink-0 text-[8px]" />
+                      <span className="truncate text-[13px] font-semibold text-text-primary">
+                        {m}
+                      </span>
                     </span>
                     <span className="whitespace-nowrap text-[12px] text-text-secondary tnum">
                       {theirs.length}
@@ -630,6 +630,14 @@ export function GroupPerformanceTab({
                   key={m}
                   className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-3 py-2"
                 >
+                  {owner && (
+                    <Crown
+                      size={11}
+                      strokeWidth={2.6}
+                      className="shrink-0 text-[color:var(--ink-violet-soft)]"
+                      aria-label="Group owner"
+                    />
+                  )}
                   <Avatar name={m} className="h-7 w-7 shrink-0 text-[9px]" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-semibold text-text-primary">
@@ -639,12 +647,6 @@ export function GroupPerformanceTab({
                       {goalsLine}
                     </span>
                   </span>
-                  {owner && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--ink-violet-soft)]">
-                      <Crown size={9} strokeWidth={2.6} />
-                      Group owner
-                    </span>
-                  )}
                 </div>
               );
             })}

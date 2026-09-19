@@ -1748,10 +1748,6 @@ function GroupSplitPanel({
             key={m}
             className="flex flex-wrap items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
           >
-            <Avatar name={m} className="h-7 w-7 shrink-0 text-[10px]" />
-            <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
-              {m}
-            </span>
             {m === group.head && (
               <Crown
                 size={11}
@@ -1760,6 +1756,10 @@ function GroupSplitPanel({
                 className="shrink-0 text-[color:var(--ink-violet-soft)]"
               />
             )}
+            <Avatar name={m} className="h-7 w-7 shrink-0 text-[10px]" />
+            <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
+              {m}
+            </span>
             {/* WHAT THEY HAVE AGAINST WHAT THEY CARRY, not a bare count
                 (Anir, Aug 30: "why am I not seeing a progress bar that says
                 100%... there can't be any holes here"). Same block as the
@@ -2205,10 +2205,6 @@ function AssignGroupModal({
                         >
                           {roster.map((name) => (
                             <span key={name} className="flex items-center gap-2">
-                              <Avatar name={name} className="h-6 w-6 shrink-0 text-[8px]" />
-                              <span className="min-w-0 truncate text-[12px] text-text-primary">
-                                {name}
-                              </span>
                               {name === g.head && (
                                 <Crown
                                   size={10}
@@ -2217,6 +2213,10 @@ function AssignGroupModal({
                                   className="shrink-0 text-[color:var(--ink-violet-soft)]"
                                 />
                               )}
+                              <Avatar name={name} className="h-6 w-6 shrink-0 text-[8px]" />
+                              <span className="min-w-0 truncate text-[12px] text-text-primary">
+                                {name}
+                              </span>
                             </span>
                           ))}
                         </span>
@@ -4345,16 +4345,16 @@ function SubgoalEditorFields({
             {owners.map((o) => (
               <div key={o} className="flex items-center gap-2">
                 <span className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-1.5">
-                  <Avatar name={o} className="h-5 w-5 text-[8px]" />
-                  <span className="text-[12.5px] font-medium text-text-primary">
-                    {o}
-                  </span>
                   <Crown
                     size={10}
                     strokeWidth={2.6}
                     aria-label="Goal owner"
                     className="shrink-0 text-[color:var(--ink-violet-soft)]"
                   />
+                  <Avatar name={o} className="h-5 w-5 text-[8px]" />
+                  <span className="text-[12.5px] font-medium text-text-primary">
+                    {o}
+                  </span>
                 </span>
                 {/* AN X, AND IT ASKS (Anir, Aug 15: "can you make it just an
                     X instead of a delete icon... obviously it should ask me
@@ -4529,10 +4529,6 @@ function SubgoalEditorFields({
             {rows.map((r, i) => (
               <div key={r.name} className="flex items-center gap-2">
                 <span className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-1.5">
-                  <Avatar name={r.name} className="h-5 w-5 text-[8px]" />
-                  <span className="text-[12.5px] font-medium text-text-primary">
-                    {r.name}
-                  </span>
                   {owners.includes(r.name) && (
                     <Crown
                       size={10}
@@ -4541,6 +4537,10 @@ function SubgoalEditorFields({
                       className="shrink-0 text-[color:var(--ink-violet-soft)]"
                     />
                   )}
+                  <Avatar name={r.name} className="h-5 w-5 text-[8px]" />
+                  <span className="text-[12.5px] font-medium text-text-primary">
+                    {r.name}
+                  </span>
                 </span>
                 {(() => {
                   // ONE PROGRESS BAR IN THIS BOX (Anir, Aug 20: "why are there

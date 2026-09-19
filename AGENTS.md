@@ -1184,4 +1184,6 @@ Mixed-status goal bars preserve each status as its own proportional segment. A m
 
 Verification pills use one identical resting treatment at the goal, group, person, and expanded-detail levels. Permission to click a pill may change its hover action, but it must not change the state label's size, border, icon, or color. Person-detail progress rails use the same solid-green verified, striped-green waiting, and striped-red sent-back segments as the rest of Goals. Completed locally, not deployed.
 
+Inline owner identities on Goals always read crown, profile picture, then name. The avatar and name stay adjacent as one person identity; the ownership crown precedes that identity instead of splitting the face from the name. Completed locally, not deployed.
+
 Customer HQ address requirements are enforced at both UI and API boundaries for creation and editing. Line 1, city, and country are required; legacy or mock customers without them remain blocked from saving until completed, and the app never invents address data. Completed locally, not deployed.

@@ -1800,20 +1800,20 @@ export function GoalZoom({
                                   )}
                                 >
                                   <span className="flex items-center gap-2">
+                                  {name === r2.group.head && (
+                                    <Crown
+                                      size={8}
+                                      strokeWidth={2.8}
+                                      aria-label="Group owner"
+                                      className="shrink-0 text-[color:var(--ink-violet-soft)]"
+                                    />
+                                  )}
                                   <Avatar
                                     name={name}
                                     className="h-5 w-5 shrink-0 text-[7.5px]"
                                   />
                                   <span className="min-w-0 flex-1 truncate text-[11px] text-text-secondary">
                                     {name}
-                                    {name === r2.group.head && (
-                                      <Crown
-                                        size={8}
-                                        strokeWidth={2.8}
-                                        aria-label="Group owner"
-                                        className="ml-1 inline text-[color:var(--ink-violet-soft)]"
-                                      />
-                                    )}
                                   </span>
                                   <RowTotals unit={goal.unit} verified={v} />
                                   </span>
@@ -2059,18 +2059,17 @@ export function GoalZoom({
                         )}
                       >
                         <span className="flex w-full items-center gap-2.5">
+                        {p.name === selGroup.group.head && (
+                          <Crown
+                            size={10}
+                            strokeWidth={2.8}
+                            aria-label="Group owner"
+                            className="shrink-0 text-[color:var(--ink-violet-soft)]"
+                          />
+                        )}
                         <Avatar name={p.name} className="h-6 w-6 shrink-0 text-[9px]" />
                         <span className="min-w-0 flex-1 text-[11.5px] font-medium leading-tight text-text-primary">
                           {p.name}
-                          {p.name === selGroup.group.head && (
-                            /* The SAME owner mark as the Admin page and the
-                               group cards: purple with the crown (Anir,
-                               Aug 15). It was magenta and crownless here. */
-                            <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-[rgba(124,58,237,0.10)] px-1.5 py-0.5 text-[8.5px] font-bold text-[color:var(--ink-violet-soft)]">
-                              <Crown size={8} strokeWidth={2.8} />
-                              owner
-                            </span>
-                          )}
                         </span>
                         <RowTotals unit={goal.unit} verified={p.verified} />
                         </span>

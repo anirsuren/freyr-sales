@@ -2442,26 +2442,27 @@ function GoalRows({
                         </span>
                         {s.owners.length > 0 && (
                           <span
-                            className="flex items-center gap-1"
+                            className="flex items-center gap-1.5"
                             title={`Goal owner${s.owners.length === 1 ? "" : "s"}: ${s.owners.join(", ")}`}
                           >
-                            {s.owners.map((o) => (
-                              <Avatar
-                                key={o}
-                                name={o}
-                                tooltip={`Goal owner: ${o}`}
-                                className="h-5 w-5 text-[8px]"
-                              />
-                            ))}
                             <Crown
                               size={10}
                               strokeWidth={2.6}
                               aria-label="Goal owner"
-                              className="text-[color:var(--ink-violet-soft)]"
+                              className="shrink-0 text-[color:var(--ink-violet-soft)]"
                             />
-                            <span className="text-[10.5px] font-medium text-text-secondary">
-                              {s.owners.join(", ")}
-                            </span>
+                            {s.owners.map((o) => (
+                              <span key={o} className="inline-flex items-center gap-1">
+                                <Avatar
+                                  name={o}
+                                  tooltip={`Goal owner: ${o}`}
+                                  className="h-5 w-5 text-[8px]"
+                                />
+                                <span className="text-[10.5px] font-medium text-text-secondary">
+                                  {o}
+                                </span>
+                              </span>
+                            ))}
                           </span>
                         )}
                         <span className="ml-auto flex items-center gap-4">
