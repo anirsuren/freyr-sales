@@ -1105,6 +1105,8 @@ Expanded Solutioning previews now place the document count directly in the secti
 
 Long pinned tables now coalesce scroll measurements into one animation frame and listen through one capture path. The Solutioning request list also mounts its 443 detailed rows in generous batches as the reader approaches them instead of creating more than 15,000 elements up front. Scrolling stays continuous, and the floating header and bottom horizontal rail keep their existing behavior. Completed locally, not deployed.
 
+In expandable record tables, blank row space belongs to the inline breakdown. Only the visible record or entity label navigates to another page; links must not stretch across otherwise empty cells. Solutioning titles now hug their text, Opportunities rows toggle their breakdown instead of navigating, and linked customer labels in Opportunities and Leads use content-sized hit areas. Completed locally, not deployed.
+
 Request details label the linked context explicitly. “What this is for” uses one restrained panel with Customer, Opportunities, and Contacts columns, preserving the existing links and showing “None linked” where a relationship is absent. Completed locally, not deployed.
 
 ### Sep 17: customer band tabs omit redundant actions

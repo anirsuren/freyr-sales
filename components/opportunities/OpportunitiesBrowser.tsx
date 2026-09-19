@@ -1534,7 +1534,7 @@ export function OpportunitiesBrowser({
                         data-opp-row={o.id}
                         onClick={(event) => {
                           if ((event.target as Element).closest("a,button,input,select,textarea,[role='button']")) return;
-                          router.push(`/opportunities/${o.id}`);
+                          setOpenRow(open ? null : o.id);
                         }}
                         className={cn(
                           "cursor-pointer transition-colors",
@@ -1555,7 +1555,7 @@ export function OpportunitiesBrowser({
                             <Link
                               href={`/customers/${linkedCustomerId}`}
                               onClick={(event) => event.stopPropagation()}
-                              className="group/customer flex min-w-0 items-center gap-2.5"
+                              className="group/customer inline-flex max-w-full min-w-0 items-center gap-2.5"
                             >
                               <CompanyLogo
                                 name={o.customer}

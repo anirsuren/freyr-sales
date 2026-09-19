@@ -1093,9 +1093,13 @@ function RequestRow({
         <Link
           href={requestHref}
           onClick={(e) => e.stopPropagation()}
-          className="inline-block max-w-full text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
+          /* Keep the hit area on the words. A clamped block inside this link
+             expanded the anchor across the title cell, so hovering or
+             clicking the blank space beside a short title behaved like the
+             full-page link instead of the row's expand control. */
+          className="inline text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
         >
-          <span className="line-clamp-2">{r.title}</span>
+          {r.title}
         </Link>
       </td>
       <td className="px-4 py-3.5">

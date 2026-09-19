@@ -724,7 +724,7 @@ export function LeadsModule({
                           <Link
                             href={`/customers/${linkedCustomer.id}`}
                             onClick={(event) => event.stopPropagation()}
-                            className="group/customer flex items-center gap-2 text-[12.5px] text-text-secondary"
+                            className="group/customer inline-flex max-w-full items-center gap-2 text-[12.5px] text-text-secondary"
                           >
                             <CompanyLogo name={lead.company} className="h-6 w-6 shrink-0" />
                             <span className="truncate transition-colors group-hover/customer:text-blue-primary group-hover/customer:underline">
