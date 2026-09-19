@@ -899,8 +899,8 @@ Every signed-in page viewed with the Mock-mode cookie keeps `/mock-mode` in its 
 ### Sep 15: customer offerings use customer language
 The customer Offerings tab starts with a compact “Customer offerings” toolbar showing counts in use and available to add. “Segment” is labelled “Customer type,” and applicability copy uses plain catalogue language. Search and a single stateful Expand all / Collapse all control share the toolbar. Offering availability uses the shared soft green badge with dark green text, while the stronger filled green “In use” badge remains the adoption state. Completed locally, not deployed.
 
-### Sep 15: interaction logging has a full working dialog
-The customer “Log an interaction” dialog uses a 760px workspace with roomier body padding, a full-width responsive type selector, and a seven-row interaction summary. Follow-up fields and actions retain the existing workflow and remain responsive on narrow screens. Completed locally, not deployed.
+### Sep 19: interaction logging uses standard dialog proportions
+The customer “Log an interaction” dialog uses the shared 640px wide modal, standard body padding, and a compact four-row interaction summary. The type selector remains full-width and responsive; follow-up fields and footer actions retain the existing workflow. Completed locally, not deployed.
 
 ### Sep 15: customer activity history is searchable and attributable
 The customer Activity tab has one search field and one stateful Expand all / Collapse all control for its offering groups. Each group keeps a top-right fold control. Every activity row shows its original logged date, time, and workspace member; new writes derive that member from the authenticated request, while legacy records without attribution say so honestly. Mock histories carry varied deterministic authors and timestamps. The Coverage heat-map explanation lives behind the Current-column question mark instead of repeating beneath every offering table. Completed locally, not deployed.

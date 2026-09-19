@@ -2976,8 +2976,7 @@ export function CustomerTabs({
         open={noteModalOpen}
         onClose={() => setNoteModalOpen(false)}
         title="Log an interaction"
-        dialogClassName="!max-w-[760px]"
-        bodyClassName="px-7 py-6"
+        size="wide"
       >
         {/* THE APP'S OWN FORM, NOT A PRIVATE DIALECT (Anir, Sep 4, showing
             this dialog a second time: "did you just completely ignore me?").
@@ -3023,10 +3022,10 @@ export function CustomerTabs({
                   ? "Meeting notes and decisions…"
                   : "Internal context…"
               }
-              rows={7}
+              rows={4}
               autoFocus
               /* The Input component's own look, at textarea height. */
-              className="w-full min-w-0 rounded-md border border-border bg-surface px-3.5 py-2.5 text-[15px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-focus resize-y"
+              className="min-h-[132px] w-full min-w-0 resize-y rounded-md border border-border bg-surface px-3.5 py-2.5 text-[15px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-focus"
             />
           </Field>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -3053,7 +3052,7 @@ export function CustomerTabs({
             give reason". The reason now sits beside it, the same shape the
             contract and accrual dialogs got, and the footer gains the Cancel
             every other dialog has. */}
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-border-light pt-4">
           {!noteDraft.trim() && (
             <span className="text-[12.5px] font-semibold text-[color:var(--ink-orange)]">
               {noteKind === "note"
