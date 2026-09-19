@@ -200,3 +200,5 @@ Keep a search field directly above the logged-entry list in the goal verificatio
 Require customer HQ line 1, city, and country in both create and edit flows, with a visible required star, blocked form actions, and matching API validation. Do not invent an address for incomplete legacy or mock customers.
 
 Standalone subgoal editors must immediately identify the action, subgoal, parent goal, and parent target. Organize the controls as Details, Owner, Groups, and People and targets, and keep Cancel and Save changes visible in a sticky footer; retain the compact treatment for inline editing.
+
+When the customer edit form becomes dirty, show a Save changes action in the Account section header without displacing that row's title, hint, or disclosure control. Keep it governed by the same validation and busy state as the sticky footer action, and hide it when no changes are pending.

@@ -1191,3 +1191,5 @@ The goal verification dialog places a full-width search field immediately above 
 Customer HQ address requirements are enforced at both UI and API boundaries for creation and editing. Line 1, city, and country are required; legacy or mock customers without them remain blocked from saving until completed, and the app never invents address data. Completed locally, not deployed.
 
 Standalone subgoal editors open with an explicit Edit subgoal or Add subgoal title, then identify the subgoal, its parent goal, and the parent target before any controls. The form follows the numbered sequence Details, Owner, Groups, and People and targets, and keeps Cancel and Save changes visible in a sticky footer. Inline subgoal editing remains compact inside the goal drawer. Completed locally, not deployed.
+
+The customer editor surfaces Save changes in the Account section header as soon as any field on the page is dirty. It shares the existing header row without displacing the title, hint, or disclosure control, follows the same validation state as the sticky footer action, and disappears again when there is nothing to save. Completed locally, not deployed.

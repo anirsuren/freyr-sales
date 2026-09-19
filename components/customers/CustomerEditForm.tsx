@@ -62,12 +62,14 @@ function Room({
   icon: Icon,
   title,
   hint,
+  headerAction,
   startOpen = true,
   children,
 }: {
   icon: LucideIcon;
   title: string;
   hint: string;
+  headerAction?: React.ReactNode;
   startOpen?: boolean;
   children: React.ReactNode;
 }) {
@@ -79,34 +81,39 @@ function Room({
         className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[3px]"
         style={{ background: ACCENT }}
       />
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-controls={`${title.replace(/\s+/g, "-").toLowerCase()}-panel`}
-        className="flex w-full cursor-pointer items-center gap-2.5 px-5 py-3.5 text-left transition-colors"
+      <div
+        className="flex w-full items-center gap-2.5 px-5 py-3.5"
         style={{
           background: tint(ACCENT, 5),
           borderBottom: open ? "1px solid var(--border-light)" : "none",
         }}
       >
-        <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-          <span className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em] text-text-primary">
-            <Icon size={15} strokeWidth={2} aria-hidden="true" style={{ color: ACCENT }} />
-            {title}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls={`${title.replace(/\s+/g, "-").toLowerCase()}-panel`}
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
+        >
+          <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+            <span className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em] text-text-primary">
+              <Icon size={15} strokeWidth={2} aria-hidden="true" style={{ color: ACCENT }} />
+              {title}
+            </span>
+            <span className="text-[12.5px] text-text-secondary">{hint}</span>
           </span>
-          <span className="text-[12.5px] text-text-secondary">{hint}</span>
-        </span>
-        <ChevronDown
-          size={17}
-          strokeWidth={2.2}
-          aria-hidden="true"
-          className={cn(
-            "shrink-0 text-text-secondary transition-transform duration-200",
-            !open && "-rotate-90"
-          )}
-        />
-      </button>
+          <ChevronDown
+            size={17}
+            strokeWidth={2.2}
+            aria-hidden="true"
+            className={cn(
+              "shrink-0 text-text-secondary transition-transform duration-200",
+              !open && "-rotate-90"
+            )}
+          />
+        </button>
+        {headerAction}
+      </div>
       {open && (
         <div
           id={`${title.replace(/\s+/g, "-").toLowerCase()}-panel`}
@@ -292,6 +299,19 @@ export function CustomerEditForm({
           icon={Building2}
           title="The account"
           hint="What it is called, where they are, and how to reach them."
+          headerAction={
+            dirty ? (
+              <button
+                type="button"
+                disabled={busy || !!problem}
+                onClick={save}
+                title={problem ?? "Save the changes on this page"}
+                className="shrink-0 rounded-lg bg-blue-primary px-4 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busy ? "Saving…" : "Save changes"}
+              </button>
+            ) : null
+          }
         >
           <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-4">
             <div className="sm:col-span-2">
