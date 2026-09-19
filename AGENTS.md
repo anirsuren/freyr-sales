@@ -1173,3 +1173,5 @@ Exact money fields accept `K`, `M`, or `B` as typing shortcuts, then immediately
 Performance chart popups summarize repeated dated results by contributor and source. They show the eight largest contributors plus one combined remainder row; the full audit history stays in the goal drawer instead of dumping 80–130 records into a hover card. Completed locally, not deployed.
 
 Dropdown triggers that share a form row or field grid stay one line and 40px tall, even when their menus include richer descriptions. The extra description belongs in the opened menu; it must not make one closed selector taller or move its chevron inward relative to adjacent fields. Applied to performance results, customer ownership, meetings, solutioning, contracts, campaigns, and accruals. Completed locally, not deployed.
+
+Assigned-person progress rows on Org performance use the same full goal-family rollup for their displayed amount, percentage, progress segments, and expanded detail. Results logged on subgoals or component goals must not paint a progress bar while the parent row incorrectly says zero; a truly zero result has zero filled width. Completed locally, not deployed.

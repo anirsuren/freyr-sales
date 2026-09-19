@@ -2087,8 +2087,8 @@ function GoalRows({
                         sentBackOnly: true,
                       });
                       const aActual = actualValue(actuals, goal, {
-                        subgoalId: null,
                         person: a.person,
+                        rates: state.rates,
                       });
                       const share =
                         a.target > 0 ? Math.min(100, pctMet(aActual, a.target)) : null;
