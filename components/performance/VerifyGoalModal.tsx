@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import {
   CheckCircle2,
   Hourglass,
   Paperclip,
+  Search,
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
@@ -77,6 +80,12 @@ export function VerifyGoalModal({
   onClose: () => void;
   scope?: VerifyScope | null;
 }) {
+  const [entryQuery, setEntryQuery] = useState("");
+
+  useEffect(() => {
+    setEntryQuery("");
+  }, [open, goal?.id, scope?.label]);
+
   if (!open || !goal) return null;
 
   const inScope = (a: { person: string; subgoalId?: string | null }) =>
@@ -101,6 +110,40 @@ export function VerifyGoalModal({
     .reduce((sum, a) => sum + a.amount, 0);
   const undoing = scope ? scope.verified : goal.verified;
   const subjectName = scope ? scope.label : goal.name;
+  const normalizedQuery = entryQuery.trim().toLowerCase();
+  const visibleEntries = normalizedQuery
+    ? entries.filter((entry) => {
+        const status =
+          entryStatus(entry) === "verified"
+            ? "verified"
+            : entryStatus(entry) === "sent_back"
+              ? "sent back"
+              : "waiting";
+        const evidence = (entry.evidence ?? [])
+          .map((file) => `${file.name ?? ""} ${file.url ?? ""}`)
+          .join(" ");
+        return [
+          entry.person,
+          entry.customer,
+          entry.note,
+          entry.managerNote,
+          entry.addedBy,
+          entry.verifiedBy,
+          entry.sentBackBy,
+          entry.date,
+          resultWhen(entry),
+          stamp(entry.addedAt).time,
+          fmtAmount(goal.unit, entry.amount, entry.currency),
+          entry.currency,
+          status,
+          evidence,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      })
+    : entries;
 
   return (
     <Modal
@@ -227,17 +270,45 @@ export function VerifyGoalModal({
         </p>
       )}
 
-      <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.02em] text-text-tertiary">
+      {entries.length > 0 && (
+        <label className="relative mt-4 block">
+          <span className="sr-only">Search logged entries</span>
+          <Search
+            size={15}
+            strokeWidth={2}
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+          />
+          <input
+            type="search"
+            value={entryQuery}
+            onChange={(event) => setEntryQuery(event.target.value)}
+            placeholder="Search people, customers, dates, amounts, statuses, or notes…"
+            className="h-10 w-full rounded-xl border border-border-light bg-white pl-9 pr-3 text-[12.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary focus:ring-2 focus:ring-blue-light"
+          />
+        </label>
+      )}
+
+      <p className={cn("text-[11px] font-bold uppercase tracking-[0.02em] text-text-tertiary", entries.length > 0 ? "mt-2.5" : "mt-4")}>
         What was logged · {entries.length}{" "}
         {entries.length === 1 ? "entry" : "entries"}
+        {normalizedQuery && (
+          <span className="ml-1 normal-case tracking-normal text-text-secondary">
+            · {visibleEntries.length} shown
+          </span>
+        )}
       </p>
       {entries.length === 0 ? (
         <p className="mt-1.5 rounded-xl bg-surface px-3 py-4 text-center text-[12.5px] text-text-secondary">
           Nothing has been logged against this goal.
         </p>
+      ) : visibleEntries.length === 0 ? (
+        <p className="mt-1.5 rounded-xl bg-surface px-3 py-5 text-center text-[12.5px] text-text-secondary">
+          No logged entries match “{entryQuery.trim()}”.
+        </p>
       ) : (
         <div className="mt-1.5 max-h-[340px] space-y-2.5 overflow-y-auto pr-1">
-          {entries.slice(0, 40).map((a) => {
+          {visibleEntries.slice(0, 40).map((a) => {
             const locked = entryStatus(a) === "verified";
             return (
               <div key={a.id}>
@@ -325,9 +396,9 @@ export function VerifyGoalModal({
               </div>
             );
           })}
-          {entries.length > 40 && (
+          {visibleEntries.length > 40 && (
             <p className="px-1 text-[11.5px] text-text-tertiary">
-              And {entries.length - 40} more.
+              And {visibleEntries.length - 40} more.
             </p>
           )}
         </div>

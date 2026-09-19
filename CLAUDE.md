@@ -195,4 +195,6 @@ Verification pills keep the same resting label, icon, dimensions, border, and st
 
 Render inline owner identities as crown, profile picture, then name. Keep the profile picture immediately beside the name as part of the person's identity.
 
+Keep a search field directly above the logged-entry list in the goal verification dialog. Search across every visible record detail and report the filtered count without changing the underlying sign-off totals.
+
 Require customer HQ line 1, city, and country in both create and edit flows, with a visible required star, blocked form actions, and matching API validation. Do not invent an address for incomplete legacy or mock customers.

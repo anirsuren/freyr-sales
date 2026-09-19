@@ -1186,4 +1186,6 @@ Verification pills use one identical resting treatment at the goal, group, perso
 
 Inline owner identities on Goals always read crown, profile picture, then name. The avatar and name stay adjacent as one person identity; the ownership crown precedes that identity instead of splitting the face from the name. Completed locally, not deployed.
 
+The goal verification dialog places a full-width search field immediately above its logged-entry list. It filters the review log by person, customer, date, amount, status, notes, actors, currency, and evidence while preserving the complete entry count and showing the number of matches. Completed locally, not deployed.
+
 Customer HQ address requirements are enforced at both UI and API boundaries for creation and editing. Line 1, city, and country are required; legacy or mock customers without them remain blocked from saving until completed, and the app never invents address data. Completed locally, not deployed.
