@@ -201,6 +201,10 @@ Expanded chart dialogs preserve the source chart's exact color and segmentation 
 
 Expanded chart dialogs always render every series or slice. Do not add visibility dropdowns, “show all” controls, visible counts, or empty-filter states.
 
+Keep the standalone subgoal editor as one allocation workflow: parent context and summary figures, one segmented allocation band, then numbered Details, Owner, Groups, and People sections. Current allocation is blue, existing allocations are slate, and only a true over-target state is red. Name the edited subgoal in the modal title.
+
+Keep Solutioning result counts out of the search/filter toolbar. Show no count when the complete room is visible; show the narrowed match count beneath the toolbar only while search or filters reduce the list.
+
 Render inline owner identities as crown, profile picture, then name. Keep the profile picture immediately beside the name as part of the person's identity.
 
 Keep a search field directly above the logged-entry list in the goal verification dialog. Search across every visible record detail and report the filtered count without changing the underlying sign-off totals.

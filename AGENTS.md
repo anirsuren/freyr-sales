@@ -1192,6 +1192,10 @@ Expanded chart dialogs must preserve the source chart's visual meaning exactly. 
 
 Expanded chart dialogs always show the complete chart. Do not add series/slice visibility filters, “show all” controls, visible counts, or empty-filter states to expanded charts. Completed locally, not deployed.
 
+The standalone subgoal editor uses one quiet allocation workspace: parent context and the three key figures first, a single segmented allocation bar, then clearly numbered Details, Owner, Groups, and People sections. Use blue for the current subgoal, slate for prior allocations, and red only for a real over-target state; do not return to stacked gray cards or orange allocation bands. The modal title names the subgoal being edited. Completed locally, not deployed.
+
+Solutioning result counts do not occupy the search/filter toolbar. Hide the count when the full room is visible; when search or filters narrow the list, show a compact matching-results line directly beneath the toolbar so the control row keeps its spacing. Completed locally, not deployed.
+
 Inline owner identities on Goals always read crown, profile picture, then name. The avatar and name stay adjacent as one person identity; the ownership crown precedes that identity instead of splitting the face from the name. Completed locally, not deployed.
 
 The goal verification dialog places a full-width search field immediately above its logged-entry list. It filters the review log by person, customer, date, amount, status, notes, actors, currency, and evidence while preserving the complete entry count and showing the number of matches. Completed locally, not deployed.

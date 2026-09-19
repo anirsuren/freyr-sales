@@ -647,7 +647,7 @@ export function PerformanceModule({
              "Growth Accounts" alone does not say which plan you are editing. */
           title={
             subModal.editing
-              ? "Edit subgoal"
+              ? `Edit ${subModal.editing.name}`
               : `Add a subgoal to ${subModal.goal.name}`
           }
           size="workflow"
@@ -4151,45 +4151,56 @@ function SubgoalEditorFields({
   const peopleOver = personCeiling > 0 && peopleSum > personCeiling;
 
   return (
-    <div className="space-y-4">
-      {standalone && (
-        <div className="rounded-xl border border-blue-subtle bg-blue-light/40 px-4 py-3.5">
-          <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-blue-primary">
-            {editing ? "Editing subgoal" : "Creating subgoal"}
-          </p>
-          <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
-            <span className="min-w-0">
-              <b className="block truncate text-[18px] font-bold text-text-primary">
-                {name.trim() || "Untitled subgoal"}
+    <div className={cn("space-y-3.5", standalone && "pb-1")}>
+      <div className="overflow-hidden rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+        <div className="grid gap-4 px-4 py-4 sm:grid-cols-[minmax(220px,1fr)_auto] sm:items-end">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-text-tertiary">
+              {editing ? "Subgoal allocation" : "New subgoal allocation"}
+            </p>
+            <p className="mt-1 truncate text-[16px] font-bold text-text-primary">
+              {goal.name}
+            </p>
+            <p className="mt-0.5 text-[11.5px] text-text-secondary">
+              See how this subgoal fits before changing assignments.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-border-light rounded-xl border border-border-light bg-[var(--surface)]">
+            <span className="min-w-[112px] px-3 py-2">
+              <span className="block text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                Parent target
+              </span>
+              <b className="mt-0.5 block text-[13px] text-text-primary tnum">
+                {goalTarget > 0 ? fmtAmount(goal.unit, goalTarget) : "Not set"}
               </b>
-              <span className="mt-0.5 block text-[12px] text-text-secondary">
-                Part of <b className="text-text-primary">{goal.name}</b>
-              </span>
             </span>
-            {goalTarget > 0 && (
-              <span className="shrink-0 rounded-full border border-blue-subtle bg-white px-3 py-1 text-[11.5px] font-semibold text-blue-primary tnum">
-                Parent target {fmtAmount(goal.unit, goalTarget)}
+            <span className="min-w-[112px] px-3 py-2">
+              <span className="block text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                This subgoal
               </span>
-            )}
+              <b className="mt-0.5 block text-[13px] text-blue-primary tnum">
+                {fmtAmount(goal.unit, mine)}
+              </b>
+            </span>
+            <span className="min-w-[112px] px-3 py-2">
+              <span className="block text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                {goalTarget > 0 && spoken > goalTarget ? "Over target" : "Available"}
+              </span>
+              <b
+                className={cn(
+                  "mt-0.5 block text-[13px] tnum",
+                  goalTarget > 0 && spoken > goalTarget
+                    ? "text-[color:var(--status-red)]"
+                    : "text-text-primary"
+                )}
+              >
+                {goalTarget > 0
+                  ? fmtAmount(goal.unit, Math.abs(goalTarget - spoken))
+                  : "—"}
+              </b>
+            </span>
           </div>
         </div>
-      )}
-
-      <div className="rounded-xl border border-border-light bg-[var(--surface)] px-4 py-3">
-        <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-          Parent goal allocation
-        </p>
-        <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-[12.5px] text-text-secondary">
-          <b className="text-text-primary">{goal.name}</b>
-          {goalTarget > 0 && (
-            <>
-              <span>·</span>
-              <span className="tnum">
-                {fmtAmount(goal.unit, goalTarget)} in total
-              </span>
-            </>
-          )}
-        </p>
         {goalTarget <= 0 && (
           /* ZERO IS A STATE, NOT AN ABSENCE (Anir, Aug 19: "when it's at
              zero, I have to see definitively 'here is where you're at', and
@@ -4197,11 +4208,10 @@ function SubgoalEditorFields({
              It's just kind of annoying"). With no target on the parent the
              whole band used to disappear, so the form said nothing at all
              about the number this slice is a share of. */
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="h-2.5 w-full rounded-full bg-[color:var(--border-light)]" />
-            <span className="text-[11px] text-text-secondary">
-              {goal.name} has no annual target yet, so there is nothing to
-              split.
+          <div className="border-t border-border-light px-4 py-3">
+            <span className="block h-2 w-full rounded-full bg-[color:var(--border-light)]" />
+            <span className="mt-2 block text-[11px] text-text-secondary">
+              Set a parent target before dividing it across subgoals.
               {mine > 0 && (
                 <>
                   {" "}
@@ -4224,9 +4234,9 @@ function SubgoalEditorFields({
                 subgoals already claim, the pale segment is THIS one growing
                 live as the target is typed, and the grey is what is left.
                 Two strengths of the allocation blue distinguish the slices. */}
-            <div className="mt-2.5 flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
+            <div className="mx-4 flex h-2.5 overflow-hidden rounded-full bg-[color:var(--border-light)]">
               <span
-                className="block h-full bg-blue-primary transition-all"
+                className="block h-full bg-slate-400 transition-all"
                 style={{
                   width: `${Math.min(100, (siblingTotal / goalTarget) * 100)}%`,
                 }}
@@ -4235,19 +4245,19 @@ function SubgoalEditorFields({
                 className={cn(
                   "block h-full transition-all",
                   spoken > goalTarget
-                    ? "bg-[color:#C2410C] opacity-70"
-                    : "bg-blue-primary opacity-[0.35]"
+                    ? "bg-[color:var(--status-red)]"
+                    : "bg-blue-primary"
                 )}
                 style={{
                   width: `${Math.max(0, Math.min(100, (spoken / goalTarget) * 100) - Math.min(100, (siblingTotal / goalTarget) * 100))}%`,
                 }}
               />
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-3 pt-2 text-[11px]">
               {siblingTotal > 0 && (
                 <span className="flex items-center gap-1.5 text-text-secondary">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary" />
-                  Other subgoals
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                  Already assigned
                   <b className="text-text-primary tnum">
                     {fmtAmount(goal.unit, siblingTotal)}
                   </b>
@@ -4258,11 +4268,11 @@ function SubgoalEditorFields({
                   className={cn(
                     "h-1.5 w-1.5 shrink-0 rounded-full",
                     spoken > goalTarget
-                      ? "bg-[color:#C2410C]"
-                      : "bg-blue-primary opacity-[0.35]"
+                      ? "bg-[color:var(--status-red)]"
+                      : "bg-blue-primary"
                   )}
                 />
-                This one
+                This subgoal
                 <b className="text-text-primary tnum">
                   {fmtAmount(goal.unit, mine)}
                 </b>
@@ -4273,13 +4283,13 @@ function SubgoalEditorFields({
               {spoken <= goalTarget ? (
                 <span className="flex items-center gap-1.5 text-text-secondary">
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--border-light)]" />
-                  Left
+                  Available
                   <b className="text-text-primary tnum">
                     {fmtAmount(goal.unit, goalTarget - spoken)}
                   </b>
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 font-semibold text-[color:var(--ink-orange)] tnum">
+                <span className="flex items-center gap-1.5 font-semibold text-[color:var(--status-red)] tnum">
                   Over by {fmtAmount(goal.unit, spoken - goalTarget)}
                 </span>
               )}
@@ -4288,14 +4298,17 @@ function SubgoalEditorFields({
         )}
       </div>
 
-      <section className="rounded-xl border border-border-light bg-white p-3.5">
-        <div className="mb-3">
-          <p className="text-[12.5px] font-bold text-text-primary">
-            1. Subgoal details
-          </p>
-          <p className="mt-0.5 text-[11.5px] text-text-secondary">
-            Name this piece of the parent goal and set how much it carries.
-          </p>
+      <section className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.025)]">
+        <div className="mb-3 flex items-start gap-3">
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-primary text-[10.5px] font-bold text-white">
+            1
+          </span>
+          <span>
+            <p className="text-[13px] font-bold text-text-primary">Details</p>
+            <p className="mt-0.5 text-[11.5px] text-text-secondary">
+              Name this piece of the parent goal and set how much it carries.
+            </p>
+          </span>
         </div>
         <div className="flex flex-wrap gap-3">
         <div className="min-w-[200px] flex-1">
@@ -4303,23 +4316,17 @@ function SubgoalEditorFields({
               using the blue, right? Put that blue next to subgoal target so
               they know that it's that"), so the fields and the segment they
               drive are visibly the same thing. */}
-          <label className="flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary opacity-[0.35]" />
-            Subgoal name
-          </label>
+          <label className="text-[12px] font-semibold text-text-primary">Subgoal name</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Growth Accounts"
-            className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
+            className="mt-1.5 h-[42px] w-full rounded-xl border border-border-light bg-white px-3.5 text-[13.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
           />
         </div>
         <div className="w-[170px]">
-          <label className="flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-primary opacity-[0.35]" />
-            Subgoal target
-          </label>
-          <div className="relative mt-1">
+          <label className="text-[12px] font-semibold text-text-primary">Subgoal target</label>
+          <div className="relative mt-1.5">
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
               {goal.unit === "currency" ? "$" : goal.unit === "percent" ? "%" : "#"}
             </span>
@@ -4333,7 +4340,7 @@ function SubgoalEditorFields({
                 )
               }
               placeholder={goal.unit === "currency" ? "e.g. 40M" : "e.g. 700"}
-              className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
+              className="h-[42px] w-full rounded-xl border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none transition-shadow tnum focus:border-blue-subtle focus:shadow-input-focus"
             />
           </div>
           {/* Say what was read back, and say so when nothing was. A field that
@@ -4364,9 +4371,12 @@ function SubgoalEditorFields({
           like "Anant Purohit" into "Anant Pur…". A person's own name is the
           last thing that should be abbreviated. */}
       <div className={cn("grid grid-cols-1 gap-3", editing && "lg:grid-cols-2")}>
-        <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
-          <label className="flex items-center gap-1 text-[12.5px] font-bold text-text-primary">
-            2. Owner
+        <section className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.025)]">
+          <div className="flex items-start gap-3">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-light text-[10.5px] font-bold text-blue-primary">2</span>
+            <span className="min-w-0">
+          <label className="flex items-center gap-1 text-[13px] font-bold text-text-primary">
+            Owner
             <Crown
               size={13}
               strokeWidth={2.2}
@@ -4378,6 +4388,8 @@ function SubgoalEditorFields({
           <p className="mt-0.5 text-[11.5px] text-text-secondary">
             The person responsible for checking and approving this subgoal.
           </p>
+            </span>
+          </div>
           <div className="mt-2 space-y-1.5">
             <PersonSelect
               value=""
@@ -4442,14 +4454,19 @@ function SubgoalEditorFields({
         </section>
 
         {editing && (
-          <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
-            <label className="flex items-center gap-1 text-[12.5px] font-bold text-text-primary">
-              3. Groups
+          <section className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.025)]">
+            <div className="flex items-start gap-3">
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-light text-[10.5px] font-bold text-blue-primary">3</span>
+              <span className="min-w-0">
+            <label className="flex items-center gap-1 text-[13px] font-bold text-text-primary">
+              Groups
               <InfoHint text={"A whole department carrying this part of the goal. Its people are added below automatically with a target of 0, so they can start logging right away.\nSave the subgoal first, then pick a group. There has to be something for the group to attach to."} />
             </label>
             <p className="mt-0.5 text-[11.5px] text-text-secondary">
               Teams that carry this part of the parent goal.
             </p>
+              </span>
+            </div>
             <div className="mt-2 space-y-1.5">
               {(editing.groupAssignments ?? []).length === 0 ? (
                 <p className="text-[12px] text-text-secondary">
@@ -4560,14 +4577,21 @@ function SubgoalEditorFields({
           </section>
         )}
 
-        <section className={cn("rounded-xl border border-border-light bg-[var(--surface)] p-3", editing && "lg:col-span-2")}>
-          <label className="flex items-center gap-1 text-[12.5px] font-bold text-text-primary">
-            {editing ? "4" : "3"}. People and targets
+        <section className={cn("rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.025)]", editing && "lg:col-span-2")}>
+          <div className="flex items-start gap-3">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-light text-[10.5px] font-bold text-blue-primary">
+              {editing ? "4" : "3"}
+            </span>
+            <span className="min-w-0">
+          <label className="flex items-center gap-1 text-[13px] font-bold text-text-primary">
+            People and targets
             <InfoHint text="Each person carries their own target. Their logged numbers roll up into this subgoal." />
           </label>
           <p className="mt-0.5 text-[11.5px] text-text-secondary">
             Assign the people doing the work and the amount each person carries.
           </p>
+            </span>
+          </div>
           <div className="mt-2 space-y-1.5">
             <PersonSelect
               value=""

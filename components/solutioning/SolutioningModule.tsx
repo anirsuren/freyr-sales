@@ -642,17 +642,22 @@ export function SolutioningModule({
               ]}
             />
           }
-          display={
-            <span
-              className="whitespace-nowrap text-[12px] text-text-secondary"
-              aria-live="polite"
-            >
-              <b className="tnum text-text-primary">{shown.length}</b> of{" "}
-              <b className="tnum text-text-primary">{inRoom.length}</b> shown
-            </span>
-          }
         />
       </div>
+
+      {/* Result counts belong to the results, not in the control row. The old
+          “443 of 443 shown” sat between Sort and View and looked like another
+          control while adding no information. Keep the toolbar intact and
+          report a count here only when search or filters actually narrow it. */}
+      {shown.length !== inRoom.length && (
+        <p
+          className="mt-2 px-1 text-[11.5px] font-medium text-text-secondary"
+          aria-live="polite"
+        >
+          <b className="text-text-primary tnum">{shown.length}</b>{" "}
+          {shown.length === 1 ? "result" : "results"} matching the current view
+        </p>
+      )}
 
       {/* THE ROW DOES NOT REPEAT THE COLUMN HEADER (Suren, Aug 28: "you
           don't have to say submission or presentation here etc, it's already
