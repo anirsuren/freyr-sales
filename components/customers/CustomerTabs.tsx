@@ -29,6 +29,7 @@ import {
   Briefcase,
   PanelRightClose,
   PanelRightOpen,
+  Maximize2,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -164,6 +165,143 @@ const NOTE_KIND_META: Record<
 // yellow there (Suren, Jul 27). Burnt orange is the only warm hue in the set,
 // so it still reads distinct from the rose beside it, and it is legible.
 const SERVICE_TAG_COLORS = ["var(--ink-bright-blue)", "#0D9488", "var(--ink-violet-soft)", "#E11D48", "var(--ink-orange)"];
+
+type PipelineMomentumDeal = {
+  id: string;
+  name: string;
+  company: string;
+  contactName: string;
+  stage: string;
+  value: number;
+  owner: string;
+  createdAt: string;
+};
+
+/**
+ * A one-deal account does not become more informative when its twelve-point
+ * step line is stretched to fill a chart dialog. The expanded view answers the
+ * questions behind the line instead: how much changed, when, and which live
+ * opportunity created the value.
+ */
+function PipelineMomentumModal({
+  company,
+  currentValue,
+  openingValue,
+  deals,
+  periodStart,
+}: {
+  company: string;
+  currentValue: number;
+  openingValue: number;
+  deals: PipelineMomentumDeal[];
+  periodStart: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const addedValue = Math.max(0, currentValue - openingValue);
+  const newDeals = deals
+    .filter((deal) => new Date(deal.createdAt).getTime() >= periodStart)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const latestChange = newDeals.at(-1);
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label="Open Account pipeline momentum details"
+        title="Open Account pipeline momentum details"
+        onClick={() => setOpen(true)}
+        className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-white text-text-primary shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,background-color,color,box-shadow,transform] hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary hover:shadow-[0_4px_12px_rgba(0,113,227,0.10)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30"
+      >
+        <Maximize2 size={14} strokeWidth={2} />
+      </button>
+
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Account pipeline momentum"
+        size="chart"
+      >
+        <div className="space-y-5 px-2 pb-2">
+          <div className="border-b border-border-light px-1 pb-4">
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              {latestChange
+                ? `${company} added ${formatMoney(addedValue)} in open pipeline during the last 12 weeks. The latest change came from ${latestChange.name}.`
+                : `${company}'s open pipeline has not changed during the last 12 weeks.`}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[
+              ["Current open", formatMoney(currentValue), `${deals.length} live ${deals.length === 1 ? "opportunity" : "opportunities"}`],
+              ["Added in 12 weeks", formatMoney(addedValue), newDeals.length ? `${newDeals.length} new ${newDeals.length === 1 ? "opportunity" : "opportunities"}` : "No new opportunities"],
+              ["Latest change", latestChange ? formatDate(latestChange.createdAt) : "No change", latestChange?.stage || "Pipeline held steady"],
+            ].map(([label, value, sub]) => (
+              <div key={label} className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.03)]">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">{label}</p>
+                <p className="mt-2 text-[24px] font-bold leading-none tnum text-text-primary">{value}</p>
+                <p className="mt-2 text-[11.5px] text-text-secondary">{sub}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)]">
+            <section className="rounded-2xl border border-border-light bg-surface p-5">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">What changed</p>
+              <div className="mt-4 flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-[11.5px] text-text-secondary">12 weeks ago</p>
+                  <p className="mt-1 text-[20px] font-bold tnum text-text-primary">{formatMoney(openingValue)}</p>
+                </div>
+                <div className="flex-1 pb-2">
+                  <div className="relative h-2 rounded-full bg-border-light">
+                    <div className="absolute inset-y-0 left-0 rounded-full bg-blue-primary" style={{ width: currentValue > 0 ? `${Math.max(10, Math.round((openingValue / currentValue) * 100))}%` : "0%" }} />
+                    {addedValue > 0 && <div className="absolute inset-y-0 right-0 rounded-full bg-blue-primary/35" style={{ width: `${Math.max(12, Math.round((addedValue / currentValue) * 100))}%` }} />}
+                  </div>
+                  <p className="mt-2 text-center text-[11px] font-semibold text-blue-primary">{addedValue > 0 ? `+${formatMoney(addedValue)}` : "No change"}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11.5px] text-text-secondary">Today</p>
+                  <p className="mt-1 text-[20px] font-bold tnum text-blue-primary">{formatMoney(currentValue)}</p>
+                </div>
+              </div>
+              <p className="mt-5 rounded-xl bg-white px-3 py-2.5 text-[12px] leading-relaxed text-text-secondary">
+                {latestChange
+                  ? `${formatMoney(latestChange.value)} entered the account pipeline on ${formatDate(latestChange.createdAt)} and is currently at ${latestChange.stage}.`
+                  : "No opportunity entered or left the account pipeline in this period."}
+              </p>
+            </section>
+
+            <section className="rounded-2xl border border-border-light bg-white p-5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">Open opportunities</p>
+                <span className="rounded-full bg-blue-light px-2 py-1 text-[10.5px] font-semibold tnum text-blue-primary">{deals.length}</span>
+              </div>
+              <div className="mt-3 divide-y divide-border-light">
+                {[...deals].sort((a, b) => b.value - a.value).map((deal) => (
+                  <div key={deal.id} className="flex items-center gap-3 py-3 first:pt-1 last:pb-0">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
+                      <Briefcase size={16} strokeWidth={2} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-semibold text-text-primary">{deal.name}</span>
+                      <span className="mt-0.5 block text-[11.5px] text-text-secondary">{[deal.owner, deal.contactName].filter(Boolean).join(" · ") || deal.company}</span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block text-[13px] font-bold tnum text-blue-primary">{formatMoney(deal.value)}</span>
+                      <span className="mt-1 inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ color: STAGE_COLOR[deal.stage as keyof typeof STAGE_COLOR] || "var(--ink-bright-blue)", background: tint(STAGE_COLOR[deal.stage as keyof typeof STAGE_COLOR] || "var(--ink-bright-blue)", 9) }}>{deal.stage}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </div>
+      </Modal>
+    </>
+  );
+}
 
 // No DELIVERABLES tiles here any more. "Account Brief / Market Report / ABM
 // Plan / Slide Outline — one click, the agent drafts it right in your chat" was
@@ -1456,17 +1594,23 @@ export function CustomerTabs({
               // computed then thrown away before (Suren: wire the entities).
               const acctDeals = [
                 ...sessionDeals.map((d) => ({
+                  id: d.sessionId,
+                  name: d.service || d.title,
                   stage: d.stage,
                   value: d.value,
                   company: d.company,
                   contactName: d.contactName,
+                  owner: d.owner,
                   createdAt: d.createdAt,
                 })),
                 ...accountDeals.map((d) => ({
+                  id: d.id,
+                  name: d.offering || d.name,
                   stage: d.stage,
                   value: d.value,
                   company: customer.company_name,
                   contactName: d.contact || "",
+                  owner: d.owner || "",
                   createdAt: d.created_at,
                 })),
               ];
@@ -1583,18 +1727,12 @@ export function CustomerTabs({
                           <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Current</p>
                           <p className="text-[19px] font-bold text-text-primary tnum">{formatMoney(totalOpen)}</p>
                         </div>
-                        <ExpandedChartModal
-                          title="Account pipeline momentum"
-                          subtitle={`${customer.company_name} open value accumulated over the last 12 weeks.`}
-                          chart={{
-                            kind: "line",
-                            series: [{ label: "Open pipeline", color: "var(--ink-bright-blue)", points: pipelineTrend }],
-                            format: "money",
-                            pointLabels: pipelinePointLabels,
-                            xLabels: [pipelinePointLabels[0], pipelinePointLabels[5], pipelinePointLabels[11]],
-                            pointTips: pipelineTrendTips,
-                          }}
-                          className="h-8 px-2.5 text-[11px]"
+                        <PipelineMomentumModal
+                          company={customer.company_name}
+                          currentValue={totalOpen}
+                          openingValue={pipelineTrend[0] ?? 0}
+                          deals={acctDeals}
+                          periodStart={nowMs - 11 * WEEK}
                         />
                       </div>
                     </div>
