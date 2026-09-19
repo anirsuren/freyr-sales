@@ -251,45 +251,39 @@ function StatusPill({ status }: { status: PlanStatus | ActionStatus | PlayStage 
 }
 
 function ReadinessBreakdown({ readiness }: { readiness: ReturnType<typeof playReadiness> }) {
+  const readyChecks = readiness.checks.filter((check) => check.ready);
   const missingChecks = readiness.checks.filter((check) => !check.ready);
 
   return (
     <div className="mt-4 border-t border-border-light pt-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Readiness checks</p>
-          <p className="mt-1 text-[17px] font-semibold text-text-primary"><span className="tnum text-[24px] font-bold">{readiness.completed}</span> of {readiness.total} ready</p>
-        </div>
-        <p className="text-[11px] text-text-secondary">Based only on records linked to this play.</p>
+      <div className="flex items-baseline gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Readiness</p>
+        <p className="text-[13px] font-semibold text-text-primary"><span className="tnum">{readiness.completed}</span> of {readiness.total} ready</p>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-        {readiness.checks.map((check) => {
-          const Icon = check.icon;
-          return (
-            <div key={check.key} className={cn("relative min-w-0 rounded-xl border px-3 py-3", check.ready ? "border-border-light bg-white" : "border-dashed border-border bg-surface/60")}>
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg" style={{ color: check.color, background: tint(check.color, check.ready ? 9 : 5) }}><Icon size={14} strokeWidth={2.2} /></span>
-                <span className="min-w-0 flex-1"><span className="block truncate text-[10.5px] font-semibold text-text-primary">{check.label}</span><span className="block truncate text-[9.5px] text-text-tertiary">{check.detail}</span></span>
-                {check.ready ? <CheckCircle2 size={15} className="shrink-0 text-success" /> : <Circle size={15} className="shrink-0 text-text-tertiary" />}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {missingChecks.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg bg-surface px-3 py-2.5 text-[10.5px]">
-          <span className="font-semibold text-text-primary">Still needed:</span>
-          {missingChecks.map((check) => (
-            <span key={check.key} className="inline-flex items-center gap-1.5 font-medium text-text-secondary">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: check.color }} />
-              {check.nextLabel}
-            </span>
-          ))}
+      <div className="mt-2 overflow-hidden rounded-xl border border-border-light bg-white text-[11px]">
+        <div className="grid gap-2 px-3 py-2.5 sm:grid-cols-[64px_minmax(0,1fr)]">
+          <span className="font-semibold text-success">Ready</span>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {readyChecks.map((check) => {
+              const Icon = check.icon;
+              return <span key={check.key} className="inline-flex items-center gap-1.5 font-medium text-text-primary"><Icon size={13} style={{ color: check.color }} /><span>{check.label}</span><span className="text-text-tertiary">· {check.detail}</span></span>;
+            })}
+          </div>
         </div>
-      )}
+        {missingChecks.length > 0 && <div className="grid gap-2 border-t border-border-light bg-surface/45 px-3 py-2.5 sm:grid-cols-[64px_minmax(0,1fr)]">
+          <span className="font-semibold text-text-secondary">Next</span>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {missingChecks.map((check) => (
+              <span key={check.key} className="inline-flex items-center gap-1.5 font-medium text-text-primary">
+                <Circle size={12} style={{ color: check.color }} />
+                {check.nextLabel}
+              </span>
+            ))}
+          </div>
+        </div>}
       </div>
+    </div>
   );
 }
 
@@ -878,7 +872,7 @@ export function CustomerAccountPlanTab({
                         <span className="tnum font-semibold text-text-primary">{money(play.target)}</span>
                         <span className="text-text-secondary">{prettyDate(play.targetDate)}</span>
                         <span className="flex min-w-[108px] items-center gap-2">
-                          <span className="flex gap-1" aria-hidden="true">{readiness.checks.map((check) => <span key={check.key} className="h-2 w-2 rounded-full" style={{ background: check.ready ? check.color : "var(--border)" }} />)}</span>
+                          <CheckCircle2 size={13} className="shrink-0 text-blue-primary" />
                           <span className="tnum text-[11px] font-semibold text-text-secondary">{readiness.completed} of {readiness.total}</span>
                         </span>
                         <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white transition-[border-color,color,transform]", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></span>
