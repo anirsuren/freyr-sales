@@ -184,6 +184,14 @@ export function HoverCard({
     hideTimer.current = setTimeout(() => setPos(null), closeGrace);
   }
 
+  function hideImmediately() {
+    if (showTimer.current) clearTimeout(showTimer.current);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    showTimer.current = null;
+    hideTimer.current = null;
+    setPos(null);
+  }
+
   function onBlur(event: React.FocusEvent<HTMLDivElement>) {
     const next = event.relatedTarget;
     if (next instanceof Node && event.currentTarget.contains(next)) return;
@@ -246,7 +254,7 @@ export function HoverCard({
                   : `calc(100vh - ${pos.bottom! + 12}px)`,
             }}
             onMouseEnter={show}
-            onMouseLeave={scheduleHide}
+            onMouseLeave={hideImmediately}
           >
             {/* pt/pb (not mt/mb) so the gap to the trigger is inside this
                 hoverable element, the cursor never crosses a dead margin. */}

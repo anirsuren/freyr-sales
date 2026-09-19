@@ -1630,7 +1630,7 @@ export function AreaChart({
           wide={!!pointTips || goal != null}
           nearPoint
           onPointerEnter={keepOpen}
-          onPointerLeave={() => closeTip()}
+          onPointerLeave={() => closeTip(0)}
         >
           <TipHeader
             color={color}
@@ -1910,7 +1910,7 @@ export function DonutChart({
           anchor={mouse}
           wide
           onPointerEnter={keepOpen}
-          onPointerLeave={() => closeTip()}
+          onPointerLeave={() => closeTip(0)}
         >
           <TipHeader
             icon={segments[hover].icon}
@@ -2381,7 +2381,7 @@ export function BarChart({
                 wide
                 nearPoint
                 onPointerEnter={keepOpen}
-                onPointerLeave={() => closeTip()}
+                onPointerLeave={() => closeTip(0)}
               >
                 <TipHeader
                   icon={d.icon}
@@ -2811,7 +2811,7 @@ export function LineChart({
               anchor={mouse}
               wide
               onPointerEnter={keepOpen}
-              onPointerLeave={() => closeTip()}
+              onPointerLeave={() => closeTip(0)}
             >
               {series.length === 1 ? (
                 <div className="shrink-0">
@@ -2996,7 +2996,7 @@ export function Sparkline({
           anchor={mouse}
           wide
           onPointerEnter={keepOpen}
-          onPointerLeave={() => closeTip()}
+          onPointerLeave={() => closeTip(0)}
         >
           <div className="shrink-0">
             <TipHeader
@@ -3317,7 +3317,7 @@ export function MovementBarChart({ data, enabled = true }: {
           wide
           nearPoint
           onPointerEnter={keepOpen}
-          onPointerLeave={() => close()}
+          onPointerLeave={() => close(0)}
         >
           <TipHeader icon="money" color={selected.color} label={selected.label} value={selected.exactValue} note={selected.value >= 0 ? "Added to this month's plan" : "Removed from this month's plan"} />
           <TipBreakdown items={selected.tip} label="Frozen compared with today" />
