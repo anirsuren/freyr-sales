@@ -224,26 +224,11 @@ export function AddCustomerDialog({
           )}
           <InfoHint text={hint} />
         </legend>
-        <div className="grid grid-cols-2 gap-2.5">
-          <AddressLineLookup
-            title={title}
-            value={value}
-            onChange={(next) => {
-              set(next);
-              if (error) setError("");
-            }}
-            inputClassName={INPUT}
-            className="col-span-2"
-            onEnter={onEnter}
-            disabled={busy}
-          />
-          <input className={cn(INPUT, "col-span-2")} placeholder="Line 2" aria-label={`${title} line 2`} value={value.line2 ?? ""} onChange={put("line2")} onKeyDown={onEnter} disabled={busy} />
-          <input className={INPUT} placeholder="City" aria-label={`${title} city`} value={value.city} onChange={put("city")} onKeyDown={onEnter} disabled={busy} />
-          <input className={INPUT} placeholder="State" aria-label={`${title} state`} value={value.state ?? ""} onChange={put("state")} onKeyDown={onEnter} disabled={busy} />
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           <ColorSelect
             value={value.country}
             ariaLabel={`${title} country`}
-            className="w-full"
+            className="w-full sm:col-span-3"
             collapsible={false}
             fill
             onChange={(v) => {
@@ -252,6 +237,21 @@ export function AddCustomerDialog({
             }}
             options={[{ value: "", label: "Country", color: "#C7CDD6" }, ...countryOptions()]}
           />
+          <AddressLineLookup
+            title={title}
+            value={value}
+            onChange={(next) => {
+              set(next);
+              if (error) setError("");
+            }}
+            inputClassName={INPUT}
+            className="sm:col-span-3"
+            onEnter={onEnter}
+            disabled={busy}
+          />
+          <input className={cn(INPUT, "sm:col-span-3")} placeholder="Line 2" aria-label={`${title} line 2`} value={value.line2 ?? ""} onChange={put("line2")} onKeyDown={onEnter} disabled={busy} />
+          <input className={INPUT} placeholder="City" aria-label={`${title} city`} value={value.city} onChange={put("city")} onKeyDown={onEnter} disabled={busy} />
+          <input className={INPUT} placeholder="State" aria-label={`${title} state`} value={value.state ?? ""} onChange={put("state")} onKeyDown={onEnter} disabled={busy} />
           <input className={INPUT} placeholder="ZIP" aria-label={`${title} ZIP`} value={value.zip ?? ""} onChange={put("zip")} onKeyDown={onEnter} disabled={busy} />
         </div>
       </fieldset>

@@ -1163,3 +1163,5 @@ Bar charts always reserve a dedicated strip below their axis labels for an overl
 Sticky save and form-action bars coordinate with the shared Freyr AI launcher. They keep their normal alignment until their rendered bounds reach the launcher, then reserve exactly the launcher corner so the final action stays fully visible; the rule applies to customer and offering editors, opportunity editors, performance edits, roadmap forms, and other sticky action bars. Completed locally, not deployed.
 
 Customer and address lookup locations use the app's blue information treatment. Map pins in company-office results, address suggestions, and add-customer address headings no longer use warning orange for neutral search results. Completed locally, not deployed.
+
+Customer address cards use a consistent postal layout: country and both street lines span the card, followed by one City, State, ZIP row. The same structure is used when adding and editing a customer, and collapses to one column on narrow screens. Completed locally, not deployed.
