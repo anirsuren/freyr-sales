@@ -1189,3 +1189,5 @@ Inline owner identities on Goals always read crown, profile picture, then name. 
 The goal verification dialog places a full-width search field immediately above its logged-entry list. It filters the review log by person, customer, date, amount, status, notes, actors, currency, and evidence while preserving the complete entry count and showing the number of matches. Completed locally, not deployed.
 
 Customer HQ address requirements are enforced at both UI and API boundaries for creation and editing. Line 1, city, and country are required; legacy or mock customers without them remain blocked from saving until completed, and the app never invents address data. Completed locally, not deployed.
+
+Standalone subgoal editors open with an explicit Edit subgoal or Add subgoal title, then identify the subgoal, its parent goal, and the parent target before any controls. The form follows the numbered sequence Details, Owner, Groups, and People and targets, and keeps Cancel and Save changes visible in a sticky footer. Inline subgoal editing remains compact inside the goal drawer. Completed locally, not deployed.

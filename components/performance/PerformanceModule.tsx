@@ -647,20 +647,21 @@ export function PerformanceModule({
              "Growth Accounts" alone does not say which plan you are editing. */
           title={
             subModal.editing
-              ? `${subModal.editing.name} · a subgoal of ${subModal.goal.name}`
+              ? "Edit subgoal"
               : `Add a subgoal to ${subModal.goal.name}`
           }
           size="workflow"
           tall
         >
           <SubgoalEditorFields
-                              state={state}
-                              key={subModal.editing?.id ?? "new"}
+            state={state}
+            key={subModal.editing?.id ?? "new"}
             goal={subModal.goal}
             editing={subModal.editing}
             suggestions={people}
             run={run}
             busy={busy}
+            standalone
             onDone={() => setSubModal(null)}
           />
         </Modal>
@@ -2838,6 +2839,7 @@ function GoalPopupBody({
               suggestions={suggestions}
               run={run}
               busy={busy}
+              standalone
               onDone={() => setOpenSub(null)}
             />
           </Modal>
@@ -4056,6 +4058,7 @@ function SubgoalEditorFields({
   suggestions,
   run,
   busy,
+  standalone = false,
   onDone,
 }: {
   goal: PrimaryGoal;
@@ -4065,6 +4068,8 @@ function SubgoalEditorFields({
   suggestions: string[];
   run: RunOp;
   busy: boolean;
+  /** A modal gets its own orientation header and persistent actions. */
+  standalone?: boolean;
   onDone: () => void;
 }) {
   const [name, setName] = useState(editing?.name ?? "");
@@ -4146,10 +4151,35 @@ function SubgoalEditorFields({
   const peopleOver = personCeiling > 0 && peopleSum > personCeiling;
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-xl bg-[var(--surface)] px-3 py-2.5">
-        <p className="flex flex-wrap items-baseline gap-x-1.5 text-[12.5px] text-text-secondary">
-          A slice of
+    <div className="space-y-4">
+      {standalone && (
+        <div className="rounded-xl border border-blue-subtle bg-blue-light/40 px-4 py-3.5">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-blue-primary">
+            {editing ? "Editing subgoal" : "Creating subgoal"}
+          </p>
+          <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
+            <span className="min-w-0">
+              <b className="block truncate text-[18px] font-bold text-text-primary">
+                {name.trim() || "Untitled subgoal"}
+              </b>
+              <span className="mt-0.5 block text-[12px] text-text-secondary">
+                Part of <b className="text-text-primary">{goal.name}</b>
+              </span>
+            </span>
+            {goalTarget > 0 && (
+              <span className="shrink-0 rounded-full border border-blue-subtle bg-white px-3 py-1 text-[11.5px] font-semibold text-blue-primary tnum">
+                Parent target {fmtAmount(goal.unit, goalTarget)}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-xl border border-border-light bg-[var(--surface)] px-4 py-3">
+        <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+          Parent goal allocation
+        </p>
+        <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-[12.5px] text-text-secondary">
           <b className="text-text-primary">{goal.name}</b>
           {goalTarget > 0 && (
             <>
@@ -4258,7 +4288,16 @@ function SubgoalEditorFields({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <section className="rounded-xl border border-border-light bg-white p-3.5">
+        <div className="mb-3">
+          <p className="text-[12.5px] font-bold text-text-primary">
+            1. Subgoal details
+          </p>
+          <p className="mt-0.5 text-[11.5px] text-text-secondary">
+            Name this piece of the parent goal and set how much it carries.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
         <div className="min-w-[200px] flex-1">
           {/* THE SAME BLUE DOT THE BAR ABOVE USES (Anir, Aug 19: "you're
               using the blue, right? Put that blue next to subgoal target so
@@ -4315,7 +4354,8 @@ function SubgoalEditorFields({
               </p>
             ))}
         </div>
-      </div>
+        </div>
+      </section>
 
       {/* ONE PER LINE, FULL WIDTH (Anir, Aug 12: "let's have the goal owners
           and the people on the sub-goal on two different lines so this
@@ -4323,10 +4363,10 @@ function SubgoalEditorFields({
           full"). Side by side, each card was half a dialog wide and ate names
           like "Anant Purohit" into "Anant Pur…". A person's own name is the
           last thing that should be abbreviated. */}
-      <div className="grid grid-cols-1 gap-3">
+      <div className={cn("grid grid-cols-1 gap-3", editing && "lg:grid-cols-2")}>
         <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
-          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-            Goal owners
+          <label className="flex items-center gap-1 text-[12.5px] font-bold text-text-primary">
+            2. Owner
             <Crown
               size={13}
               strokeWidth={2.2}
@@ -4335,6 +4375,9 @@ function SubgoalEditorFields({
             />
             <InfoHint text={"Responsible for this subgoal overall. The crown marks them wherever they appear.\nAn owner can also appear in the people list with a personal target of their own."} />
           </label>
+          <p className="mt-0.5 text-[11.5px] text-text-secondary">
+            The person responsible for checking and approving this subgoal.
+          </p>
           <div className="mt-2 space-y-1.5">
             <PersonSelect
               value=""
@@ -4400,10 +4443,13 @@ function SubgoalEditorFields({
 
         {editing && (
           <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
-            <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-              Groups on this subgoal
+            <label className="flex items-center gap-1 text-[12.5px] font-bold text-text-primary">
+              3. Groups
               <InfoHint text={"A whole department carrying this part of the goal. Its people are added below automatically with a target of 0, so they can start logging right away.\nSave the subgoal first, then pick a group. There has to be something for the group to attach to."} />
             </label>
+            <p className="mt-0.5 text-[11.5px] text-text-secondary">
+              Teams that carry this part of the parent goal.
+            </p>
             <div className="mt-2 space-y-1.5">
               {(editing.groupAssignments ?? []).length === 0 ? (
                 <p className="text-[12px] text-text-secondary">
@@ -4514,11 +4560,14 @@ function SubgoalEditorFields({
           </section>
         )}
 
-        <section className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
-          <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-            People on this subgoal
+        <section className={cn("rounded-xl border border-border-light bg-[var(--surface)] p-3", editing && "lg:col-span-2")}>
+          <label className="flex items-center gap-1 text-[12.5px] font-bold text-text-primary">
+            {editing ? "4" : "3"}. People and targets
             <InfoHint text="Each person carries their own target. Their logged numbers roll up into this subgoal." />
           </label>
+          <p className="mt-0.5 text-[11.5px] text-text-secondary">
+            Assign the people doing the work and the amount each person carries.
+          </p>
           <div className="mt-2 space-y-1.5">
             <PersonSelect
               value=""
@@ -4526,6 +4575,13 @@ function SubgoalEditorFields({
               people={suggestions.filter((s) => !rows.some((r) => r.name === s))}
               placeholder="Add a person…"
             />
+            {rows.length > 0 && (
+              <div className="flex items-center gap-2 px-2.5 pt-1 text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                <span className="min-w-0 flex-1">Person</span>
+                <span className="w-[110px] shrink-0">Personal target</span>
+                <span className="w-5 shrink-0" aria-hidden="true" />
+              </div>
+            )}
             {rows.map((r, i) => (
               <div key={r.name} className="flex items-center gap-2">
                 <span className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-1.5">
@@ -4673,9 +4729,23 @@ function SubgoalEditorFields({
         </section>
       </div>
 
-      {/* Primary action alone, bottom right, on its own footer line. No
-          Cancel: the X (and the accordion header) close without saving. */}
-      <div className="flex items-center justify-end pt-1">
+      <div
+        className={cn(
+          "flex items-center justify-end gap-2",
+          standalone
+            ? "sticky -bottom-5 z-20 -mx-5 -mb-5 border-t border-border-light bg-white px-5 py-3 shadow-[0_-8px_24px_-18px_rgba(15,23,42,0.45)]"
+            : "pt-1"
+        )}
+      >
+        {standalone && (
+          <button
+            type="button"
+            onClick={onDone}
+            className="cursor-pointer rounded-full border border-border-light bg-white px-4 py-2 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+          >
+            Cancel
+          </button>
+        )}
         <button
           type="button"
           disabled={busy || !name.trim()}

@@ -198,3 +198,5 @@ Render inline owner identities as crown, profile picture, then name. Keep the pr
 Keep a search field directly above the logged-entry list in the goal verification dialog. Search across every visible record detail and report the filtered count without changing the underlying sign-off totals.
 
 Require customer HQ line 1, city, and country in both create and edit flows, with a visible required star, blocked form actions, and matching API validation. Do not invent an address for incomplete legacy or mock customers.
+
+Standalone subgoal editors must immediately identify the action, subgoal, parent goal, and parent target. Organize the controls as Details, Owner, Groups, and People and targets, and keep Cancel and Save changes visible in a sticky footer; retain the compact treatment for inline editing.
