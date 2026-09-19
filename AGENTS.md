@@ -1109,4 +1109,4 @@ The People performance sent-back table uses proportional columns with a smaller 
 All 137 InfoHint question marks now use one structured help renderer: each idea gets its own row, short labels before a colon become bold headings, and long single-paragraph explanations break into readable sentences. The goal editor's Counted in, How it adds up, and Schedule explanations were rewritten as short labelled choices and examples. Completed locally, not deployed.
 
 ### Sep 19: milestone removal uses the destructive treatment
-The milestone-removal confirmation uses the app's red warning icon and red primary action so the destructive choice is unmistakable. Completed locally, not deployed.
+The milestone-removal confirmation uses the app's red warning icon and red primary action so the destructive choice is unmistakable. The editor mounts one shared confirmation instead of one per milestone, preventing stacked backdrops from making the screen nearly black. Completed locally, not deployed.

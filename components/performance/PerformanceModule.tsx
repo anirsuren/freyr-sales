@@ -3948,21 +3948,6 @@ function GoalEditorFields({
                           <Trash2 size={14} strokeWidth={2.2} />
                         </button>
                       </div>
-                      <ConfirmDialog
-                        open={confirmMilestone !== null}
-                        onClose={() => setConfirmMilestone(null)}
-                        onConfirm={() => {
-                          const at = confirmMilestone;
-                          setConfirmMilestone(null);
-                          if (at !== null)
-                            setMilestones((prev) => prev.filter((_, i) => i !== at));
-                        }}
-                        title="Remove this milestone?"
-                        body="It comes off the goal's schedule."
-                        detail="Nothing changes until you save the schedule."
-                        tone="destructive"
-                        confirmLabel="Remove it"
-                      />
                       {faulted && (
                         <p className="mt-2 text-[11.5px] font-medium text-[color:var(--ink-orange)]">
                           {milestoneFault.message}
@@ -3974,6 +3959,22 @@ function GoalEditorFields({
               })}
             </div>
           )}
+
+          <ConfirmDialog
+            open={confirmMilestone !== null}
+            onClose={() => setConfirmMilestone(null)}
+            onConfirm={() => {
+              const at = confirmMilestone;
+              setConfirmMilestone(null);
+              if (at !== null)
+                setMilestones((prev) => prev.filter((_, i) => i !== at));
+            }}
+            title="Remove this milestone?"
+            body="It comes off the goal's schedule."
+            detail="Nothing changes until you save the schedule."
+            tone="destructive"
+            confirmLabel="Remove it"
+          />
 
           <button
             type="button"
