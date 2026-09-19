@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Boxes, Check, LayoutGrid, Link2, Plus, Table2, X } from "lucide-react";
+import { Boxes, Check, LayoutGrid, Link2, Plus, Search, Table2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -73,6 +73,7 @@ export function CustomerDigitalComponents({
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+  const [pickQuery, setPickQuery] = useState("");
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 
   const byId = new Map(components.map((component) => [component.id, component]));
@@ -80,6 +81,14 @@ export function CustomerDigitalComponents({
   const available = components.filter(
     (component) => !connectedIds.has(component.id)
   );
+  const normalizedPickQuery = pickQuery.trim().toLowerCase();
+  const availableShown = normalizedPickQuery
+    ? available.filter(
+        (component) =>
+          component.name.toLowerCase().includes(normalizedPickQuery) ||
+          component.type.toLowerCase().includes(normalizedPickQuery)
+      )
+    : available;
 
   async function save(next: CustomerComponentLink[], done: string) {
     setState(next);
@@ -151,6 +160,7 @@ export function CustomerDigitalComponents({
             disabled={busy}
             onClick={() => {
               setPicked([]);
+              setPickQuery("");
               setPicking(true);
             }}
           >
@@ -478,6 +488,13 @@ export function CustomerDigitalComponents({
         open={picking}
         onClose={() => setPicking(false)}
         title="Connect components"
+        size="wide"
+        dialogClassName={
+          available.length > 0
+            ? "!h-[min(640px,calc(100vh-3rem))] !max-w-[720px]"
+            : "!max-w-[720px]"
+        }
+        bodyClassName={available.length > 0 ? "flex flex-col" : undefined}
       >
         {available.length === 0 ? (
           <div>
@@ -521,10 +538,33 @@ export function CustomerDigitalComponents({
               );
               setPicking(false);
             }}
-            className="space-y-4"
+            className="flex h-full min-h-0 flex-col gap-4"
           >
-            <ul className="max-h-72 space-y-1.5 overflow-y-auto">
-              {available.map((component) => {
+            <div className="relative shrink-0">
+              <Search
+                size={16}
+                strokeWidth={2}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+              />
+              <input
+                autoFocus
+                value={pickQuery}
+                onChange={(event) => setPickQuery(event.target.value)}
+                placeholder="Search components…"
+                aria-label="Search components"
+                className="h-11 w-full rounded-xl border border-border-light bg-white pl-10 pr-4 text-[13.5px] text-text-primary outline-none transition-shadow placeholder:text-text-tertiary focus:border-blue-subtle focus:shadow-input-focus"
+              />
+            </div>
+            {availableShown.length === 0 ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl border border-dashed border-border-light bg-surface px-6 text-center">
+                <p className="text-[13px] text-text-tertiary">
+                  No component matches “{pickQuery.trim()}”.
+                </p>
+              </div>
+            ) : (
+            <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+              {availableShown.map((component) => {
                 const active = picked.includes(component.id);
                 return (
                   <li key={component.id}>
@@ -537,7 +577,7 @@ export function CustomerDigitalComponents({
                             : [...prev, component.id]
                         )
                       }
-                      className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
+                      className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
                         active
                           ? "border-blue-primary bg-blue-light/50"
                           : "border-border-light hover:border-blue-subtle"
@@ -561,7 +601,15 @@ export function CustomerDigitalComponents({
                 );
               })}
             </ul>
-            <div className="flex justify-end">
+            )}
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border-light pt-4">
+              <span className="text-[12px] text-text-secondary">
+                {picked.length === 0
+                  ? normalizedPickQuery
+                    ? `${availableShown.length} ${plural(availableShown.length, "match")}`
+                    : `${available.length} available`
+                  : `${picked.length} selected`}
+              </span>
               <Button type="submit" disabled={!picked.length} loading={busy}>
                 <Plus size={14} strokeWidth={2.2} /> Connect
               </Button>

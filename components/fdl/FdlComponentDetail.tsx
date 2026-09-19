@@ -2074,13 +2074,16 @@ export function FdlComponentDetail({
         open={addingOffering}
         onClose={() => setAddingOffering(false)}
         title={`Which offerings include ${component.name}?`}
+        size="wide"
+        dialogClassName="!h-[min(640px,calc(100vh-3rem))] !max-w-[720px]"
+        bodyClassName="flex flex-col"
       >
         <form
           onSubmit={(event) => {
             event.preventDefault();
             void connectOfferings();
           }}
-          className="space-y-4"
+          className="flex h-full min-h-0 flex-col gap-4"
         >
           <p className="text-[12.5px] text-text-secondary">
             Tick every offering this component is part of. Which version each
@@ -2126,7 +2129,7 @@ export function FdlComponentDetail({
             const tiles = offeringPickerView === "tiles";
             return (
               <>
-                <ScrollHint className="max-h-72">
+                <ScrollHint containerClassName="min-h-0 flex-1" className="h-full">
                   <ul
                     className={
                       tiles

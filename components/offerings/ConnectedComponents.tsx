@@ -178,6 +178,7 @@ export function ConnectedComponents({
             className="shrink-0"
             onClick={() => {
               setPicked([]);
+              setPickQuery("");
               setPicking(true);
             }}
           >
@@ -560,7 +561,18 @@ export function ConnectedComponents({
         )
       )}
 
-      <Modal open={picking} onClose={() => setPicking(false)} title="Connect components">
+      <Modal
+        open={picking}
+        onClose={() => setPicking(false)}
+        title="Connect components"
+        size="wide"
+        dialogClassName={
+          available.length > 0
+            ? "!h-[min(640px,calc(100vh-3rem))] !max-w-[720px]"
+            : "!max-w-[720px]"
+        }
+        bodyClassName={available.length > 0 ? "flex flex-col" : undefined}
+      >
         {available.length === 0 ? (
           <div>
             <p className="text-[13px] text-text-secondary">
@@ -587,14 +599,14 @@ export function ConnectedComponents({
               );
               if (ok) setPicking(false);
             }}
-            className="space-y-4"
+            className="flex h-full min-h-0 flex-col gap-4"
           >
-            <div className="relative">
+            <div className="relative shrink-0">
               <Search
-                size={14}
+                size={16}
                 strokeWidth={2}
                 aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-tertiary"
               />
               <input
                 autoFocus
@@ -602,15 +614,17 @@ export function ConnectedComponents({
                 onChange={(e) => setPickQuery(e.target.value)}
                 placeholder="Search components…"
                 aria-label="Search components"
-                className="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+                className="h-11 w-full rounded-xl border border-border-light bg-white pl-10 pr-4 text-[13.5px] text-text-primary outline-none transition-shadow placeholder:text-text-tertiary focus:border-blue-subtle focus:shadow-input-focus"
               />
             </div>
             {availableShown.length === 0 ? (
-              <p className="px-1 py-6 text-center text-[12.5px] text-text-tertiary">
-                No component matches “{pickQuery.trim()}”.
-              </p>
+              <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl border border-dashed border-border-light bg-surface px-6 text-center">
+                <p className="text-[13px] text-text-tertiary">
+                  No component matches “{pickQuery.trim()}”.
+                </p>
+              </div>
             ) : (
-            <ul className="max-h-72 space-y-1.5 overflow-y-auto">
+            <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
               {availableShown.map((component) => {
                 const active = picked.includes(component.id);
                 return (
@@ -622,7 +636,7 @@ export function ConnectedComponents({
                           active ? prev.filter((x) => x !== component.id) : [...prev, component.id]
                         )
                       }
-                      className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
+                      className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
                         active ? "border-blue-primary bg-blue-light/50" : "border-border-light hover:border-blue-subtle"
                       }`}
                     >
@@ -643,14 +657,21 @@ export function ConnectedComponents({
               })}
             </ul>
             )}
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border-light pt-4">
               <Link
                 href="/components"
                 className="text-[12px] font-medium text-blue-primary hover:underline"
               >
                 New FDL component →
               </Link>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-3">
+                <span className="text-[12px] text-text-secondary">
+                  {picked.length === 0
+                    ? pickQ
+                      ? `${availableShown.length} ${availableShown.length === 1 ? "match" : "matches"}`
+                      : `${available.length} available`
+                    : `${picked.length} selected`}
+                </span>
                 <Button type="submit" disabled={picked.length === 0} loading={busy}>
                   <Plus size={14} strokeWidth={2.2} /> Connect
                 </Button>
