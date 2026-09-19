@@ -16,6 +16,8 @@ import {
   Crown,
   Eye,
   Paperclip,
+  Search,
+  X,
 } from "lucide-react";
 import { SmartBack } from "@/components/ui/BackButton";
 import { Avatar } from "@/components/ui/Avatar";
@@ -433,6 +435,8 @@ export function GoalZoom({
    * want two months or two groups side by side.
    */
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  /** A long group list stays usable without changing its selection model. */
+  const [groupQuery, setGroupQuery] = useState("");
   /**
    * COLUMN 2 LISTS THE PEOPLE ONLY WHEN ASKED (Anir, Aug 16: "you don't have to
    * show the people here because you show the people on the right side anyway…
@@ -1086,6 +1090,14 @@ export function GoalZoom({
                 r2.awaiting > 0
             )
             .sort((a, b) => b.verified - a.verified);
+          const normalizedGroupQuery = groupQuery.trim().toLowerCase();
+          const visiblePeriodGroups = normalizedGroupQuery
+            ? inPeriodGroups.filter(
+                (r2) =>
+                  r2.group.name.toLowerCase().includes(normalizedGroupQuery) ||
+                  r2.group.head.toLowerCase().includes(normalizedGroupQuery)
+              )
+            : inPeriodGroups;
           const maxG = yearTarget > 0
             ? yearTarget
             : Math.max(1, ...inPeriodGroups.map((r2) => r2.verified));
@@ -1495,14 +1507,66 @@ export function GoalZoom({
 
                   </span>
                 </div>
+                <div className="border-b border-border-light px-2 py-2">
+                  <label className="flex h-9 items-center gap-2 rounded-xl border border-border-light bg-white px-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors focus-within:border-blue-primary/50 focus-within:ring-2 focus-within:ring-blue-primary/10">
+                    <Search
+                      size={14}
+                      strokeWidth={2.2}
+                      aria-hidden="true"
+                      className="shrink-0 text-text-tertiary"
+                    />
+                    <input
+                      type="search"
+                      value={groupQuery}
+                      onChange={(e) => setGroupQuery(e.target.value)}
+                      aria-label="Search groups in this period"
+                      placeholder="Search groups…"
+                      className="min-w-0 flex-1 bg-transparent text-[12px] text-text-primary outline-none placeholder:text-text-tertiary"
+                    />
+                    {groupQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setGroupQuery("")}
+                        aria-label="Clear group search"
+                        className="-mr-1 grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded-full text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
+                      >
+                        <X size={13} strokeWidth={2.3} aria-hidden="true" />
+                      </button>
+                    )}
+                    {normalizedGroupQuery && (
+                      <span className="shrink-0 text-[10px] font-semibold text-text-tertiary tnum">
+                        {visiblePeriodGroups.length}/{inPeriodGroups.length}
+                      </span>
+                    )}
+                  </label>
+                </div>
                 <div key={`g-${gran}-${selIdx}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
                   {inPeriodGroups.length === 0 ? (
                     <p className="px-2 py-3 text-[12px] text-text-secondary">
                       No groups yet. Once groups exist, this box lists every
                       group&apos;s number for the picked period.
                     </p>
+                  ) : visiblePeriodGroups.length === 0 ? (
+                    <div className="flex min-h-[120px] flex-col items-center justify-center rounded-xl bg-surface/60 px-5 text-center">
+                      <Search
+                        size={18}
+                        strokeWidth={2}
+                        aria-hidden="true"
+                        className="mb-2 text-text-tertiary"
+                      />
+                      <p className="text-[12px] font-semibold text-text-secondary">
+                        No groups match “{groupQuery.trim()}”
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setGroupQuery("")}
+                        className="mt-2 cursor-pointer text-[11px] font-semibold text-blue-primary hover:underline"
+                      >
+                        Clear search
+                      </button>
+                    </div>
                   ) : (
-                    inPeriodGroups.map((r2) => {
+                    visiblePeriodGroups.map((r2) => {
                       const active = selGroup?.group.id === r2.group.id;
                       return (
                         r2.verified === 0 && r2.awaiting === 0 ? (

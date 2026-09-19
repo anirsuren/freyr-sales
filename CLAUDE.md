@@ -195,6 +195,8 @@ Verification pills keep the same resting label, icon, dimensions, border, and st
 
 Goal-level verification is green when Verified and red when Not verified across pills and filters. Do not use blue for a negative verification state; entry-level waiting for review remains amber.
 
+Keep a compact search field under the Groups header in the Goals drill-down. Filter the current period's group list by group name or owner, show visible/total while filtering, offer a clear action and empty result, and preserve the existing selection and three-column layout.
+
 Render inline owner identities as crown, profile picture, then name. Keep the profile picture immediately beside the name as part of the person's identity.
 
 Keep a search field directly above the logged-entry list in the goal verification dialog. Search across every visible record detail and report the filtered count without changing the underlying sign-off totals.
