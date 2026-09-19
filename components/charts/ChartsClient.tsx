@@ -561,6 +561,12 @@ function PortalTip({
       className="pointer-events-auto fixed z-[9999]"
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
+      /* Pointer events are the primary path, but graph cards must also close
+         on the browser's ordinary mouse boundary. Keeping the immediate exit
+         on the shared portal means every chart gets the rule, including the
+         month-by-month bars inside expanded goal rows. */
+      onMouseLeave={onPointerLeave}
+      onPointerCancel={onPointerLeave}
       style={{
         left,
         top,
