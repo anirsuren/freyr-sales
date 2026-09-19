@@ -1340,7 +1340,16 @@ export function RequestDetail({
             )}
             style={
               overviewMainHeight
-                ? ({ "--overview-main-height": `${overviewMainHeight}px` } as CSSProperties)
+                ? ({
+                    /* A short overview used to make the flex rail steal height
+                       from Where it stands so the Requested / Needed labels
+                       were visibly cut off. Seven hundred pixels is the
+                       compact rail's real minimum: owner + deadline + the
+                       Timeline's useful 300px window + the two gaps. Taller
+                       overview pages still set the height and align both
+                       columns exactly as before. */
+                    "--overview-main-height": `${Math.max(overviewMainHeight, 700)}px`,
+                  } as CSSProperties)
                 : undefined
             }
           >
@@ -1351,7 +1360,7 @@ export function RequestDetail({
             <SectionCard
               title="Owner"
               icon={UserRound}
-              className="relative z-20 overflow-visible"
+              className="relative z-20 shrink-0 overflow-visible"
             >
               {may.assign && r.status !== "completed" && r.status !== "cancelled" ? (
                 <div className={cn(busy && "pointer-events-none opacity-60")}>
@@ -1428,6 +1437,7 @@ export function RequestDetail({
                   </span>
                 }
                 icon={CalendarDays}
+                className="shrink-0"
               >
                 <NeededByTimeline
                   requestedAt={r.requestedAt}

@@ -1097,6 +1097,8 @@ Expanded Solutioning previews render Recent activity as a true compact timeline.
 
 Expanded Solutioning previews now show document responsibility directly in every visible document row. An assigned document names the person under a clear “Working on it” label; an unassigned document says “No one assigned.” The compact preview therefore answers who is handling each customer document without requiring the full record. Completed locally, not deployed.
 
+The Solutioning overview rail now protects the Owner and Where it stands cards from flex shrinking. Short request overviews give the rail enough minimum height for both summaries plus the scrolling Timeline window, so the Requested and Needed labels and dates stay inside the deadline card instead of being clipped at its bottom edge. Taller overview pages continue to align both columns. Completed locally, not deployed.
+
 Request details label the linked context explicitly. “What this is for” uses one restrained panel with Customer, Opportunities, and Contacts columns, preserving the existing links and showing “None linked” where a relationship is absent. Completed locally, not deployed.
 
 ### Sep 17: customer band tabs omit redundant actions

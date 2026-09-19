@@ -142,7 +142,10 @@ export function NeededByTimeline({
          overhang), so its right edge is its width minus that. 16px of air
          between the two captions. */
       const minCentre = -11 + req.offsetWidth + 16 + halfNeed;
-      const maxCentre = W + 11 - halfNeed;
+      /* Keep a few real pixels inside the content edge. Sitting exactly on
+         the card's overflow-hidden boundary could shave the final digit off
+         the date at some zoom levels. */
+      const maxCentre = W + 7 - halfNeed;
       setNeedLeftPx(Math.min(Math.max(flagX, minCentre), maxCentre));
     };
     measure();
