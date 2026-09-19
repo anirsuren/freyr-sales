@@ -1190,6 +1190,8 @@ The middle Groups column in the Goals drill-down has a compact search field dire
 
 Expanded chart dialogs must preserve the source chart's visual meaning exactly. Goals progress bars remain solid green for verified work, striped amber for waiting work, and striped red for sent-back work when expanded; goal-type colors remain only on identity dots. Never regenerate expanded bars from a simplified value/color projection that discards status segments. Completed locally, not deployed.
 
+Expanded chart dialogs always show the complete chart. Do not add series/slice visibility filters, “show all” controls, visible counts, or empty-filter states to expanded charts. Completed locally, not deployed.
+
 Inline owner identities on Goals always read crown, profile picture, then name. The avatar and name stay adjacent as one person identity; the ownership crown precedes that identity instead of splitting the face from the name. Completed locally, not deployed.
 
 The goal verification dialog places a full-width search field immediately above its logged-entry list. It filters the review log by person, customer, date, amount, status, notes, actors, currency, and evidence while preserving the complete entry count and showing the number of matches. Completed locally, not deployed.

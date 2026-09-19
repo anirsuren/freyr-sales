@@ -118,7 +118,6 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
               title="Weighted forecast by rep"
               subtitle="Compare each teammate's realistic quarter forecast, their open pipeline, and their share of the team quota."
               items={expansionItems}
-              itemNoun="series"
               renderExpanded={(visibleKeys) => {
                 const visible = new Set(visibleKeys);
                 const visibleReps = sorted.filter((r) =>

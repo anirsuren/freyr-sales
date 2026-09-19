@@ -794,7 +794,6 @@ export function ForecastRisk({
                       title="Days since the last touch"
                       subtitle={`Every visible open deal shares one day axis. The ${rottingDays}-day line separates actively worked deals from exposed deals.`}
                       items={quietPlotItems}
-                      itemNoun="series"
                       renderExpanded={renderExpandedQuietPlot}
                       className="h-8 px-2.5 text-[11.5px]"
                     />

@@ -3,20 +3,11 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useId,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
-import {
-  Check,
-  ChevronDown,
-  Eye,
-  Layers3,
-  Maximize2,
-} from "lucide-react";
+import { Maximize2 } from "lucide-react";
 import {
   AreaChart,
   BarChart,
@@ -29,11 +20,6 @@ import {
 import { VIZ, VIZ_SERIES } from "@/components/charts/palette";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
-import {
-  floatingMenuStyle,
-  menuMotionVars,
-  type FloatingMenuStyle,
-} from "@/components/ui/ColorSelect";
 
 /**
  * Existing chart wrappers can provide this around their chart content to
@@ -71,177 +57,12 @@ export type ExpandedChartControlProps = {
   title: string;
   subtitle?: string;
   items: ExpandedChartItem[];
-  /**
-   * Render a full-size chart for exactly these item keys. In Split mode the
-   * control invokes it once per visible item; in Combined mode it invokes it
-   * once with the whole visible set.
-   */
-  renderExpanded: (visibleKeys: readonly string[]) => ReactNode;
+  /** Render the full-size chart with every item key. */
+  renderExpanded: (itemKeys: readonly string[]) => ReactNode;
   /** Optional context added to the icon button's accessible name and title. */
   triggerLabel?: string;
-  itemNoun?: "series" | "slices";
   className?: string;
 };
-
-function SeriesVisibilityMenu({
-  items,
-  visibleKeys,
-  onToggle,
-  onOnly,
-  onAll,
-  itemNoun,
-}: {
-  items: ExpandedChartItem[];
-  visibleKeys: Set<string>;
-  onToggle: (key: string) => void;
-  onOnly: (key: string) => void;
-  onAll: () => void;
-  itemNoun: "series" | "slices";
-}) {
-  const [open, setOpen] = useState(false);
-  const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const shown = items.filter((item) => visibleKeys.has(item.key)).length;
-  const allShown = shown === items.length;
-
-  const positionMenu = () => {
-    const rect = triggerRef.current?.getBoundingClientRect();
-    if (rect) setMenuStyle(floatingMenuStyle(rect, 360, 360));
-  };
-
-  const toggleMenu = () => {
-    if (open) {
-      setOpen(false);
-      return;
-    }
-    positionMenu();
-    setOpen(true);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const dismiss = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (
-        !triggerRef.current?.contains(target) &&
-        !menuRef.current?.contains(target)
-      ) {
-        setOpen(false);
-      }
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    const reposition = () => positionMenu();
-    document.addEventListener("pointerdown", dismiss, true);
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("resize", reposition);
-    window.addEventListener("scroll", reposition, true);
-    return () => {
-      document.removeEventListener("pointerdown", dismiss, true);
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", reposition);
-      window.removeEventListener("scroll", reposition, true);
-    };
-  }, [open]);
-
-  return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={toggleMenu}
-        className={cn(
-          "inline-flex h-[42px] min-w-[132px] cursor-pointer items-center gap-2 rounded-xl border bg-white px-3 text-[11.5px] font-semibold shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,box-shadow,color]",
-          open
-            ? "border-blue-primary text-blue-primary shadow-input-focus"
-            : "border-border-light text-text-primary hover:border-blue-subtle"
-        )}
-      >
-        <Eye size={14} strokeWidth={2.1} className="text-blue-primary" />
-        <span className="flex-1 text-left">
-          {allShown ? "Show all" : `Show ${shown} of ${items.length}`}
-        </span>
-        <ChevronDown
-          size={14}
-          strokeWidth={2.2}
-          className={cn(
-            "text-text-tertiary transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
-            open && "rotate-180 text-blue-primary"
-          )}
-        />
-      </button>
-
-      {open && menuStyle && typeof document !== "undefined" &&
-        createPortal(
-          <div
-            ref={menuRef}
-            role="listbox"
-            aria-label={`Visible chart ${itemNoun}`}
-            className="menu-in z-[240] overflow-hidden rounded-xl border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
-            style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
-          >
-            <button
-              type="button"
-              role="option"
-              aria-selected={allShown}
-              onClick={onAll}
-              className={cn(
-                "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[12px] font-semibold transition-colors hover:bg-surface",
-                allShown && "bg-blue-light text-blue-primary"
-              )}
-            >
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-light text-blue-primary">
-                <Layers3 size={12} strokeWidth={2.2} />
-              </span>
-              <span className="flex-1">All {itemNoun}</span>
-              {allShown && <Check size={14} strokeWidth={2.5} />}
-            </button>
-            <div className="my-1 border-t border-border-light" />
-            {items.map((item) => {
-              const visible = visibleKeys.has(item.key);
-              return (
-                <div
-                  key={item.key}
-                  className="group flex items-center rounded-lg transition-colors hover:bg-surface"
-                >
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={visible}
-                    onClick={() => onToggle(item.key)}
-                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 px-2.5 py-2 text-left text-[12px] font-medium text-text-primary"
-                  >
-                    <span
-                      className={cn(
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
-                        visible ? "border-transparent text-white" : "border-border bg-white"
-                      )}
-                      style={visible ? { background: item.color } : undefined}
-                    >
-                      {visible && <Check size={12} strokeWidth={2.7} />}
-                    </span>
-                    <span className="truncate">{item.label}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onOnly(item.key)}
-                    className="mr-1.5 cursor-pointer rounded-md px-2 py-1 text-[9.5px] font-bold uppercase tracking-[0.04em] text-text-tertiary opacity-70 transition-[background-color,color,opacity] hover:bg-white hover:text-blue-primary group-hover:opacity-100"
-                  >
-                    Only
-                  </button>
-                </div>
-              );
-            })}
-          </div>,
-          document.body
-        )}
-    </>
-  );
-}
 
 /**
  * Generic client control for charts that already know how to render
@@ -254,49 +75,18 @@ export function ExpandedChartControl({
   items,
   renderExpanded,
   triggerLabel = "Open chart",
-  itemNoun = "series",
   className,
 }: ExpandedChartControlProps) {
   const suppressed = useChartExpansionSuppressed();
   const [open, setOpen] = useState(false);
   const keys = items.map((item) => item.key);
-  const keySignature = keys.join("\u0000");
-  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(
-    () => new Set(keys)
-  );
-
-  // Fresh data starts fully visible. Filters are a temporary reading aid and
-  // should never silently hide a series that arrived after a refresh.
-  useEffect(() => {
-    setVisibleKeys(new Set(keys));
-    // keySignature is the stable, serializable identity of the current data.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keySignature]);
 
   if (suppressed) return null;
 
-  const shownKeys = keys.filter((key) => visibleKeys.has(key));
   const openLabel =
     triggerLabel === "Open chart"
       ? `Open ${title} chart`
       : `${triggerLabel}, open ${title} chart`;
-
-  function toggle(key: string) {
-    setVisibleKeys((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
-  function showOnly(key: string) {
-    setVisibleKeys(new Set([key]));
-  }
-
-  function showAll() {
-    setVisibleKeys(new Set(keys));
-  }
 
   return (
     <>
@@ -322,61 +112,19 @@ export function ExpandedChartControl({
         size="chart"
       >
         <div className="px-2 pb-2">
-          <div className="flex flex-col gap-3 border-b border-border-light px-1 pb-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
-              {subtitle && (
-                <p className="max-w-3xl text-[13px] leading-relaxed text-text-secondary">
-                  {subtitle}
-                </p>
-              )}
-              <span
-                className="inline-flex rounded-full bg-surface px-2 py-1 text-[10.5px] font-semibold text-text-tertiary"
-                aria-live="polite"
-              >
-                {shownKeys.length} of {keys.length} visible
-              </span>
-            </div>
-
-            <div className="flex shrink-0 items-center">
-              <SeriesVisibilityMenu
-                items={items}
-                visibleKeys={visibleKeys}
-                onToggle={toggle}
-                onOnly={showOnly}
-                onAll={showAll}
-                itemNoun={itemNoun}
-              />
-            </div>
-          </div>
-
-          {shownKeys.length === 0 ? (
-            <div className="mt-4 flex min-h-[390px] flex-col items-center justify-center rounded-2xl border border-border-light bg-surface p-5 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-light text-blue-primary">
-                <Layers3 size={20} strokeWidth={1.9} />
-              </span>
-              <p className="mt-3 text-[14px] font-semibold text-text-primary">
-                Nothing is visible
-              </p>
-              <p className="mt-1 max-w-sm text-[12.5px] text-text-secondary">
-                Choose a series above, or show the complete chart again.
-              </p>
-              <button
-                type="button"
-                onClick={showAll}
-                className="mt-4 cursor-pointer rounded-lg bg-blue-primary px-3 py-2 text-[12px] font-semibold text-white hover:bg-blue-hover"
-              >
-                Show all
-              </button>
-            </div>
-          ) : (
-            <div className="mt-4 min-h-[390px] rounded-2xl border border-border-light bg-surface p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.38)]">
-              <InteractiveChartTipProvider>
-                <ChartExpansionSuppressionProvider>
-                  {renderExpanded(shownKeys)}
-                </ChartExpansionSuppressionProvider>
-              </InteractiveChartTipProvider>
-            </div>
+          {subtitle && (
+            <p className="border-b border-border-light px-1 pb-3 text-[13px] leading-relaxed text-text-secondary">
+              {subtitle}
+            </p>
           )}
+
+          <div className="mt-4 min-h-[390px] rounded-2xl border border-border-light bg-surface p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.38)]">
+            <InteractiveChartTipProvider>
+              <ChartExpansionSuppressionProvider>
+                {renderExpanded(keys)}
+              </ChartExpansionSuppressionProvider>
+            </InteractiveChartTipProvider>
+          </div>
         </div>
       </Modal>
     </>
@@ -486,7 +234,7 @@ export type ExpandedChartSpec =
 
 export type ExpandedChartModalProps = Omit<
   ExpandedChartControlProps,
-  "items" | "renderExpanded" | "itemNoun"
+  "items" | "renderExpanded"
 > & {
   chart: ExpandedChartSpec;
 };
@@ -683,7 +431,6 @@ export function ExpandedChartModal({
       {...controlProps}
       items={items}
       renderExpanded={renderExpanded}
-      itemNoun={chart.kind === "donut" ? "slices" : "series"}
     />
   );
 }
