@@ -3696,7 +3696,7 @@ function GoalEditorFields({
         <div className="flex flex-col">
           <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
             Counted in
-            <InfoHint text={"What the number means.\nMoney: dollars, like $500K.\nCount: how many, like 12 meetings.\nPercentage: out of 100, like a 40% win rate."} />
+            <InfoHint text={"Money: A dollar amount, such as $500K.\nCount: A number of things, such as 12 meetings.\nPercentage: A rate out of 100, such as a 40% win rate."} />
           </label>
           <div className="mt-1">
             <ColorSelect
@@ -3716,7 +3716,7 @@ function GoalEditorFields({
         <div className="flex flex-col">
           <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
             How it adds up
-            <InfoHint text={"Running total: every entry piles on. $50K then $30K makes $80K. Use this for revenue and counts.\nLatest value: only the newest number counts. Use this for a rate, like win %."} />
+            <InfoHint text={"Running total: Adds every entry. $50K plus $30K becomes $80K. Use it for revenue and counts.\nLatest value: Uses only the newest entry. Use it for rates such as win %."} />
           </label>
           <div className="mt-1">
             <ColorSelect
@@ -3818,7 +3818,7 @@ function GoalEditorFields({
         <div className="rounded-xl border border-border-light bg-[var(--surface)] p-3">
           <span className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Schedule
-            <InfoHint text={"Running totals this goal should have reached by certain dates. For example $300K by 30 Sep, then $700K by 31 Dec.\nWhen you open the goal, the \"must be at\" marker uses the last date that has gone by.\nLeave this empty and the app will not say anything about whether you are on pace."} />
+            <InfoHint text={"Purpose: Set where the running total should be by specific dates.\nExample: $300K by Sep 30, then $700K by Dec 31.\nOn pace: The goal uses the latest milestone whose date has passed. No schedule means no pace assessment."} />
             <span className="ml-1 font-normal text-text-tertiary">
               optional
             </span>

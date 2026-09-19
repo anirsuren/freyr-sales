@@ -1104,3 +1104,6 @@ Browser-saved view and panel preferences now restore in a layout effect. Navigat
 
 ### Sep 19: sent-back claims table fits the performance workspace
 The People performance sent-back table uses proportional columns with a smaller desktop minimum width, so the final Your note column remains fully visible without horizontal scrolling at standard desktop widths. Long notes wrap inside their cell instead of being clipped at the edge. Completed locally, not deployed.
+
+### Sep 19: question-mark help is scannable across the app
+All 137 InfoHint question marks now use one structured help renderer: each idea gets its own row, short labels before a colon become bold headings, and long single-paragraph explanations break into readable sentences. The goal editor's Counted in, How it adds up, and Schedule explanations were rewritten as short labelled choices and examples. Completed locally, not deployed.
