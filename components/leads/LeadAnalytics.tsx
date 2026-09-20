@@ -502,7 +502,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
           </div>
           <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-text-tertiary">
             <span>
-              Showing {matchingSourceLeads.length} of {sourceLeads.length} leads
+              Showing {matchingSourceLeads.length} of {leads.length} leads
             </span>
             {(sourceQuery || statusFilter !== "all" || ownerFilter !== "all") && (
               <button

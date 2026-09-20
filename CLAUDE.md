@@ -248,3 +248,5 @@ Render customer overview websites as safe external links in read mode: normalize
 Use an 860px desktop dialog and a substantial note canvas for Log an interaction. End the customer account-detail rail directly after the Account card instead of extending it with empty padding.
 
 Point-based chart popups must also close from a chart-surface pointer guard when the pointer is no longer on a point. Keep the point leave/cancel handlers too, so crossing between HTML hit targets and SVG layers cannot strand a popup.
+
+In lead source workspaces, “Showing X of Y leads” means X rows match the current source/search/status/owner filters and Y leads exist in the whole workspace. Never use the selected source's count as both numerator and denominator.

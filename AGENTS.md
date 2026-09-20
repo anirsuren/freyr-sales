@@ -1239,3 +1239,5 @@ Customer overview websites are real external links in read mode: normalize bare 
 The Log an interaction dialog uses the full working width of the customer workflow (860px on desktop) and a substantial note canvas rather than the generic narrow dialog. Customer account-detail rails end immediately after their final card and do not add a decorative empty tail beneath Account. Completed locally, not deployed.
 
 Point-based graph popups have a second chart-surface exit guard in addition to the point's own pointer-leave handler. Moving even one pixel into empty plot space closes the popup synchronously, including when the browser crosses from an HTML hit target to an SVG layer without delivering a mouse-leave event. Completed locally, not deployed.
+
+Lead source workspaces distinguish the selected source from the full lead database. “Showing X of Y leads” uses the filtered rows for X and every lead in the workspace for Y; a Conference selection with 29 records must not describe itself as 29 of 29 unless the entire workspace truly contains 29 leads. Completed locally, not deployed.
