@@ -2634,7 +2634,7 @@ export function OpportunitiesBrowser({
                 collapsible={false}
                 className="w-[180px] shrink-0"
                 options={[
-                  { value: "none", label: "No grouping", color: "#8E98A8" },
+                  { value: "none", label: "No grouping", color: "#64748B", icon: Rows3 },
                   { value: "customer", label: "Group by customer", color: "var(--ink-bright-blue)", icon: Briefcase },
                   { value: "offering", label: "Group by offering", color: "var(--ink-magenta)", icon: Sparkles },
                 ]}

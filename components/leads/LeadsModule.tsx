@@ -21,6 +21,7 @@ import {
   Clock3,
   Phone,
   RadioTower,
+  Rows3,
   Plus,
   SearchCheck,
   Send,
@@ -549,10 +550,10 @@ export function LeadsModule({
               dense
               collapsible={false}
               options={[
-                { value: "none", label: "No grouping", color: "#8E98A8" },
-                { value: "status", label: "By status", color: "var(--ink-bright-blue)" },
-                { value: "owner", label: "By owner", color: "var(--ink-violet-soft)" },
-                { value: "source", label: "By source", color: "#0F6E56" },
+                { value: "none", label: "No grouping", color: "#64748B", icon: Rows3 },
+                { value: "status", label: "By status", color: "var(--ink-orange)", icon: SearchCheck },
+                { value: "owner", label: "By owner", color: "var(--ink-teal-deep)", icon: UserRound },
+                { value: "source", label: "By source", color: "#0F6E56", icon: Megaphone },
               ]}
             />
             {sections && (
@@ -590,11 +591,11 @@ export function LeadsModule({
             dense
             collapsible={false}
             options={[
-              { value: "newest", label: "By newest", color: "var(--ink-bright-blue)" },
-              { value: "oldest", label: "By oldest", color: "#8E98A8" },
+              { value: "newest", label: "By newest", color: "var(--ink-bright-blue)", icon: CalendarDays },
+              { value: "oldest", label: "By oldest", color: "#64748B", icon: Clock3 },
               /* The stale list is the reason to open this page in the
                  morning, so it is one click away, not a mental sort. */
-              { value: "stalest", label: "By stalest", color: "var(--ink-amber)" },
+              { value: "stalest", label: "By stalest", color: "var(--ink-amber)", icon: CircleEllipsis },
             ]}
           />
         }

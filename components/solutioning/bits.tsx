@@ -1,7 +1,12 @@
 import {
   CalendarDays,
+  CheckCircle2,
+  CircleDashed,
+  CircleX,
   FileText,
+  LoaderCircle,
   Presentation,
+  UserRoundCheck,
   type LucideIcon,
 } from "lucide-react";
 import type { CSSProperties } from "react";
@@ -45,18 +50,26 @@ export const KIND_META: Record<
  */
 export const STATUS_META: Record<
   RequestStatus,
-  { label: string; color: string }
+  { label: string; color: string; icon: LucideIcon }
 > = {
-  initiated: { label: "Request initiated", color: "var(--ink-bright-blue)" },
+  initiated: {
+    label: "Request initiated",
+    color: "var(--ink-bright-blue)",
+    icon: CircleDashed,
+  },
   /* SOL-013's Assigned: leads are chosen, work has not started. Its own state
      because "leads picked" and "somebody is writing" are different answers to
      "where is this?". */
-  assigned: { label: "Assigned", color: "#0891B2" },
-  in_progress: { label: "Work in progress", color: "var(--ink-violet)" },
-  completed: { label: "Completed", color: "var(--ink-green)" },
+  assigned: { label: "Assigned", color: "#0891B2", icon: UserRoundCheck },
+  in_progress: {
+    label: "Work in progress",
+    color: "var(--ink-violet)",
+    icon: LoaderCircle,
+  },
+  completed: { label: "Completed", color: "var(--ink-green)", icon: CheckCircle2 },
   /* Discontinued, and kept (SOL-033: cancelled records stay in history rather
      than being deleted). Red is a status colour here, which is what it is for. */
-  cancelled: { label: "Cancelled", color: "#B42318" },
+  cancelled: { label: "Cancelled", color: "#B42318", icon: CircleX },
 };
 
 export function KindChip({
@@ -121,6 +134,7 @@ export function StatusPill({
   className?: string;
 }) {
   const meta = STATUS_META[status];
+  const Icon = meta.icon;
   return (
     <span
       style={
@@ -130,11 +144,12 @@ export function StatusPill({
         } as CSSProperties
       }
       className={cn(
-        "semantic-color-pill inline-flex items-center whitespace-nowrap rounded-full font-semibold",
+        "semantic-color-pill inline-flex items-center gap-1.5 whitespace-nowrap rounded-full font-semibold",
         size === "sm" ? "px-2 py-0.5 text-[10.5px]" : "px-2.5 py-1 text-[11.5px]",
         className
       )}
     >
+      <Icon size={size === "sm" ? 11 : 12.5} strokeWidth={2.2} />
       {meta.label}
     </span>
   );

@@ -13,6 +13,7 @@ import {
   Layers,
   Trash2,
   Plus,
+  Rows3,
   Server,
   CalendarRange,
   BellRing,
@@ -503,9 +504,9 @@ export function FdlComponentsBrowser({
               dense
               collapsible={false}
               options={[
-                { value: "none", label: "No grouping", color: "#8E98A8" },
-                { value: "type", label: "By type", color: "var(--ink-bright-blue)" },
-                { value: "state", label: "By release state", color: "var(--ink-green)" },
+                { value: "none", label: "No grouping", color: "#64748B", icon: Rows3 },
+                { value: "type", label: "By type", color: "var(--ink-bright-blue)", icon: Layers },
+                { value: "state", label: "By release state", color: "var(--ink-green)", icon: CircleCheck },
               ]}
             />
           }
@@ -518,11 +519,11 @@ export function FdlComponentsBrowser({
               dense
               collapsible={false}
               options={[
-                { value: "name", label: "By name (A to Z)", color: "var(--ink-violet-soft)" },
-                { value: "type", label: "By type", color: "var(--ink-bright-blue)" },
-                { value: "versions", label: "By versions (most first)", color: "var(--ink-teal-deep)" },
-                { value: "features", label: "By features (most first)", color: "#0F6E56" },
-                { value: "newest", label: "By newest", color: "#F97316" },
+                { value: "name", label: "By name (A to Z)", color: "var(--ink-violet-soft)", icon: Rows3 },
+                { value: "type", label: "By type", color: "var(--ink-bright-blue)", icon: Layers },
+                { value: "versions", label: "By versions (most first)", color: "var(--ink-teal-deep)", icon: Boxes },
+                { value: "features", label: "By features (most first)", color: "#0F6E56", icon: Bot },
+                { value: "newest", label: "By newest", color: "#F97316", icon: CalendarRange },
               ]}
             />
           }

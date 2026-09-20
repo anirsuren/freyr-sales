@@ -22,8 +22,10 @@ import {
   Target,
   FileSignature,
   Inbox,
+  ListChecks,
   Pencil,
   Plus,
+  Rows3,
   Trash2,
 } from "lucide-react";
 import { FormRoom } from "@/components/ui/FormRoom";
@@ -765,9 +767,9 @@ export function ContractsModule({
             dense
             collapsible={false}
             options={[
-              { value: "none", label: "No grouping", color: "#8E98A8" },
-              { value: "customer", label: "By customer", color: "var(--ink-bright-blue)" },
-              { value: "status", label: "By status", color: "#4338CA" },
+              { value: "none", label: "No grouping", color: "#64748B", icon: Rows3 },
+              { value: "customer", label: "By customer", color: "var(--ink-violet-soft)", icon: Briefcase },
+              { value: "status", label: "By status", color: "var(--ink-orange)", icon: ListChecks },
             ]}
           />
         }
@@ -780,10 +782,10 @@ export function ContractsModule({
             dense
             collapsible={false}
             options={[
-              { value: "value", label: "By value (biggest first)", color: "var(--ink-bright-blue)" },
-              { value: "customer", label: "By customer (A to Z)", color: "#8E98A8" },
-              { value: "starting", label: "By start date (soonest)", color: "var(--ink-teal-deep)" },
-              { value: "status", label: "By status", color: "#4338CA" },
+              { value: "value", label: "By value (biggest first)", color: "var(--ink-bright-blue)", icon: Coins },
+              { value: "customer", label: "By customer (A to Z)", color: "var(--ink-violet-soft)", icon: Briefcase },
+              { value: "starting", label: "By start date (soonest)", color: "var(--ink-teal-deep)", icon: CalendarDays },
+              { value: "status", label: "By status", color: "var(--ink-orange)", icon: ListChecks },
             ]}
           />
         }

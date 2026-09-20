@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Briefcase,
+  Building2,
   CalendarClock,
   CalendarDays,
   Check,
@@ -22,20 +23,23 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   CircleDashed,
+  CircleDot,
   ClipboardList,
   File,
   FileSpreadsheet,
   FileText,
   Inbox,
   Loader2,
+  ListChecks,
   PanelsTopLeft,
   Plus,
   Presentation,
   Rows3,
-  Sparkles,
+  Send,
   Timer,
   Trash2,
   UploadCloud,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -84,6 +88,19 @@ type OpportunityOption = {
 
 const KIND_ORDER: SolutioningKind[] = ["submission", "presentation", "meeting"];
 const REQUEST_ROW_BATCH = 80;
+
+const SOLUTION_STATUS_DISPLAY: Record<
+  string,
+  { color: string; icon: LucideIcon }
+> = {
+  ...Object.fromEntries(
+    Object.values(STATUS_META).map(({ label, color, icon }) => [label, { color, icon }])
+  ),
+  Delayed: { color: "var(--ink-orange)", icon: AlarmClock },
+  Drafted: { color: "var(--ink-violet)", icon: FileText },
+  "Submitted to BD": { color: "var(--ink-teal-deep)", icon: Send },
+  "Submitted to customer": { color: "var(--ink-green)", icon: Send },
+};
 
 /** What each room is, in the words that belong on its own page. */
 const ROOM_META: Record<
@@ -540,9 +557,17 @@ export function SolutioningModule({
     if (groupBy === "customer") {
       return <CompanyLogo name={label} className="h-8 w-8 shrink-0 text-[9px]" />;
     }
+    const statusMeta = SOLUTION_STATUS_DISPLAY[label] ?? {
+      color: "var(--text-tertiary)",
+      icon: CircleDot,
+    };
+    const StatusIcon = statusMeta.icon;
     return (
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
-        <ClipboardList size={15} strokeWidth={2.1} />
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+        style={{ color: statusMeta.color, background: tint(statusMeta.color, 10) }}
+      >
+        <StatusIcon size={15} strokeWidth={2.1} />
       </span>
     );
   };
@@ -653,7 +678,17 @@ export function SolutioningModule({
             setGroupBy("none");
           }}
           filtersAfter={<>
-            <ColorSelect value={groupBy} onChange={setGroupBy} ariaLabel="Group requests" options={[{value:"none",label:"No grouping",color:"var(--ink-bright-blue)"},{value:"customer",label:"By customer",color:"var(--ink-violet-soft)"},{value:"owner",label:"By owner",color:"var(--ink-bright-blue)"},{value:"status",label:"By status",color:"var(--ink-violet-soft)"}]} />
+            <ColorSelect
+              value={groupBy}
+              onChange={setGroupBy}
+              ariaLabel="Group requests"
+              options={[
+                { value: "none", label: "No grouping", color: "#64748B", icon: Rows3 },
+                { value: "customer", label: "By customer", color: "var(--ink-violet-soft)", icon: Building2 },
+                { value: "owner", label: "By owner", color: "var(--ink-teal-deep)", icon: UserRound },
+                { value: "status", label: "By status", color: "var(--ink-orange)", icon: ListChecks },
+              ]}
+            />
           </>}
           groups={[
             ...(room === "requests" ? [
@@ -755,7 +790,7 @@ export function SolutioningModule({
               ariaLabel="Sort requests"
               minWidth={150}
               options={[
-                { value: "newest", label: "By newest", color: "var(--ink-bright-blue)", icon: Sparkles },
+                { value: "newest", label: "By newest", color: "var(--ink-bright-blue)", icon: CalendarDays },
                 { value: "needed", label: "By needed-by date", color: "var(--ink-orange)", icon: CalendarClock },
               ]}
             />

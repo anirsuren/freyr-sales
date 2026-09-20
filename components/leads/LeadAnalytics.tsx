@@ -2,7 +2,20 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ChevronRight, Maximize2, Search } from "lucide-react";
+import {
+  AlarmClock,
+  ArrowDownAZ,
+  ArrowUpRight,
+  Building2,
+  CalendarDays,
+  ChevronRight,
+  Clock3,
+  History,
+  ListChecks,
+  Maximize2,
+  Search,
+  UserRound,
+} from "lucide-react";
 import { AreaChart, DonutChart, type TipItem } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { Avatar } from "@/components/ui/Avatar";
@@ -473,14 +486,14 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
               fill
               collapsible={false}
               options={[
-                { value: "newest", label: "Newest first", color: "#0071E3" },
-                { value: "oldest", label: "Oldest first", color: "#0071E3" },
-                { value: "recently_moved", label: "Recently moved", color: "#0071E3" },
-                { value: "stale", label: "Stalest first", color: "#C2410C" },
-                { value: "name", label: "Lead name", color: "#0071E3" },
-                { value: "company", label: "Company", color: "#0071E3" },
-                { value: "status", label: "Status", color: "#0071E3" },
-                { value: "owner", label: "Owner", color: "#0071E3" },
+                { value: "newest", label: "Newest first", color: "#0071E3", icon: CalendarDays },
+                { value: "oldest", label: "Oldest first", color: "#64748B", icon: Clock3 },
+                { value: "recently_moved", label: "Recently moved", color: "var(--ink-teal-deep)", icon: History },
+                { value: "stale", label: "Stalest first", color: "#C2410C", icon: AlarmClock },
+                { value: "name", label: "Lead name", color: "var(--ink-violet-soft)", icon: ArrowDownAZ },
+                { value: "company", label: "Company", color: "var(--ink-violet-soft)", icon: Building2 },
+                { value: "status", label: "Status", color: "var(--ink-orange)", icon: ListChecks },
+                { value: "owner", label: "Owner", color: "var(--ink-teal-deep)", icon: UserRound },
               ]}
             />
           </div>
