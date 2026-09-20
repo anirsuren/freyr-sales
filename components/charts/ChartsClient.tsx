@@ -274,7 +274,8 @@ function PointGuide({ left, color }: { left: string; color: string }) {
   );
 }
 // Hover state for one chart: which index is lit and where its tip is anchored.
-// The popup owns hover too, so it remains available for scrolling and reading.
+// A card exists only while its active hover surface owns the pointer; leaving
+// that surface clears the card synchronously so it cannot remain stranded.
 /** Every graph tooltip in this app waits this long before it opens. No chart
  *  gets to opt out, and there is no user setting for it any more (Anir, Jul 28:
  *  "we need it where it's 0.5 seconds on every single graph. There should not
@@ -364,8 +365,9 @@ function useChartHover() {
     setAnchor(at);
   }
 
-  /** Give the pointer a reliable bridge from any painted mark into its popup;
-   * once the pointer reaches the card, `keepOpen` cancels this timer. */
+  /** Clear the card synchronously on exit. `graceMs` remains an argument for
+   * callers that explicitly request a transition, while the app-wide chart
+   * policy is zero so no default graph popup can linger. */
   const close = useCallback(
     (graceMs = interactiveTip ? CHART_HOVER_CLOSE_GRACE_MS : 0) => {
       keepOpen();
@@ -474,9 +476,8 @@ function PortalTip({
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const sideGap = 12;
-  // The popup is interactive. The chart still anchors it to the painted mark,
-  // while the close grace lets the pointer cross into the card without losing
-  // the record list on the way.
+  // The popup still accepts pointer events for scrolling and selectable text,
+  // but leaving its active surface dismisses it immediately.
   const anchorElement = anchor.element;
   /**
    * The box the card must clear. `data-chart-root` marks the whole CARD where

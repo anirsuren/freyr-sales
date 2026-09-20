@@ -10,14 +10,12 @@ import {
   HOVER_HINT_DELAY_MS,
 } from "@/lib/hoverPreferences";
 
-// A hover popover that STAYS OPEN while the cursor is over the popover itself
-// (Suren: "when I hover onto the pop-up it shouldn't disappear"), and that can
+// A hover popover that stays open while the cursor is over the popover itself
+// and closes synchronously when the cursor leaves its active hover surface. It can
 // NEVER be clipped: the popover renders in a body portal at a fixed position,
 // so `overflow-hidden` ancestors (table cards, grids) can't cut it off — the
 // exact bug the team-roster popup hit ("Engaged" clipped to "d"). Same cure as
-// the chart tooltips (#146). The portal includes its visual gap inside its own
-// hover surface, so a zero-delay timer can close immediately everywhere else
-// while its own mouse-enter cancels a direct handoff from the trigger.
+// the chart tooltips (#146).
 export function HoverCard({
   children,
   content,
@@ -174,13 +172,16 @@ export function HoverCard({
   function scheduleHide() {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    // Graph cards can sit well above or beside a small painted mark. Give the
-    // pointer enough time to cross that distance; entering the card cancels
-    // this timer. Ordinary content previews retain the app-wide close rule.
+    // All hover surfaces use the shared close policy. Graphs are deliberately
+    // zero-delay so their cards cannot linger after the pointer has moved on.
     const closeGrace =
       delayOverride === 0 || triggerSelector
         ? CHART_HOVER_CLOSE_GRACE_MS
         : HOVER_CLOSE_GRACE_MS;
+    if (closeGrace <= 0) {
+      hideImmediately();
+      return;
+    }
     hideTimer.current = setTimeout(() => setPos(null), closeGrace);
   }
 
