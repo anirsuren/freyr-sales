@@ -24,7 +24,6 @@ import {
   ChevronDown,
   CircleDot,
   Clock3,
-  Coins,
   FileCheck2,
   Filter,
   History,
@@ -55,6 +54,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { currencyFlag } from "@/lib/currency";
 import {
   PrioritySearchInput,
   SearchPriority,
@@ -190,26 +190,30 @@ const STATUS_OPTIONS: ColorOption[] = [
 ];
 
 const CURRENCY_OPTIONS: ColorOption[] = [
-  { value: "USD", label: "$ USD", color: "#2563EB", icon: Coins },
-  { value: "EUR", label: "€ EUR", color: "var(--ink-violet-soft)", icon: Coins },
-  { value: "GBP", label: "£ GBP", color: "var(--ink-orange)", icon: Coins },
-  { value: "CHF", label: "CHF", color: "var(--ink-teal-deep)", icon: Coins },
-  { value: "CAD", label: "C$ CAD", color: "#DC4C4C", icon: Coins },
-  { value: "AUD", label: "A$ AUD", color: "#059669", icon: Coins },
-  { value: "JPY", label: "¥ JPY", color: "var(--ink-orange)", icon: Coins },
-  { value: "CNY", label: "¥ CNY", color: "#B91C1C", icon: Coins },
-  { value: "INR", label: "₹ INR", color: "#EA580C", icon: Coins },
-  { value: "SGD", label: "S$ SGD", color: "#0369A1", icon: Coins },
-  { value: "AED", label: "د.إ AED", color: "#047857", icon: Coins },
-  { value: "SAR", label: "﷼ SAR", color: "#15803D", icon: Coins },
-  { value: "SEK", label: "kr SEK", color: "#1D4ED8", icon: Coins },
-  { value: "NOK", label: "kr NOK", color: "#BE123C", icon: Coins },
-  { value: "DKK", label: "kr DKK", color: "#DC2626", icon: Coins },
-  { value: "NZD", label: "NZ$ NZD", color: "var(--ink-teal-deep)", icon: Coins },
-  { value: "ZAR", label: "R ZAR", color: "#CA8A04", icon: Coins },
-  { value: "BRL", label: "R$ BRL", color: "#16A34A", icon: Coins },
-  { value: "MXN", label: "MX$ MXN", color: "#4D7C0F", icon: Coins },
-];
+  ["USD", "$ USD"],
+  ["EUR", "€ EUR"],
+  ["GBP", "£ GBP"],
+  ["CHF", "CHF"],
+  ["CAD", "C$ CAD"],
+  ["AUD", "A$ AUD"],
+  ["JPY", "¥ JPY"],
+  ["CNY", "¥ CNY"],
+  ["INR", "₹ INR"],
+  ["SGD", "S$ SGD"],
+  ["AED", "د.إ AED"],
+  ["SAR", "﷼ SAR"],
+  ["SEK", "kr SEK"],
+  ["NOK", "kr NOK"],
+  ["DKK", "kr DKK"],
+  ["NZD", "NZ$ NZD"],
+  ["ZAR", "R ZAR"],
+  ["BRL", "R$ BRL"],
+  ["MXN", "MX$ MXN"],
+].map(([value, label]) => ({
+  value,
+  label: `${currencyFlag(value)} ${label}`,
+  noMark: true,
+}));
 
 function formatCurrency(
   value: number,

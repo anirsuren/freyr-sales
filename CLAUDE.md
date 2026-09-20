@@ -142,6 +142,11 @@ Any doubt on 1 or 2 → report and ask. No yes on 3 → do not push.
 - A customer shown under an FDL component can be removed from that component
   from either card or table view. Confirm the action and remove only the
   component connection; never delete the customer account from this surface.
+- Currency controls use the issuing country or region flag as their only mark,
+  followed by the currency symbol and ISO code. Never put a generic coin,
+  link, or colored money tile beside a currency flag. Log a result keeps this
+  flagged control left of the amount, expands K/M/B input immediately, and
+  lets a chosen customer create and select a new opportunity in place.
 
 ## 8. Suren's product sequence and Account Planning definition (Sep 14, 2026)
 

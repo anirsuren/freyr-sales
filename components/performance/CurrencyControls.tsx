@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Coins, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import {
   BASE_CURRENCY,
   CURRENCIES,
@@ -72,22 +72,16 @@ export function DisplayCurrencyPicker({
     <>
       <span className="flex shrink-0 items-center gap-1">
         <span className="relative flex items-center">
-          <Coins
-            size={13}
-            strokeWidth={2.2}
-            aria-hidden="true"
-            className="pointer-events-none absolute left-2.5 text-text-tertiary"
-          />
           <select
             value={value}
             onChange={(e) => onChange(e.target.value as CurrencyCode)}
             aria-label="Read every number in this currency"
             title="Read every number in this currency. What was signed is unchanged."
-            className="h-[34px] cursor-pointer rounded-lg border border-border-light bg-white pl-7 pr-2 text-[12.5px] font-semibold text-text-primary outline-none transition-colors hover:border-blue-subtle focus:border-blue-primary"
+            className="h-[34px] cursor-pointer rounded-lg border border-border-light bg-white pl-2.5 pr-2 text-[12.5px] font-semibold text-text-primary outline-none transition-colors hover:border-blue-subtle focus:border-blue-primary"
           >
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>
-                {c.symbol.trim()} {c.code}
+                {c.flag} {c.symbol.trim()} {c.code}
               </option>
             ))}
           </select>
@@ -153,8 +147,8 @@ function RatesModal({
               key={c.code}
               className="flex items-center gap-2.5 rounded-xl border border-border-light px-3 py-2"
             >
-              <span className="w-9 shrink-0 text-[13px] font-bold text-text-primary">
-                {currencyMeta(c.code).symbol.trim()}
+              <span className="w-9 shrink-0 text-[18px] text-text-primary">
+                {currencyMeta(c.code).flag}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[12.5px] font-semibold text-text-primary">

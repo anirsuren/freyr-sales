@@ -59,6 +59,37 @@ export const CURRENCIES: {
 
 export const CURRENCY_CODES = CURRENCIES.map((c) => c.code);
 
+/**
+ * Currency pickers use the issuing country or region's flag as their mark.
+ * Keep the broader customer-offering currency set here too so every picker
+ * uses the same visual language even when it supports more than deal entry.
+ */
+export const CURRENCY_FLAGS: Readonly<Record<string, string>> = {
+  USD: "🇺🇸",
+  EUR: "🇪🇺",
+  GBP: "🇬🇧",
+  INR: "🇮🇳",
+  JPY: "🇯🇵",
+  CHF: "🇨🇭",
+  CAD: "🇨🇦",
+  AUD: "🇦🇺",
+  SGD: "🇸🇬",
+  CNY: "🇨🇳",
+  AED: "🇦🇪",
+  SAR: "🇸🇦",
+  SEK: "🇸🇪",
+  NOK: "🇳🇴",
+  DKK: "🇩🇰",
+  NZD: "🇳🇿",
+  ZAR: "🇿🇦",
+  BRL: "🇧🇷",
+  MXN: "🇲🇽",
+};
+
+export function currencyFlag(code: string | null | undefined): string {
+  return CURRENCY_FLAGS[String(code || "").toUpperCase()] || "";
+}
+
 /** The workspace's own currency: what a number means when nobody said. */
 export const BASE_CURRENCY: CurrencyCode = "USD";
 

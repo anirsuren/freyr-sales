@@ -126,7 +126,6 @@ import {
 import { typeMeta } from "@/components/performance/bits";
 import { CURRENCIES, convert, currencyMeta, fmtMoney, type CurrencyCode, type CurrencyRates } from "@/lib/currency";
 import { fetchFxDay } from "@/lib/fxClient";
-import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import { OpportunityActivities } from "@/components/opportunities/OpportunityActivities";
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
@@ -4106,10 +4105,8 @@ function SingleOfferingEditor({
               }}
               options={CURRENCIES.map((c) => ({
                 value: c.code,
-                label: c.code,
-                color: c.code === "USD" ? "var(--ink-bright-blue)" : "var(--ink-teal-deep)",
-                short: c.symbol.trim(),
-                icon: currencyGlyph(c.symbol),
+                label: `${c.flag} ${c.code}`,
+                noMark: true,
               }))}
             />
             <input

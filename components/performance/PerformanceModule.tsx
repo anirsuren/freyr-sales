@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { DateEcho } from "@/components/ui/DateEcho";
-import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -39,13 +38,14 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { TargetSlider, type Allocation } from "./TargetSlider";
-import { useOpportunities } from "@/lib/useOpportunities";
+import { refreshOpportunities, useOpportunities } from "@/lib/useOpportunities";
 import {
   weightedValue,
   opportunityValue,
   opportunityConfidence,
   lineLabel,
   lines as oppLines,
+  type Opportunity,
 } from "@/lib/opportunitiesShared";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
@@ -4909,9 +4909,26 @@ function LogActualModal({
    * So both live in one picker, and the value carries which kind it is:
    * "opp:<id>" is a pipeline opportunity, "eng:<id>" an engagement. Nothing
    * that used to be linkable stopped being linkable.
-   */
+  */
   const [link, setLink] = useState("");
   const { opportunities: pipeline } = useOpportunities();
+  const [newOpportunities, setNewOpportunities] = useState<Opportunity[]>([]);
+  const allPipeline = useMemo(() => {
+    const seen = new Set<string>();
+    return [...newOpportunities, ...pipeline].filter((opportunity) => {
+      if (seen.has(opportunity.id)) return false;
+      seen.add(opportunity.id);
+      return true;
+    });
+  }, [newOpportunities, pipeline]);
+  const [newOpportunityOpen, setNewOpportunityOpen] = useState(false);
+  const [newOpportunityName, setNewOpportunityName] = useState("");
+  const [newOpportunityTcv, setNewOpportunityTcv] = useState("");
+  const [newOpportunityConfidence, setNewOpportunityConfidence] = useState("50");
+  const [newOpportunitySignDate, setNewOpportunitySignDate] = useState("");
+  const [newOpportunityBusy, setNewOpportunityBusy] = useState(false);
+  const [newOpportunityError, setNewOpportunityError] = useState<string | null>(null);
+  const { toast } = useToast();
   const [evidence, setEvidence] = useState<{ name: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
 
@@ -4983,6 +5000,12 @@ function LogActualModal({
     return () => {
       alive = false;
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (open) return;
+    setNewOpportunityOpen(false);
+    setNewOpportunityError(null);
   }, [open]);
 
   // Opened from a person's goal row: land with goal, subgoal and person
@@ -5067,20 +5090,20 @@ function LogActualModal({
    */
   const oppMatches = useMemo(() => {
     const q = customer.trim().toLowerCase();
-    if (!q) return pipeline;
-    return pipeline.filter(
+    if (!q) return allPipeline;
+    return allPipeline.filter(
       (o) =>
         (customerId && o.customerId === customerId) ||
         o.customer.trim().toLowerCase() === q
     );
-  }, [pipeline, customer, customerId]);
+  }, [allPipeline, customer, customerId]);
 
   const linkedOpp = useMemo(
     () =>
       link.startsWith("opp:")
-        ? (pipeline.find((o) => o.id === link.slice(4)) ?? null)
+        ? (allPipeline.find((o) => o.id === link.slice(4)) ?? null)
         : null,
-    [link, pipeline]
+    [link, allPipeline]
   );
 
   const linkedEngagement =
@@ -5098,13 +5121,80 @@ function LogActualModal({
        refers to anything on screen. */
     setPickedChip(null);
     if (!next.startsWith("opp:")) return;
-    const o = pipeline.find((x) => x.id === next.slice(4));
+    const o = allPipeline.find((x) => x.id === next.slice(4));
     if (!o) return;
     if (!customer.trim()) {
       setCustomer(o.customer);
       setCustomerId(o.customerId ?? "");
     }
     if (o.currency) setEntryCurrency(o.currency);
+  }
+
+  function startNewOpportunity() {
+    if (!customer.trim()) return;
+    setNewOpportunityName("");
+    setNewOpportunityTcv(parsed === null ? "" : String(Math.round(parsed)));
+    setNewOpportunityConfidence("50");
+    setNewOpportunitySignDate(date || defaultDate);
+    setNewOpportunityError(null);
+    setNewOpportunityOpen(true);
+  }
+
+  async function createOpportunity() {
+    const tcv = Number(newOpportunityTcv.replace(/,/g, ""));
+    const confidence = Number(newOpportunityConfidence);
+    if (!newOpportunityName.trim()) {
+      setNewOpportunityError("Give the opportunity a name.");
+      return;
+    }
+    if (!newOpportunityTcv.trim() || !Number.isFinite(tcv) || tcv < 0) {
+      setNewOpportunityError("Enter the estimated TCV.");
+      return;
+    }
+    if (!Number.isFinite(confidence) || confidence < 0 || confidence > 100) {
+      setNewOpportunityError("Confidence must be from 0 to 100.");
+      return;
+    }
+    if (!newOpportunitySignDate) {
+      setNewOpportunityError("Pick the expected signing date.");
+      return;
+    }
+    setNewOpportunityBusy(true);
+    setNewOpportunityError(null);
+    try {
+      const res = await fetch("/api/opportunities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          op: "add",
+          name: newOpportunityName.trim(),
+          customer: customer.trim(),
+          ...(customerId ? { customerId } : {}),
+          currency: entryCurrency,
+          estimatedTcv: tcv,
+          lines: [{ confidence, estSignDate: newOpportunitySignDate }],
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.opportunity) {
+        throw new Error(data?.error || "That opportunity did not save.");
+      }
+      const created = data.opportunity as Opportunity;
+      setNewOpportunities((current) => [created, ...current]);
+      setLink(`opp:${created.id}`);
+      if (!amount.trim() && typeof created.estimatedTcv === "number") {
+        setAmount(String(Math.round(created.estimatedTcv)));
+      }
+      setNewOpportunityOpen(false);
+      refreshOpportunities();
+      toast(`${created.name} added and selected.`);
+    } catch (error) {
+      setNewOpportunityError(
+        error instanceof Error ? error.message : "That opportunity did not save."
+      );
+    } finally {
+      setNewOpportunityBusy(false);
+    }
   }
 
   const personOptions = useMemo(() => {
@@ -5334,6 +5424,7 @@ function LogActualModal({
                     setCustomer(e.target.value);
                     setCustomerId("");
                     setLink("");
+                    setNewOpportunityOpen(false);
                   }}
                   placeholder="Type the account name…"
                   aria-label="Customer account name"
@@ -5366,6 +5457,7 @@ function LogActualModal({
                   setCustomer(hit ? hit.name : "");
                   setCustomerId(hit ? val : "");
                   setLink("");
+                  setNewOpportunityOpen(false);
                 }}
                 options={[
                   { value: "", label: "Pick the account…", color: "#C7CDD6" },
@@ -5412,6 +5504,8 @@ function LogActualModal({
               ariaLabel="Opportunity"
               compactTrigger
               minWidth={430}
+              createLabel={customer.trim() ? "Create a new opportunity" : undefined}
+              onCreate={customer.trim() ? startNewOpportunity : undefined}
               options={[
                 { value: "", label: "Not linked to a deal", color: "#8E98A8" },
                 // A DEAL IS A COMPANY'S DEAL, so it wears that company's mark
@@ -5442,6 +5536,99 @@ function LogActualModal({
               ]}
             />
           </div>
+          {newOpportunityOpen && (
+            <div className="mt-2.5 rounded-xl border border-blue-subtle bg-blue-light/20 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[12.5px] font-semibold text-text-primary">
+                  New opportunity for {customer.trim()}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setNewOpportunityOpen(false)}
+                  aria-label="Cancel new opportunity"
+                  className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-white hover:text-text-primary"
+                >
+                  <X size={14} strokeWidth={2.2} />
+                </button>
+              </div>
+              <input
+                autoFocus
+                value={newOpportunityName}
+                onChange={(event) => setNewOpportunityName(event.target.value)}
+                placeholder={`Opportunity name, e.g. ${customer.trim()} expansion`}
+                className="mt-2 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+              />
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_130px_170px]">
+                <label className="min-w-0">
+                  <span className="text-[11px] font-semibold text-text-secondary">
+                    Estimated TCV · {currencyMeta(entryCurrency).flag}{" "}
+                    {currencyMeta(entryCurrency).symbol.trim()} {entryCurrency}
+                  </span>
+                  <input
+                    value={withCommas(newOpportunityTcv)}
+                    onChange={(event) =>
+                      setNewOpportunityTcv(
+                        expandMoneyShorthand(event.target.value, { integer: true })
+                      )
+                    }
+                    placeholder="e.g. 1M"
+                    className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none tnum focus:border-blue-subtle"
+                  />
+                </label>
+                <label>
+                  <span className="text-[11px] font-semibold text-text-secondary">
+                    Confidence
+                  </span>
+                  <span className="relative mt-1 flex">
+                    <input
+                      value={newOpportunityConfidence}
+                      onChange={(event) =>
+                        setNewOpportunityConfidence(
+                          event.target.value.replace(/[^0-9.]/g, "")
+                        )
+                      }
+                      inputMode="decimal"
+                      className="h-9 w-full rounded-lg border border-border-light bg-white px-3 pr-7 text-[13px] outline-none tnum focus:border-blue-subtle"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[12px] text-text-tertiary">
+                      %
+                    </span>
+                  </span>
+                </label>
+                <label>
+                  <span className="text-[11px] font-semibold text-text-secondary">
+                    Expected to sign
+                  </span>
+                  <input
+                    type="date"
+                    value={newOpportunitySignDate}
+                    onChange={(event) => setNewOpportunitySignDate(event.target.value)}
+                    className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle"
+                  />
+                </label>
+              </div>
+              <div className="mt-2 flex min-h-8 items-center justify-end gap-2">
+                {newOpportunityError && (
+                  <p className="mr-auto text-[11.5px] font-medium text-error">
+                    {newOpportunityError}
+                  </p>
+                )}
+                <Button
+                  variant="secondary"
+                  onClick={() => setNewOpportunityOpen(false)}
+                  disabled={newOpportunityBusy}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => void createOpportunity()}
+                  loading={newOpportunityBusy}
+                >
+                  Add opportunity
+                </Button>
+              </div>
+            </div>
+          )}
           {/* THE MONEY COMES OFF THE DEAL (Anir, Aug 16: "from the opportunity,
               because this is all about dollar value… it's about any particular
               field from there you can select"). An opportunity carries two
@@ -5558,7 +5745,7 @@ function LogActualModal({
               disappear entirely when there was nothing in it, which is every
               real workspace today — so there was nowhere to connect a deal and
               nothing on screen explaining why. */}
-          {pipeline.length === 0 ? (
+          {allPipeline.length === 0 ? (
             <p className="mt-1.5 text-[11px] text-text-tertiary">
               Nothing in the pipeline yet. Deals added on{" "}
               <b className="font-semibold text-text-secondary">Opportunities</b>{" "}
@@ -5588,14 +5775,27 @@ function LogActualModal({
                   that I can choose the currency"). Freyr signs in dollars,
                   euros, pounds, rupees and yen; recording all of it as "$" was
                   a quiet lie about what was signed. */}
+              {unit === "currency" && (
+                <ColorSelect
+                  value={entryCurrency}
+                  ariaLabel="Currency this was signed in"
+                  collapsible={false}
+                  minWidth={132}
+                  className="shrink-0"
+                  onChange={(v) => setEntryCurrency(v as CurrencyCode)}
+                  options={CURRENCIES.map((c) => ({
+                    value: c.code,
+                    label: `${c.flag} ${c.symbol.trim()} ${c.code}`,
+                    noMark: true,
+                  }))}
+                />
+              )}
               <span className="relative flex-1">
-                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
-                  {unit === "currency"
-                    ? currencyMeta(entryCurrency).symbol
-                    : unit === "percent"
-                      ? "%"
-                      : "#"}
-                </span>
+                {unit !== "currency" && (
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
+                    {unit === "percent" ? "%" : "#"}
+                  </span>
+                )}
                 <input
                   value={withCommas(amount)}
                   onChange={(e) => {
@@ -5613,27 +5813,12 @@ function LogActualModal({
                         ? "e.g. 44"
                         : "e.g. 12"
                   }
-                  className="h-[40px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
+                  className={cn(
+                    "h-[40px] w-full rounded-lg border border-border-light bg-white pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle",
+                    unit === "currency" ? "pl-3" : "pl-8"
+                  )}
                 />
               </span>
-              {/* Same reason as the group picker above: no raw browser menus
-                  in a form the rest of which is the app's own. */}
-              {unit === "currency" && (
-                <ColorSelect
-                  value={entryCurrency}
-                  ariaLabel="Currency this was signed in"
-                  collapsible={false}
-                  minWidth={120}
-                  className="shrink-0"
-                  onChange={(v) => setEntryCurrency(v as CurrencyCode)}
-                  options={CURRENCIES.map((c) => ({
-                    value: c.code,
-                    label: c.code,
-                    color: "var(--ink-bright-blue)",
-                    icon: currencyGlyph(c.symbol),
-                  }))}
-                />
-              )}
             </div>
             {/* Feedback is NOT gated on a goal being picked: typing "dd" in
                 an empty form used to get no reaction at all (Anir, Aug 15,

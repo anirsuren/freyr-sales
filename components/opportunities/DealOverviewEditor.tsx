@@ -26,7 +26,6 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { AlertTriangle, CalendarRange } from "lucide-react";
-import { currencyGlyph } from "@/components/ui/CurrencyGlyph";
 import {
   judgePlan,
   monthLabel,
@@ -1531,9 +1530,7 @@ export function DealOverviewEditor({
                       options={CURRENCIES.map((c) => ({
                         value: c.code,
                         label: `${c.flag} ${c.code} ${c.name}`,
-                        color: c.code === BASE_CURRENCY ? "var(--ink-bright-blue)" : "var(--ink-teal-deep)",
-                        short: c.symbol.trim(),
-                        icon: currencyGlyph(c.symbol),
+                        noMark: true,
                       }))}
                     />
                   )}
@@ -1769,8 +1766,8 @@ export function DealOverviewEditor({
                 value={scheduleLocal}
                 onChange={setScheduleLocal}
                 options={[
-                  { key: false, label: "USD", mark: "$" },
-                  { key: true, label: currency, mark: localSymbol },
+                  { key: false, label: "USD", mark: currencyMeta("USD").flag },
+                  { key: true, label: currency, mark: currencyMeta(currency).flag },
                 ] as const}
               />
             )}

@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   CircleDot,
   Clock3,
-  Coins,
   FileCheck2,
   Pencil,
   Plus,
@@ -52,7 +51,7 @@ import { DateText } from "@/components/ui/DateText";
 import { LocalTime } from "@/components/ui/LocalTime";
 import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
-import { withCommas } from "@/lib/currency";
+import { currencyFlag, withCommas } from "@/lib/currency";
 
 /**
  * ACTIVITIES ON THE OFFERING THE CUSTOMER HAS (Suren, Aug 8, via Anir): "once
@@ -99,16 +98,20 @@ const STATUS_OPTIONS: ColorOption[] = CUSTOMER_OFFERING_STATUS_ORDER.map(
 );
 
 const CURRENCY_OPTIONS: ColorOption[] = [
-  { value: "USD", label: "$ USD", color: "#2563EB", icon: Coins },
-  { value: "EUR", label: "€ EUR", color: "var(--ink-violet-soft)", icon: Coins },
-  { value: "GBP", label: "£ GBP", color: "var(--ink-orange)", icon: Coins },
-  { value: "CHF", label: "CHF", color: "var(--ink-teal-deep)", icon: Coins },
-  { value: "INR", label: "₹ INR", color: "#EA580C", icon: Coins },
-  { value: "JPY", label: "¥ JPY", color: "var(--ink-orange)", icon: Coins },
-  { value: "SGD", label: "S$ SGD", color: "#0369A1", icon: Coins },
-  { value: "AUD", label: "A$ AUD", color: "#059669", icon: Coins },
-  { value: "CAD", label: "C$ CAD", color: "#DC4C4C", icon: Coins },
-];
+  ["USD", "$ USD"],
+  ["EUR", "€ EUR"],
+  ["GBP", "£ GBP"],
+  ["CHF", "CHF"],
+  ["INR", "₹ INR"],
+  ["JPY", "¥ JPY"],
+  ["SGD", "S$ SGD"],
+  ["AUD", "A$ AUD"],
+  ["CAD", "C$ CAD"],
+].map(([value, label]) => ({
+  value,
+  label: `${currencyFlag(value)} ${label}`,
+  noMark: true,
+}));
 
 const FIELD =
   "w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary";

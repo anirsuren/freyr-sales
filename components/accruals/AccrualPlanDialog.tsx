@@ -1890,8 +1890,8 @@ export function AccrualPlanDialog({
                 value={showLocal}
                 onChange={setShowLocal}
                 options={[
-                  { key: false, label: "USD", mark: "$" },
-                  { key: true, label: dealCurrency, mark: currencyMeta(dealCurrency).symbol.trim() },
+                  { key: false, label: "USD", mark: currencyMeta("USD").flag },
+                  { key: true, label: dealCurrency, mark: currencyMeta(dealCurrency).flag },
                 ] as const}
               />
               {/* HONEST WHEN IT CANNOT CONVERT, never a stale figure dressed
