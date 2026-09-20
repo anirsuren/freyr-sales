@@ -160,7 +160,7 @@ export async function GET(req: Request) {
         type: "Opportunity",
         label: o.name,
         sublabel: [o.customer, o.externalId].filter(Boolean).join(" · "),
-        href: `/opportunities?deal=${encodeURIComponent(o.id)}`,
+        href: `/opportunities/${encodeURIComponent(o.id)}`,
       });
     }
   }

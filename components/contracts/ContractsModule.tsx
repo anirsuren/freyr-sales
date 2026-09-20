@@ -1326,7 +1326,7 @@ export function ContractsModule({
                           <Link
                             target="_blank"
                             rel="noopener noreferrer"
-                            href={`/opportunities?deal=${encodeURIComponent(c.opportunityId)}`}
+                            href={`/opportunities/${encodeURIComponent(c.opportunityId)}`}
                             title="Open the deal"
                             aria-label="Open the deal behind this contract"
                             className="inline-flex cursor-pointer items-center rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-blue-light hover:text-blue-primary"

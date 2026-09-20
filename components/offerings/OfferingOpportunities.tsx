@@ -155,7 +155,7 @@ export function OfferingOpportunities({
               >
                 <td className="py-2.5 pr-4">
                   <Link
-                    href={`/opportunities?open=${encodeURIComponent(row.id)}`}
+                    href={`/opportunities/${encodeURIComponent(row.id)}`}
                     className="text-[13px] font-semibold text-text-primary group-hover:text-blue-primary"
                   >
                     {row.name}

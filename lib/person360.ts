@@ -183,7 +183,7 @@ export async function buildPerson360(
           },
           amount: o.value,
           logo: o.customer,
-          href: `/opportunities?deal=${encodeURIComponent(o.id)}`,
+          href: `/opportunities/${encodeURIComponent(o.id)}`,
         })),
     });
   }

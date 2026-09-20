@@ -8,6 +8,7 @@ import { readSolutioning, solutioningShelf } from "./solutioning";
 import { readLeads } from "./leads";
 import { readContracts } from "./contracts";
 import { meetingsForCustomer, readMeetings } from "./meetings";
+import { listOfferings, type Offering } from "./offerings";
 import { canAccessModuleWith } from "./moduleAccess";
 import { viewerAccessMap } from "./viewerAccess";
 import type { UserIdentityRole } from "./userIdentity";
@@ -32,6 +33,38 @@ import {
 
 const eq = (a: string | undefined, b: string) =>
   (a ?? "").trim().toLowerCase() === b.trim().toLowerCase();
+
+/* Contracts and imported opportunities historically stored an offering's
+   display label instead of its id. Resolve those legacy labels against the
+   active catalogue before making a relationship row clickable. Keeping the
+   aliases conservative prevents a similarly named offering from opening by
+   mistake; an unresolved label remains visible but has no fabricated link. */
+const offeringAliases = (value: string) => {
+  const normalized = value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  const beforeParenthetical = value.split("(", 1)[0] ?? value;
+  const short = beforeParenthetical
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  return new Set([normalized, short].filter(Boolean));
+};
+
+function offeringForLabel(label: string, offerings: Offering[]): Offering | undefined {
+  const wanted = offeringAliases(label);
+  const matches = offerings.filter((offering) =>
+    [...offeringAliases(offering.offering_name)].some((alias) => wanted.has(alias))
+  );
+  return matches.length === 1 ? matches[0] : undefined;
+}
 
 /* Customer relationship bands use the same plain-language lifecycle as the
    Solutioning module. Raw store keys such as `initiated` and `in_progress`
@@ -442,16 +475,30 @@ export async function buildCustomer360(
      offering on an open deal is a bet. Both are named here, and each row says
      which it is. */
   if (may("/offerings")) {
+    const offeringCatalog = listOfferings();
+    const offeringCatalogById = new Map(offeringCatalog.map((offering) => [offering.id, offering]));
+    const offeringIdsByLabel = new Map<string, Set<string>>();
+    const rememberOfferingId = (label: string, id: string | undefined) => {
+      if (!id) return;
+      const ids = offeringIdsByLabel.get(label) ?? new Set<string>();
+      ids.add(id);
+      offeringIdsByLabel.set(label, ids);
+    };
     const contracted = new Map<string, number>();
     for (const c of myContracts) {
-      const label = (c as { offeringLabel?: string }).offeringLabel;
-      if (label) contracted.set(label, (contracted.get(label) ?? 0) + (c.value || 0));
+      const label = c.offeringLabel;
+      if (label) {
+        contracted.set(label, (contracted.get(label) ?? 0) + (c.value || 0));
+        rememberOfferingId(label, c.offeringId);
+      }
     }
     const proposed = new Map<string, number>();
     for (const o of myDeals) {
       if (o.status === "Won" || o.status === "Lost") continue;
-      for (const label of o.offeringLabels ?? [])
+      for (const [index, label] of (o.offeringLabels ?? []).entries()) {
         proposed.set(label, (proposed.get(label) ?? 0) + (o.value || 0));
+        rememberOfferingId(label, o.offeringIds?.[index]);
+      }
     }
     const names = [...new Set([...contracted.keys(), ...proposed.keys()])].sort(
       (a, b) => a.localeCompare(b)
@@ -468,8 +515,14 @@ export async function buildCustomer360(
       items: names.map<Customer360Item>((name) => {
         const won = contracted.get(name);
         const open = proposed.get(name);
+        const storedIds = [...(offeringIdsByLabel.get(name) ?? [])];
+        const offering = storedIds.length
+          ? storedIds.length === 1
+            ? offeringCatalogById.get(storedIds[0])
+            : undefined
+          : offeringForLabel(name, offeringCatalog);
         return {
-          id: name,
+          id: offering?.id ?? name,
           title: name,
           sub: [
             won !== undefined ? "under contract" : null,
@@ -478,7 +531,7 @@ export async function buildCustomer360(
             .filter(Boolean)
             .join(" · "),
           amount: (won ?? 0) + (open ?? 0),
-          href: "/offerings",
+          href: offering ? `/offerings/${encodeURIComponent(offering.id)}` : undefined,
         };
       }),
     });

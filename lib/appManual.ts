@@ -242,7 +242,7 @@ table.`,
     ],
     title: "Contracts",
     body: `Contracts is where sales logically closes. A deal reaches "Create
-contract" and the contract is drafted here. Access follows the current privilege matrix. Open a contract row to inspect its details and documents. A linked opportunity opens at /opportunities?deal= followed by its recorded opportunity ID; never guess an ID. Drafts appear in the contract list too.
+contract" and the contract is drafted here. Access follows the current privilege matrix. Open a contract row to inspect its details and documents. A linked opportunity opens at /opportunities/ followed by its recorded opportunity ID; never guess an ID. Drafts appear in the contract list too.
 
 WHAT IT HOLDS, deliberately only this: contract id, contract name, the
 customer, the value, the dates, the owner, and schedule revenue. That is the
