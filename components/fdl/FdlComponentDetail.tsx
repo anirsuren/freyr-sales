@@ -474,6 +474,7 @@ export function FdlComponentDetail({
   );
 
   const [addingCustomers, setAddingCustomers] = useState(false);
+  const [confirmRemoveCustomer, setConfirmRemoveCustomer] = useState<string | null>(null);
   const [pickedCustomers, setPickedCustomers] = useState<string[]>([]);
   const [customerQuery, setCustomerQuery] = useState("");
   /**
@@ -558,6 +559,33 @@ export function FdlComponentDetail({
     } catch (caught) {
       toast(
         caught instanceof Error ? caught.message : "Could not connect that.",
+        "error"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disconnectCustomer(customerId: string) {
+    const customer = customers.find((item) => item.id === customerId);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ removeDigitalComponent: component.id }),
+      });
+      const payload = (await res.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      if (!res.ok)
+        throw new Error(payload?.error || "Could not remove that customer.");
+      setConfirmRemoveCustomer(null);
+      toast(`${customer?.name || "Customer"} removed from this component.`);
+      router.refresh();
+    } catch (caught) {
+      toast(
+        caught instanceof Error ? caught.message : "Could not remove that customer.",
         "error"
       );
     } finally {
@@ -3026,10 +3054,10 @@ export function FdlComponentDetail({
                     (item) => item.id === customer.nextReleaseId
                   );
                   return (
-                    <li key={customer.id}>
+                    <li key={customer.id} className="relative">
                       <Link
                         href={`/customers/${customer.id}?tab=components`}
-                        className="tab-panel flex h-full flex-col rounded-xl border border-border-light p-3.5 transition-colors hover:border-blue-subtle hover:bg-blue-light/25"
+                        className="tab-panel flex h-full flex-col rounded-xl border border-border-light p-3.5 pr-11 transition-colors hover:border-blue-subtle hover:bg-blue-light/25"
                       >
                         <span className="flex items-center gap-2.5">
                           <CompanyLogo
@@ -3052,6 +3080,19 @@ export function FdlComponentDetail({
                           </span>
                         </span>
                       </Link>
+                      {canEdit && (
+                        <Tooltip label={`Remove ${customer.name}`}>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${customer.name} from ${component.name}`}
+                            onClick={() => setConfirmRemoveCustomer(customer.id)}
+                            disabled={busy}
+                            className="absolute right-3 top-3 flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <Trash2 size={14} strokeWidth={2} />
+                          </button>
+                        </Tooltip>
+                      )}
                     </li>
                   );
                 })}
@@ -3204,11 +3245,29 @@ export function FdlComponentDetail({
                             )}
                           </td>
                           <td className="py-3">
-                            <ChevronRight
-                              size={15}
-                              strokeWidth={2}
-                              className="inline text-text-tertiary transition-colors group-hover:translate-x-0.5 group-hover:text-blue-primary"
-                            />
+                            <span className="flex items-center justify-end gap-1">
+                              {canEdit && (
+                                <Tooltip label={`Remove ${customer.name}`}>
+                                  <button
+                                    type="button"
+                                    aria-label={`Remove ${customer.name} from ${component.name}`}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setConfirmRemoveCustomer(customer.id);
+                                    }}
+                                    disabled={busy}
+                                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+                                  >
+                                    <Trash2 size={14} strokeWidth={2} />
+                                  </button>
+                                </Tooltip>
+                              )}
+                              <ChevronRight
+                                size={15}
+                                strokeWidth={2}
+                                className="inline text-text-tertiary transition-colors group-hover:translate-x-0.5 group-hover:text-blue-primary"
+                              />
+                            </span>
                           </td>
                         </tr>
                       );
@@ -3222,6 +3281,21 @@ export function FdlComponentDetail({
           </div>
         )}
       </section>
+
+      <ConfirmDialog
+        open={confirmRemoveCustomer !== null}
+        onClose={() => setConfirmRemoveCustomer(null)}
+        onConfirm={() => {
+          if (confirmRemoveCustomer) void disconnectCustomer(confirmRemoveCustomer);
+        }}
+        title={`Remove ${
+          customers.find((customer) => customer.id === confirmRemoveCustomer)?.name ||
+          "customer"
+        }?`}
+        body={`This removes the customer from ${component.name}. The customer account stays in Freyr and can be added back later.`}
+        confirmLabel="Remove customer"
+        busy={busy}
+      />
 
       {/* -------------------------------------------------------- compare */}
       {releases.length >= 2 && component.features.length > 0 && (

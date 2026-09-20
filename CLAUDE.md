@@ -139,6 +139,9 @@ Any doubt on 1 or 2 → report and ask. No yes on 3 → do not push.
   and scroll the tooltip without crossing another slice and changing records.
 - Country flags are already value marks. `noMark` must suppress every inferred
   dropdown icon so phone-country options never grow a second grey glyph.
+- A customer shown under an FDL component can be removed from that component
+  from either card or table view. Confirm the action and remove only the
+  component connection; never delete the customer account from this surface.
 
 ## 8. Suren's product sequence and Account Planning definition (Sep 14, 2026)
 

@@ -356,12 +356,16 @@ export async function PATCH(
   }
   // Commercial detail per in-use offering: revenue
   // lines keyed by offering. Sanitized so bad input can't corrupt the store.
-  // ADD ONE COMPONENT WITHOUT KNOWING THE REST. The FDL component page
-  // connects a customer from its own side and has no copy of that customer's
-  // other links, so it sends just the one and this appends it (Suren, Aug 8:
-  // "if I want to add a customer, I want to add a customer from the component
-  // also").
-  if (body.addDigitalComponent && Array.isArray(body.digital_components)) {
+  // Component pages update one reverse relationship at a time. Removing a
+  // customer here disconnects the component without deleting the account.
+  if (typeof body.removeDigitalComponent === "string") {
+    const componentId = body.removeDigitalComponent.trim().slice(0, 120);
+    if (componentId) {
+      patch.digital_components = (customer?.digital_components || []).filter(
+        (item) => item.component_id !== componentId
+      );
+    }
+  } else if (body.addDigitalComponent && Array.isArray(body.digital_components)) {
     const incoming = (body.digital_components as { component_id?: unknown; release_id?: unknown }[])[0];
     const componentId = String(incoming?.component_id || "").trim().slice(0, 120);
     if (componentId) {
@@ -381,9 +385,8 @@ export async function PATCH(
         },
       ];
     }
-  } else 
-  // The Freya software this customer runs, pinned by component + release id.
-  if (Array.isArray(body.digital_components)) {
+  } else if (Array.isArray(body.digital_components)) {
+    // The Freya software this customer runs, pinned by component + release id.
     patch.digital_components = (body.digital_components as unknown[])
       .slice(0, 200)
       .map((raw) => {
