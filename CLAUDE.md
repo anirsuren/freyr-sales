@@ -207,6 +207,8 @@ Keep Solutioning result counts out of the search/filter toolbar. Show no count w
 
 Render documents in the compact Solutioning request preview as a Sales Materials-style table with Document, Version, Assigned to, and Open columns. The current model has one primary assignee per document; display that person as an ordinary avatar-and-name cell and never use a large “Working on it” badge.
 
+Match grouped Solutioning lists to the Goals section hierarchy. Render each owner, customer, or status as its own bordered collapsible band with an identity mark, label, adjacent request count, and repeated table headings; show the person's avatar for owner groups. Provide one toolbar control that switches between Open all and Close all and governs the same groups in table and split views.
+
 Render inline owner identities as crown, profile picture, then name. Keep the profile picture immediately beside the name as part of the person's identity.
 
 Keep a search field directly above the logged-entry list in the goal verification dialog. Search across every visible record detail and report the filtered count without changing the underlying sign-off totals.

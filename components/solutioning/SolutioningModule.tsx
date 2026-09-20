@@ -19,6 +19,8 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
   CircleDashed,
   ClipboardList,
   File,
@@ -193,6 +195,7 @@ export function SolutioningModule({
   const [dueFrom, setDueFrom] = useState("");
   const [dueTo, setDueTo] = useState("");
   const [groupBy, setGroupBy] = useState("none");
+  const [shutGroups, setShutGroups] = useState<string[]>([]);
   const groupLabel = useCallback(
     (r: SolutionRequest) =>
       groupBy === "customer"
@@ -330,17 +333,46 @@ export function SolutioningModule({
    * result while making the first and most common part of the list inexpensive. */
   const [renderLimit, setRenderLimit] = useState(REQUEST_ROW_BATCH);
   const loadMoreRef = useRef<HTMLTableRowElement>(null);
+  const groupedLoadMoreRef = useRef<HTMLDivElement>(null);
   const renderedRows = useMemo(
     () => shown.slice(0, renderLimit),
     [shown, renderLimit]
   );
+  const shownGroupLabels = useMemo(
+    () => groupBy === "none" ? [] : [...new Set(shown.map(groupLabel))],
+    [shown, groupBy, groupLabel]
+  );
+  const groupTotals = useMemo(() => {
+    const totals = new Map<string, number>();
+    if (groupBy === "none") return totals;
+    shown.forEach((request) => {
+      const label = groupLabel(request);
+      totals.set(label, (totals.get(label) ?? 0) + 1);
+    });
+    return totals;
+  }, [shown, groupBy, groupLabel]);
+  const renderedGroups = useMemo(() => {
+    const groups = new Map<string, SolutionRequest[]>();
+    renderedRows.forEach((request) => {
+      const label = groupLabel(request);
+      const rows = groups.get(label) ?? [];
+      rows.push(request);
+      groups.set(label, rows);
+    });
+    return [...groups.entries()];
+  }, [renderedRows, groupLabel]);
+  const anyGroupOpen = shownGroupLabels.some((label) => !shutGroups.includes(label));
 
   useEffect(() => {
     setRenderLimit(REQUEST_ROW_BATCH);
   }, [shown]);
 
   useEffect(() => {
-    const marker = loadMoreRef.current;
+    setShutGroups([]);
+  }, [groupBy]);
+
+  useEffect(() => {
+    const marker = groupBy === "none" ? loadMoreRef.current : groupedLoadMoreRef.current;
     if (!marker || renderLimit >= shown.length) return;
     const page = document.getElementById("main-content");
     const observer = new IntersectionObserver(
@@ -354,7 +386,7 @@ export function SolutioningModule({
     );
     observer.observe(marker);
     return () => observer.disconnect();
-  }, [renderLimit, shown.length]);
+  }, [renderLimit, shown.length, groupBy]);
 
   /** What the split is standing on. Null means the first row on screen, so
    *  the right pane is never empty while the left has something in it — and a
@@ -445,6 +477,75 @@ export function SolutioningModule({
       (o) => ({ value: o as string, label: o as string, avatarName: o as string })
     ),
   ];
+
+  const requestTableHead = (
+    <thead>
+      <tr className="border-b border-border-light text-left text-[12.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary [&>th]:whitespace-nowrap">
+        <th className="w-[125px] px-4 py-2.5">Request ID</th>
+        <th className="w-[270px] px-4 py-2.5">Solution title</th>
+        <th className="w-[140px] px-4 py-2.5">Request type</th>
+        <th className="w-[185px] px-4 py-2.5">Opportunity ID</th>
+        <th className="w-[185px] px-4 py-2.5">Customer</th>
+        <th className="w-[175px] px-4 py-2.5">BD member</th>
+        <th className="w-[175px] px-4 py-2.5">Solutioning owner</th>
+        <th className="w-[175px] px-4 py-2.5">Prepared by</th>
+        <th className="w-[125px] px-4 py-2.5">Requested</th>
+        <th className="w-[125px] px-4 py-2.5">Due</th>
+        <th className="w-[125px] px-4 py-2.5">Submitted</th>
+        <th className="w-[160px] px-4 py-2.5">Solution status</th>
+        <th className="w-[130px] px-4 py-2.5">Documents</th>
+        <th className="w-[110px] px-4 py-2.5 text-left">Actions</th>
+      </tr>
+    </thead>
+  );
+
+  const renderRequestRow = (request: SolutionRequest) => (
+    <RequestRow
+      key={request.id}
+      request={request}
+      fulfiller={fulfiller}
+      hideKindLabel={oneKind}
+      room={room}
+      busy={busy === request.id}
+      open={openIds.has(request.id)}
+      onToggle={() =>
+        setOpenIds((current) => {
+          const next = new Set(current);
+          if (next.has(request.id)) next.delete(request.id);
+          else next.add(request.id);
+          return next;
+        })
+      }
+      onPickUp={() =>
+        setConfirmPickUp({ id: request.id, label: `${request.ref} · ${request.title}` })
+      }
+      onDelete={
+        meRole === "admin" || request.status === "initiated"
+          ? () => setConfirmDelete({ id: request.id, ref: request.ref })
+          : undefined
+      }
+    />
+  );
+
+  const groupMark = (label: string) => {
+    if (groupBy === "owner") {
+      return label === "Unassigned" ? (
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface text-text-tertiary">
+          <CircleDashed size={16} strokeWidth={2} />
+        </span>
+      ) : (
+        <Avatar name={label} className="h-8 w-8 shrink-0 text-[10px]" />
+      );
+    }
+    if (groupBy === "customer") {
+      return <CompanyLogo name={label} className="h-8 w-8 shrink-0 text-[9px]" />;
+    }
+    return (
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
+        <ClipboardList size={15} strokeWidth={2.1} />
+      </span>
+    );
+  };
 
   return (
     <div>
@@ -630,6 +731,23 @@ export function SolutioningModule({
               menuOnly
             />
           }
+          display={
+            groupBy !== "none" && shownGroupLabels.length > 0 ? (
+              <button
+                type="button"
+                aria-label={anyGroupOpen ? "Collapse every request group" : "Expand every request group"}
+                onClick={() => setShutGroups(anyGroupOpen ? shownGroupLabels : [])}
+                className="inline-flex h-10 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+              >
+                {anyGroupOpen ? (
+                  <ChevronsDownUp size={14} strokeWidth={2.2} />
+                ) : (
+                  <ChevronsUpDown size={14} strokeWidth={2.2} />
+                )}
+                {anyGroupOpen ? "Close all" : "Open all"}
+              </button>
+            ) : null
+          }
           sort={
             <ColorSelect
               value={sort}
@@ -711,13 +829,46 @@ export function SolutioningModule({
             {shown.map((r, index) => {
               const on = picked?.id === r.id;
               const meta = KIND_META[r.kind];
+              const label = groupLabel(r);
+              const startsGroup = groupBy !== "none" && (
+                index === 0 || groupLabel(shown[index - 1]) !== label
+              );
+              const groupClosed = groupBy !== "none" && shutGroups.includes(label);
               const overdue =
                 r.neededBy && r.status !== "completed"
                   ? r.neededBy < todayISO()
                   : false;
               return (
                 <Fragment key={r.id}>
-                {groupBy !== "none" && (index === 0 || groupLabel(shown[index - 1]) !== groupLabel(r)) && <div className="bg-surface px-3 py-2 text-xs font-semibold">{groupLabel(r)}</div>}
+                {startsGroup && (
+                  <button
+                    type="button"
+                    aria-expanded={!groupClosed}
+                    onClick={() =>
+                      setShutGroups((current) =>
+                        groupClosed
+                          ? current.filter((item) => item !== label)
+                          : [...current, label]
+                      )
+                    }
+                    className="flex w-full items-center gap-2 border-b border-border-light bg-surface/80 px-3 py-2.5 text-left transition-colors hover:bg-blue-light/40"
+                  >
+                    {groupClosed ? (
+                      <ChevronRight size={14} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
+                    ) : (
+                      <ChevronDown size={14} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
+                    )}
+                    {groupMark(label)}
+                    <span className="min-w-0 max-w-[150px] truncate text-[12.5px] font-semibold text-text-primary">
+                      {label}
+                    </span>
+                    <span className="shrink-0 text-[11px] font-medium text-text-tertiary tnum">
+                      {groupTotals.get(label) ?? 0}
+                    </span>
+                    <span className="min-w-0 flex-1" />
+                  </button>
+                )}
+                {!groupClosed && (
                 <button
                   type="button"
                   onClick={() => setPickedId(r.id)}
@@ -768,6 +919,7 @@ export function SolutioningModule({
                     </span>
                   </span>
                 </button>
+                )}
                 </Fragment>
               );
             })}
@@ -854,72 +1006,64 @@ export function SolutioningModule({
             )}
           </div>
         </div>
+      ) : groupBy !== "none" ? (
+        <PinnableTable id="solutioning-request-groups" wrapperClassName="tab-panel">
+          <div className="min-w-[2260px] space-y-3">
+            {renderedGroups.map(([label, requests]) => {
+              const closed = shutGroups.includes(label);
+              return (
+                <Card key={label} className="overflow-hidden p-0">
+                  <button
+                    type="button"
+                    aria-expanded={!closed}
+                    onClick={() =>
+                      setShutGroups((current) =>
+                        closed
+                          ? current.filter((item) => item !== label)
+                          : [...current, label]
+                      )
+                    }
+                    className={cn(
+                      "flex w-full items-center gap-3 bg-surface/70 px-4 py-3 text-left transition-colors hover:bg-blue-light/35",
+                      !closed && "border-b border-border-light"
+                    )}
+                  >
+                    {closed ? (
+                      <ChevronRight size={16} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
+                    ) : (
+                      <ChevronDown size={16} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
+                    )}
+                    {groupMark(label)}
+                    <span className="min-w-0 max-w-[320px] truncate text-[14px] font-semibold text-text-primary">
+                      {label}
+                    </span>
+                    <span className="shrink-0 text-[12px] font-medium text-text-secondary tnum">
+                      {groupTotals.get(label) ?? requests.length}{" "}
+                      {(groupTotals.get(label) ?? requests.length) === 1 ? "request" : "requests"}
+                    </span>
+                    <span className="min-w-0 flex-1" />
+                  </button>
+                  {!closed && (
+                    <table className="w-full table-fixed border-collapse text-[13px]">
+                      {requestTableHead}
+                      <tbody>{requests.map(renderRequestRow)}</tbody>
+                    </table>
+                  )}
+                </Card>
+              );
+            })}
+            {renderLimit < shown.length && (
+              <div ref={groupedLoadMoreRef} className="h-px" aria-hidden="true" />
+            )}
+          </div>
+        </PinnableTable>
       ) : (
-        <Card key="table" className="tab-panel p-0 overflow-hidden">
+        <Card key="table" className="tab-panel overflow-hidden p-0">
           <PinnableTable id="solutioning-requests">
             <table className="w-full min-w-[2260px] table-fixed border-collapse text-[13px]">
-              <thead>
-                <tr className="border-b border-border-light text-left text-[12.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary [&>th]:whitespace-nowrap">
-                  <th className="w-[125px] px-4 py-2.5">Request ID</th>
-                  <th className="w-[270px] px-4 py-2.5">Solution title</th>
-                  <th className="w-[140px] px-4 py-2.5">Request type</th>
-                  <th className="w-[185px] px-4 py-2.5">Opportunity ID</th>
-                  <th className="w-[185px] px-4 py-2.5">Customer</th>
-                  <th className="w-[175px] px-4 py-2.5">BD member</th>
-                  <th className="w-[175px] px-4 py-2.5">Solutioning owner</th>
-                  <th className="w-[175px] px-4 py-2.5">Prepared by</th>
-                  <th className="w-[125px] px-4 py-2.5">Requested</th>
-                  <th className="w-[125px] px-4 py-2.5">Due</th>
-                  <th className="w-[125px] px-4 py-2.5">Submitted</th>
-                  <th className="w-[160px] px-4 py-2.5">Solution status</th>
-                  <th className="w-[130px] px-4 py-2.5">Documents</th>
-                  {/* AN ACTIONS COLUMN, NAMED AND LEFT-ALIGNED (Anir, Aug 31:
-                      "you need an actions column at the end... and make sure
-                      it's aligned properly since you always fuck that up").
-
-                      It was an unlabelled 44px sliver, so the two controls in
-                      it read as icons floating off the end of Status rather
-                      than as a column with a job. Header and cells both start
-                      at the left edge, which is the standing rule for this
-                      column everywhere in the app. */}
-                  <th className="w-[110px] px-4 py-2.5 text-left">Actions</th>
-                </tr>
-              </thead>
+              {requestTableHead}
               <tbody>
-                {renderedRows.map((r, index) => (
-                  <Fragment key={r.id}>
-                  {groupBy !== "none" && (index === 0 || groupLabel(shown[index - 1]) !== groupLabel(r)) && <tr className="bg-surface"><td colSpan={14} className="px-4 py-2 text-sm font-semibold">{groupLabel(r)}</td></tr>}
-                  <RequestRow
-                    key={r.id}
-                    request={r}
-                    fulfiller={fulfiller}
-                    hideKindLabel={oneKind}
-                    room={room}
-                    busy={busy === r.id}
-                    open={openIds.has(r.id)}
-                    onToggle={() =>
-                      setOpenIds((current) => {
-                        const next = new Set(current);
-                        if (next.has(r.id)) next.delete(r.id);
-                        else next.add(r.id);
-                        return next;
-                      })
-                    }
-                    onPickUp={() =>
-                      setConfirmPickUp({ id: r.id, label: `${r.ref} · ${r.title}` })
-                    }
-                    /* THE SAME RULE THE ROUTE APPLIES: an admin, or the person
-                       who raised it while nothing has started. Anyone else has
-                       Cancel on the record instead — cancelling keeps the
-                       history, deleting does not. */
-                    onDelete={
-                      meRole === "admin" || r.status === "initiated"
-                        ? () => setConfirmDelete({ id: r.id, ref: r.ref })
-                        : undefined
-                    }
-                  />
-                  </Fragment>
-                ))}
+                {renderedRows.map(renderRequestRow)}
                 {renderLimit < shown.length && (
                   <tr ref={loadMoreRef} aria-hidden="true">
                     <td colSpan={14} className="h-px p-0" />

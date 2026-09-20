@@ -1198,6 +1198,8 @@ Solutioning result counts do not occupy the search/filter toolbar. Hide the coun
 
 The compact Solutioning request preview presents documents as a restrained Sales Materials-style table with Document, Version, Assigned to, and Open columns. A document has one primary assignee in the current data model; show that person as a normal avatar-and-name cell, never as an oversized “Working on it” badge. Completed locally, not deployed.
 
+Grouped Solutioning lists use the same section hierarchy as Goals. Each owner, customer, or status is a separate bordered, collapsible band with its identity mark, label, adjacent request count, and its own repeated table headings; owner bands include the person's avatar. One state-aware Open all/Close all button in the toolbar controls these group bands in both table and split views. Completed locally, not deployed.
+
 Inline owner identities on Goals always read crown, profile picture, then name. The avatar and name stay adjacent as one person identity; the ownership crown precedes that identity instead of splitting the face from the name. Completed locally, not deployed.
 
 The goal verification dialog places a full-width search field immediately above its logged-entry list. It filters the review log by person, customer, date, amount, status, notes, actors, currency, and evidence while preserving the complete entry count and showing the number of matches. Completed locally, not deployed.
