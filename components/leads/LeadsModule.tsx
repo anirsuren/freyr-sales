@@ -513,7 +513,11 @@ export function LeadsModule({
             options: [
               { value: "__none", label: "Unassigned", color: "#8E98A8" },
               ...[...new Set(leads.map((l) => l.owner).filter(Boolean))].map(
-                (o) => ({ value: o as string, label: o as string, color: "var(--ink-bright-blue)" })
+                (o) => ({
+                  value: o as string,
+                  label: o as string,
+                  avatarName: o as string,
+                })
               ),
             ],
           },

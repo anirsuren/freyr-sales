@@ -250,3 +250,5 @@ Use an 860px desktop dialog and a substantial note canvas for Log an interaction
 Point-based chart popups must also close from a chart-surface pointer guard when the pointer is no longer on a point. Keep the point leave/cancel handlers too, so crossing between HTML hit targets and SVG layers cannot strand a popup.
 
 In lead source workspaces, “Showing X of Y leads” means X rows match the current source/search/status/owner filters and Y leads exist in the whole workspace. Never use the selected source's count as both numerator and denominator.
+
+Show profile pictures beside assigned people in the Leads page Owner filter, matching the owner identities in the table. Keep Unassigned neutral rather than presenting it as a person.

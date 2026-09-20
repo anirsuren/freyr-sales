@@ -1241,3 +1241,5 @@ The Log an interaction dialog uses the full working width of the customer workfl
 Point-based graph popups have a second chart-surface exit guard in addition to the point's own pointer-leave handler. Moving even one pixel into empty plot space closes the popup synchronously, including when the browser crosses from an HTML hit target to an SVG layer without delivering a mouse-leave event. Completed locally, not deployed.
 
 Lead source workspaces distinguish the selected source from the full lead database. “Showing X of Y leads” uses the filtered rows for X and every lead in the workspace for Y; a Conference selection with 29 records must not describe itself as 29 of 29 unless the entire workspace truly contains 29 leads. Completed locally, not deployed.
+
+The Leads page Owner filter renders each assigned person with the same profile picture used in lead rows. Unassigned remains a neutral non-person option; assigned owners never fall back to decorative category dots when the filter system supports avatars. Completed locally, not deployed.
