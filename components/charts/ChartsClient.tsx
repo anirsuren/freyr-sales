@@ -1843,6 +1843,10 @@ export function DonutChart({
           />
           {segments.map((s, i) => {
             const rawLen = (s.value / total) * c;
+            // Zero-value categories still belong in an expanded chart's
+            // breakdown, but they do not own a slice of the ring. Painting a
+            // minimum arc here made an honest 0 look non-zero.
+            if (s.value <= 0) return null;
             const fullCircle = rawLen >= c - 0.01;
             // Draw each arc a hair shorter than its true share so neighbours
             // never touch. Butt caps alone still bled: sub-pixel rounding let
@@ -3220,7 +3224,10 @@ export function DonutLegend({
               <span className="h-1.5 w-full rounded-full bg-surface overflow-hidden">
                 <span
                   className="block h-full rounded-full transition-all"
-                  style={{ width: `${Math.max(pct, 3)}%`, background: it.color }}
+                  style={{
+                    width: pct === 0 ? "0%" : `${Math.max(pct, 3)}%`,
+                    background: it.color,
+                  }}
                 />
               </span>
             )}

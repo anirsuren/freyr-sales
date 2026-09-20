@@ -302,9 +302,7 @@ export function RepAnalytics({
                 value: formatMoney(d.value),
               })),
             }));
-            const repStageSegments = rep.stageValues
-              .filter((s) => s.count > 0)
-              .map((s) => ({
+            const repStageBreakdown = rep.stageValues.map((s) => ({
                 label: s.stage,
                 value: s.count,
                 color: s.color,
@@ -315,6 +313,9 @@ export function RepAnalytics({
                   value: formatMoney(d.value),
                 })),
               }));
+            const repStageSegments = repStageBreakdown.filter(
+              (segment) => segment.value > 0
+            );
             return (
               <div key={rep.key}>
                 {/* Collapsed row — click to expand */}
@@ -451,7 +452,7 @@ export function RepAnalytics({
                               subtitle={`Deal count by pipeline stage for ${rep.name}.`}
                               chart={{
                                 kind: "donut",
-                                segments: repStageSegments,
+                                segments: repStageBreakdown,
                                 centerLabel: String(rep.deals),
                                 centerSub: "deals",
                                 format: "number",

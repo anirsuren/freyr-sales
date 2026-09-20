@@ -1223,3 +1223,5 @@ Relationship and 360-degree rows for first-class records link to the record's ca
 Every app-level back control follows the exact in-app source, including the active tab or filtered view, and names that destination. Native query-only URL replacements must notify the shared navigation tracker before a record link can be opened; a customer Presentation must return to that customer's Presentations tab, never another remembered tab. Completed locally, not deployed.
 
 Customer solutioning-artifact tables reserve enough width for long semantic status pills before the Owner column. Status and owner identities must never overlap or intersect at ordinary desktop widths. Completed locally, not deployed.
+
+Expanded categorical charts keep the complete known metric set in their breakdown, even when only one category currently has data. Missing categories display honest zero values and zero-width bars; zero categories never paint fake donut slivers. Compact cards may continue to show only active categories. Completed locally, not deployed.

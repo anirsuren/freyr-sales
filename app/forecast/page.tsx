@@ -529,8 +529,7 @@ export default async function ForecastPage() {
               The same committed number, sliced two ways
             </p>
             {(() => {
-              const segs = byStage
-                .map((s) => ({
+              const allStageSegs = byStage.map((s) => ({
                   label: s.stage,
                   value: s.weighted,
                   color: STAGE_COLOR[s.stage],
@@ -547,8 +546,8 @@ export default async function ForecastPage() {
                     sub: d.contact,
                     value: formatMoney(d.value),
                   })),
-                }))
-                .filter((s) => s.value > 0);
+                }));
+              const segs = allStageSegs.filter((s) => s.value > 0);
               // The second slice of the same money: which offerings the commit
               // is riding on. service is a real deal field — nothing invented.
               const svcMap = new Map<
@@ -596,7 +595,7 @@ export default async function ForecastPage() {
                         className="h-7 px-2 text-[11px]"
                         chart={{
                           kind: "donut",
-                          segments: segs,
+                          segments: allStageSegs,
                           centerLabel: formatMoney(commit),
                           centerSub: "commit",
                           format: "money",

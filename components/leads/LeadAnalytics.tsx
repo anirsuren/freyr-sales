@@ -101,7 +101,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
           stage: lead.status,
         })),
       };
-    }).filter((segment) => segment.value > 0);
+    });
 
     const sourceBars = LEAD_SOURCES.map((source) => {
       const records = leads.filter((lead) => lead.source === source);
@@ -137,6 +137,9 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
   }, [leads]);
 
   if (!data) return null;
+  const activeStatusSegments = data.statusSegments.filter(
+    (segment) => segment.value > 0
+  );
   const maxSourceValue = Math.max(...data.sourceBars.map((bar) => bar.value), 1);
   const sourceLeads =
     sourceFilter === "all"
@@ -286,7 +289,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
           <div className="mt-3 grid items-center gap-5 sm:grid-cols-[150px_minmax(0,1fr)]">
             <div className="flex justify-center">
               <DonutChart
-                segments={data.statusSegments}
+                segments={activeStatusSegments}
                 centerLabel={String(leads.length)}
                 centerSub="leads"
                 size={132}
@@ -295,7 +298,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
               />
             </div>
             <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">
-              {data.statusSegments.map((segment) => (
+              {activeStatusSegments.map((segment) => (
                 <div key={segment.label} className="flex min-w-0 items-center gap-2 text-[11.5px]">
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: segment.color }} />
                   <span className="truncate text-text-secondary">{segment.label}</span>

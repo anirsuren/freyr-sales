@@ -201,7 +201,7 @@ function RevenueSection({
   // Revenue split by type — feeds the donut + its one-column legend. Each type
   // carries the actual revenue lines behind it so the donut hover shows the
   // contracts, not just the total (Suren: show the entities behind a slice).
-  const byType = REVENUE_TYPES.map((t) => {
+  const allRevenueTypes = REVENUE_TYPES.map((t) => {
     const typeLines = lines.filter((l) => l.revenue_type === t);
     return {
       type: t,
@@ -216,7 +216,8 @@ function RevenueSection({
         })
       ),
     };
-  }).filter((x) => x.value > 0);
+  });
+  const byType = allRevenueTypes.filter((x) => x.value > 0);
   const num = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^0-9.]/g, "")) || 0));
   const inp =
     "rounded-md border border-border bg-white px-2.5 py-1.5 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
@@ -266,7 +267,7 @@ function RevenueSection({
               subtitle="Revenue split by commercial model."
               chart={{
                 kind: "donut",
-                segments: byType.map((b) => ({
+                segments: allRevenueTypes.map((b) => ({
                   label: b.label,
                   value: b.value,
                   color: b.color,

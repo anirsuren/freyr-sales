@@ -157,9 +157,9 @@ export function OfferingOverviewMain({
       line.revenue_type,
       (typeTotals.get(line.revenue_type) || 0) + line.amount
     );
-  const typeSegments = [...typeTotals.entries()]
-    .filter(([, value]) => value > 0)
-    .map(([type, value]) => ({
+  const allTypeSegments = Object.keys(REV_TYPE_COLOR).map((type) => {
+    const value = typeTotals.get(type) || 0;
+    return {
       label: REVENUE_TYPE_META[type as keyof typeof REVENUE_TYPE_META]?.short || type,
       value,
       color: REV_TYPE_COLOR[type] || "var(--ink-bright-blue)",
@@ -171,7 +171,9 @@ export function OfferingOverviewMain({
           sub: entry.line.description || undefined,
           value: formatMoney(entry.line.amount),
         })),
-    }));
+    };
+  });
+  const typeSegments = allTypeSegments.filter((segment) => segment.value > 0);
 
   const now = new Date();
   const lineActiveAt = (line: (typeof allLines)[number]["line"], at: Date) => {
@@ -444,7 +446,7 @@ export function OfferingOverviewMain({
                     subtitle={`${o.offering_name} contracted revenue split by commercial model.`}
                     chart={{
                       kind: "donut",
-                      segments: typeSegments,
+                      segments: allTypeSegments,
                       centerLabel: String(report.lineCount),
                       centerSub: report.lineCount === 1 ? "line" : "lines",
                       format: "money",

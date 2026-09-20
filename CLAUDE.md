@@ -232,3 +232,5 @@ Link first-class records in relationship and 360-degree rows to their canonical 
 Every app-level back control must follow the exact in-app source, including its active tab or filtered view, and name that destination. Query-only URL replacements must notify the shared navigation tracker before a record drill-in can occur, so returning from a record never lands on a stale sibling tab.
 
 Reserve enough width between semantic status pills and owner identities in customer solutioning-artifact tables. Those columns must never overlap or intersect at ordinary desktop widths.
+
+Expanded categorical charts must retain their complete known metric set in the breakdown when only one or a few categories have data. Render missing categories as honest zeros with zero-width bars and no fake donut slivers; compact cards may stay focused on active categories.

@@ -91,12 +91,23 @@ import type {
   AccountNote,
   AccountAttachment,
   AccountDeal,
+  Outcome,
 } from "@/lib/types";
 import type { FdlComponent } from "@/lib/offerings";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { withCommas } from "@/lib/currency";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
+
+const CUSTOMER_OUTCOMES: Outcome[] = [
+  "interested",
+  "meeting_booked",
+  "in_progress",
+  "no_response",
+  "not_interested",
+  "ai_call_completed",
+  "ai_call_failed",
+];
 
 // "Ask Agent" is no longer a tab — the agent rides in a right-side drawer so
 // it's reachable from every tab without hiding the account (Anir, Jul 3).
@@ -696,6 +707,26 @@ export function CustomerTabs({
       }))
       .sort((a, b) => b.value - a.value);
   }, [interactions, contactNameById, customer.company_name]);
+  // Compact cards only list outcomes that occurred. Expanded charts keep the
+  // complete outcome vocabulary so a one-outcome account still has a useful,
+  // balanced breakdown with honest zero rows for everything else.
+  const outcomeBreakdown = useMemo(
+    () =>
+      CUSTOMER_OUTCOMES.map((key) => {
+        const active = outcomeMix.find(
+          (item) => item.label === (OUTCOME_META[key]?.label || key)
+        );
+        return (
+          active || {
+            label: OUTCOME_META[key]?.label || key,
+            value: 0,
+            color: OUTCOME_CHART_COLOR[key] || "#AF9BF5",
+            tip: [],
+          }
+        );
+      }),
+    [outcomeMix]
+  );
   // Weekly touch buckets aligned to the health series' weeks — each plotted
   // point tips the touches logged that week (Suren: chart hovers must show the
   // actual entities behind the point).
@@ -1454,7 +1485,7 @@ export function CustomerTabs({
                       subtitle={`Every logged touch with ${customer.company_name}, by outcome.`}
                       chart={{
                         kind: "donut",
-                        segments: outcomeMix,
+                        segments: outcomeBreakdown,
                         centerLabel: String(interactions.length),
                         centerSub: "touches",
                       }}
@@ -1618,7 +1649,7 @@ export function CustomerTabs({
                   createdAt: d.created_at,
                 })),
               ];
-              const dealsByStage = STAGES.map((stage) => {
+              const allDealsByStage = STAGES.map((stage) => {
                 const ds = acctDeals.filter((d) => d.stage === stage);
                 return {
                   label: stage,
@@ -1635,7 +1666,8 @@ export function CustomerTabs({
                     })
                   ),
                 };
-              }).filter((s) => s.count > 0);
+              });
+              const dealsByStage = allDealsByStage.filter((s) => s.count > 0);
               const totalOpen = acctDeals.reduce((s, d) => s + d.value, 0);
               const WEEK = 7 * 86400000;
               const nowMs = Date.now();
@@ -1760,7 +1792,7 @@ export function CustomerTabs({
                               subtitle={`${customer.company_name} current open value by selling stage.`}
                               chart={{
                                 kind: "donut",
-                                segments: dealsByStage.map((s) => ({
+                                segments: allDealsByStage.map((s) => ({
                                   label: s.label,
                                   value: s.value,
                                   color: s.color,
@@ -1810,7 +1842,7 @@ export function CustomerTabs({
                               subtitle={`${customer.company_name} outcomes across every logged interaction.`}
                               chart={{
                                 kind: "donut",
-                                segments: outcomeMix,
+                                segments: outcomeBreakdown,
                                 centerLabel: String(interactions.length),
                                 centerSub: "touches",
                               }}
@@ -2101,7 +2133,7 @@ export function CustomerTabs({
               }))
             ),
           ];
-          const stageMix = STAGES.map((stage) => {
+          const fullStageMix = STAGES.map((stage) => {
             const rows = dealRows.filter((deal) => deal.stage === stage);
             return {
               label: stage,
@@ -2114,7 +2146,8 @@ export function CustomerTabs({
                 value: formatMoney(deal.value),
               })),
             };
-          }).filter((segment) => segment.value > 0);
+          });
+          const stageMix = fullStageMix.filter((segment) => segment.value > 0);
           /* NO WEIGHTED FIGURE HERE (Anir, Sep 2: "they dont use weighted").
              The card header used to carry a Weighted total beside this chart;
              the team never reads value x confidence, so the chart stands on
@@ -2184,7 +2217,7 @@ export function CustomerTabs({
                       subtitle={`${customer.company_name} active opportunities by current stage.`}
                       chart={{
                         kind: "donut",
-                        segments: stageMix,
+                        segments: fullStageMix,
                         centerLabel: String(dealCount),
                         centerSub: dealCount === 1 ? "deal" : "deals",
                       }}

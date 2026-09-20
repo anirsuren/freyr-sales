@@ -530,6 +530,19 @@ export default async function DashboardPage({
       value: `${formatMoney(deal.value)} raw`,
     })),
   }));
+  const forecastBreakdownSegments = STAGES.filter(
+    (stage) => stage !== "Closed Lost"
+  ).map((stage) => {
+    const active = forecastSegments.find((segment) => segment.label === stage);
+    return (
+      active || {
+        label: stage,
+        value: 0,
+        color: STAGE_COLOR[stage],
+        tip: [],
+      }
+    );
+  });
 
   const overview = (
     <>
@@ -622,7 +635,7 @@ export default async function DashboardPage({
                   subtitle="Probability-adjusted revenue expected from each pipeline stage."
                   chart={{
                     kind: "donut",
-                    segments: forecastSegments,
+                    segments: forecastBreakdownSegments,
                     centerLabel: formatMoney(quarterCommit),
                     centerSub: "expected revenue",
                     format: "money",

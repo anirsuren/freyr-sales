@@ -748,8 +748,10 @@ export function OrgPerformanceTab({
             milestoneByNow(entry.goal)
           ) === key
       ).length,
-    }))
-    .filter((segment) => segment.value > 0);
+    }));
+  const activePaceSegments = paceSegments.filter(
+    (segment) => segment.value > 0
+  );
   const expandedBarTitle =
     typeof words?.barTitle === "string"
       ? words.barTitle
@@ -1237,13 +1239,13 @@ export function OrgPerformanceTab({
                 syncId="perf-pace"
                 centerLabel={String(shown.length)}
                 centerSub={shown.length === 1 ? noun.replace(/s$/, "") : noun}
-                segments={paceSegments}
+                segments={activePaceSegments}
               />
               <DonutLegend
                 className="min-w-0 flex-1 max-w-[230px]"
                 syncId="perf-pace"
                 total={shown.length}
-                items={paceSegments}
+                items={activePaceSegments}
               />
             </div>
           </Card>
