@@ -50,6 +50,7 @@ import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { Avatar } from "@/components/ui/Avatar";
 import { DocumentPeek } from "@/components/ui/DocumentPeek";
+import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { timelineMark } from "@/components/solutioning/RequestDetail";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
@@ -71,6 +72,7 @@ import { KIND_META, KindChip, STATUS_META, StatusPill } from "./bits";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { repSlug } from "@/lib/team";
+import { formatFromFilename, type OfferingMaterial } from "@/lib/offeringMaterials";
 
 /**
  * THE SOLUTIONING ROOM (Suren, Aug 24). Sales creates requests here or from a
@@ -1529,6 +1531,17 @@ const requestDocumentDownloadUrl = (requestId: string, docId: string) =>
     requestId
   )}&docId=${encodeURIComponent(docId)}`;
 
+/** Give compact request documents the exact hover-preview surface used by
+ * Sales Materials. The solutioning route supplies the rendered document; the
+ * material shape only carries the file identity and format that preview uses. */
+const requestDocumentAsMaterial = (doc: SolutionDoc): OfferingMaterial => ({
+  id: doc.id,
+  kind: formatFromFilename(doc.fileName || doc.name),
+  label: doc.name,
+  url: doc.url ?? "",
+  ...(doc.docsPath ? { docsPath: doc.docsPath } : {}),
+});
+
 /** The list preview must expose the same shelves as the full record. */
 const visibleRequestDocs = (request: SolutionRequest) =>
   request.type === "request"
@@ -1670,15 +1683,19 @@ function RequestPanel({
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ color: kind.color, background: tint(kind.color, 10) }}>
                           <DocIcon size={14} strokeWidth={2} />
                         </span>
-                        <button
-                          type="button"
-                          disabled={!isFile}
-                          onClick={() => isFile && setViewingDocument(doc)}
-                          className="min-w-0 truncate text-left text-[12px] font-semibold text-text-primary enabled:hover:text-blue-primary enabled:hover:underline disabled:cursor-default"
-                          title={doc.name}
+                        <MaterialPeek
+                          material={requestDocumentAsMaterial(doc)}
+                          previewUrl={isFile ? `${previewPage}?embed=1` : null}
                         >
-                          {doc.name}
-                        </button>
+                          <button
+                            type="button"
+                            disabled={!isFile}
+                            onClick={() => isFile && setViewingDocument(doc)}
+                            className="min-w-0 truncate text-left text-[12px] font-semibold text-text-primary enabled:hover:text-blue-primary enabled:hover:underline disabled:cursor-default"
+                          >
+                            {doc.name}
+                          </button>
+                        </MaterialPeek>
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-[11px] font-medium text-text-secondary tnum">
