@@ -1243,3 +1243,5 @@ Point-based graph popups have a second chart-surface exit guard in addition to t
 Lead source workspaces distinguish the selected source from the full lead database. “Showing X of Y leads” uses the filtered rows for X and every lead in the workspace for Y; a Conference selection with 29 records must not describe itself as 29 of 29 unless the entire workspace truly contains 29 leads. Completed locally, not deployed.
 
 The Leads page Owner filter renders each assigned person with the same profile picture used in lead rows. Unassigned remains a neutral non-person option; assigned owners never fall back to decorative category dots when the filter system supports avatars. Completed locally, not deployed.
+
+Graph hover previews are globally mutually exclusive. Entering any graph mark immediately transfers shared hover ownership and synchronously dismisses the previously open graph preview, including across adjacent bars and across different chart implementations. At most one graph tooltip may be visible anywhere in the app. Completed locally, not deployed.

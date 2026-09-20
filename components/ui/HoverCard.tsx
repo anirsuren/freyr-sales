@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -9,6 +9,7 @@ import {
   HOVER_DELAY_MS,
   HOVER_HINT_DELAY_MS,
 } from "@/lib/hoverPreferences";
+import { claimGraphHover, releaseGraphHover } from "@/lib/chartHoverCoordinator";
 
 // A hover popover that stays open while the cursor is over the popover itself
 // and closes synchronously when the cursor leaves its active hover surface. It can
@@ -61,6 +62,8 @@ export function HoverCard({
    *  use this so labels and empty plot space never behave like data marks. */
   triggerSelector?: string;
 }) {
+  const hoverOwnerId = useId();
+  const isGraphHover = delayOverride === 0 || !!triggerSelector;
   const [pos, setPos] = useState<{
     left: number;
     top?: number;
@@ -138,6 +141,10 @@ export function HoverCard({
 
   function show() {
     if (suspended) return;
+    // A graph mark owns the app's one graph-preview slot as soon as the pointer
+    // reaches it. This closes a previous bar/point card before the new card's
+    // dwell finishes, so adjacent marks can never leave two previews open.
+    if (isGraphHover) claimGraphHover(hoverOwnerId, hideImmediately);
     // Two tiers only (Anir, Aug 8: "everything is either 1 second or 0.25
     // seconds"): graph surfaces (delayMs 0) get the fast quarter-second, every
     // other popup waits the full second. No user toggle exists any more.
@@ -157,7 +164,16 @@ export function HoverCard({
     if (showTimer.current) clearTimeout(showTimer.current);
     if (hideTimer.current) clearTimeout(hideTimer.current);
     setPos(null);
-  }, [suspended]);
+    releaseGraphHover(hoverOwnerId);
+  }, [hoverOwnerId, suspended]);
+  useEffect(
+    () => () => {
+      if (showTimer.current) clearTimeout(showTimer.current);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      releaseGraphHover(hoverOwnerId);
+    },
+    [hoverOwnerId]
+  );
   useEffect(() => {
     if (!open) return;
     const sync = () => place();
@@ -175,7 +191,7 @@ export function HoverCard({
     // All hover surfaces use the shared close policy. Graphs are deliberately
     // zero-delay so their cards cannot linger after the pointer has moved on.
     const closeGrace =
-      delayOverride === 0 || triggerSelector
+      isGraphHover
         ? CHART_HOVER_CLOSE_GRACE_MS
         : HOVER_CLOSE_GRACE_MS;
     if (closeGrace <= 0) {
@@ -191,6 +207,7 @@ export function HoverCard({
     showTimer.current = null;
     hideTimer.current = null;
     setPos(null);
+    releaseGraphHover(hoverOwnerId);
   }
 
   function onBlur(event: React.FocusEvent<HTMLDivElement>) {

@@ -252,3 +252,5 @@ Point-based chart popups must also close from a chart-surface pointer guard when
 In lead source workspaces, “Showing X of Y leads” means X rows match the current source/search/status/owner filters and Y leads exist in the whole workspace. Never use the selected source's count as both numerator and denominator.
 
 Show profile pictures beside assigned people in the Leads page Owner filter, matching the owner identities in the table. Keep Unassigned neutral rather than presenting it as a person.
+
+Keep graph hover previews globally mutually exclusive. Entering a graph mark must synchronously dismiss the preview owned by any previous mark, even when the marks use different shared chart layers. Never allow two graph tooltips to remain visible at once.

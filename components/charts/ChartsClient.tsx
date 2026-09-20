@@ -43,6 +43,7 @@ import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { VIZ } from "./palette";
 import { tint } from "@/lib/tint";
 import { CHART_HOVER_CLOSE_GRACE_MS } from "@/lib/hoverPreferences";
+import { claimGraphHover, releaseGraphHover } from "@/lib/chartHoverCoordinator";
 
 // Series icons for tooltips + legends, keyed by SHORT STRINGS so server
 // components can request one (Suren: "put an icon instead of just a purple
@@ -298,6 +299,7 @@ const TIP_SKIP_DELAY_MS = 400;
 
 function useChartHover() {
   const interactiveTip = useContext(InteractiveChartTipContext);
+  const hoverOwnerId = useId();
   const [hover, setHover] = useState<number | null>(null);
   // The dot follows the cursor AT ONCE; only the card waits out the dwell
   // (Anir, Jul 28: "for the hover thing, you can show the dot. You just can't
@@ -330,15 +332,27 @@ function useChartHover() {
       closeTimer.current = null;
     }
   }, []);
+  const dismissOwnedHover = useCallback(() => {
+    keepOpen();
+    stopOpening();
+    setActive(null);
+    setCard(null);
+    setAnchor(null);
+  }, [keepOpen, setCard, stopOpening]);
   useEffect(
     () => () => {
       keepOpen();
       stopOpening();
+      releaseGraphHover(hoverOwnerId);
     },
-    [keepOpen, stopOpening]
+    [hoverOwnerId, keepOpen, stopOpening]
   );
 
   function show(index: number, at?: ChartAnchor | null) {
+    // All SVG/canvas charts and hand-built graph HoverCards share one owner.
+    // Claim before the dwell so moving to a second mark removes the first card
+    // immediately instead of briefly (or permanently) showing both.
+    claimGraphHover(hoverOwnerId, dismissOwnedHover);
     keepOpen();
     // The anchor is remembered immediately so the card lands in the right place
     // the instant it does open, but the card itself waits out the dwell.
@@ -372,6 +386,7 @@ function useChartHover() {
    * policy is zero so no default graph popup can linger. */
   const close = useCallback(
     (graceMs = interactiveTip ? CHART_HOVER_CLOSE_GRACE_MS : 0) => {
+      releaseGraphHover(hoverOwnerId);
       keepOpen();
       stopOpening();
       setActive(null);
@@ -386,7 +401,7 @@ function useChartHover() {
         setAnchor(null);
       }, Math.max(0, graceMs));
     },
-    [interactiveTip, keepOpen, stopOpening, setCard]
+    [hoverOwnerId, interactiveTip, keepOpen, stopOpening, setCard]
   );
 
   return { hover, active, anchor, show, move, close, keepOpen };
