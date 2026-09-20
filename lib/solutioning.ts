@@ -1005,8 +1005,12 @@ async function topUpMockFill(): Promise<SolutioningState> {
        they were the marker that kept this top-up from ever running again, so
        a change to the fill tables could never reach a workspace that already
        held the old rows. Hand-added rows carry no fill prefix and survive. */
+    const beforeSweep = base.requests.length;
     base.requests = base.requests.filter((r) => !isStaleFillRow(r.id));
-    if (hasMockFillRows(base.requests.map((r) => r.id))) return base;
+    if (hasMockFillRows(base.requests.map((r) => r.id))) {
+      if (base.requests.length !== beforeSweep) await writeRow(base).catch(() => undefined);
+      return base;
+    }
     const rows = mockFillSolutioning();
     if (rows.length === 0) return base;
     const next: SolutioningState = { requests: [...base.requests, ...rows] };
@@ -1021,7 +1025,11 @@ export async function readSolutioning(): Promise<SolutioningState> {
   const existing = await readRowRaw();
   if (existing && !isPreSplitSeed(existing)) {
     const state = normalize(existing);
-    if (hasMockFillRows(state.requests.map((r) => r.id))) return state;
+    if (
+      hasMockFillRows(state.requests.map((r) => r.id)) &&
+      !state.requests.some((request) => isStaleFillRow(request.id))
+    )
+      return state;
   }
   return topUpMockFill();
 }

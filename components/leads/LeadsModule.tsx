@@ -45,6 +45,9 @@ import { Modal } from "@/components/ui/Modal";
 import {
   countryOptions,
   countryFlag,
+  countryFromDialOption,
+  dialCodeFromOption,
+  dialOptionValue,
   dialOptions,
   dialTriggerLabel,
   joinPhone,
@@ -321,7 +324,11 @@ export function LeadsModule({
               Object.entries(lead).map(([k, v]) => [k, v ?? ""])
             ),
             dialCode: splitPhone(lead.phone).dial ||
-              (lead.country ? dialOptions().find(option => option.label.endsWith(lead.country!))?.value : undefined) ||
+              (lead.country
+                ? dialCodeFromOption(
+                    dialOptions().find((option) => option.label.endsWith(lead.country!))?.value ?? ""
+                  )
+                : undefined) ||
               "+1",
           } as Draft
         : { ...BLANK }
@@ -1164,7 +1171,9 @@ export function LeadsModule({
                   const dial = editing.dialCode || parsed.dial;
                   /* With no number entered, follow the selected country instead of
                      retaining the initial default. Preserve existing numbers. */
-                  const nextDial = parsed.number ? dial : hit?.value || dial;
+                  const nextDial = parsed.number
+                    ? dial
+                    : dialCodeFromOption(hit?.value ?? "") || dial;
                   setEditing({
                     ...editing,
                     country: v,
@@ -1207,14 +1216,21 @@ export function LeadsModule({
                 return (
                   <div className="flex items-center gap-1.5">
                     <ColorSelect
-                      value={dial}
+                      value={dialOptionValue(dial, editing.country)}
                       ariaLabel="Country dialling code"
                       collapsible={false}
                       minWidth={104}
                       triggerLabel={dialTriggerLabel(dial, editing.country)}
-                      onChange={(v) =>
-                        setEditing({ ...editing, dialCode: v, phone: joinPhone(v, number) })
-                      }
+                      onChange={(v) => {
+                        const nextDial = dialCodeFromOption(v);
+                        const nextCountry = countryFromDialOption(v);
+                        setEditing({
+                          ...editing,
+                          dialCode: nextDial,
+                          country: nextCountry?.name ?? editing.country,
+                          phone: joinPhone(nextDial, number),
+                        });
+                      }}
                       options={dialOptions()}
                     />
                     <Input

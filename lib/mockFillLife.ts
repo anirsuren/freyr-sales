@@ -146,12 +146,20 @@ const pad = (n: number) => String(n).padStart(3, "0");
  * one, and each store sweeps rows of older generations out before laying the
  * new floor. Rows a person added by hand carry no fill prefix and survive.
  */
-export const FILL_GENERATION = 8;
+// Generation 10 rebuilds the oversized legacy floor that predated the shared
+// unique contact cast, and gives contracts an account-qualified primary name.
+// Existing mock workspaces could otherwise keep 200+ rows with repeated names
+// forever because the old floor still counted as the current marker.
+export const FILL_GENERATION = 10;
 const FP = `fill${FILL_GENERATION}-`;
 
 /** A generated row from an OLDER floor: swept on the next top-up. */
 export function isStaleFillRow(id: string): boolean {
-  return /^fill\d*-/.test(id) && !id.startsWith(FP);
+  // `mockgen-*` was the unversioned predecessor to this floor. It generated
+  // 144 leads from a 24-name loop (plus similarly oversized contracts,
+  // meetings and requests), so it is seed-owned and safe to replace. Rows a
+  // person added through the UI use normal module IDs and never match here.
+  return id.startsWith("mockgen-") || (/^fill\d*-/.test(id) && !id.startsWith(FP));
 }
 
 /** Mock and only mock. The single gate every generator passes through. */
@@ -350,7 +358,11 @@ export function mockFillContracts(): Contract[] {
       out.push({
         id: `${FP}ct-${pad(p)}-${k + 1}`,
         reference,
-        name: `${offering} ${at(["managed service", "renewal", "programme", "rollout"], a.i + k)}`,
+        // Include the account in the visible contract identity. The same
+        // offering can legitimately be contracted by several customers, but
+        // two rows with the exact same primary label look like duplicated
+        // mock assets and make search results ambiguous.
+        name: `${offering} ${at(["managed service", "renewal", "programme", "rollout"], a.i + k)} for ${a.company}`,
         customer: a.company,
         customerId: a.customerId,
         opportunityId: deal?.id,

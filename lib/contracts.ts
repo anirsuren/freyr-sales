@@ -295,8 +295,12 @@ async function topUpMockFill(): Promise<ContractsState> {
        they were the marker that kept this top-up from ever running again, so
        a change to the fill tables could never reach a workspace that already
        held the old rows. Hand-added rows carry no fill prefix and survive. */
+    const beforeSweep = base.contracts.length;
     base.contracts = base.contracts.filter((r) => !isStaleFillRow(r.id));
-    if (hasMockFillRows(base.contracts.map((r) => r.id))) return base;
+    if (hasMockFillRows(base.contracts.map((r) => r.id))) {
+      if (base.contracts.length !== beforeSweep) await writeRow(base).catch(() => undefined);
+      return base;
+    }
     const rows = mockFillContracts();
     if (rows.length === 0) return base;
     const next: ContractsState = { contracts: [...base.contracts, ...rows] };
@@ -342,7 +346,10 @@ export async function readContracts(): Promise<ContractsState> {
   const existing = await readRowRaw();
   if (existing) {
     const state = normalize(existing);
-    if (hasMockFillRows(state.contracts.map((c) => c.id)))
+    if (
+      hasMockFillRows(state.contracts.map((c) => c.id)) &&
+      !state.contracts.some((contract) => isStaleFillRow(contract.id))
+    )
       return withDerivedSchedules(state);
   }
   return withDerivedSchedules(await topUpMockFill());

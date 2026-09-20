@@ -1857,8 +1857,11 @@ export function DonutChart({
   function tipAnchor(event: React.MouseEvent<SVGCircleElement>) {
     const chartElement = event.currentTarget.ownerSVGElement;
     if (!chartElement) return null;
-    const chart = chartElement.getBoundingClientRect();
-    return elementAnchor(chartElement, event.clientX, chart.top);
+    // Anchor to the actual slice under the pointer. Parking every donut card
+    // above the whole chart forced the pointer to cross other slices on the
+    // way to the card; those slices then replaced the popup before it could be
+    // reached or scrolled.
+    return elementAnchor(chartElement, event.clientX, event.clientY);
   }
   return (
     <div className="relative inline-block" style={{ width: size, height: size }}>
@@ -1960,6 +1963,7 @@ export function DonutChart({
         <PortalTip
           anchor={mouse}
           wide
+          nearPoint
           onPointerEnter={keepOpen}
           onPointerLeave={() => closeTip(0)}
         >

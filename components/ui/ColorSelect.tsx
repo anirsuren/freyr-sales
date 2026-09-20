@@ -274,7 +274,9 @@ function semanticControlIcon(option: ColorOption): LucideIcon | undefined {
   if (/no grouping|ungrouped|flat list/.test(words)) return Rows3;
   if (/customer|company|account/.test(words)) return Building2;
   if (/owner|assignee|person/.test(words)) return UserRound;
-  if (/status|state/.test(words)) return ListChecks;
+  // Whole words only: "United States" used to match `state` and put a grey
+  // checklist in front of the US flag in every phone-country picker.
+  if (/\b(?:status|state)\b/.test(words)) return ListChecks;
   if (/newest|recent/.test(words)) return CalendarDays;
   if (/needed|due date|start date|by date/.test(words)) return CalendarClock;
   return undefined;
@@ -545,6 +547,10 @@ export function ColorSelect({
     prominent?: boolean;
     solo?: boolean;
   }) => {
+    // A caller can explicitly say its label already supplies the mark (flags
+    // are the main example). Honour that before semantic inference so a word
+    // inside the label can never add a second, unrelated glyph.
+    if (o.noMark) return null;
     const Icon = semanticControlIcon(o);
     if (o.agentName)
       return (
@@ -621,7 +627,6 @@ export function ColorSelect({
           <Icon size={prominent ? 16 : 12} strokeWidth={2.1} />
         </span>
       );
-    if (o.noMark) return null;
     return (
       <span
         className={cn(

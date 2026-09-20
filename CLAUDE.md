@@ -127,7 +127,20 @@ That takes the decision away from him and hands him a fait accompli in prod.
 
 Any doubt on 1 or 2 → report and ask. No yes on 3 → do not push.
 
-## 7. Suren's product sequence and Account Planning definition (Sep 14, 2026)
+## 7. Mock identity and chart-popup invariants (Sep 20, 2026)
+
+- When the generated mock cast or workload changes, advance its generation so
+  durable Mock workspaces actually replace the old generated floor. Preserve
+  hand-added mock rows. Generated records need unique IDs and unambiguous
+  primary labels; people represented as separate leads need distinct names.
+- A filtered record dialog keeps the same width and height for many, one, or
+  zero matches. Zero results get an explicit empty state inside that footprint.
+- Put a donut tooltip beside its exact slice. The pointer must be able to reach
+  and scroll the tooltip without crossing another slice and changing records.
+- Country flags are already value marks. `noMark` must suppress every inferred
+  dropdown icon so phone-country options never grow a second grey glyph.
+
+## 8. Suren's product sequence and Account Planning definition (Sep 14, 2026)
 
 Finish Customers, Opportunities, Offerings, and Solutioning, including the
 request flow and the connections among those records, for production first.

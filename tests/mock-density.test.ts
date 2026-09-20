@@ -113,6 +113,20 @@ test("every generated deal opens into populated downstream work", () => {
     leads.length,
     "generated leads use distinct contact identities"
   );
+  for (const [label, rows, primary] of [
+    ["leads", leads, (row: (typeof leads)[number]) => row.name],
+    ["opportunities", opportunities, (row: (typeof opportunities)[number]) => row.name],
+    ["contracts", contracts, (row: (typeof contracts)[number]) => row.name],
+    ["meetings", meetings, (row: (typeof meetings)[number]) => row.title],
+    ["solutioning requests", solutioning, (row: (typeof solutioning)[number]) => row.title],
+  ] as const) {
+    assert.equal(new Set(rows.map((row) => row.id)).size, rows.length, `${label}: unique ids`);
+    assert.equal(
+      new Set(rows.map((row) => primary(row as never))).size,
+      rows.length,
+      `${label}: unique primary labels`
+    );
+  }
   assert.ok(opportunities.length >= 45 && opportunities.length <= 90, "realistic generated deal count");
   assert.equal(contracts.length, opportunities.length, "one generated contract per deal");
   assert.equal(meetings.length, opportunities.length, "one generated meeting per deal");
@@ -179,6 +193,8 @@ test("customer identities stay canonical everywhere they are reused", async () =
   }
   assert.equal(isStaleFillRow(`fill${FILL_GENERATION - 1}-ld-001-1`), true);
   assert.equal(isStaleFillRow(`fill${FILL_GENERATION}-ld-001-1`), false);
+  assert.equal(isStaleFillRow("mockgen-lead-1"), true);
+  assert.equal(isStaleFillRow("lead-person-added-in-mock"), false);
 });
 
 test("secondary mock lists stay useful without implausible volumes or duplicate people", () => {

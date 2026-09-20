@@ -132,12 +132,37 @@ export function dialOptions(): { value: string; label: string; noMark: true }[] 
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({
-      value: `+${c.dial}`,
+      // The country is part of the option identity. Several countries share
+      // +1, so using the code alone produced duplicate React keys and marked
+      // both the US and Canada as selected.
+      value: `+${c.dial}::${c.iso2}`,
       label: `${flagOf(c.iso2)}  +${c.dial}  ${c.name}`,
       noMark: true,
     });
   }
   return out;
+}
+
+export function dialCodeFromOption(value: string): string {
+  return value.split("::", 1)[0] ?? value;
+}
+
+export function countryFromDialOption(value: string): Country | undefined {
+  const iso2 = value.split("::")[1];
+  return iso2 ? COUNTRIES.find((country) => country.iso2 === iso2) : undefined;
+}
+
+export function dialOptionValue(
+  dial: string,
+  countryName?: string | null
+): string {
+  const normalized = dial.trim().replace(/^\+/, "");
+  const selected = findCountry(countryName);
+  const country =
+    selected?.dial === normalized
+      ? selected
+      : COUNTRIES.find((candidate) => candidate.dial === normalized);
+  return country ? `+${normalized}::${country.iso2}` : dial;
 }
 
 /** Compact label for the closed dialling-code picker: flag plus code. */

@@ -392,7 +392,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
         }
         size="chart"
         tall
-        dialogClassName="!max-w-[min(1500px,96vw)]"
+        dialogClassName="!h-[min(820px,calc(100vh-2rem))] !w-[min(1500px,96vw)] !max-w-[min(1500px,96vw)]"
         bodyClassName="flex flex-col !p-0"
       >
         <div className="shrink-0 border-b border-border-light bg-white p-4">
@@ -613,9 +613,9 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
               </tbody>
             </table>
           ) : (
-            <div className="flex min-h-56 items-center justify-center px-6 text-center">
+            <div className="flex h-full min-h-56 items-center justify-center px-6 text-center">
               <div>
-                <p className="text-[13px] font-semibold text-text-primary">No matching leads</p>
+                <p className="text-[13px] font-semibold text-text-primary">No one matches these filters</p>
                 <p className="mt-1 text-[12px] text-text-secondary">Try a different person, company, status, or owner.</p>
               </div>
             </div>

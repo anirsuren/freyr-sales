@@ -176,10 +176,15 @@ async function topUpMockFill(): Promise<RecordTeamsState> {
   return withWrite(async () => {
     const base = normalize(await readRowRaw().catch(() => null));
     const recordId = (key: string) => key.slice(key.indexOf(":") + 1);
+    const beforeSweep = Object.keys(base.teams).length;
     base.teams = Object.fromEntries(
       Object.entries(base.teams).filter(([key]) => !isStaleFillRow(recordId(key)))
     );
-    if (hasMockFillRows(Object.keys(base.teams).map(recordId))) return base;
+    if (hasMockFillRows(Object.keys(base.teams).map(recordId))) {
+      if (Object.keys(base.teams).length !== beforeSweep)
+        await writeRow(base).catch(() => undefined);
+      return base;
+    }
     const generated = mockFillRecordTeams();
     if (Object.keys(generated).length === 0) return base;
     /* Anything already stored wins, so this can only ever fill in blanks. */
@@ -197,7 +202,7 @@ export async function readRecordTeams(): Promise<RecordTeamsState> {
   const ids = Object.keys(state.teams).map((key) =>
     key.slice(key.indexOf(":") + 1)
   );
-  if (hasMockFillRows(ids)) return state;
+  if (hasMockFillRows(ids) && !ids.some(isStaleFillRow)) return state;
   return topUpMockFill().catch(() => state);
 }
 

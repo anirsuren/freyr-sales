@@ -1115,6 +1115,9 @@ Customer connection tabs no longer repeat record-team editing controls or links 
 ### Sep 19: expanded chart record popups are inspectable
 Expanded chart popups are wider, expose their complete record list, and remain open while the pointer moves from the chart into the popup so the list can be scrolled. Compact page-chart hovers retain their instant-close behavior. The lead Company picker now says “Choose a company” and uses one explicit blue “Add a company not on the list” action; typing a name clearly states that it updates the lead only and does not create a customer account. Completed locally, not deployed.
 
+### Sep 20: mock identities, source dialogs, donut handoff, and country marks
+Mock workload generation is versioned whenever its account or contact cast changes. Leads use one distinct contact identity per generated record, and every generated lead, opportunity, contract, meeting, and solutioning request has a unique ID and primary label; the density test enforces both. Lead source drill-down dialogs keep one fixed desktop footprint with zero, one, or many matches and show an explicit empty state without collapsing. Donut tooltips open beside the exact slice so the pointer can enter and scroll the card without crossing another slice. Country and phone-code options use their flag as the only leading mark; `noMark` always suppresses inferred control icons. Completed locally, not deployed.
+
 ### Sep 19: record-connection pickers use full-size searchable dialogs
 Component connection pickers on customers and offerings use a 720px-wide, fixed-height selection dialog with a full search field, larger selection rows, a scrolling list, and a visible selected count. The matching offering picker on an FDL component uses the same dimensions so record-connection workflows no longer fall back to the cramped default modal. Completed locally, not deployed.
 
