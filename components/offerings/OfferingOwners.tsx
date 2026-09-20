@@ -24,6 +24,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { DateText } from "@/components/ui/DateText";
@@ -556,6 +557,7 @@ export function OfferingOwners({
         size="workflow"
       >
         <div className="flex h-[min(60vh,480px)] flex-col">
+          <p className="mb-2 shrink-0 text-[12px] font-semibold text-text-primary">Choose at least one owner<RequiredMark /></p>
           <div className="mb-2 flex shrink-0 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2">
             <Search size={15} strokeWidth={2} className="shrink-0 text-text-tertiary" />
             <input

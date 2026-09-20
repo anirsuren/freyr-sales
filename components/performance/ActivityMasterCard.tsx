@@ -23,6 +23,7 @@ import {
 import { AdminTabActions } from "@/components/admin/AdminTabActions";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { MultiPicker } from "@/components/ui/MultiPicker";
@@ -449,9 +450,10 @@ export function ActivityMasterCard({
           }}
         >
           <label className="block text-[12px] font-semibold text-text-primary">
-            What is the activity called?
+            What is the activity called?<RequiredMark />
           </label>
           <input
+            required
             autoFocus
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}

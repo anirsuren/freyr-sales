@@ -49,6 +49,7 @@ import {
 } from "@/lib/opportunitiesShared";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
@@ -3644,9 +3645,10 @@ function GoalEditorFields({
     <div className="space-y-3">
       <div>
         <label className="text-[12px] font-semibold text-text-primary">
-          Goal name
+          Goal name<RequiredMark />
         </label>
         <input
+          required
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Booked Revenue (Contract Value Signed)"
@@ -3659,7 +3661,7 @@ function GoalEditorFields({
               more question marks because people are gonna need to know what
               this is, and make it super simple so a baby can understand"). */}
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-            Goal type
+            Goal type<RequiredMark />
             <InfoHint text={"What kind of goal this is, so it sits with its own kind.\nLike Financial, or Lead Generation."} />
           </label>
           <div className="mt-1">
@@ -3684,9 +3686,10 @@ function GoalEditorFields({
         {type === "__new" && (
           <div className="min-w-[180px] flex-1">
             <label className="text-[12px] font-semibold text-text-primary">
-              New type name
+              New type name<RequiredMark />
             </label>
             <input
+              required
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
               placeholder="e.g. Customer Success"
@@ -3704,7 +3707,7 @@ function GoalEditorFields({
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex flex-col">
           <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
-            Counted in
+            Counted in<RequiredMark />
             <InfoHint text={"Money: A dollar amount, such as $500K.\nCount: A number of things, such as 12 meetings.\nPercentage: A rate out of 100, such as a 40% win rate."} />
           </label>
           <div className="mt-1">
@@ -3892,9 +3895,10 @@ function GoalEditorFields({
                       <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
                         <label className="flex shrink-0 flex-col gap-1">
                           <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                            By
+                            By<RequiredMark />
                           </span>
                           <input
+                            required
                             type="date"
                             value={m.date}
                             onChange={(e) =>
@@ -3910,7 +3914,7 @@ function GoalEditorFields({
                         </label>
                         <label className="flex shrink-0 flex-col gap-1">
                           <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                            Reach
+                            Reach<RequiredMark />
                           </span>
                           <span className="relative flex items-center">
                             {unit === "currency" && (
@@ -3919,6 +3923,7 @@ function GoalEditorFields({
                               </span>
                             )}
                             <input
+                              required
                               value={withCommas(m.amount)}
                               onChange={(e) =>
                                 setMilestones((prev) =>
@@ -4316,8 +4321,9 @@ function SubgoalEditorFields({
               using the blue, right? Put that blue next to subgoal target so
               they know that it's that"), so the fields and the segment they
               drive are visibly the same thing. */}
-          <label className="text-[12px] font-semibold text-text-primary">Subgoal name</label>
+          <label className="text-[12px] font-semibold text-text-primary">Subgoal name<RequiredMark /></label>
           <input
+            required
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Growth Accounts"
@@ -5270,6 +5276,7 @@ function LogActualModal({
           <div>
             <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Goal
+              <RequiredMark />
               <InfoHint text="Which goal this number counts toward. Pick the subgoal too when it belongs to one." />
             </label>
             <div className="mt-1">
@@ -5317,6 +5324,7 @@ function LogActualModal({
             <div>
               <label className="text-[12px] font-semibold text-text-primary">
                 Subgoal
+                {needsSubgoal && <RequiredMark />}
               </label>
               <div className="mt-1">
                 <ColorSelect
@@ -5356,6 +5364,7 @@ function LogActualModal({
           <div>
             <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Which booking?
+              <RequiredMark />
               <InfoHint
                 text={`${goal?.name ?? "This goal"} is only ever the bookings underneath it added together. So the number has to go on one of them.`}
               />
@@ -5385,6 +5394,7 @@ function LogActualModal({
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Person
+            <RequiredMark />
             <InfoHint text={"Whose achievement this is, one person per entry, so nothing is ever counted twice.\nA shared win is logged once per person, each with their real share."} />
           </label>
           <div className="mt-1">
@@ -5551,20 +5561,28 @@ function LogActualModal({
                   <X size={14} strokeWidth={2.2} />
                 </button>
               </div>
-              <input
-                autoFocus
-                value={newOpportunityName}
-                onChange={(event) => setNewOpportunityName(event.target.value)}
-                placeholder={`Opportunity name, e.g. ${customer.trim()} expansion`}
-                className="mt-2 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
-              />
+              <label className="mt-2 block">
+                <span className="text-[11px] font-semibold text-text-secondary">
+                  Opportunity name <RequiredMark />
+                </span>
+                <input
+                  autoFocus
+                  required
+                  value={newOpportunityName}
+                  onChange={(event) => setNewOpportunityName(event.target.value)}
+                  placeholder={`e.g. ${customer.trim()} expansion`}
+                  className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+                />
+              </label>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_130px_170px]">
                 <label className="min-w-0">
                   <span className="text-[11px] font-semibold text-text-secondary">
                     Estimated TCV · {currencyMeta(entryCurrency).flag}{" "}
                     {currencyMeta(entryCurrency).symbol.trim()} {entryCurrency}
+                    <RequiredMark />
                   </span>
                   <input
+                    required
                     value={withCommas(newOpportunityTcv)}
                     onChange={(event) =>
                       setNewOpportunityTcv(
@@ -5578,9 +5596,11 @@ function LogActualModal({
                 <label>
                   <span className="text-[11px] font-semibold text-text-secondary">
                     Confidence
+                    <RequiredMark />
                   </span>
                   <span className="relative mt-1 flex">
                     <input
+                      required
                       value={newOpportunityConfidence}
                       onChange={(event) =>
                         setNewOpportunityConfidence(
@@ -5598,8 +5618,10 @@ function LogActualModal({
                 <label>
                   <span className="text-[11px] font-semibold text-text-secondary">
                     Expected to sign
+                    <RequiredMark />
                   </span>
                   <input
+                    required
                     type="date"
                     value={newOpportunitySignDate}
                     onChange={(event) => setNewOpportunitySignDate(event.target.value)}
@@ -5767,6 +5789,7 @@ function LogActualModal({
           <div>
             <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Amount
+              <RequiredMark />
               <InfoHint text="How much this one achievement is worth, counted the way this goal counts. It adds on top of everything logged before it." />
             </label>
             <div className="relative mt-1 flex gap-2">
@@ -5797,6 +5820,7 @@ function LogActualModal({
                   </span>
                 )}
                 <input
+                  required
                   value={withCommas(amount)}
                   onChange={(e) => {
                     setPickedChip(null);
@@ -5849,9 +5873,11 @@ function LogActualModal({
           <div>
             <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
               Date
+              <RequiredMark />
               <InfoHint text="When it actually happened. It lands in that month on the progress charts." />
             </label>
             <input
+              required
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
@@ -5870,6 +5896,7 @@ function LogActualModal({
           value={evidence}
           onChange={setEvidence}
           onUploadingChange={setUploading}
+          required={effectiveGoal?.unit === "currency"}
         />
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">

@@ -6,6 +6,7 @@ import { GripVertical, Pin, Search, Plus, Trash2, Package, Layers, ListChecks, L
 import { hasOfferingEditChanges } from "@/lib/offeringEditDirty";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 import { ScrollHint } from "@/components/ui/ScrollHint";
@@ -641,9 +642,10 @@ function RichBriefEditor({
           }}
         >
           <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-            Link address
+            Link address<RequiredMark />
           </label>
           <input
+            required
             autoFocus
             value={linkUrl}
             onChange={(event) => setLinkUrl(event.target.value)}
@@ -3122,8 +3124,9 @@ export function OfferingForm({
             />
           </div>
           <div>
-            <label className={LABEL}>Name</label>
+            <label className={LABEL}>Name{!draftMaterial.url.trim() && <RequiredMark />}</label>
             <input
+              required={!draftMaterial.url.trim()}
               autoFocus
               className={FIELD}
               value={draftMaterial.label}
@@ -3134,8 +3137,9 @@ export function OfferingForm({
             />
           </div>
           <div>
-            <label className={LABEL}>Link</label>
+            <label className={LABEL}>Link{!draftMaterial.label.trim() && <RequiredMark />}</label>
             <input
+              required={!draftMaterial.label.trim()}
               className={FIELD}
               value={draftMaterial.url}
               onChange={(e) =>
@@ -3200,6 +3204,7 @@ export function OfferingForm({
               Cancel
             </button>
             <Button
+              disabled={!draftMaterial.label.trim() && !draftMaterial.url.trim()}
               onClick={() => {
                 if (!draftMaterial.label.trim() && !draftMaterial.url.trim()) return;
                 setMaterials((l) => [...l, draftMaterial]);

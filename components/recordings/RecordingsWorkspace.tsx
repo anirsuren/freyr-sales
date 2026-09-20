@@ -9,6 +9,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { DonutChart } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { useToast } from "@/components/ui/Toast";
@@ -884,7 +885,7 @@ export function RecordingsWorkspace({ empty = false }: { empty?: boolean }) {
         <div className="space-y-5">
           <div>
             <p className="text-[13px] font-semibold text-text-primary mb-2">
-              Upload an audio file
+              Upload an audio file<RequiredMark />
             </p>
             <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl px-4 py-6 cursor-pointer hover:border-blue-subtle hover:bg-surface transition-colors text-center">
               <Upload size={22} strokeWidth={1.6} className="text-blue-primary" />
@@ -892,6 +893,7 @@ export function RecordingsWorkspace({ empty = false }: { empty?: boolean }) {
                 {fileName || "Click to choose an .mp3 / .wav / .m4a file"}
               </span>
               <input
+                required
                 type="file"
                 accept="audio/*"
                 className="hidden"

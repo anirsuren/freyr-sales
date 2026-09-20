@@ -29,6 +29,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { Term } from "@/components/ui/Tooltip";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { stageKey } from "@/lib/glossary";
@@ -1070,9 +1071,10 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
         <div className="space-y-3">
           <div>
             <label className="block text-[12px] font-medium text-text-secondary mb-1">
-              Company
+              Company<RequiredMark />
             </label>
             <input
+              required
               autoFocus
               value={addForm.company}
               onChange={(e) => setAddForm({ ...addForm, company: e.target.value })}

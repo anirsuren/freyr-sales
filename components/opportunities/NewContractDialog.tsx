@@ -10,6 +10,7 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import type { Opportunity } from "@/lib/opportunitiesShared";
 import { tint } from "@/lib/tint";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 
 /**
  * A CONTRACT, MADE WHERE THE DEAL IS.
@@ -69,14 +70,19 @@ const INPUT =
 
 function Field({
   label,
+  required = false,
   children,
 }: {
   label: string;
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <label className="block min-w-0">
-      <span className="text-[12px] font-semibold text-text-primary">{label}</span>
+      <span className="text-[12px] font-semibold text-text-primary">
+        {label}
+        {required && <RequiredMark />}
+      </span>
       <span className="mt-1.5 block">{children}</span>
     </label>
   );
@@ -235,9 +241,10 @@ export function NewContractDialog({
             Back to {deal.name}
           </button>
         )}
-        <Field label="What is the contract called?">
+        <Field label="What is the contract called?" required>
           <input
             autoFocus
+            required
             value={name}
             maxLength={200}
             onChange={(e) => setName(e.target.value)}

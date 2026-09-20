@@ -53,6 +53,12 @@ export async function POST(request: NextRequest) {
   if (!name) {
     return NextResponse.json({ ok: false, error: "Give the sequence a name." }, { status: 400 });
   }
+  if (!description) {
+    return NextResponse.json(
+      { ok: false, error: "Describe who this sequence is for and the outcome it should drive." },
+      { status: 400 }
+    );
+  }
   if (!steps.length) {
     return NextResponse.json({ ok: false, error: "Add at least one valid step." }, { status: 400 });
   }

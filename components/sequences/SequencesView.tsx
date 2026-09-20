@@ -36,6 +36,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { cn } from "@/lib/utils";
 import {
   CHANNEL_LABEL,
@@ -337,6 +338,9 @@ export function SequencesView({
 
   async function saveSequence() {
     if (!draftName.trim()) return toast("Give the sequence a name.", "error");
+    if (!draftDescription.trim()) {
+      return toast("Describe who this sequence is for and the outcome it should drive.", "error");
+    }
     if (!draftSteps.length || draftSteps.some((step) => !step.label.trim())) {
       return toast("Every step needs a clear action.", "error");
     }
@@ -910,14 +914,14 @@ export function SequencesView({
               )}
               <div className="space-y-4 rounded-xl border border-border-light bg-surface/30 p-5">
                 <label className="block">
-                  <span className="text-[11px] font-semibold text-text-primary">Sequence name</span>
+                  <span className="text-[11px] font-semibold text-text-primary">Sequence name<RequiredMark /></span>
                   <span className="ml-2 text-[10px] text-text-tertiary">What reps will see in the library</span>
-                  <input value={draftName} onChange={(event) => setDraftName(event.target.value)} aria-label="Sequence name" placeholder="e.g. Clinical-stage executive outreach" className="mt-1.5 h-11 w-full rounded-md border border-border bg-white px-3 text-[13px] outline-none focus:border-blue-primary" />
+                  <input required value={draftName} onChange={(event) => setDraftName(event.target.value)} aria-label="Sequence name" placeholder="e.g. Clinical-stage executive outreach" className="mt-1.5 h-11 w-full rounded-md border border-border bg-white px-3 text-[13px] outline-none focus:border-blue-primary" />
                 </label>
                 <label className="block">
-                  <span className="text-[11px] font-semibold text-text-primary">Who is this for, and what should happen?</span>
+                  <span className="text-[11px] font-semibold text-text-primary">Who is this for, and what should happen?<RequiredMark /></span>
                   <span className="ml-2 text-[10px] text-text-tertiary">Audience + intended outcome</span>
-                  <textarea value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} aria-label="Sequence description" placeholder="Example: VP Regulatory at clinical-stage biopharma: secure a 20-minute discovery call." rows={3} className="mt-1.5 w-full resize-none rounded-md border border-border bg-white px-3 py-2.5 text-[13px] leading-relaxed outline-none focus:border-blue-primary" />
+                  <textarea required value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} aria-label="Sequence description" placeholder="Example: VP Regulatory at clinical-stage biopharma: secure a 20-minute discovery call." rows={3} className="mt-1.5 w-full resize-none rounded-md border border-border bg-white px-3 py-2.5 text-[13px] leading-relaxed outline-none focus:border-blue-primary" />
                 </label>
               </div>
             </section>
@@ -955,7 +959,7 @@ export function SequencesView({
                             </div>
                           </div>
                           <label><span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">2. Set day</span><input type="number" min={0} value={step.day} onChange={(event) => updateDraftStep(index, { day: Math.max(0, Number(event.target.value)) })} aria-label={`Step ${index + 1} day`} className="h-9 w-full rounded-md border border-border bg-white px-2 text-[12px] font-semibold outline-none focus:border-blue-primary" /></label>
-                          <label className="min-w-0"><span className="mb-1 block text-[9.5px] font-semibold text-[color:var(--status-red)]">3. Describe the action</span><input value={step.label} onChange={(event) => updateDraftStep(index, { label: event.target.value })} aria-label={`Step ${index + 1} action`} placeholder="What should the rep do or send?" className="h-9 w-full min-w-0 rounded-md border border-border bg-white px-3 text-[12px] outline-none focus:border-blue-primary" /></label>
+                          <label className="min-w-0"><span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">3. Describe the action<RequiredMark /></span><input required value={step.label} onChange={(event) => updateDraftStep(index, { label: event.target.value })} aria-label={`Step ${index + 1} action`} placeholder="What should the rep do or send?" className="h-9 w-full min-w-0 rounded-md border border-border bg-white px-3 text-[12px] outline-none focus:border-blue-primary" /></label>
                         </div>
                       </div>
                       <Tooltip label="Remove touch" align="right"><button type="button" onClick={() => setDraftSteps((steps) => steps.filter((_, stepIndex) => stepIndex !== index))} disabled={draftSteps.length === 1} aria-label={`Remove step ${index + 1}`} className="mt-6 flex h-8 w-8 items-center justify-center rounded text-[color:var(--status-red)] hover:bg-error/10 hover:text-error disabled:opacity-30"><Trash2 size={14} /></button></Tooltip>
@@ -996,7 +1000,7 @@ export function SequencesView({
                 <Button variant="secondary" onClick={() => setEditorStage((stage) => Math.max(1, stage - 1) as 1 | 2 | 3 | 4)}><ChevronLeft size={14} /> Back</Button>
               )}
               {editorStage < 4 ? (
-                <Button onClick={continueEditor} disabled={editorStage === 1 && !templateChoice}>Continue <ChevronRight size={14} /></Button>
+                <Button onClick={continueEditor} disabled={(editorStage === 1 && !templateChoice) || (editorStage === 2 && (!draftName.trim() || !draftDescription.trim())) || (editorStage === 3 && (draftSteps.some((step) => !step.label.trim()) || draftSteps.some((step, index) => index > 0 && step.day < draftSteps[index - 1].day)))}>Continue <ChevronRight size={14} /></Button>
               ) : (
                 hasSequenceChanges ? (
                   <Button onClick={saveSequence} loading={busy === "save-sequence"}><Check size={14} /> {editingId ? "Save sequence" : "Create sequence"}</Button>

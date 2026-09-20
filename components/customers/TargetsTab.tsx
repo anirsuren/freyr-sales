@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { Building2, CalendarDays, ChevronDown, Crosshair, DollarSign, Plus, Trash2, UserRound, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { countryOptions } from "@/lib/countries";
@@ -684,9 +685,10 @@ export function TargetsTab({
             <div className="grid gap-3.5 pt-3 sm:grid-cols-2">
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
-                  Company
+                  Company<RequiredMark />
                 </label>
                 <input
+                  required
                   autoFocus
                   value={draft.name}
                   onChange={(e) => set({ name: e.target.value })}

@@ -54,6 +54,30 @@ export async function POST(req: NextRequest) {
   }
   const offering = body.offeringId ? getOffering(body.offeringId) : null;
 
+  // Preview only needs enough context to draft copy. A saved campaign must
+  // satisfy the same required fields as the creation dialog, even when this
+  // endpoint is called directly instead of through the UI.
+  if (!body.preview) {
+    if (!offering) {
+      return NextResponse.json(
+        { ok: false, error: "Choose the offering this campaign supports." },
+        { status: 400 }
+      );
+    }
+    if (!Array.isArray(body.recipientContactIds) || body.recipientContactIds.length === 0) {
+      return NextResponse.json(
+        { ok: false, error: "Choose at least one recipient." },
+        { status: 400 }
+      );
+    }
+    if (!body.subject?.trim() || (body.body?.trim().length ?? 0) < 40) {
+      return NextResponse.json(
+        { ok: false, error: "Add a subject and a complete message before saving." },
+        { status: 400 }
+      );
+    }
+  }
+
   let subject = (body.subject || "").trim();
   let content = (body.body || "").trim();
   if (offering && (!subject || !content)) {

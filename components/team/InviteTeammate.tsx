@@ -7,6 +7,7 @@ import { UserPlus, PencilRuler,
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
 
@@ -159,9 +160,10 @@ export function InviteTeammate({
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
-              Full name
+              Full name<RequiredMark />
             </span>
             <Input
+              required
               autoComplete="name"
               placeholder="First and last name"
               value={name}
@@ -175,9 +177,10 @@ export function InviteTeammate({
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
-              Work email
+              Work email<RequiredMark />
             </span>
             <Input
+              required
               type="email"
               placeholder={`name@${workspaceDomain}`}
               value={email}

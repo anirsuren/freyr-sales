@@ -13,6 +13,7 @@
 import { useRef, useState } from "react";
 import { X } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { cn } from "@/lib/utils";
 
 type EvidenceUpload = {
@@ -31,6 +32,7 @@ export function EvidencePicker({
   max = 5,
   showLabel = true,
   roomy = false,
+  required = false,
 }: {
   value: EvidenceFile[];
   onChange: (next: EvidenceFile[]) => void;
@@ -41,6 +43,8 @@ export function EvidencePicker({
   showLabel?: boolean;
   /** Gives correction dialogs a visible attachment workspace. */
   roomy?: boolean;
+  /** Marks proof as mandatory when the surrounding workflow enforces it. */
+  required?: boolean;
 }) {
   const [uploading, setBusy] = useState(false);
   /** One row per file being sent, so a big contract shows a moving bar rather
@@ -244,6 +248,7 @@ export function EvidencePicker({
       {showLabel && (
         <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
           Evidence
+          {required && <RequiredMark />}
           <InfoHint text={"The proof behind the number. A signed contract, an SOW, or the opportunity summary.\nThe group owner opens it before saying yes, and a money claim cannot be sent without one."} />
         </label>
       )}

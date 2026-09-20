@@ -416,8 +416,9 @@ export function NewMeetingDialog({
           defaultOpen
           summary={title || "Not named yet"}
         >
-          <Field label="What is this meeting about">
+          <Field label="What is this meeting about" required>
             <Input
+              required
               value={title}
               maxLength={200}
               onChange={(e) => setTitle(e.target.value)}
@@ -444,8 +445,9 @@ export function NewMeetingDialog({
               />
             </Field>
             <div className="grid grid-cols-[minmax(0,1fr)_150px] gap-2">
-              <Field label="Date">
+              <Field label="Date" required>
                 <Input
+                  required
                   type="date"
                   value={meetingDate}
                   min={meeting ? undefined : todayISO()}
@@ -473,7 +475,7 @@ export function NewMeetingDialog({
           defaultOpen={editing}
           summary={customer ? customer.name : "No account picked"}
         >
-          <Field label="Customer">
+          <Field label="Customer" required>
             <ColorSelect
               value={customerId}
               ariaLabel="Customer"

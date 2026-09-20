@@ -46,6 +46,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { Field, Input } from "@/components/ui/Input";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { MoneyInput } from "@/components/ui/MoneyInput";
@@ -2916,8 +2917,9 @@ export function CustomerTabs({
           return (
             <div className="space-y-3.5">
               <div>
-                <label className={lbl}>Deal name</label>
+                <label className={lbl}>Deal name<RequiredMark /></label>
                 <input
+                  required
                   autoFocus
                   value={dealForm.name}
                   onChange={(e) => set("name", e.target.value)}
@@ -3220,8 +3222,9 @@ export function CustomerTabs({
               })}
             </div>
           </Field>
-          <Field label={noteKind === "note" ? "Note" : "What happened"}>
+          <Field label={noteKind === "note" ? "Note" : "What happened"} required>
             <textarea
+              required
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
               placeholder={

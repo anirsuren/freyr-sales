@@ -23,6 +23,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { useToast } from "@/components/ui/Toast";
 import { MiLogo } from "@/components/market-intel/MiLogo";
 import { useStoredView } from "@/lib/useStoredView";
@@ -817,9 +818,10 @@ export function OfferingCompetition({
         <div className="mt-3 space-y-3">
           <div>
             <label className="text-[12px] font-semibold text-text-primary">
-              Competitor company
+              Competitor company<RequiredMark />
             </label>
             <input
+              required
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               placeholder="e.g. Veeva Systems"
@@ -852,9 +854,10 @@ export function OfferingCompetition({
           </div>
           <div>
             <label className="text-[12px] font-semibold text-text-primary">
-              Their competing product
+              Their competing product<RequiredMark />
             </label>
             <input
+              required
               value={product}
               onChange={(e) => setProduct(e.target.value)}
               placeholder="e.g. Vault RIM"

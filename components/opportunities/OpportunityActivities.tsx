@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
@@ -373,7 +374,7 @@ export function OpportunityActivities({
         <div className="space-y-3">
           <div>
             <label className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-              Activity
+              Activity<RequiredMark />
             </label>
             <div className="mt-1">
               <ColorSelect

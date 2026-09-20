@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { DateEcho } from "@/components/ui/DateEcho";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OfferingActivities } from "@/components/customers/OfferingActivities";
@@ -442,6 +443,7 @@ function RevenueSection({
             </label>
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               {rType === "project" ? "Project revenue" : "Revenue"}
+              {(rType !== "license" || !licenses.trim()) && <RequiredMark />}
               <MoneyInput
                 value={amount}
                 onChange={setAmount}
@@ -454,6 +456,7 @@ function RevenueSection({
           {rType === "license" && (
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               Number of licenses
+              {!amount.trim() && <RequiredMark />}
               <input
                 aria-label="Number of licenses"
                 inputMode="numeric"
@@ -505,7 +508,7 @@ function RevenueSection({
             >
               Cancel
             </button>
-            <Button onClick={add} className="px-3 py-1.5 text-[12px]">
+            <Button onClick={add} disabled={num(amount) === 0 && (rType !== "license" || num(licenses) === 0)} className="px-3 py-1.5 text-[12px]">
               Save revenue
             </Button>
           </div>

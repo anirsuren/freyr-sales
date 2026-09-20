@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -593,7 +594,7 @@ export function AddMaterialButton({
 
   /** WHY ADD MATERIAL IS WAITING. It sat disabled and silent while the form
    *  asked for four things, so the answer to "why can't I press it" was to
-   *  hunt for the empty one. The Required pills already mark the fields; this
+   *  hunt for the empty one. The required stars already mark the fields; this
    *  names the first one still missing (Anir, Sep 4: "give reason"). */
   /* SAY WHICH ONE. This line read "a name, a format and a folder" whatever
      was missing, so with a folder chosen and the division empty it sent
@@ -1381,7 +1382,7 @@ export function AddMaterialButton({
           )}
           <div>
               <label className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              File format <span className="font-medium normal-case tracking-normal">Shared default</span>
+              File format<RequiredMark /> <span className="font-medium normal-case tracking-normal">Shared default</span>
               {/* THE ONE REQUIRED FIELD THAT NEVER SAID SO. Folder, stage,
                   audience and division each wear a Required pill while they
                   are empty; the format did not, so a form with everything
@@ -1389,13 +1390,6 @@ export function AddMaterialButton({
                   reason on screen (found in the Sep 7 test loop: picked a
                   file, filled the rest, clicked Add, nothing). Same rule as
                   the folder pill: shown while any file is still without one. */}
-              {(files.length
-                ? files.some((f) => !(fileOverrides[fileKey(f)]?.kind || kind))
-                : !kind) && (
-                <span className="ml-0.5 rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
-                  Required
-                </span>
-              )}
             </label>
             {/* Four equal, colour-coded tiles on one row (item 9). */}
             <div className="grid grid-cols-4 gap-2">
@@ -1436,7 +1430,7 @@ export function AddMaterialButton({
               individually adjustable in the review rows below. */}
           <div>
             <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              <span>Folder</span>
+              <span>Folder<RequiredMark /></span>
               <InfoHint text="Which folder this file will live in. Create a new one with the + button." />
               {/* This is the DEFAULT, not the answer. It used to shout Required
                   whenever it was empty, even when every file below already had
@@ -1446,13 +1440,6 @@ export function AddMaterialButton({
               {/* …and with no file picked at all (a pasted link), the shared
                   folder is the only folder there is, so it asks then too
                   (Sep 7 test loop: link mode showed every pill but this one). */}
-              {(files.length
-                ? files.some((f) => !(fileOverrides[fileKey(f)]?.folder || folder))
-                : !folder) && (
-                <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
-                  Required
-                </span>
-              )}
             </label>
             <div className="flex items-stretch gap-2">
               <FolderBrowserSelect
@@ -1482,13 +1469,8 @@ export function AddMaterialButton({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
               <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                <span>Buyer&apos;s journey stage</span>
+                <span>Buyer&apos;s journey stage<RequiredMark /></span>
                 <InfoHint text="Select Awareness, Evaluation, Decision, or any combination." />
-                {!journeyStages.length && (
-                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
-                    Required
-                  </span>
-                )}
               </label>
               <MultiColorSelect
                 values={journeyStages}
@@ -1506,13 +1488,8 @@ export function AddMaterialButton({
               </div>
               <div>
               <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                <span>Who can view this file?</span>
+                <span>Who can view this file?<RequiredMark /></span>
                 <InfoHint text="Freyr AI reads every file you upload. This choice only controls who can open it." />
-                {!accessLevel && (
-                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
-                    Required
-                  </span>
-                )}
               </label>
               <ColorSelect
                 value={accessLevel}
@@ -1534,13 +1511,8 @@ export function AddMaterialButton({
                   is a file the division filter silently hides. */}
               <div>
               <label className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                <span>Division</span>
+                <span>Division<RequiredMark /></span>
                 <InfoHint text="Which Freyr division this file is for. Pick any combination." />
-                {!divisions.length && (
-                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
-                    Required
-                  </span>
-                )}
               </label>
               <MultiColorSelect
                 values={divisions}
@@ -1562,9 +1534,10 @@ export function AddMaterialButton({
 
           <div className={files.length ? "hidden" : undefined}>
             <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-              Name
+              Name<RequiredMark />
             </label>
             <input
+              required={!files.length}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder={
@@ -1584,11 +1557,7 @@ export function AddMaterialButton({
             >
               Material Description
               {isProposalFolder(folder) ? (
-                !description.trim() && (
-                  <span className="rounded-md bg-[color:#FFF0EE] px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-[color:var(--ink-red)] dark:bg-[color:#3D1D20] dark:text-[color:#FFB4AB]">
-                    Required
-                  </span>
-                )
+                <RequiredMark />
               ) : (
                 <span className="text-[10px] font-medium normal-case tracking-normal text-text-tertiary">
                   Optional
@@ -1596,6 +1565,7 @@ export function AddMaterialButton({
               )}
             </label>
             <textarea
+              required={isProposalFolder(folder)}
               id="material-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -1933,9 +1903,10 @@ export function AddMaterialButton({
             {!files.length && (
               <div className="mt-2">
                 <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
-                  Or paste a link
+                  Or paste a link<RequiredMark />
                 </label>
                 <input
+                  required={!files.length}
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://…"

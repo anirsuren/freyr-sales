@@ -43,6 +43,15 @@ export async function PATCH(
     );
   }
   const body = (await request.json().catch(() => ({}))) ?? {};
+  if (typeof body.name === "string" && !body.name.trim()) {
+    return NextResponse.json({ ok: false, error: "Give the sequence a name." }, { status: 400 });
+  }
+  if (typeof body.description === "string" && !body.description.trim()) {
+    return NextResponse.json(
+      { ok: false, error: "Describe who this sequence is for and the outcome it should drive." },
+      { status: 400 }
+    );
+  }
   const steps = Array.isArray(body.steps)
     ? body.steps
         .map((step: Partial<SequenceStep>) => ({
@@ -53,6 +62,9 @@ export async function PATCH(
         .filter((step: SequenceStep) => ["email", "call", "wait"].includes(step.channel) && step.label)
         .sort((a: SequenceStep, b: SequenceStep) => a.day - b.day)
     : undefined;
+  if (Array.isArray(body.steps) && !steps?.length) {
+    return NextResponse.json({ ok: false, error: "Add at least one valid step." }, { status: 400 });
+  }
   const sequence = updateSequence(id, {
     ...(typeof body.name === "string" ? { name: body.name } : {}),
     ...(typeof body.description === "string" ? { description: body.description } : {}),

@@ -18,6 +18,7 @@ import { DonutChart, LineChart, VIZ, type TipItem } from "@/components/charts/Ch
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { formatDateTime, cn } from "@/lib/utils";
 import type { Campaign, CampaignObjective } from "@/lib/campaigns";
 import { tint } from "@/lib/tint";
@@ -556,8 +557,8 @@ export function CampaignsView({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Campaign name</label>
-                    <input value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Freya.Register Q3 pipeline" aria-label="Campaign name" className="h-10 w-full rounded-md border border-border bg-white px-3 text-[13.5px] outline-none focus:border-blue-primary" />
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Campaign name<RequiredMark /></label>
+                    <input required value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Freya.Register Q3 pipeline" aria-label="Campaign name" className="h-10 w-full rounded-md border border-border bg-white px-3 text-[13.5px] outline-none focus:border-blue-primary" />
                   </div>
                   <div>
                     <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Objective</label>
@@ -578,7 +579,7 @@ export function CampaignsView({
                     <p className="mt-1.5 text-[11px] text-text-tertiary">{selectedObjective.detail}</p>
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Offering to pitch</label>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Offering to pitch<RequiredMark /></label>
                     {/* Every offering carries its own glyph + hue app-wide, so the
                         picker shows them here too instead of a gray text list. */}
                     <ColorSelect
@@ -656,7 +657,7 @@ export function CampaignsView({
               <div>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-[16px] font-semibold text-text-primary">Build the audience</h3>
+                    <h3 className="text-[16px] font-semibold text-text-primary">Build the audience<RequiredMark /></h3>
                     <p className="mt-1 text-[12px] text-text-tertiary">Choose the exact people who should receive this message.</p>
                   </div>
                   <div className="flex gap-4">
@@ -696,8 +697,8 @@ export function CampaignsView({
                 </div>
                 <div className="mt-4 grid grid-cols-[minmax(0,1.2fr)_280px] gap-4">
                   <div className="space-y-3">
-                    <div><label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Subject</label><input value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="What this campaign is about" aria-label="Campaign subject" className="h-10 w-full rounded-md border border-border px-3 text-[13px] outline-none focus:border-blue-primary" /></div>
-                    <div><label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Message</label><textarea value={body} onChange={(event) => setBody(event.target.value)} rows={14} aria-label="Campaign body" className="w-full resize-none rounded-md border border-border px-3 py-2.5 text-[12.5px] leading-relaxed outline-none focus:border-blue-primary" /></div>
+                    <div><label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Subject<RequiredMark /></label><input required value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="What this campaign is about" aria-label="Campaign subject" className="h-10 w-full rounded-md border border-border px-3 text-[13px] outline-none focus:border-blue-primary" /></div>
+                    <div><label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Message<RequiredMark /></label><textarea required minLength={40} value={body} onChange={(event) => setBody(event.target.value)} rows={14} aria-label="Campaign body" className="w-full resize-none rounded-md border border-border px-3 py-2.5 text-[12.5px] leading-relaxed outline-none focus:border-blue-primary" /></div>
                   </div>
                   <div className="rounded-md border border-border-light bg-surface/35 p-3">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Recipient preview</p>
@@ -734,7 +735,7 @@ export function CampaignsView({
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     {[{ value: "draft", label: "Save as draft", detail: "Keep editing later" }, { value: "now", label: "Queue now", detail: "Ready when email connects" }, { value: "later", label: "Schedule", detail: "Choose a date and time" }].map((option) => <button key={option.value} onClick={() => setScheduleMode(option.value as typeof scheduleMode)} className={cn("rounded-md border p-3 text-left", scheduleMode === option.value ? "border-blue-primary bg-blue-light/45" : "border-border hover:bg-surface")}><span className="block text-[11.5px] font-semibold text-text-primary">{option.label}</span><span className="mt-0.5 block text-[10px] text-text-tertiary">{option.detail}</span></button>)}
                   </div>
-                  {scheduleMode === "later" && <input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} aria-label="Campaign schedule" className="mt-3 h-9 rounded-md border border-border px-3 text-[12px] outline-none focus:border-blue-primary" />}
+                  {scheduleMode === "later" && <label className="mt-3 block text-[11px] font-semibold text-text-secondary">Send date and time<RequiredMark /><input required type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} aria-label="Campaign schedule" className="mt-1 h-9 rounded-md border border-border px-3 text-[12px] outline-none focus:border-blue-primary" /></label>}
                   <p className="mt-3 text-[10.5px] text-text-tertiary">Email delivery remains gated until the workspace send channel is connected.</p>
                 </div>
               </div>
@@ -746,7 +747,7 @@ export function CampaignsView({
             <div className="mt-6 flex items-center justify-between border-t border-border-light pt-4">
               <Button variant="ghost" onClick={() => composerStep ? setComposerStep((step) => step - 1) : setComposing(false)} className="px-3"><ArrowLeft size={14} /> {composerStep ? "Back" : "Cancel"}</Button>
               {composerStep < 3 ? (
-                <Button onClick={continueComposer} loading={busy}><span>{composerStep === 1 ? "Generate message" : composerStep === 2 ? "Review campaign" : "Continue"}</span><ArrowRight size={14} /></Button>
+                <Button onClick={continueComposer} loading={busy} disabled={!stepDone[composerStep]}><span>{composerStep === 1 ? "Generate message" : composerStep === 2 ? "Review campaign" : "Continue"}</span><ArrowRight size={14} /></Button>
               ) : (
                 <Button onClick={() => save(scheduleMode !== "draft")} loading={busy} disabled={scheduleMode === "later" && !scheduledAt}>
                   {scheduleMode === "draft" ? <Check size={14} /> : <Send size={14} />}

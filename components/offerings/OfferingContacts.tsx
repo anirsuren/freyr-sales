@@ -23,6 +23,7 @@ import { ContactChips } from "@/components/ui/ContactChips";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
 import { Modal } from "@/components/ui/Modal";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -493,6 +494,7 @@ export function OfferingContacts({
         size="workflow"
       >
         <div className="flex h-[min(66vh,540px)] flex-col">
+          <p className="mb-2 shrink-0 text-[12px] font-semibold text-text-primary">Choose at least one contact<RequiredMark /></p>
           {step === 1 && (
           <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-2">

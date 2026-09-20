@@ -1,6 +1,7 @@
 import { forwardRef, InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 
 export const Input = forwardRef<
   HTMLInputElement,
@@ -50,7 +51,7 @@ export function Field({
           already explains itself. */}
       <span className="mb-1.5 flex items-center gap-1 text-[13px] font-medium text-text-primary">
         {label}
-        {required && <span className="text-error">*</span>}
+        {required && <RequiredMark />}
         {hint && <InfoHint text={hint} />}
       </span>
       {children}

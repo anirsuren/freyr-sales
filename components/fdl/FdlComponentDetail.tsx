@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateEcho } from "@/components/ui/DateEcho";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
@@ -3595,7 +3596,7 @@ export function FdlComponentDetail({
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-[12px] font-medium text-text-primary">Version</label>
+              <label className="mb-1 block text-[12px] font-medium text-text-primary">Version<RequiredMark /></label>
               {/* THE V IS THE FIELD'S JOB, NOT THE TYPIST'S (Anir, Aug 10:
                   "it should automatically add the v, and then the user enters
                   in whatever it is. It should be after the v"). The V sits
@@ -3606,6 +3607,7 @@ export function FdlComponentDetail({
                   V
                 </span>
                 <input
+                  required
                   autoFocus
                   value={version.replace(/^v+/i, "")}
                   onChange={(event) =>
@@ -3694,7 +3696,7 @@ export function FdlComponentDetail({
         >
           <div>
             <p className="mb-1.5 text-[12.5px] font-semibold text-text-primary">
-              Which version are they on?
+              Which version are they on?<RequiredMark />
             </p>
             <ColorSelect
               value={addingRelease}
@@ -3717,6 +3719,7 @@ export function FdlComponentDetail({
             grow
             className="w-full"
           />
+          <p className="-mt-2 text-[12.5px] font-semibold text-text-primary">Choose at least one customer<RequiredMark /></p>
           {matchingUnconnected.length > 0 ? (
           <ScrollHint containerClassName="min-h-0 flex-1" className="h-full">
           <ul className="grid gap-2 sm:grid-cols-2">
@@ -3790,10 +3793,11 @@ export function FdlComponentDetail({
         >
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
-              Feature name
+              Feature name<RequiredMark />
               <InfoHint text="One capability, named the way a seller would say it." />
             </label>
             <input
+              required
               autoFocus
               value={featName}
               onChange={(event) => setFeatName(event.target.value)}
@@ -3822,7 +3826,7 @@ export function FdlComponentDetail({
           </div>
           <div>
             <label className="mb-1 flex flex-wrap items-center gap-1.5 text-[12px] font-medium text-text-primary">
-              Available in which versions?
+              Available in which versions?<RequiredMark />
               {featVersions.length === 0 ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(180,49,143,0.12)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-magenta)]">
                   Pick at least one
