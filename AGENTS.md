@@ -1156,7 +1156,7 @@ Pipeline ownership scope lives in Views. The duplicate Team / My deals toggle wa
 
 Solutioning-request rows on customer and person relationship pages open the named request's detail route instead of sending the reader to the unfiltered All Solutioning Requests list with an ignored `?open=` parameter. The detail page's SmartBack arrow returns through the app's navigation trail and names the originating section, so cross-module record links can return to the exact page they came from. Completed locally, not deployed.
 
-Every graph popup closes synchronously when the pointer leaves its active chart mark or popup surface. Do not add a close grace period, delayed dismissal, or page-specific override that can leave a tooltip stranded over unrelated content. Apply this through both the shared SVG chart layer and custom graph HoverCards so compact and expanded charts behave consistently. Completed locally, not deployed.
+Every graph popup uses the shared short pointer-transfer window when the pointer leaves its active chart mark, so the reader can move into the popup and scroll it. Entering the popup cancels the pending close; leaving the popup itself closes synchronously. Apply this through both the shared SVG chart layer and custom graph HoverCards so compact and expanded charts behave consistently. Completed locally, not deployed.
 
 Bar charts always reserve a dedicated strip below their axis labels for an overlay scrollbar, including fixed-height charts such as the contract revenue schedule. The deal overview shows the company logo beside Customer and the relevant country or region flag beside every project currency. Completed locally, not deployed.
 
@@ -1238,7 +1238,7 @@ Customer overview websites are real external links in read mode: normalize bare 
 
 The Log an interaction dialog uses the full working width of the customer workflow (860px on desktop) and a substantial note canvas rather than the generic narrow dialog. Customer account-detail rails end immediately after their final card and do not add a decorative empty tail beneath Account. Completed locally, not deployed.
 
-Point-based graph popups have a second chart-surface exit guard in addition to the point's own pointer-leave handler. Moving even one pixel into empty plot space closes the popup synchronously, including when the browser crosses from an HTML hit target to an SVG layer without delivering a mouse-leave event. Completed locally, not deployed.
+Point-based graph popups have a second chart-surface exit guard in addition to the point's own pointer-leave handler. Moving into empty plot space starts the same short transfer timer, including when the browser crosses from an HTML hit target to an SVG layer without delivering a mouse-leave event. Reaching the popup cancels that timer; stopping elsewhere lets it close. Completed locally, not deployed.
 
 Lead source workspaces distinguish the selected source from the full lead database. “Showing X of Y leads” uses the filtered rows for X and every lead in the workspace for Y; a Conference selection with 29 records must not describe itself as 29 of 29 unless the entire workspace truly contains 29 leads. Completed locally, not deployed.
 

@@ -179,7 +179,7 @@ add before the transactional foundation is ready.
 Exact money fields accept `K`, `M`, or `B` as typing shortcuts, then immediately replace the shortcut with the full comma-separated number (`337M` becomes `337,000,000`). Stored or pasted symbols and currency codes are normalized too. Descriptive text such as a customer-type range (“Under $500M”) stays free-form. Completed locally, not deployed.
 
 Performance chart popups summarize repeated dated results by contributor and source. They show the eight largest contributors plus one combined remainder row; the full audit history stays in the goal drawer instead of dumping 80–130 records into a hover card. Completed locally, not deployed.
-Every graph popup must close synchronously when the pointer leaves its active chart mark or popup surface. Never add a close grace period or delayed dismissal that can leave a tooltip stranded over unrelated content. Apply this through the shared chart tooltip and HoverCard layers so compact and expanded graphs behave consistently.
+Every graph popup must allow a short pointer-transfer window from its active chart mark into the popup so the reader can scroll and interact with it. Entering the popup cancels the pending close; leaving the popup itself closes synchronously. Apply this through the shared chart tooltip and HoverCard layers so compact and expanded graphs behave consistently.
 
 Keep dropdown triggers in form rows and field grids one line and 40px tall. Rich option descriptions stay in the opened menu and must not make the closed trigger taller or inset its chevron relative to neighboring fields.
 

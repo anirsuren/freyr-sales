@@ -43,7 +43,11 @@ import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { VIZ } from "./palette";
 import { tint } from "@/lib/tint";
 import { CHART_HOVER_CLOSE_GRACE_MS } from "@/lib/hoverPreferences";
-import { claimGraphHover, releaseGraphHover } from "@/lib/chartHoverCoordinator";
+import {
+  claimGraphHover,
+  pointerIsOverGraphTooltip,
+  releaseGraphHover,
+} from "@/lib/chartHoverCoordinator";
 
 // Series icons for tooltips + legends, keyed by SHORT STRINGS so server
 // components can request one (Suren: "put an icon instead of just a purple
@@ -277,8 +281,8 @@ function PointGuide({ left, color }: { left: string; color: string }) {
   );
 }
 // Hover state for one chart: which index is lit and where its tip is anchored.
-// A card exists only while its active hover surface owns the pointer; leaving
-// that surface clears the card synchronously so it cannot remain stranded.
+// Leaving a mark starts a short handoff window so the pointer can enter the
+// portaled card. The card cancels that close and remains usable for scrolling.
 /** Every graph tooltip in this app waits this long before it opens. No chart
  *  gets to opt out, and there is no user setting for it any more (Anir, Jul 28:
  *  "we need it where it's 0.5 seconds on every single graph. There should not
@@ -381,22 +385,26 @@ function useChartHover() {
     setAnchor(at);
   }
 
-  /** Clear the card synchronously on exit. `graceMs` remains an argument for
-   * callers that explicitly request a transition, while the app-wide chart
-   * policy is zero so no default graph popup can linger. */
+  /** Schedule the shared mark-to-popup handoff on a normal mark exit. Explicit
+   * zeroes still close synchronously for popup exit, Escape, clicks and blur. */
   const close = useCallback(
     (graceMs = interactiveTip ? CHART_HOVER_CLOSE_GRACE_MS : 0) => {
-      releaseGraphHover(hoverOwnerId);
       keepOpen();
       stopOpening();
       setActive(null);
       if (graceMs <= 0) {
+        releaseGraphHover(hoverOwnerId);
         setCard(null);
         setAnchor(null);
         return;
       }
       closeTimer.current = setTimeout(() => {
         closeTimer.current = null;
+        // React portal events can report the chart exit after the popup enter.
+        // Trust the browser's current hover target before removing a card the
+        // reader has already reached and may be scrolling.
+        if (pointerIsOverGraphTooltip()) return;
+        releaseGraphHover(hoverOwnerId);
         setCard(null);
         setAnchor(null);
       }, Math.max(0, graceMs));
@@ -576,15 +584,16 @@ function PortalTip({
   return createPortal(
     <div
       role="tooltip"
+      data-graph-tooltip="true"
       className="pointer-events-auto fixed z-[9999]"
       onPointerEnter={onPointerEnter}
+      onMouseEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       /* Pointer events are the primary path, but graph cards must also close
          on the browser's ordinary mouse boundary. Keeping the immediate exit
          on the shared portal means every chart gets the rule, including the
          month-by-month bars inside expanded goal rows. */
       onMouseLeave={onPointerLeave}
-      onPointerCancel={onPointerLeave}
       style={{
         left,
         top,
@@ -1482,17 +1491,17 @@ export function AreaChart({
       onPointerMove={(event) => {
         /* The point itself owns the tooltip. If the browser misses a tiny
            hit-target leave while crossing SVG/HTML layers, the next pointer
-           move in empty chart space still clears it synchronously. */
+           move in empty chart space starts the shared mark-to-popup handoff. */
         const target = event.target;
         if (
           active != null &&
           target instanceof Element &&
           !target.closest("[data-chart-point]")
         ) {
-          closeTip(0);
+          closeTip();
         }
       }}
-      onPointerLeave={() => closeTip(0)}
+      onPointerLeave={() => closeTip()}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}

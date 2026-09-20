@@ -31,8 +31,9 @@ export const HOVER_HINT_DELAY_MS = 250;
 export const HOVER_CLOSE_GRACE_MS = 0;
 
 /**
- * Graph popups never linger after the pointer leaves their active surface.
- * Keep this shared so SVG charts and custom graph HoverCards cannot drift into
- * different close behaviour or leave a card stranded over unrelated content.
+ * Give the pointer enough time to travel from a graph mark into its popup.
+ * Entering the popup cancels this timer so the card can be scrolled; leaving
+ * the popup itself still closes immediately. Keep this shared so SVG charts
+ * and custom graph HoverCards use the same interaction contract.
  */
-export const CHART_HOVER_CLOSE_GRACE_MS = 0;
+export const CHART_HOVER_CLOSE_GRACE_MS = 350;

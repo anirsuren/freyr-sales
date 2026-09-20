@@ -5,6 +5,11 @@
 // before, including a preview rendered by a different chart implementation.
 let activeGraphHover: { id: string; dismiss: () => void } | null = null;
 
+export function pointerIsOverGraphTooltip() {
+  if (typeof document === "undefined") return false;
+  return document.querySelector("[data-graph-tooltip]:hover") != null;
+}
+
 export function claimGraphHover(id: string, dismiss: () => void) {
   if (activeGraphHover?.id !== id) activeGraphHover?.dismiss();
   activeGraphHover = { id, dismiss };

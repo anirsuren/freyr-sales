@@ -9,10 +9,15 @@ import {
   HOVER_DELAY_MS,
   HOVER_HINT_DELAY_MS,
 } from "@/lib/hoverPreferences";
-import { claimGraphHover, releaseGraphHover } from "@/lib/chartHoverCoordinator";
+import {
+  claimGraphHover,
+  pointerIsOverGraphTooltip,
+  releaseGraphHover,
+} from "@/lib/chartHoverCoordinator";
 
 // A hover popover that stays open while the cursor is over the popover itself
-// and closes synchronously when the cursor leaves its active hover surface. It can
+// and closes after the shared pointer-transfer window when the cursor leaves
+// its active hover surface. It can
 // NEVER be clipped: the popover renders in a body portal at a fixed position,
 // so `overflow-hidden` ancestors (table cards, grids) can't cut it off — the
 // exact bug the team-roster popup hit ("Engaged" clipped to "d"). Same cure as
@@ -188,8 +193,8 @@ export function HoverCard({
   function scheduleHide() {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    // All hover surfaces use the shared close policy. Graphs are deliberately
-    // zero-delay so their cards cannot linger after the pointer has moved on.
+    // Graphs get one short handoff window so the pointer can cross from the
+    // mark into the portaled, scrollable card. Entering the card cancels it.
     const closeGrace =
       isGraphHover
         ? CHART_HOVER_CLOSE_GRACE_MS
@@ -198,7 +203,11 @@ export function HoverCard({
       hideImmediately();
       return;
     }
-    hideTimer.current = setTimeout(() => setPos(null), closeGrace);
+    hideTimer.current = setTimeout(() => {
+      hideTimer.current = null;
+      if (isGraphHover && pointerIsOverGraphTooltip()) return;
+      hideImmediately();
+    }, closeGrace);
   }
 
   function hideImmediately() {
@@ -255,6 +264,7 @@ export function HoverCard({
         createPortal(
           <div
             role="tooltip"
+            data-graph-tooltip={isGraphHover ? "true" : undefined}
             className="fixed z-[9999] pointer-events-auto"
             style={{
               left: pos.left,
@@ -271,7 +281,10 @@ export function HoverCard({
                   ? `calc(100vh - ${pos.top + 12}px)`
                   : `calc(100vh - ${pos.bottom! + 12}px)`,
             }}
-            onMouseEnter={show}
+            onMouseEnter={() => {
+              if (hideTimer.current) clearTimeout(hideTimer.current);
+              hideTimer.current = null;
+            }}
             onMouseLeave={hideImmediately}
           >
             {/* pt/pb (not mt/mb) so the gap to the trigger is inside this
