@@ -885,10 +885,10 @@ export function Customer360({
                        the space required by Requested and When. Both dates
                        stay readable on one line at ordinary desktop widths. */
                     <colgroup>
-                      <col style={{ width: "38%" }} />
-                      <col style={{ width: "9%" }} />
-                      <col style={{ width: "12%" }} />
-                      <col style={{ width: "17%" }} />
+                      <col style={{ width: "35%" }} />
+                      <col style={{ width: "10%" }} />
+                      <col style={{ width: "15%" }} />
+                      <col style={{ width: "16%" }} />
                       <col style={{ width: "12%" }} />
                       <col style={{ width: "12%" }} />
                     </colgroup>

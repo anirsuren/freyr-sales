@@ -38,4 +38,8 @@ export function replaceAppBrowserUrl(value: string | URL): void {
     destination.pathname = addMockModePrefix(destination.pathname);
   }
   window.history.replaceState(window.history.state, "", destination.toString());
+  /* Native replaceState does not notify Next's pathname/search hooks in every
+   * browser/runtime combination. The app's own back trail still needs to know
+   * that a tab or filter changed before the next record link is opened. */
+  window.dispatchEvent(new Event("freyr:location-replaced"));
 }

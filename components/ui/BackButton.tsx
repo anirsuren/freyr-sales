@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Children, isValidElement, useEffect, useState } from "react";
 import { askBeforeLeaving } from "@/lib/unsavedGuard";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -84,29 +84,39 @@ export function NavHistoryTracker() {
   const search = searchParams?.toString() ?? "";
 
   useEffect(() => {
-    const canonicalPathname = canonicalLocation(pathname);
-    const here = search ? `${canonicalPathname}?${search}` : canonicalPathname;
-    try {
-      const stack = readStack();
-      const wentBack = sessionStorage.getItem(BACK_FLAG) === "1";
-      sessionStorage.removeItem(BACK_FLAG);
-      if (wentBack && stack.length > 1 && stack[stack.length - 2] === here) {
-        stack.pop();
+    const trackCurrentLocation = () => {
+      const canonicalPathname = canonicalLocation(window.location.pathname);
+      const currentSearch = window.location.search.replace(/^\?/, "");
+      const here = currentSearch
+        ? `${canonicalPathname}?${currentSearch}`
+        : canonicalPathname;
+      try {
+        const stack = readStack();
+        const wentBack = sessionStorage.getItem(BACK_FLAG) === "1";
+        sessionStorage.removeItem(BACK_FLAG);
+        if (wentBack && stack.length > 1 && stack[stack.length - 2] === here) {
+          stack.pop();
+          writeStack(stack);
+          return;
+        }
+        const top = stack[stack.length - 1];
+        if (top === here) return;
+        if (top && top.split("?")[0] === canonicalPathname) {
+          // Same page, different query: a filter or tab changed, not a place.
+          stack[stack.length - 1] = here;
+        } else {
+          stack.push(here);
+        }
         writeStack(stack);
-        return;
+      } catch {
+        /* private-mode storage failures are harmless here */
       }
-      const top = stack[stack.length - 1];
-      if (top === here) return;
-      if (top && top.split("?")[0] === canonicalPathname) {
-        // Same page, different query: a filter or tab changed, not a place.
-        stack[stack.length - 1] = here;
-      } else {
-        stack.push(here);
-      }
-      writeStack(stack);
-    } catch {
-      /* private-mode storage failures are harmless here */
-    }
+    };
+
+    trackCurrentLocation();
+    window.addEventListener("freyr:location-replaced", trackCurrentLocation);
+    return () =>
+      window.removeEventListener("freyr:location-replaced", trackCurrentLocation);
   }, [pathname, search]);
 
   return null;
@@ -145,7 +155,44 @@ export function useBackTrail(): string | null {
 
 /** The plain name of the section a path belongs to, for "Back to …". */
 export function sectionLabelFor(path: string): string | null {
-  const p = canonicalLocation(path).split("?")[0];
+  const canonical = canonicalLocation(path);
+  const parsed = new URL(canonical, "https://freyr.local");
+  const p = parsed.pathname;
+  const customerMatch = p.match(/^\/customers\/[^/]+$/);
+  if (customerMatch) {
+    const tab = parsed.searchParams.get("tab") ?? "";
+    const band = tab.startsWith("band:") ? tab.slice(5) : tab;
+    const customerTabs: Record<string, string> = {
+      opportunities: "Opportunities",
+      solutionRequests: "Solutioning requests",
+      submissions: "Submissions",
+      presentations: "Presentations",
+      meetings: "Meetings",
+      meetingRequests: "Meeting requests",
+      offerings: "Offerings",
+      contracts: "Contracts",
+      leads: "Leads",
+      contacts: "Contacts",
+      components: "Digital components",
+      sessions: "Sessions",
+      activity: "Activity",
+      analytics: "Analytics",
+      deals: "Deals",
+      notes: "Notes",
+      "account-plan": "Account plan",
+    };
+    return customerTabs[band] ?? "Account";
+  }
+  if (/^\/opportunities\/[^/]+$/.test(p)) return "Deal";
+  if (/^\/offerings\/[^/]+$/.test(p)) return "Offering";
+  if (/^\/solutioning\/[^/]+$/.test(p)) return "Solutioning record";
+  if (/^\/meetings\/[^/]+$/.test(p)) return "Meeting";
+  if (/^\/contacts\/[^/]+$/.test(p)) return "Contact";
+  if (p === "/solutioning") {
+    const tab = parsed.searchParams.get("tab");
+    if (tab === "submissions") return "Submissions";
+    if (tab === "presentations") return "Presentations";
+  }
   const table: [string, string][] = [
     ["/revenue-accruals", "Revenue Accruals"],
     ["/opportunities", "Opportunities"],
@@ -178,6 +225,8 @@ export function SmartBack({
   "aria-label"?: string;
 }) {
   const router = useRouter();
+  const trail = useBackTrail();
+  const destinationLabel = trail ? sectionLabelFor(trail) : null;
   const onClick = () => {
     /* A SCREEN WITH UNSAVED WORK GETS TO ASK FIRST. This is a BUTTON, so the
        editor's own link listener never sees it — "Back to deal" used to walk
@@ -214,7 +263,14 @@ export function SmartBack({
       aria-label={ariaLabel}
       className={className}
     >
-      {children}
+      {destinationLabel ? (
+        <>
+          {Children.toArray(children).find((child) => isValidElement(child))}
+          {` Back to ${destinationLabel}`}
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }

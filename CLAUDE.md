@@ -228,3 +228,7 @@ Keep People-performance verification queues inside the available page width with
 Use semantic icons in grouping and sorting controls instead of interchangeable colored dots. No grouping uses rows/list, customers use a company mark and company logos in group headers, owners use a person mark and avatars, and statuses use workflow-specific icons and state colors. Newest and other date sorts use calendar or clock icons, never decorative sparkle icons. Keep this vocabulary consistent across modules.
 
 Link first-class records in relationship and 360-degree rows to their canonical detail routes using stored ids in Mock and Real modes. Resolve legacy name-only relationships unambiguously against the active mode's catalogue before linking; if a record cannot be resolved, leave its row visible and non-navigable instead of fabricating an id or falling through to a generic or broken route.
+
+Every app-level back control must follow the exact in-app source, including its active tab or filtered view, and name that destination. Query-only URL replacements must notify the shared navigation tracker before a record drill-in can occur, so returning from a record never lands on a stale sibling tab.
+
+Reserve enough width between semantic status pills and owner identities in customer solutioning-artifact tables. Those columns must never overlap or intersect at ordinary desktop widths.
