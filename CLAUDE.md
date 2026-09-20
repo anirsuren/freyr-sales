@@ -240,3 +240,5 @@ Every app-level back control must follow the exact in-app source, including its 
 Reserve enough width between semantic status pills and owner identities in customer solutioning-artifact tables. Those columns must never overlap or intersect at ordinary desktop widths.
 
 Expanded categorical charts must retain their complete known metric set in the breakdown when only one or a few categories have data. Render missing categories as honest zeros with zero-width bars and no fake donut slivers; compact cards may stay focused on active categories.
+
+Keep the Customers page filters in the same toolbar row as search and the Summary/List controls. Use one compact layered Filter control for customer group, owner, industry, and deal activity, and apply its scope consistently to the headline totals, Summary pivot, list/card views, pagination, and CSV export.

@@ -1231,3 +1231,5 @@ Every app-level back control follows the exact in-app source, including the acti
 Customer solutioning-artifact tables reserve enough width for long semantic status pills before the Owner column. Status and owner identities must never overlap or intersect at ordinary desktop widths. Completed locally, not deployed.
 
 Expanded categorical charts keep the complete known metric set in their breakdown, even when only one category currently has data. Missing categories display honest zero values and zero-width bars; zero categories never paint fake donut slivers. Compact cards may continue to show only active categories. Completed locally, not deployed.
+
+Customer filters live in the same toolbar row as search and the Summary/List controls. Use one compact layered Filter control for customer group, owner, industry, and deal activity, and apply its scope consistently to the headline totals, Summary pivot, list/card views, pagination, and CSV export. Completed locally, not deployed.

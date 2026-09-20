@@ -234,6 +234,10 @@ export function CustomersBrowser({
     currentUser.id
   );
   const [query, setQuery] = useState("");
+  const [groupFilters, setGroupFilters] = useState<string[]>([]);
+  const [ownerFilters, setOwnerFilters] = useState<string[]>([]);
+  const [industryFilters, setIndustryFilters] = useState<string[]>([]);
+  const [dealFilters, setDealFilters] = useState<string[]>([]);
 
   const [sort, setSort] = useState("recent");
   /* GROUPING (Anir, Sep 6: "I should be able to group by owner, and it'll show
@@ -396,6 +400,10 @@ export function CustomersBrowser({
        overrides storage now. */
     const nextView = params.get("view");
     setQuery(params.get("q") || "");
+    setGroupFilters([]);
+    setOwnerFilters([]);
+    setIndustryFilters([]);
+    setDealFilters([]);
     setSort(
       ["recent", "updated", "company", "size", "health"].includes(nextSort)
         ? nextSort
@@ -452,13 +460,53 @@ export function CustomersBrowser({
     []
   );
 
+  const customerGroupByCustomer = useMemo(() => {
+    const membership = new Map<string, string>();
+    for (const group of customerGroups) {
+      for (const customerId of group.customerIds) membership.set(customerId, group.id);
+    }
+    return membership;
+  }, [customerGroups]);
+
+  const dealActivityByCustomer = useMemo(() => {
+    const activity = new Map<string, { hasAny: boolean; hasOpen: boolean }>();
+    const customerIdByName = new Map(
+      customers.map((customer) => [customer.company_name.trim().toLowerCase(), customer.id])
+    );
+    for (const deal of deals) {
+      const customerId =
+        deal.customerId || customerIdByName.get(deal.customer.trim().toLowerCase());
+      if (!customerId) continue;
+      const current = activity.get(customerId) ?? { hasAny: false, hasOpen: false };
+      current.hasAny = true;
+      if (deal.status !== "Won" && deal.status !== "Lost") current.hasOpen = true;
+      activity.set(customerId, current);
+    }
+    return activity;
+  }, [customers, deals]);
+
   const filtered = useMemo(() => {
     let v = customers.filter((c) => {
       const matchesQuery =
         !query ||
         c.company_name.toLowerCase().includes(query.toLowerCase()) ||
         (c.industry || "").toLowerCase().includes(query.toLowerCase());
-      return matchesQuery;
+      const customerGroup = customerGroupByCustomer.get(c.id) ?? "__none";
+      const owner = c.owner?.trim() || "__none";
+      const industry = c.industry?.trim() || "__none";
+      const activity = dealActivityByCustomer.get(c.id);
+      const dealActivity = activity?.hasOpen
+        ? "open"
+        : activity?.hasAny
+          ? "closed"
+          : "none";
+      return (
+        matchesQuery &&
+        (groupFilters.length === 0 || groupFilters.includes(customerGroup)) &&
+        (ownerFilters.length === 0 || ownerFilters.includes(owner)) &&
+        (industryFilters.length === 0 || industryFilters.includes(industry)) &&
+        (dealFilters.length === 0 || dealFilters.includes(dealActivity))
+      );
     });
     v = [...v];
     if (sort === "company") v.sort((a, b) => a.company_name.localeCompare(b.company_name));
@@ -483,7 +531,18 @@ export function CustomersBrowser({
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     return v;
-  }, [customers, query, sort, sizeRank]);
+  }, [
+    customers,
+    query,
+    sort,
+    sizeRank,
+    customerGroupByCustomer,
+    dealActivityByCustomer,
+    groupFilters,
+    ownerFilters,
+    industryFilters,
+    dealFilters,
+  ]);
 
   /**
    * THE GROUPS THEMSELVES. Grouping reads the WHOLE filtered list, not the
@@ -560,7 +619,7 @@ export function CustomersBrowser({
   // reset to first page whenever the result set changes
   useEffect(() => {
     setPage(1);
-  }, [query, sort]);
+  }, [query, sort, groupFilters, ownerFilters, industryFilters, dealFilters]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const current = Math.min(page, pageCount);
@@ -955,17 +1014,89 @@ export function CustomersBrowser({
         onQuery={setQuery}
         placeholder="Search customers…"
         searchAriaLabel="Search customers"
-        onClearAll={() => setQuery("")}
-        /* NO FILTERS ON THIS LIST (Manoj's change sheet, item 22: "In
-           Customers, we will only need 'Customer Group', 'Customer' and
-           'Owner'. Remove opportunities, tiles, and all other data and
-           filters").
-
-           Health was the only one left, and it filtered on a column this table
-           no longer shows — so the list would come back shorter with nothing
-           on screen to say why. Search and sort stay: they are how you find a
-           row, not extra data about it. */
-        groups={[]}
+        filterAriaLabel="Filter customers"
+        onClearAll={() => {
+          setGroupFilters([]);
+          setOwnerFilters([]);
+          setIndustryFilters([]);
+          setDealFilters([]);
+        }}
+        /* ONE COMPACT FILTER, IN THE SEARCH ROW (Anir, Sep 19: "shouldn't
+           there be some filters in the same row as the search part? ... you
+           have the space"). The filter reads the same `filtered` collection
+           as the tiles, Summary pivot, table, cards and CSV export, so changing
+           views cannot silently change the scope. */
+        groups={[
+          {
+            key: "customer-group",
+            label: "Customer group",
+            values: groupFilters,
+            onChange: setGroupFilters,
+            options: [
+              ...customerGroups.map((group) => ({
+                value: group.id,
+                label: group.name,
+                color: group.color,
+              })),
+              { value: "__none", label: NO_CUSTOMER_GROUP, color: "#64748B" },
+            ],
+          },
+          {
+            key: "owner",
+            label: "Owner",
+            values: ownerFilters,
+            onChange: setOwnerFilters,
+            options: [
+              ...Array.from(
+                new Set(
+                  customers
+                    .map((customer) => customer.owner?.trim())
+                    .filter((owner): owner is string => Boolean(owner))
+                )
+              )
+                .sort((a, b) => a.localeCompare(b))
+                .map((owner) => ({
+                  value: owner,
+                  label: owner,
+                  avatarName: owner,
+                })),
+              { value: "__none", label: UNASSIGNED_OWNER, color: "#64748B" },
+            ],
+          },
+          {
+            key: "industry",
+            label: "Industry",
+            values: industryFilters,
+            onChange: setIndustryFilters,
+            options: [
+              ...Array.from(
+                new Set(
+                  customers
+                    .map((customer) => customer.industry?.trim())
+                    .filter((industry): industry is string => Boolean(industry))
+                )
+              )
+                .sort((a, b) => a.localeCompare(b))
+                .map((industry) => ({
+                  value: industry,
+                  label: industry,
+                  color: industryStyle(industry).color,
+                })),
+              { value: "__none", label: "Industry not set", color: "#64748B" },
+            ],
+          },
+          {
+            key: "deal-activity",
+            label: "Deal activity",
+            values: dealFilters,
+            onChange: setDealFilters,
+            options: [
+              { value: "open", label: "Has open deals", color: "#16A34A" },
+              { value: "closed", label: "Closed deals only", color: "#7C3AED" },
+              { value: "none", label: "No deals", color: "#64748B" },
+            ],
+          },
+        ]}
         /* CONTROLS ONLY WHERE THEY DO SOMETHING (Anir, Sep 6: "I don't want
            to see it if it doesn't do anything on the screen I'm on"). The
            summary is a pivot: it groups and totals by its own chips, so a sort
