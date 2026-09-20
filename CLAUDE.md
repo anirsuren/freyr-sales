@@ -242,3 +242,9 @@ Reserve enough width between semantic status pills and owner identities in custo
 Expanded categorical charts must retain their complete known metric set in the breakdown when only one or a few categories have data. Render missing categories as honest zeros with zero-width bars and no fake donut slivers; compact cards may stay focused on active categories.
 
 Keep the Customers page filters in the same toolbar row as search and the Summary/List controls. Use one compact layered Filter control for customer group, owner, industry, and deal activity, and apply its scope consistently to the headline totals, Summary pivot, list/card views, pagination, and CSV export.
+
+Render customer overview websites as safe external links in read mode: normalize bare domains to HTTPS, open them in a new tab, and leave unsafe schemes as plain text. In Mock mode, an account without its own owner should show a connected deal owner and that person's profile image; do not invent an owner for a genuinely unassigned Real-mode account.
+
+Use an 860px desktop dialog and a substantial note canvas for Log an interaction. End the customer account-detail rail directly after the Account card instead of extending it with empty padding.
+
+Point-based chart popups must also close from a chart-surface pointer guard when the pointer is no longer on a point. Keep the point leave/cancel handlers too, so crossing between HTML hit targets and SVG layers cannot strand a popup.

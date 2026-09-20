@@ -251,13 +251,15 @@ function PointHitTarget({
   return (
     <span
       aria-hidden="true"
+      data-chart-point="true"
       className={cn(
         "absolute z-[2] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full",
         active ? "h-[12px] w-[12px]" : "h-[8px] w-[8px]"
       )}
       style={{ left, top }}
-      onMouseEnter={(event) => onEnter(event.currentTarget)}
-      onMouseLeave={onLeave}
+      onPointerEnter={(event) => onEnter(event.currentTarget)}
+      onPointerLeave={onLeave}
+      onPointerCancel={onLeave}
     />
   );
 }
@@ -1462,6 +1464,20 @@ export function AreaChart({
     <div
       className={cn("relative w-full", className)}
       style={{ height }}
+      onPointerMove={(event) => {
+        /* The point itself owns the tooltip. If the browser misses a tiny
+           hit-target leave while crossing SVG/HTML layers, the next pointer
+           move in empty chart space still clears it synchronously. */
+        const target = event.target;
+        if (
+          active != null &&
+          target instanceof Element &&
+          !target.closest("[data-chart-point]")
+        ) {
+          closeTip(0);
+        }
+      }}
+      onPointerLeave={() => closeTip(0)}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}

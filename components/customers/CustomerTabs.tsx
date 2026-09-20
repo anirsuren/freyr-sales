@@ -446,6 +446,15 @@ export function CustomerTabs({
   const router = useRouter();
   const currentUser = useCurrentUser();
   const ownerOptions = repOptionsFor(currentUser.name, includeDemoTeam);
+  /* Mock accounts are a showroom, so their owner identity should be complete
+     enough to demonstrate the real UI. Generated accounts do not always carry
+     an account-level owner even though one of their connected deals does. Use
+     that real connected owner first, then the signed-in demo identity. Live
+     accounts stay honestly unassigned until somebody claims them. */
+  const mockAccountOwner = includeDemoTeam
+    ? customer.account_deals?.find((deal) => deal.owner?.trim())?.owner?.trim() ||
+      currentUser.name
+    : "";
   const defaultDealOwner = includeDemoTeam
     ? customer.owner || currentUser.name
     : currentUser.name;
@@ -488,7 +497,9 @@ export function CustomerTabs({
   // editable account fields (#55 owner, #59 competitor, #60 notes/attachments).
   // Seeded demo accounts keep their deterministic sample owner. Live and newly
   // created accounts remain unassigned until a real teammate claims them.
-  const [owner, setOwner] = useState(customer.owner || ownerFor(customer));
+  const [owner, setOwner] = useState(
+    customer.owner || mockAccountOwner || ownerFor(customer)
+  );
   const [competitor, setCompetitor] = useState(customer.competitor || "");
   const [notes, setNotes] = useState<AccountNote[]>(customer.notes_log || []);
   const [noteDraft, setNoteDraft] = useState("");
@@ -569,7 +580,7 @@ export function CustomerTabs({
        which is why the landing tab kept coming back after the state default
        was fixed — two places decided it and only one had been changed. */
     setTabState(visible(wanted) ? (wanted as string) : "overview");
-    setOwner(customer.owner || ownerFor(customer));
+    setOwner(customer.owner || mockAccountOwner || ownerFor(customer));
     setCompetitor(customer.competitor || "");
     setNoteDraft("");
     setNoteKind("note");
@@ -1251,6 +1262,29 @@ export function CustomerTabs({
                   value={customer.website_url ?? ""}
                   canEdit={canEditFacts && editingAbout}
                   format={(v) => v.replace(/^https?:\/\//, "")}
+                  renderValue={(v) => {
+                    const href = safeHref(v);
+                    const label = v.replace(/^https?:\/\//, "").replace(/\/$/, "");
+                    return href ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex max-w-full items-center gap-1 text-blue-primary hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30"
+                        aria-label={`Open ${label} in a new tab`}
+                      >
+                        <span className="truncate">{label}</span>
+                        <ArrowRight
+                          size={12}
+                          strokeWidth={2}
+                          aria-hidden="true"
+                          className="shrink-0 -rotate-45"
+                        />
+                      </a>
+                    ) : (
+                      label
+                    );
+                  }}
                   onSave={async (v) =>
                     (await patchCustomer({ website_url: v })) ? null : "That didn't save."
                   }
@@ -2691,7 +2725,7 @@ export function CustomerTabs({
             Hide
           </button>
         </div>
-        <div className="space-y-4 p-4 pb-20">
+        <div className="space-y-4 p-4">
         {/* Per-account agent entry — opens the account-scoped drawer (chat +
             quick actions) over the page, reachable from any tab. The global
             dock stays for cross-app asks; this one is pre-loaded with THIS
@@ -3153,6 +3187,7 @@ export function CustomerTabs({
         onClose={() => setNoteModalOpen(false)}
         title="Log an interaction"
         size="wide"
+        dialogClassName="!max-w-[860px]"
       >
         {/* THE APP'S OWN FORM, NOT A PRIVATE DIALECT (Anir, Sep 4, showing
             this dialog a second time: "did you just completely ignore me?").
@@ -3201,7 +3236,7 @@ export function CustomerTabs({
               rows={4}
               autoFocus
               /* The Input component's own look, at textarea height. */
-              className="min-h-[132px] w-full min-w-0 resize-y rounded-md border border-border bg-surface px-3.5 py-2.5 text-[15px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-focus"
+              className="min-h-[300px] w-full min-w-0 resize-y rounded-md border border-border bg-surface px-3.5 py-2.5 text-[15px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-focus"
             />
           </Field>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

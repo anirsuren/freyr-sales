@@ -1233,3 +1233,9 @@ Customer solutioning-artifact tables reserve enough width for long semantic stat
 Expanded categorical charts keep the complete known metric set in their breakdown, even when only one category currently has data. Missing categories display honest zero values and zero-width bars; zero categories never paint fake donut slivers. Compact cards may continue to show only active categories. Completed locally, not deployed.
 
 Customer filters live in the same toolbar row as search and the Summary/List controls. Use one compact layered Filter control for customer group, owner, industry, and deal activity, and apply its scope consistently to the headline totals, Summary pivot, list/card views, pagination, and CSV export. Completed locally, not deployed.
+
+Customer overview websites are real external links in read mode: normalize bare domains to HTTPS, open them in a new tab, and keep unsafe schemes non-clickable. Mock customer account rails must show an assigned person with their profile image, preferring a connected deal owner when the account record has no owner; Real mode must preserve a genuinely unassigned account. Completed locally, not deployed.
+
+The Log an interaction dialog uses the full working width of the customer workflow (860px on desktop) and a substantial note canvas rather than the generic narrow dialog. Customer account-detail rails end immediately after their final card and do not add a decorative empty tail beneath Account. Completed locally, not deployed.
+
+Point-based graph popups have a second chart-surface exit guard in addition to the point's own pointer-leave handler. Moving even one pixel into empty plot space closes the popup synchronously, including when the browser crosses from an HTML hit target to an SVG layer without delivering a mouse-leave event. Completed locally, not deployed.
