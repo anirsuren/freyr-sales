@@ -19,7 +19,7 @@
     "test:rules": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/aug25-rules.test.mjs",
     "test:sheet": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/sheet-fidelity.test.mjs",
     "test:groups": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/component-groups.test.mjs",
-    "test:mock-density": "NODE_OPTIONS='-r ./scripts/qa/stub-server-only.cjs' NODE_ENV=test tsx --test tests/mock-density.test.ts",
+    "test:mock-density": "AGENT_FORCE_MOCK=1 NODE_OPTIONS='-r ./scripts/qa/stub-server-only.cjs' NODE_ENV=test tsx --test tests/mock-density.test.ts",
     "live": "curl -sS -X POST localhost:3001/api/settings/data-mode -H 'content-type: application/json' -d '{\"mode\":\"live\"}'",
     "test:booked": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/booked-revenue.test.mjs",
     "sweep:charts": "node tests/sweeps/chart-rules.mjs",

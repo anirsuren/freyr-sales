@@ -1244,7 +1244,11 @@ function seed(): MockStore {
    offerings (Anir, Sep 4: "it cant say 0. then whats the point of mock mode").
    Same rule as 6 and 7: the store is a cached file, so a seed change that is
    not accompanied by a bump reaches nobody. */
-const SCHEMA_VERSION = 14;
+/* 15: the generated customer directory now uses the same canonical cast as
+   meetings, leads and the rest of the connected mock floor. Refresh the old
+   durable snapshot so a linked meeting cannot name a different person from
+   the contact record it opens. */
+const SCHEMA_VERSION = 15;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 

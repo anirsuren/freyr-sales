@@ -16,6 +16,7 @@ import { listFdlComponents, listOfferings } from "../lib/offerings";
 import { RECORDINGS } from "../lib/recordings";
 import { listVoiceQueue } from "../lib/voice";
 import { listCampaigns } from "../lib/campaigns";
+import { mockAccrualPlansFor } from "../lib/revenueAccruals";
 
 setDataMode("mock");
 
@@ -101,6 +102,10 @@ test("every generated deal opens into populated downstream work", () => {
   const meetings = mockFillMeetings();
   const solutioning = mockFillSolutioning();
   const leads = mockFillLeads();
+  const accrualPlans = mockAccrualPlansFor(
+    opportunities,
+    "2026-09-19T16:42:00.000Z"
+  );
 
   assert.ok(leads.length >= 40 && leads.length <= 90, "realistic generated lead count");
   assert.equal(
@@ -112,10 +117,17 @@ test("every generated deal opens into populated downstream work", () => {
   assert.equal(contracts.length, opportunities.length, "one generated contract per deal");
   assert.equal(meetings.length, opportunities.length, "one generated meeting per deal");
   assert.equal(solutioning.length, opportunities.length * 2, "two solutioning records per deal");
+  assert.equal(accrualPlans.length, opportunities.length, "one accrual plan per deal");
   for (const opportunity of opportunities) {
     assert.ok((opportunity.lines?.length ?? 0) >= 1, `${opportunity.id}: offering lines`);
     assert.ok(contracts.some((row) => row.opportunityId === opportunity.id), `${opportunity.id}: contract`);
     assert.ok(meetings.some((row) => row.opportunityIds.includes(opportunity.id)), `${opportunity.id}: meeting`);
+    const accrual = accrualPlans.find((row) => row.opportunityId === opportunity.id);
+    assert.ok(accrual, `${opportunity.id}: revenue accrual plan`);
+    assert.ok(
+      (accrual.versions ?? []).some((version) => version.lines.length > 0),
+      `${opportunity.id}: populated revenue accrual schedule`
+    );
     const requests = solutioning.filter((row) => row.opportunityIds.includes(opportunity.id));
     assert.equal(requests.length, 2, `${opportunity.id}: solutioning records`);
     for (const request of requests) {

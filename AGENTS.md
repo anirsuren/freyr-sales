@@ -1200,6 +1200,10 @@ The compact Solutioning request preview presents documents as a restrained Sales
 
 Document names in the compact Solutioning request preview use the exact Sales Materials hover preview. Resting on a name renders the document through the shared MaterialPeek surface, while clicking opens the shared in-app document viewer; link-only documents retain the same Sales Materials link preview. Completed locally, not deployed.
 
+Every generated Mock opportunity carries a connected revenue-accrual plan with a populated schedule history. The accrual seed version is coupled to the generated opportunity-floor generation, so advancing `fillN-opp-*` data automatically refreshes its seed-owned plans while preserving plans created manually in Mock mode. Mock-density checks cover contracts, meetings, solutioning records, and accrual schedules for every generated deal. Completed locally, not deployed.
+
+Mock-density tests always run against a fresh in-memory showroom seed, never the developer's durable Mock edits. When the canonical generated customer/contact cast changes, bump the mock-store schema so persisted contacts refresh together with meetings, leads, and other linked records rather than retaining stale identities. Completed locally, not deployed.
+
 Grouped Solutioning lists use the same section hierarchy as Goals. Each owner, customer, or status is a separate bordered, collapsible band with its identity mark, label, adjacent request count, and its own repeated table headings; owner bands include the person's avatar. One state-aware Open all/Close all button in the toolbar controls these group bands in both table and split views. Completed locally, not deployed.
 
 Inline owner identities on Goals always read crown, profile picture, then name. The avatar and name stay adjacent as one person identity; the ownership crown precedes that identity instead of splitting the face from the name. Completed locally, not deployed.

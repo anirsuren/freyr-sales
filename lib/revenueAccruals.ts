@@ -1,4 +1,4 @@
-import { signDateOf } from "./opportunitiesShared";
+import { signDateOf, type Opportunity } from "./opportunitiesShared";
 import "server-only";
 
 import { getDataMode } from "./dataMode";
@@ -25,6 +25,7 @@ import {
    pointing at a deal that does not exist joins to nothing on the dashboard,
    which is exactly what the four plans that used to live here did. */
 import { readOpportunities } from "./opportunities";
+import { FILL_GENERATION } from "./mockFillLife";
 
 /**
  * THE REVENUE ACCRUALS STORE. Same shape every store in this app uses: one row
@@ -41,17 +42,23 @@ import { readOpportunities } from "./opportunities";
 const ROW_ID = "revenue-accruals";
 
 /**
- * THE GENERATION OF THE MOCK SEED. Bump it when the seed below changes and the
- * demo row should pick the change up; see RevenueAccrualsState.seedVersion for
- * why this exists rather than the seed simply running every read.
+ * THE GENERATION OF THE MOCK SEED. The schema generation changes when the
+ * accrual stories themselves change. The connected-data generation comes from
+ * mockFillLife, because every generated opportunity needs a matching plan and
+ * a new opportunity generation must never be mistaken for an already-current
+ * accrual row. See RevenueAccrualsState.seedVersion for why this exists rather
+ * than the seed simply running every read.
  *
  * 1 = the four `acc-sample-*` plans (and the one-off script that wrote
  *     `mockgen-acc-*` rows beside them).
  * 2 = a plan for most mock deals, with version histories and frozen sheets.
  * 3 = a populated plan for every mock deal, so every opportunity demonstrates
  *     its Revenue accruals tab instead of leaving arbitrary records blank.
+ * 4 = ties the accrual seed to the generated opportunity floor, preventing a
+ *     newer `fillN-opp-*` record from opening without its schedule.
  */
-const SEED_VERSION = 3;
+const ACCRUAL_SEED_SCHEMA_VERSION = 4;
+const SEED_VERSION = ACCRUAL_SEED_SCHEMA_VERSION * 1_000 + FILL_GENERATION;
 
 /** Every id the seed has ever minted, across both generations, plus the rows
  *  the standalone fill script wrote. A plan matching this is the seed's to
@@ -728,11 +735,10 @@ function seedSnapshots(plans: AccrualPlan[]): AccrualSnapshot[] {
  * because this whole function only ever runs behind the mock check in
  * readRevenueAccruals.
  */
-async function sampleAccruals(): Promise<RevenueAccrualsState> {
-  const now = new Date().toISOString();
-  const opportunities = await readOpportunities()
-    .then((s) => s.opportunities)
-    .catch(() => []);
+export function mockAccrualPlansFor(
+  opportunities: Opportunity[],
+  now = new Date().toISOString()
+): AccrualPlan[] {
   const plans: AccrualPlan[] = [];
   for (const o of opportunities) {
     const line = (o.lines ?? [])[0];
@@ -752,6 +758,14 @@ async function sampleAccruals(): Promise<RevenueAccrualsState> {
     );
     if (plan) plans.push(plan);
   }
+  return plans;
+}
+
+async function sampleAccruals(): Promise<RevenueAccrualsState> {
+  const opportunities = await readOpportunities()
+    .then((s) => s.opportunities)
+    .catch(() => []);
+  const plans = mockAccrualPlansFor(opportunities);
   return { plans, snapshots: seedSnapshots(plans), seedVersion: SEED_VERSION };
 }
 

@@ -209,6 +209,10 @@ Render documents in the compact Solutioning request preview as a Sales Materials
 
 Use the shared Sales Materials hover preview on every document name in the compact Solutioning request preview. Resting on the name renders the document through MaterialPeek, clicking opens the shared in-app viewer, and link-only rows retain the Sales Materials link preview.
 
+Every generated Mock opportunity must have a connected revenue-accrual plan with populated schedule history. Couple the accrual seed version to the generated opportunity-floor generation so new `fillN-opp-*` records refresh seed-owned plans without overwriting plans created manually in Mock mode. Keep the mock-density check covering contracts, meetings, solutioning records, and accrual schedules for every generated deal.
+
+Run mock-density checks against a fresh in-memory showroom seed, not the developer's durable Mock edits. When the canonical generated customer/contact cast changes, bump the mock-store schema so persisted contacts refresh with meetings, leads, and every linked record instead of retaining stale identities.
+
 Match grouped Solutioning lists to the Goals section hierarchy. Render each owner, customer, or status as its own bordered collapsible band with an identity mark, label, adjacent request count, and repeated table headings; show the person's avatar for owner groups. Provide one toolbar control that switches between Open all and Close all and governs the same groups in table and split views.
 
 Render inline owner identities as crown, profile picture, then name. Keep the profile picture immediately beside the name as part of the person's identity.
