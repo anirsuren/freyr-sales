@@ -254,3 +254,5 @@ In lead source workspaces, “Showing X of Y leads” means X rows match the cur
 Show profile pictures beside assigned people in the Leads page Owner filter, matching the owner identities in the table. Keep Unassigned neutral rather than presenting it as a person.
 
 Keep graph hover previews globally mutually exclusive. Entering a graph mark must synchronously dismiss the preview owned by any previous mark, even when the marks use different shared chart layers. Never allow two graph tooltips to remain visible at once.
+
+Never render decorative color dots for grouping or date-sort choices. ColorSelect must provide semantic fallback icons for flat lists, customers, owners, statuses, newest, and date-based ordering, while domain-specific controls should pass their own entity icon. Keep the same semantic icon vocabulary across modules.

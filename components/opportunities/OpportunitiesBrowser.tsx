@@ -14,6 +14,7 @@ import {
   Target as TargetIcon,
   ListChecks as ListChecksIcon,
   Briefcase,
+  Building2,
   ChevronDown,
   Sparkles,
   Tag,
@@ -43,6 +44,7 @@ import {
   Send,
   Hourglass,
   PauseCircle,
+  Package,
   Trophy,
   CircleSlash,
   Repeat,
@@ -2635,8 +2637,8 @@ export function OpportunitiesBrowser({
                 className="w-[180px] shrink-0"
                 options={[
                   { value: "none", label: "No grouping", color: "#64748B", icon: Rows3 },
-                  { value: "customer", label: "Group by customer", color: "var(--ink-bright-blue)", icon: Briefcase },
-                  { value: "offering", label: "Group by offering", color: "var(--ink-magenta)", icon: Sparkles },
+                  { value: "customer", label: "Group by customer", color: "var(--ink-bright-blue)", icon: Building2 },
+                  { value: "offering", label: "Group by offering", color: "var(--ink-magenta)", icon: Package },
                 ]}
               />
               )

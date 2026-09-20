@@ -3,7 +3,21 @@
 import { Fragment, useState, useRef, useEffect, type CSSProperties } from "react";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { createPortal } from "react-dom";
-import { ChevronDown, Check, Crown, ExternalLink, Plus, Search, type LucideIcon } from "lucide-react";
+import {
+  Building2,
+  CalendarClock,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Crown,
+  ExternalLink,
+  ListChecks,
+  Plus,
+  Rows3,
+  Search,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import {
   PriorityLabel,
   PriorityTooltip,
@@ -246,6 +260,24 @@ function iconForeground(color?: string): string {
   const blue = Number.parseInt(full.slice(4, 6), 16);
   const luminance = (red * 299 + green * 587 + blue * 114) / 1000;
   return luminance > 164 ? "#243142" : "#FFFFFF";
+}
+
+/**
+ * Grouping and date-sort controls are navigation vocabulary, not arbitrary
+ * categories. Give them a semantic mark even if a caller forgets to pass one,
+ * so a missed call site can never regress to four interchangeable colour dots.
+ * Explicit caller icons still win for domain-specific variants.
+ */
+function semanticControlIcon(option: ColorOption): LucideIcon | undefined {
+  if (option.icon) return option.icon;
+  const words = `${option.value} ${option.label}`.toLowerCase();
+  if (/no grouping|ungrouped|flat list/.test(words)) return Rows3;
+  if (/customer|company|account/.test(words)) return Building2;
+  if (/owner|assignee|person/.test(words)) return UserRound;
+  if (/status|state/.test(words)) return ListChecks;
+  if (/newest|recent/.test(words)) return CalendarDays;
+  if (/needed|due date|start date|by date/.test(words)) return CalendarClock;
+  return undefined;
 }
 
 // A custom, color-coded dropdown to replace cheap gray <select>s (Suren: "color
@@ -513,7 +545,7 @@ export function ColorSelect({
     prominent?: boolean;
     solo?: boolean;
   }) => {
-    const Icon = o.icon;
+    const Icon = semanticControlIcon(o);
     if (o.agentName)
       return (
         <AgentAvatar

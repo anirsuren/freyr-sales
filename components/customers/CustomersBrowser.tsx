@@ -26,7 +26,7 @@ import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { replaceAppBrowserUrl } from "@/lib/modeUrl";
-import { SearchX, Download, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload, Building2, Users, LayoutList, Table2, Layers, UserRound, CircleSlash, History } from "lucide-react";
+import { SearchX, Download, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload, Building2, Users, LayoutList, Table2, Layers, UserRound, History } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
@@ -1149,7 +1149,7 @@ export function CustomersBrowser({
                     value: "none",
                     label: "No grouping",
                     short: "Flat list",
-                    icon: CircleSlash,
+                    icon: Rows3,
                     color: "var(--ink-blue-soft)",
                   },
                   {
