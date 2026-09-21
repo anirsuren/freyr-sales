@@ -1,6 +1,7 @@
 import { validateNewSolutioningRequest } from "./solutioningValidation";
 import { getDataMode } from "./dataMode";
 import { mockFillSolutioning, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
+import { canonicalMockTeammate } from "./salesTeam";
 import { todayISO } from "@/lib/utils";
 
 /**
@@ -618,12 +619,53 @@ function normalizeRequest(v: unknown): SolutionRequest | null {
 function normalize(v: unknown): SolutioningState {
   if (!v || typeof v !== "object") return structuredClone(EMPTY_SOLUTIONING);
   const raw = v as Partial<SolutioningState>;
-  return {
+  const state: SolutioningState = {
     requests: Array.isArray(raw.requests)
       ? raw.requests
           .map(normalizeRequest)
           .filter((r): r is SolutionRequest => r !== null)
       : [],
+  };
+  if (getDataMode() !== "mock") return state;
+
+  /* Rows seeded before the app gained one shared mock roster can still be in
+     the mock store. Repair every INTERNAL teammate reference together: the
+     row, its documents, activity and workstreams must all tell the same
+     story. Customer contacts remain untouched unless their exact name was one
+     of the five retired teammate identities. */
+  return {
+    requests: state.requests.map((request) => ({
+      ...request,
+      requestedBy: canonicalMockTeammate(request.requestedBy),
+      owner: request.owner
+        ? canonicalMockTeammate(request.owner)
+        : undefined,
+      completedBy: request.completedBy
+        ? canonicalMockTeammate(request.completedBy)
+        : undefined,
+      attendees: request.attendees?.map(canonicalMockTeammate),
+      workstreams: (request.workstreams ?? []).map((workstream) => ({
+        ...workstream,
+        lead: workstream.lead
+          ? canonicalMockTeammate(workstream.lead)
+          : undefined,
+        primaryAssignee: workstream.primaryAssignee
+          ? canonicalMockTeammate(workstream.primaryAssignee)
+          : undefined,
+        contributors: workstream.contributors.map(canonicalMockTeammate),
+      })),
+      docs: request.docs.map((doc) => ({
+        ...doc,
+        addedBy: canonicalMockTeammate(doc.addedBy),
+        assignedTo: doc.assignedTo
+          ? canonicalMockTeammate(doc.assignedTo)
+          : undefined,
+      })),
+      activity: request.activity.map((event) => ({
+        ...event,
+        by: canonicalMockTeammate(event.by),
+      })),
+    })),
   };
 }
 
@@ -1000,7 +1042,9 @@ async function topUpMockFill(): Promise<SolutioningState> {
   return withWrite(async () => {
     const raw = await readRowRaw().catch(() => null);
     const base =
-      raw && !isPreSplitSeed(raw) ? normalize(raw) : sampleSolutioning();
+      raw && !isPreSplitSeed(raw)
+        ? normalize(raw)
+        : normalize(sampleSolutioning());
     /* Sweep rows from an OLDER generated floor first (see FILL_GENERATION):
        they were the marker that kept this top-up from ever running again, so
        a change to the fill tables could never reach a workspace that already

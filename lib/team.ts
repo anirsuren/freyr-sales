@@ -16,6 +16,19 @@ export function repSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+/**
+ * Internal links historically used the readable name slug while the Team
+ * roster later moved to durable identity slugs. Accept both so a person link
+ * opened from an older surface can never strand the user on Rep not found.
+ */
+export function repMatchesSlug(
+  name: string,
+  requestedSlug: string,
+  identitySlug?: string | null
+): boolean {
+  return requestedSlug === identitySlug || requestedSlug === repSlug(name);
+}
+
 export function repEmail(name: string): string {
   const clean = name
     .toLowerCase()

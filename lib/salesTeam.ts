@@ -43,3 +43,21 @@ export const SALES_TEAM: string[] = [
   "Hannah Schmidt",
   "Leonard Stanton",
 ];
+
+/**
+ * Early mock Solutioning rows predate the shared roster and were saved with a
+ * separate cast. Map those persisted names onto the teammates who now own the
+ * same roles so every internal person reference resolves to one roster.
+ */
+const LEGACY_MOCK_TEAMMATE: Readonly<Record<string, string>> = {
+  "elena rossi": "Margaret Whitfield",
+  "omar haddad": "Gordon Ashby",
+  "nina kowalski": "Audrey Kingsley",
+  "grace liu": "Grace Lockwood",
+  "marcus chen": "Marcus Bramwell",
+};
+
+export function canonicalMockTeammate(name: string): string {
+  const trimmed = name.trim().replace(/\s+/g, " ");
+  return LEGACY_MOCK_TEAMMATE[trimmed.toLowerCase()] ?? trimmed;
+}

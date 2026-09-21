@@ -15,7 +15,7 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
-import { repEmail, repPhone, teamsChatUrl } from "@/lib/team";
+import { repEmail, repMatchesSlug, repPhone, teamsChatUrl } from "@/lib/team";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -305,7 +305,11 @@ export default async function RepPage({
   const ranked = buildRepStats(allDeals, {
     roster: salesTeamFor(currentUser),
   }); // sorted by open pipeline desc
-  const me = ranked.find((rep) => rep.slug === slug);
+  /* Team cards carry the durable identity slug; several record tables carry
+     the readable name slug. Both identify the same teammate. Rejecting the
+     latter made a valid Mark Miller link from Solutioning land on a dead
+     "Rep not found" screen. */
+  const me = ranked.find((rep) => repMatchesSlug(rep.name, slug, rep.slug));
   if (!me) {
     return (
       <EmptyState

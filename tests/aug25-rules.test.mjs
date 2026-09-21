@@ -16,6 +16,37 @@ import {
   scheduleSupersedesAccrual,
 } from "../lib/contractsShared.ts";
 import { nextLeadRef, leadAgeDays, isOpenLead } from "../lib/leadsShared.ts";
+import { repMatchesSlug, repSlug } from "../lib/team.ts";
+import {
+  SALES_TEAM,
+  canonicalMockTeammate,
+} from "../lib/salesTeam.ts";
+
+/* ------------------------------------------ mock teammate link integrity */
+
+test("mock rep profiles accept readable and durable route slugs", () => {
+  assert.equal(repMatchesSlug("Mark Miller", "mark-miller"), true);
+  assert.equal(
+    repMatchesSlug("Mark Miller", "mark-miller--durable", "mark-miller--durable"),
+    true
+  );
+  assert.equal(repMatchesSlug("Mark Miller", "marcus-bramwell"), false);
+});
+
+test("legacy Solutioning teammates migrate onto the shared mock roster", () => {
+  const retiredNames = [
+    "Elena Rossi",
+    "Omar Haddad",
+    "Nina Kowalski",
+    "Grace Liu",
+    "Marcus Chen",
+  ];
+  for (const oldName of retiredNames) {
+    const teammate = canonicalMockTeammate(oldName);
+    assert.ok(SALES_TEAM.includes(teammate), `${oldName} maps to ${teammate}`);
+    assert.ok(repSlug(teammate), `${teammate} has a valid profile route`);
+  }
+});
 
 /**
  * THE RULES FROM SUREN'S AUG 25 CALL, tested where they actually live.
