@@ -1,16 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ChevronDown,
-  Columns2,
-  Crown,
-  LayoutGrid,
-  Rows3,
-  Settings2,
-  Table2,
-} from "lucide-react";
-import Link from "next/link";
+import { Crown, LayoutGrid, Search, Settings2, Table2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   knownPeople,
@@ -28,6 +19,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { PersonFan } from "@/components/ui/PersonFan";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
+import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { cn } from "@/lib/utils";
 import type { RunOp } from "./PerformanceModule";
 
@@ -82,12 +74,15 @@ export function GroupPerformanceTab({
   const [shareGoal, setShareGoal] = useState<PrimaryGoal | null>(null);
   /** The full roster, opened from under the group picker. */
   const [rosterOpen, setRosterOpen] = useState(false);
-  /* HOW THE ROSTER IS LAID OUT (Anir, Aug 31: "you can view it in different
-     ways, like one-column, two-column, tiles, table, whatever you want").
-     Remembered like every other view choice in the app. */
-  const [rosterView, setRosterView] = useStoredView<
-    "list" | "two" | "tiles" | "table"
-  >("freyr.groupRoster.view", "list", ["list", "two", "tiles", "table"] as const);
+  /* The roster has two deliberate density choices: the default two-column
+     identity tiles and a compact table. A new storage key retires the old
+     full-width "list" preference, which left four people floating in a tall
+     modal even after the roster was redesigned. */
+  const [rosterView, setRosterView] = useStoredView<"tiles" | "table">(
+    "freyr.groupRoster.view.v2",
+    "tiles",
+    ["tiles", "table"] as const
+  );
   const [rosterQuery, setRosterQuery] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
 
@@ -464,195 +459,185 @@ export function GroupPerformanceTab({
     {/* EVERYONE IN THE GROUP, SEARCHABLE. Each row carries what that person
         carries and what they have signed off, so the list answers the question
         that made him open it rather than being a wall of names. */}
-    <Modal
-      open={rosterOpen}
-      onClose={() => {
-        setRosterOpen(false);
-        setRosterQuery("");
-      }}
-      title={group ? `Who is in ${group.name}` : "Who is in this group"}
-      size="wide"
-      tall
-      dialogClassName="!h-[min(680px,calc(100vh-3rem))]"
-      bodyClassName="flex flex-col"
-    >
-      <div className="flex min-h-0 flex-1 flex-col">
-        <input
-          value={rosterQuery}
-          onChange={(e) => setRosterQuery(e.target.value)}
-          placeholder="Search this group…"
-          aria-label="Search the group"
-          className="h-10 w-full shrink-0 rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
-        />
-        {/* The count and the layout picker share one line, so neither costs a
-            row of its own above a list that wants the height. */}
-        <div className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
-          <p className="text-[12px] text-text-tertiary">
-            {(() => {
-              const n = members.filter((m) =>
-                m.toLowerCase().includes(rosterQuery.trim().toLowerCase())
-              ).length;
-              return `${n} of ${members.length} ${members.length === 1 ? "person" : "people"}`;
-            })()}
-          </p>
-          {(() => {
-            const views = [
-              { key: "list", label: "List", icon: Rows3 },
-              { key: "two", label: "Two columns", icon: Columns2 },
-              { key: "tiles", label: "Tiles", icon: LayoutGrid },
-              { key: "table", label: "Table", icon: Table2 },
-            ] as const;
-            const current = views.find((view) => view.key === rosterView) ?? views[0];
-            const CurrentIcon = current.icon;
-            return (
-              <label className="relative inline-flex shrink-0 items-center">
-                <span className="sr-only">How to show this group</span>
-                <CurrentIcon
-                  size={14}
-                  strokeWidth={2.1}
-                  aria-hidden="true"
-                  className="pointer-events-none absolute left-2 text-text-secondary"
-                />
-                <select
-                  value={rosterView}
-                  onChange={(event) =>
-                    setRosterView(event.target.value as typeof rosterView)
-                  }
-                  aria-label="How to show this group"
-                  className="h-8 cursor-pointer appearance-none rounded-lg border border-border-light bg-white pl-7 pr-7 text-[12px] font-medium text-text-secondary outline-none transition-colors hover:bg-surface focus:border-blue-primary"
-                >
-                  {views.map((view) => (
-                    <option key={view.key} value={view.key}>
-                      {view.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={13}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                  className="pointer-events-none absolute right-2 text-text-tertiary"
-                />
-              </label>
-            );
-          })()}
-        </div>
-        <div
-          className={cn(
-            "mt-2 min-h-0 flex-1 overflow-y-auto pr-0.5",
-            rosterView === "list" && "space-y-1.5",
-            rosterView === "two" && "grid grid-cols-1 gap-1.5 sm:grid-cols-2 content-start",
-            rosterView === "tiles" &&
-              "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 content-start",
-            rosterView === "table" && "space-y-0"
-          )}
-        >
-          {rosterView === "table" && (
-            /* A header row, once, above the rows — the list layouts do not
+      <Modal
+        open={rosterOpen}
+        onClose={() => {
+          setRosterOpen(false);
+          setRosterQuery("");
+        }}
+        title={group ? `Who is in ${group.name}` : "Who is in this group"}
+        size="wide"
+        tall
+        dialogClassName="!h-[min(680px,calc(100vh-3rem))]"
+        bodyClassName="flex flex-col"
+      >
+        <div className="flex min-h-0 flex-1 flex-col">
+          {/* One real toolbar. Search, result count, and the two supported views
+            stay together instead of consuming two sparse rows. */}
+          <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2.5">
+            <label className="relative min-w-0">
+              <span className="sr-only">Search the group</span>
+              <Search
+                size={16}
+                strokeWidth={1.9}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+              />
+              <input
+                value={rosterQuery}
+                onChange={(e) => setRosterQuery(e.target.value)}
+                placeholder="Search this group…"
+                className="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] outline-none transition-colors focus:border-blue-primary"
+              />
+            </label>
+            <p
+              className="whitespace-nowrap px-1 text-[12px] font-medium text-text-tertiary tnum"
+              aria-live="polite"
+            >
+              {(() => {
+                const n = members.filter((m) =>
+                  m.toLowerCase().includes(rosterQuery.trim().toLowerCase()),
+                ).length;
+                return `${n} of ${members.length}`;
+              })()}
+            </p>
+            <ViewSwitch
+              ariaLabel="How to show this group"
+              className="flex"
+              value={rosterView}
+              onChange={setRosterView}
+              options={
+                [
+                  { key: "tiles", label: "Tiles", icon: LayoutGrid },
+                  { key: "table", label: "Table", icon: Table2 },
+                ] as const
+              }
+            />
+          </div>
+          <div
+            className={cn(
+              "mt-3 min-h-0 flex-1 overflow-y-auto pr-0.5",
+              rosterView === "tiles" &&
+                "grid grid-cols-1 content-start gap-2 sm:grid-cols-2",
+              rosterView === "table" && "space-y-0",
+            )}
+          >
+            {rosterView === "table" && (
+              /* A header row, once, above the rows — the list layouts do not
                need one because each row carries its own labels. */
-            <div className="sticky top-0 z-[1] grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-border-light bg-white px-3 py-2 text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-              <span>Person</span>
-              <span>Goals here</span>
-            </div>
-          )}
-          {members
-            .filter((m) =>
-              m.toLowerCase().includes(rosterQuery.trim().toLowerCase())
-            )
-            .map((m) => {
-              const theirs = (scoped.goals ?? []).filter((g) =>
-                (g.assignments ?? []).some(
-                  (a) => a.person.trim().toLowerCase() === m.trim().toLowerCase()
-                )
-              );
+              <div className="sticky top-0 z-[1] grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-border-light bg-white px-3 py-2 text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                <span>Person</span>
+                <span>Goals here</span>
+              </div>
+            )}
+            {members
+              .filter((m) =>
+                m.toLowerCase().includes(rosterQuery.trim().toLowerCase()),
+              )
+              .map((m) => {
+                const theirs = (scoped.goals ?? []).filter((g) =>
+                  (g.assignments ?? []).some(
+                    (a) =>
+                      a.person.trim().toLowerCase() === m.trim().toLowerCase(),
+                  ),
+                );
               const owner = group?.head === m;
               const goalsLine =
                 theirs.length === 0
-                  ? "no goals in this group"
-                  : `${theirs.length} ${theirs.length === 1 ? "goal" : "goals"} here`;
+                  ? "No goals"
+                  : `${theirs.length} ${theirs.length === 1 ? "goal" : "goals"}`;
 
-              /* TILES stack the face over the name, so a hundred people fit in
-                 a few rows and you scan for a face rather than reading down. */
-              if (rosterView === "tiles") {
-                return (
+                /* The standard roster tile keeps identity, ownership, and the
+                 person's group workload readable without turning every person
+                 into a full-width card. */
+                if (rosterView === "tiles") {
+                  return (
                   <div
                     key={m}
-                    className="flex flex-col items-center gap-1.5 rounded-lg border border-border-light bg-white px-2 py-3 text-center"
-                  >
-                    <Avatar name={m} className="h-9 w-9 text-[11px]" />
-                    <span className="w-full truncate text-[12px] font-semibold text-text-primary">
-                      {m}
-                    </span>
-                    <span className="w-full truncate text-[10.5px] text-text-tertiary">
-                      {goalsLine}
-                    </span>
-                    {owner && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[9.5px] font-semibold text-[color:var(--ink-violet-soft)]">
-                        <Crown size={9} strokeWidth={2.6} />
-                        Owner
+                    className="flex min-w-0 items-center gap-3 rounded-xl border border-border-light bg-white p-3 text-left shadow-[0_1px_1px_rgba(15,23,42,0.02)]"
+                    >
+                      <span className="relative shrink-0">
+                        <Avatar name={m} className="h-10 w-10 text-[11px]" />
+                        {owner && (
+                          <span
+                            className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-[color:var(--ink-violet-soft)] text-white"
+                            title="Group owner"
+                          >
+                            <Crown
+                              size={8}
+                              strokeWidth={2.8}
+                              aria-hidden="true"
+                            />
+                          </span>
+                        )}
                       </span>
-                    )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13.5px] font-semibold text-text-primary">
+                          {m}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11.5px] text-text-tertiary">
+                          {owner ? "Group owner" : "Group member"}
+                        </span>
+                      </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-lg bg-surface px-2 py-1 text-[11px] font-medium text-text-secondary">
+                        {goalsLine}
+                      </span>
+                    </span>
                   </div>
-                );
-              }
+                  );
+                }
 
-              /* TABLE is rows under one header, hairlines instead of cards. */
-              if (rosterView === "table") {
-                return (
-                  <div
-                    key={m}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border-light px-3 py-2 last:border-b-0"
-                  >
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      {owner && (
-                        <Crown
-                          size={11}
-                          strokeWidth={2.6}
-                          className="shrink-0 text-[color:var(--ink-violet-soft)]"
-                          aria-label="Group owner"
+                /* TABLE is rows under one header, hairlines instead of cards. */
+                if (rosterView === "table") {
+                  return (
+                    <div
+                      key={m}
+                      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border-light px-3 py-2 last:border-b-0"
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        {owner && (
+                          <Crown
+                            size={11}
+                            strokeWidth={2.6}
+                            className="shrink-0 text-[color:var(--ink-violet-soft)]"
+                            aria-label="Group owner"
+                          />
+                        )}
+                        <Avatar
+                          name={m}
+                          className="h-6 w-6 shrink-0 text-[8px]"
                         />
-                      )}
-                      <Avatar name={m} className="h-6 w-6 shrink-0 text-[8px]" />
-                      <span className="truncate text-[13px] font-semibold text-text-primary">
-                        {m}
+                        <span className="truncate text-[13px] font-semibold text-text-primary">
+                          {m}
+                        </span>
                       </span>
-                    </span>
-                    <span className="whitespace-nowrap text-[12px] text-text-secondary tnum">
-                      {theirs.length}
-                    </span>
-                  </div>
-                );
-              }
+                      <span className="whitespace-nowrap text-[12px] text-text-secondary tnum">
+                        {theirs.length}
+                      </span>
+                    </div>
+                  );
+                }
 
-              /* LIST and TWO share the card row; only the container differs. */
-              return (
-                <div
-                  key={m}
-                  className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-3 py-2"
-                >
-                  {owner && (
-                    <Crown
-                      size={11}
-                      strokeWidth={2.6}
-                      className="shrink-0 text-[color:var(--ink-violet-soft)]"
-                      aria-label="Group owner"
-                    />
-                  )}
-                  <Avatar name={m} className="h-7 w-7 shrink-0 text-[9px]" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold text-text-primary">
-                      {m}
-                    </span>
-                    <span className="block truncate text-[11.5px] text-text-tertiary">
-                      {goalsLine}
-                    </span>
-                  </span>
+                return null;
+              })}
+            {members.filter((m) =>
+              m.toLowerCase().includes(rosterQuery.trim().toLowerCase()),
+            ).length === 0 && (
+              <div className="col-span-full flex min-h-52 items-center justify-center rounded-xl border border-dashed border-border-light bg-surface/45 px-6 text-center">
+                <div>
+                  <p className="text-[13px] font-semibold text-text-primary">
+                    No people found
+                  </p>
+                  <p className="mt-1 text-[12px] text-text-tertiary">
+                    Try a different name or clear the search.
+                  </p>
                 </div>
-              );
-            })}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
     </>
   );
 }
