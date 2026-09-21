@@ -112,6 +112,7 @@ export function LiveMarketIntelDashboard({
         id: person.id,
         name: displayPersonName(person.name),
         role: person.role,
+        linkedinUrl: person.linkedinUrl,
         photoUrl: person.photoUrl,
         /* The same 3 months the company page counts (Sep 13 loop). */
         posts: personPostsInPageWindow(people[person.id]),

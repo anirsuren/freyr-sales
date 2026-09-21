@@ -52,7 +52,7 @@ import type { CompanyCard } from "@/lib/marketIntelFeed";
 import type { TrackedCompany } from "@/lib/marketIntelTracking";
 import { outletName } from "@/lib/marketIntelText";
 import { DIVISIONS, DIVISION_META, type Division } from "@/lib/offeringMaterials";
-import { safeHref } from "@/lib/safeUrl";
+import { linkedInUrl, safeHref } from "@/lib/safeUrl";
 import { cn } from "@/lib/utils";
 
 /**
@@ -166,18 +166,33 @@ function PeoplePopup({ panel, onClose }: { panel: PeoplePanel | null; onClose: (
           <p className="mb-3 text-[12.5px] leading-relaxed text-text-secondary">
             {panel.people.length} {panel.people.length === 1 ? "person is" : "people are"} included in this company’s intelligence feed.
           </p>
-          {panel.people.map(person => (
-            <div key={person.id} className="flex items-center gap-3 rounded-xl border border-border-light bg-white p-3">
-              <Avatar name={person.name} src={person.photoUrl} className="h-10 w-10 shrink-0 text-[12px]" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[13.5px] font-semibold text-text-primary">{person.name}</p>
-                <p className="text-[11.5px] text-text-secondary">{person.role}</p>
+          {panel.people.map(person => {
+            const profileHref = linkedInUrl(person.linkedinUrl);
+            return (
+              <div key={person.id} className="flex items-center gap-3 rounded-xl border border-border-light bg-white p-3">
+                <Avatar name={person.name} src={person.photoUrl} className="h-10 w-10 shrink-0 text-[12px]" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13.5px] font-semibold text-text-primary">{person.name}</p>
+                  <p className="text-[11.5px] text-text-secondary">{person.role}</p>
+                </div>
+                <span className="whitespace-nowrap rounded-full bg-blue-light px-2.5 py-1 text-[10.5px] font-semibold text-blue-primary tnum">
+                  {person.posts} {person.posts === 1 ? "post" : "posts"}
+                </span>
+                {profileHref && (
+                  <a
+                    href={profileHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open ${person.name} on LinkedIn`}
+                    title="Open LinkedIn profile"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border-light text-blue-primary transition-[background-color,border-color,transform] hover:-translate-y-px hover:border-blue-subtle hover:bg-blue-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+                  >
+                    <ArrowUpRight size={15} strokeWidth={2.2} />
+                  </a>
+                )}
               </div>
-              <span className="whitespace-nowrap rounded-full bg-blue-light px-2.5 py-1 text-[10.5px] font-semibold text-blue-primary tnum">
-                {person.posts} {person.posts === 1 ? "post" : "posts"}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : panel?.kind === "tracking" && panel.people.length > 0 ? (
         <div className="space-y-2">

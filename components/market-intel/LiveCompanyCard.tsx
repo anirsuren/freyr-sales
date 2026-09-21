@@ -44,6 +44,7 @@ export type CardPerson = {
   id: string;
   name: string;
   role: string;
+  linkedinUrl?: string;
   photoUrl?: string;
   posts: number;
 };
