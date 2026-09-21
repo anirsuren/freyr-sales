@@ -459,10 +459,10 @@ export function LiveCompanyGrid({
         </div>
       ) : view === "list" ? (
         <div key="company-list" className="mi-view-list-in overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_12px_36px_-32px_rgba(15,23,42,0.45)]">
-          <div className={cn("min-w-[1230px]", group === "customer" && "min-w-[1340px]")}>
+          <div className={cn("min-w-[1370px]", group === "customer" && "min-w-[1450px]")}>
             <div
               className="grid items-center gap-5 border-b border-border-light bg-surface/80 px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary"
-              style={{ gridTemplateColumns: group === "customer" ? "minmax(210px,.95fr) 185px 235px minmax(245px,1.1fr) 130px 120px 90px" : "minmax(230px,1fr) 200px 250px minmax(270px,1.25fr) 120px 90px" }}
+              style={{ gridTemplateColumns: group === "customer" ? "minmax(285px,1.2fr) 180px 225px minmax(260px,1.1fr) 130px 120px 90px" : "minmax(300px,1.2fr) 190px 240px minmax(270px,1.2fr) 120px 90px" }}
             >
               <span>Company</span>
               <span>Intelligence pulse</span>
@@ -475,13 +475,13 @@ export function LiveCompanyGrid({
             <div className="mi-list-stagger divide-y divide-border-light">
               {listRows.map(row => {
                 const card = row.card;
-                const rowTemplate = group === "customer" ? "minmax(210px,.95fr) 185px 235px minmax(245px,1.1fr) 130px 120px 90px" : "minmax(230px,1fr) 200px 250px minmax(270px,1.25fr) 120px 90px";
+                const rowTemplate = group === "customer" ? "minmax(285px,1.2fr) 180px 225px minmax(260px,1.1fr) 130px 120px 90px" : "minmax(300px,1.2fr) 190px 240px minmax(270px,1.2fr) 120px 90px";
                 if (!card) return (
                   <div key={row.id} className="relative grid min-h-[106px] items-center gap-5 px-5 py-4" style={{ gridTemplateColumns: rowTemplate }}>
                     <div className="flex min-w-0 items-center gap-2.5">
                       <button type="button" aria-label={`${stars.has(row.id) ? "Unstar" : "Star"} ${row.name}`} aria-pressed={stars.has(row.id)} onClick={() => stars.has(row.id) ? setUnstar({id: row.id, name: row.name}) : void setStar(row.id, true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface", stars.has(row.id) ? "text-amber-600" : "text-text-tertiary")}><Star size={15} fill={stars.has(row.id) ? "currentColor" : "none"} /></button>
                       <MiLogo name={row.name} className="h-10 w-10 shrink-0" />
-                      <span className="min-w-0"><span className="block text-[13.5px] font-semibold leading-snug text-text-primary">{row.name}</span><DivisionChips divisions={divisions[row.id] ?? []} className="mt-1" /></span>
+                      <span className="flex min-w-0 flex-col items-start"><span className="block text-[13.5px] font-semibold leading-snug text-text-primary">{row.name}</span><DivisionChips divisions={divisions[row.id] ?? []} className="mt-1" /></span>
                     </div>
                     <div><span className="inline-flex items-center gap-2 rounded-full bg-blue-light px-2.5 py-1 text-[11px] font-semibold text-blue-primary"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-primary" />Collecting first updates</span></div>
                     <div className="grid grid-cols-2 gap-1.5 opacity-55"><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /></div>
@@ -501,12 +501,12 @@ export function LiveCompanyGrid({
                       <button type="button" aria-label={`${stars.has(card.id) ? "Unstar" : "Star"} ${card.name}`} aria-pressed={stars.has(card.id)} onClick={() => stars.has(card.id) ? setUnstar({id:card.id,name:card.name}) : void setStar(card.id,true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white hover:shadow-sm", stars.has(card.id) ? "text-amber-600" : "text-text-tertiary hover:text-amber-600")}><Star size={15} strokeWidth={2.2} fill={stars.has(card.id) ? "currentColor" : "none"} /></button>
                       <Link href={`/market-intel/${card.id}`} className="flex min-w-0 items-start gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
                         <MiLogo name={card.name} logoUrl={card.logoUrl} className="h-11 w-11 shrink-0" />
-                        <span className="min-w-0">
-                          <span className="text-[13.5px] font-semibold leading-snug text-text-primary transition-colors group-hover/row:text-blue-primary">
+                        <span className="flex min-w-0 flex-col items-start">
+                          <span className="block text-[13.5px] font-semibold leading-snug text-text-primary transition-colors group-hover/row:text-blue-primary">
                             {card.name}
                             <ArrowUpRight size={12} className="ml-1 inline-block align-text-top opacity-0 transition-opacity group-hover/row:opacity-100" />
                           </span>
-                          <DivisionChips divisions={divisions[card.id] ?? []} className="mt-1.5" />
+                          <DivisionChips divisions={divisions[card.id] ?? []} className="mt-1" />
                         </span>
                       </Link>
                     </div>

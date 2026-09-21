@@ -196,6 +196,13 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 21 Market Intelligence company-column spacing:** Customer and
+  Competitor list views give the Company column more width, and division chips
+  are now anchored immediately beneath the company name in the same vertical
+  block. Long names can wrap without leaving the tag stranded near the bottom
+  of the row. Verified on localhost in Customer and Competitor Intelligence
+  list views; typecheck and rule tests pass. Local only, not deployed.
+
 - **Sep 21 Market Intelligence page selector restored:** Customer and
   Competitor Intelligence once again show the shared three-option selector at
   the top of the page, matching the Market Intelligence view. People can move
