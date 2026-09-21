@@ -486,10 +486,10 @@ function showroomTracking(): MarketIntelTracking {
     const id = `mockgen-rich-${root.toLowerCase()}`;
     const group = index < 30 ? "customer" : "competitor";
     const division = (["MPR", "MDV", "CON"] as Division[])[index % 3];
-    companies.push({ id, name: `${root} ${index < 30 ? ["Biopharma", "MedTech", "Consumer Health"][index % 3] : "Regulatory Services"}`, group, industry: "Life sciences", hq: ["United States", "Germany", "India", "United Kingdom", "Singapore"][index % 5], website: `https://${root.toLowerCase()}.example`, linkedinUrl: "", competitors: [], keywords: ["regulatory", "clinical", "expansion"], note: "Fictional demonstration company.", addedAt: day(-60-index), divisions: [division] });
+    companies.push({ id, name: `${root} ${index < 30 ? ["Biopharma", "MedTech", "Consumer Health"][index % 3] : "Regulatory Services"}`, group, industry: "Life sciences", hq: ["United States", "Germany", "India", "United Kingdom", "Singapore"][index % 5], website: `https://${root.toLowerCase()}.example`, linkedinUrl: "", competitors: [], keywords: ["regulatory", "clinical", "expansion"], note: "Monitored across regulatory, clinical, and commercial signals.", addedAt: day(-60-index), divisions: [division] });
     if (group === "customer") for (let seat = 0; seat < 3 + index % 4; seat++) {
       const name = `${["Maya", "Leo", "Priya", "Owen", "Nora", "Arun"][seat % 6]} ${root}`;
-      people.push({id:`${id}-person-${seat}`,companyId:id,name,role:["VP Regulatory Affairs", "Head of Clinical Operations", "Quality Director", "Medical Affairs Lead", "R&D Director", "Market Access Lead"][seat],linkedinUrl:"",headline:"Sample industry contact",addedAt:day(-30)});
+      people.push({id:`${id}-person-${seat}`,companyId:id,name,role:["VP Regulatory Affairs", "Head of Clinical Operations", "Quality Director", "Medical Affairs Lead", "R&D Director", "Market Access Lead"][seat],linkedinUrl:"",headline:"Life sciences leader",addedAt:day(-30)});
     }
   });
   return { companies, people, demoVersion: 20260917 };
@@ -527,7 +527,7 @@ export async function readMarketIntelTracking(options?: {
     const existingPeople = new Set(tracking.people.map(person => person.id));
     tracking = { ...tracking, companies: [...tracking.companies, ...samples.companies.filter(company => !existing.has(company.id))], people: [...tracking.people, ...samples.people.filter(person => !existingPeople.has(person.id))], demoVersion: 20260917 };
     const { error: seedError } = await trackingClient().from("offering_catalog_state").upsert({id:row,catalog:tracking,updated_at:new Date().toISOString()});
-    if (seedError) throw new Error(`Could not populate sample Market Intel: ${seedError.message}`);
+    if (seedError) throw new Error(`Could not populate Market Intelligence: ${seedError.message}`);
   }
   /* REAL MODE: the code's seed list joins the catalogue once, unticked, so
      nobody's page fills up by itself. Idempotent, and a seed an admin
@@ -772,7 +772,7 @@ export async function untrackPerson(id: string): Promise<void> {
 
 /** Story moderation in the sample workspace never writes real feed rows. */
 export async function hideMockIntelStories(companyId:string, urls:string[]) {
-  if (getDataMode() !== "mock") throw new Error("Sample workspace required.");
+  if (getDataMode() !== "mock") throw new Error("This action is unavailable in the current workspace.");
   const tracking = await readMarketIntelTracking({fresh:true});
   const prior = tracking.mockHiddenStories?.[companyId] ?? [];
   tracking.mockHiddenStories = {...tracking.mockHiddenStories,[companyId]:[...new Set([...prior,...urls])]};

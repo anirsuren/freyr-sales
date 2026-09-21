@@ -151,11 +151,11 @@ export async function POST(req: NextRequest) {
     try {
       if (body.kind === "company-retry") return NextResponse.json({ok:true,status:"complete"});
       if (body.kind === "person-link") {
-        const slug = String(body.linkedinUrl ?? "").split("/in/")[1]?.split(/[/?#]/)[0] ?? "Sample contact";
+        const slug = String(body.linkedinUrl ?? "").split("/in/")[1]?.split(/[/?#]/)[0] ?? "New contact";
         const person = await trackPerson({...body,name:body.name || slug.replace(/-/g," ")});
         return NextResponse.json({ok:true,person});
       }
-      const result = await trackCompany({...body,name:body.name || "Sample company"}, {addedBy,additionLimit,divisions:cleanDivisions(body.divisions)});
+      const result = await trackCompany({...body,name:body.name || "New company"}, {addedBy,additionLimit,divisions:cleanDivisions(body.divisions)});
       await setCompanyGroup(result.company.id, body.group === "competitor" ? "competitor" : "customer");
       await setMarketIntelBookmark(scope,result.company.id,true);
       return NextResponse.json({ok:true,company:result.company,status:"complete"});

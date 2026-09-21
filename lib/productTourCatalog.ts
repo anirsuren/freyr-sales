@@ -256,7 +256,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     eyebrow: "Settings",
     title: "Finished, or still being built",
     description:
-      "The app ships in stages. This switch shows you the parts still under construction, with sample data, so you can look without touching anything real.",
+      "The app ships in stages. This switch opens the complete review workspace so you can inspect every workflow without changing the released workspace.",
     targets: pageTargets([
       '[data-tour="settings-data-mode"]',
       'div[aria-label="Workspace data mode"]',

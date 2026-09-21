@@ -400,7 +400,7 @@ export default async function VoiceAgentPage({
       label: "Conversations",
       value: String(convos.length + called.length),
       icon: PhoneCall,
-      sub: convos.length ? "live + sample" : "sample calls",
+      sub: convos.length ? "all conversations" : "calls placed",
       spark: perDay,
       sparkLabels: perDayLabels,
       sparkFmt: "number",

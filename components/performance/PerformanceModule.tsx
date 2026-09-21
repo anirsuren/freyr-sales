@@ -539,14 +539,8 @@ export function PerformanceModule({
                 How this works
               </button>
             )}
-            {/* NO SECOND ANNOUNCEMENT OF THE SAME FACT (Anir, Aug 23: "it's
-                moving the 4 page toggles, it's already a message in the top
-                right"). A full-width blue bar across the top of the app
-                already says every screen is sample data; repeating it here as
-                a fourteen-word pill stole enough width from this row to wrap
-                the four tabs onto two lines, which is a layout bug caused
-                purely by saying something twice. The banner stays; this
-                goes. */}
+            {/* Keep this row for actions. Status narration here steals enough
+                width to wrap the four tabs onto two lines. */}
           </div>
         </div>
         {/* No subtitle under the selector (Anir, Aug 15: "remove this text

@@ -419,11 +419,6 @@ export function TargetsTab({
               </Button>
             </TabActions>
           )}
-          {!live && (
-            <span className="ml-auto rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11px] font-semibold text-blue-primary">
-              Sample targets. Switch to Real mode for the live list
-            </span>
-          )}
         </div>
 
         {shown.length === 0 ? (

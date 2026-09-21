@@ -988,7 +988,7 @@ export function SettingsTabs({
                   {initialDataModeLocked
                     ? `This release is locked to ${dataMode === "mock" ? "Mock Mode" : "Real Mode"} for every signed-in user.`
                     : canChangeDataMode
-                      ? "Choose whether this browser uses sample records or the connected workspace."
+                      ? "Choose which workspace view this browser uses."
                       : "A workspace admin decides whether the team sees the released app or the modules still being built."}
                 </p>
               </div>
@@ -1329,7 +1329,7 @@ export function SettingsTabs({
                       {authConfig.authMode === "supabase"
                         ? "Verified email required"
                         : isLocalAuth
-                          ? "Local demo identity"
+                          ? "Local workspace identity"
                           : "Single sign-on required"}
                     </span>
                     <span className="inline-flex items-center gap-1.5">

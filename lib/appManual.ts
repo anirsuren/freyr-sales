@@ -71,11 +71,11 @@ their title — check assignments in /admin/members and definitions in /admin/pr
 READY NOW vs IN PROGRESS. Everyone can flip their own browser session between
 the finished app and the one still being built. Account menu, top right, under
 "Show me": "Ready now" is the live workspace (the default), "In progress" is
-sample data for demos and practice. In progress mode shows extra modules that
-are still being built and puts a banner across the top saying the data is fake.
+the complete review workspace. In progress mode shows extra modules that are
+still being built.
 The same switch is on Settings under "Data view", where it is worded "Real
 mode" and "Mock mode". It changes only your own view, never anyone else's, and
-most write actions are refused in progress mode with a message saying so.
+restricted write actions explain when they are unavailable.
 
 SEARCH AND KEYBOARD. The bar across the top is a button, not a text box: it
 reads "Search offerings, companies, contacts, or jump to a page…". Press Enter
@@ -152,8 +152,8 @@ date has already passed, rather than a straight line. A logged result can also
 name the opportunity it came out of, which is what makes a goal's line items
 able to say which deals produced the number.
 
-Adding, editing and removing follow the current module privileges and record-team permissions; workspace admins can edit regardless of ownership. Mock mode shows Freyr's real pipeline as sample data and
-refuses writes.`,
+Adding, editing and removing follow the current module privileges and record-team permissions; workspace admins can edit regardless of ownership. Mock mode opens the complete pipeline workspace and
+keeps protected writes unavailable.`,
   },
   {
     routes: ["/leads"],
@@ -561,7 +561,7 @@ change their role later from the Admin page. Separately, anyone with a
 WHY EVERY NUMBER IS ZERO. In the live workspace the roster is real people but
 every pipeline figure is 0 on purpose — the page says "Pipeline numbers fill in
 as deals are logged". Nothing is broken and nothing is hidden; no deals exist
-yet. In progress mode shows a populated sample floor instead.`,
+yet. In progress mode shows the complete sales floor.`,
   },
   {
     routes: ["/reports"],

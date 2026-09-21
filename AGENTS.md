@@ -1353,3 +1353,7 @@ Market Intelligence company briefings place The Rundown directly beneath the com
 Market Intelligence list views give collection status its own Tracking column. Active-person counts stay on one line, while Freshness contains only the single-line update age. Completed locally, not deployed.
 
 In Market Intelligence list views, the People avatar stack fans apart on hover and opens a popup listing every person whose activity is tracked for that company. The Tracking status is also clickable and opens a separate popup naming the workspace members who have the company on their personal list; active-by-default companies explain that state when no member is listed. Completed locally, not deployed.
+
+### Sep 21: review-workspace content reads like a finished product
+
+Mock-mode screens never label records, publishers, people, summaries, charts, emails, calls, targets, or intelligence as sample, fake, fictional, illustrative, placeholder, or demo data. The global disclaimer banner is removed. Generated records use normal product language and credible source names, while protected write behavior remains enforced behind the interface. Completed locally, not deployed.

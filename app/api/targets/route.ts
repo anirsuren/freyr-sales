@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
   if (getDataMode() === "mock") {
     return NextResponse.json(
-      { error: "Sample data is read-only. Switch to Real mode to work the target list." },
+      { error: "This workspace view is read-only." },
       { status: 403 }
     );
   }

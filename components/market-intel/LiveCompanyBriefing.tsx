@@ -120,7 +120,8 @@ type StoryRemoval = {
    outlet shows its name (outletName, shared with the cards). */
 function siteSourceLabel(url: string, fallback: string): string {
   try {
-    return new URL(url).hostname.replace(/^www\./i, "");
+    const hostname = new URL(url).hostname.replace(/^www\./i, "");
+    return hostname === "google.com" || hostname.endsWith(".example") ? fallback : hostname;
   } catch {
     return fallback;
   }
@@ -891,8 +892,8 @@ export function LiveCompanyBriefing({
                               <RowIcon size={12} strokeWidth={2} className="shrink-0" />
                               <span className="min-w-0 truncate">{sourceName}</span>
                             </a>
-                            <span className="mt-1 block max-w-full truncate text-[11px] leading-4 text-text-tertiary" title={rowKind === "post" ? item.sourceLabel : domain}>
-                              {rowKind === "post" ? item.sourceLabel : rowKind === "site" ? "Company website" : domain !== sourceName ? domain : ""}
+                            <span className="mt-1 block max-w-full truncate text-[11px] leading-4 text-text-tertiary" title={rowKind === "post" ? item.sourceLabel : rowKind === "site" ? "Company website" : ""}>
+                              {rowKind === "post" ? item.sourceLabel : rowKind === "site" ? "Company website" : ""}
                             </span>
                           </td>
                           <td className="px-4 py-3 align-top">

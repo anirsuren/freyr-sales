@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       websiteUrl && !hasFirecrawl() && "Firecrawl",
     ].filter(Boolean);
     if (missing.length) {
-      return Response.json({ error: `Live research is unavailable. Configure: ${missing.join(", ")}. No mock data was generated.` }, { status: 503 });
+      return Response.json({ error: `Live research is unavailable. Configure: ${missing.join(", ")}.` }, { status: 503 });
     }
   }
 

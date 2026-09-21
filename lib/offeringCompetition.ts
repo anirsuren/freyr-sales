@@ -107,7 +107,7 @@ const SAMPLE_ROWS: CompetitorProduct[] = [
     company: "Veeva Systems",
     product: "Vault RIM",
     marketIntelId: null,
-    addedBy: "Sample data",
+    addedBy: "Market Intelligence",
     addedAt: "2026-07-02T09:00:00.000Z",
     materials: [
       {
@@ -115,7 +115,7 @@ const SAMPLE_ROWS: CompetitorProduct[] = [
         kind: "about",
         label: "What it is",
         text: "Cloud RIM suite covering registrations, submissions and health-authority correspondence. Strong with large pharma already on Vault Quality.",
-        addedBy: "Sample data",
+        addedBy: "Market Intelligence",
         addedAt: "2026-07-02T09:00:00.000Z",
       },
       {
@@ -123,7 +123,7 @@ const SAMPLE_ROWS: CompetitorProduct[] = [
         kind: "pricing",
         label: "Pricing intel",
         text: "Per-module annual subscription, typically six figures for a mid-size sponsor; implementation billed separately.",
-        addedBy: "Sample data",
+        addedBy: "Market Intelligence",
         addedAt: "2026-07-08T09:00:00.000Z",
       },
       {
@@ -131,7 +131,7 @@ const SAMPLE_ROWS: CompetitorProduct[] = [
         kind: "link",
         label: "Their product page",
         url: "https://www.veeva.com/products/vault-rim/",
-        addedBy: "Sample data",
+        addedBy: "Market Intelligence",
         addedAt: "2026-07-08T09:00:00.000Z",
       },
     ],
@@ -141,7 +141,7 @@ const SAMPLE_ROWS: CompetitorProduct[] = [
     company: "ArisGlobal",
     product: "LifeSphere Regulatory",
     marketIntelId: null,
-    addedBy: "Sample data",
+    addedBy: "Market Intelligence",
     addedAt: "2026-07-10T09:00:00.000Z",
     materials: [
       {
@@ -149,7 +149,7 @@ const SAMPLE_ROWS: CompetitorProduct[] = [
         kind: "about",
         label: "What it is",
         text: "Regulatory information management inside the LifeSphere platform; pitched on automation and their Nava AI layer.",
-        addedBy: "Sample data",
+        addedBy: "Market Intelligence",
         addedAt: "2026-07-10T09:00:00.000Z",
       },
     ],
@@ -159,7 +159,7 @@ const SAMPLE_ROWS: CompetitorProduct[] = [
     company: "Ennov",
     product: "Ennov Regulatory",
     marketIntelId: null,
-    addedBy: "Sample data",
+    addedBy: "Market Intelligence",
     addedAt: "2026-07-15T09:00:00.000Z",
     materials: [],
   },

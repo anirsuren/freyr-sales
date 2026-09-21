@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { FlaskConical } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { ModeUrlSync } from "./ModeUrlSync";
 import { TopBar } from "./TopBar";
@@ -436,26 +435,6 @@ export function AppShell({
           Skip to content
         </a>
         <div className="flex h-screen flex-col bg-white">
-          {dataMode === "mock" && (
-            <div
-              role="status"
-              aria-label="In progress mode uses fake sample data"
-              className="flex min-h-[46px] shrink-0 items-center justify-center gap-2.5 bg-blue-primary px-4 py-2 text-center text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.14)]"
-            >
-              <FlaskConical
-                size={18}
-                strokeWidth={2.3}
-                className="shrink-0"
-              />
-              <p className="text-[13px] leading-snug">
-                <span className="font-bold">In progress mode:</span>{" "}
-                <span className="font-semibold">
-                  all data shown is fake sample data and does not reflect the
-                  real workspace.
-                </span>
-              </p>
-            </div>
-          )}
           <div className="flex min-h-0 flex-1">
           {/* mobile drawer backdrop */}
           {mobileNavOpen && (

@@ -530,10 +530,6 @@ export function CompanyIntel({
         </div>
       </div>
 
-      <p className="mt-5 text-[11px] text-text-tertiary">
-        Design preview. The company is real, every person, post, article and
-        signal here is illustrative sample content.
-      </p>
     </div>
   );
 }

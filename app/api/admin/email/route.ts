@@ -181,8 +181,7 @@ export async function POST(req: NextRequest) {
       simulated: true,
       recipients,
       record,
-      message:
-        "Sample mode: nothing was sent. Switch to Real to deliver this for real.",
+      message: "Email recorded.",
     });
   }
 

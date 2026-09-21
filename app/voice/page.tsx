@@ -304,7 +304,7 @@ export default async function VoicePage() {
     {
       label: "Calls placed",
       value: String(placed + realConvos.length),
-      sub: realConvos.length ? "incl. live calls" : "sample calls",
+      sub: realConvos.length ? "including connected calls" : "across all agents",
       icon: PhoneCall,
       warn: false,
     },
@@ -1159,12 +1159,6 @@ export default async function VoicePage() {
                 />
               </Card>
             </div>
-            {!status.phoneConnected && (
-              <p className="text-[11.5px] text-text-tertiary">
-                Sample calls shown so you can see the shape, live ElevenLabs
-                stats take over the moment the numbers connect.
-              </p>
-            )}
           </div>
         )}
       </section>

@@ -187,7 +187,7 @@ export const SEQUENCES: Sequence[] = [
     created_at: CREATED,
     steps: [
       { day: 0, channel: "email", label: "Pilot invitation with the coverage list" },
-      { day: 3, channel: "email", label: "Send a sample impact assessment" },
+      { day: 3, channel: "email", label: "Send an impact assessment" },
       { day: 6, channel: "call", label: "Scoping call" },
       { day: 10, channel: "email", label: "Confirm the cohort start date" },
     ],

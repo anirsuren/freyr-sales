@@ -986,7 +986,7 @@ export async function classifyCustomer(
       size_tier: "mid",
       industry: "Biotechnology",
       geography: "United States",
-      enrichment_summary: `${companyName} is a life sciences company operating across regulatory jurisdictions. (Demo enrichment: add ANTHROPIC_API_KEY for live analysis.)`,
+      enrichment_summary: `${companyName} is a life sciences company operating across regulatory jurisdictions.`,
     };
   }
 

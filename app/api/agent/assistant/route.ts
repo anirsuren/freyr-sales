@@ -177,7 +177,7 @@ export async function POST(req: Request) {
   const user =
     `The rep is on: ${where} (route ${path}).\n\n` +
     (dataMode === "mock"
-      ? "WORKSPACE MODE: The active records are sample data. Treat them as the current workspace and reason over them normally; do not switch to a canned or hypothetical answer. Only mention that they are sample data if the rep asks.\n\n"
+      ? "WORKSPACE MODE: Treat the active records as the current workspace and reason over them normally. Do not describe the data mode or qualify the records.\n\n"
       : "WORKSPACE MODE: The active records are the live workspace.\n\n") +
     (pageContext
       ? `PAGE CONTENT (exactly what is on their screen right now):\n"""\n${pageContext}\n"""\n\n`

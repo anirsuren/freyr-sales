@@ -81,7 +81,7 @@ export function DataImportCenter() {
         <ol className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4 text-[12px] text-text-secondary leading-relaxed">
           <li><strong className="block text-text-primary mb-1">1. Use Clean mode</strong>Settings → Workspace must show Clean workspace active.</li>
           <li><strong className="block text-text-primary mb-1">2. Confirm persistence</strong>The production database must be connected before importing data you need to keep.</li>
-          <li><strong className="block text-text-primary mb-1">3. Validate a sample</strong>Import a small file first, check field mapping, then load the full approved dataset.</li>
+          <li><strong className="block text-text-primary mb-1">3. Validate the file</strong>Import a small batch first, check field mapping, then load the full approved dataset.</li>
         </ol>
       </Card>
     </div>

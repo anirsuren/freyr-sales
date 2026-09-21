@@ -4029,7 +4029,7 @@ function demoRoadmapForOffering(offering: Offering): OfferingRelease[] {
       date: `2025-${pastMonth}-15`,
       status: "released",
       features: [...theme.past],
-      note: "Sample roadmap data for in-progress mode.",
+      note: "Released as part of the annual product plan.",
     },
     {
       id: `demo-roadmap-${offering.id}-current`,
@@ -4040,7 +4040,7 @@ function demoRoadmapForOffering(offering: Offering): OfferingRelease[] {
         `${offering.offering_name} customer experience refreshed for faster day-to-day use`,
         ...theme.current,
       ],
-      note: "Sample roadmap data for in-progress mode.",
+      note: "Current release for the active product cycle.",
     },
     {
       id: `demo-roadmap-${offering.id}-next`,
@@ -4048,7 +4048,7 @@ function demoRoadmapForOffering(offering: Offering): OfferingRelease[] {
       date: `2026-${nextMonth}-20`,
       status: "next",
       features: [...theme.next],
-      note: "Sample roadmap data for in-progress mode.",
+      note: "Planned for the next product release.",
     },
   ];
 }

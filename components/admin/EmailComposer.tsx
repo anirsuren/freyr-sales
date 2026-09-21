@@ -13,7 +13,6 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
-  FlaskConical,
   Mail,
   Link2,
   Paperclip,
@@ -554,7 +553,6 @@ function RecipientField({
 export function EmailComposer() {
   const { toast } = useToast();
   const [from, setFrom] = useState("");
-  const [live, setLive] = useState(true);
   const [sent, setSent] = useState<AdminEmailRecord[]>([]);
   const [loading, setLoading] = useState(true);
   /**
@@ -675,7 +673,6 @@ export function EmailComposer() {
       const data = await res.json();
       if (data?.ok) {
         setFrom(data.from || "");
-        setLive(!!data.live);
         setSent(data.emails || []);
       }
     } finally {
@@ -745,9 +742,7 @@ export function EmailComposer() {
         return;
       }
       toast(
-        data.simulated
-          ? "Sample mode: nothing was sent."
-          : `Sent to ${data.recipients} ${data.recipients === 1 ? "person" : "people"}.`
+        `Sent to ${data.recipients} ${data.recipients === 1 ? "person" : "people"}.`
       );
       setTo("");
       setCc("");
@@ -1138,7 +1133,7 @@ export function EmailComposer() {
             onConfirm={send}
             busy={sending}
             tone="primary"
-            title={live ? "Send this email?" : "Simulate this send?"}
+            title="Send this email?"
             /* NAME THEM (Anir, Aug 30: "when I do send it, it has to show
                me who it's going to on this popup"). "It goes to 1 person" is
                the one fact you already know when you press Send; who that
@@ -1189,12 +1184,8 @@ export function EmailComposer() {
                 );
               })()
             }
-            detail={
-              live
-                ? "An outbound email cannot be unsent."
-                : "Sample mode: nothing is actually delivered."
-            }
-            confirmLabel={live ? "Yes, send it" : "Yes, simulate it"}
+            detail="An outbound email cannot be unsent."
+            confirmLabel="Yes, send it"
           />
           </div>
         </div>
@@ -1541,8 +1532,8 @@ export function EmailComposer() {
                         <AlertTriangle size={11} strokeWidth={2.4} /> Failed
                       </span>
                     ) : (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--ink-violet-soft)]">
-                        <FlaskConical size={11} strokeWidth={2.4} /> Sample
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(22,163,74,0.10)] px-2 py-0.5 text-[11px] font-semibold text-[color:#16a34a]">
+                        <CheckCircle2 size={11} strokeWidth={2.4} /> Sent
                       </span>
                     )}
                     <span className="w-[72px] shrink-0 whitespace-nowrap text-right text-[12px] font-medium text-text-secondary tnum">

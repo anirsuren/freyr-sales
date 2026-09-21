@@ -749,11 +749,7 @@ export function OfferingCompetition({
                     <Trash2 size={12.5} strokeWidth={2.2} /> Remove from list
                   </button>
                 </>
-              ) : (
-                <span className="text-[11.5px] text-text-tertiary">
-                  Sample data. Switch to Real mode to add your own notes.
-                </span>
-              )}
+              ) : null}
             </div>
 
             {/* The confirm, unfolded under the button that opened it. */}
