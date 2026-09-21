@@ -378,22 +378,23 @@ export function LiveCompanyGrid({
         </div>
       ) : view === "list" ? (
         <div key="company-list" className="mi-view-list-in overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_12px_36px_-32px_rgba(15,23,42,0.45)]">
-          <div className={cn("min-w-[1160px]", group === "customer" && "min-w-[1210px]")}>
+          <div className={cn("min-w-[1230px]", group === "customer" && "min-w-[1340px]")}>
             <div
               className="grid items-center gap-5 border-b border-border-light bg-surface/80 px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary"
-              style={{ gridTemplateColumns: group === "customer" ? "minmax(210px,.95fr) 185px 235px minmax(245px,1.1fr) 130px 75px" : "minmax(230px,1fr) 200px 250px minmax(270px,1.25fr) 90px" }}
+              style={{ gridTemplateColumns: group === "customer" ? "minmax(210px,.95fr) 185px 235px minmax(245px,1.1fr) 130px 120px 90px" : "minmax(230px,1fr) 200px 250px minmax(270px,1.25fr) 120px 90px" }}
             >
               <span>Company</span>
               <span>Intelligence pulse</span>
               <span>Activity mix</span>
               <span>Latest intelligence</span>
               {group === "customer" && <span>People</span>}
+              <span>Tracking</span>
               <span>Freshness</span>
             </div>
             <div className="mi-list-stagger divide-y divide-border-light">
               {listRows.map(row => {
                 const card = row.card;
-                const rowTemplate = group === "customer" ? "minmax(210px,.95fr) 185px 235px minmax(245px,1.1fr) 130px 75px" : "minmax(230px,1fr) 200px 250px minmax(270px,1.25fr) 90px";
+                const rowTemplate = group === "customer" ? "minmax(210px,.95fr) 185px 235px minmax(245px,1.1fr) 130px 120px 90px" : "minmax(230px,1fr) 200px 250px minmax(270px,1.25fr) 120px 90px";
                 if (!card) return (
                   <div key={row.id} className="relative grid min-h-[106px] items-center gap-5 px-5 py-4" style={{ gridTemplateColumns: rowTemplate }}>
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -405,7 +406,8 @@ export function LiveCompanyGrid({
                     <div className="grid grid-cols-2 gap-1.5 opacity-55"><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /></div>
                     <p className="text-[12px] leading-relaxed text-text-tertiary">The first verified posts, news, website updates, and signals will appear here.</p>
                     {group === "customer" && <PeopleSummary people={people[row.id]} />}
-                    <span className="text-[11px] font-medium text-text-tertiary">Pending</span>
+                    {isAdmin ? <WatchStatus state={stateOf(row.id)} className="whitespace-nowrap" /> : <span className="text-text-tertiary">—</span>}
+                    <span className="whitespace-nowrap text-[11px] font-medium text-text-tertiary">Pending</span>
                   </div>
                 );
 
@@ -441,11 +443,8 @@ export function LiveCompanyGrid({
                       </> : <p className="text-[12px] leading-relaxed text-text-tertiary">No recent headline in this window. Activity tracking is still active.</p>}
                     </div>
                     {group === "customer" && <PeopleSummary people={people[card.id]} />}
-                    <div className="min-w-0">
-                      {isAdmin && <WatchStatus state={stateOf(card.id)} />}
-                      <span className={cn("block text-[10.5px] font-medium text-text-tertiary", isAdmin && "mt-1.5")}>Updated</span>
-                      <span className="block truncate text-[11px] font-semibold text-text-secondary">{card.updatedLabel}</span>
-                    </div>
+                    {isAdmin ? <WatchStatus state={stateOf(card.id)} className="whitespace-nowrap" /> : <span className="text-text-tertiary">—</span>}
+                    <span className="whitespace-nowrap text-[11px] font-semibold text-text-secondary">{card.updatedLabel}</span>
                   </div>
                 );
               })}
