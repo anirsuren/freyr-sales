@@ -635,7 +635,13 @@ export function OrgPerformanceTab({
       "lagging"
   ).length;
   const verifiedCount = shown.filter((g) => g.verified).length;
-  const goalProgressBars = sorted.map((goal) => {
+  /**
+   * The overview chart keeps the Goal Master order of the filtered goals.
+   * The sort control belongs to the list below; changing how rows are read
+   * must not make the summary bars jump to new positions above it.
+   */
+  const chartGoals = shown;
+  const goalProgressBars = chartGoals.map((goal) => {
     const actual = actualValue(state.actuals, goal, { rates: state.rates });
     const verified = verifiedValue(state, goal);
     const awaiting = Math.max(0, actual - verified);
@@ -987,7 +993,7 @@ export function OrgPerformanceTab({
                 simply vanished and the card sat there empty, which reads as
                 broken rather than as "nothing here" (Anir's standing rule:
                 never lead with emptiness, say what is going on). */}
-            {sorted.length === 0 ? (
+            {chartGoals.length === 0 ? (
               <p className="mt-3 flex min-h-[190px] flex-1 items-center justify-center rounded-lg bg-surface/60 px-4 text-center text-[12.5px] text-text-tertiary">
                 No goals match these filters, so there is nothing to chart.
               </p>
@@ -1014,11 +1020,10 @@ export function OrgPerformanceTab({
                 format="percent"
                 tipRecordsLabel="Contributors"
                 syncId={syncId}
-                /* Click a column, open that goal's row underneath and go to
-                   it. Same list twice, so the click closes the loop the
-                   linked hover already opens. */
+                /* Click a column, resolve it against the chart's stable order,
+                   then open that goal's row underneath and go to it. */
                 onBarClick={(i) => {
-                  const g = sorted[i];
+                  const g = chartGoals[i];
                   if (!g) return;
                   if (!openIds.has(g.id)) toggleOpen(g.id);
                   /* WAIT FOR THE PANEL, THEN PUT THE ROW AT THE TOP (Anir,
@@ -1043,7 +1048,7 @@ export function OrgPerformanceTab({
                   };
                   window.requestAnimationFrame(land);
                 }}
-                data={sorted.map((g) => {
+                data={chartGoals.map((g) => {
                   const a = actualValue(state.actuals, g, { rates: state.rates });
                   /**
                    * SOLID IS SIGNED OFF, HATCHED IS SOMEBODY'S WORD (Anir,
