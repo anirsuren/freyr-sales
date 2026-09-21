@@ -2025,38 +2025,29 @@ export function GoalZoom({
                                   : "Show"}{" "}
                                 {r2.members.length}{" "}
                                 {r2.members.length === 1 ? "person" : "people"}
-                                {/* Hovering the compact stack fans every visible
-                                    person into a named chip. These are plain
-                                    spans inside the disclosure button, so the
-                                    interaction stays valid and clicking still
-                                    opens the roster. */}
+                                {/* One compact stack that simply spreads its
+                                    circles apart on hover. Each circle keeps a
+                                    name tooltip; the fan never turns into a
+                                    row of oversized name pills. */}
                                 <span className="relative ml-auto h-6 w-[76px] shrink-0">
-                                  <span className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center transition-all duration-200 group-hover/show-members:translate-x-1 group-hover/show-members:opacity-0 group-focus-visible/show-members:translate-x-1 group-focus-visible/show-members:opacity-0">
-                                    {r2.members.slice(0, 4).map((n, i) => (
-                                      <Avatar
+                                  <span className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center">
+                                    {r2.members.slice(0, 5).map((n, i) => (
+                                      <span
                                         key={n}
-                                        name={n}
                                         className={cn(
-                                          "h-4 w-4 text-[6.5px] ring-1 ring-white",
-                                          i > 0 && "-ml-1"
+                                          "relative inline-flex transition-[margin] duration-200 ease-out",
+                                          i > 0 && "-ml-1.5 group-hover/show-members:ml-1 group-focus-visible/show-members:ml-1"
                                         )}
-                                      />
-                                    ))}
-                                    {r2.members.length > 4 && (
-                                      <span className="ml-1 text-[9.5px] font-semibold text-text-tertiary tnum">
-                                        +{r2.members.length - 4}
-                                      </span>
-                                    )}
-                                  </span>
-                                  <span className="pointer-events-none absolute right-0 top-1/2 z-20 flex -translate-y-1/2 translate-x-2 items-center gap-1 opacity-0 transition-all duration-200 group-hover/show-members:translate-x-0 group-hover/show-members:opacity-100 group-focus-visible/show-members:translate-x-0 group-focus-visible/show-members:opacity-100">
-                                    {r2.members.slice(0, 5).map((n) => (
-                                      <span key={n} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border-light bg-white py-0.5 pl-0.5 pr-1.5 text-[9px] font-semibold text-text-primary shadow-sm">
-                                        <Avatar name={n} className="h-4 w-4 text-[6.5px]" />
-                                        {n}
+                                      >
+                                        <Avatar
+                                          name={n}
+                                          tooltip={n}
+                                          className="h-4 w-4 text-[6.5px] ring-1 ring-white"
+                                        />
                                       </span>
                                     ))}
                                     {r2.members.length > 5 && (
-                                      <span className="shrink-0 rounded-full border border-border-light bg-white px-1.5 py-1 text-[9px] text-text-tertiary shadow-sm tnum">
+                                      <span className="ml-1 text-[9.5px] font-semibold text-text-tertiary tnum">
                                         +{r2.members.length - 5}
                                       </span>
                                     )}
