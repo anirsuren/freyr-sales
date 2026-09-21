@@ -1398,7 +1398,6 @@ export function MyEntriesCard({
                                 aria-label={`Delete the ${a.date} entry`}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setOpenRow(a.id);
                                   setDropFor(a.id);
                                   setEditFor(null);
                                 }}
@@ -1607,48 +1606,6 @@ export function MyEntriesCard({
                               <EntryTimeline entry={a} person={person} owners={groupHeadsFor(a.person)} />
                             </div>
                           </div>
-
-
-                          {/* YOUR OWN CLAIM IS YOURS UNTIL SOMEBODY LOCKS IT
-                              (Anir, Aug 15: "if I was the one who did this, I
-                              should be able to delete it"). The server has
-                              always allowed this and always refused it once
-                              verified; the row simply never offered it. */}
-                          {canEdit && dropFor === a.id && (
-                              <div
-                                className="mt-3 flex flex-wrap items-center gap-2"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {dropFor === a.id ? (
-                                  <>
-                                    <span className="text-[12.5px] text-text-secondary">
-                                      Delete this entry for good?
-                                    </span>
-                                    <button
-                                      type="button"
-                                      disabled={busy}
-                                      onClick={async () => {
-                                        const okDone = await run?.(
-                                          { op: "remove-actual", actualId: a.id },
-                                          "Entry deleted"
-                                        );
-                                        if (okDone) setDropFor(null);
-                                      }}
-                                      className="cursor-pointer rounded-lg bg-[color:#DC2626] px-3 py-1.5 text-[12.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                                    >
-                                      Delete it
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setDropFor(null)}
-                                      className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                                    >
-                                      Keep it
-                                    </button>
-                                  </>
-                                ) : null}
-                              </div>
-                            )}
                           </div>
                           </div>
                           </div>
@@ -1662,6 +1619,72 @@ export function MyEntriesCard({
         </div>
         </div>
       </Card>
+      {/* Deleting used to reveal two tiny buttons at the very bottom of the
+          expanded row. On a detailed result that confirmation landed below
+          the viewport, so pressing the visible trash icon appeared to do
+          nothing. Keep the ownership and lock rules, but put the decision in
+          the same immediate dialog pattern as Edit and Review. */}
+      {dropFor && run &&
+        (() => {
+          const a = state.actuals.find((x) => x.id === dropFor);
+          if (!a) return null;
+          const goal = state.goals.find((g) => g.id === a.goalId);
+          return (
+            <Modal
+              open
+              onClose={() => setDropFor(null)}
+              title="Delete logged result?"
+              dialogClassName="!max-w-[520px]"
+            >
+              <div className="space-y-4">
+                <div className="rounded-xl border border-border-light bg-surface p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                        Result
+                      </span>
+                      <span className="mt-1 block text-[14px] font-bold text-text-primary">
+                        {goal?.name ?? "Goal removed"}
+                      </span>
+                      <span className="mt-1 block text-[12px] text-text-secondary">
+                        {formatDate(a.date)} · logged by {a.person}
+                      </span>
+                    </div>
+                    <span className="shrink-0 text-[20px] font-extrabold text-text-primary tnum">
+                      {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[13px] leading-5 text-text-secondary">
+                  This permanently removes the result and its evidence from the goal.
+                </p>
+                <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setDropFor(null)}
+                    className="h-10 cursor-pointer rounded-xl border border-border-light bg-white px-4 text-[13px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      const okDone = await run(
+                        { op: "remove-actual", actualId: a.id },
+                        "Entry deleted"
+                      );
+                      if (okDone) setDropFor(null);
+                    }}
+                    className="h-10 cursor-pointer rounded-xl bg-[color:#DC2626] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[color:#B91C1C] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Delete result
+                  </button>
+                </div>
+              </div>
+            </Modal>
+          );
+        })()}
       {/* THE SAME REVIEW POPUP THE QUEUE OPENS. One dialog for signing a
           claim off, wherever you happen to be standing when you decide to. */}
       {reviewing &&

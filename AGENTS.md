@@ -196,6 +196,13 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 21 logged-result deletion dialog:** The trash icon on an unlocked
+  result now opens an immediate centered confirmation showing the goal, date,
+  person, and amount. It no longer hides the confirmation at the bottom of an
+  expanded row below the viewport. Existing ownership and verified-lock rules
+  remain enforced. Verified on localhost Mock and cancelled before deletion.
+  Typecheck and rule tests pass. Local only, not deployed.
+
 - **Sep 21 send-back reason enforcement:** The required “What needs fixing”
   note in the claim review dialog now keeps Send it back disabled for empty or
   whitespace-only input, shows an inline error after an empty blur, trims the
