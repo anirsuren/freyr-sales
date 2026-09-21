@@ -1402,6 +1402,8 @@ Saved Market Intelligence stories use a filled yellow bookmark with a pale yello
 
 Market Intelligence bookmark clicks update the bookmark and Saved results immediately, then persist in the background. A pending request locks only that story's bookmark; failed saves restore the prior state and show an error instead of leaving the optimistic state behind. Completed locally, not deployed.
 
+The FDL component offering picker keeps its scrolling card grid visually separated from the Save footer. Its lower edge uses an opaque white mask and scroll padding so a selected card's blue outline cannot bleed into the footer as a stray horizontal line. Completed locally, not deployed.
+
 Market Intelligence company briefings place The Rundown directly beneath the company header, before the briefing search and filter controls. Completed locally, not deployed.
 
 Market Intelligence list views give collection status its own Tracking column. Active-person counts stay on one line, while Freshness contains only the single-line update age. Completed locally, not deployed.

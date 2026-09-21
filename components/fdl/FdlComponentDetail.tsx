@@ -2158,7 +2158,10 @@ export function FdlComponentDetail({
             const tiles = offeringPickerView === "tiles";
             return (
               <>
-                <ScrollHint containerClassName="min-h-0 flex-1" className="h-full">
+                <ScrollHint
+                  containerClassName="min-h-0 flex-1 overflow-hidden rounded-lg after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:z-10 after:h-1.5 after:bg-white"
+                  className="h-full pb-2"
+                >
                   <ul
                     className={
                       tiles
