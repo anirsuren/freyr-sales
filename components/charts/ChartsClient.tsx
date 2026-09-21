@@ -1853,9 +1853,15 @@ export function DonutChart({
   // fixed size sat right up against the ring (Anir, Jul 25: "the number 700k so
   // big compared to the pie chart, damn near touching it"), and a longer label
   // like "$1.25M" would have overlapped it outright. 0.62em is a good width
-  // estimate per character for bold tabular digits; the 0.82 keeps a margin
-  // between the text and the inner edge of the ring.
-  const innerWidth = Math.max(0, size - thickness * 2) * 0.82;
+  // estimate per character for bold tabular digits; the shared inset below
+  // keeps a visible margin between the text and the ring.
+  // Measure the ACTUAL hole left by the ring. The ring radius is inset to
+  // protect its hover stroke, so `size - thickness * 2` overestimated the
+  // available space and let labels sit almost against the paint. Keep a
+  // generous shared safe inset so every donut, regardless of caller or label
+  // length, has the same deliberate breathing room.
+  const innerRadius = Math.max(0, r - thickness / 2);
+  const innerWidth = innerRadius * 2 * 0.72;
   const naturalSize = compactCenter ? 20 : 24;
   const centerLabelSize = centerLabel
     ? Math.max(
@@ -1871,9 +1877,8 @@ export function DonutChart({
   // in a 78px ring measured ~50px against ~50px of chord and sat right on the
   // stroke (Anir, Jul 28: "the text is literally getting blocked"). Same
   // fit-to-space treatment the centre total already gets.
-  const innerRadius = Math.max(0, size / 2 - thickness);
   const subChord =
-    2 * Math.sqrt(Math.max(0, innerRadius ** 2 - centerSubOffset ** 2)) * 0.82;
+    2 * Math.sqrt(Math.max(0, innerRadius ** 2 - centerSubOffset ** 2)) * 0.72;
   const centerSubSize = centerSub
     ? Math.max(7.5, Math.min(compactCenter ? 9 : 10, subChord / (centerSub.length * 0.55)))
     : 9;

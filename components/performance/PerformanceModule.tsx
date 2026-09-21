@@ -2689,7 +2689,7 @@ function GoalPopupBody({
           </p>
           <div className="mx-auto mt-2 flex w-full max-w-[440px] items-center justify-center gap-6">
             <DonutChart
-              size={104}
+              size={116}
               thickness={12}
               syncId={"split-" + goal.id}
               centerLabel={fmtAmount(
@@ -4165,6 +4165,17 @@ function SubgoalEditorFields({
   const availableGroups = state.groups.filter(
     (group) => !assignedGroups.some((assignment) => assignment.groupId === group.id)
   );
+  const initialRows =
+    editing?.people.map((person) => ({
+      name: person.name,
+      target: person.target > 0 ? String(person.target) : "",
+    })) ?? [];
+  const hasFieldChanges = editing
+    ? name.trim() !== editing.name.trim() ||
+      target.trim() !== (editing.target > 0 ? String(editing.target) : "") ||
+      JSON.stringify(owners) !== JSON.stringify(editing.owners ?? []) ||
+      JSON.stringify(rows) !== JSON.stringify(initialRows)
+    : Boolean(name.trim() || target.trim() || owners.length || rows.length);
 
   return (
     <div className={cn("space-y-3.5", standalone && "pb-1")}>
@@ -4240,10 +4251,10 @@ function SubgoalEditorFields({
             {/* THE SPLIT, DRAWN, NOT NARRATED (Anir, Aug 16: "you don't have
                 to say '1 million still unsplit'... Show me where we have
                 gotten to in terms of what number I've written and then how
-                much more we have. Show it visually"). Solid is what the other
-                subgoals already claim, the pale segment is THIS one growing
-                live as the target is typed, and the grey is what is left.
-                Two strengths of the allocation blue distinguish the slices. */}
+                much more we have. Show it visually"). Blue starts at zero for
+                THIS subgoal and grows live as the target is typed, slate
+                follows with what the other subgoals already claim, and the
+                quiet track is what remains. The same order is used below. */}
             <div className="rounded-xl border border-border-light bg-surface/50 px-4 py-3">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <span className="text-[11px] font-semibold text-text-primary">
@@ -4255,12 +4266,6 @@ function SubgoalEditorFields({
               </div>
               <div className="flex h-2.5 overflow-hidden rounded-full bg-[color:var(--border-light)]">
               <span
-                className="block h-full bg-slate-400 transition-all"
-                style={{
-                  width: `${Math.min(100, (siblingTotal / goalTarget) * 100)}%`,
-                }}
-              />
-              <span
                 className={cn(
                   "block h-full transition-all",
                   spoken > goalTarget
@@ -4271,17 +4276,14 @@ function SubgoalEditorFields({
                   width: `${Math.max(0, Math.min(100, (spoken / goalTarget) * 100) - Math.min(100, (siblingTotal / goalTarget) * 100))}%`,
                 }}
               />
+              <span
+                className="block h-full bg-slate-400 transition-all"
+                style={{
+                  width: `${Math.min(100, (siblingTotal / goalTarget) * 100)}%`,
+                }}
+              />
               </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-[11px]">
-              {siblingTotal > 0 && (
-                <span className="flex items-center gap-1.5 text-text-secondary">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
-                  Already assigned
-                  <b className="text-text-primary tnum">
-                    {fmtAmount(goal.unit, siblingTotal)}
-                  </b>
-                </span>
-              )}
               <span className="flex items-center gap-1.5 text-text-secondary">
                 <span
                   className={cn(
@@ -4299,6 +4301,15 @@ function SubgoalEditorFields({
                   <span className="text-text-tertiary">from its people</span>
                 )}
               </span>
+              {siblingTotal > 0 && (
+                <span className="flex items-center gap-1.5 text-text-secondary">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                  Already assigned
+                  <b className="text-text-primary tnum">
+                    {fmtAmount(goal.unit, siblingTotal)}
+                  </b>
+                </span>
+              )}
               {spoken <= goalTarget ? (
                 <span className="flex items-center gap-1.5 text-text-secondary">
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--border-light)]" />
@@ -4519,9 +4530,15 @@ function SubgoalEditorFields({
               <button
                 type="button"
                 disabled={busy || availableGroups.length === 0}
-                aria-label="Choose another group"
+                aria-label={addingGroup ? "Cancel choosing a group" : "Choose another group"}
                 aria-expanded={addingGroup}
-                title={availableGroups.length === 0 ? "Every available group is assigned" : "Choose another group"}
+                title={
+                  addingGroup
+                    ? "Cancel choosing a group"
+                    : availableGroups.length === 0
+                      ? "Every available group is assigned"
+                      : "Choose another group"
+                }
                 onClick={() => setAddingGroup((open) => !open)}
                 className={cn(
                   "grid h-8 w-8 shrink-0 place-items-center rounded-lg border text-white shadow-sm transition-colors",
@@ -4530,7 +4547,11 @@ function SubgoalEditorFields({
                     : "cursor-pointer border-blue-primary bg-blue-primary hover:bg-blue-hover"
                 )}
               >
-                <Plus size={16} strokeWidth={2.5} />
+                {addingGroup ? (
+                  <X size={16} strokeWidth={2.5} />
+                ) : (
+                  <Plus size={16} strokeWidth={2.5} />
+                )}
               </button>
             </div>
             <div className="mt-2 space-y-1.5">
@@ -4843,14 +4864,16 @@ function SubgoalEditorFields({
             Cancel
           </button>
         )}
-        <button
-          type="button"
-          disabled={busy || !name.trim()}
-          onClick={save}
-          className="cursor-pointer rounded-full bg-blue-primary px-5 py-2 text-[12.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
-        >
-          {busy ? "Saving…" : editing ? "Save changes" : "Add subgoal"}
-        </button>
+        {(!editing || hasFieldChanges) && (
+          <button
+            type="button"
+            disabled={busy || !name.trim()}
+            onClick={save}
+            className="cursor-pointer rounded-full bg-blue-primary px-5 py-2 text-[12.5px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+          >
+            {busy ? "Saving…" : editing ? "Save changes" : "Add subgoal"}
+          </button>
+        )}
       </div>
     </div>
   );

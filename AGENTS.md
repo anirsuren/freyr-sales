@@ -1323,3 +1323,7 @@ Team role filters use the same role icon and color as the role tag shown beside 
 ### Sep 21: Starting roles appear in the member privilege matrix
 
 The Team members privilege matrix shows both direct privilege grants and the privilege supplied by each active member's starting role. The role-derived cell is checked and locked because the access resolver always supplies it; an admin changes it through the member's starting role rather than pretending it can be removed as an extra grant. Empty cells now mean the person truly does not hold that privilege. Completed locally, not deployed.
+
+### Sep 21: Goal allocation visuals and editor state stay honest
+
+Donut charts reserve a consistent safe inset between their center labels and the painted ring, using the actual inner radius after hover-stroke protection; longer totals must shrink before they approach the ring. Goal Master target-allocation rails lead with the blue current-subgoal share, followed by slate prior allocations and then unallocated space, and their legends use the same order. Opening an owner or group picker is temporary interface state rather than a data change: an open group picker has an explicit cancel action, and an existing subgoal shows Save changes only after a field value actually changes. Completed locally, not deployed.
