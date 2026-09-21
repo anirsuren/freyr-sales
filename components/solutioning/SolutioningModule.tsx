@@ -54,6 +54,7 @@ import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { timelineMark } from "@/components/solutioning/RequestDetail";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Modal } from "@/components/ui/Modal";
+import { OptionalMark } from "@/components/ui/RequiredMark";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
@@ -2190,6 +2191,7 @@ export function NewRequestDialog({
   const canSave =
     !!kind &&
     title.trim().length > 0 &&
+    (kind !== "submission" || subtype.trim().length > 0) &&
     !!customer &&
     !!neededBy &&
     details.trim().length > 0 &&
@@ -2212,6 +2214,8 @@ export function NewRequestDialog({
       ? "Pick what you need."
       : !title.trim()
         ? "Give it a title."
+        : kind === "submission" && !subtype.trim()
+          ? "Pick a submission type."
         : !customer
           ? "Say which account it is for."
           : !neededBy
@@ -2546,7 +2550,7 @@ export function NewRequestDialog({
             {kind === "presentation" && (
               <label className="block">
                 <span className="text-[12px] font-semibold text-text-primary">
-                  Presentation type
+                  Presentation type<OptionalMark />
                 </span>
                 <input
                   value={presType}
@@ -2559,7 +2563,7 @@ export function NewRequestDialog({
             {kind === "meeting" && (
               <label className="block">
                 <span className="text-[12px] font-semibold text-text-primary">
-                  When is the meeting?
+                  When is the meeting?<OptionalMark />
                 </span>
                 {/* A DATE, NOT A TIMESTAMP (Anir, Aug 26: "remove this, I
                     don't know why you added this time here"). datetime-local
@@ -2757,7 +2761,7 @@ export function NewRequestDialog({
           {kind === "meeting" && (
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
-                Who is attending from Freyr?
+                Who is attending from Freyr?<OptionalMark />
               </span>
               <div className="mt-1.5">
                 <MultiColorSelect
@@ -2806,7 +2810,7 @@ export function NewRequestDialog({
               record as a Customer document. */}
           <div>
             <span className="text-[12px] font-semibold text-text-primary">
-              Documents
+              Documents<OptionalMark />
               <span className="ml-1.5 font-normal text-text-secondary">
                 The RFP, the questionnaire, whatever they sent you.
               </span>

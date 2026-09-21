@@ -50,6 +50,7 @@ import {
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { repSlug } from "@/lib/team";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 
 /**
  * ONE MEETING.
@@ -714,7 +715,7 @@ export function MeetingDetail({
       >
         <div>
           <p className="text-[12.5px] text-text-secondary">
-            What kind of note is this?
+            What kind of note is this?<RequiredMark />
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {(Object.keys(NOTE_META) as MeetingNoteKind[]).map((k) => {
@@ -742,6 +743,9 @@ export function MeetingDetail({
           </div>
 
           <div className="mt-3">
+            <label className="mb-1.5 block text-[12px] font-semibold text-text-primary">
+              {NOTE_META[noteKind].label}<RequiredMark />
+            </label>
             {/* ONE HEIGHT FOR ALL FOUR (Anir, Aug 28: "why is transcript
                 bigger than the rest of them"). Ten rows for a transcript and
                 six for everything else made the dialog jump every time a pill
@@ -882,7 +886,7 @@ export function MeetingDetail({
             />
             <Upload size={20} strokeWidth={2} className="text-blue-primary" />
             <span className="mt-1 text-[13.5px] font-semibold text-text-primary">
-              {docFile ? docFile.name : "Choose a file"}
+              File<RequiredMark /> · {docFile ? docFile.name : "Choose a file"}
             </span>
             <span className="text-[11.5px] text-text-tertiary">
               {docFile ? "Choose again to replace this file" : "PDF, Word, Excel, PowerPoint or ZIP"}
@@ -891,9 +895,10 @@ export function MeetingDetail({
           {docFile && (
             <label className="block">
               <span className="mb-1 block text-[12px] font-semibold text-text-primary">
-                Document name
+                Document name<RequiredMark />
               </span>
               <input
+                required
                 autoFocus
                 value={docLabel}
                 onChange={(event) => setDocLabel(event.target.value)}

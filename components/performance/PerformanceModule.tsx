@@ -49,7 +49,7 @@ import {
 } from "@/lib/opportunitiesShared";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
@@ -2065,7 +2065,7 @@ function AssignGroupModal({
         own targets underneath.
       </p>
       <label className="mt-3 flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
-        Group
+        Group<RequiredMark />
         <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-blue-soft)]">
           Pick one
         </span>
@@ -2370,7 +2370,7 @@ function AssignPersonModal({
       <div className="mt-3 space-y-3">
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
-            Person
+            Person<RequiredMark />
             <InfoHint text={"Only people you're allowed to assign.\nManagers see everyone, a group owner sees their group."} />
           </label>
           <div className="mt-1">
@@ -3727,7 +3727,7 @@ function GoalEditorFields({
         </div>
         <div className="flex flex-col">
           <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
-            How it adds up
+            How it adds up<RequiredMark />
             <InfoHint text={"Running total: Adds every entry. $50K plus $30K becomes $80K. Use it for revenue and counts.\nLatest value: Uses only the newest entry. Use it for rates such as win %."} />
           </label>
           <div className="mt-1">
@@ -3745,7 +3745,7 @@ function GoalEditorFields({
         </div>
         <div className="flex flex-col">
           <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
-            Year
+            Year<RequiredMark />
             <InfoHint text={"The year this goal is measured in. Freyr's financial year runs April to March, so FY 2026 means April 2026 to March 2027."} />
           </label>
           <div className="mt-1">
@@ -3770,10 +3770,8 @@ function GoalEditorFields({
           next to how it adds up"). */}
       <div>
         <label className="text-[12px] font-semibold text-text-primary">
-          Annual target{" "}
-          <span className="font-normal text-text-tertiary">
-            (the big number from the top. Leave it empty to set later)
-          </span>
+          Annual target<OptionalMark />{" "}
+          <span className="font-normal text-text-tertiary">— the big number from the top; leave it empty to set later</span>
         </label>
         <div className="relative mt-1">
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
@@ -4331,7 +4329,7 @@ function SubgoalEditorFields({
           />
         </div>
         <div className="w-[170px]">
-          <label className="text-[12px] font-semibold text-text-primary">Subgoal target</label>
+          <label className="text-[12px] font-semibold text-text-primary">Subgoal target<OptionalMark /></label>
           <div className="relative mt-1.5">
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13.5px] font-semibold text-text-tertiary">
               {goal.unit === "currency" ? "$" : goal.unit === "percent" ? "%" : "#"}
@@ -4382,7 +4380,7 @@ function SubgoalEditorFields({
             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-light text-[10.5px] font-bold text-blue-primary">2</span>
             <span className="min-w-0">
           <label className="flex items-center gap-1 text-[13px] font-bold text-text-primary">
-            Owner
+            Owner<OptionalMark />
             <Crown
               size={13}
               strokeWidth={2.2}
@@ -4465,7 +4463,7 @@ function SubgoalEditorFields({
               <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-light text-[10.5px] font-bold text-blue-primary">3</span>
               <span className="min-w-0">
             <label className="flex items-center gap-1 text-[13px] font-bold text-text-primary">
-              Groups
+              Groups<OptionalMark />
               <InfoHint text={"A whole department carrying this part of the goal. Its people are added below automatically with a target of 0, so they can start logging right away.\nSave the subgoal first, then pick a group. There has to be something for the group to attach to."} />
             </label>
             <p className="mt-0.5 text-[11.5px] text-text-secondary">
@@ -4590,7 +4588,7 @@ function SubgoalEditorFields({
             </span>
             <span className="min-w-0">
           <label className="flex items-center gap-1 text-[13px] font-bold text-text-primary">
-            People and targets
+            People and targets<OptionalMark />
             <InfoHint text="Each person carries their own target. Their logged numbers roll up into this subgoal." />
           </label>
           <p className="mt-0.5 text-[11.5px] text-text-secondary">
@@ -5324,7 +5322,7 @@ function LogActualModal({
             <div>
               <label className="text-[12px] font-semibold text-text-primary">
                 Subgoal
-                {needsSubgoal && <RequiredMark />}
+                {needsSubgoal ? <RequiredMark /> : <OptionalMark />}
               </label>
               <div className="mt-1">
                 <ColorSelect
@@ -5410,6 +5408,7 @@ function LogActualModal({
         <div>
           <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
             Customer
+            <OptionalMark />
             <InfoHint
               text={
                 "Which account this number came from. Pick the real account so the money can be traced back to it.\nIf the account has no record here yet, you can type the name instead."

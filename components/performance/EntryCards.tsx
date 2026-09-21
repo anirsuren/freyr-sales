@@ -51,6 +51,7 @@ import { DateText } from "@/components/ui/DateText";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 
 /**
  * THE EVIDENCE-AND-VERIFICATION SURFACES (Suren, Aug 13).
@@ -1782,7 +1783,7 @@ export function MyEntriesCard({
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="block">
                       <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
-                        Amount
+                        Amount<RequiredMark />
                       </span>
                   {/* THE AMOUNT CARRIES ITS CURRENCY HERE TOO (Anir, Aug 20:
                       "Literally everywhere where that number is, it has to be
@@ -1801,6 +1802,7 @@ export function MyEntriesCard({
                           : currencyMeta(a.currency ?? goal?.currency).symbol}
                     </span>
                     <input
+                      required
                       autoFocus
                       value={withCommas(draft.amount)}
                       placeholder="0"
@@ -1830,9 +1832,10 @@ export function MyEntriesCard({
                 </label>
                 <label className="block">
                   <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
-                    Date
+                    Date<RequiredMark />
                   </span>
                   <input
+                    required
                     type="date"
                     value={draft.date}
                     onChange={(e) =>
@@ -1843,7 +1846,7 @@ export function MyEntriesCard({
                 </label>
                 <div className="block sm:col-span-2">
                   <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
-                    Customer account
+                    Customer account<OptionalMark />
                   </span>
                   <ColorSelect
                     value={
@@ -1914,7 +1917,7 @@ export function MyEntriesCard({
                     </span>
                     <div>
                       <h3 className="text-[13.5px] font-bold text-text-primary">
-                        Supporting evidence
+                        Supporting evidence<OptionalMark />
                       </h3>
                       <p className="mt-0.5 text-[11.5px] text-text-secondary">
                         Keep the existing proof or attach the corrected file.
@@ -2835,9 +2838,10 @@ export function ClaimReviewDialog({
             {sendingBack && (
               <div className="tab-panel mt-4 rounded-xl border border-border-light bg-surface p-3">
                 <label className="block text-[12px] font-semibold text-text-primary">
-                  What needs fixing before you can verify this?
+                  What needs fixing before you can verify this?<RequiredMark />
                 </label>
                 <input
+                  required
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   autoFocus

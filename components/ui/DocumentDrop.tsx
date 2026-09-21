@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { tint } from "@/lib/tint";
+import { OptionalMark, RequiredMark } from "./RequiredMark";
 
 /**
  * ATTACH DOCUMENTS TO THE THING YOU ARE CREATING.
@@ -99,6 +100,7 @@ export function DocumentDrop({
   uploadUrl,
   label = "Documents",
   hint,
+  required = false,
 }: {
   docs: StagedDoc[];
   setDocs: React.Dispatch<React.SetStateAction<StagedDoc[]>>;
@@ -108,6 +110,7 @@ export function DocumentDrop({
   label?: string;
   /** What belongs here, in this record's own words. */
   hint?: string;
+  required?: boolean;
 }) {
   const [dragging, setDragging] = useState(false);
 
@@ -159,7 +162,9 @@ export function DocumentDrop({
   return (
     <div>
       <div className="flex items-baseline gap-2">
-        <span className="text-[12px] font-semibold text-text-primary">{label}</span>
+        <span className="text-[12px] font-semibold text-text-primary">
+          {label}{required ? <RequiredMark /> : <OptionalMark />}
+        </span>
         {hint && (
           <span className="text-[11.5px] text-text-tertiary">{hint}</span>
         )}

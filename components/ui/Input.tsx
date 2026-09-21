@@ -1,7 +1,7 @@
 import { forwardRef, InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 
 export const Input = forwardRef<
   HTMLInputElement,
@@ -27,6 +27,7 @@ Input.displayName = "Input";
 export function Field({
   label,
   required,
+  requirement,
   children,
   hint,
 }: {
@@ -34,9 +35,14 @@ export function Field({
    *  (Manoj's sheet stars the mandatory ones). */
   label: React.ReactNode;
   required?: boolean;
+  /** Popup fields default to optional; use none for action rows or read-only labels. */
+  requirement?: "required" | "optional" | "none";
   children: React.ReactNode;
   hint?: string;
 }) {
+  const labelAlreadySaysOptional =
+    typeof label === "string" && /\(optional\)/i.test(label);
+  const state = requirement ?? (required ? "required" : "optional");
   return (
     <label className="block min-w-0">
       {/* THE EXPLANATION GOES BEHIND A QUESTION MARK, NOT UNDER THE BOX
@@ -51,7 +57,11 @@ export function Field({
           already explains itself. */}
       <span className="mb-1.5 flex items-center gap-1 text-[13px] font-medium text-text-primary">
         {label}
-        {required && <RequiredMark />}
+        {state === "required" ? (
+          <RequiredMark />
+        ) : state === "optional" && !labelAlreadySaysOptional ? (
+          <OptionalMark />
+        ) : null}
         {hint && <InfoHint text={hint} />}
       </span>
       {children}

@@ -12,6 +12,7 @@ import { cn, formatDateTime } from "@/lib/utils";
 import { TimeAgo } from "@/components/ui/TimeAgo";
 import { useToast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { Button } from "@/components/ui/Button";
 import type {
   PitchEmail,
@@ -341,7 +342,7 @@ export function PitchWorkspace({
   }
 
   async function sendEmail() {
-    if (!composeSubject.trim()) return;
+    if (!composeSubject.trim() || !composeBody.trim() || (scheduleOn && !scheduleAt)) return;
     setSendingEmail(true);
     try {
       const res = await fetch(`/api/sessions/${sessionId}/send`, {
@@ -994,7 +995,7 @@ export function PitchWorkspace({
           </div>
           <div>
             <label className="block text-[12px] font-medium text-text-secondary mb-1">
-              Template
+              Template<OptionalMark />
             </label>
             <ColorSelect
               ariaLabel="Email template"
@@ -1015,9 +1016,10 @@ export function PitchWorkspace({
           </div>
           <div>
             <label className="block text-[12px] font-medium text-text-secondary mb-1">
-              Subject
+              Subject<RequiredMark />
             </label>
             <input
+              required
               value={composeSubject}
               onChange={(e) => setComposeSubject(e.target.value)}
               placeholder="What this email is about"
@@ -1026,9 +1028,10 @@ export function PitchWorkspace({
           </div>
           <div>
             <label className="block text-[12px] font-medium text-text-secondary mb-1">
-              Body
+              Body<RequiredMark />
             </label>
             <textarea
+              required
               value={composeBody}
               onChange={(e) => setComposeBody(e.target.value)}
               rows={7}
@@ -1043,22 +1046,27 @@ export function PitchWorkspace({
             />
             <CalendarClock size={14} strokeWidth={1.7} />
             Schedule for later
+            <OptionalMark />
           </label>
           {scheduleOn && (
-            <input
-              type="datetime-local"
-              aria-label="Schedule time"
-              value={scheduleAt}
-              onChange={(e) => setScheduleAt(e.target.value)}
-              className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
-            />
+            <label className="block text-[12px] font-medium text-text-secondary">
+              Schedule time<RequiredMark />
+              <input
+                required
+                type="datetime-local"
+                aria-label="Schedule time"
+                value={scheduleAt}
+                onChange={(e) => setScheduleAt(e.target.value)}
+                className="mt-1 w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
+              />
+            </label>
           )}
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <Button
             onClick={sendEmail}
             loading={sendingEmail}
-            disabled={!composeSubject.trim() || (scheduleOn && !scheduleAt)}
+            disabled={!composeSubject.trim() || !composeBody.trim() || (scheduleOn && !scheduleAt)}
           >
             <Send size={15} strokeWidth={1.9} />
             {scheduleOn ? "Schedule" : "Send"}

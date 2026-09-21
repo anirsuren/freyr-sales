@@ -7,7 +7,7 @@ import { UserPlus, PencilRuler,
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
 
@@ -150,6 +150,7 @@ export function InviteTeammate({
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
               Starting role
+              <RequiredMark />
             </span>
             <ColorSelect
               value={role}
@@ -189,7 +190,7 @@ export function InviteTeammate({
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
-              Note <span className="font-normal text-text-tertiary">Optional</span>
+              Note<OptionalMark />
             </span>
             <textarea
               value={note}

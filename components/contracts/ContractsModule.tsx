@@ -1404,7 +1404,7 @@ export function ContractsModule({
           >
           <div className="grid grid-cols-2 content-start gap-3">
             <div className="col-span-2">
-              <Field label="Contract name">
+              <Field label="Contract name" required>
                 <Input
                   value={editing.name}
                   maxLength={200}
@@ -1413,7 +1413,7 @@ export function ContractsModule({
                 />
               </Field>
             </div>
-            <Field label="Customer">
+            <Field label="Customer" required>
               {/* A LIST, NOT A TYPING BOX (Anir, Sep 8: "the fucking customer
                   has to be a dropdown... the deals will go to that customer").
 

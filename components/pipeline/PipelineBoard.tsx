@@ -29,7 +29,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { Modal } from "@/components/ui/Modal";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { Term } from "@/components/ui/Tooltip";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { stageKey } from "@/lib/glossary";
@@ -1085,6 +1085,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
           <div>
             <label className="block text-[12px] font-medium text-text-secondary mb-1">
               Primary contact
+              <OptionalMark />
             </label>
             <input
               value={addForm.contactName}
@@ -1097,6 +1098,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
             <div>
               <label className="block text-[12px] font-medium text-text-secondary mb-1">
                 Annual value
+                <OptionalMark />
               </label>
               <MoneyInput
                 value={addForm.value}
@@ -1109,6 +1111,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
             <div>
               <label className="block text-[12px] font-medium text-text-secondary mb-1">
                 Size
+                <OptionalMark />
               </label>
               {/* Matches the Stage picker below it and the size filter in the
                   toolbar, same colour + glyph as the badge it sets. */}
@@ -1124,6 +1127,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
           <div>
             <label className="block text-[12px] font-medium text-text-secondary mb-1">
               Stage
+              <OptionalMark />
             </label>
             <ColorSelect
               value={addForm.stage}
@@ -1146,16 +1150,20 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
           Saves the current search, size filter, and ownership scope as a reusable
           view.
         </p>
-        <input
-          autoFocus
-          value={viewName}
-          onChange={(e) => setViewName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") saveView();
-          }}
-          placeholder="e.g. My large biotech deals"
-          className={inputCls}
-        />
+        <label className="block text-[12px] font-medium text-text-secondary">
+          View name<RequiredMark />
+          <input
+            required
+            autoFocus
+            value={viewName}
+            onChange={(e) => setViewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") saveView();
+            }}
+            placeholder="e.g. My large biotech deals"
+            className={`${inputCls} mt-1`}
+          />
+        </label>
         <div className="flex justify-end gap-2 mt-4">
           <Button onClick={saveView} disabled={!viewName.trim()}>
             Save view

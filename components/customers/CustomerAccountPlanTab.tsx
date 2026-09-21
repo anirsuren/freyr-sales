@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Modal } from "@/components/ui/Modal";
+import { OptionalMark } from "@/components/ui/RequiredMark";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { MaterialPeek } from "@/components/offerings/MaterialPeek";
@@ -521,6 +522,7 @@ export function CustomerAccountPlanTab({
             <div className="grid gap-4 md:grid-cols-2">
               <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Status
+                <OptionalMark />
                 <ColorSelect
                   value={draft.status}
                   onChange={(value) => setDraft({ ...draft, status: value as PlanStatus })}
@@ -536,6 +538,7 @@ export function CustomerAccountPlanTab({
               </label>
               <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Plan owner
+                <OptionalMark />
                 <PeopleSelect value={draft.owner} options={ownerOptions} onChange={(owner) => setDraft({ ...draft, owner })} allowUnassigned={false} className="mt-1.5 normal-case tracking-normal" />
               </label>
             </div>
@@ -545,6 +548,7 @@ export function CustomerAccountPlanTab({
             <div className="grid items-start gap-4 md:grid-cols-3">
               <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Revenue target
+                <OptionalMark />
                 <MoneyInput
                   value={String(draft.target)}
                   onChange={(value) => setDraft({ ...draft, target: Number(value) || 0 })}
@@ -555,10 +559,12 @@ export function CustomerAccountPlanTab({
               </label>
               <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Next review
+                <OptionalMark />
                 <input type="date" value={draft.reviewDate} onChange={(e) => setDraft({ ...draft, reviewDate: e.target.value })} className="box-border h-10 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
               <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Target date
+                <OptionalMark />
                 <input type="date" value={draft.targetDate} onChange={(e) => setDraft({ ...draft, targetDate: e.target.value })} className="box-border h-10 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
             </div>
@@ -568,10 +574,12 @@ export function CustomerAccountPlanTab({
             <div className="grid items-start gap-4 md:grid-cols-2">
               <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Account objective
+                <OptionalMark />
                 <textarea value={draft.objective} onChange={(e) => setDraft({ ...draft, objective: e.target.value })} className="box-border h-32 w-full resize-none rounded-lg border border-border bg-white p-3 text-[13px] font-normal leading-5 normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
               <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Current position
+                <OptionalMark />
                 <textarea value={draft.currentPosition} onChange={(e) => setDraft({ ...draft, currentPosition: e.target.value })} className="box-border h-32 w-full resize-none rounded-lg border border-border bg-white p-3 text-[13px] font-normal leading-5 normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
             </div>
@@ -580,7 +588,7 @@ export function CustomerAccountPlanTab({
 
             <div>
               <div className="mb-2.5 flex items-center justify-between gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">Next actions</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">Next actions<OptionalMark /></p>
                 <span className="rounded-full bg-surface px-2 py-0.5 text-[10.5px] font-semibold text-text-tertiary">{draft.actions.length} actions</span>
               </div>
               <div className="divide-y divide-border-light overflow-hidden rounded-xl border border-border-light bg-white">
@@ -591,19 +599,22 @@ export function CustomerAccountPlanTab({
                       <span className="truncate text-[11.5px] font-semibold text-blue-primary">{action.play}</span>
                     </div>
                     <div className="min-w-0">
-                      <label className="sr-only" htmlFor={`account-plan-action-${action.id}`}>Action {index + 1}</label>
+                      <label className="sr-only" htmlFor={`account-plan-action-${action.id}`}>Action {index + 1} (optional)</label>
                       <input id={`account-plan-action-${action.id}`} value={action.action} onChange={(e) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, action: e.target.value } : item) })} className="h-9 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
                       <div className="mt-2 grid items-start gap-2.5 md:grid-cols-3">
                         <label className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                           Owner
+                          <OptionalMark />
                           <PeopleSelect value={action.owner} options={ownerOptions} onChange={(owner) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, owner } : item) })} allowUnassigned={false} ariaLabel={`Owner for action ${index + 1}`} className="normal-case tracking-normal [&>button]:h-10 [&>button]:py-0" />
                         </label>
                         <label className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                           Due date
+                          <OptionalMark />
                           <input aria-label={`Due date for action ${index + 1}`} type="date" value={action.due} onChange={(e) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, due: e.target.value } : item) })} className="h-10 w-full rounded-lg border border-border bg-white px-2.5 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
                         </label>
                         <label className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                           Status
+                          <OptionalMark />
                           <ColorSelect
                             value={action.status}
                             onChange={(status) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, status: status as ActionStatus } : item) })}

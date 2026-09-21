@@ -6,7 +6,7 @@ import { GripVertical, Pin, Search, Plus, Trash2, Package, Layers, ListChecks, L
 import { hasOfferingEditChanges } from "@/lib/offeringEditDirty";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 import { ScrollHint } from "@/components/ui/ScrollHint";
@@ -1460,7 +1460,7 @@ export function OfferingForm({
             max-content; zero it and the trigger truncates instead. */}
         <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <div className="min-w-0">
-            <label className={LABEL}>Offering type</label>
+            <label className={LABEL}>Offering type<OptionalMark /></label>
             {/* A colour+icon picker like every other dropdown in the app. It
                 was a bare text input wearing a datalist, which renders as the
                 browser's own grey autocomplete and looked nothing like the
@@ -1482,7 +1482,7 @@ export function OfferingForm({
           </div>
           <div className="min-w-0">
             <label className={LABEL}>
-              Offering name <span className="text-error">*</span>
+              Offering name<RequiredMark />
             </label>
             <input
               ref={nameRef}
@@ -1493,7 +1493,7 @@ export function OfferingForm({
             />
           </div>
           <div className="min-w-0">
-            <label className={LABEL}>Offering category</label>
+            <label className={LABEL}>Offering category<OptionalMark /></label>
             {/* The last raw <select> in this form. It rendered as the
                 browser's own grey list, no colour, no icon, nothing like the
                 pickers beside it. */}
@@ -1552,7 +1552,7 @@ export function OfferingForm({
 
         {pasteMode ? (
           <div>
-            <label className={LABEL}>Offering brief</label>
+            <label className={LABEL}>Offering brief<OptionalMark /></label>
             <RichBriefEditor
               value={pasted}
               onChange={setPasted}
@@ -1968,7 +1968,7 @@ export function OfferingForm({
                                     description is long, it'll look weird"). */}
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                   <div className="min-w-0">
-                                    <label className={LABEL}>Group</label>
+                                    <label className={LABEL}>Group<OptionalMark /></label>
                                     <ColorSelect
                                       value={groupOf(capRows, i)}
                                       options={groupOptions(groupOf(capRows, i))}
@@ -1986,7 +1986,7 @@ export function OfferingForm({
                                     />
                                   </div>
                                   <div className="min-w-0">
-                                    <label className={LABEL}>Card heading</label>
+                                    <label className={LABEL}>Card heading<OptionalMark /></label>
                                     <input
                                       className={cn(FIELD, "font-semibold")}
                                       value={fields.heading}
@@ -1998,7 +1998,7 @@ export function OfferingForm({
                                     />
                                   </div>
                                   <div className="min-w-0 sm:col-span-2">
-                                    <label className={LABEL}>Card description</label>
+                                    <label className={LABEL}>Card description<OptionalMark /></label>
                                     <textarea
                                       className={`${FIELD} h-auto min-h-[72px] resize-y py-2 leading-relaxed`}
                                       value={fields.description}
@@ -2049,7 +2049,7 @@ export function OfferingForm({
                 </div>
 
                 <div>
-                  <label className={LABEL}>Icon</label>
+                  <label className={LABEL}>Icon<OptionalMark /></label>
                   <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                     <button
                       type="button"
@@ -2104,7 +2104,7 @@ export function OfferingForm({
                 </div>
 
                 <div>
-                  <label className={LABEL}>Color</label>
+                  <label className={LABEL}>Color<OptionalMark /></label>
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                     <button
                       type="button"
@@ -2198,7 +2198,7 @@ export function OfferingForm({
                 </p>
                 {addingCap === "section" ? (
                   <div>
-                    <label className={LABEL}>Group</label>
+                    <label className={LABEL}>Group<RequiredMark /></label>
                     <ColorSelect
                       value={capDraft}
                       options={groupOptions(capDraft).filter((o) => o.value)}
@@ -2209,7 +2209,7 @@ export function OfferingForm({
                 ) : (
                   <div className="space-y-3">
                     <div>
-                      <label className={LABEL}>Card heading</label>
+                      <label className={LABEL}>Card heading<RequiredMark /></label>
                       <input
                         autoFocus
                         className={FIELD}
@@ -2220,7 +2220,7 @@ export function OfferingForm({
                       />
                     </div>
                     <div>
-                      <label className={LABEL}>Card description</label>
+                      <label className={LABEL}>Card description<OptionalMark /></label>
                       <textarea
                         className={`${FIELD} h-auto min-h-[88px] resize-y py-2 leading-relaxed`}
                         value={capDescriptionDraft}
@@ -2400,7 +2400,7 @@ export function OfferingForm({
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className={LABEL}>Current availability</label>
+            <label className={LABEL}>Current availability<OptionalMark /></label>
             <ColorSelect
               value={availMode}
               options={AVAIL_OPTIONS}
@@ -2426,7 +2426,7 @@ export function OfferingForm({
           </div>
           {!isServiceOffering && (
             <div>
-              <label className={LABEL}>Current version</label>
+              <label className={LABEL}>Current version<OptionalMark /></label>
               <input
                 value={currentVersion}
                 onChange={(event) => setCurrentVersion(event.target.value)}
@@ -2451,7 +2451,7 @@ export function OfferingForm({
         </div>
 
         <div>
-          <label className={LABEL}>Applicable markets</label>
+          <label className={LABEL}>Applicable markets<OptionalMark /></label>
           <div className="flex flex-wrap gap-2">
             {markets.map((m) => {
               const on = mktIds.includes(m.id);
@@ -2849,7 +2849,7 @@ export function OfferingForm({
                       dropdown ran into Buyer stage. */}
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <div className="md:col-span-2 xl:col-span-4">
-                      <label className={LABEL}>Name</label>
+                      <label className={LABEL}>Name<RequiredMark /></label>
                       <input
                         value={m.label}
                         onChange={(e) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
@@ -2858,7 +2858,7 @@ export function OfferingForm({
                       />
                     </div>
                     <div>
-                      <label className={LABEL}>Format</label>
+                      <label className={LABEL}>Format<OptionalMark /></label>
                       <ColorSelect
                         value={m.kind}
                         options={kindOptionsFor(m.kind)}
@@ -2868,7 +2868,7 @@ export function OfferingForm({
                       />
                     </div>
                     <div>
-                      <label className={LABEL}>Folder</label>
+                      <label className={LABEL}>Folder<OptionalMark /></label>
                       <ColorSelect
                         value={m.folder || "Others"}
                         options={materialFolderOptions.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "var(--ink-bright-blue)", icon: Folder }))}
@@ -2878,7 +2878,7 @@ export function OfferingForm({
                       />
                     </div>
                     <div>
-                      <label className={LABEL}>Buyer stage</label>
+                      <label className={LABEL}>Buyer stage<OptionalMark /></label>
                       <MultiColorSelect
                         values={stages}
                         options={STAGE_OPTIONS}
@@ -2891,7 +2891,7 @@ export function OfferingForm({
                       />
                     </div>
                     <div>
-                      <label className={LABEL}>Viewing access</label>
+                      <label className={LABEL}>Viewing access<OptionalMark /></label>
                       <ColorSelect
                         value={m.accessLevel ?? "client_facing"}
                         options={ACCESS_OPTIONS}
@@ -2902,7 +2902,7 @@ export function OfferingForm({
                     </div>
                     {linkedMaterial && (
                       <div className="md:col-span-2 xl:col-span-4">
-                        <label className={LABEL}>Source link</label>
+                        <label className={LABEL}>Source link<RequiredMark /></label>
                         <input
                           value={m.url}
                           onChange={(e) => setMaterials((l) => l.map((x, j) => j === i ? { ...x, url: e.target.value } : x))}
@@ -2946,6 +2946,9 @@ export function OfferingForm({
         onClose={() => setNoteTarget(null)}
         title={noteTarget ? `How ${noteTarget.name} relates` : ""}
       >
+        <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+          Relationship note<OptionalMark />
+        </label>
         <p className="text-[12.5px] leading-relaxed text-text-secondary">
           One or two sentences a rep can use on a call: when these two are sold
           together, and what the other one adds.
@@ -3111,7 +3114,7 @@ export function OfferingForm({
       >
         <div className="space-y-3">
           <div>
-            <label className={LABEL}>What is it</label>
+            <label className={LABEL}>What is it<OptionalMark /></label>
             <ColorSelect
               value={draftMaterial.kind}
               options={kindOptionsFor(draftMaterial.kind)}
@@ -3124,7 +3127,7 @@ export function OfferingForm({
             />
           </div>
           <div>
-            <label className={LABEL}>Name{!draftMaterial.url.trim() && <RequiredMark />}</label>
+            <label className={LABEL}>Name{!draftMaterial.url.trim() ? <RequiredMark /> : <OptionalMark />}</label>
             <input
               required={!draftMaterial.url.trim()}
               autoFocus
@@ -3137,7 +3140,7 @@ export function OfferingForm({
             />
           </div>
           <div>
-            <label className={LABEL}>Link{!draftMaterial.label.trim() && <RequiredMark />}</label>
+            <label className={LABEL}>Link{!draftMaterial.label.trim() ? <RequiredMark /> : <OptionalMark />}</label>
             <input
               required={!draftMaterial.label.trim()}
               className={FIELD}
@@ -3150,7 +3153,7 @@ export function OfferingForm({
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={LABEL}>Where it fits</label>
+              <label className={LABEL}>Where it fits<OptionalMark /></label>
               <MultiColorSelect
                 values={draftMaterial.journeyStages ?? [draftMaterial.journeyStage ?? "awareness"]}
                 options={STAGE_OPTIONS}
@@ -3167,7 +3170,7 @@ export function OfferingForm({
               />
             </div>
             <div>
-              <label className={LABEL}>Who can see it</label>
+              <label className={LABEL}>Who can see it<OptionalMark /></label>
               <ColorSelect
                 value={draftMaterial.accessLevel ?? "client_facing"}
                 options={ACCESS_OPTIONS}
@@ -3182,7 +3185,7 @@ export function OfferingForm({
             </div>
           </div>
           <div>
-            <label className={LABEL}>Folder</label>
+            <label className={LABEL}>Folder<OptionalMark /></label>
             <ColorSelect
               value={draftMaterial.folder || "Others"}
               options={materialFolderOptions.map((folder) => ({ value: folder, label: materialFolderLabel(folder), color: "var(--ink-bright-blue)", icon: Folder }))}

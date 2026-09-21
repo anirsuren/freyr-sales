@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateEcho } from "@/components/ui/DateEcho";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { CreatedStamp } from "@/components/ui/CreatedStamp";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
@@ -3622,6 +3622,7 @@ export function FdlComponentDetail({
             <div>
               <label className="mb-1 block text-[12px] font-medium text-text-primary">
                 {status === "released" ? "Release date" : "Expected date"}
+                <OptionalMark />
               </label>
               <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className={FIELD} />
               <DateEcho value={date} />
@@ -3808,6 +3809,7 @@ export function FdlComponentDetail({
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
               Feature ID
+              <OptionalMark />
               <InfoHint text="We make this ID for you, and it is unique inside this component. Nobody has to think one up, and two features can never clash." />
             </label>
             <p className="rounded-lg border border-border-light bg-surface px-3 py-2 text-[13px] font-semibold text-text-secondary tnum">
@@ -3815,7 +3817,7 @@ export function FdlComponentDetail({
             </p>
           </div>
           <div>
-            <label className="mb-1 block text-[12px] font-medium text-text-primary">Description</label>
+            <label className="mb-1 block text-[12px] font-medium text-text-primary">Description<OptionalMark /></label>
             <textarea
               value={featDesc}
               onChange={(event) => setFeatDesc(event.target.value)}
@@ -3869,6 +3871,7 @@ export function FdlComponentDetail({
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
               Documents and images
+              <OptionalMark />
               <InfoHint text="Attach a spec, a screenshot or a mock-up. Anyone who can open this component can open the file." />
             </label>
             {featFiles.length > 0 && (

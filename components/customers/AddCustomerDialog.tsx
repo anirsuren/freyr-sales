@@ -17,6 +17,7 @@ import {
 } from "@/lib/customerProfilesShared";
 import type { LookupSource } from "@/lib/placeLookupShared";
 import { cn } from "@/lib/utils";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 
 /**
  * ADD A CUSTOMER, WITH THE FIELDS MANOJ LISTED (Sep 10): "Customer Name*,
@@ -69,11 +70,7 @@ function Label({ text, required = false, hint }: { text: string; required?: bool
   return (
     <span className="mb-1.5 flex items-center gap-1 text-[12.5px] font-semibold text-text-primary">
       {text}
-      {required && (
-        <span className="text-[color:#DC2626]" aria-hidden="true">
-          *
-        </span>
-      )}
+      {required ? <RequiredMark /> : <OptionalMark />}
       {hint && <InfoHint text={hint} />}
     </span>
   );
@@ -217,11 +214,7 @@ export function AddCustomerDialog({
         <legend className="flex items-center gap-1 px-1 text-[12.5px] font-semibold text-text-primary">
           <MapPin size={13} strokeWidth={2.2} className="text-[color:var(--ink-bright-blue)]" aria-hidden="true" />
           {title}
-          {required && (
-            <span className="text-[color:#DC2626]" aria-hidden="true">
-              *
-            </span>
-          )}
+          {required ? <RequiredMark /> : <OptionalMark />}
           <InfoHint text={hint} />
         </legend>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
@@ -415,15 +408,21 @@ export function AddCustomerDialog({
               ]}
             />
             {groupId === NEW_GROUP && (
-              <input
-                className={cn(INPUT, "mt-2")}
-                value={newGroup}
-                onChange={(e) => setNewGroup(e.target.value)}
-                onKeyDown={onEnter}
-                placeholder="Name the new group"
-                aria-label="New group name"
-                disabled={busy}
-              />
+              <label className="mt-2 block">
+                <span className="mb-1 flex items-center text-[12px] font-semibold text-text-primary">
+                  New group name<RequiredMark />
+                </span>
+                <input
+                  required
+                  className={INPUT}
+                  value={newGroup}
+                  onChange={(e) => setNewGroup(e.target.value)}
+                  onKeyDown={onEnter}
+                  placeholder="Name the new group"
+                  aria-label="New group name"
+                  disabled={busy}
+                />
+              </label>
             )}
           </div>
         </div>

@@ -6,6 +6,7 @@ import { Check } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Button } from "@/components/ui/Button";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { typeMeta } from "@/components/performance/bits";
@@ -217,6 +218,7 @@ export function ActivityGoalPrompt({
         <div className="mt-3">
           <label className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
             How much does it add?
+            <RequiredMark />
           </label>
           <input
             value={typedAmount}
@@ -233,6 +235,7 @@ export function ActivityGoalPrompt({
         <div className="mt-3">
           <label className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
             Counts for
+            <RequiredMark />
           </label>
           {/* Admins credit anyone, a group owner their people (Suren: "only
               the admin guys and the group owners can do it — otherwise the

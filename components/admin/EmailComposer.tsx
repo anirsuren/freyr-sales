@@ -33,6 +33,7 @@ import { RichTextBox } from "./RichTextBox";
 import { OwnerDigestPicker } from "./OwnerDigestPicker";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 
 /**
  * WRITING AND SENDING AN EMAIL FROM THE APP (Anir, Aug 25: "have you added
@@ -54,13 +55,16 @@ const FIELD =
 function Label({
   children,
   hint,
+  required = false,
 }: {
   children: React.ReactNode;
   hint?: string;
+  required?: boolean;
 }) {
   return (
     <span className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
       {children}
+      {required ? <RequiredMark /> : <OptionalMark />}
       {hint && <InfoHint text={hint} />}
     </span>
   );
@@ -326,6 +330,7 @@ function RecipientField({
   people,
   ariaLabel,
   trailing,
+  required = false,
 }: {
   label: string;
   hint?: string;
@@ -339,6 +344,7 @@ function RecipientField({
    *  field, so it belongs on this field rather than beside the Send button a
    *  page below. */
   trailing?: React.ReactNode;
+  required?: boolean;
 }) {
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(false);
@@ -423,11 +429,11 @@ function RecipientField({
     <div ref={boxRef} className="relative">
       {trailing ? (
         <span className="flex items-center justify-between gap-2">
-          <Label hint={hint}>{label}</Label>
+      <Label hint={hint} required={required}>{label}</Label>
           {trailing}
         </span>
       ) : (
-        <Label hint={hint}>{label}</Label>
+        <Label hint={hint} required={required}>{label}</Label>
       )}
       <div
         onClick={() => {
@@ -840,6 +846,7 @@ export function EmailComposer() {
         <div className="mt-4 space-y-3.5">
           <RecipientField
             label="To"
+            required
             hint="Start typing a name to pick somebody, or type any address and press Enter. Anybody can be a recipient. They do not need an account here."
             value={to}
             onChange={setTo}
@@ -909,7 +916,7 @@ export function EmailComposer() {
                 it is a property of the message, and the subject line is where
                 Outlook's own "!" ends up. */}
             <span className="flex items-center justify-between gap-2">
-              <Label>Subject</Label>
+              <Label required>Subject</Label>
               <button
                 type="button"
                 onClick={() => setImportant((v) => !v)}
@@ -966,7 +973,7 @@ export function EmailComposer() {
                         <Braces size={13} strokeWidth={2.2} className="shrink-0 text-blue-primary" />
                       )}
                       <span className="truncate text-[11px] font-bold uppercase tracking-[0.045em] text-text-secondary">
-                        {variable.label}
+                        {variable.label}<RequiredMark />
                       </span>
                       <span className="ml-auto shrink-0 rounded bg-white px-1.5 py-0.5 font-mono text-[9.5px] text-blue-primary">
                         [{variable.label}]
@@ -1019,7 +1026,7 @@ export function EmailComposer() {
             {/* THE FORMAT BAR SARAS ASKED FOR (Aug 25: "a format bar for the
                 message to be added though — Bold, Italics, Underline, Font,
                 Font Size, Font Colour, Highlights, bullets, indentation"). */}
-            <Label hint="Formatting, alignment and hyperlinks carry into the email. A plain-text copy goes with it for clients that refuse HTML.">
+            <Label required hint="Formatting, alignment and hyperlinks carry into the email. A plain-text copy goes with it for clients that refuse HTML.">
               Message
             </Label>
             <RichTextBox

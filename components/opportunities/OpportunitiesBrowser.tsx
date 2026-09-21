@@ -72,6 +72,7 @@ import { stampedAt } from "@/lib/performanceShared";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -3029,6 +3030,7 @@ export function OpportunitiesBrowser({
                 offering means a second opportunity. */}
             <SingleOfferingEditor
               line={editing.rows[0] ?? blankLine()}
+              requiredForCreation={!editing.id}
               offerings={offerings}
               colorForOfferingId={colorForOfferingId}
               rates={rates}
@@ -3101,7 +3103,7 @@ export function OpportunitiesBrowser({
               </Field>
               <Field
                 label="Estimated TCV"
-                required
+                required={!editing.id}
                 hint="What the whole contract is worth, adding up every year. Mandatory. It starts as the deal value above — change it only if the contract total is actually different."
               >
                 <MoneyInput
@@ -3228,7 +3230,7 @@ export function OpportunitiesBrowser({
                   ]}
                 />
               </Field>
-              <Field label="Owner" required>
+              <Field label="Owner" required={!editing.id}>
                 {/* A dropdown like everything else (Anir, Aug 17) — the
                     roster with faces, plus whatever name an imported deal
                     already carries so editing never loses it. */}
@@ -3886,12 +3888,14 @@ function withCommas(digits: string): string {
  */
 function SingleOfferingEditor({
   line,
+  requiredForCreation,
   offerings,
   colorForOfferingId,
   rates = {},
   onChange,
 }: {
   line: DraftLine;
+  requiredForCreation: boolean;
   offerings: { id: string; name: string; type?: string }[];
   colorForOfferingId: Map<string, string>;
   rates?: CurrencyRates;
@@ -4017,7 +4021,7 @@ function SingleOfferingEditor({
           </div>
         </div>
         <div className="min-w-0">
-          <label className={labelCls}>Offering type<InfoHint text="Services or a software license. It decides how the money is scheduled below: a software license is billed as a one-time setup (OTS) plus an annual fee (ARR), a services contract as a monthly figure." /></label>
+          <label className={labelCls}>Offering type<OptionalMark /><InfoHint text="Services or a software license. It decides how the money is scheduled below: a software license is billed as a one-time setup (OTS) plus an annual fee (ARR), a services contract as a monthly figure." /></label>
           <div className="mt-1">
             <ColorSelect
               value={line.offeringKind ?? ""}
@@ -4048,7 +4052,7 @@ function SingleOfferingEditor({
 
       {!line.offeringId && (line.offeringOther || line.offeringLabel) && (
         <div>
-          <label className={labelCls}>What it&apos;s called</label>
+          <label className={labelCls}>What it&apos;s called<RequiredMark /></label>
           <input
             value={line.offeringLabel}
             onChange={(e) => set({ offeringLabel: e.target.value })}
@@ -4060,7 +4064,7 @@ function SingleOfferingEditor({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <div className="min-w-0 sm:col-span-2">
-          <label className={labelCls}>Value <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">*</span><InfoHint text="What the client pays, in their own currency. The dollar figure underneath is worked out from the published rate on the signing date and is what every total and goal counts." /></label>
+          <label className={labelCls}>Value {line.key.startsWith("new-") ? <RequiredMark /> : <OptionalMark />}<InfoHint text="What the client pays, in their own currency. The dollar figure underneath is worked out from the published rate on the signing date and is what every total and goal counts." /></label>
           {/* ONE amount, in whatever the client pays — USD is computed. */}
           <div className="mt-1 flex gap-1.5">
             <ColorSelect
@@ -4134,7 +4138,7 @@ function SingleOfferingEditor({
           </div>
         </div>
         <div className="min-w-0 sm:col-span-2">
-          <label className={labelCls}>Confidence <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">*</span><InfoHint text="How likely this is to close, 0 to 100. It also sets the revenue type on its own: 95 and up is High confidence, 99 and up is Go get, anything below is Pipeline." /></label>
+          <label className={labelCls}>Confidence {requiredForCreation ? <RequiredMark /> : <OptionalMark />}<InfoHint text="How likely this is to close, 0 to 100. It also sets the revenue type on its own: 95 and up is High confidence, 99 and up is Go get, anything below is Pipeline." /></label>
           <div className="mt-1">
             <ConfidenceSlider
               value={line.confidence}
@@ -4192,7 +4196,7 @@ function SingleOfferingEditor({
           })()}
         </div>
         <div className="min-w-0">
-          <label className={labelCls}>Est. sign <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">*</span><InfoHint text="When you expect the contract to be signed. It decides which quarter the deal lands in on every report, and it is the date the currency is converted on." /></label>
+          <label className={labelCls}>Est. sign {requiredForCreation ? <RequiredMark /> : <OptionalMark />}<InfoHint text="When you expect the contract to be signed. It decides which quarter the deal lands in on every report, and it is the date the currency is converted on." /></label>
           <input
             type="date"
             value={line.estSignDate}

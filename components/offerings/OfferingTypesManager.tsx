@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NamePill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { useToast } from "@/components/ui/Toast";
 import type { OfferingType } from "@/lib/offerings";
 import { listAccent } from "./filterPalette";
@@ -153,7 +154,7 @@ export function OfferingTypesManager({
       >
         <div className="space-y-4">
           <div>
-            <label className={LABEL}>Offering type</label>
+            <label className={LABEL}>Offering type<RequiredMark /></label>
             <input
               className={FIELD}
               value={name}
@@ -163,7 +164,7 @@ export function OfferingTypesManager({
             />
           </div>
           <div>
-            <label className={LABEL}>Description</label>
+            <label className={LABEL}>Description<OptionalMark /></label>
             <textarea
               className={`${FIELD} min-h-[88px] resize-y`}
               value={description}

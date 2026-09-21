@@ -12,3 +12,17 @@ export function RequiredMark({ className }: { className?: string }) {
     </span>
   );
 }
+
+/** The matching explicit state for fields that creation may leave empty. */
+export function OptionalMark({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "ml-1 font-normal normal-case tracking-normal text-text-tertiary",
+        className
+      )}
+    >
+      (optional)
+    </span>
+  );
+}

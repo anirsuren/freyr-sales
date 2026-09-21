@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { linkedInIdentifier } from "@/lib/marketIntelLinks";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 
 /**
  * Follow one more person: paste their LinkedIn profile link and that's it
@@ -88,10 +89,11 @@ export function TrackPersonButton({
               className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold text-text-primary"
               htmlFor="mi-person-link"
             >
-              <LinkedInIcon size={12} /> Their LinkedIn profile
+              <LinkedInIcon size={12} /> Their LinkedIn profile<RequiredMark />
             </label>
             <input
               id="mi-person-link"
+              required
               className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary"
               value={linkedinUrl}
               onChange={(e) => {

@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 
 /**
  * A FORMAT BAR FOR THE MESSAGE (Saras, Aug 25, on the email composer: "This is
@@ -417,7 +418,7 @@ export function RichTextBox({
         >
           <label className="block">
             <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              Text to display
+              Text to display<OptionalMark />
             </span>
             <input
               autoFocus
@@ -429,9 +430,10 @@ export function RichTextBox({
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              Link address
+              Link address<RequiredMark />
             </span>
             <input
+              required
               value={linkUrl}
               onChange={(event) => setLinkUrl(event.target.value)}
               placeholder="https://…"

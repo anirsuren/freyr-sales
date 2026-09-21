@@ -43,6 +43,7 @@ import { MaterialReadState } from "@/components/offerings/MaterialReadState";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { shortPersonName } from "@/lib/personName";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import {
   ACCESS_LEVELS,
   ACCESS_LEVEL_META,
@@ -2023,9 +2024,10 @@ export function MaterialsSection({
           )}
           <div>
             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-              Folder name
+              Folder name<RequiredMark />
             </label>
             <input
+              required
               className="w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:shadow-input-focus focus:outline-none"
               value={renameDraft}
               onChange={(event) => setRenameDraft(event.target.value)}

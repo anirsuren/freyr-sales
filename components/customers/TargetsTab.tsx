@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { Building2, CalendarDays, ChevronDown, Crosshair, DollarSign, Plus, Trash2, UserRound, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { countryOptions } from "@/lib/countries";
@@ -699,6 +699,7 @@ export function TargetsTab({
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   Domain
+                  <OptionalMark />
                 </label>
                 <ColorSelect
                   value={draft.domain}
@@ -717,6 +718,7 @@ export function TargetsTab({
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   HQ country
+                  <OptionalMark />
                 </label>
                 {/* THE COUNTRY LIST THE APP ALREADY HAS (Anir, Aug 28: "I
                     would make these two in dropdowns"). Typed free, "Germany",
@@ -745,6 +747,7 @@ export function TargetsTab({
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   Company revenue
+                  <OptionalMark />
                 </label>
                 {/* A BAND, NOT A FIGURE. Nobody knows a prospect's revenue to
                     the dollar, and "~$3B", "3 billion" and "$3,000M" were the
@@ -823,6 +826,7 @@ export function TargetsTab({
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   Owner
+                  <OptionalMark />
                 </label>
                 <PersonSelect
                   value={draft.owner}
@@ -835,6 +839,7 @@ export function TargetsTab({
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   Tier
+                  <OptionalMark />
                 </label>
                 <ColorSelect
                   value={draft.tier}
@@ -853,6 +858,7 @@ export function TargetsTab({
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   Target quarter
+                  <OptionalMark />
                 </label>
                 <ColorSelect
                   value={draft.quarter}
@@ -874,6 +880,7 @@ export function TargetsTab({
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   Connection
+                  <OptionalMark />
                 </label>
                 <ColorSelect
                   value={draft.degreeOfConnection}
@@ -896,6 +903,7 @@ export function TargetsTab({
               <div className="min-w-0">
                 <label className="mb-1 block text-[12px] font-semibold text-text-primary">
                   Estimated potential (USD)
+                  <OptionalMark />
                 </label>
                 <input
                   value={withCommas(draft.potential)}
@@ -914,7 +922,7 @@ export function TargetsTab({
 
           <div>
             <label className="mb-1 block text-[12px] font-semibold text-text-primary">
-              Notes <span className="font-normal text-text-tertiary">optional</span>
+              Notes <OptionalMark />
             </label>
             <textarea
               value={draft.notes}

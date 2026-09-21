@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NamePill } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { useToast } from "@/components/ui/Toast";
 import type {
   CustomerType,
@@ -341,7 +342,7 @@ export function CustomerTypesManager({
         <div className="space-y-4 p-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className={LABEL}>Family</label>
+                <label className={LABEL}>Family<RequiredMark /></label>
                 <ColorSelect
                   ariaLabel="Family"
                   className="w-full"
@@ -357,7 +358,7 @@ export function CustomerTypesManager({
                 />
               </div>
               <div>
-                <label className={LABEL}>Size</label>
+                <label className={LABEL}>Size<RequiredMark /></label>
                 <ColorSelect
                   ariaLabel="Size"
                   className="w-full"
@@ -374,21 +375,21 @@ export function CustomerTypesManager({
               </div>
             </div>
             <div>
-              <label className={LABEL}>Product type</label>
+              <label className={LABEL}>Product type<OptionalMark /></label>
               <input className={FIELD} value={productType} onChange={(e) => setProductType(e.target.value)} placeholder="What kind of products they make" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className={LABEL}>Revenue</label>
+                <label className={LABEL}>Revenue<OptionalMark /></label>
                 <input className={FIELD} value={revenue} onChange={(e) => setRevenue(e.target.value)} placeholder="e.g. Under $500M" />
               </div>
               <div>
-                <label className={LABEL}>Employees</label>
+                <label className={LABEL}>Employees<OptionalMark /></label>
                 <input className={FIELD} value={employees} onChange={(e) => setEmployees(e.target.value)} placeholder="e.g. < 500" />
               </div>
             </div>
             <div>
-              <label className={LABEL}>Operational focus</label>
+              <label className={LABEL}>Operational focus<OptionalMark /></label>
               <input className={FIELD} value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="Their operational profile" />
             </div>
             {typeExists && (
@@ -426,7 +427,7 @@ export function CustomerTypesManager({
       >
         <div className="space-y-4 p-1">
           <div>
-            <label className={LABEL}>Product type</label>
+            <label className={LABEL}>Product type<OptionalMark /></label>
             <input
               className={FIELD}
               value={editDraft.product_type}
@@ -439,7 +440,7 @@ export function CustomerTypesManager({
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={LABEL}>Revenue</label>
+              <label className={LABEL}>Revenue<OptionalMark /></label>
               <input
                 className={FIELD}
                 value={editDraft.revenue}
@@ -450,7 +451,7 @@ export function CustomerTypesManager({
               />
             </div>
             <div>
-              <label className={LABEL}>Employees</label>
+              <label className={LABEL}>Employees<OptionalMark /></label>
               <input
                 className={FIELD}
                 value={editDraft.employees}
@@ -462,7 +463,7 @@ export function CustomerTypesManager({
             </div>
           </div>
           <div>
-            <label className={LABEL}>Operational focus</label>
+            <label className={LABEL}>Operational focus<OptionalMark /></label>
             <input
               className={FIELD}
               value={editDraft.operational_focus}
@@ -499,7 +500,7 @@ export function CustomerTypesManager({
       >
         <div className="space-y-4 p-1">
           <div>
-            <label className={LABEL}>Market</label>
+            <label className={LABEL}>Market<RequiredMark /></label>
             <div className="relative">
               <input
                 className={`${FIELD} pl-9`}
@@ -802,7 +803,7 @@ export function CustomerTypesManager({
       >
         <div className="space-y-4 p-1">
           <div>
-            <label className={LABEL}>Market</label>
+            <label className={LABEL}>Market<RequiredMark /></label>
             <div className="relative">
               <input
                 className={`${FIELD} pl-9`}

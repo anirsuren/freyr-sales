@@ -2,6 +2,7 @@
 
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { DateEcho } from "@/components/ui/DateEcho";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -609,7 +610,7 @@ function RoadmapModuleEditor({
       >
         <div className={`grid gap-4 ${versions ? "sm:grid-cols-[1fr_160px]" : ""}`}>
           <div>
-            <label className={LABEL}>Module or area</label>
+            <label className={LABEL}>Module or area<RequiredMark /></label>
             <input
               autoFocus
               className={FIELD}
@@ -620,7 +621,7 @@ function RoadmapModuleEditor({
           </div>
           {versions && (
             <div>
-              <label className={LABEL}>Version</label>
+              <label className={LABEL}>Version<OptionalMark /></label>
               <input
                 className={FIELD}
                 value={draft.version || ""}
@@ -631,7 +632,7 @@ function RoadmapModuleEditor({
           )}
         </div>
         <div>
-          <label className={LABEL}>What it gives the customer</label>
+          <label className={LABEL}>What it gives the customer<OptionalMark /></label>
           <textarea
             className={`${FIELD} h-auto min-h-[132px] py-3 leading-relaxed`}
             value={draft.details.join("\n")}
@@ -716,6 +717,7 @@ function RoadmapComparisonEditor({
         <div>
           <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
             Name the current column
+            <OptionalMark />
           </label>
           <input
             className={FIELD}
@@ -727,6 +729,7 @@ function RoadmapComparisonEditor({
         <div>
           <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
             Name the previous column
+            <OptionalMark />
           </label>
           <input
             className={FIELD}
@@ -766,7 +769,7 @@ function RoadmapComparisonEditor({
         onSave={save}
       >
         <div>
-          <label className={LABEL}>Capability area</label>
+          <label className={LABEL}>Capability area<RequiredMark /></label>
           <input
             autoFocus
             className={FIELD}
@@ -777,7 +780,7 @@ function RoadmapComparisonEditor({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className={LABEL}>{currentLabel || "Current version"}</label>
+            <label className={LABEL}>{currentLabel || "Current version"}<OptionalMark /></label>
             <textarea
               className={`${FIELD} h-auto min-h-[110px] py-3 leading-relaxed`}
               value={draft.current}
@@ -786,7 +789,7 @@ function RoadmapComparisonEditor({
             />
           </div>
           <div>
-            <label className={LABEL}>{previousLabel || "Previous version"}</label>
+            <label className={LABEL}>{previousLabel || "Previous version"}<OptionalMark /></label>
             <textarea
               className={`${FIELD} h-auto min-h-[110px] py-3 leading-relaxed`}
               value={draft.previous}
@@ -885,7 +888,7 @@ function RoadmapHistoryEditor({
         onSave={save}
       >
         <div>
-          <label className={LABEL}>Period</label>
+          <label className={LABEL}>Period<RequiredMark /></label>
           <input
             autoFocus
             className={FIELD}
@@ -895,7 +898,7 @@ function RoadmapHistoryEditor({
           />
         </div>
         <div>
-          <label className={LABEL}>What shipped</label>
+          <label className={LABEL}>What shipped<OptionalMark /></label>
           <textarea
             className={`${FIELD} h-auto min-h-[132px] py-3 leading-relaxed`}
             value={draft.summary.join("\n")}
@@ -1745,7 +1748,7 @@ export function OfferingReleasesTab({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="release-version" className={LABEL}>
-                  Version <span className="text-error">*</span>
+                  Version<RequiredMark />
                 </label>
                 <input
                   id="release-version"
@@ -1771,11 +1774,9 @@ export function OfferingReleasesTab({
                 <label htmlFor="release-date" className={LABEL}>
                   {status === "released" ? "Release date" : "Target date"}{" "}
                   {status === "released" ? (
-                    <span className="text-error">*</span>
+                    <RequiredMark />
                   ) : (
-                    <span className="font-normal text-text-tertiary">
-                      (optional)
-                    </span>
+                    <OptionalMark />
                   )}
                 </label>
                 <input
@@ -1791,7 +1792,7 @@ export function OfferingReleasesTab({
           </section>
 
           <fieldset>
-            <legend className={LABEL}>Release status</legend>
+            <legend className={LABEL}>Release status<RequiredMark /></legend>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {(canSeeNext
                 ? (["released", "next"] as const)
@@ -1858,7 +1859,7 @@ export function OfferingReleasesTab({
                   id="release-changes-heading"
                   className="text-[13px] font-semibold text-text-primary"
                 >
-                  What changed <span className="text-error">*</span>
+                  What changed<RequiredMark />
                 </h3>
                 <p className="mt-0.5 text-[11.5px] text-text-secondary">
                   Add one clear, customer-friendly change per line.

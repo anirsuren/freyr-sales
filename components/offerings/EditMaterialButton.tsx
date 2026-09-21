@@ -6,6 +6,7 @@ import { Building2, Pencil, Folder, Route } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
   ACCESS_LEVELS,
@@ -226,6 +227,7 @@ export function EditMaterialButton({
               className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"
             >
               Folder
+              <RequiredMark />
             </label>
             {/* Folder as the house picker, not a grey <select> — same folder
                 glyph the material cards use (Anir, Jul 30 dropdown sweep). */}
@@ -247,6 +249,7 @@ export function EditMaterialButton({
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 Buyer&apos;s journey stage
+                <RequiredMark />
               </label>
               <MultiColorSelect
                 values={journeyStages}
@@ -265,6 +268,7 @@ export function EditMaterialButton({
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 Division
+                <RequiredMark />
               </label>
               <MultiColorSelect
                 values={divisions}
@@ -284,6 +288,7 @@ export function EditMaterialButton({
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                 Who can view this file?
+                <RequiredMark />
               </label>
               <ColorSelect
                 value={accessLevel}
@@ -307,6 +312,7 @@ export function EditMaterialButton({
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               Name
+              <RequiredMark />
             </label>
             <input
               value={label}
@@ -318,10 +324,7 @@ export function EditMaterialButton({
 
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              Material description{" "}
-              <span className="font-medium normal-case tracking-normal text-text-tertiary">
-                Optional
-              </span>
+              Material description<OptionalMark />
             </label>
             <textarea
               value={description}

@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { downloadDocx } from "@/lib/docx";
 import { withV } from "@/lib/version";
@@ -992,7 +993,7 @@ export function FdlComponentsBrowser({
 
           <label className="block">
             <span className="mb-1.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
-              Component name <span className="text-error">*</span>
+              Component name<RequiredMark />
               <InfoHint text="What this piece of software is called, for example Register Module or PI Agent." />
             </span>
             {/* The cap the route already keeps: /api/fdl-components trims the
@@ -1011,7 +1012,7 @@ export function FdlComponentsBrowser({
 
           <fieldset className="mt-5">
             <legend className="text-[12.5px] font-semibold text-text-primary">
-              Component type <span className="text-error">*</span>
+              Component type<RequiredMark />
             </legend>
             <p className="mt-0.5 text-[11.5px] text-text-secondary">
               Choose one. You can change its details after creation.

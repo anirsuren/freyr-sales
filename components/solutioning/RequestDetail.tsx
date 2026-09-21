@@ -70,6 +70,7 @@ import {
 } from "@/lib/solutioning";
 import { DateText } from "@/components/ui/DateText";
 import { repSlug } from "@/lib/team";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 
 /* Priority is the one place a red/amber/green scale IS the meaning — it is a
    ranking of urgency, not an identity. */
@@ -1898,9 +1899,10 @@ export function RequestDetail({
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <label className="block sm:col-span-2">
               <span className="text-[12px] font-semibold text-text-primary">
-                Solutioning title
+                Solutioning title<RequiredMark />
               </span>
               <input
+                required
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
                 className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
@@ -1908,7 +1910,7 @@ export function RequestDetail({
             </label>
             <label className="block sm:col-span-2">
               <span className="text-[12px] font-semibold text-text-primary">
-                What they asked for
+                What they asked for<OptionalMark />
               </span>
               <textarea
                 value={editDetails}
@@ -1920,7 +1922,7 @@ export function RequestDetail({
             {r.kind !== "meeting" && (
               <label className="block">
                 <span className="text-[12px] font-semibold text-text-primary">
-                  {r.kind === "submission" ? "Submission type" : "Presentation type"}
+                  {r.kind === "submission" ? "Submission type" : "Presentation type"}<OptionalMark />
                 </span>
                 <input
                   value={editSubtype}
@@ -1931,7 +1933,7 @@ export function RequestDetail({
             )}
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
-                Priority
+                Priority<OptionalMark />
               </span>
               <span className="mt-1.5 block">
                 <ColorSelect
@@ -1955,7 +1957,7 @@ export function RequestDetail({
               <>
                 <label className="block">
                   <span className="text-[12px] font-semibold text-text-primary">
-                    Meeting time
+                    Meeting time<OptionalMark />
                   </span>
                   <input
                     type="datetime-local"
@@ -1966,7 +1968,7 @@ export function RequestDetail({
                 </label>
                 <label className="block sm:col-span-2">
                   <span className="text-[12px] font-semibold text-text-primary">
-                    Attendees
+                    Attendees<OptionalMark />
                   </span>
                   <input
                     value={editAttendees}
@@ -1979,7 +1981,7 @@ export function RequestDetail({
             )}
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
-                Needed by
+                Needed by<OptionalMark />
               </span>
               <input
                 type="date"

@@ -561,7 +561,7 @@ export function CampaignsView({
                     <input required value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Freya.Register Q3 pipeline" aria-label="Campaign name" className="h-10 w-full rounded-md border border-border bg-white px-3 text-[13.5px] outline-none focus:border-blue-primary" />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Objective</label>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Objective<RequiredMark /></label>
                     <ColorSelect
                       value={objective}
                       ariaLabel="Campaign objective"

@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import type { DataMode } from "@/lib/dataMode";
 
 const TYPES = [
@@ -378,15 +379,15 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
             A screenshot of the page you were viewing is attached automatically, along with the page, account, data mode, browser, screen size, and timestamp.
           </p>
           <div>
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Type</label>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Type<RequiredMark /></label>
             <ColorSelect value={type} options={TYPES} onChange={setType} ariaLabel="Feedback type" minWidth={0} collapsible={false} className="w-full" />
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Title <span className="text-error">*</span></label>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Title<RequiredMark /></label>
             <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="One line on what happened" maxLength={160} className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none focus:border-blue-primary focus:shadow-input-focus" />
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Description <span className="text-error">*</span></label>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Description<RequiredMark /></label>
             <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2">
               <button
                 type="button"
@@ -442,7 +443,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
           </div>
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-3">
-              <label className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Screenshot <span className="font-medium normal-case tracking-normal">Captured automatically</span></label>
+              <label className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Screenshot<OptionalMark /> <span className="font-medium normal-case tracking-normal">Captured automatically</span></label>
               <span className="inline-flex items-center gap-1 text-[10.5px] text-text-tertiary"><ClipboardPaste size={12} /> Paste anywhere in this dialog</span>
             </div>
             {captureError && (

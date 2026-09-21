@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { useToast } from "@/components/ui/Toast";
 import { ColorSelect, MultiColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -1588,6 +1588,7 @@ export function AddMaterialButton({
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-1.5">
               File
+              <OptionalMark />
             </label>
             {/* Drag the actual files in, or click to browse. The workspace
                 stores it and the material links to the stored copy. */}
@@ -2138,6 +2139,7 @@ export function AddMaterialButton({
               className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"
             >
               Folder name
+              <RequiredMark />
             </label>
             <input
               id="new-material-folder-name"

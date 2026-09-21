@@ -13,7 +13,7 @@
 import { useRef, useState } from "react";
 import { X } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { cn } from "@/lib/utils";
 
 type EvidenceUpload = {
@@ -248,7 +248,7 @@ export function EvidencePicker({
       {showLabel && (
         <label className="flex items-center gap-1 text-[12px] font-semibold text-text-primary">
           Evidence
-          {required && <RequiredMark />}
+          {required ? <RequiredMark /> : <OptionalMark />}
           <InfoHint text={"The proof behind the number. A signed contract, an SOW, or the opportunity summary.\nThe group owner opens it before saying yes, and a money claim cannot be sent without one."} />
         </label>
       )}

@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { DateEcho } from "@/components/ui/DateEcho";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OfferingActivities } from "@/components/customers/OfferingActivities";
@@ -427,6 +427,7 @@ function RevenueSection({
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               Revenue type
+              <RequiredMark />
               <ColorSelect
                 ariaLabel="Revenue type"
                 value={rType}
@@ -443,7 +444,7 @@ function RevenueSection({
             </label>
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               {rType === "project" ? "Project revenue" : "Revenue"}
-              {(rType !== "license" || !licenses.trim()) && <RequiredMark />}
+              {rType !== "license" || !licenses.trim() ? <RequiredMark /> : <OptionalMark />}
               <MoneyInput
                 value={amount}
                 onChange={setAmount}
@@ -456,7 +457,7 @@ function RevenueSection({
           {rType === "license" && (
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               Number of licenses
-              {!amount.trim() && <RequiredMark />}
+              {!amount.trim() ? <RequiredMark /> : <OptionalMark />}
               <input
                 aria-label="Number of licenses"
                 inputMode="numeric"
@@ -470,6 +471,7 @@ function RevenueSection({
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               Start date
+              <OptionalMark />
               <input
                 aria-label="Start date"
                 type="date"
@@ -481,6 +483,7 @@ function RevenueSection({
             </label>
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               End date
+              <OptionalMark />
               <input
                 aria-label="End date"
                 type="date"

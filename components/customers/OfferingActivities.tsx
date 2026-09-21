@@ -23,6 +23,7 @@ import {
   Trash2,
   type LucideIcon,
 } from "lucide-react";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -642,6 +643,7 @@ export function OfferingActivities({
             <div>
               <label className="mb-1 block text-[12px] font-medium text-text-primary">
                 Activity
+                <RequiredMark />
               </label>
               <ColorSelect
                 value={activity}
@@ -658,6 +660,7 @@ export function OfferingActivities({
             <div>
               <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
                 Status
+                <RequiredMark />
                 <InfoHint text="The app saves the date this status was reached. You can change that date later." />
               </label>
               <ColorSelect
@@ -672,6 +675,7 @@ export function OfferingActivities({
           <div>
             <label className="mb-1 block text-[12px] font-medium text-text-primary">
               What is this activity?
+              <OptionalMark />
             </label>
             <input
               autoFocus
@@ -684,6 +688,7 @@ export function OfferingActivities({
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
               Comments
+              <OptionalMark />
               <InfoHint text="Anything worth remembering: who you met, what they asked for, what happens next." />
             </label>
             <textarea
@@ -708,6 +713,7 @@ export function OfferingActivities({
             <div className="min-w-0">
               <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
                 Start date
+                <RequiredMark />
                 <InfoHint text="The day this activity starts. Pick a future date for something planned but not started yet. It shows as Planned until that day." />
               </label>
               <DateField
@@ -719,6 +725,7 @@ export function OfferingActivities({
             <div className="min-w-0">
               <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
                 End date
+                <OptionalMark />
                 <InfoHint text="When you expect it to finish, or when it did. Leave it empty while the activity is still running." />
               </label>
               <DateField
@@ -738,7 +745,7 @@ export function OfferingActivities({
                 <label className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
                   Opportunities
                   <InfoHint text={"The deals this activity belongs to.\nAdd a deal on the Opportunities page and it shows up in this list."} />
-                  <span className="font-normal text-text-tertiary">optional</span>
+                  <OptionalMark />
                 </label>
                 {/* SEARCH, NOT A CHIP WALL — the same picker the opportunity
                     form got when its sixty chips pushed the fields off screen
@@ -775,6 +782,7 @@ export function OfferingActivities({
             <div className="min-w-0">
               <label className="mb-1 block text-[12px] font-medium text-text-primary">
                 Currency
+                <OptionalMark />
               </label>
               <ColorSelect
                 value={currency}
@@ -791,6 +799,7 @@ export function OfferingActivities({
             <div className="min-w-0">
               <label className="mb-1 block text-[12px] font-medium text-text-primary">
                 Value
+                <OptionalMark />
               </label>
               <input
                 value={withCommas(amount)}

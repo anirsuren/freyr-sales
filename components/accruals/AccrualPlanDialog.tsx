@@ -1730,7 +1730,7 @@ export function AccrualPlanDialog({
           already answered by the page around it, and a picker offering one
           option is a control that cannot do anything. */}
       {!inline && (
-      <Field label="Which deal">
+      <Field label="Which deal" required>
         <ColorSelect
           value={editing.opportunityId}
           ariaLabel="Which deal are you planning"
@@ -1913,6 +1913,7 @@ export function AccrualPlanDialog({
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Field
               label="Contract value (USD)"
+              required
               /* IN A DRAFT IT IS THE DEAL'S ESTIMATED TCV, NOT A SECOND NUMBER.
                  Typing it here as well would let the two disagree, which is the
                  very thing the schedule is supposed to reconcile against. */
@@ -1941,7 +1942,7 @@ export function AccrualPlanDialog({
                 }
               />
             </Field>
-            <Field label="First month" hint="The month the first payment lands. Moving it slides the whole schedule rather than relabelling it.">
+            <Field label="First month" required hint="The month the first payment lands. Moving it slides the whole schedule rather than relabelling it.">
               {/* THE BOX HOLDS WHAT YOU TYPE, THE SCHEDULE WAITS FOR A REAL
                   YEAR. The native month picker fires a change after every
                   digit of the year, so typing 2026 first reports "0002-02".
@@ -1988,7 +1989,7 @@ export function AccrualPlanDialog({
                 The list is the terms a contract is actually written in, and
                 "Other" keeps the box, because a 7-month schedule is nobody's
                 dropdown option and still has to be typeable. */}
-            <Field label="Number of months" hint="How long the money is spread over. Change it and the contract re-spreads evenly across the new span, leaving any month you have typed alone.">
+            <Field label="Number of months" required hint="How long the money is spread over. Change it and the contract re-spreads evenly across the new span, leaving any month you have typed alone.">
               {/* ONE BOX, NOT TWO. This was a dropdown of the usual terms plus
                   an "Other…" option that revealed a second box beside it, so a
                   4-month schedule read "Other…  4" — two controls arguing over
@@ -2052,7 +2053,7 @@ export function AccrualPlanDialog({
             {!deviating && (
               /* Sits in a Field so its top edge lines up with the three labels
                  beside it and the button lines up with the three boxes. */
-              <Field label="Split it out">
+              <Field label="Split it out" requirement="none">
                 {/* w-full ON THE TOOLTIP, NOT JUST THE BUTTON. Tooltip renders
                     a `relative inline-flex` span, so the button's `w-full` was
                     resolving against a shrink-to-fit parent instead of the grid

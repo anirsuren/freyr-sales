@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/pipeline";
 import { GROUP_COLORS, type CustomerGroup } from "@/lib/customerGroups";
 import { tint } from "@/lib/tint";
+import { RequiredMark } from "@/components/ui/RequiredMark";
 
 /**
  * CUSTOMER GROUPS.
@@ -361,7 +362,7 @@ function GroupDialog({
       dialogClassName="h-[min(640px,calc(100vh-2rem))]"
     >
       <div>
-        <Field label="What is this group called">
+        <Field label="What is this group called" required>
           <Input
             value={name}
             /* lib/customerGroups trims the name to 80 and the reason to 240,
@@ -390,7 +391,7 @@ function GroupDialog({
         {/* Colour + icon on every category, the standing chip rule. */}
         <div className="mt-3">
           <span className="mb-1.5 block text-[12px] font-semibold text-text-primary">
-            Colour
+            Colour<RequiredMark />
           </span>
           <div className="flex flex-wrap items-center gap-2">
             {GROUP_COLORS.map((c) => (

@@ -12,6 +12,7 @@ import { NamePill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
 import { PersonSelect } from "@/components/performance/bits";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { useToast } from "@/components/ui/Toast";
 import type { OfferingCategory } from "@/lib/offerings";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
@@ -186,7 +187,7 @@ export function OfferingCategoriesManager({
       >
         <div className="space-y-4">
           <div>
-            <label className={LABEL}>Offering category</label>
+            <label className={LABEL}>Offering category<RequiredMark /></label>
             <input
               className={FIELD}
               value={name}
@@ -196,7 +197,7 @@ export function OfferingCategoriesManager({
             />
           </div>
           <div>
-            <label className={LABEL}>Description</label>
+            <label className={LABEL}>Description<OptionalMark /></label>
             <textarea
               className={`${FIELD} min-h-[88px] resize-y`}
               value={description}
@@ -205,7 +206,7 @@ export function OfferingCategoriesManager({
             />
           </div>
           <div>
-            <label className={LABEL}>Offering owner</label>
+            <label className={LABEL}>Offering owner<OptionalMark /></label>
             {/* A colleague, not a typed string: the same picker used to assign
                 a goal or crown a group head, so the name always matches an
                 account and never arrives spelled three ways. */}

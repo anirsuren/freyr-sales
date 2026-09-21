@@ -46,7 +46,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { Field, Input } from "@/components/ui/Input";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { MoneyInput } from "@/components/ui/MoneyInput";
@@ -2928,7 +2928,7 @@ export function CustomerTabs({
                 />
               </div>
               <div>
-                <label className={lbl}>Offering</label>
+                <label className={lbl}>Offering<OptionalMark /></label>
                 {/* Dropdown-standard sweep (Anir, Jul 30): every native
                     <select> in this form becomes the app's own picker —
                     ColorSelect for categoricals, PeopleSelect for people. */}
@@ -2951,7 +2951,7 @@ export function CustomerTabs({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={lbl}>Stage</label>
+                  <label className={lbl}>Stage<OptionalMark /></label>
                   <ColorSelect
                     ariaLabel="Stage"
                     value={dealForm.stage}
@@ -2967,7 +2967,7 @@ export function CustomerTabs({
                   />
                 </div>
                 <div>
-                  <label className={lbl}>Value</label>
+                  <label className={lbl}>Value<OptionalMark /></label>
                   <MoneyInput
                     value={dealForm.value}
                     onChange={(value) => set("value", value)}
@@ -2979,7 +2979,7 @@ export function CustomerTabs({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={lbl}>Primary contact</label>
+                  <label className={lbl}>Primary contact<OptionalMark /></label>
                   <PeopleSelect
                     ariaLabel="Primary contact"
                     value={dealForm.contact}
@@ -2992,7 +2992,7 @@ export function CustomerTabs({
                   />
                 </div>
                 <div>
-                  <label className={lbl}>Expected close</label>
+                  <label className={lbl}>Expected close<OptionalMark /></label>
                   <input
                     type="date"
                     value={dealForm.close_date}
@@ -3003,7 +3003,7 @@ export function CustomerTabs({
                 </div>
               </div>
               <div>
-                <label className={lbl}>Owner</label>
+                <label className={lbl}>Owner<OptionalMark /></label>
                 <PeopleSelect
                   ariaLabel="Deal owner"
                   value={dealForm.owner}
@@ -3013,7 +3013,7 @@ export function CustomerTabs({
                 />
               </div>
               <div>
-                <label className={lbl}>Next step</label>
+                <label className={lbl}>Next step<OptionalMark /></label>
                 <input
                   value={dealForm.next_step}
                   onChange={(e) => set("next_step", e.target.value)}
@@ -3022,7 +3022,7 @@ export function CustomerTabs({
                 />
               </div>
               <div>
-                <label className={lbl}>Notes</label>
+                <label className={lbl}>Notes<OptionalMark /></label>
                 <textarea
                   value={dealForm.notes}
                   onChange={(e) => set("notes", e.target.value)}
@@ -3199,7 +3199,7 @@ export function CustomerTabs({
             The footer got fixed and the rest stayed foreign. Same components
             as New contract now, top to bottom. */}
         <div className="space-y-3.5">
-          <Field label="Type">
+          <Field label="Type" required>
             <div className="grid w-full grid-cols-2 gap-1 rounded-lg bg-surface p-1 sm:grid-cols-4">
               {NOTE_KINDS.map((k) => {
                 const KIcon = k.icon;

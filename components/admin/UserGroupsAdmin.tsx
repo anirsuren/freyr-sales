@@ -14,6 +14,7 @@ import {
   ClipboardList,
   ArrowUpRight,
 } from "lucide-react";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -329,6 +330,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
             <div>
               <label className="flex h-[18px] items-center text-[12px] font-semibold text-text-primary">
                 Group name
+                <RequiredMark />
               </label>
               <input
                 value={name}
@@ -340,6 +342,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
             <div>
               <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
                 Group type
+                <OptionalMark />
                 <InfoHint text={"What kind of work this group can be given. It does not change what its people are allowed to do.\nA business development group can be given customers, contracts and opportunities. A solutioning group can be given solutioning requests, submissions, presentations and meetings.\nEverybody keeps whatever privileges they already have."} />
               </label>
               <div className="mt-1">
@@ -363,6 +366,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
             <div>
               <label className="flex h-[18px] items-center gap-1 text-[12px] font-semibold text-text-primary">
                 Group owner
+                <OptionalMark />
                 <Crown size={12} strokeWidth={2.4} className="text-[color:var(--ink-violet-soft)]" />
                 <InfoHint text="The owner runs this group's performance. They see their people's numbers and can verify them." />
               </label>
@@ -384,6 +388,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
           <div className="mt-3">
             <label className="flex h-[18px] items-center text-[12px] font-semibold text-text-primary">
               People in the group
+              <OptionalMark />
             </label>
             {/* TICK THEM, DO NOT ADD THEM ONE AT A TIME (Anir, Aug 29: "I
                 think you should have a check box man, you cannot do one by

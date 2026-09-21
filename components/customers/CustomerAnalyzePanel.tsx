@@ -24,6 +24,7 @@ import { useToast } from "@/components/ui/Toast";
 import { segmentColor } from "@/components/customers/CustomerOfferingsTab";
 import { tint } from "@/lib/tint";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
+import { OptionalMark } from "@/components/ui/RequiredMark";
 
 // Ownership is a category, so Public and Private each get their own colour AND
 // their own icon — never the same gray tile with different words in it (Suren,
@@ -264,7 +265,7 @@ export function CustomerAnalyzePanel({
       )}
       <div className="space-y-3">
         <div>
-          <label className={labelCls}>Customer type</label>
+          <label className={labelCls}>Customer type<OptionalMark /></label>
           <select
             className={field}
             value={pType}
@@ -283,7 +284,7 @@ export function CustomerAnalyzePanel({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Ownership</label>
+            <label className={labelCls}>Ownership<OptionalMark /></label>
             <select
               className={field}
               value={pOwnership}
@@ -297,7 +298,7 @@ export function CustomerAnalyzePanel({
             </select>
           </div>
           <div>
-            <label className={labelCls}>Revenue</label>
+            <label className={labelCls}>Revenue<OptionalMark /></label>
             <MoneyInput
               className="h-10 text-[13px] font-normal"
               value={pRevenue}

@@ -399,6 +399,7 @@ export function OpportunityActivities({
             <div>
               <label className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                 Status
+                <RequiredMark />
               </label>
               <div className="mt-1">
                 <ColorSelect
@@ -421,6 +422,7 @@ export function OpportunityActivities({
             <div>
               <label className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                 Done by
+                <RequiredMark />
               </label>
               {/* Admins pick anyone, group owners their people, everyone else
                   is themself (Suren: "otherwise the individual only"). */}
