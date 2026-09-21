@@ -85,8 +85,7 @@ export function buildDemoIntel(tracking: MarketIntelTracking) {
       const withinDay = 0.12 + (demoHash(tracked.id, source, i, "time") % 720) / 1000;
       return ago(Math.min(89.8, band + dayInBand + withinDay));
     };
-    const link = (kind: string, i: number) =>
-      `https://www.google.com/search?q=${encodeURIComponent(`${tracked.name} ${kind} ${i + 1}`)}`;
+    const link = (kind: string, i: number) => `https://market-intel.example/${tracked.id}/${kind}/${i}`;
     const postCount = 36 + index % 13;
     const newsCount = 64 + index % 21;
     const siteCount = 16 + index % 7;
@@ -102,9 +101,8 @@ export function buildDemoIntel(tracking: MarketIntelTracking) {
   }
   const names = tracking.companies.map(company=>company.name);
   const divisions = ["Medicinal Products","Medical Devices","Consumer"] as const;
-  const searchUrl = (query: string) => `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-  const mna: MnaItem[] = names.length ? Array.from({length:48},(_,i)=>({acquirer:names[i%names.length],target:`${["Silverleaf","Brookhaven","Evercrest","Northstar"][i%4]} ${["Therapeutics","Diagnostics","Wellness"][i%3]} ${i+1}`,status:i%2 ? "announced":"completed",division:divisions[i%3],valueLabel:`$${45+i*17}M`,date:ago(i<4 ? i/8 : i*1.7),summary:`Transaction ${i+1}: the acquisition expands regional capabilities and introduces integration, labeling and quality-system work.`,sourceLabel:"Market Transactions Weekly",sourceUrl:searchUrl(`${names[i%names.length]} acquisition ${i+1}`)})) : [];
-  const thought: ThoughtItem[] = Array.from({length:56},(_,i)=>({firm:["Meridian Advisory","Crestwell Research","Harbor Institute","Northvale Strategy"][i%4],title:`${["Regulatory modernization","Clinical evidence outlook","Connected device strategy","Consumer health trends","Quality transformation","Life sciences investment","Market access readiness"][i%7]}: study ${i+1}`,url:searchUrl(`${["Regulatory modernization","Clinical evidence outlook","Connected device strategy","Consumer health trends","Quality transformation","Life sciences investment","Market access readiness"][i%7]} research`),date:ago(i<4?i/8:i*1.5),summary:"Research examining industry developments, operating priorities, and practical implications for regulatory and quality teams.",topic:(["Medicinal Products","Medical Devices","Consumer","Regulatory","Life sciences"] as const)[i%5],type:(["report","study","survey","outlook","article","webinar","podcast"] as const)[i%7]}));
+  const mna: MnaItem[] = names.length ? Array.from({length:48},(_,i)=>({acquirer:names[i%names.length],target:`${["Silverleaf","Brookhaven","Evercrest","Northstar"][i%4]} ${["Therapeutics","Diagnostics","Wellness"][i%3]} ${i+1}`,status:i%2 ? "announced":"completed",division:divisions[i%3],valueLabel:`$${45+i*17}M`,date:ago(i<4 ? i/8 : i*1.7),summary:`Transaction ${i+1}: the acquisition expands regional capabilities and introduces integration, labeling and quality-system work.`,sourceLabel:"Market Transactions Weekly",sourceUrl:`https://market-intel.example/transactions/${i}`})) : [];
+  const thought: ThoughtItem[] = Array.from({length:56},(_,i)=>({firm:["Meridian Advisory","Crestwell Research","Harbor Institute","Northvale Strategy"][i%4],title:`${["Regulatory modernization","Clinical evidence outlook","Connected device strategy","Consumer health trends","Quality transformation","Life sciences investment","Market access readiness"][i%7]}: study ${i+1}`,url:`https://market-intel.example/research/${i}`,date:ago(i<4?i/8:i*1.5),summary:"Research examining industry developments, operating priorities, and practical implications for regulatory and quality teams.",topic:(["Medicinal Products","Medical Devices","Consumer","Regulatory","Life sciences"] as const)[i%5],type:(["report","study","survey","outlook","article","webinar","podcast"] as const)[i%7]}));
   const meta: FeedMeta = {version:1,updatedAt:ago(5/1440),mna:{items:mna,total:mna.length,fetchedAt:ago(5/1440)},thought:{items:thought,total:thought.length,fetchedAt:ago(5/1440)}};
   return {tracking,companies,people,summaries:Object.fromEntries(Object.entries(companies).map(([id,c])=>[id,summarizeCompany(c)])),personSummaries:Object.fromEntries(Object.entries(people).map(([id,p])=>[id,summarizePerson(p)])),meta};
 }

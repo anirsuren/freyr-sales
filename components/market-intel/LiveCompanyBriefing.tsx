@@ -233,12 +233,18 @@ export function LiveCompanyBriefing({
     <button type="button" disabled={!savedReady || savingArticle !== null} onClick={() => void toggleArticle(item)}
       aria-label={`${savedUrls.has(item.url) ? "Unsave" : "Save"} item: ${item.title}`} aria-pressed={savedUrls.has(item.url)}
       title={savedUrls.has(item.url) ? "Remove bookmark" : "Save item"}
+      style={savedUrls.has(item.url) ? { color: "#d97706", backgroundColor: "#fef3c7", borderColor: "#fcd34d" } : undefined}
       className={cn(
         storyActionClass,
-        "w-7 hover:bg-amber-50 hover:text-amber-600 disabled:cursor-default disabled:opacity-40",
-        savedUrls.has(item.url) && "bg-amber-50 text-amber-600",
+        "w-7 hover:bg-amber-50 hover:!text-amber-600 disabled:cursor-default disabled:opacity-40",
+        savedUrls.has(item.url) && "border border-amber-200 bg-amber-100 !text-amber-600 hover:bg-amber-100",
       )}>
-      <Bookmark size={14} strokeWidth={2.2} fill={savedUrls.has(item.url) ? "currentColor" : "none"} />
+      <Bookmark
+        size={14}
+        strokeWidth={2.2}
+        className={savedUrls.has(item.url) ? "text-amber-600" : undefined}
+        fill={savedUrls.has(item.url) ? "currentColor" : "none"}
+      />
     </button>
   );
   const [removedUrls, setRemovedUrls] = useState<Set<string>>(new Set());
@@ -748,7 +754,12 @@ export function LiveCompanyBriefing({
         )}
         <button type="button" disabled={!savedReady} aria-pressed={savedOnly} onClick={() => { setSavedOnly(!savedOnly); setSource("all"); setSelectedSignals([]); setQuery(""); }}
           className={cn("inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold disabled:opacity-40", savedOnly ? "border-amber-400 bg-amber-50 text-amber-700" : "border-border-light bg-white text-text-secondary")}>
-          <Bookmark className={savedArticles.length > 0 ? "text-amber-600" : undefined} size={14} fill={savedOnly ? "currentColor" : "none"} />Saved {savedArticles.length}
+          <Bookmark
+            className={savedArticles.length > 0 ? "text-amber-600" : undefined}
+            style={savedArticles.length > 0 ? { color: "#d97706" } : undefined}
+            size={14}
+            fill={savedArticles.length > 0 ? "currentColor" : "none"}
+          />Saved {savedArticles.length}
         </button>
         {!savedOnly && <>
           <ColorSelect
