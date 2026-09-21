@@ -1319,3 +1319,7 @@ The Team roster lists people only. Ownerless deals may continue to contribute to
 ### Sep 21: Team filters keep their real visual identity
 
 Team role filters use the same role icon and color as the role tag shown beside each person. Region filters use the actual country or region flag, with a globe only when no specific flag exists. Pipeline filters use a trend icon for people holding open pipeline and a neutral no-pipeline icon for people with nothing open. These semantic marks appear beside the option while the checkbox remains the selection control; never replace them with decorative color dots. Completed locally, not deployed.
+
+### Sep 21: Starting roles appear in the member privilege matrix
+
+The Team members privilege matrix shows both direct privilege grants and the privilege supplied by each active member's starting role. The role-derived cell is checked and locked because the access resolver always supplies it; an admin changes it through the member's starting role rather than pretending it can be removed as an extra grant. Empty cells now mean the person truly does not hold that privilege. Completed locally, not deployed.

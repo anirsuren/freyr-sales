@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import {
   VIEW_ALL,
+  ROLE_PRIVILEGE,
   privilegeColor,
   type PrivilegeState,
 } from "@/lib/privileges";
@@ -41,6 +42,7 @@ type Person = {
   id: string;
   name: string;
   email: string;
+  role: string;
   active?: boolean;
 };
 
@@ -271,13 +273,20 @@ export function PeoplePrivileges() {
           </thead>
           <tbody className="divide-y divide-border-light">
             {shownPeople.map((person) => {
-              const held = new Set(
+              const directlyHeld = new Set(
                 privilegesForMember(
                   state,
                   person.id,
                   privilegeDirectory,
                 )
               );
+              /* A person's starting role is a real privilege in the access
+                 resolver, even when nobody has added a direct grant. Leaving
+                 it out here made every legacy member look unassigned and even
+                 drew the signed-in admin's Admin cell empty. Paint it as held,
+                 but lock that one cell: changing the starting role is the only
+                 honest way to remove access that the role always supplies. */
+              const rolePrivilege = ROLE_PRIVILEGE[person.role];
               return (
                 <tr key={person.id}>
                   <td className="sticky left-0 z-10 bg-white px-4 py-2.5 align-middle">
@@ -297,14 +306,21 @@ export function PeoplePrivileges() {
                     </span>
                   </td>
                   {state.privileges.map((p) => {
-                    const on = held.has(p.id);
+                    const inherited = rolePrivilege === p.id;
+                    const on = directlyHeld.has(p.id) || inherited;
                     return (
                       <td key={p.id} className="px-1 py-2.5 text-center align-middle">
                         <button
                           type="button"
                           role="checkbox"
                           aria-checked={on}
-                          aria-label={`${p.label} for ${person.name}`}
+                          aria-label={`${p.label} for ${person.name}${inherited ? ", included with their starting role" : ""}`}
+                          title={
+                            inherited
+                              ? `${p.label} is included with ${person.name}'s starting role.`
+                              : undefined
+                          }
+                          disabled={inherited}
                           onClick={() =>
                             setPending({
                               personId: person.id,
@@ -326,10 +342,11 @@ export function PeoplePrivileges() {
                               : undefined
                           }
                           className={cn(
-                            "inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border transition-colors",
+                            "inline-flex h-6 w-6 items-center justify-center rounded-md border transition-colors",
                             on
                               ? "font-bold"
-                              : "border-border-light bg-white text-transparent hover:border-blue-primary"
+                              : "cursor-pointer border-border-light bg-white text-transparent hover:border-blue-primary",
+                            inherited && "cursor-not-allowed ring-2 ring-inset ring-white/60"
                           )}
                         >
                           <Check size={13} strokeWidth={3} />
