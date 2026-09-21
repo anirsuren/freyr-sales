@@ -438,8 +438,11 @@ export function GoalZoom({
    * want two months or two groups side by side.
    */
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  /** Each drill column searches the records it owns. */
+  const [periodQuery, setPeriodQuery] = useState("");
   /** A long group list stays usable without changing its selection model. */
   const [groupQuery, setGroupQuery] = useState("");
+  const [lineQuery, setLineQuery] = useState("");
   /**
    * COLUMN 2 LISTS THE PEOPLE ONLY WHEN ASKED (Anir, Aug 16: "you don't have to
    * show the people here because you show the people on the right side anyway…
@@ -1117,6 +1120,12 @@ export function GoalZoom({
                   r2.group.head.toLowerCase().includes(normalizedGroupQuery)
               )
             : inPeriodGroups;
+          const normalizedPeriodQuery = periodQuery.trim().toLowerCase();
+          const visiblePeriods = normalizedPeriodQuery
+            ? rows.filter((period) =>
+                period.label.toLowerCase().includes(normalizedPeriodQuery)
+              )
+            : rows;
           const maxG = yearTarget > 0
             ? yearTarget
             : Math.max(1, ...inPeriodGroups.map((r2) => r2.verified));
@@ -1136,15 +1145,36 @@ export function GoalZoom({
                 }))
                 .sort((a, b) => b.verified - a.verified)
             : [];
+          const normalizedLineQuery = lineQuery.trim().toLowerCase();
+          const visibleGroupPeople = normalizedLineQuery
+            ? groupPeople.filter((person) =>
+                person.name.toLowerCase().includes(normalizedLineQuery)
+              )
+            : groupPeople;
           /**
            * THE DEALS BEHIND A NUMBER, rendered wherever it is asked for:
            * under a person inside box 3, or as the whole of box 3 when the
            * scope is widened past the drill.
            */
-          const entriesFor = (names: Set<string> | null, everyPeriod = false) =>
+          const entriesFor = (
+            names: Set<string> | null,
+            everyPeriod = false,
+            applySearch = true
+          ) =>
             familyActuals
               .filter((a) => everyPeriod || inRange(a, row.range))
               .filter((a) => !names || names.has(a.person.trim().toLowerCase()))
+              .filter((a) => {
+                if (!applySearch || !normalizedLineQuery) return true;
+                const opp = a.opportunityId
+                  ? opportunities.find((candidate) => candidate.id === a.opportunityId)
+                  : undefined;
+                return [a.person, a.customer, opp?.customer, opp?.name]
+                  .filter(Boolean)
+                  .some((value) =>
+                    String(value).toLowerCase().includes(normalizedLineQuery)
+                  );
+              })
               .sort((x, y) => y.amount - x.amount);
           const lineItems = (
             names: Set<string> | null,
@@ -1166,7 +1196,9 @@ export function GoalZoom({
                     indent ? "min-h-[76px] py-5 text-[12px]" : "min-h-[92px] py-6 text-[12.5px]"
                   )}
                 >
-                  {everyPeriod
+                  {normalizedLineQuery
+                    ? `No details match “${lineQuery.trim()}”`
+                    : everyPeriod
                     ? "Nothing has been logged against this goal yet."
                     : indent
                       ? "No deals logged in this period."
@@ -1417,10 +1449,40 @@ export function GoalZoom({
                   {!expandedDrillColumn &&
                     expandButton("organization", "organization periods")}
                 </div>
+                {rows.length > 0 && (
+                  <div className="border-b border-border-light px-2 py-2">
+                    <label className="flex h-9 items-center gap-2 rounded-xl border border-border-light bg-white px-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors focus-within:border-blue-primary/50 focus-within:ring-2 focus-within:ring-blue-primary/10">
+                      <Search size={14} strokeWidth={2.2} aria-hidden="true" className="shrink-0 text-text-tertiary" />
+                      <input
+                        type="text"
+                        value={periodQuery}
+                        onChange={(event) => setPeriodQuery(event.target.value)}
+                        aria-label="Search organization periods"
+                        placeholder="Search periods…"
+                        className="min-w-0 flex-1 bg-transparent text-[12px] text-text-primary outline-none placeholder:text-text-tertiary"
+                      />
+                      {periodQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setPeriodQuery("")}
+                          aria-label="Clear period search"
+                          className="-mr-1 grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded-full text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
+                        >
+                          <X size={13} strokeWidth={2.3} aria-hidden="true" />
+                        </button>
+                      )}
+                    </label>
+                  </div>
+                )}
                 <div key={`${gran}-${fy}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
-                  {(() => {
-                    const inPeriodAwaiting = rows.some((r) => r.awaiting > 0);
-                    return rows.map((r, i) => {
+                  {visiblePeriods.length === 0 ? (
+                    <div className="flex min-h-full items-center justify-center rounded-xl bg-surface/60 px-5 text-center">
+                      <p className="text-[12px] font-semibold text-text-secondary">
+                        No periods match “{periodQuery.trim()}”
+                      </p>
+                    </div>
+                  ) : visiblePeriods.map((r) => {
+                    const i = rows.indexOf(r);
                     const active = i === selIdx;
                     const shown = openPeriods.has(i);
                     const empty = r.verified === 0 && r.awaiting === 0;
@@ -1557,8 +1619,7 @@ export function GoalZoom({
                       </div>
                       </Fragment>
                     );
-                  });
-                  })()}
+                  })}
                 </div>
               </div>
 
@@ -1589,6 +1650,7 @@ export function GoalZoom({
                   </span>
                   {!expandedDrillColumn && expandButton("groups", "groups")}
                 </div>
+                {inPeriodGroups.length > 0 && (
                 <div className="border-b border-border-light px-2 py-2">
                   <label className="flex h-9 items-center gap-2 rounded-xl border border-border-light bg-white px-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors focus-within:border-blue-primary/50 focus-within:ring-2 focus-within:ring-blue-primary/10">
                     <Search
@@ -1598,7 +1660,7 @@ export function GoalZoom({
                       className="shrink-0 text-text-tertiary"
                     />
                     <input
-                      type="search"
+                      type="text"
                       value={groupQuery}
                       onChange={(e) => setGroupQuery(e.target.value)}
                       aria-label="Search groups in this period"
@@ -1622,12 +1684,15 @@ export function GoalZoom({
                     )}
                   </label>
                 </div>
+                )}
                 <div key={`g-${gran}-${selIdx}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
                   {inPeriodGroups.length === 0 ? (
-                    <p className="px-2 py-3 text-[12px] text-text-secondary">
-                      No groups yet. Once groups exist, this box lists every
-                      group&apos;s number for the picked period.
-                    </p>
+                    <div className="flex min-h-full items-center justify-center px-5 text-center">
+                      <p className="max-w-[280px] text-[12px] text-text-secondary">
+                        No groups yet. Once groups exist, this box lists every
+                        group&apos;s number for the picked period.
+                      </p>
+                    </div>
                   ) : visiblePeriodGroups.length === 0 ? (
                     <div className="flex min-h-[120px] flex-col items-center justify-center rounded-xl bg-surface/60 px-5 text-center">
                       <Search
@@ -2087,7 +2152,10 @@ export function GoalZoom({
                       <button
                         key={k}
                         type="button"
-                        onClick={() => setLineScope(k)}
+                        onClick={() => {
+                          setLineScope(k);
+                          setLineQuery("");
+                        }}
                         className={cn(
                           "cursor-pointer whitespace-nowrap rounded-md px-2.5 py-1 text-[11.5px] font-bold transition-colors",
                           lineScope === k
@@ -2102,6 +2170,35 @@ export function GoalZoom({
                   {!expandedDrillColumn &&
                     expandButton("people", "people and details")}
                 </div>
+                {(
+                  lineScope === "person"
+                    ? Boolean(selGroup && groupPeople.length > 0)
+                    : entriesFor(null, true, false).length > 0
+                ) && (
+                  <div className="border-b border-border-light px-2 py-2">
+                    <label className="flex h-9 items-center gap-2 rounded-xl border border-border-light bg-white px-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors focus-within:border-blue-primary/50 focus-within:ring-2 focus-within:ring-blue-primary/10">
+                      <Search size={14} strokeWidth={2.2} aria-hidden="true" className="shrink-0 text-text-tertiary" />
+                      <input
+                        type="text"
+                        value={lineQuery}
+                        onChange={(event) => setLineQuery(event.target.value)}
+                        aria-label={lineScope === "person" ? "Search people in this group" : "Search details"}
+                        placeholder={lineScope === "person" ? "Search people…" : "Search details…"}
+                        className="min-w-0 flex-1 bg-transparent text-[12px] text-text-primary outline-none placeholder:text-text-tertiary"
+                      />
+                      {lineQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setLineQuery("")}
+                          aria-label="Clear search"
+                          className="-mr-1 grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded-full text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
+                        >
+                          <X size={13} strokeWidth={2.3} aria-hidden="true" />
+                        </button>
+                      )}
+                    </label>
+                  </div>
+                )}
                 <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
                   {lineScope === "details" ? (
                     /* EVERY RECORD BEHIND THIS GOAL. No group filter, no
@@ -2110,12 +2207,26 @@ export function GoalZoom({
                        job and only box 1's. */
                     lineItems(null, false, true)
                   ) : !selGroup ? (
-                    <p className="px-2 py-3 text-[12px] text-text-secondary">
-                      Pick a group in box 2 and its people line up here for the
-                      same period.
-                    </p>
+                    <div className="flex min-h-full items-center justify-center px-5 text-center">
+                      <p className="max-w-[280px] text-[12px] text-text-secondary">
+                        Pick a group in box 2 and its people line up here for the
+                        same period.
+                      </p>
+                    </div>
+                  ) : groupPeople.length === 0 ? (
+                    <div className="flex min-h-full items-center justify-center px-5 text-center">
+                      <p className="max-w-[280px] text-[12px] text-text-secondary">
+                        No people are assigned to this group yet.
+                      </p>
+                    </div>
+                  ) : visibleGroupPeople.length === 0 ? (
+                    <div className="flex min-h-full items-center justify-center rounded-xl bg-surface/60 px-5 text-center">
+                      <p className="text-[12px] font-semibold text-text-secondary">
+                        No people match “{lineQuery.trim()}”
+                      </p>
+                    </div>
                   ) : (
-                    groupPeople.map((p) => (
+                    visibleGroupPeople.map((p) => (
                       p.verified === 0 && p.awaiting === 0 ? (
                       <Fragment key={p.name}>
                       {/* Same one-border container as the group rows — a real

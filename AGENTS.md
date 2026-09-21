@@ -1262,7 +1262,11 @@ An accrual plan is permanently bound to the deal it was created for because its 
 
 The Goals Organization → group → person drill-down gives each of its three columns an expand control. Detailed pace rails are interactive in both inline and expanded views: wheel or pinch zooms around the cursor, horizontal wheel and pointer drag move across the numeric range, visible controls zoom or reset, and close values such as an actual at 16 and schedule marker at 24 can always be separated. Completed locally, not deployed.
 
+Each populated Organization → group → person drill-down column has its own search field: periods in column 1, groups in column 2, and people or details in column 3. A column with no records hides the search field and centers its empty-state message both horizontally and vertically in the available panel. Completed locally, not deployed.
+
 Goal pace verdicts are based only on verified work, matching the solid-green portion that counts now. Waiting or sent-back claims never produce a green “Ahead of schedule” verdict while verified progress remains behind the schedule marker. Mixed rails render verified, sent-back, and waiting amounts as distinct green, red-striped, and yellow-striped segments in the same order as their legend. Verdict rows such as “Behind schedule by” are conclusions, not another rail segment, and therefore never render a leading status dot. Completed locally, not deployed.
+
+People performance verification tables keep the Goal column compact instead of letting it absorb all remaining width. The saved space belongs to customer, date, evidence, action, and manager-note fields that need room to stay readable. Completed locally, not deployed.
 
 Subgoal Owner and Groups panels always expose a stable top-right plus action. Empty panels show a centered Choose owner or Choose group action; once assignments exist, they replace the empty prompt and the picker appears only when the user invokes an add action. Selecting an owner or group must actually add it and close the temporary picker. Completed locally, not deployed.
 

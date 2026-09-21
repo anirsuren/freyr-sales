@@ -788,11 +788,11 @@ export function SentBackWatchCard({
             <colgroup>
               <col className="w-[4%]" />
               <col className="w-[8%]" />
-              <col className="w-[24%]" />
-              <col className="w-[10%]" />
+              <col className="w-[16%]" />
+              <col className="w-[12%]" />
               <col className="w-[18%]" />
               <col className="w-[16%]" />
-              <col className="w-[20%]" />
+              <col className="w-[26%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
@@ -2235,15 +2235,15 @@ export function VerifyQueueCard({
         <div className="overflow-hidden">
           <table className="w-full table-fixed border-collapse">
             <colgroup>
-              <col className="w-10" />
-              <col className="w-9" />
-              <col className="w-[156px]" />
-              <col />
-              <col className="w-[86px]" />
-              <col className="w-[92px]" />
-              <col className="w-[116px]" />
-              <col className="w-[90px]" />
-              <col className="w-[92px]" />
+              <col className="w-[3%]" />
+              <col className="w-[3%]" />
+              <col className="w-[15%]" />
+              <col className="w-[18%]" />
+              <col className="w-[9%]" />
+              <col className="w-[12%]" />
+              <col className="w-[14%]" />
+              <col className="w-[12%]" />
+              <col className="w-[14%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-border-light bg-surface/50 text-left text-[11px] font-semibold uppercase tracking-[0.02em] text-text-tertiary [&>th]:whitespace-nowrap">
