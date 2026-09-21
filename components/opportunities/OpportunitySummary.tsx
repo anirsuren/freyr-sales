@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import { useStoredSet } from "@/lib/useStoredView";
-import { AlertTriangle, Briefcase, ChevronDown, ChevronRight, GripVertical, Layers, Package, TrendingUp, UserRound } from "lucide-react";
+import { AlertTriangle, Briefcase, Calendar, CalendarDays, CalendarRange, ChevronDown, ChevronRight, Columns2, Grid2X2, GripVertical, Layers, Package, TrendingUp, UserRound } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { BarChart } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -77,11 +77,11 @@ export const DIMENSION_COLOR: Record<SummaryDimension, string> = {
 
 /** Suren's list, in his words: "weekly, monthly, quarterly, sem annual, yearly". */
 export const TIMELINES = [
-  { key: "weekly", label: "Weekly" },
-  { key: "monthly", label: "Monthly" },
-  { key: "quarterly", label: "Quarterly" },
-  { key: "semiannual", label: "Semi-annual" },
-  { key: "yearly", label: "Yearly" },
+  { key: "weekly", label: "Weekly", icon: CalendarDays },
+  { key: "monthly", label: "Monthly", icon: CalendarRange },
+  { key: "quarterly", label: "Quarterly", icon: Grid2X2 },
+  { key: "semiannual", label: "Semi-annual", icon: Columns2 },
+  { key: "yearly", label: "Yearly", icon: Calendar },
 ] as const;
 export type Timeline = (typeof TIMELINES)[number]["key"];
 

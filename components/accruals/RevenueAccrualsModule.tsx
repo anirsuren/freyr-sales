@@ -1975,6 +1975,7 @@ export function RevenueAccrualsModule({
                       value: t.key,
                       label: t.label,
                       color: "var(--ink-violet-soft)",
+                      icon: t.icon,
                     }))}
                   />
                 {/* NO "DELETE A PLAN" HERE.

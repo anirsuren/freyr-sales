@@ -1398,6 +1398,8 @@ Lead lists use the same focused expansion treatment as Goals. When one lead is o
 
 The expanded Source performance lead table always includes a Source column between Company and Status. Every row shows the same channel icon, semantic color, and source label used by the main Leads table; source is also searchable and available as a sort option. Completed locally, not deployed.
 
+Opportunity and Revenue Accrual timeline selectors use cadence-specific icons instead of identical purple dots: calendar days for Weekly, a calendar range for Monthly, a four-part grid for Quarterly, two columns for Semi-annual, and a full calendar for Yearly. Completed locally, not deployed.
+
 Multi-select dropdown triggers close immediately on the second pointer press, including inside nested dialogs and labels. Surrounding click handlers must never reopen a picker during the same gesture; keyboard activation keeps the normal click toggle. Completed locally, not deployed.
 
 Saved Market Intelligence stories use a filled yellow bookmark with a pale yellow hover/background treatment, and the Saved filter carries the same yellow bookmark cue whenever saved stories exist. Unsaved bookmarks remain neutral outlines. Completed locally, not deployed.

@@ -2623,6 +2623,7 @@ export function OpportunitiesBrowser({
                       value: t.key,
                       label: t.label,
                       color: "var(--ink-violet-soft)",
+                      icon: t.icon,
                     }))}
                   />
                 </span>
