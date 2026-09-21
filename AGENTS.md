@@ -202,6 +202,12 @@ what was written back, `deleted-test-customers.json`).
   block. Long names can wrap without leaving the tag stranded near the bottom
   of the row. Verified on localhost in Customer and Competitor Intelligence
   list views; typecheck and rule tests pass. Local only, not deployed.
+- **Sep 21 Market Intelligence supporting-source labels:** Expanded “other
+  sources” entries now lead with the specific article or post headline, then
+  show the publisher, content type, and date. A source name alone is not enough
+  to explain what evidence supports the grouped story. Verified on localhost
+  in the company-briefing table view; typecheck and rule tests pass. Local
+  only, not deployed.
 
 - **Sep 21 Market Intelligence page selector restored:** Customer and
   Competitor Intelligence once again show the shared three-option selector at

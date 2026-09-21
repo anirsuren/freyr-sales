@@ -452,6 +452,12 @@ export function LiveCompanyBriefing({
   /* ONE STORY, MANY SOURCES (Saras, Sep 10): the others are named under the
      card rather than shown again as cards of their own. */
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
+  const supportingSourceType = (item: Item) => {
+    if (item.kind === "company") return "Company post";
+    if (item.kind === "people") return "People post";
+    if (item.kind === "site") return "Company website";
+    return "News article";
+  };
   const othersLine = (group: StoryGroup<Item>) => {
     if (!group.others.length) return null;
     const expanded = !!expandedSources[group.lead.key];
@@ -476,7 +482,7 @@ export function LiveCompanyBriefing({
           inert={!expanded}
         >
           <div className="min-h-0 overflow-hidden">
-            <ul className="my-1.5 space-y-1 border-l border-border-light pl-3">
+            <ul className="my-1.5 space-y-1.5 border-l border-border-light pl-3">
               {group.others.map((source, index) => (
                 <li key={`${source.key}-${index}`}>
                   <a
@@ -484,10 +490,15 @@ export function LiveCompanyBriefing({
                     target="_blank"
                     rel="noreferrer"
                     title={source.title}
-                    className="group inline-flex max-w-full items-center gap-1.5 rounded py-1 text-[11px] leading-4 text-blue-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+                    className="group block max-w-full rounded px-2 py-1.5 transition-colors hover:bg-blue-light/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
                   >
-                    <span className="min-w-0 [overflow-wrap:anywhere]">{outletName(source.sourceLabel, source.url)}</span>
-                    <ExternalLink size={10} className="shrink-0 opacity-50 transition-opacity group-hover:opacity-100" />
+                    <span className="flex min-w-0 items-start gap-1.5 text-[11.5px] font-semibold leading-4 text-blue-primary group-hover:underline">
+                      <span className="min-w-0 [overflow-wrap:anywhere]">{source.title}</span>
+                      <ExternalLink size={10} className="mt-0.5 shrink-0 opacity-50 transition-opacity group-hover:opacity-100" />
+                    </span>
+                    <span className="mt-0.5 block text-[10.5px] leading-4 text-text-tertiary">
+                      {outletName(source.sourceLabel, source.url)} · {supportingSourceType(source)}{source.date ? ` · ${fmtDate(source.date)}` : ""}
+                    </span>
                   </a>
                 </li>
               ))}
