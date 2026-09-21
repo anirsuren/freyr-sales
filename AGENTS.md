@@ -196,6 +196,17 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 21 Market Intelligence list revamp:** Customer and Competitor
+  Intelligence list views now carry the same decision-useful information as
+  their tiles: activity sparklines, momentum, posts/news/site/signal counts,
+  newest intelligence, division context, freshness/watch state, and customer
+  people facepiles. The shared comparison ledger fits every column at the
+  normal desktop width, pending companies retain the same structure, and
+  tile/list switches have directional staggered motion with reduced-motion
+  support. Verified on localhost Mock for both customer and competitor views;
+  browser console clean. Typecheck and rule tests pass. Local only, not
+  deployed.
+
 - **Sep 21 logged-result deletion dialog:** The trash icon on an unlocked
   result now opens an immediate centered confirmation showing the goal, date,
   person, and amount. It no longer hides the confirmation at the bottom of an

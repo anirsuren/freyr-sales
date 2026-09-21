@@ -11,6 +11,8 @@ import { useCollectionStatusRefresh } from "./useCollectionStatusRefresh";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownAZ,
+  ArrowUpRight,
+  Globe2,
   LayoutGrid,
   List,
   ArrowDownWideNarrow,
@@ -19,11 +21,18 @@ import {
   History,
   Sun,
   Layers,
+  Newspaper,
+  Radar,
   Star,
   Tag,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 
+import { Sparkline } from "@/components/charts/Charts";
+import { Avatar } from "@/components/ui/Avatar";
 import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import {
   PrioritySearchInput,
   SearchPriority,
@@ -35,10 +44,12 @@ import {
   type CardPerson,
 } from "@/components/market-intel/LiveCompanyCard";
 
-import { type WatchState } from "@/components/market-intel/WatchStatus";
+import { WatchStatus, type WatchState } from "@/components/market-intel/WatchStatus";
 import type { CompanyCard } from "@/lib/marketIntelFeed";
 import type { TrackedCompany } from "@/lib/marketIntelTracking";
+import { outletName } from "@/lib/marketIntelText";
 import { DIVISIONS, DIVISION_META, type Division } from "@/lib/offeringMaterials";
+import { safeHref } from "@/lib/safeUrl";
 import { cn } from "@/lib/utils";
 
 /**
@@ -57,6 +68,71 @@ import { cn } from "@/lib/utils";
 type Range = "1" | "7" | "30" | "90";
 type Sort = "active" | "az" | "za" | "signals" | "people";
 const UNTAGGED = "__untagged__";
+
+function MomentumBadge({ card }: { card: CompanyCard }) {
+  if (card.momentumPct === null) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-bold text-[color:var(--ink-bright-blue)] tnum">
+        <Newspaper size={10.5} strokeWidth={2.4} />
+        {card.itemsThisMonth} this month
+      </span>
+    );
+  }
+  const up = card.momentumPct >= 0;
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold tnum"
+      style={{
+        color: up ? "var(--ink-green)" : "#DC2626",
+        background: up ? "rgba(26,122,53,0.10)" : "rgba(220,38,38,0.10)",
+      }}
+    >
+      {up ? <TrendingUp size={10.5} strokeWidth={2.4} /> : <TrendingDown size={10.5} strokeWidth={2.4} />}
+      {up ? "+" : ""}{card.momentumPct}%
+    </span>
+  );
+}
+
+function ActivityMetric({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number | string;
+  tone: "blue" | "teal" | "orange" | "violet";
+}) {
+  const styles = {
+    blue: "bg-[rgba(0,113,227,0.07)] text-[color:var(--ink-bright-blue)]",
+    teal: "bg-[rgba(15,118,110,0.08)] text-[color:var(--ink-teal-deep)]",
+    orange: "bg-[rgba(194,65,12,0.08)] text-[color:var(--ink-orange)]",
+    violet: "bg-[rgba(124,58,237,0.08)] text-[color:var(--ink-violet-soft)]",
+  } as const;
+  return (
+    <span className={cn("flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1.5", styles[tone])}>
+      <span className="shrink-0">{icon}</span>
+      <span className="truncate text-[10px] font-semibold text-text-secondary">{label}</span>
+      <span className="ml-auto text-[11px] font-bold tnum">{typeof value === "number" ? value.toLocaleString() : value}</span>
+    </span>
+  );
+}
+
+function PeopleSummary({ people = [] }: { people?: CardPerson[] }) {
+  if (people.length === 0) return <span className="text-[11.5px] text-text-tertiary">No people tracked</span>;
+  return (
+    <div className="flex flex-col items-start gap-1.5">
+      <span className="flex items-center pl-1">
+        {people.slice(0, 5).map(person => (
+          <Avatar key={person.id} name={person.name} src={person.photoUrl} className="-ml-1 h-6 w-6 text-[8px] ring-2 ring-white first:ml-0" />
+        ))}
+        {people.length > 5 && <span className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-blue-light text-[8.5px] font-bold text-blue-primary ring-2 ring-white tnum">+{people.length - 5}</span>}
+      </span>
+      <span className="text-[11px] font-semibold text-text-secondary tnum">{people.length} tracked</span>
+    </div>
+  );
+}
 
 export function LiveCompanyGrid({
   cards,
@@ -301,30 +377,83 @@ export function LiveCompanyGrid({
             : `Nothing matches${q ? ` “${query.trim()}”` : " those filters"}. Clear the ${q ? "search" : "filters"} to see all ${total} ${group === "competitor" ? "competitors" : "customers"} on your page.`}
         </div>
       ) : view === "list" ? (
-        <div className="overflow-x-auto rounded-xl border border-border-light bg-white">
-          <table className="w-full min-w-[780px] text-left text-[12px]">
-            <thead className="border-b border-border-light bg-surface text-[10.5px] uppercase tracking-wide text-text-secondary">
-              <tr><th className="w-10 px-3 py-3"><span className="sr-only">Starred</span></th><th className="px-3 py-3">Company</th><th className="px-3 py-3">Division</th>
-                {["Signals", "Posts", "News", "Website", ...(group === "customer" ? ["People tracked"] : [])].map(label => <th key={label} className="px-3 py-3 text-right">{label}</th>)}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-light">
+        <div key="company-list" className="mi-view-list-in overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_12px_36px_-32px_rgba(15,23,42,0.45)]">
+          <div className={cn("min-w-[1160px]", group === "customer" && "min-w-[1210px]")}>
+            <div
+              className="grid items-center gap-5 border-b border-border-light bg-surface/80 px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary"
+              style={{ gridTemplateColumns: group === "customer" ? "minmax(210px,.95fr) 185px 235px minmax(245px,1.1fr) 130px 75px" : "minmax(230px,1fr) 200px 250px minmax(270px,1.25fr) 90px" }}
+            >
+              <span>Company</span>
+              <span>Intelligence pulse</span>
+              <span>Activity mix</span>
+              <span>Latest intelligence</span>
+              {group === "customer" && <span>People</span>}
+              <span>Freshness</span>
+            </div>
+            <div className="mi-list-stagger divide-y divide-border-light">
               {listRows.map(row => {
                 const card = row.card;
-                if (!card) return <tr key={row.id}><td className="px-3 py-3" /><td className="px-3 py-3 font-semibold">{row.name}<span className="ml-2 text-[11px] font-normal text-text-secondary">Collecting first updates</span></td><td className="px-3 py-3"><DivisionChips divisions={divisions[row.id] ?? []} /></td><td colSpan={group === "customer" ? 5 : 4} className="px-3 py-3 text-right text-text-tertiary">Pending</td></tr>;
-                return <tr key={card.id} className="hover:bg-surface/60">
-                <td className="px-3 py-3"><button type="button" aria-label={`${stars.has(card.id) ? "Unstar" : "Star"} ${card.name}`} aria-pressed={stars.has(card.id)} onClick={() => stars.has(card.id) ? setUnstar({id:card.id,name:card.name}) : void setStar(card.id,true)} className={cn("flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-surface", stars.has(card.id) ? "text-amber-600" : "text-text-tertiary")}><Star size={15} fill={stars.has(card.id) ? "currentColor" : "none"} /></button></td>
-                <td className="px-3 py-3"><Link href={`/market-intel/${card.id}`} className="inline-flex items-center gap-2 font-semibold text-text-primary hover:text-blue-primary"><MiLogo name={card.name} logoUrl={card.logoUrl} className="h-8 w-8 shrink-0" /><span>{card.name}</span></Link></td>
-                <td className="px-3 py-3"><DivisionChips divisions={divisions[card.id] ?? []} /></td>
-                {[card.signalTotal,card.counts.posts,card.counts.news,card.counts.site].map((count,index) => <td key={index} className="px-3 py-3 text-right tnum">{card.countsKnown === false ? "—" : count.toLocaleString()}</td>)}
-                {group === "customer" && <td className="px-3 py-3 text-right tnum">{people[card.id]?.length ?? 0}</td>}
-              </tr>;
+                const rowTemplate = group === "customer" ? "minmax(210px,.95fr) 185px 235px minmax(245px,1.1fr) 130px 75px" : "minmax(230px,1fr) 200px 250px minmax(270px,1.25fr) 90px";
+                if (!card) return (
+                  <div key={row.id} className="relative grid min-h-[106px] items-center gap-5 px-5 py-4" style={{ gridTemplateColumns: rowTemplate }}>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <button type="button" aria-label={`${stars.has(row.id) ? "Unstar" : "Star"} ${row.name}`} aria-pressed={stars.has(row.id)} onClick={() => stars.has(row.id) ? setUnstar({id: row.id, name: row.name}) : void setStar(row.id, true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface", stars.has(row.id) ? "text-amber-600" : "text-text-tertiary")}><Star size={15} fill={stars.has(row.id) ? "currentColor" : "none"} /></button>
+                      <MiLogo name={row.name} className="h-10 w-10 shrink-0" />
+                      <span className="min-w-0"><span className="block text-[13.5px] font-semibold leading-snug text-text-primary">{row.name}</span><DivisionChips divisions={divisions[row.id] ?? []} className="mt-1" /></span>
+                    </div>
+                    <div><span className="inline-flex items-center gap-2 rounded-full bg-blue-light px-2.5 py-1 text-[11px] font-semibold text-blue-primary"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-primary" />Collecting first updates</span></div>
+                    <div className="grid grid-cols-2 gap-1.5 opacity-55"><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /></div>
+                    <p className="text-[12px] leading-relaxed text-text-tertiary">The first verified posts, news, website updates, and signals will appear here.</p>
+                    {group === "customer" && <PeopleSummary people={people[row.id]} />}
+                    <span className="text-[11px] font-medium text-text-tertiary">Pending</span>
+                  </div>
+                );
+
+                const story = card.stories[0] ?? null;
+                const storyHref = safeHref(story?.url);
+                const count = (value: number) => card.countsKnown === false ? "—" : value;
+                return (
+                  <div key={card.id} className="group/row relative grid min-h-[118px] items-center gap-5 px-5 py-4 transition-[background-color,box-shadow] duration-200 hover:bg-[rgba(0,113,227,0.025)] hover:shadow-[inset_3px_0_0_var(--blue-primary)]" style={{ gridTemplateColumns: rowTemplate }}>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <button type="button" aria-label={`${stars.has(card.id) ? "Unstar" : "Star"} ${card.name}`} aria-pressed={stars.has(card.id)} onClick={() => stars.has(card.id) ? setUnstar({id:card.id,name:card.name}) : void setStar(card.id,true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white hover:shadow-sm", stars.has(card.id) ? "text-amber-600" : "text-text-tertiary hover:text-amber-600")}><Star size={15} strokeWidth={2.2} fill={stars.has(card.id) ? "currentColor" : "none"} /></button>
+                      <Link href={`/market-intel/${card.id}`} className="flex min-w-0 items-start gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+                        <MiLogo name={card.name} logoUrl={card.logoUrl} className="h-11 w-11 shrink-0" />
+                        <span className="min-w-0">
+                          <span className="flex items-start gap-1 text-[13.5px] font-semibold leading-snug text-text-primary transition-colors group-hover/row:text-blue-primary">{card.name}<ArrowUpRight size={12} className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/row:opacity-100" /></span>
+                          <DivisionChips divisions={divisions[card.id] ?? []} className="mt-1.5" />
+                        </span>
+                      </Link>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="mb-1.5 flex items-center justify-between gap-2"><span className="text-[10.5px] font-semibold text-text-secondary tnum">{card.itemsInWindow} in {card.windowDays ?? 90}d</span><MomentumBadge card={card} /></div>
+                      <Sparkline points={card.trend} height={38} xLabels={card.trendLabels} unit="items" label={`${card.name} activity trend`} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <ActivityMetric icon={<LinkedInIcon size={11} />} label="Posts" value={count(card.counts.posts)} tone="blue" />
+                      <ActivityMetric icon={<Newspaper size={11} strokeWidth={2.2} />} label="News" value={count(card.counts.news)} tone="teal" />
+                      <ActivityMetric icon={<Globe2 size={11} strokeWidth={2.2} />} label="Website" value={count(card.counts.site)} tone="orange" />
+                      <ActivityMetric icon={<Radar size={11} strokeWidth={2.2} />} label="Signals" value={count(card.signalTotal)} tone="violet" />
+                    </div>
+                    <div className="min-w-0">
+                      {story ? <>
+                        <p className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary">{outletName(story.source, story.url)}</p>
+                        {storyHref ? <a href={storyHref} target="_blank" rel="noreferrer" className="group/story flex items-start gap-1.5 text-[12px] font-medium leading-[1.45] text-text-secondary transition-colors hover:text-blue-primary"><span className="overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</span><ArrowUpRight size={12} className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/story:opacity-100" /></a> : <p className="overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</p>}
+                      </> : <p className="text-[12px] leading-relaxed text-text-tertiary">No recent headline in this window. Activity tracking is still active.</p>}
+                    </div>
+                    {group === "customer" && <PeopleSummary people={people[card.id]} />}
+                    <div className="min-w-0">
+                      {isAdmin && <WatchStatus state={stateOf(card.id)} />}
+                      <span className={cn("block text-[10.5px] font-medium text-text-tertiary", isAdmin && "mt-1.5")}>Updated</span>
+                      <span className="block truncate text-[11px] font-semibold text-text-secondary">{card.updatedLabel}</span>
+                    </div>
+                  </div>
+                );
               })}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
       ) : (
-        <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-4 stagger">
+        <section key="company-tiles" className="mi-view-tiles-in grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-4 stagger">
           {shownPending.map(company=><PendingCompanyCard key={company.id} company={company} divisions={divisions[company.id] ?? []}/>)}
           {shown.map((card) => (
             <LiveCompanyCard

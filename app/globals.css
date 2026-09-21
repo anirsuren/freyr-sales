@@ -550,8 +550,60 @@ select:focus-visible {
 .mi-ticker-in {
   animation: miTickerIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+/* Market Intelligence view switch: the dense ledger arrives from the side
+   while tiles settle upward. The direction makes the mode change legible
+   without turning a routine toggle into a page transition. */
+@keyframes miViewListIn {
+  from {
+    opacity: 0;
+    transform: translateX(14px) scale(0.997);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+@keyframes miViewTilesIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes miListRowIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.mi-view-list-in {
+  animation: miViewListIn 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.mi-view-tiles-in {
+  animation: miViewTilesIn 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.mi-list-stagger > * {
+  animation: miListRowIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.mi-list-stagger > *:nth-child(2) { animation-delay: 25ms; }
+.mi-list-stagger > *:nth-child(3) { animation-delay: 50ms; }
+.mi-list-stagger > *:nth-child(4) { animation-delay: 75ms; }
+.mi-list-stagger > *:nth-child(5) { animation-delay: 100ms; }
+.mi-list-stagger > *:nth-child(6) { animation-delay: 125ms; }
+.mi-list-stagger > *:nth-child(n + 7) { animation-delay: 150ms; }
 @media (prefers-reduced-motion: reduce) {
-  .mi-ticker-in {
+  .mi-ticker-in,
+  .mi-view-list-in,
+  .mi-view-tiles-in,
+  .mi-list-stagger > * {
     animation: none;
   }
 }
