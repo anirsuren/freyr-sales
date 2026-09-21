@@ -2566,7 +2566,7 @@ export function ClaimReviewDialog({
                 This one now uses the same SegmentValues component, so it
                 cannot drift from them again.
 
-                Solid green is signed off; striped amber is still waiting;
+                Solid green is signed off; striped yellow is still waiting;
                 red means sent back. "% there" counts verified money only — the one
                 dialog whose entire job is deciding what counts must not
                 announce a number that includes what it has not yet counted. */}

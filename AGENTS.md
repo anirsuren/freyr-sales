@@ -1184,9 +1184,9 @@ Assigned-person progress rows on Org performance use the same full goal-family r
 
 Performance pace timelines place the 0 and target endpoint labels in the lane immediately above the track by default. They measure the rendered schedule annotation and move only the endpoint that would actually collide into the upper lane, recalculating on resize; labels must not remain detached from the bar merely because a second lane exists. Completed locally, not deployed.
 
-Goal progress rails use one consistent status palette across the entire Goals module. Verified progress is solid green; progress waiting for verification is striped amber/yellow; sent-back progress is striped red. Waiting pills and labels use that same amber treatment. Completed locally, not deployed.
+Goal progress rails use one consistent status palette across the entire Goals module. Verified progress is solid green; progress waiting for verification is striped yellow; sent-back progress is striped red. Waiting pills and labels use that same yellow treatment. Completed locally, not deployed.
 
-Mixed-status goal bars preserve each status as its own proportional segment. A monthly total containing work waiting for verification and work sent back must show both amber-striped and red-striped portions, and those visible portions must add up to the same total shown in the tooltip. Completed locally, not deployed.
+Mixed-status goal bars preserve each status as its own proportional segment. A monthly total containing work waiting for verification and work sent back must show both yellow-striped and red-striped portions, and those visible portions must add up to the same total shown in the tooltip. Completed locally, not deployed.
 
 Verification pills use one identical resting treatment at the goal, group, person, and expanded-detail levels. Permission to click a pill may change its hover action, but it must not change the state label's size, border, icon, or color. Person-detail progress rails use the same solid-green verified, striped-amber waiting, and striped-red sent-back segments as the rest of Goals. Completed locally, not deployed.
 
@@ -1194,7 +1194,7 @@ Goal-level verification uses green for Verified and red for Not verified everywh
 
 The middle Groups column in the Goals drill-down has a compact search field directly beneath its header. It filters the selected period's groups by group name or owner as the user types, reports the visible/total count, provides a one-click clear action, and shows a clear empty result without changing group selection or the three-column layout. Completed locally, not deployed.
 
-Expanded chart dialogs must preserve the source chart's visual meaning exactly. Goals progress bars remain solid green for verified work, striped amber for waiting work, and striped red for sent-back work when expanded; goal-type colors remain only on identity dots. Never regenerate expanded bars from a simplified value/color projection that discards status segments. Completed locally, not deployed.
+Expanded chart dialogs must preserve the source chart's visual meaning exactly. Goals progress bars remain solid green for verified work, striped yellow for waiting work, and striped red for sent-back work when expanded; goal-type colors remain only on identity dots. Never regenerate expanded bars from a simplified value/color projection that discards status segments. Completed locally, not deployed.
 
 Expanded chart dialogs always show the complete chart. Do not add series/slice visibility filters, “show all” controls, visible counts, or empty-filter states to expanded charts. Completed locally, not deployed.
 
@@ -1258,7 +1258,7 @@ Currency selectors use the issuing country or region flag as their only leading 
 
 The Goals Organization → group → person drill-down gives each of its three columns an expand control. Detailed pace rails are interactive in both inline and expanded views: wheel or pinch zooms around the cursor, horizontal wheel and pointer drag move across the numeric range, visible controls zoom or reset, and close values such as an actual at 16 and schedule marker at 24 can always be separated. Completed locally, not deployed.
 
-Goal pace verdicts are based only on verified work, matching the solid-green portion that counts now. Waiting or sent-back claims never produce a green “Ahead of schedule” verdict while verified progress remains behind the schedule marker. Mixed rails render verified, sent-back, and waiting amounts as distinct green, red-striped, and amber-striped segments in the same order as their legend. Completed locally, not deployed.
+Goal pace verdicts are based only on verified work, matching the solid-green portion that counts now. Waiting or sent-back claims never produce a green “Ahead of schedule” verdict while verified progress remains behind the schedule marker. Mixed rails render verified, sent-back, and waiting amounts as distinct green, red-striped, and yellow-striped segments in the same order as their legend. Verdict rows such as “Behind schedule by” are conclusions, not another rail segment, and therefore never render a leading status dot. Completed locally, not deployed.
 
 Subgoal Owner and Groups panels always expose a stable top-right plus action. Empty panels show a centered Choose owner or Choose group action; once assignments exist, they replace the empty prompt and the picker appears only when the user invokes an add action. Selecting an owner or group must actually add it and close the temporary picker. Completed locally, not deployed.
 

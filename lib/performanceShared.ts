@@ -1158,7 +1158,7 @@ export const ENTRY_COLOR: Record<EntryStatus, string> = {
 
 /**
  * Goal progress uses the same status language everywhere: signed-off progress
- * is solid green, progress waiting for review is striped amber, and a
+ * is solid green, progress waiting for review is striped yellow, and a
  * sent-back result is striped red because it needs a fix.
  */
 export const GOAL_PROGRESS_COLOR: Record<EntryStatus, string> = {

@@ -189,7 +189,7 @@ export function VerifyGoalModal({
           )}
           <div className="relative flex h-3 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
           {/* The same goal-progress treatment as every other bar: solid green
-              counts, striped amber waits, and striped red needs a fix. */}
+              counts, striped yellow waits, and striped red needs a fix. */}
             <span
               className="block h-full"
               style={{

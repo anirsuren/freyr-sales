@@ -75,12 +75,12 @@ import { tint } from "@/lib/tint";
  * at the bottom right. Rebuilt to that design after the first attempt drifted
  * from it (Anir: "he said that was good... you have to change everything").
  *
- * Honest numbers, always: verified is the number, waiting is shown amber and
+ * Honest numbers, always: verified is the number, waiting is shown yellow and
  * never counts, and monthly targets render as dashes until the target-spread
  * feature exists. Nothing is invented.
  */
 
-/** Reported-but-unverified is striped amber throughout the Goals module. */
+/** Reported-but-unverified is striped yellow throughout the Goals module. */
 /** One identity colour per line item, matched between a bar's segments and
  *  the rows under it (Anir, Aug 16: "On the progress bar, show this, this,
  *  this, and then color-code it, and then the line items for each below").

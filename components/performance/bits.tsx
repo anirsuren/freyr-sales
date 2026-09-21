@@ -35,6 +35,7 @@ import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn } from "@/lib/utils";
 import {
   ENTRY_COLOR,
+  ENTRY_INK,
   GOAL_PROGRESS_COLOR,
   entryStatus,
   entryStatusLabel,
@@ -1303,8 +1304,10 @@ export function PaceTimeline({
                   just red"). Unverified money was a flat 32% wash here while
                   the bar chart above it striped the identical figure, so the
                   two panels described one fact in two visual languages. Red
-                  means it was sent back; striped amber means it is still
-                  waiting for verification. */}
+                  means it was sent back; striped yellow means it is still
+                  waiting for verification. Yellow is intentionally far from
+                  the sent-back red so adjacent short segments cannot read as
+                  the same state. */}
               <span className="absolute inset-0 flex overflow-hidden rounded-full">
                 {/* Signed off is GREEN and solid, everywhere (Anir, Aug 20:
                     "I like the idea that verified is green, but then make it
@@ -1401,7 +1404,7 @@ export function PaceTimeline({
                       key: "pending",
                       value: pendingValue,
                       pct: pendingPct,
-                      color: GOAL_PROGRESS_COLOR.reported,
+                      color: ENTRY_INK.reported,
                     },
                   ]}
                 />
@@ -1471,7 +1474,6 @@ export function PaceTimeline({
                 measuring against a line the app drew itself. */}
             {hasSchedule && (
               <PaceRow
-                swatch={paceDelta < 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.verified}
                 label={paceDelta < 0 ? "Behind schedule by" : "Ahead of schedule by"}
                 value={fmtAmount(unit, Math.abs(paceDelta))}
                 strong
