@@ -60,7 +60,7 @@ import {
   resultWhen,
 } from "@/lib/performanceShared";
 import { typeMeta, GroupPill, PaceTimeline } from "./bits";
-import { ClaimReviewDialog } from "./EntryCards";
+import { ClaimReviewDialog, EntryTimeline } from "./EntryCards";
 import { EvidencePreview } from "./EvidenceViewer";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useOpportunities } from "@/lib/useOpportunities";
@@ -1215,18 +1215,16 @@ export function GoalZoom({
                   const account = opp?.customer ?? a.customer ?? "";
                   const verified = entryStatus(a) === "verified";
                   return (
-                    <div
-                      key={a.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setOpenResult(a)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setOpenResult(a);
-                        }
-                      }}
-                      className="flex cursor-pointer flex-col gap-1 px-2.5 py-2.5 text-left transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--blue-primary)]"
+                    <div key={a.id}>
+                    <button
+                      type="button"
+                      aria-expanded={expandedDrillColumn ? openResult?.id === a.id : undefined}
+                      onClick={() =>
+                        setOpenResult((current) =>
+                          expandedDrillColumn && current?.id === a.id ? null : a
+                        )
+                      }
+                      className="flex w-full cursor-pointer flex-col gap-1 px-2.5 py-2.5 text-left transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--blue-primary)]"
                     >
                       <span className="flex items-center gap-2">
                         {indent && (
@@ -1325,6 +1323,67 @@ export function GoalZoom({
                           </span>
                         )}
                       </span>
+                    </button>
+                    {expandedDrillColumn && openResult?.id === a.id && (
+                      <div className="tab-panel border-t border-border-light bg-surface/45 px-3 py-3">
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
+                          <span className="min-w-0">
+                            <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Logged by</span>
+                            <span className="mt-1 flex min-w-0 items-center gap-1.5 font-medium text-text-primary">
+                              <Avatar name={a.person} className="h-5 w-5 shrink-0 text-[7px]" />
+                              <span className="truncate">{a.person}</span>
+                            </span>
+                          </span>
+                          <span>
+                            <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Result date</span>
+                            <span className="mt-1 block text-text-primary tnum">{resultWhen(a)}</span>
+                          </span>
+                          {account && (
+                            <span className="min-w-0">
+                              <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Customer</span>
+                              <span className="mt-1 flex min-w-0 items-center gap-1.5 text-text-primary">
+                                <CompanyLogo name={account} className="h-5 w-5 shrink-0 text-[7px]" />
+                                <span className="truncate">{account}</span>
+                              </span>
+                            </span>
+                          )}
+                          {opp && (
+                            <span className="min-w-0">
+                              <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Opportunity</span>
+                              <span className="mt-1 block truncate text-text-primary">{opp.name}</span>
+                            </span>
+                          )}
+                        </div>
+                        {a.note && (
+                          <p className="mt-2.5 rounded-lg bg-white px-2.5 py-2 text-[11px] italic text-text-secondary">
+                            &ldquo;{a.note}&rdquo;
+                          </p>
+                        )}
+                        <div className="mt-2.5">
+                          <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Proof</span>
+                          {(a.evidence ?? []).length > 0 ? (
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {(a.evidence ?? []).map((file) => (
+                                <a
+                                  key={file.url}
+                                  href={file.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2 py-1 text-[10px] font-semibold text-blue-primary hover:bg-blue-subtle"
+                                >
+                                  <Paperclip size={10} strokeWidth={2.3} /> {file.name}
+                                </a>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-1 text-[10.5px] text-warning">Nothing attached.</p>
+                          )}
+                        </div>
+                        <div className="mt-3 border-t border-border-light pt-3">
+                          <EntryTimeline entry={a} person={a.person} />
+                        </div>
+                      </div>
+                    )}
                     </div>
                   );
                 })}
@@ -1922,7 +1981,7 @@ export function GoalZoom({
                                 aria-expanded={openGroupPeople.has(r2.group.id)}
                                 onClick={() => toggleGroupPeople(r2.group.id)}
                                 className={cn(
-                                  "mt-1.5 flex w-full cursor-pointer items-center gap-1.5 rounded-lg px-0.5 py-1 text-[11px] font-semibold transition-colors",
+                                  "group/show-members mt-1.5 flex w-full cursor-pointer items-center gap-1.5 rounded-lg px-0.5 py-1 text-[11px] font-semibold transition-colors",
                                   openGroupPeople.has(r2.group.id)
                                     ? "text-blue-primary"
                                     : "text-text-secondary hover:text-blue-primary"
@@ -1943,26 +2002,42 @@ export function GoalZoom({
                                   : "Show"}{" "}
                                 {r2.members.length}{" "}
                                 {r2.members.length === 1 ? "person" : "people"}
-                                {/* Whose names they are, without opening it.
-                                    Plain faces, not the hover fan: this sits
-                                    inside a button, and a hover card inside a
-                                    button is a control inside a control. */}
-                                <span className="ml-auto flex shrink-0 items-center pl-1.5">
-                                  {r2.members.slice(0, 4).map((n, i) => (
-                                    <Avatar
-                                      key={n}
-                                      name={n}
-                                      className={cn(
-                                        "h-4 w-4 text-[6.5px] ring-1 ring-white",
-                                        i > 0 && "-ml-1"
-                                      )}
-                                    />
-                                  ))}
-                                  {r2.members.length > 4 && (
-                                    <span className="ml-1 text-[9.5px] font-semibold text-text-tertiary tnum">
-                                      +{r2.members.length - 4}
-                                    </span>
-                                  )}
+                                {/* Hovering the compact stack fans every visible
+                                    person into a named chip. These are plain
+                                    spans inside the disclosure button, so the
+                                    interaction stays valid and clicking still
+                                    opens the roster. */}
+                                <span className="relative ml-auto h-6 w-[76px] shrink-0">
+                                  <span className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center transition-all duration-200 group-hover/show-members:translate-x-1 group-hover/show-members:opacity-0 group-focus-visible/show-members:translate-x-1 group-focus-visible/show-members:opacity-0">
+                                    {r2.members.slice(0, 4).map((n, i) => (
+                                      <Avatar
+                                        key={n}
+                                        name={n}
+                                        className={cn(
+                                          "h-4 w-4 text-[6.5px] ring-1 ring-white",
+                                          i > 0 && "-ml-1"
+                                        )}
+                                      />
+                                    ))}
+                                    {r2.members.length > 4 && (
+                                      <span className="ml-1 text-[9.5px] font-semibold text-text-tertiary tnum">
+                                        +{r2.members.length - 4}
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="pointer-events-none absolute right-0 top-1/2 z-20 flex -translate-y-1/2 translate-x-2 items-center gap-1 opacity-0 transition-all duration-200 group-hover/show-members:translate-x-0 group-hover/show-members:opacity-100 group-focus-visible/show-members:translate-x-0 group-focus-visible/show-members:opacity-100">
+                                    {r2.members.slice(0, 5).map((n) => (
+                                      <span key={n} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border-light bg-white py-0.5 pl-0.5 pr-1.5 text-[9px] font-semibold text-text-primary shadow-sm">
+                                        <Avatar name={n} className="h-4 w-4 text-[6.5px]" />
+                                        {n}
+                                      </span>
+                                    ))}
+                                    {r2.members.length > 5 && (
+                                      <span className="shrink-0 rounded-full border border-border-light bg-white px-1.5 py-1 text-[9px] text-text-tertiary shadow-sm tnum">
+                                        +{r2.members.length - 5}
+                                      </span>
+                                    )}
+                                  </span>
                                 </span>
                               </button>
                             )}
@@ -2648,7 +2723,7 @@ export function GoalZoom({
             ? opportunities.find((o) => o.id === openResult.opportunityId)?.status
             : undefined
         }
-        open={!!openResult}
+        open={!expandedDrillColumn && !!openResult}
         onClose={() => setOpenResult(null)}
       />
     </div>
