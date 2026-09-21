@@ -1207,7 +1207,7 @@ export function GoalZoom({
               );
             }
             return (
-              <div className="overflow-hidden rounded-lg border border-border-light bg-white divide-y divide-border-light">
+              <div className="space-y-2">
                 {entries.map((a) => {
                   const opp = a.opportunityId
                     ? opportunities.find((o) => o.id === a.opportunityId)
@@ -1215,7 +1215,15 @@ export function GoalZoom({
                   const account = opp?.customer ?? a.customer ?? "";
                   const verified = entryStatus(a) === "verified";
                   return (
-                    <div key={a.id}>
+                    <div
+                      key={a.id}
+                      className={cn(
+                        "overflow-hidden rounded-xl border bg-white transition-all",
+                        expandedDrillColumn && openResult?.id === a.id
+                          ? "border-blue-primary/45 shadow-[0_4px_16px_rgba(0,113,227,0.10)]"
+                          : "border-border-light"
+                      )}
+                    >
                     <button
                       type="button"
                       aria-expanded={expandedDrillColumn ? openResult?.id === a.id : undefined}
@@ -1224,7 +1232,12 @@ export function GoalZoom({
                           expandedDrillColumn && current?.id === a.id ? null : a
                         )
                       }
-                      className="flex w-full cursor-pointer flex-col gap-1 px-2.5 py-2.5 text-left transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--blue-primary)]"
+                      className={cn(
+                        "flex w-full cursor-pointer flex-col gap-1 px-3 py-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--blue-primary)]",
+                        expandedDrillColumn && openResult?.id === a.id
+                          ? "bg-blue-light/40"
+                          : "hover:bg-surface"
+                      )}
                     >
                       <span className="flex items-center gap-2">
                         {indent && (
@@ -1264,6 +1277,16 @@ export function GoalZoom({
                         >
                           {fmtAmount(goal.unit, a.amount, a.currency)}
                         </b>
+                        <ChevronDown
+                          size={13}
+                          strokeWidth={2.3}
+                          aria-hidden="true"
+                          className={cn(
+                            "shrink-0 text-text-tertiary transition-transform",
+                            expandedDrillColumn && openResult?.id === a.id &&
+                              "rotate-180 text-blue-primary"
+                          )}
+                        />
                       </span>
                       <span className="flex flex-wrap items-center gap-1.5 pl-7 text-[9.5px] text-text-tertiary">
                         {!indent && (
@@ -1325,7 +1348,7 @@ export function GoalZoom({
                       </span>
                     </button>
                     {expandedDrillColumn && openResult?.id === a.id && (
-                      <div className="tab-panel border-t border-border-light bg-surface/45 px-3 py-3">
+                      <div className="tab-panel border-t border-blue-primary/20 bg-surface/45 px-3 py-3">
                         <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
                           <span className="min-w-0">
                             <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Logged by</span>
