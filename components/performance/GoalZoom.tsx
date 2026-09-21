@@ -565,19 +565,26 @@ export function GoalZoom({
   const [expandedDrillColumn, setExpandedDrillColumn] = useState<
     "organization" | "groups" | "people" | null
   >(null);
+  const closeExpandedDrill = useCallback(() => {
+    setExpandedDrillColumn(null);
+    // A result opened inside the full-screen drill belongs to that surface.
+    // Clear it before the parent closes so the regular result modal cannot
+    // appear afterward from the same lingering selection.
+    setOpenResult(null);
+  }, []);
   useEffect(() => {
     if (!expandedDrillColumn) return;
     const priorOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setExpandedDrillColumn(null);
+      if (event.key === "Escape") closeExpandedDrill();
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = priorOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [expandedDrillColumn]);
+  }, [closeExpandedDrill, expandedDrillColumn]);
   const heads = headedGroups(state, meName);
   const amHead = heads.length > 0;
 
@@ -1455,11 +1462,13 @@ export function GoalZoom({
               type="button"
               aria-label={expandedDrillColumn ? "Close expanded organization, groups, and people" : `Expand ${label}`}
               title={expandedDrillColumn ? "Close expanded view" : "Expand all three columns"}
-              onClick={() =>
-                setExpandedDrillColumn((current) =>
-                  current ? null : column
-                )
-              }
+              onClick={() => {
+                if (expandedDrillColumn) closeExpandedDrill();
+                else {
+                  setOpenResult(null);
+                  setExpandedDrillColumn(column);
+                }
+              }}
               className="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-lg border border-border-light bg-white text-text-secondary shadow-sm transition-colors hover:border-blue-primary/30 hover:bg-blue-light/40 hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/25"
             >
               {expandedDrillColumn ? (
@@ -1486,7 +1495,7 @@ export function GoalZoom({
               role={expandedDrillColumn ? "dialog" : undefined}
               aria-modal={expandedDrillColumn ? true : undefined}
               aria-label={expandedDrillColumn ? "Organization, groups, and people" : undefined}
-              onClick={expandedDrillColumn ? () => setExpandedDrillColumn(null) : undefined}
+              onClick={expandedDrillColumn ? closeExpandedDrill : undefined}
             >
             <div
               className={cn(
@@ -1510,7 +1519,7 @@ export function GoalZoom({
                     type="button"
                     aria-label="Close expanded organization, groups, and people"
                     title="Close expanded view"
-                    onClick={() => setExpandedDrillColumn(null)}
+                    onClick={closeExpandedDrill}
                     className="ml-auto grid h-8 w-8 cursor-pointer place-items-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/25"
                   >
                     <X size={16} strokeWidth={2.2} aria-hidden="true" />
