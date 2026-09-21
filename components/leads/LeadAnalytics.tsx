@@ -9,12 +9,20 @@ import {
   Building2,
   CalendarDays,
   ChevronRight,
+  CircleEllipsis,
   Clock3,
+  Globe2,
+  Handshake,
   History,
   ListChecks,
+  Mail,
   Maximize2,
+  Megaphone,
   Search,
+  Send,
   UserRound,
+  UserRoundCheck,
+  type LucideIcon,
 } from "lucide-react";
 import { AreaChart, DonutChart, type TipItem } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
@@ -40,6 +48,17 @@ const DAY = 86_400_000;
 const WEEK = DAY * 7;
 const WEEKS = 12;
 
+const LEAD_SOURCE_ICONS: Record<LeadSource, LucideIcon> = {
+  Website: Globe2,
+  Conference: CalendarDays,
+  Referral: UserRoundCheck,
+  Campaign: Megaphone,
+  "Inbound email": Mail,
+  Partner: Handshake,
+  Outbound: Send,
+  Other: CircleEllipsis,
+};
+
 function shortDate(ms: number) {
   return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
@@ -60,6 +79,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
     | "stale"
     | "name"
     | "company"
+    | "source"
     | "status"
     | "owner"
   >("newest");
@@ -161,6 +181,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
           lead.name,
           lead.company,
           lead.title,
+          lead.source,
           lead.status,
           lead.owner,
           lead.interest,
@@ -173,6 +194,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
       }
       if (sourceSort === "name") return a.name.localeCompare(b.name);
       if (sourceSort === "company") return a.company.localeCompare(b.company);
+      if (sourceSort === "source") return a.source.localeCompare(b.source);
       if (sourceSort === "status") return a.status.localeCompare(b.status);
       if (sourceSort === "owner") {
         return (a.owner || "Unassigned").localeCompare(b.owner || "Unassigned");
@@ -495,6 +517,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 { value: "stale", label: "Stalest first", color: "#C2410C", icon: AlarmClock },
                 { value: "name", label: "Lead name", color: "var(--ink-violet-soft)", icon: ArrowDownAZ },
                 { value: "company", label: "Company", color: "var(--ink-violet-soft)", icon: Building2 },
+                { value: "source", label: "Source", color: "var(--ink-bright-blue)", icon: Globe2 },
                 { value: "status", label: "Status", color: "var(--ink-orange)", icon: ListChecks },
                 { value: "owner", label: "Owner", color: "var(--ink-teal-deep)", icon: UserRound },
               ]}
@@ -522,16 +545,17 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
 
         <div className="min-h-0 flex-1 overflow-auto">
           {matchingSourceLeads.length ? (
-            <table className="w-full min-w-[1120px] table-fixed text-left">
+            <table className="w-full min-w-[1280px] table-fixed text-left">
               <thead className="sticky top-0 z-10 bg-surface shadow-[0_1px_0_var(--border-light)]">
                 <tr className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:px-4 [&>th]:py-2.5">
-                  <th className="w-[18%]">Lead</th>
-                  <th className="w-[17%]">Company</th>
-                  <th className="w-[12%]">Status</th>
-                  <th className="w-[14%]">Owner</th>
-                  <th className="w-[21%]">What they asked about</th>
-                  <th className="w-[9%]">Came in</th>
-                  <th className="w-[9%]">Last moved</th>
+                  <th className="w-[16%]">Lead</th>
+                  <th className="w-[15%]">Company</th>
+                  <th className="w-[11%]">Source</th>
+                  <th className="w-[11%]">Status</th>
+                  <th className="w-[12%]">Owner</th>
+                  <th className="w-[19%]">What they asked about</th>
+                  <th className="w-[8%]">Came in</th>
+                  <th className="w-[8%]">Last moved</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
@@ -564,6 +588,21 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                             <span className="min-w-0 truncate">{lead.company}</span>
                           </span>
                         )}
+                      </td>
+                      <td>
+                        {(() => {
+                          const SourceIcon = LEAD_SOURCE_ICONS[lead.source];
+                          const sourceColor = leadSourceColor(lead.source);
+                          return (
+                            <span
+                              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                              style={{ background: tint(sourceColor, 9), color: sourceColor }}
+                            >
+                              <SourceIcon size={12} strokeWidth={2.2} aria-hidden="true" />
+                              {lead.source}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td>
                         <span
