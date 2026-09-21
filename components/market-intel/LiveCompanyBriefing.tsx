@@ -3,7 +3,7 @@
 import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import { SmartBack } from "@/components/ui/BackButton";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -182,7 +182,8 @@ export function LiveCompanyBriefing({
   const [savedArticles, setSavedArticles] = useState<Item[]>([]);
   const [savedOnly, setSavedOnly] = useState(false);
   const [savedReady, setSavedReady] = useState(false);
-  const [savingArticle, setSavingArticle] = useState<string | null>(null);
+  const savingArticlesRef = useRef(new Set<string>());
+  const [savingArticles, setSavingArticles] = useState<Set<string>>(new Set());
   useEffect(() => {
     const controller = new AbortController();
     setSavedReady(false);
@@ -216,27 +217,39 @@ export function LiveCompanyBriefing({
   }, [briefing.id, toast]);
   const savedUrls = new Set(savedArticles.map(article => article.url));
   async function toggleArticle(item: Item) {
-    if (!savedReady || savingArticle) return;
-    const on = !savedUrls.has(item.url);
-    setSavingArticle(item.url);
+    if (!savedReady || savingArticlesRef.current.has(item.url)) return;
+    const savedArticle = savedArticles.find(article => article.url === item.url);
+    const on = !savedArticle;
+    savingArticlesRef.current.add(item.url);
+    setSavingArticles(new Set(savingArticlesRef.current));
+    setSavedArticles(previous => on
+      ? [...previous.filter(article => article.url !== item.url), item]
+      : previous.filter(article => article.url !== item.url));
     try {
       const response = await fetch("/api/market-intel/saved-articles", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: briefing.id, url: item.url, title: item.title, body: item.body, date: item.date, sourceLabel: item.sourceLabel, kind: item.kind, on }) });
       if (!response.ok) throw new Error();
-      setSavedArticles(previous => on ? [...previous.filter(article => article.url !== item.url), item] : previous.filter(article => article.url !== item.url));
       toast(on ? "Item saved to your bookmarks." : "Item removed from your bookmarks.");
-    } catch { toast("Could not update this bookmark. Please try again.", "error"); }
-    finally { setSavingArticle(null); }
+    } catch {
+      setSavedArticles(previous => on
+        ? previous.filter(article => article.url !== item.url)
+        : [...previous.filter(article => article.url !== item.url), savedArticle ?? item]);
+      toast("Could not update this bookmark. Please try again.", "error");
+    } finally {
+      savingArticlesRef.current.delete(item.url);
+      setSavingArticles(new Set(savingArticlesRef.current));
+    }
   }
   const storyActionClass =
     "inline-flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary";
   const bookmarkButton = (item: Item) => (
-    <button type="button" disabled={!savedReady || savingArticle !== null} onClick={() => void toggleArticle(item)}
+    <button type="button" disabled={!savedReady || savingArticles.has(item.url)} onClick={() => void toggleArticle(item)}
       aria-label={`${savedUrls.has(item.url) ? "Unsave" : "Save"} item: ${item.title}`} aria-pressed={savedUrls.has(item.url)}
+      aria-busy={savingArticles.has(item.url)}
       title={savedUrls.has(item.url) ? "Remove bookmark" : "Save item"}
       style={savedUrls.has(item.url) ? { color: "#d97706", backgroundColor: "#fef3c7", borderColor: "#fcd34d" } : undefined}
       className={cn(
         storyActionClass,
-        "w-7 hover:bg-amber-50 hover:!text-amber-600 disabled:cursor-default disabled:opacity-40",
+        "w-7 hover:bg-amber-50 hover:!text-amber-600 disabled:cursor-default",
         savedUrls.has(item.url) && "border border-amber-200 bg-amber-100 !text-amber-600 hover:bg-amber-100",
       )}>
       <Bookmark

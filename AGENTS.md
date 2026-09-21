@@ -1400,6 +1400,8 @@ Multi-select dropdown triggers close immediately on the second pointer press, in
 
 Saved Market Intelligence stories use a filled yellow bookmark with a pale yellow hover/background treatment, and the Saved filter carries the same yellow bookmark cue whenever saved stories exist. Unsaved bookmarks remain neutral outlines. Completed locally, not deployed.
 
+Market Intelligence bookmark clicks update the bookmark and Saved results immediately, then persist in the background. A pending request locks only that story's bookmark; failed saves restore the prior state and show an error instead of leaving the optimistic state behind. Completed locally, not deployed.
+
 Market Intelligence company briefings place The Rundown directly beneath the company header, before the briefing search and filter controls. Completed locally, not deployed.
 
 Market Intelligence list views give collection status its own Tracking column. Active-person counts stay on one line, while Freshness contains only the single-line update age. Completed locally, not deployed.
