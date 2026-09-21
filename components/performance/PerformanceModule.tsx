@@ -30,12 +30,14 @@ import {
   UserRoundPlus,
   Rows3,
   PanelsTopLeft,
+  Target,
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { MultiPicker } from "@/components/ui/MultiPicker";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Card } from "@/components/ui/Card";
+import { StatTile } from "@/components/ui/StatTile";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { TargetSlider, type Allocation } from "./TargetSlider";
 import { refreshOpportunities, useOpportunities } from "@/lib/useOpportunities";
@@ -4152,6 +4154,8 @@ function SubgoalEditorFields({
   const claimedByPeople = ownTarget === 0 && peopleSum > 0;
   const spoken = siblingTotal + mine;
   const goalTarget = goal.target;
+  const available = Math.max(0, goalTarget - spoken);
+  const overTarget = goalTarget > 0 && spoken > goalTarget;
   /** What the people on this slice are measured against. */
   const personCeiling = ownTarget > 0 ? ownTarget : Math.max(0, goalTarget - siblingTotal);
   const peopleOver = personCeiling > 0 && peopleSum > personCeiling;
@@ -4162,55 +4166,49 @@ function SubgoalEditorFields({
 
   return (
     <div className={cn("space-y-3.5", standalone && "pb-1")}>
-      <div className="overflow-hidden rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-        <div className="grid gap-4 px-4 py-4 sm:grid-cols-[minmax(220px,1fr)_auto] sm:items-end">
+      <div className="space-y-3">
+        <div className="flex min-w-0 items-center gap-3 px-1">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-light text-blue-primary">
+            <Target size={17} strokeWidth={2.1} />
+          </span>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.09em] text-text-tertiary">
-              {editing ? "Subgoal allocation" : "New subgoal allocation"}
+            <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+              Parent goal
             </p>
-            <p className="mt-1 truncate text-[16px] font-bold text-text-primary">
+            <p className="mt-0.5 truncate text-[15px] font-semibold text-text-primary">
               {goal.name}
             </p>
-            <p className="mt-0.5 text-[11.5px] text-text-secondary">
-              See how this subgoal fits before changing assignments.
-            </p>
-          </div>
-          <div className="grid grid-cols-3 divide-x divide-border-light rounded-xl border border-border-light bg-[var(--surface)]">
-            <span className="min-w-[112px] px-3 py-2">
-              <span className="block text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-                Parent target
-              </span>
-              <b className="mt-0.5 block text-[13px] text-text-primary tnum">
-                {goalTarget > 0 ? fmtAmount(goal.unit, goalTarget) : "Not set"}
-              </b>
-            </span>
-            <span className="min-w-[112px] px-3 py-2">
-              <span className="block text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-                This subgoal
-              </span>
-              <b className="mt-0.5 block text-[13px] text-blue-primary tnum">
-                {fmtAmount(goal.unit, mine)}
-              </b>
-            </span>
-            <span className="min-w-[112px] px-3 py-2">
-              <span className="block text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
-                {goalTarget > 0 && spoken > goalTarget ? "Over target" : "Available"}
-              </span>
-              <b
-                className={cn(
-                  "mt-0.5 block text-[13px] tnum",
-                  goalTarget > 0 && spoken > goalTarget
-                    ? "text-[color:var(--status-red)]"
-                    : "text-text-primary"
-                )}
-              >
-                {goalTarget > 0
-                  ? fmtAmount(goal.unit, Math.abs(goalTarget - spoken))
-                  : "—"}
-              </b>
-            </span>
           </div>
         </div>
+
+        {/* These are the app's normal metric cards. The old custom three-cell
+            capsule invented a second visual language inside one modal and
+            made the figures look like table headings instead of live data. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatTile
+            icon={Target}
+            label="Parent target"
+            value={goalTarget > 0 ? fmtAmount(goal.unit, goalTarget) : "Not set"}
+            sub="Total for the goal"
+            color="#64748B"
+          />
+          <StatTile
+            icon={PanelsTopLeft}
+            label="This subgoal"
+            value={fmtAmount(goal.unit, mine)}
+            sub={claimedByPeople ? "Carried by its people" : "Allocated here"}
+            color="var(--ink-bright-blue)"
+          />
+          <StatTile
+            icon={Gauge}
+            label={overTarget ? "Over target" : "Available"}
+            value={goalTarget > 0 ? fmtAmount(goal.unit, overTarget ? spoken - goalTarget : available) : "—"}
+            sub={overTarget ? "Reduce an allocation" : "Left to allocate"}
+            color={overTarget ? "var(--status-red)" : "var(--ink-teal-deep)"}
+            warn={overTarget}
+          />
+        </div>
+
         {goalTarget <= 0 && (
           /* ZERO IS A STATE, NOT AN ABSENCE (Anir, Aug 19: "when it's at
              zero, I have to see definitively 'here is where you're at', and
@@ -4218,7 +4216,7 @@ function SubgoalEditorFields({
              It's just kind of annoying"). With no target on the parent the
              whole band used to disappear, so the form said nothing at all
              about the number this slice is a share of. */
-          <div className="border-t border-border-light px-4 py-3">
+          <div className="rounded-xl border border-border-light bg-surface/50 px-4 py-3">
             <span className="block h-2 w-full rounded-full bg-[color:var(--border-light)]" />
             <span className="mt-2 block text-[11px] text-text-secondary">
               Set a parent target before dividing it across subgoals.
@@ -4244,7 +4242,16 @@ function SubgoalEditorFields({
                 subgoals already claim, the pale segment is THIS one growing
                 live as the target is typed, and the grey is what is left.
                 Two strengths of the allocation blue distinguish the slices. */}
-            <div className="mx-4 flex h-2.5 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+            <div className="rounded-xl border border-border-light bg-surface/50 px-4 py-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="text-[11px] font-semibold text-text-primary">
+                  Target allocation
+                </span>
+                <span className="text-[10.5px] text-text-tertiary tnum">
+                  {fmtAmount(goal.unit, Math.min(spoken, goalTarget))} of {fmtAmount(goal.unit, goalTarget)} allocated
+                </span>
+              </div>
+              <div className="flex h-2.5 overflow-hidden rounded-full bg-[color:var(--border-light)]">
               <span
                 className="block h-full bg-slate-400 transition-all"
                 style={{
@@ -4262,8 +4269,8 @@ function SubgoalEditorFields({
                   width: `${Math.max(0, Math.min(100, (spoken / goalTarget) * 100) - Math.min(100, (siblingTotal / goalTarget) * 100))}%`,
                 }}
               />
-            </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-3 pt-2 text-[11px]">
+              </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-[11px]">
               {siblingTotal > 0 && (
                 <span className="flex items-center gap-1.5 text-text-secondary">
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
@@ -4303,6 +4310,7 @@ function SubgoalEditorFields({
                   Over by {fmtAmount(goal.unit, spoken - goalTarget)}
                 </span>
               )}
+            </div>
             </div>
           </>
         )}
