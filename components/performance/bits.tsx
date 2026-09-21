@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Activity,
@@ -16,6 +16,8 @@ import {
   Search,
   ShieldCheck,
   Minus,
+  MoveHorizontal,
+  Plus,
   ShieldQuestion,
   ShieldX,
   X,
@@ -898,6 +900,7 @@ export function PaceTimeline({
   expected,
   expectedDueLabel,
   onSetSchedule,
+  interactive = false,
 }: {
   title: React.ReactNode;
   verified: number;
@@ -928,6 +931,10 @@ export function PaceTimeline({
    *  also close it (Anir, Aug 16: "if ur gonna say this u might as well put a
    *  button to take the user there"). */
   onSetSchedule?: () => void;
+  /** Turn the number rail into a cursor-centred viewport. Wheel/pinch zooms,
+   *  horizontal wheel and pointer drag pan, and the visible controls provide
+   *  the same interaction without a trackpad. */
+  interactive?: boolean;
   /**
    * Drawn inside a narrow drill-down column instead of a 420px hover card
    * (Anir, Aug 16: "whatever you had when I hover over it, that's the same
@@ -958,6 +965,54 @@ export function PaceTimeline({
   const targetLabelRef = useRef<HTMLSpanElement>(null);
   const scheduleLabelRef = useRef<HTMLSpanElement>(null);
   const [raisedEnds, setRaisedEnds] = useState({ left: false, right: false });
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ x: number; start: number; pointerId: number } | null>(null);
+  const [view, setView] = useState({ zoom: 1, start: 0 });
+  const MAX_ZOOM = 12;
+  const clampViewStart = (start: number, zoom: number) =>
+    Math.min(Math.max(0, 1 - 1 / zoom), Math.max(0, start));
+  const updateZoom = useCallback((nextZoom: number, anchor = 0.5) => {
+    setView((current) => {
+      const zoom = Math.min(MAX_ZOOM, Math.max(1, nextZoom));
+      const valueAtAnchor = current.start + anchor / current.zoom;
+      return {
+        zoom,
+        start: clampViewStart(valueAtAnchor - anchor / zoom, zoom),
+      };
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!interactive) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY) && !event.ctrlKey) {
+        setView((current) => ({
+          ...current,
+          start: clampViewStart(
+            current.start + event.deltaX / Math.max(1, rect.width * current.zoom),
+            current.zoom
+          ),
+        }));
+        return;
+      }
+      const anchor = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+      const factor = Math.exp(-event.deltaY * (event.ctrlKey ? 0.012 : 0.006));
+      setView((current) => {
+        const zoom = Math.min(MAX_ZOOM, Math.max(1, current.zoom * factor));
+        const valueAtAnchor = current.start + anchor / current.zoom;
+        return {
+          zoom,
+          start: clampViewStart(valueAtAnchor - anchor / zoom, zoom),
+        };
+      });
+    };
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", onWheel);
+  }, [interactive]);
 
   /* Keep endpoint numbers in the lane nearest the track unless the schedule
    * annotation actually occupies that horizontal space. Measuring the real
@@ -1043,6 +1098,21 @@ export function PaceTimeline({
    * below, always — then no distance between the dots can ever bring them
    * together, and the layout no longer jumps between two arrangements.
    */
+  const viewportStyle: React.CSSProperties = interactive
+    ? {
+        width: `${view.zoom * 100}%`,
+        transform: `translateX(-${view.start * 100}%)`,
+        transformOrigin: "left center",
+      }
+    : {};
+  const focusDomain = hasSchedule
+    ? (aPct + marker) / 200
+    : Math.max(vPct, aPct) / 100;
+  const controlAnchor = Math.min(
+    1,
+    Math.max(0, (focusDomain - view.start) * view.zoom)
+  );
+
   return (
     <div className={compact ? "w-full" : "min-w-[380px]"}>
       {!compact && (
@@ -1051,6 +1121,72 @@ export function PaceTimeline({
 
       {target > 0 ? (
         <>
+          {interactive && (
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="flex min-w-0 items-center gap-1 text-[9.5px] text-text-tertiary">
+                <MoveHorizontal size={12} aria-hidden="true" />
+                <span className="truncate">Scroll to zoom · drag to move</span>
+              </span>
+              <span className="flex shrink-0 items-center rounded-lg border border-border-light bg-white p-0.5 shadow-sm">
+                <button
+                  type="button"
+                  aria-label="Zoom out"
+                  onClick={() => updateZoom(view.zoom / 1.6, controlAnchor)}
+                  disabled={view.zoom <= 1.001}
+                  className="grid h-6 w-6 cursor-pointer place-items-center rounded-md text-text-secondary hover:bg-surface disabled:cursor-default disabled:opacity-35"
+                >
+                  <Minus size={12} strokeWidth={2.4} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Reset zoom"
+                  title="Reset zoom"
+                  onClick={() => setView({ zoom: 1, start: 0 })}
+                  className="h-6 min-w-9 cursor-pointer rounded-md px-1 text-[9.5px] font-bold text-text-secondary hover:bg-surface"
+                >
+                  {view.zoom <= 1.001 ? "Fit" : `${view.zoom.toFixed(1)}×`}
+                </button>
+                <button
+                  type="button"
+                  aria-label="Zoom in"
+                  onClick={() => updateZoom(view.zoom * 1.6, controlAnchor)}
+                  disabled={view.zoom >= MAX_ZOOM - 0.001}
+                  className="grid h-6 w-6 cursor-pointer place-items-center rounded-md text-text-secondary hover:bg-surface disabled:cursor-default disabled:opacity-35"
+                >
+                  <Plus size={12} strokeWidth={2.4} />
+                </button>
+              </span>
+            </div>
+          )}
+          <div
+            ref={viewportRef}
+            className={cn(interactive && "select-none overflow-hidden rounded-lg")}
+            style={interactive ? { touchAction: "pan-y", cursor: dragRef.current ? "grabbing" : "grab" } : undefined}
+            onPointerDown={interactive ? (event) => {
+              if (event.button !== 0) return;
+              if ((event.target as HTMLElement).closest("button, a")) return;
+              event.preventDefault();
+              dragRef.current = { x: event.clientX, start: view.start, pointerId: event.pointerId };
+              event.currentTarget.setPointerCapture(event.pointerId);
+            } : undefined}
+            onPointerMove={interactive ? (event) => {
+              const drag = dragRef.current;
+              if (!drag || drag.pointerId !== event.pointerId) return;
+              const width = Math.max(1, event.currentTarget.getBoundingClientRect().width);
+              setView((current) => ({
+                ...current,
+                start: clampViewStart(drag.start - (event.clientX - drag.x) / (width * current.zoom), current.zoom),
+              }));
+            } : undefined}
+            onPointerUp={interactive ? (event) => {
+              if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }
+            } : undefined}
+            onPointerCancel={interactive ? () => { dragRef.current = null; } : undefined}
+          >
+          <div style={viewportStyle}>
           <div
             ref={timelineRef}
             className={compact ? "relative mt-1" : "relative mt-3.5"}
@@ -1277,6 +1413,8 @@ export function PaceTimeline({
               </span>
             </div>
 
+          </div>
+          </div>
           </div>
 
           <div className={cn(compact ? "mt-2 space-y-1" : "mt-3 space-y-1.5")}>

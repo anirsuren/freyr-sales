@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -15,6 +15,8 @@ import {
   ChevronDown,
   Crown,
   Eye,
+  Maximize2,
+  Minimize2,
   Paperclip,
   Search,
   X,
@@ -556,6 +558,22 @@ export function GoalZoom({
   /** The result whose full story is open, if any (Anir, Aug 20: "when I click
    *  on this, you think it's supposed to show me something?"). */
   const [openResult, setOpenResult] = useState<PerfActual | null>(null);
+  const [expandedDrillColumn, setExpandedDrillColumn] = useState<
+    "organization" | "groups" | "people" | null
+  >(null);
+  useEffect(() => {
+    if (!expandedDrillColumn) return;
+    const priorOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpandedDrillColumn(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = priorOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [expandedDrillColumn]);
   const heads = headedGroups(state, meName);
   const amHead = heads.length > 0;
 
@@ -1313,12 +1331,50 @@ export function GoalZoom({
 
   const boxCls =
             "rounded-xl border border-border-light bg-white overflow-hidden flex flex-col";
+          const drillBoxClass = (
+            column: "organization" | "groups" | "people"
+          ) =>
+            cn(
+              boxCls,
+              expandedDrillColumn === column &&
+                "fixed inset-4 z-[121] max-h-[calc(100vh-2rem)] rounded-2xl shadow-[0_24px_64px_-16px_rgba(0,0,0,0.35)] md:inset-8 md:max-h-[calc(100vh-4rem)]"
+            );
+          const expandButton = (
+            column: "organization" | "groups" | "people",
+            label: string
+          ) => (
+            <button
+              type="button"
+              aria-label={expandedDrillColumn === column ? `Close expanded ${label}` : `Expand ${label}`}
+              title={expandedDrillColumn === column ? "Close expanded view" : "Expand column"}
+              onClick={() =>
+                setExpandedDrillColumn((current) =>
+                  current === column ? null : column
+                )
+              }
+              className="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-lg border border-border-light bg-white text-text-secondary shadow-sm transition-colors hover:border-blue-primary/30 hover:bg-blue-light/40 hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/25"
+            >
+              {expandedDrillColumn === column ? (
+                <Minimize2 size={13.5} strokeWidth={2.2} aria-hidden="true" />
+              ) : (
+                <Maximize2 size={13.5} strokeWidth={2.2} aria-hidden="true" />
+              )}
+            </button>
+          );
           const boxHead =
             /* No wrapping in a box header: see the "3 · Line items" comment
                below — a long group name used to break the heading in two. */
             "flex flex-nowrap items-center gap-2 overflow-hidden border-b border-border-light bg-surface/60 px-3 py-2";
           return (
             <div className={cn("relative mt-3", fill && "flex min-h-0 flex-1 flex-col")}>
+            {expandedDrillColumn && (
+              <button
+                type="button"
+                aria-label="Close expanded column"
+                className="fixed inset-0 z-[120] cursor-default bg-black/40 backdrop-blur-sm"
+                onClick={() => setExpandedDrillColumn(null)}
+              />
+            )}
             <div
               className={cn(
                 "grid grid-cols-1 gap-3",
@@ -1330,7 +1386,12 @@ export function GoalZoom({
               style={fill ? undefined : { height: railHeight }}
             >
               {/* -------- Box 1: the organization, period by period */}
-              <div className={boxCls}>
+              <div
+                className={drillBoxClass("organization")}
+                role={expandedDrillColumn === "organization" ? "dialog" : undefined}
+                aria-modal={expandedDrillColumn === "organization" ? true : undefined}
+                aria-label={expandedDrillColumn === "organization" ? "Organization periods" : undefined}
+              >
                 <div className={boxHead}>
                   <b className="text-[12px] text-text-primary">
                     {soloPerson ? soloPerson.split(" ")[0] : "1 · Organization"}
@@ -1338,6 +1399,7 @@ export function GoalZoom({
                   <span className="ml-auto text-[10.5px] text-text-tertiary">
                     pick a period
                   </span>
+                  {expandButton("organization", "organization periods")}
                 </div>
                 <div key={`${gran}-${fy}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
                   {(() => {
@@ -1461,6 +1523,7 @@ export function GoalZoom({
                           <div>
                             <PaceTimeline
                               compact
+                              interactive
                               title={r.label}
                               verified={r.verified}
                               awaiting={r.awaiting}
@@ -1486,7 +1549,12 @@ export function GoalZoom({
               {!soloPerson && (
               <>
               {/* -------- Box 2: every group inside the picked period */}
-              <div className={boxCls}>
+              <div
+                className={drillBoxClass("groups")}
+                role={expandedDrillColumn === "groups" ? "dialog" : undefined}
+                aria-modal={expandedDrillColumn === "groups" ? true : undefined}
+                aria-label={expandedDrillColumn === "groups" ? "Groups" : undefined}
+              >
                 <div className={boxHead}>
                   <b className="text-[12px] text-text-primary">2 · Groups</b>
                   <span className="rounded-full bg-[rgba(0,113,227,0.10)] px-2 py-0.5 text-[10px] font-bold text-blue-primary">
@@ -1506,6 +1574,7 @@ export function GoalZoom({
                     </span>
 
                   </span>
+                  {expandButton("groups", "groups")}
                 </div>
                 <div className="border-b border-border-light px-2 py-2">
                   <label className="flex h-9 items-center gap-2 rounded-xl border border-border-light bg-white px-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors focus-within:border-blue-primary/50 focus-within:ring-2 focus-within:ring-blue-primary/10">
@@ -1751,6 +1820,7 @@ export function GoalZoom({
                             <div>
                               <PaceTimeline
                                 compact
+                                interactive
                                 title={r2.group.name}
                                 verified={r2.verified}
                                 awaiting={r2.awaiting}
@@ -1958,7 +2028,12 @@ export function GoalZoom({
               </div>
 
               {/* -------- Box 3: the picked group's people, same period */}
-              <div className={boxCls}>
+              <div
+                className={drillBoxClass("people")}
+                role={expandedDrillColumn === "people" ? "dialog" : undefined}
+                aria-modal={expandedDrillColumn === "people" ? true : undefined}
+                aria-label={expandedDrillColumn === "people" ? "People and details" : undefined}
+              >
                 <div className={boxHead}>
                   {/* ONE LINE, ALWAYS (Anir, Aug 23: "it should show up on one
                       line, the group name is fucking it up"). The heading, the
@@ -2014,6 +2089,7 @@ export function GoalZoom({
                       </button>
                     ))}
                   </span>
+                  {expandButton("people", "people and details")}
                 </div>
                 <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
                   {lineScope === "details" ? (
