@@ -1148,6 +1148,7 @@ export function MultiColorSelect({
   const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const suppressToggleClickRef = useRef(false);
   const searchHasPriority = useSearchPriority();
   const compact = collapsible && searchHasPriority;
 
@@ -1290,7 +1291,28 @@ export function MultiColorSelect({
       <PriorityTooltip label={selectionLabel} className="w-full" suppressed={open}>
         <button
           type="button"
-          onClick={toggleMenu}
+          /* Close on the press itself. In dialogs, waiting for `click` lets a
+             surrounding label/modal handler run in the same gesture and can
+             leave an already-open menu looking stuck. Suppress the click that
+             follows this close; keyboard activation still uses the normal
+             click toggle. */
+          onPointerDown={(event) => {
+            if (!open) return;
+            event.preventDefault();
+            event.stopPropagation();
+            suppressToggleClickRef.current = true;
+            setOpen(false);
+            window.setTimeout(() => {
+              suppressToggleClickRef.current = false;
+            }, 0);
+          }}
+          onClick={() => {
+            if (suppressToggleClickRef.current) {
+              suppressToggleClickRef.current = false;
+              return;
+            }
+            toggleMenu();
+          }}
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-label={ariaLabel ? `${ariaLabel}. ${selectionLabel}` : selectionLabel}

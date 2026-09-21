@@ -1343,3 +1343,5 @@ Logged-result cards show a disclosure chevron only inside the expanded Organizat
 Inline result details belong to the expanded Organization → group → person surface. Closing that surface by its close action, backdrop, collapse control, or Escape clears the selected inline result before returning to the page, so the same result never reappears as a second standalone modal after the parent closes. Completed locally, not deployed.
 
 Lead lists use the same focused expansion treatment as Goals. When one lead is open, every other lead row dims to 45% opacity and returns to full opacity on hover; the selected lead and its expanded details remain fully emphasized. Completed locally, not deployed.
+
+Multi-select dropdown triggers close immediately on the second pointer press, including inside nested dialogs and labels. Surrounding click handlers must never reopen a picker during the same gesture; keyboard activation keeps the normal click toggle. Completed locally, not deployed.
