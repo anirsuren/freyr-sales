@@ -706,6 +706,17 @@ export function LiveCompanyBriefing({
         </span>
       </div>
 
+      {briefing.tldr && (
+        <div className="rise-in mt-4 rounded-xl border border-blue-subtle bg-[rgba(0,113,227,0.04)] p-4">
+          <p className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[color:var(--ink-bright-blue)]">
+            <Sparkles size={11} strokeWidth={2.2} /> The rundown
+          </p>
+          <p className="mt-1 text-[13.5px] leading-relaxed text-text-primary">
+            {briefing.tldr}
+          </p>
+        </div>
+      )}
+
       <SearchPriority
         query={query}
         className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-surface/55 p-2.5"
@@ -760,17 +771,6 @@ export function LiveCompanyBriefing({
           </div>
         </>}
       </SearchPriority>
-
-      {briefing.tldr && (
-        <div className="rise-in mt-4 rounded-xl border border-blue-subtle bg-[rgba(0,113,227,0.04)] p-4">
-          <p className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[color:var(--ink-bright-blue)]">
-            <Sparkles size={11} strokeWidth={2.2} /> The rundown
-          </p>
-          <p className="mt-1 text-[13.5px] leading-relaxed text-text-primary">
-            {briefing.tldr}
-          </p>
-        </div>
-      )}
 
       <div className={cn(
         "mt-5 grid items-start gap-4 motion-safe:transition-[grid-template-columns] motion-safe:duration-300 motion-safe:ease-in-out",

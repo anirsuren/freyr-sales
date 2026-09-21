@@ -1347,3 +1347,5 @@ Lead lists use the same focused expansion treatment as Goals. When one lead is o
 Multi-select dropdown triggers close immediately on the second pointer press, including inside nested dialogs and labels. Surrounding click handlers must never reopen a picker during the same gesture; keyboard activation keeps the normal click toggle. Completed locally, not deployed.
 
 Saved Market Intelligence stories use a filled yellow bookmark with a pale yellow hover/background treatment, and the Saved filter carries the same yellow bookmark cue whenever saved stories exist. Unsaved bookmarks remain neutral outlines. Completed locally, not deployed.
+
+Market Intelligence company briefings place The Rundown directly beneath the company header, before the briefing search and filter controls. Completed locally, not deployed.
