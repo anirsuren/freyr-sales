@@ -333,9 +333,14 @@ export function PdfViewer({
       }
       setDocument(next);
       setLoading(false);
-    })().catch((reason) => {
+    })().catch(() => {
       if (!live) return;
-      console.error("Freyr PDF preview failed", reason);
+      /* An unavailable inline preview is a handled viewer state, not an app
+         error. Logging it with console.error made Next's development overlay
+         announce "1 Issue" even though the download fallback worked exactly
+         as intended (especially for mock placeholder PDFs). A genuinely
+         broken real file still gets the clear fallback and original-download
+         path without falsely reporting that the application failed. */
       setError("This PDF could not be opened here. Download the original to view it.");
       setLoading(false);
     });
