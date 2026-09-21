@@ -499,7 +499,7 @@ export function LiveCompanyGrid({
                   <div key={card.id} className="group/row relative grid min-h-[118px] items-center gap-5 px-5 py-4 transition-[background-color,box-shadow] duration-200 hover:bg-[rgba(0,113,227,0.025)] hover:shadow-[inset_3px_0_0_var(--blue-primary)]" style={{ gridTemplateColumns: rowTemplate }}>
                     <div className="flex min-w-0 items-center gap-2.5">
                       <button type="button" aria-label={`${stars.has(card.id) ? "Unstar" : "Star"} ${card.name}`} aria-pressed={stars.has(card.id)} onClick={() => stars.has(card.id) ? setUnstar({id:card.id,name:card.name}) : void setStar(card.id,true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white hover:shadow-sm", stars.has(card.id) ? "text-amber-600" : "text-text-tertiary hover:text-amber-600")}><Star size={15} strokeWidth={2.2} fill={stars.has(card.id) ? "currentColor" : "none"} /></button>
-                      <Link href={`/market-intel/${card.id}`} className="flex min-w-0 items-start gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+                      <Link href={`/market-intel/${card.id}`} className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
                         <MiLogo name={card.name} logoUrl={card.logoUrl} className="h-11 w-11 shrink-0" />
                         <span className="flex min-w-0 flex-col items-start">
                           <span className="block text-[13.5px] font-semibold leading-snug text-text-primary transition-colors group-hover/row:text-blue-primary">

@@ -196,6 +196,13 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 21 Market Intelligence row alignment:** Customer and Competitor list
+  rows vertically center the company name/tag block against its logo, star,
+  pulse, activity, and intelligence columns. Companies without a division tag
+  no longer leave the name pinned to the logo's top edge. Verified in the
+  localhost Competitor Intelligence list; typecheck and rule tests pass. Local
+  only, not deployed.
+
 - **Sep 21 Market Intelligence company-column spacing:** Customer and
   Competitor list views give the Company column more width, and division chips
   are now anchored immediately beneath the company name in the same vertical
