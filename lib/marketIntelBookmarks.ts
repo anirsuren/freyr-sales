@@ -37,6 +37,7 @@ export type MarketIntelBookmarks = {
 };
 
 const EMPTY: MarketIntelBookmarks = { companyIds: [], starredIds: [], updatedAt: "" };
+const MOCK_BOOKMARK_VERSION = 20260921;
 
 export function emptyBookmarks(): MarketIntelBookmarks {
   return { ...EMPTY };
@@ -81,7 +82,7 @@ export async function readMarketIntelBookmarks(
     .eq("id", rowId(scope))
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (getDataMode() === "mock" && data?.catalog?.demoVersion !== 20260917) {
+  if (getDataMode() === "mock" && data?.catalog?.demoVersion !== MOCK_BOOKMARK_VERSION) {
     const tracking = await (await import("./marketIntelTracking")).readMarketIntelTracking();
     return writeBookmarks(scope, [...new Set([...ids(data?.catalog?.companyIds), ...tracking.companies.map(c=>c.id)])], [...new Set([...ids(data?.catalog?.starredIds), ...tracking.companies.slice(0,4).map(c=>c.id)])]);
   }
@@ -201,7 +202,7 @@ export async function saveMarketIntelBookmarkChanges(
     const merged = applyBookmarkChanges(current, changes);
     const updatedAt = new Date().toISOString();
     const next = { ...merged, updatedAt };
-    const row = { id: rowId(scope), catalog: { workspaceId: scope.workspaceId, userId: scope.userId, ...next, ...(getDataMode() === "mock" ? {demoVersion:20260917} : {}) }, updated_at: updatedAt };
+    const row = { id: rowId(scope), catalog: { workspaceId: scope.workspaceId, userId: scope.userId, ...next, ...(getDataMode() === "mock" ? {demoVersion:MOCK_BOOKMARK_VERSION} : {}) }, updated_at: updatedAt };
     if (!data) {
       const { error: insertError } = await db.from("offering_catalog_state").insert(row);
       if (!insertError) return next;
@@ -236,7 +237,7 @@ async function writeBookmarks(
       catalog: {
         workspaceId: scope.workspaceId,
         userId: scope.userId,
-        ...(getDataMode() === "mock" ? {demoVersion:20260917} : {}),
+        ...(getDataMode() === "mock" ? {demoVersion:MOCK_BOOKMARK_VERSION} : {}),
         companyIds: next.companyIds,
         starredIds: next.starredIds,
         updatedAt: next.updatedAt,

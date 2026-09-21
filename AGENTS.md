@@ -217,14 +217,20 @@ what was written back, `deleted-test-customers.json`).
   across all three destinations on localhost; typecheck and rule tests pass.
   Local only, not deployed.
 
-- **Sep 21 frozen real Market Intelligence stories:** Mock Customer,
-  Competitor, and Market Intelligence now share a static set of real MHRA
-  stories with working GOV.UK destinations instead of generated headlines and
-  `market-intel.example` links. The M&A tracker uses a separate frozen set of
-  real transactions linked to original company releases. Dates and collection
-  clocks no longer move on reload, so review data stays stable. Typecheck and
-  rule tests pass. Verified on localhost across all three Market Intelligence
-  views. Local only, not deployed.
+- **Sep 21 frozen real Market Intelligence workspace:** Mock Customer,
+  Competitor, and Market Intelligence now use a committed Sep 14 capture from
+  the real public-data workspace: 20 companies, 36 tracked people, 457 company
+  items, 19 M&A deals, and 40 thought-leadership publications. Company cards,
+  briefings, supporting sources, people posts, M&A, and thought leadership keep
+  their exact public destinations; four dead links found in the capture were
+  excluded. Mock runtime never refreshes this material. The one-time migration
+  removes retired `mockgen-*` companies, keeps reviewer-added companies in an
+  honest collecting state, and puts the replacement snapshot on the reviewer's
+  list. Regenerate only by explicitly running
+  `scripts/freeze-market-intel-workspace.mjs`; normal app use never calls the
+  real feed for this snapshot. Verified on localhost across all three Market
+  Intelligence views and both market trackers; typecheck, rule tests, snapshot
+  parity tests, and whitespace checks pass. Local only, not deployed.
 
 - **Sep 21 Market Intelligence list revamp:** Customer and Competitor
   Intelligence list views now carry the same decision-useful information as

@@ -3,6 +3,7 @@ import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 import { getDataMode } from "./dataMode";
 import { MI_COMPANIES } from "./marketIntelMock";
 import { COMPANY_SOURCES, COMPETITOR_SOURCES, type CompanySource } from "./marketIntelSources";
+import { FROZEN_WORKSPACE_TRACKING } from "./marketIntelFrozenWorkspace";
 import type { Division } from "./offeringMaterials";
 
 /**
@@ -309,190 +310,10 @@ export function bustMarketIntelTrackingCache(): void {
   (globalThis as any).__MI_TRACKING_CACHE__ = undefined;
 }
 
-/**
- * THE SHOWROOM'S TRACKED LIST, AS A FLOOR.
- *
- * Mock has to look like a workspace somebody has been using (Anir's standing
- * rule), and this row was only ever written by hand, by
- * scripts/mock/fill-market-intel.ts. Any database that script had not been run
- * against showed a wall of sample briefings next to a tracked section with
- * nothing in it at all.
- *
- * Deliberately a SUBSET of that script's list, sharing its ids and its
- * `mockgen-` prefix, so running the script later replaces these rows cleanly
- * rather than stacking a second copy of the same companies beside them. The
- * script stays the rich fill; this is the floor under it.
- *
- * Invented companies and invented people only, exactly as the script has it.
- */
-const SHOWROOM_TRACKED: [
-  string,
-  string,
-  "customer" | "competitor",
-  string,
-  string,
-  string[],
-  string,
-  [string, string][]
-][] = [
-  [
-    "westmere-labs",
-    "Westmere Labs",
-    "customer",
-    "Contract manufacturing",
-    "Zurich, Switzerland",
-    ["CDMO", "site transfers", "variations"],
-    "Added after the DIA conversation. Two site transfers coming, which is a variation programme.",
-    [
-      ["Nadine Aebischer", "Head of Regulatory Affairs"],
-      ["Rowan Ashworth", "Site Transfer Programme Lead"],
-    ],
-  ],
-  [
-    "penhale-therapeutics",
-    "Penhale Therapeutics",
-    "customer",
-    "Clinical-stage biopharma",
-    "Bristol, UK",
-    ["first filing", "MHRA", "EMA"],
-    "Pre-revenue, first filing inside two years. Watch for a Head of Regulatory hire.",
-    [
-      ["Imogen Trelawney", "VP, Development Operations"],
-      ["Kofi Mensah-Boateng", "Regulatory Consultant"],
-    ],
-  ],
-  [
-    "aldergrove-devices",
-    "Aldergrove Devices",
-    "customer",
-    "Medical devices",
-    "Vancouver, Canada",
-    ["MDR", "technical documentation", "notified body"],
-    "Still remediating MDR. Their notified body slot is the constraint, not their team.",
-    [
-      ["Marisol Guerrero", "Director, Quality and Regulatory"],
-      ["Henrik Solberg", "Technical File Owner"],
-    ],
-  ],
-  [
-    "starling-consumer",
-    "Starling Consumer Brands",
-    "customer",
-    "Consumer health",
-    "Melbourne, Australia",
-    ["artwork", "claims", "APAC registration"],
-    "Artwork-led. Came in through the Freya.Artwork webinar list.",
-    [
-      ["Tui Ngataki", "Regulatory and Artwork Manager"],
-      ["Deepa Raghunathan", "APAC Registration Lead"],
-    ],
-  ],
-  [
-    "hollowfield-bio",
-    "Hollowfield Bio",
-    "customer",
-    "Gene therapy",
-    "Cambridge, USA",
-    ["ATMP", "PRIME", "first-in-human"],
-    "First ATMP filing in eighteen months. They have never done one and they know it.",
-    [
-      ["Marguerite Okonjo", "Head of Regulatory Affairs"],
-      ["Teodor Vasiliev", "ATMP Programme Lead"],
-    ],
-  ],
-  [
-    "seabright-generics",
-    "Seabright Generics",
-    "customer",
-    "Generics",
-    "Hyderabad, India",
-    ["ANDA", "renewals", "variations"],
-    "Four hundred registrations and a two-person renewals team. Volume is the pitch.",
-    [
-      ["Lakshmi Venkataraman", "Head of Renewals"],
-      ["Arun Pillai", "Variations Manager"],
-    ],
-  ],
-  [
-    "cobalt-regulatory",
-    "Cobalt Regulatory Group",
-    "competitor",
-    "Regulatory consultancy",
-    "Philadelphia, USA",
-    ["services", "publishing", "outsourcing"],
-    "Competing with us on services deals in North America. Watch their hiring.",
-    [
-      ["Vance Pemberton", "Managing Director"],
-      ["Simone Auclair", "Head of Publishing Services"],
-    ],
-  ],
-  [
-    "quorum-rim",
-    "Quorum RIM",
-    "competitor",
-    "Regulatory software",
-    "Boston, USA",
-    ["RIM", "registrations", "platform"],
-    "New entrant, aggressive on price. Turned up in two of our shortlists this quarter.",
-    [
-      ["Dallas Weatherby", "VP, Product"],
-      ["Ingeborg Haugland", "Director, Solution Consulting"],
-    ],
-  ],
-];
-
-/* Fixed anchor rather than Date.now(), so the dates on these rows are the same
-   on every machine and a screenshot taken today still matches one taken last
-   week. Same anchor the fill script uses. */
-const SHOWROOM_TRACKED_ANCHOR = Date.parse("2026-08-20T09:00:00.000Z");
-
+/** The review workspace is a committed snapshot of real public material. */
+const MOCK_SNAPSHOT_VERSION = 20260921;
 function showroomTracking(): MarketIntelTracking {
-  const day = (n: number) =>
-    new Date(SHOWROOM_TRACKED_ANCHOR + n * 86_400_000).toISOString();
-  const companies: TrackedCompany[] = [];
-  const people: TrackedPerson[] = [];
-  SHOWROOM_TRACKED.forEach(
-    ([id, name, group, industry, hq, keywords, note, roster], index) => {
-      companies.push({
-        id: `mockgen-${id}`,
-        name,
-        group,
-        industry,
-        hq,
-        website: `https://${id.replace(/-/g, "")}.example`,
-        /* Blank on purpose: an invented slug can land on a real person's or
-           company's page, and the card hides the chip when it is empty. */
-        linkedinUrl: "",
-        competitors: [],
-        keywords,
-        note,
-        addedAt: day(-90 + index * 11),
-      });
-      roster.forEach(([person, role], seat) => {
-        people.push({
-          id: `mockgen-person-${index * 10 + seat + 1}`,
-          companyId: `mockgen-${id}`,
-          name: person,
-          role,
-          linkedinUrl: "",
-          headline: role,
-          addedAt: day(-80 + index * 4 + seat),
-        });
-      });
-    }
-  );
-  const roots = ["Arden", "Bellhaven", "Crestwell", "Dunmere", "Elmbridge", "Fairhaven", "Glenwick", "Harborcrest", "Ivydale", "Juniper", "Kingswell", "Larkspur", "Meridian", "Northvale", "Oakmere", "Pinehaven", "Quillstone", "Ridgewell", "Silverbrook", "Thornfield", "Umber", "Valewood", "Westhaven", "Yarrow", "Zephyr", "Aster", "Birchwell", "Cedarcrest", "Dovewell", "Evermere", "Foxglove", "Greenvale", "Highwater", "Ironwood", "Jadecrest", "Kestrel", "Linden", "Meadowvale", "Newbridge", "Oriole", "Primrose", "Redwood"];
-  roots.forEach((root, index) => {
-    const id = `mockgen-rich-${root.toLowerCase()}`;
-    const group = index < 30 ? "customer" : "competitor";
-    const division = (["MPR", "MDV", "CON"] as Division[])[index % 3];
-    companies.push({ id, name: `${root} ${index < 30 ? ["Biopharma", "MedTech", "Consumer Health"][index % 3] : "Regulatory Services"}`, group, industry: "Life sciences", hq: ["United States", "Germany", "India", "United Kingdom", "Singapore"][index % 5], website: `https://${root.toLowerCase()}.example`, linkedinUrl: "", competitors: [], keywords: ["regulatory", "clinical", "expansion"], note: "Monitored across regulatory, clinical, and commercial signals.", addedAt: day(-60-index), divisions: [division] });
-    if (group === "customer") for (let seat = 0; seat < 3 + index % 4; seat++) {
-      const name = `${["Maya", "Leo", "Priya", "Owen", "Nora", "Arun"][seat % 6]} ${root}`;
-      people.push({id:`${id}-person-${seat}`,companyId:id,name,role:["VP Regulatory Affairs", "Head of Clinical Operations", "Quality Director", "Medical Affairs Lead", "R&D Director", "Market Access Lead"][seat],linkedinUrl:"",headline:"Life sciences leader",addedAt:day(-30)});
-    }
-  });
-  return { companies, people, demoVersion: 20260917 };
+  return structuredClone(FROZEN_WORKSPACE_TRACKING);
 }
 
 export async function readMarketIntelTracking(options?: {
@@ -517,15 +338,30 @@ export async function readMarketIntelTracking(options?: {
     throw new Error(`Could not load the tracking list: ${error.message}`);
   }
   let tracking = normalize(data?.catalog);
-  /* SEED THE SHOWROOM ONCE, AND ONLY WHEN THE ROW HAS NEVER EXISTED. Same
-     contract lib/contracts.ts uses: the samples become an ordinary row that
-     can then be added to, edited and emptied, and a demo somebody has
-     deliberately cleared out stays cleared. */
-  if (getDataMode() === "mock" && tracking.demoVersion !== 20260917) {
-    const samples = showroomTracking();
-    const existing = new Set(tracking.companies.map(company => company.id));
-    const existingPeople = new Set(tracking.people.map(person => person.id));
-    tracking = { ...tracking, companies: [...tracking.companies, ...samples.companies.filter(company => !existing.has(company.id))], people: [...tracking.people, ...samples.people.filter(person => !existingPeople.has(person.id))], demoVersion: 20260917 };
+  /* Replace the retired invented showroom rows once, preserve companies a
+     reviewer added themselves, and keep deleted snapshot seeds deleted. */
+  if (getDataMode() === "mock" && tracking.demoVersion !== MOCK_SNAPSHOT_VERSION) {
+    const snapshot = showroomTracking();
+    const snapshotIds = new Set(snapshot.companies.map((company) => company.id));
+    const removed = new Set(tracking.removedSeeds ?? []);
+    const keptCompanies = tracking.companies.filter(
+      (company) => !company.id.startsWith("mockgen-") && !snapshotIds.has(company.id),
+    );
+    const keptPeople = tracking.people.filter(
+      (person) => !person.id.startsWith("mockgen-") && !snapshotIds.has(person.companyId),
+    );
+    const seededCompanies = snapshot.companies.filter((company) => !removed.has(company.id));
+    const seededIds = new Set(seededCompanies.map((company) => company.id));
+    tracking = {
+      ...tracking,
+      companies: [...keptCompanies, ...seededCompanies],
+      people: [...keptPeople, ...snapshot.people.filter((person) => seededIds.has(person.companyId))],
+      divisions: {
+        ...(tracking.divisions ?? {}),
+        ...(snapshot.divisions ?? {}),
+      },
+      demoVersion: MOCK_SNAPSHOT_VERSION,
+    };
     const { error: seedError } = await trackingClient().from("offering_catalog_state").upsert({id:row,catalog:tracking,updated_at:new Date().toISOString()});
     if (seedError) throw new Error(`Could not populate Market Intelligence: ${seedError.message}`);
   }
