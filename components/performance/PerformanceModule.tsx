@@ -30,6 +30,7 @@ import {
   UserRoundPlus,
   Rows3,
   PanelsTopLeft,
+  Search,
   Target,
 } from "lucide-react";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -1993,6 +1994,7 @@ function AssignGroupModal({
 }) {
   const [groupId, setGroupId] = useState("");
   const [target, setTarget] = useState("");
+  const [groupQuery, setGroupQuery] = useState("");
   /**
    * WHO IS ACTUALLY IN IT, BY NAME (Anir, Aug 17: "for each of these groups,
    * we're going to have to have a dropdown so I can actually see, because
@@ -2013,6 +2015,14 @@ function AssignGroupModal({
   const parsed = parseAmountInput(target);
   const badTarget = targetIsGarbage(target, parsed);
   const picked = groups.find((g) => g.id === groupId);
+  const visibleGroups = groups.filter((group) => {
+    const needle = groupQuery.trim().toLowerCase();
+    if (!needle) return true;
+    return [group.name, group.head, ...group.members]
+      .join(" ")
+      .toLowerCase()
+      .includes(needle);
+  });
   /* MAKING A GROUP IS ONE CLICK FROM NEEDING ONE (Anir, Aug 28: "if I want to
      create a new group, that should be an option. There should be a button,
      and it takes me to the group master to be able to do that, assuming I have
@@ -2046,10 +2056,16 @@ function AssignGroupModal({
       `${goal.name} assigned to ${picked?.name ?? "the group"}`
     );
     if (ok) {
-      setGroupId("");
-      setTarget("");
-      onClose();
+      close();
     }
+  }
+
+  function close() {
+    setGroupId("");
+    setTarget("");
+    setGroupQuery("");
+    setOpenPeople(new Set());
+    onClose();
   }
 
   const togglePeople = (id: string) =>
@@ -2071,7 +2087,7 @@ function AssignGroupModal({
       <label className="mt-3 flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
         Group<RequiredMark />
         <span className="rounded-full bg-[rgba(0,113,227,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-blue-soft)]">
-          Pick one
+          One at a time
         </span>
         {canMakeGroups && (
           <Link
@@ -2082,6 +2098,26 @@ function AssignGroupModal({
           </Link>
         )}
       </label>
+
+      <div className="relative mt-2">
+        <Search
+          size={15}
+          strokeWidth={2.1}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+          aria-hidden="true"
+        />
+        <input
+          type="search"
+          value={groupQuery}
+          onChange={(event) => setGroupQuery(event.target.value)}
+          placeholder="Search groups or people…"
+          aria-label="Search groups"
+          className="h-10 w-full rounded-xl border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary outline-none transition-shadow placeholder:text-text-tertiary focus:border-blue-subtle focus:shadow-input-focus"
+        />
+      </div>
+      <p className="mt-1.5 text-[11px] text-text-tertiary">
+        Choose one group for this assignment. Add another group afterward if needed.
+      </p>
 
       {/* THE LIST SCROLLS, THE DIALOG DOES NOT. A hundred groups stay inside
           this box, and the fade at its foot says there are more — it clears
@@ -2099,8 +2135,12 @@ function AssignGroupModal({
             <p className="text-[12.5px] text-text-tertiary">
               Every group already carries this goal.
             </p>
+          ) : visibleGroups.length === 0 ? (
+            <p className="grid min-h-32 place-items-center text-center text-[12.5px] text-text-tertiary">
+              No groups or people match that search.
+            </p>
           ) : (
-            groups.map((g) => {
+            visibleGroups.map((g) => {
               const on = g.id === groupId;
               const expanded = openPeople.has(g.id);
               const roster = [
@@ -2274,7 +2314,7 @@ function AssignGroupModal({
           )
         )}
         <div className="mt-3 flex flex-nowrap items-center justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={close}>
             Cancel
           </Button>
           <Button onClick={save} disabled={!groupId || badTarget} loading={busy}>
@@ -2301,7 +2341,7 @@ function AssignGroupModal({
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={close}
       title="Assign to a group"
       size="wide"
       tall

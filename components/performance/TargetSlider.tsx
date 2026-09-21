@@ -22,9 +22,9 @@ import { withCommas } from "@/lib/currency";
  * 40px stub squeezed beside the input, and it treated the goal as if nobody
  * else had a share of it.
  *
- * So the lane runs the full width, and it is an ALLOCATION bar: the slate
- * segment is what is already promised to other groups and people, the blue
- * segment is the share being set right now, and the empty track is what
+ * So the lane runs the full width, and it is an ALLOCATION bar: the blue
+ * segment is the share being set right now, the slate segment is what is
+ * already promised to other groups and people, and the empty track is what
  * nobody has claimed yet. Dragging past what is left is allowed — a warning,
  * never a wall, same rule as overlapping group members — and the overrun
  * turns amber and says by how much.
@@ -58,12 +58,14 @@ export function TargetSlider({
   const parsed = parseAmountInput(value);
   const amount = parsed ?? 0;
   const taken = allocations.reduce((s, a) => s + (a.amount || 0), 0);
-  const free = Math.max(0, max - taken);
+  const availableAfter = Math.max(0, max - taken - amount);
   const over = max > 0 && taken + amount > max;
   const overBy = Math.max(0, taken + amount - max);
   const symbol = unit === "currency" ? currencyMeta(BASE_CURRENCY).symbol : null;
 
   const pct = (n: number) => (max > 0 ? Math.min(100, (n / max) * 100) : 0);
+  const amountPct = pct(amount);
+  const takenPct = Math.min(pct(taken), Math.max(0, 100 - amountPct));
   const step = max > 0 ? Math.max(1, Math.round(max / 1000)) : 1;
 
   return (
@@ -88,62 +90,63 @@ export function TargetSlider({
       </div>
 
       {max > 0 && (
-        <div className="mt-2">
-          {/* The lane. Full width, like every timeline in the app: slate is
-              spoken for, blue is this share, the pale track is unclaimed. */}
-          <span className="relative flex h-4 w-full items-center">
-            <span className="pointer-events-none absolute inset-x-0 h-2.5 overflow-hidden rounded-full bg-[color:var(--border-light)]">
+        <div className="mt-2 rounded-xl border border-border-light bg-surface/50 p-3">
+          <div className="mb-2 grid grid-cols-3 gap-2 text-[10.5px]">
+            <span className="min-w-0 text-text-secondary">
+              <span className="mb-0.5 flex items-center gap-1.5">
+                <span className={cn("h-2 w-2 rounded-full", over ? "bg-[color:#C2410C]" : "bg-blue-primary")} />
+                This assignment
+              </span>
+              <b className="block truncate text-[12px] text-text-primary tnum">{fmtAmount(unit, amount)}</b>
+            </span>
+            <span className="min-w-0 text-text-secondary">
+              <span className="mb-0.5 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-slate-400" />
+                Already assigned
+              </span>
+              <b className="block truncate text-[12px] text-text-primary tnum">{fmtAmount(unit, taken)}</b>
+            </span>
+            <span className="min-w-0 text-right text-text-secondary">
+              <span className="mb-0.5 flex items-center justify-end gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-[color:var(--border-light)]" />
+                Available
+              </span>
+              <b className="block truncate text-[12px] text-text-primary tnum">{fmtAmount(unit, availableAfter)}</b>
+            </span>
+          </div>
+
+          {/* Current assignment leads from zero, matching every other goal
+              allocation rail. The draggable thumb sits at the end of that
+              blue share; existing commitments follow in slate. */}
+          <span className="relative flex h-5 w-full items-center">
+            <span className="pointer-events-none absolute inset-x-0 h-3 overflow-hidden rounded-full bg-[color:var(--border-light)] shadow-inner">
               <span
-                className="absolute inset-y-0 left-0 rounded-l-full bg-[color:#64748B] opacity-70"
-                style={{ width: `${pct(taken)}%` }}
-              />
-              <span
-                /* NO TRANSITION ON THE FILL (Anir, Aug 19: "the circle does
-                   not go with the line, the line has to catch up"). The thumb
-                   is a native range input and moves with the pointer; a 75ms
-                   width transition meant the blue lagged behind it the whole
-                   way down the lane. */
                 className={cn(
-                  "absolute inset-y-0",
+                  "absolute inset-y-0 left-0",
                   over ? "bg-[color:#C2410C]" : "bg-blue-primary"
                 )}
-                style={{
-                  left: `${pct(taken)}%`,
-                  width: `${Math.max(0, pct(Math.min(taken + amount, max)) - pct(taken))}%`,
-                }}
+                style={{ width: `${amountPct}%` }}
+              />
+              <span
+                className="absolute inset-y-0 bg-slate-400"
+                style={{ left: `${amountPct}%`, width: `${takenPct}%` }}
               />
             </span>
-            {/* The thumb rides the END of the blue segment. It used to carry
-                the bare share (3% along the lane) while the blue fill drew
-                after everything promised (93% along) — the circle and its own
-                color were in different places (Anir, Aug 19: "this circle is
-                not showing shit"). Dragging still sets only this share; the
-                promised stretch acts as the floor. */}
             <input
               type="range"
               min={0}
               max={max}
               step={step}
-              value={Math.min(taken + amount, max)}
-              onChange={(e) =>
-                onChange(String(Math.max(0, Number(e.target.value) - taken)))
-              }
+              value={Math.min(amount, max)}
+              onChange={(e) => onChange(String(Math.max(0, Number(e.target.value))))}
               aria-label={`${label}. Drag to set`}
-              className="freyr-range relative z-[1] h-4 w-full cursor-pointer appearance-none bg-transparent"
+              className="freyr-range relative z-[1] h-5 w-full cursor-pointer appearance-none bg-transparent"
             />
           </span>
 
-          {/* The scale, said in plain words at the lane's own ends. */}
-          <div className="mt-1 flex items-baseline justify-between text-[10.5px] text-text-tertiary tnum">
+          <div className="mt-1.5 flex items-baseline justify-between text-[10.5px] text-text-tertiary tnum">
             <span>{fmtAmount(unit, 0)}</span>
-            {taken > 0 && (
-              <span>
-                {fmtAmount(unit, taken)} already promised to{" "}
-                {allocations.length}{" "}
-                {allocations.length === 1 ? "other" : "others"} ·{" "}
-                {fmtAmount(unit, free)} unclaimed
-              </span>
-            )}
+            <span>{Math.round(amountPct)}% of goal</span>
             <span className="font-semibold text-text-secondary">
               {fmtAmount(unit, max)} goal
             </span>
