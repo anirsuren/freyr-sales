@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { FlaskConical } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { ModeUrlSync } from "./ModeUrlSync";
 import { TopBar } from "./TopBar";
@@ -33,6 +34,22 @@ import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 import { cn } from "@/lib/utils";
 
 const AGENT_HIDDEN_KEY = "freyr.assistant.hidden.v1";
+
+function MockModeBanner() {
+  return (
+    <div
+      role="status"
+      aria-label="In progress mode uses a mock workspace"
+      className="flex min-h-[46px] shrink-0 items-center justify-center gap-2.5 bg-blue-primary px-4 py-2 text-center text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.14)]"
+    >
+      <FlaskConical size={18} strokeWidth={2.3} className="shrink-0" />
+      <p className="text-[13px] font-semibold leading-snug">
+        <span className="font-bold">In progress mode · Mock workspace:</span>{" "}
+        changes here do not affect your real workspace.
+      </p>
+    </div>
+  );
+}
 
 // Wraps every page with the persistent sidebar + top bar, except /login.
 // Session-detail pages render full-bleed (3-pane); everything else gets a
@@ -352,7 +369,9 @@ export function AppShell({
               {/* Material pages are part of navigation chains too, and their
                   own back arrow needs the same trail. */}
               <NavHistoryTracker />
-              <div className="flex h-screen min-h-0 overflow-hidden bg-white">
+              <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-white">
+                {dataMode === "mock" && <MockModeBanner />}
+                <div className="flex min-h-0 flex-1">
                 <main
                   id="main-content"
                   data-tour="page-content"
@@ -386,6 +405,7 @@ export function AppShell({
                     />
                   </aside>
                 )}
+                </div>
               </div>
               {!materialAgentDocked && (
                 <AgentDock
@@ -435,6 +455,7 @@ export function AppShell({
           Skip to content
         </a>
         <div className="flex h-screen flex-col bg-white">
+          {dataMode === "mock" && <MockModeBanner />}
           <div className="flex min-h-0 flex-1">
           {/* mobile drawer backdrop */}
           {mobileNavOpen && (

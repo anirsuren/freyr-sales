@@ -511,15 +511,15 @@ export function LiveCompanyBriefing({
 
   const leadKind = (item: Item) => kindsOf(item)[0];
   const sourceType = (item: Item) => {
-    if (item.kind === "company") return { label: "Company post", Icon: Building2, color: "var(--ink-bright-blue)" };
-    if (item.kind === "people") return { label: "People post", Icon: Users, color: "var(--ink-magenta)" };
-    if (item.kind === "site") return { label: "Company website", Icon: Globe2, color: "var(--ink-orange)" };
-    return { label: "News article", Icon: Newspaper, color: "var(--ink-teal-deep)" };
+    if (item.kind === "company") return { label: "Company post", Icon: Building2 };
+    if (item.kind === "people") return { label: "People post", Icon: Users };
+    if (item.kind === "site") return { label: "Company website", Icon: Globe2 };
+    return { label: "News article", Icon: Newspaper };
   };
   const sourceTypeChip = (item: Item) => {
     const meta = sourceType(item);
     return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em]" style={{ color: meta.color, background: tint(meta.color, 10) }}>
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
         <meta.Icon size={10.5} strokeWidth={2.2} /> {meta.label}
       </span>
     );
@@ -619,11 +619,10 @@ export function LiveCompanyBriefing({
           {sourceTypeChip(item)}
           {signalChips(item)}
           {own ? (
-            /* THE COMPANY'S OWN PAGE, said plainly: a warm chip and
-               "Published by them", because a reporter's account and the
-               company's own statement are different claims. */
+            /* Source identity stays neutral blue. "Published by them" still
+               states the meaningful provenance difference in plain text. */
             <>
-              <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-orange)]">
+              <span className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
                 <Globe2 size={10.5} strokeWidth={2.2} /> {siteSourceLabel(article.url, article.source)}
               </span>
               <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
@@ -631,7 +630,7 @@ export function LiveCompanyBriefing({
               </span>
             </>
           ) : (
-            <span title={article.source} className="flex items-center gap-1 rounded-full bg-[rgba(15,118,110,0.10)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[color:var(--ink-teal-deep)]">
+            <span title={article.source} className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
               <Newspaper size={10.5} strokeWidth={2.2} /> {outletName(article.source, article.url)}
             </span>
           )}

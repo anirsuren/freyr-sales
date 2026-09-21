@@ -538,6 +538,15 @@ what was written back, `deleted-test-customers.json`).
   daily scheduler remain unverified. Details and limitations in
   `docs/qa/market-intel-onboarding-2026-09-12.md`. No deployment.
 
+- **Sep 21 Market Intel source badges:** Source identity and source-type chips
+  use one neutral blue treatment across company briefings. Signal/category
+  chips keep their semantic colors; publisher colors must not imply a signal.
+
+- **Sep 21 mock-workspace banner:** Every signed-in mock workspace page must
+  keep the full-width blue “In progress mode · Mock workspace” banner above
+  the application chrome. The `/mock-mode/` URL is a second cue, not a
+  replacement for the visible banner. Document workspaces keep the banner too.
+
 - **Sep12 dashboard story links:** LiveCompanyCard now adds Read/external links
   to its ticker and all expanded top stories. HoverExpandCard has an opt-in
   sibling navigation link so article anchors are not nested inside a card
