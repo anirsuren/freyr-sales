@@ -21,6 +21,7 @@ import {
   Layers,
   Mail,
   MapPin,
+  CircleOff,
   Phone,
   TrendingUp,
   Hourglass,
@@ -579,6 +580,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
           onQuery={setQuery}
           placeholder="Search the floor…"
           searchAriaLabel="Search the sales floor"
+          filterAriaLabel="Filter the team"
           onClearAll={() => {
             setQuery("");
             setRoleFilter([]);
@@ -599,6 +601,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                 value,
                 label: ROLE_META[roleKey(value)].label,
                 color: ROLE_META[roleKey(value)].color,
+                icon: ROLE_META[roleKey(value)].icon,
               })),
             },
             {
@@ -609,7 +612,7 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               options: regions.map((region) => ({
                 value: region,
                 label: region,
-                color: "#0891B2",
+                mark: flagForGeography(region) || "🌐",
               })),
             },
             {
@@ -618,8 +621,18 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
               values: pipelineFilter,
               onChange: setPipelineFilter,
               options: [
-                { value: "with", label: "Holding pipeline", color: "var(--ink-green)" },
-                { value: "without", label: "Nothing open", color: "var(--ink-magenta)" },
+                {
+                  value: "with",
+                  label: "Holding pipeline",
+                  color: "var(--ink-green)",
+                  icon: TrendingUp,
+                },
+                {
+                  value: "without",
+                  label: "Nothing open",
+                  color: "var(--text-tertiary)",
+                  icon: CircleOff,
+                },
               ],
             },
           ]}

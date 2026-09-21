@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
@@ -28,16 +29,19 @@ import { cn } from "@/lib/utils";
  * the "too busy, too colourful" complaint. One button costs a click and gives
  * the search box the room back.
  *
- * No icons in here, deliberately (Saras, same call: "we can remove the icons
- * for each of the filters... you don't really need the icons for the
- * filters"). The colour dot stays, because a category with no colour at all is
- * the grey the app has spent months getting rid of, and because it is the same
- * colour that category wears everywhere else.
+ * The checkbox remains the selection control. Callers may add a semantic mark
+ * beside it when that mark carries identity or meaning: a role glyph, a region
+ * flag, a company logo, a person's face, or a workflow icon. Decorative colour
+ * dots stay out of the menu.
  */
 export type FilterOption = {
   value: string;
   label: string;
   color?: string;
+  /** A semantic glyph for concepts such as roles, workflow, or pipeline. */
+  icon?: LucideIcon;
+  /** A compact native mark such as a country or region flag. */
+  mark?: string;
   /** Draw a face instead of a dot — owners are people. */
   avatarName?: string;
   /** Draw the company's mark instead of a dot — accounts are companies
@@ -333,9 +337,9 @@ export function FilterMenu({
                                 from where the eye starts — and the dot itself
                                 looked like decoration rather than a control.
                                 A checkbox says both things in one mark, in
-                                the place people look for it. Logos and faces
-                                stay: they identify the thing, which a colour
-                                dot never did. */}
+                                the place people look for it. Semantic marks
+                                stay beside it because they identify the thing;
+                                a colour dot never did. */}
                             <span
                               aria-hidden="true"
                               className={cn(
@@ -357,6 +361,21 @@ export function FilterMenu({
                                 name={option.avatarName}
                                 className="h-[18px] w-[18px] shrink-0 text-[7px]"
                               />
+                            ) : option.icon ? (
+                              <option.icon
+                                size={16}
+                                strokeWidth={2.2}
+                                aria-hidden="true"
+                                className="shrink-0"
+                                style={{ color: option.color || "var(--text-tertiary)" }}
+                              />
+                            ) : option.mark ? (
+                              <span
+                                aria-hidden="true"
+                                className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center text-[15px] leading-none"
+                              >
+                                {option.mark}
+                              </span>
                             ) : null}
                             <span className="min-w-0 flex-1 break-words">{option.label}</span>
                           </button>

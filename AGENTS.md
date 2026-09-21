@@ -1315,3 +1315,7 @@ Admins and other people with record-level write access edit a customer from the 
 ### Sep 21: Unassigned pipeline is not a teammate
 
 The Team roster lists people only. Ownerless deals may continue to contribute to the complete Team pipeline and open-deal totals through an internal Unassigned ownership aggregate, but that aggregate must never render as a person, inflate the team-member count, receive generated contact details, or open a rep profile. Apply the same guard to live directory rows so a placeholder named Unassigned cannot leak into the roster. Completed locally, not deployed.
+
+### Sep 21: Team filters keep their real visual identity
+
+Team role filters use the same role icon and color as the role tag shown beside each person. Region filters use the actual country or region flag, with a globe only when no specific flag exists. Pipeline filters use a trend icon for people holding open pipeline and a neutral no-pipeline icon for people with nothing open. These semantic marks appear beside the option while the checkbox remains the selection control; never replace them with decorative color dots. Completed locally, not deployed.
