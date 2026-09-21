@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/lib/hoverPreferences";
 import {
   claimGraphHover,
+  pointerIsInGraphHoverRegion,
   pointerIsOverGraphTooltip,
   releaseGraphHover,
 } from "@/lib/chartHoverCoordinator";
@@ -80,6 +81,7 @@ export function HoverCard({
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const overTrigger = useRef(false);
+  const activeGraphTrigger = useRef<Element | null>(null);
   function matchesTrigger(target: EventTarget | null) {
     if (!triggerSelector) return true;
     return target instanceof Element && !!target.closest(triggerSelector);
@@ -144,6 +146,15 @@ export function HoverCard({
     else setPos({ left, bottom: vh - topAnchor + 6, placement: "top" });
   }
 
+  const hideImmediately = useCallback(() => {
+    if (showTimer.current) clearTimeout(showTimer.current);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    showTimer.current = null;
+    hideTimer.current = null;
+    setPos(null);
+    releaseGraphHover(hoverOwnerId);
+  }, [hoverOwnerId]);
+
   function show() {
     if (suspended) return;
     // A graph mark owns the app's one graph-preview slot as soon as the pointer
@@ -190,6 +201,23 @@ export function HoverCard({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+  useEffect(() => {
+    if (!open || !isGraphHover) return;
+    const onPointerMove = (event: PointerEvent) => {
+      if (
+        pointerIsInGraphHoverRegion(
+          event,
+          activeGraphTrigger.current ?? triggerRef.current,
+          hideTimer.current !== null
+        )
+      ) {
+        return;
+      }
+      hideImmediately();
+    };
+    document.addEventListener("pointermove", onPointerMove, true);
+    return () => document.removeEventListener("pointermove", onPointerMove, true);
+  }, [hideImmediately, isGraphHover, open]);
   function scheduleHide() {
     if (showTimer.current) clearTimeout(showTimer.current);
     if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -210,15 +238,6 @@ export function HoverCard({
     }, closeGrace);
   }
 
-  function hideImmediately() {
-    if (showTimer.current) clearTimeout(showTimer.current);
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    showTimer.current = null;
-    hideTimer.current = null;
-    setPos(null);
-    releaseGraphHover(hoverOwnerId);
-  }
-
   function onBlur(event: React.FocusEvent<HTMLDivElement>) {
     const next = event.relatedTarget;
     if (next instanceof Node && event.currentTarget.contains(next)) return;
@@ -231,6 +250,10 @@ export function HoverCard({
       className={cn("relative", className)}
       onMouseEnter={(event) => {
         if (!matchesTrigger(event.target)) return;
+        activeGraphTrigger.current =
+          triggerSelector && event.target instanceof Element
+            ? event.target.closest(triggerSelector)
+            : event.currentTarget;
         overTrigger.current = true;
         cursorRef.current = { x: event.clientX, y: event.clientY };
         show();
@@ -246,6 +269,10 @@ export function HoverCard({
         }
         cursorRef.current = { x: event.clientX, y: event.clientY };
         if (!overTrigger.current) {
+          activeGraphTrigger.current =
+            triggerSelector && event.target instanceof Element
+              ? event.target.closest(triggerSelector)
+              : event.currentTarget;
           overTrigger.current = true;
           show();
         }

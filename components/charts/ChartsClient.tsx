@@ -45,6 +45,7 @@ import { tint } from "@/lib/tint";
 import { CHART_HOVER_CLOSE_GRACE_MS } from "@/lib/hoverPreferences";
 import {
   claimGraphHover,
+  pointerIsInGraphHoverRegion,
   pointerIsOverGraphTooltip,
   releaseGraphHover,
 } from "@/lib/chartHoverCoordinator";
@@ -351,6 +352,29 @@ function useChartHover() {
     },
     [hoverOwnerId, keepOpen, stopOpening]
   );
+
+  // Boundary events are not reliable across SVG, HTML, and a body portal.
+  // While a card is open, the live pointer position is authoritative: the
+  // mark and popup keep it, the short handoff bridge preserves scrolling, and
+  // the first movement anywhere else removes it immediately. This also
+  // recovers a card if Chromium left `:hover` stuck on its portal node.
+  useEffect(() => {
+    if (hover === null) return;
+    const onPointerMove = (event: PointerEvent) => {
+      if (
+        pointerIsInGraphHoverRegion(
+          event,
+          anchor?.element ?? null,
+          closeTimer.current !== null
+        )
+      ) {
+        return;
+      }
+      dismissOwnedHover();
+    };
+    document.addEventListener("pointermove", onPointerMove, true);
+    return () => document.removeEventListener("pointermove", onPointerMove, true);
+  }, [anchor?.element, dismissOwnedHover, hover]);
 
   function show(index: number, at?: ChartAnchor | null) {
     // All SVG/canvas charts and hand-built graph HoverCards share one owner.
@@ -2552,6 +2576,7 @@ export function BarChart({
                   class's. Only the painted bar moves; its stable wrapper is
                   the exact hover target, so the lift cannot cause flicker. */}
               <div
+                data-chart-point="true"
                 className="group/bar relative flex w-[72%] min-w-[14px] cursor-pointer justify-center"
                 onMouseEnter={(e) => {
                   showHover(i, barLabelAnchor(e.currentTarget) ?? pointerAnchor(e));
