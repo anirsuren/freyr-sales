@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -1331,30 +1332,23 @@ export function GoalZoom({
 
   const boxCls =
             "rounded-xl border border-border-light bg-white overflow-hidden flex flex-col";
-          const drillBoxClass = (
-            column: "organization" | "groups" | "people"
-          ) =>
-            cn(
-              boxCls,
-              expandedDrillColumn === column &&
-                "fixed inset-4 z-[121] max-h-[calc(100vh-2rem)] rounded-2xl shadow-[0_24px_64px_-16px_rgba(0,0,0,0.35)] md:inset-8 md:max-h-[calc(100vh-4rem)]"
-            );
+          const drillBoxClass = () => boxCls;
           const expandButton = (
             column: "organization" | "groups" | "people",
             label: string
           ) => (
             <button
               type="button"
-              aria-label={expandedDrillColumn === column ? `Close expanded ${label}` : `Expand ${label}`}
-              title={expandedDrillColumn === column ? "Close expanded view" : "Expand column"}
+              aria-label={expandedDrillColumn ? "Close expanded organization, groups, and people" : `Expand ${label}`}
+              title={expandedDrillColumn ? "Close expanded view" : "Expand all three columns"}
               onClick={() =>
                 setExpandedDrillColumn((current) =>
-                  current === column ? null : column
+                  current ? null : column
                 )
               }
               className="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-lg border border-border-light bg-white text-text-secondary shadow-sm transition-colors hover:border-blue-primary/30 hover:bg-blue-light/40 hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/25"
             >
-              {expandedDrillColumn === column ? (
+              {expandedDrillColumn ? (
                 <Minimize2 size={13.5} strokeWidth={2.2} aria-hidden="true" />
               ) : (
                 <Maximize2 size={13.5} strokeWidth={2.2} aria-hidden="true" />
@@ -1365,32 +1359,37 @@ export function GoalZoom({
             /* No wrapping in a box header: see the "3 · Line items" comment
                below — a long group name used to break the heading in two. */
             "flex flex-nowrap items-center gap-2 overflow-hidden border-b border-border-light bg-surface/60 px-3 py-2";
-          return (
-            <div className={cn("relative mt-3", fill && "flex min-h-0 flex-1 flex-col")}>
-            {expandedDrillColumn && (
-              <button
-                type="button"
-                aria-label="Close expanded column"
-                className="fixed inset-0 z-[120] cursor-default bg-black/40 backdrop-blur-sm"
-                onClick={() => setExpandedDrillColumn(null)}
-              />
-            )}
+          const drillPanel = (
+            <div
+              className={cn(
+                expandedDrillColumn
+                  ? "fixed inset-0 z-[120] flex min-h-0 flex-col bg-black/40 p-4 backdrop-blur-sm md:p-8"
+                  : cn(
+                      "relative mt-3",
+                      fill && "flex min-h-0 flex-1 flex-col"
+                    )
+              )}
+              role={expandedDrillColumn ? "dialog" : undefined}
+              aria-modal={expandedDrillColumn ? true : undefined}
+              aria-label={expandedDrillColumn ? "Organization, groups, and people" : undefined}
+              onClick={expandedDrillColumn ? () => setExpandedDrillColumn(null) : undefined}
+            >
             <div
               className={cn(
                 "grid grid-cols-1 gap-3",
                 !soloPerson && "xl:grid-cols-3",
-                fill && "min-h-0 flex-1"
+                fill && "min-h-0 flex-1",
+                expandedDrillColumn &&
+                  "relative z-[121] min-h-0 flex-1 rounded-2xl shadow-[0_24px_64px_-16px_rgba(0,0,0,0.35)]"
               )}
+              onClick={expandedDrillColumn ? (event) => event.stopPropagation() : undefined}
               // One height, three boxes. In a full-screen modal the viewport
               // decides instead, so the drag is not offered there.
-              style={fill ? undefined : { height: railHeight }}
+              style={fill || expandedDrillColumn ? undefined : { height: railHeight }}
             >
               {/* -------- Box 1: the organization, period by period */}
               <div
-                className={drillBoxClass("organization")}
-                role={expandedDrillColumn === "organization" ? "dialog" : undefined}
-                aria-modal={expandedDrillColumn === "organization" ? true : undefined}
-                aria-label={expandedDrillColumn === "organization" ? "Organization periods" : undefined}
+                className={drillBoxClass()}
               >
                 <div className={boxHead}>
                   <b className="text-[12px] text-text-primary">
@@ -1550,10 +1549,7 @@ export function GoalZoom({
               <>
               {/* -------- Box 2: every group inside the picked period */}
               <div
-                className={drillBoxClass("groups")}
-                role={expandedDrillColumn === "groups" ? "dialog" : undefined}
-                aria-modal={expandedDrillColumn === "groups" ? true : undefined}
-                aria-label={expandedDrillColumn === "groups" ? "Groups" : undefined}
+                className={drillBoxClass()}
               >
                 <div className={boxHead}>
                   <b className="text-[12px] text-text-primary">2 · Groups</b>
@@ -2029,10 +2025,7 @@ export function GoalZoom({
 
               {/* -------- Box 3: the picked group's people, same period */}
               <div
-                className={drillBoxClass("people")}
-                role={expandedDrillColumn === "people" ? "dialog" : undefined}
-                aria-modal={expandedDrillColumn === "people" ? true : undefined}
-                aria-label={expandedDrillColumn === "people" ? "People and details" : undefined}
+                className={drillBoxClass()}
               >
                 <div className={boxHead}>
                   {/* ONE LINE, ALWAYS (Anir, Aug 23: "it should show up on one
@@ -2289,7 +2282,7 @@ export function GoalZoom({
               )}
             </div>
 
-            {!fill && (
+            {!fill && !expandedDrillColumn && (
               /* THE EDGE IS THE HANDLE (Anir, Aug 19: "I didn't want there to
                  be a separate line. I just wanted the line to be the bottom
                  edge. There shouldn't be any unnecessary space there"). It is
@@ -2317,6 +2310,13 @@ export function GoalZoom({
             )}
             </div>
           );
+          /* The expanded three-column drill must escape the table row and
+             every clipped or transformed ancestor around it. Rendering the
+             complete drill at the document root keeps the organization →
+             group → person relationship visible in one modal-sized surface. */
+          return expandedDrillColumn && typeof document !== "undefined"
+            ? createPortal(drillPanel, document.body)
+            : drillPanel;
         })()}
       </Card>
 

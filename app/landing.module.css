@@ -7,7 +7,11 @@
   min-height: 650px;
   overflow: hidden;
   color: var(--ink);
-  background:
+  /* This public page intentionally keeps its light visual treatment even when
+     the signed-in product theme is dark. Give the gradient an opaque fallback
+     so inherited dark surfaces can never reduce text contrast. */
+  color-scheme: light;
+  background: #ffffff
     linear-gradient(135deg, rgba(240, 248, 255, 0.98) 0%, #ffffff 46%, #f3f8fc 100%);
   isolation: isolate;
 }
@@ -47,7 +51,7 @@
   display: grid;
   place-items: center;
   color: white;
-  background: linear-gradient(145deg, #078ce5, #005ebc);
+  background: #0877e8 linear-gradient(145deg, #078ce5, #005ebc);
   font-family: Georgia, serif;
   font-style: italic;
   box-shadow: 0 10px 26px rgba(0, 113, 227, 0.2);

@@ -1168,7 +1168,10 @@ export function PaceTimeline({
           )}
           <div
             ref={viewportRef}
-            className={cn(interactive && "select-none overflow-hidden rounded-lg")}
+            className={cn(
+              interactive &&
+                "box-border select-none overflow-hidden rounded-lg px-2"
+            )}
             style={interactive ? { touchAction: "pan-y", cursor: dragRef.current ? "grabbing" : "grab" } : undefined}
             onPointerDown={interactive ? (event) => {
               if (event.button !== 0) return;
