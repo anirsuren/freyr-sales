@@ -948,6 +948,10 @@ export function PaceTimeline({
     target > 0 ? Math.min(100, Math.max(0, (n / target) * 100)) : 0;
   const vPct = pctOf(verified);
   const aPct = pctOf(verified + awaiting);
+  const sentBackValue = Math.min(Math.max(0, sentBack), Math.max(0, awaiting));
+  const pendingValue = Math.max(0, awaiting - sentBackValue);
+  const sentBackPct = pctOf(sentBackValue);
+  const pendingPct = pctOf(pendingValue);
   /**
    * NOTHING IS DRAWN UNLESS SOMEBODY SET IT (Anir, Aug 16: "Who the fuck is
    * saying 'must be at 375K'? ... It shouldn't be you"). `expected` now comes
@@ -959,7 +963,11 @@ export function PaceTimeline({
   const marker = hasSchedule
     ? Math.min(100, Math.max(0, (mustBe / target) * 100))
     : 0;
-  const ahead = verified + awaiting - mustBe;
+  /* Pace is a statement about what COUNTS NOW, so it must use the same green
+   * verified amount the rail uses. A claim that is waiting or was sent back
+   * cannot turn the verdict green while the green bar is still left of the
+   * schedule marker. */
+  const paceDelta = verified - mustBe;
   const timelineRef = useRef<HTMLDivElement>(null);
   const zeroLabelRef = useRef<HTMLSpanElement>(null);
   const targetLabelRef = useRef<HTMLSpanElement>(null);
@@ -1294,35 +1302,44 @@ export function PaceTimeline({
                   two panels described one fact in two visual languages. Red
                   means it was sent back; striped amber means it is still
                   waiting for verification. */}
-              <span
-                className="unverified-fill absolute inset-y-0 left-0 rounded-full"
-                style={{
-                  width: `${aPct}%`,
-                  ["--fill" as string]:
-                    sentBack > 0
-                      ? GOAL_PROGRESS_COLOR.sent_back
-                      : GOAL_PROGRESS_COLOR.reported,
-                }}
-              />
-              {/* Signed off is GREEN and solid, everywhere (Anir, Aug 20:
-                  "I like the idea that verified is green, but then make it
-                  consistent"). The collapsed rail already drew it green while
-                  this track drew the same money blue. */}
-              <span
-                className="absolute inset-y-0 left-0 rounded-full"
-                style={{ width: `${vPct}%`, background: ENTRY_COLOR.verified }}
-              />
+              <span className="absolute inset-0 flex overflow-hidden rounded-full">
+                {/* Signed off is GREEN and solid, everywhere (Anir, Aug 20:
+                    "I like the idea that verified is green, but then make it
+                    consistent"). */}
+                <span
+                  className="block h-full shrink-0"
+                  style={{ width: `${vPct}%`, background: ENTRY_COLOR.verified }}
+                />
+                {sentBackValue > 0 && (
+                  <span
+                    className="unverified-fill block h-full shrink-0"
+                    style={{
+                      width: `${sentBackPct}%`,
+                      ["--fill" as string]: GOAL_PROGRESS_COLOR.sent_back,
+                    }}
+                  />
+                )}
+                {pendingValue > 0 && (
+                  <span
+                    className="unverified-fill block h-full shrink-0"
+                    style={{
+                      width: `${pendingPct}%`,
+                      ["--fill" as string]: GOAL_PROGRESS_COLOR.reported,
+                    }}
+                  />
+                )}
+              </span>
               {/* Every point on the track wears a dot, including the last one. */}
               <span
                 className="absolute top-1/2 h-[13px] w-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-white"
                 style={{
                   left: `${aPct}%`,
                   background:
-                    awaiting <= 0
-                      ? ENTRY_COLOR.verified
-                      : sentBack > 0
+                    pendingValue > 0
+                      ? GOAL_PROGRESS_COLOR.reported
+                      : sentBackValue > 0
                         ? GOAL_PROGRESS_COLOR.sent_back
-                        : GOAL_PROGRESS_COLOR.reported,
+                        : ENTRY_COLOR.verified,
                 }}
                 aria-hidden="true"
               />
@@ -1372,13 +1389,16 @@ export function PaceTimeline({
                       color: ENTRY_COLOR.verified,
                     },
                     {
-                      key: "unverified",
-                      value: awaiting,
-                      pct: Math.max(0, aPct - vPct),
-                      color:
-                        sentBack > 0
-                          ? GOAL_PROGRESS_COLOR.sent_back
-                          : GOAL_PROGRESS_COLOR.reported,
+                      key: "sent-back",
+                      value: sentBackValue,
+                      pct: sentBackPct,
+                      color: GOAL_PROGRESS_COLOR.sent_back,
+                    },
+                    {
+                      key: "pending",
+                      value: pendingValue,
+                      pct: pendingPct,
+                      color: GOAL_PROGRESS_COLOR.reported,
                     },
                   ]}
                 />
@@ -1428,18 +1448,18 @@ export function PaceTimeline({
                 the thing somebody has to act on, then the thing that is merely
                 waiting its turn — the same order the track is drawn in and the
                 same order every panel lists them. */}
-            {sentBack > 0 && (
+            {sentBackValue > 0 && (
               <PaceRow
                 swatch={ENTRY_COLOR.sent_back}
                 label="Sent back, needs a fix"
-                value={fmtAmount(unit, sentBack)}
+                value={fmtAmount(unit, sentBackValue)}
               />
             )}
-            {awaiting - sentBack > 0 && (
+            {pendingValue > 0 && (
               <PaceRow
                 swatch={ENTRY_COLOR.reported}
                 label="Claimed, not checked yet"
-                value={fmtAmount(unit, awaiting - sentBack)}
+                value={fmtAmount(unit, pendingValue)}
               />
             )}
             {/* NO SCHEDULE, NO VERDICT (Anir, Aug 16: "Who the fuck is saying
@@ -1448,11 +1468,11 @@ export function PaceTimeline({
                 measuring against a line the app drew itself. */}
             {hasSchedule && (
               <PaceRow
-                swatch={ahead < 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.verified}
-                label={ahead < 0 ? "Behind schedule by" : "Ahead of schedule by"}
-                value={fmtAmount(unit, Math.abs(ahead))}
+                swatch={paceDelta < 0 ? ENTRY_COLOR.sent_back : ENTRY_COLOR.verified}
+                label={paceDelta < 0 ? "Behind schedule by" : "Ahead of schedule by"}
+                value={fmtAmount(unit, Math.abs(paceDelta))}
                 strong
-                tone={ahead < 0 ? "danger" : "success"}
+                tone={paceDelta < 0 ? "danger" : "success"}
               />
             )}
           </div>
