@@ -1345,3 +1345,5 @@ Inline result details belong to the expanded Organization → group → person s
 Lead lists use the same focused expansion treatment as Goals. When one lead is open, every other lead row dims to 45% opacity and returns to full opacity on hover; the selected lead and its expanded details remain fully emphasized. Completed locally, not deployed.
 
 Multi-select dropdown triggers close immediately on the second pointer press, including inside nested dialogs and labels. Surrounding click handlers must never reopen a picker during the same gesture; keyboard activation keeps the normal click toggle. Completed locally, not deployed.
+
+Saved Market Intelligence stories use a filled yellow bookmark with a pale yellow hover/background treatment, and the Saved filter carries the same yellow bookmark cue whenever saved stories exist. Unsaved bookmarks remain neutral outlines. Completed locally, not deployed.

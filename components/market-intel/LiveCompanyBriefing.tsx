@@ -232,7 +232,11 @@ export function LiveCompanyBriefing({
     <button type="button" disabled={!savedReady || savingArticle !== null} onClick={() => void toggleArticle(item)}
       aria-label={`${savedUrls.has(item.url) ? "Unsave" : "Save"} item: ${item.title}`} aria-pressed={savedUrls.has(item.url)}
       title={savedUrls.has(item.url) ? "Remove bookmark" : "Save item"}
-      className={cn(storyActionClass, "w-7 hover:bg-blue-light hover:text-blue-primary disabled:cursor-default disabled:opacity-40", savedUrls.has(item.url) && "text-blue-primary")}>
+      className={cn(
+        storyActionClass,
+        "w-7 hover:bg-amber-50 hover:text-amber-600 disabled:cursor-default disabled:opacity-40",
+        savedUrls.has(item.url) && "bg-amber-50 text-amber-600",
+      )}>
       <Bookmark size={14} strokeWidth={2.2} fill={savedUrls.has(item.url) ? "currentColor" : "none"} />
     </button>
   );
@@ -731,8 +735,8 @@ export function LiveCompanyBriefing({
           />
         )}
         <button type="button" disabled={!savedReady} aria-pressed={savedOnly} onClick={() => { setSavedOnly(!savedOnly); setSource("all"); setSelectedSignals([]); setQuery(""); }}
-          className={cn("inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold disabled:opacity-40", savedOnly ? "border-blue-primary bg-blue-light text-blue-primary" : "border-border-light bg-white text-text-secondary")}>
-          <Bookmark size={14} fill={savedOnly ? "currentColor" : "none"} />Saved {savedArticles.length}
+          className={cn("inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold disabled:opacity-40", savedOnly ? "border-amber-400 bg-amber-50 text-amber-700" : "border-border-light bg-white text-text-secondary")}>
+          <Bookmark className={savedArticles.length > 0 ? "text-amber-600" : undefined} size={14} fill={savedOnly ? "currentColor" : "none"} />Saved {savedArticles.length}
         </button>
         {!savedOnly && <>
           <ColorSelect
