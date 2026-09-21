@@ -4080,6 +4080,8 @@ function SubgoalEditorFields({
     editing && editing.target > 0 ? String(editing.target) : ""
   );
   const [owners, setOwners] = useState<string[]>(editing?.owners ?? []);
+  const [addingOwner, setAddingOwner] = useState(false);
+  const [addingGroup, setAddingGroup] = useState(false);
   /** Which row is asking "are you sure" — "owner:Name" or "person:Name". */
   const [confirmDrop, setConfirmDrop] = useState<string | null>(null);
   const [rows, setRows] = useState<{ name: string; target: string }[]>(
@@ -4099,6 +4101,7 @@ function SubgoalEditorFields({
     const clean = o.trim();
     if (!clean || owners.includes(clean)) return;
     setOwners([...owners, clean]);
+    setAddingOwner(false);
   }
 
   function addPerson(p: string) {
@@ -4152,6 +4155,10 @@ function SubgoalEditorFields({
   /** What the people on this slice are measured against. */
   const personCeiling = ownTarget > 0 ? ownTarget : Math.max(0, goalTarget - siblingTotal);
   const peopleOver = personCeiling > 0 && peopleSum > personCeiling;
+  const assignedGroups = editing?.groupAssignments ?? [];
+  const availableGroups = state.groups.filter(
+    (group) => !assignedGroups.some((assignment) => assignment.groupId === group.id)
+  );
 
   return (
     <div className={cn("space-y-3.5", standalone && "pb-1")}>
@@ -4378,7 +4385,7 @@ function SubgoalEditorFields({
         <section className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.025)]">
           <div className="flex items-start gap-3">
             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-light text-[10.5px] font-bold text-blue-primary">2</span>
-            <span className="min-w-0">
+            <span className="min-w-0 flex-1">
           <label className="flex items-center gap-1 text-[13px] font-bold text-text-primary">
             Owner<OptionalMark />
             <Crown
@@ -4393,14 +4400,43 @@ function SubgoalEditorFields({
             The person responsible for checking and approving this subgoal.
           </p>
             </span>
+            <button
+              type="button"
+              aria-label="Choose another owner"
+              aria-expanded={addingOwner}
+              title="Choose another owner"
+              onClick={() => setAddingOwner((open) => !open)}
+              className={cn(
+                "grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-lg border text-white shadow-sm transition-colors",
+                addingOwner
+                  ? "border-blue-primary bg-blue-primary"
+                  : "border-blue-primary bg-blue-primary hover:bg-blue-hover"
+              )}
+            >
+              <Plus size={16} strokeWidth={2.5} />
+            </button>
           </div>
           <div className="mt-2 space-y-1.5">
-            <PersonSelect
-              value=""
-              onChange={addOwner}
-              people={suggestions.filter((s) => !owners.includes(s))}
-              placeholder="Add an owner…"
-            />
+            {addingOwner && (
+              <PersonSelect
+                value=""
+                onChange={addOwner}
+                people={suggestions.filter((s) => !owners.includes(s))}
+                placeholder="Choose owner…"
+              />
+            )}
+            {owners.length === 0 && !addingOwner && (
+              <button
+                type="button"
+                onClick={() => setAddingOwner(true)}
+                className="flex min-h-[92px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-blue-subtle bg-blue-light/40 text-blue-primary transition-colors hover:bg-blue-light"
+              >
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-white shadow-sm">
+                  <UserRoundPlus size={16} strokeWidth={2.2} />
+                </span>
+                <span className="text-[12.5px] font-semibold">Choose owner</span>
+              </button>
+            )}
             {owners.map((o) => (
               <div key={o} className="flex items-center gap-2">
                 <span className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-2.5 py-1.5">
@@ -4461,7 +4497,7 @@ function SubgoalEditorFields({
           <section className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.025)]">
             <div className="flex items-start gap-3">
               <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-light text-[10.5px] font-bold text-blue-primary">3</span>
-              <span className="min-w-0">
+              <span className="min-w-0 flex-1">
             <label className="flex items-center gap-1 text-[13px] font-bold text-text-primary">
               Groups<OptionalMark />
               <InfoHint text={"A whole department carrying this part of the goal. Its people are added below automatically with a target of 0, so they can start logging right away.\nSave the subgoal first, then pick a group. There has to be something for the group to attach to."} />
@@ -4470,14 +4506,41 @@ function SubgoalEditorFields({
               Teams that carry this part of the parent goal.
             </p>
               </span>
+              <button
+                type="button"
+                disabled={busy || availableGroups.length === 0}
+                aria-label="Choose another group"
+                aria-expanded={addingGroup}
+                title={availableGroups.length === 0 ? "Every available group is assigned" : "Choose another group"}
+                onClick={() => setAddingGroup((open) => !open)}
+                className={cn(
+                  "grid h-8 w-8 shrink-0 place-items-center rounded-lg border text-white shadow-sm transition-colors",
+                  busy || availableGroups.length === 0
+                    ? "cursor-not-allowed border-border-light bg-slate-300"
+                    : "cursor-pointer border-blue-primary bg-blue-primary hover:bg-blue-hover"
+                )}
+              >
+                <Plus size={16} strokeWidth={2.5} />
+              </button>
             </div>
             <div className="mt-2 space-y-1.5">
-              {(editing.groupAssignments ?? []).length === 0 ? (
-                <p className="text-[12px] text-text-secondary">
-                  No department carries this slice yet.
-                </p>
-              ) : (
-                (editing.groupAssignments ?? []).map((a) => {
+              {assignedGroups.length === 0 && !addingGroup && (
+                <button
+                  type="button"
+                  disabled={busy || availableGroups.length === 0}
+                  onClick={() => setAddingGroup(true)}
+                  className="flex min-h-[92px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-blue-subtle bg-blue-light/40 text-blue-primary transition-colors hover:bg-blue-light disabled:cursor-not-allowed disabled:border-border-light disabled:bg-surface disabled:text-text-tertiary"
+                >
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-white shadow-sm">
+                    <UsersRound size={16} strokeWidth={2.2} />
+                  </span>
+                  <span className="text-[12.5px] font-semibold">
+                    {availableGroups.length === 0 ? "No groups available" : "Choose group"}
+                  </span>
+                </button>
+              )}
+              {assignedGroups.length > 0 &&
+                assignedGroups.map((a) => {
                   const g = state.groups.find((x) => x.id === a.groupId);
                   return (
                     <div
@@ -4522,40 +4585,35 @@ function SubgoalEditorFields({
                       </button>
                     </div>
                   );
-                })
-              )}
+                })}
               {/* NOT A RAW <select> (Anir, Aug 16: "the fuck is this
                   dropdown"). It was the browser's own menu — OS styling, no
                   group pill, no owner, a tick beside the placeholder — sitting
                   in a form where every other picker is the app's. */}
-              <ColorSelect
-                value=""
-                ariaLabel="Add a group to this subgoal"
-                collapsible={false}
-                compactTrigger
-                className="w-full"
-                onChange={(groupId) => {
-                  if (!groupId) return;
-                  void run(
-                    {
-                      op: "assign-subgoal-group",
-                      goalId: goal.id,
-                      subgoalId: editing.id,
-                      groupId,
-                    },
-                    "Group added to this slice"
-                  );
-                }}
-                options={[
-                  { value: "", label: "Add a group…", color: "#8E98A8" },
-                  ...state.groups
-                    .filter(
-                      (g) =>
-                        !(editing.groupAssignments ?? []).some(
-                          (a) => a.groupId === g.id
-                        )
-                    )
-                    .map((g) => {
+              {addingGroup && (
+                <ColorSelect
+                  value=""
+                  ariaLabel="Choose a group for this subgoal"
+                  collapsible={false}
+                  compactTrigger
+                  className="w-full"
+                  onChange={(groupId) => {
+                    if (!groupId) return;
+                    void run(
+                      {
+                        op: "assign-subgoal-group",
+                        goalId: goal.id,
+                        subgoalId: editing.id,
+                        groupId,
+                      },
+                      "Group added to this slice"
+                    ).then((ok) => {
+                      if (ok) setAddingGroup(false);
+                    });
+                  }}
+                  options={[
+                    { value: "", label: "Choose a group…", color: "#8E98A8", icon: UsersRound },
+                    ...availableGroups.map((g) => {
                       const roster = [
                         ...new Set([g.head, ...g.members].map((m) => m.trim())),
                       ].filter(Boolean);
@@ -4575,8 +4633,9 @@ function SubgoalEditorFields({
                         description: `Owned by ${g.head} · ${roster.length} ${roster.length === 1 ? "person" : "people"}`,
                       };
                     }),
-                ]}
-              />
+                  ]}
+                />
+              )}
             </div>
           </section>
         )}
