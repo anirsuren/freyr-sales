@@ -1338,4 +1338,6 @@ Compact group-member avatar stacks keep avatar circles only. Hover or keyboard f
 
 Logged results in the People drill-down render as individually separated cards rather than one continuous divided sheet. The open result owns one blue-outlined container with a highlighted header, rotated disclosure mark, facts, proof, and timeline; visible space before the next card makes the boundary between results unambiguous. Completed locally, not deployed.
 
+Logged-result cards show a disclosure chevron only inside the expanded Organization → group → person surface, where the card truly opens inline. In the embedded three-column drill, clicking a result opens its separate detail dialog, so the row must not display a dropdown chevron. Completed locally, not deployed.
+
 Inline result details belong to the expanded Organization → group → person surface. Closing that surface by its close action, backdrop, collapse control, or Escape clears the selected inline result before returning to the page, so the same result never reappears as a second standalone modal after the parent closes. Completed locally, not deployed.

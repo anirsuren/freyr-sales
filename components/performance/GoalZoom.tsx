@@ -1284,16 +1284,22 @@ export function GoalZoom({
                         >
                           {fmtAmount(goal.unit, a.amount, a.currency)}
                         </b>
-                        <ChevronDown
-                          size={13}
-                          strokeWidth={2.3}
-                          aria-hidden="true"
-                          className={cn(
-                            "shrink-0 text-text-tertiary transition-transform",
-                            expandedDrillColumn && openResult?.id === a.id &&
-                              "rotate-180 text-blue-primary"
-                          )}
-                        />
+                        {/* A chevron belongs only on the version of this row
+                            that actually expands in place. In the embedded
+                            drill the row opens the result dialog, so showing
+                            a dropdown affordance there is misleading. */}
+                        {expandedDrillColumn && (
+                          <ChevronDown
+                            size={13}
+                            strokeWidth={2.3}
+                            aria-hidden="true"
+                            className={cn(
+                              "shrink-0 text-text-tertiary transition-transform",
+                              openResult?.id === a.id &&
+                                "rotate-180 text-blue-primary"
+                            )}
+                          />
+                        )}
                       </span>
                       <span className="flex flex-wrap items-center gap-1.5 pl-7 text-[9.5px] text-text-tertiary">
                         {!indent && (
