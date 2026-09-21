@@ -502,7 +502,10 @@ export function LiveCompanyGrid({
                       <Link href={`/market-intel/${card.id}`} className="flex min-w-0 items-start gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
                         <MiLogo name={card.name} logoUrl={card.logoUrl} className="h-11 w-11 shrink-0" />
                         <span className="min-w-0">
-                          <span className="flex items-start gap-1 text-[13.5px] font-semibold leading-snug text-text-primary transition-colors group-hover/row:text-blue-primary">{card.name}<ArrowUpRight size={12} className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/row:opacity-100" /></span>
+                          <span className="text-[13.5px] font-semibold leading-snug text-text-primary transition-colors group-hover/row:text-blue-primary">
+                            {card.name}
+                            <ArrowUpRight size={12} className="ml-1 inline-block align-text-top opacity-0 transition-opacity group-hover/row:opacity-100" />
+                          </span>
                           <DivisionChips divisions={divisions[card.id] ?? []} className="mt-1.5" />
                         </span>
                       </Link>
@@ -520,7 +523,7 @@ export function LiveCompanyGrid({
                     <div className="min-w-0">
                       {story ? <>
                         <p className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary">{outletName(story.source, story.url)}</p>
-                        {storyHref ? <a href={storyHref} target="_blank" rel="noreferrer" className="group/story flex items-start gap-1.5 text-[12px] font-medium leading-[1.45] text-text-secondary transition-colors hover:text-blue-primary"><span className="overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</span><ArrowUpRight size={12} className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/story:opacity-100" /></a> : <p className="overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</p>}
+                        {storyHref ? <a href={storyHref} target="_blank" rel="noreferrer" className="group/story block overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary transition-colors hover:text-blue-primary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}<ArrowUpRight size={12} className="ml-1 inline-block align-text-top opacity-0 transition-opacity group-hover/story:opacity-100" /></a> : <p className="overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</p>}
                       </> : <p className="text-[12px] leading-relaxed text-text-tertiary">No recent headline in this window. Activity tracking is still active.</p>}
                     </div>
                     {group === "customer" && <PeopleSummary people={people[card.id]} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyName: card.name, people: people[card.id] ?? [] })} />}

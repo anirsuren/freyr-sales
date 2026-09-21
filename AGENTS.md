@@ -1361,3 +1361,5 @@ Mock-mode screens never label records, publishers, people, summaries, charts, em
 The Market Intelligence Saved control is an additive filter. Turning it on keeps search, relevance, time range, exact date, source, signal, and view controls visible and preserves their current values; those filters continue to narrow the saved set. Completed locally, not deployed.
 
 The Market Intelligence tracked-person activity dialog uses the large review surface: up to 1380px/94vw wide and 78vh tall on desktop, with a wider profile rail and the remaining space dedicated to the post feed. Completed locally, not deployed.
+
+In Market Intelligence list rows, hover arrows sit inline immediately after the linked company name or latest-intelligence headline, including after wrapped text. They never occupy the far edge of the column as a separate flex item. Completed locally, not deployed.
