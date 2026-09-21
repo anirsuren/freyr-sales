@@ -12,6 +12,7 @@ import {
 } from "@/components/accruals/AccrualStatusChip";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Field, Input } from "@/components/ui/Input";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import {
   BASE_CURRENCY,
   convertToUsd,
@@ -280,12 +281,13 @@ const COLUMN_HINT: Record<string, string> = {
 
 function monthColumnsFor(
   kind: string | undefined,
-  used: readonly SplitField[] = []
+  used: readonly SplitField[] = [],
+  currency: string = BASE_CURRENCY
 ): string[] {
   return [
     "Month",
-    ...splitFieldsFor(kind, used).map((f) => `${SPLIT_LABEL[f]} (USD)`),
-    "Total (USD)",
+    ...splitFieldsFor(kind, used).map((f) => `${SPLIT_LABEL[f]} (${currency})`),
+    `Total (${currency})`,
   ];
 }
 
@@ -306,9 +308,17 @@ function monthColumnsFor(
  */
 function deviationColumnsFor(
   kind: string | undefined,
-  used: readonly SplitField[] = []
+  used: readonly SplitField[] = [],
+  currency: string = BASE_CURRENCY
 ): string[] {
-  return splitFieldsFor(kind, used).map((f) => `Revised ${SPLIT_LABEL[f]} (USD)`);
+  return splitFieldsFor(kind, used).map((f) => `Revised ${SPLIT_LABEL[f]} (${currency})`);
+}
+
+/** Column explanations are currency-neutral even though the visible heading
+ * follows the USD/local switch. Keep one canonical copy instead of duplicating
+ * the same prose for every supported currency. */
+function columnHint(label: string): string | undefined {
+  return COLUMN_HINT[label.replace(/\([A-Z]{3}\)/, "(USD)")];
 }
 
 /** Every column takes an equal share, so the header keeps sitting over its own
@@ -594,10 +604,6 @@ export function AccrualPlanDialog({
    */
   const dealCurrency = (dealById.get(editing.opportunityId)?.currency || BASE_CURRENCY).toUpperCase();
   const hasLocal = dealCurrency !== BASE_CURRENCY;
-  /** The mark for whichever currency the table is being READ in right now. */
-  const cellSymbol = showLocal && hasLocal
-    ? currencyMeta(dealCurrency).symbol.trim()
-    : "$";
   const localSignDate = dealById.get(editing.opportunityId)?.estSignDate;
   const [fxReady, setFxReady] = useState<"off" | "loading" | "ready" | "failed">("off");
 
@@ -628,6 +634,11 @@ export function AccrualPlanDialog({
    *  is actually on hand — the state in which editable cells become converted
    *  read-only displays (the toggle converts for reading, writes nothing). */
   const readingLocal = showLocal && hasLocal && fxReady === "ready";
+  /** The code and mark shown on every monetary field and heading. They change
+   * together only after the matching converted values are ready, so the UI can
+   * never show euro signs on dollar figures (or vice versa). */
+  const displayCurrency = readingLocal ? dealCurrency : BASE_CURRENCY;
+  const cellSymbol = currencyMeta(displayCurrency).symbol.trim();
   /** The DIGITS of a stored USD amount in the toggle's money, for cells whose
    *  symbol is drawn separately. Falls back to the USD digits with no rate. */
   function localDigits(usdText: string): string {
@@ -1493,7 +1504,7 @@ export function AccrualPlanDialog({
   );
   const editingValue = Number(editing.contractValue) || 0;
   const contractMismatch = editingValue > 0 && Math.abs(editingTotal - editingValue) > 1
-    ? `${formatMoney(Math.abs(editingTotal - editingValue))} ${editingTotal > editingValue ? "above" : "below"} contract value`
+    ? `${readMoney(Math.abs(editingTotal - editingValue))} ${editingTotal > editingValue ? "above" : "below"} contract value`
     : null;
 
   /* THE COLUMNS ON SCREEN. How many depends on what is being sold — a licence
@@ -1505,9 +1516,9 @@ export function AccrualPlanDialog({
      nothing anybody entered goes invisible when the type is blank. */
   const usedSplitFields = usedSplitFieldsIn(editingRows);
   const splitFields = splitFieldsFor(dealKind, usedSplitFields);
-  const baseColumns = monthColumnsFor(dealKind, usedSplitFields);
+  const baseColumns = monthColumnsFor(dealKind, usedSplitFields, displayCurrency);
   const monthColumns: readonly string[] = deviating
-    ? [...baseColumns, ...deviationColumnsFor(dealKind, usedSplitFields)]
+    ? [...baseColumns, ...deviationColumnsFor(dealKind, usedSplitFields, displayCurrency)]
     : baseColumns;
   const monthColWidth = colWidth(monthColumns.length);
 
@@ -1912,7 +1923,7 @@ export function AccrualPlanDialog({
               fourth thing in there"). */}
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Field
-              label="Contract value (USD)"
+              label={`Contract value (${displayCurrency})`}
               required
               /* IN A DRAFT IT IS THE DEAL'S ESTIMATED TCV, NOT A SECOND NUMBER.
                  Typing it here as well would let the two disagree, which is the
@@ -1929,17 +1940,23 @@ export function AccrualPlanDialog({
                       : "This deal carries no estimated TCV, so say what the contract is worth."
               }
             >
-              <Input
-                value={withCommas(editing.contractValue)}
-                inputMode="numeric"
+              <MoneyInput
+                value={readingLocal ? localDigits(editing.contractValue) : editing.contractValue}
+                symbol={cellSymbol}
+                ariaLabel={`Contract value in ${displayCurrency}`}
+                placeholder="0"
                 disabled={deviating || followsDeal}
-                readOnly={followsDeal}
-                className={deviating || followsDeal ? "opacity-60" : undefined}
-                onChange={(e) =>
-                  editFormula({
-                    contractValue: expandMoneyShorthand(e.target.value, { integer: true }),
-                  })
+                readOnly={followsDeal || readingLocal}
+                title={
+                  readingLocal
+                    ? `Shown in ${dealCurrency} at the sign-date rate. Switch to USD to edit.`
+                    : undefined
                 }
+                className={cn(
+                  "h-11 rounded-md border-border bg-surface text-[15px]",
+                  (deviating || followsDeal) && "opacity-60"
+                )}
+                onChange={(contractValue) => editFormula({ contractValue })}
               />
             </Field>
             <Field label="First month" required hint="The month the first payment lands. Moving it slides the whole schedule rather than relabelling it.">
@@ -2146,7 +2163,7 @@ export function AccrualPlanDialog({
                             carry its own explanation. */}
                         <span className="inline-flex items-center gap-1">
                           {label}
-                          {COLUMN_HINT[label] && <InfoHint text={COLUMN_HINT[label]} />}
+                          {columnHint(label) && <InfoHint text={columnHint(label)!} />}
                         </span>
                       </th>
                     ))}
@@ -2191,7 +2208,7 @@ export function AccrualPlanDialog({
                                          show, and printing $0 would claim it
                                          did. */
                                       "Not split"
-                                    : exactUsd(line[field] as number)}
+                                    : readMoney(line[field] as number)}
                                 </td>
                               ))}
                               <td
@@ -2208,20 +2225,33 @@ export function AccrualPlanDialog({
                                     k === 0 &&"border-l border-border-light"
                                   )}
                                 >
+                                  <span className="relative flex items-center">
+                                  <span
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute left-2 text-[12px] font-semibold text-text-tertiary"
+                                  >
+                                    {cellSymbol}
+                                  </span>
                                   <input
-                                    value={r[field]}
+                                    value={readingLocal ? localDigits(r[field]) : withCommas(r[field])}
                                     placeholder="0"
                                     inputMode="numeric"
+                                    readOnly={readingLocal}
+                                    title={
+                                      readingLocal
+                                        ? `Shown in ${dealCurrency} at the sign-date rate. Switch to USD to edit.`
+                                        : undefined
+                                    }
                                     aria-label={`Revised ${field === "ots" ? "OTS" : field === "arr" ? "ARR" : "Monthly"} for ${monthLabel(line.month)}`}
                                     onChange={(e) =>
                                       editRevised(
                                         line.month,
                                         field,
-                                        e.target.value.replace(/[^0-9]/g, "")
+                                        expandMoneyShorthand(e.target.value, { integer: true })
                                       )
                                     }
                                     className={cn(
-                                      "h-8 w-full rounded-md border px-2 text-[13px] tnum outline-none focus:border-[#A78BFA]",
+                                      "h-8 w-full rounded-md border pl-5 pr-2 text-[13px] tnum outline-none focus:border-[#A78BFA]",
                                       /* A revised figure is somebody's own
                                          number, so it wears the same held look
                                          a typed total wears on the planned
@@ -2233,6 +2263,7 @@ export function AccrualPlanDialog({
                                         : "border-border-light"
                                     )}
                                   />
+                                  </span>
                                 </td>
                               ))}
                             </tr>
