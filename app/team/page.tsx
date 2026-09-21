@@ -46,6 +46,15 @@ import { readWorkspaceMemberProfiles } from "@/lib/memberProfile";
 export const metadata = { title: "Team" };
 export const dynamic = "force-dynamic";
 
+/** "Unassigned" is an ownership bucket, never a teammate identity. Imported
+ * deals without an owner still contribute to the Team pipeline rollup, but
+ * they must not grow a fake person with generated contact details in the
+ * roster. Keep this guard at the Team boundary so ownership reporting can
+ * continue to use its honest unassigned aggregate elsewhere. */
+function isUnassignedIdentity(name: string | null | undefined): boolean {
+  return (name || "").trim().toLowerCase() === "unassigned";
+}
+
 // Representative open deals for ONE stage of a rep who has no real deals in the
 // seed (the synthetic roster) — so hovering any donut slice / rep still shows
 // the deals behind the number, not a dead aggregate. Deterministic from the rep
@@ -140,7 +149,9 @@ export default async function TeamPage() {
      * exactly the failure this page must never have. Deactivated accounts stay
      * out, because that is a deliberate admin decision rather than a guess.
      */
-    const members = (directory?.members ?? []).filter((member) => member.active);
+    const members = (directory?.members ?? []).filter(
+      (member) => member.active && !isUnassignedIdentity(member.name)
+    );
     if (members.length === 0) {
       return (
         <div className="space-y-5">
@@ -367,6 +378,10 @@ export default async function TeamPage() {
   const stats = buildRepStats(deals, {
     roster: salesTeamFor(currentUser),
   });
+  /* Ownerless deals are represented by buildRepStats as an Unassigned
+     aggregate so totals remain complete. A roster lists people, so only the
+     actual named identities continue into cards and rows. */
+  const peopleStats = stats.filter((rep) => !isUnassignedIdentity(rep.name));
 
   /**
    * THE PIPELINE COLUMNS COME FROM THE REAL DEALS (found Aug 20, shooting the
@@ -422,7 +437,7 @@ export default async function TeamPage() {
     totalOpen = open.length;
   }
 
-  const reps: RosterRep[] = stats.map((r) => {
+  const reps: RosterRep[] = peopleStats.map((r) => {
     const you = isCurrentRep(r, currentUser.memberId);
     // The actual open deals behind each stage — real ones for the four deal-
     // owning reps, deterministic representatives for the synthetic roster — so

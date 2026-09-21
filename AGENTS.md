@@ -1311,3 +1311,7 @@ An opportunity created or selected inside Log a result collapses into a compact 
 ### Sep 21: Customer Overview edits stay with their section
 
 Admins and other people with record-level write access edit a customer from the Overview section that owns the data instead of leaving for one page-wide editor. About this account has a section pencil that exposes its independently saved facts; Key contacts has stable manage and add actions, and each contact reveals its remove action on hover or keyboard focus before the existing confirmation; Account details has its own pencil for owner and competitor/incumbent. Calculated health, intelligence, and chart outputs remain read-only. Every control continues to follow the existing record write and delete permissions. Completed locally, not deployed.
+
+### Sep 21: Unassigned pipeline is not a teammate
+
+The Team roster lists people only. Ownerless deals may continue to contribute to the complete Team pipeline and open-deal totals through an internal Unassigned ownership aggregate, but that aggregate must never render as a person, inflate the team-member count, receive generated contact details, or open a rep profile. Apply the same guard to live directory rows so a placeholder named Unassigned cannot leak into the roster. Completed locally, not deployed.
