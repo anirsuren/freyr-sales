@@ -41,6 +41,7 @@ export function LiveMarketIntelDashboard({
   canTrack = true,
   people = {},
   followers = {},
+  memberDirectory = {},
   isAdmin = false,
   viewer = { userId: "", myIds: [], starredIds: [] },
 }: {
@@ -52,6 +53,8 @@ export function LiveMarketIntelDashboard({
   people?: Record<string, PersonSummary>;
   /** Who has what, across everybody's lists. */
   followers?: Followers;
+  /** Workspace identities behind the follower ids, for the Tracking popup. */
+  memberDirectory?: Record<string, { name: string; email?: string | null }>;
   isAdmin?: boolean;
   /** The person looking: what they ticked, and what they starred. */
   viewer?: { userId: string; myIds: string[]; starredIds: string[] };
@@ -67,8 +70,14 @@ export function LiveMarketIntelDashboard({
      separate question (isActiveCompany). */
   const registry = new Map(tracking.companies.map((c) => [c.id, c]));
   const watch: Record<string, WatchState> = {};
+  const trackingPeople: Record<string, { id: string; name: string; email?: string | null }[]> = {};
   for (const c of tracking.companies) {
     watch[c.id] = { followers: followers[c.id]?.length ?? 0, byDefault: c.activeByDefault === true };
+    trackingPeople[c.id] = (followers[c.id] ?? []).map((id, index) => ({
+      id,
+      name: memberDirectory[id]?.name || `Workspace member ${index + 1}`,
+      email: memberDirectory[id]?.email,
+    }));
   }
   const inGroup = (id: string) => (registry.get(id)?.group ?? "customer") === group;
   const myIds = new Set(viewer.myIds);
@@ -182,6 +191,7 @@ export function LiveMarketIntelDashboard({
           group={group}
           divisions={divisions}
           watch={watch}
+          trackingPeople={trackingPeople}
           starred={viewer.starredIds}
         />
       </MiTabs>

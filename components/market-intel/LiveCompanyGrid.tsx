@@ -23,10 +23,12 @@ import {
   Layers,
   Newspaper,
   Radar,
+  Radio,
   Star,
   Tag,
   TrendingDown,
   TrendingUp,
+  Users,
 } from "lucide-react";
 
 import { Sparkline } from "@/components/charts/Charts";
@@ -38,6 +40,7 @@ import {
   SearchPriority,
 } from "@/components/ui/SearchPriority";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import {
   LiveCompanyCard,
@@ -119,18 +122,91 @@ function ActivityMetric({
   );
 }
 
-function PeopleSummary({ people = [] }: { people?: CardPerson[] }) {
+type TrackingPerson = { id: string; name: string; email?: string | null };
+type PeoplePanel =
+  | { kind: "tracked"; companyName: string; people: CardPerson[] }
+  | { kind: "tracking"; companyName: string; people: TrackingPerson[]; activeByDefault: boolean };
+
+function PeopleSummary({ people = [], companyName, onOpen }: { people?: CardPerson[]; companyName: string; onOpen: () => void }) {
   if (people.length === 0) return <span className="text-[11.5px] text-text-tertiary">No people tracked</span>;
   return (
-    <div className="flex flex-col items-start gap-1.5">
+    <button type="button" onClick={onOpen} aria-label={`Show people tracked at ${companyName}`} className="group/pile relative z-0 flex cursor-pointer flex-col items-start gap-1.5 rounded-lg text-left outline-none hover:z-20 focus-visible:z-20 focus-visible:ring-2 focus-visible:ring-blue-primary/30">
       <span className="flex items-center pl-1">
-        {people.slice(0, 5).map(person => (
-          <Avatar key={person.id} name={person.name} src={person.photoUrl} className="-ml-1 h-6 w-6 text-[8px] ring-2 ring-white first:ml-0" />
+        {people.slice(0, 5).map((person, index) => (
+          <span key={person.id} className={cn("relative inline-flex transition-[margin,transform] duration-200 ease-out", index > 0 && "-ml-1 group-hover/pile:ml-1 group-focus-visible/pile:ml-1")}>
+            <Avatar name={person.name} src={person.photoUrl} tooltip={person.name} className="h-6 w-6 text-[8px] ring-2 ring-white group-hover/pile:-translate-y-0.5" />
+          </span>
         ))}
-        {people.length > 5 && <span className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-blue-light text-[8.5px] font-bold text-blue-primary ring-2 ring-white tnum">+{people.length - 5}</span>}
+        {people.length > 5 && <span className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-blue-light text-[8.5px] font-bold text-blue-primary ring-2 ring-white transition-[margin] duration-200 group-hover/pile:ml-1 group-focus-visible/pile:ml-1 tnum">+{people.length - 5}</span>}
       </span>
-      <span className="text-[11px] font-semibold text-text-secondary tnum">{people.length} tracked</span>
-    </div>
+      <span className="text-[11px] font-semibold text-text-secondary group-hover/pile:text-blue-primary tnum">{people.length} tracked</span>
+    </button>
+  );
+}
+
+function TrackingSummary({ state, companyName, onOpen }: { state: WatchState; companyName: string; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`Show people tracking ${companyName}`}
+      className="cursor-pointer rounded-full outline-none transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-sm focus-visible:ring-2 focus-visible:ring-blue-primary/30"
+    >
+      <WatchStatus state={state} className="whitespace-nowrap" />
+    </button>
+  );
+}
+
+function PeoplePopup({ panel, onClose }: { panel: PeoplePanel | null; onClose: () => void }) {
+  const tracked = panel?.kind === "tracked";
+  return (
+    <Modal open={panel !== null} onClose={onClose} title={panel ? `${tracked ? "People being tracked at" : "People tracking"} ${panel.companyName}` : "People"}>
+      {panel?.kind === "tracked" && panel.people.length > 0 ? (
+        <div className="space-y-2">
+          <p className="mb-3 text-[12.5px] leading-relaxed text-text-secondary">
+            {panel.people.length} {panel.people.length === 1 ? "person is" : "people are"} included in this company’s intelligence feed.
+          </p>
+          {panel.people.map(person => (
+            <div key={person.id} className="flex items-center gap-3 rounded-xl border border-border-light bg-white p-3">
+              <Avatar name={person.name} src={person.photoUrl} className="h-10 w-10 shrink-0 text-[12px]" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13.5px] font-semibold text-text-primary">{person.name}</p>
+                <p className="text-[11.5px] text-text-secondary">{person.role}</p>
+              </div>
+              <span className="whitespace-nowrap rounded-full bg-blue-light px-2.5 py-1 text-[10.5px] font-semibold text-blue-primary tnum">
+                {person.posts} {person.posts === 1 ? "post" : "posts"}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : panel?.kind === "tracking" && panel.people.length > 0 ? (
+        <div className="space-y-2">
+          <p className="mb-3 text-[12.5px] leading-relaxed text-text-secondary">
+            {panel.people.length} {panel.people.length === 1 ? "person has" : "people have"} this company on their Market Intelligence list.
+          </p>
+          {panel.people.map(person => (
+            <div key={person.id} className="flex items-center gap-3 rounded-xl border border-border-light bg-white p-3">
+              <Avatar name={person.name} className="h-10 w-10 shrink-0 text-[12px]" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13.5px] font-semibold text-text-primary">{person.name}</p>
+                <p className="text-[11.5px] text-text-secondary">{person.email || "Workspace member"}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : panel?.kind === "tracking" && panel.activeByDefault ? (
+        <div className="rounded-xl border border-border-light bg-surface p-5 text-center">
+          <Radio className="mx-auto text-[color:var(--ink-green)]" size={22} />
+          <p className="mt-2 text-[13px] font-semibold text-text-primary">Active by default</p>
+          <p className="mt-1 text-[12px] text-text-secondary">This company is collected every day even though nobody has added it to a personal list.</p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-border-light bg-surface p-6 text-center text-[12.5px] text-text-secondary">
+          <Users className="mx-auto mb-2 text-text-tertiary" size={22} />
+          No people to show yet.
+        </div>
+      )}
+    </Modal>
   );
 }
 
@@ -143,6 +219,7 @@ export function LiveCompanyGrid({
   group,
   divisions,
   watch,
+  trackingPeople = {},
   starred = [],
   isAdmin = false,
   cardsByRange,
@@ -161,6 +238,8 @@ export function LiveCompanyGrid({
   divisions: Record<string, Division[]>;
   /** How many people have each company, for the Active chip. */
   watch: Record<string, WatchState>;
+  /** Workspace members who have each company on their personal list. */
+  trackingPeople?: Record<string, TrackingPerson[]>;
   /** This person's favourites, from the server. */
   starred?: string[];
   isAdmin?: boolean;
@@ -170,6 +249,7 @@ export function LiveCompanyGrid({
   const { toast } = useToast();
   const router = useRouter();
   const [unstar, setUnstar] = useState<{id: string; name: string} | null>(null);
+  const [peoplePanel, setPeoplePanel] = useState<PeoplePanel | null>(null);
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<Range>("90");
   const [view, setView] = useStoredView<"tiles" | "list">(`freyr.mi.${viewerId}.${group}.view`, defaultView, ["tiles", "list"]);
@@ -269,6 +349,7 @@ export function LiveCompanyGrid({
 
   return (
     <>
+      <PeoplePopup panel={peoplePanel} onClose={() => setPeoplePanel(null)} />
       <SearchPriority
         query={query}
         className="rise-in mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-[var(--surface)] p-2.5"
@@ -405,8 +486,8 @@ export function LiveCompanyGrid({
                     <div><span className="inline-flex items-center gap-2 rounded-full bg-blue-light px-2.5 py-1 text-[11px] font-semibold text-blue-primary"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-primary" />Collecting first updates</span></div>
                     <div className="grid grid-cols-2 gap-1.5 opacity-55"><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /></div>
                     <p className="text-[12px] leading-relaxed text-text-tertiary">The first verified posts, news, website updates, and signals will appear here.</p>
-                    {group === "customer" && <PeopleSummary people={people[row.id]} />}
-                    {isAdmin ? <WatchStatus state={stateOf(row.id)} className="whitespace-nowrap" /> : <span className="text-text-tertiary">—</span>}
+                    {group === "customer" && <PeopleSummary people={people[row.id]} companyName={row.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyName: row.name, people: people[row.id] ?? [] })} />}
+                    {isAdmin ? <TrackingSummary state={stateOf(row.id)} companyName={row.name} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: row.name, people: trackingPeople[row.id] ?? [], activeByDefault: stateOf(row.id).byDefault === true })} /> : <span className="text-text-tertiary">—</span>}
                     <span className="whitespace-nowrap text-[11px] font-medium text-text-tertiary">Pending</span>
                   </div>
                 );
@@ -442,8 +523,8 @@ export function LiveCompanyGrid({
                         {storyHref ? <a href={storyHref} target="_blank" rel="noreferrer" className="group/story flex items-start gap-1.5 text-[12px] font-medium leading-[1.45] text-text-secondary transition-colors hover:text-blue-primary"><span className="overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</span><ArrowUpRight size={12} className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/story:opacity-100" /></a> : <p className="overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</p>}
                       </> : <p className="text-[12px] leading-relaxed text-text-tertiary">No recent headline in this window. Activity tracking is still active.</p>}
                     </div>
-                    {group === "customer" && <PeopleSummary people={people[card.id]} />}
-                    {isAdmin ? <WatchStatus state={stateOf(card.id)} className="whitespace-nowrap" /> : <span className="text-text-tertiary">—</span>}
+                    {group === "customer" && <PeopleSummary people={people[card.id]} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyName: card.name, people: people[card.id] ?? [] })} />}
+                    {isAdmin ? <TrackingSummary state={stateOf(card.id)} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: card.name, people: trackingPeople[card.id] ?? [], activeByDefault: stateOf(card.id).byDefault === true })} /> : <span className="text-text-tertiary">—</span>}
                     <span className="whitespace-nowrap text-[11px] font-semibold text-text-secondary">{card.updatedLabel}</span>
                   </div>
                 );
