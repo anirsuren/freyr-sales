@@ -167,7 +167,6 @@ export function LiveMarketIntelDashboard({
   return (
     <>
       <MiTabs
-        minimalHeader
         active={group === "competitor" ? "competitors" : "customers"}
         action={
           <span className="flex flex-wrap items-center gap-2.5">

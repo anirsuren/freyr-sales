@@ -196,6 +196,14 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 21 Market Intelligence page selector restored:** Customer and
+  Competitor Intelligence once again show the shared three-option selector at
+  the top of the page, matching the Market Intelligence view. People can move
+  directly among Customer, Competitor, and Market Intelligence without using
+  the sidebar, and the selector preserves `/mock-mode` while switching. Verified
+  across all three destinations on localhost; typecheck and rule tests pass.
+  Local only, not deployed.
+
 - **Sep 21 frozen real Market Intelligence stories:** Mock Customer,
   Competitor, and Market Intelligence now share a static set of real MHRA
   stories with working GOV.UK destinations instead of generated headlines and

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Building2, Globe2, Swords } from "lucide-react";
 import { PageTabs } from "@/components/ui/PageTabs";
 
@@ -69,18 +69,18 @@ export function MiTabs({
   active,
   action,
   children,
-  minimalHeader = false,
 }: {
   active: string;
-  minimalHeader?: boolean;
   /** The header's right side (live chip, track button). */
   action?: React.ReactNode;
   /** The bucket's content; swapped for the skeleton while a pick loads. */
   children?: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [clicked, setClicked] = useState<string | null>(null);
+  const modePrefix = pathname.startsWith("/mock-mode") ? "/mock-mode" : "";
 
   // The server's answer is the truth once it arrives.
   useEffect(() => {
@@ -89,9 +89,9 @@ export function MiTabs({
 
   useEffect(() => {
     for (const tab of TABS) {
-      if (tab.key !== active) router.prefetch(tab.href);
+      if (tab.key !== active) router.prefetch(`${modePrefix}${tab.href}`);
     }
-  }, [active, router]);
+  }, [active, modePrefix, router]);
 
   const current = TABS.find((t) => t.key === (clicked ?? active)) ?? TABS[0];
   const switching = isPending && clicked !== null && clicked !== active;
@@ -104,12 +104,6 @@ export function MiTabs({
           entrance class here replays on the pill strip and "everything goes
           haywire". The strip renders already-settled; only the keyed
           tab-panel below animates. */}
-      {minimalHeader ? (
-        <div className="relative z-40 mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-[20px] font-semibold text-text-primary">{current.label}</h1>
-          {action}
-        </div>
-      ) : (
       <div className="relative z-40 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative max-w-full overflow-x-auto [scrollbar-width:none]">
@@ -127,7 +121,7 @@ export function MiTabs({
               const next = TABS.find((t) => t.key === key);
               if (!next) return;
               setClicked(key);
-              startTransition(() => router.push(next.href, { scroll: false }));
+              startTransition(() => router.push(`${modePrefix}${next.href}`, { scroll: false }));
             }}
           />
         </div>
@@ -137,7 +131,6 @@ export function MiTabs({
           {current.subtitle}
         </p>
       </div>
-      )}
       {/* The bucket's content ENTERS instead of popping (Anir, Aug 17: the
           switch to Market Intelligence "is not good. Look at that animation").
           Keyed by bucket so each pick replays the entrance; the pill row above
