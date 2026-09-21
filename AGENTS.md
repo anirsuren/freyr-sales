@@ -1307,3 +1307,7 @@ Every create, add, edit, log, upload, and configuration dialog labels every edit
 ### Sep 21: Log-result opportunities remain editable
 
 An opportunity created or selected inside Log a result collapses into a compact summary showing its contract value, confidence, and expected signing date. Clicking that summary reopens the same inline editor with those values populated; Save changes updates the opportunity and folds the editor closed again, while Cancel folds it without changing anything. Compact one-line opportunities keep value, confidence, and signing date synchronized between the opportunity record and its offering line so reopening never shows a stale date or a zero contract value. Completed locally, not deployed.
+
+### Sep 21: Customer Overview edits stay with their section
+
+Admins and other people with record-level write access edit a customer from the Overview section that owns the data instead of leaving for one page-wide editor. About this account has a section pencil that exposes its independently saved facts; Key contacts has stable manage and add actions, and each contact reveals its remove action on hover or keyboard focus before the existing confirmation; Account details has its own pencil for owner and competitor/incumbent. Calculated health, intelligence, and chart outputs remain read-only. Every control continues to follow the existing record write and delete permissions. Completed locally, not deployed.

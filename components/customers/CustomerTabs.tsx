@@ -27,6 +27,7 @@ import {
   Mail,
   Phone,
   Briefcase,
+  Pencil,
   PanelRightClose,
   PanelRightOpen,
   Maximize2,
@@ -505,14 +506,12 @@ export function CustomerTabs({
   const [notes, setNotes] = useState<AccountNote[]>(customer.notes_log || []);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteKind, setNoteKind] = useState<"call" | "email" | "meeting" | "note">("note");
-  /** Whether the About card is live. Off by default: this is a page people
-   *  come to read, and every value on it used to be one click from changing. */
-  /* THE CARD READS; THE EDIT PAGE WRITES (Anir, Sep 4, pointing at the
-     offering page: "that is what it's supposed to be when I press edit. Copy
-     that everywhere"). An offering's detail is read-only and Edit walks you
-     to /offerings/[id]/edit; this page now works the same way, so the inline
-     editing mode is gone rather than toggled. */
-  const editingAbout = false;
+  /* SECTION-SCOPED EDITING (Anir, Sep 21): an admin should correct account
+     facts where they are reading them. The pencil on About turns only this
+     section live; contacts, activity, and every derived chart keep their own
+     actions and never inherit a page-wide edit mode. */
+  const [editingAbout, setEditingAbout] = useState(false);
+  const [editingAccount, setEditingAccount] = useState(false);
   const [noteNext, setNoteNext] = useState("");
   const [noteFollow, setNoteFollow] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
@@ -592,6 +591,8 @@ export function CustomerTabs({
     setAttUrl("");
     setBusy(false);
     setContactModalOpen(false);
+    setEditingAbout(false);
+    setEditingAccount(false);
     setContactBusy(false);
     setContactForm({
       fullName: "",
@@ -838,6 +839,46 @@ export function CustomerTabs({
     } finally {
       setContactBusy(false);
     }
+  }
+
+  async function removeContact() {
+    if (!removingContact || removeBusy) return;
+    setRemoveBusy(true);
+    try {
+      const response = await fetch(
+        `/api/contacts/${encodeURIComponent(removingContact.id)}`,
+        { method: "DELETE" }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast(data?.error || "Could not remove the contact.", "error");
+        return;
+      }
+      toast(`${removingContact.name} removed from this account.`);
+      setRemovingContact(null);
+      router.refresh();
+    } catch {
+      toast("Could not remove the contact.", "error");
+    } finally {
+      setRemoveBusy(false);
+    }
+  }
+
+  async function changeAccountOwner(nextOwner: string) {
+    const previousOwner = owner;
+    setOwner(nextOwner);
+    const updated = await patchCustomer({
+      owner: nextOwner,
+      owner_user_id:
+        nextOwner === currentUser.name
+          ? currentUser.memberId || undefined
+          : undefined,
+    });
+    if (!updated) {
+      setOwner(previousOwner);
+      return;
+    }
+    toast(nextOwner ? `Account assigned to ${nextOwner}.` : "Account owner cleared.");
   }
 
   async function addDeal() {
@@ -1149,33 +1190,30 @@ export function CustomerTabs({
                 <h3 className="text-[15px] font-semibold text-text-primary">
                   About this account
                 </h3>
-                {/* THE ACCOUNT'S OWN FACTS, CHANGED WHERE THEY ARE READ (Anir,
-                    Aug 30: "why can't I edit"). Every other thing on this page
-                    was writable and the five that say who the account IS were
-                    not, so the Overview could show them and offer no way to
-                    correct one. Same owner-or-manager rule the route already
-                    enforced. */}
-                {/* ONLY WHEN CLICKING ONE ACTUALLY DOES SOMETHING. The line was
-                    unconditional, so a person who may not write this account
-                    was invited to click values that then did nothing. Harmless
-                    while the only read-only case was a view-only privilege;
-                    since Suren's Sep 1 record rule an ordinary BD Member meets
-                    it on every account that is somebody else's, which is most
-                    of them. The fields themselves were always honest, see
-                    EditableFact, so this was the last thing on the card still
-                    promising an edit. */}
-                {/* AN EDIT BUTTON, NOT A CARD THAT IS ALWAYS LIVE (Anir,
-                    Sep 4: "there should be an edit button here. In the
-                    overview, it shouldn't be editing like this. Why can I
-                    still edit this stuff?").
-
-                    Every value on this card was one stray click from being
-                    changed, on a card people come to READ. Editing is a thing
-                    you turn on now, and the fields go back to being text the
-                    moment you turn it off. */}
-                {/* No control here: Edit account in the page header opens
-                    the edit page, the same road the offering page takes. */}
+                {canEditFacts && (
+                  <Tooltip label={editingAbout ? "Finish editing this section" : "Edit about this account"}>
+                    <button
+                      type="button"
+                      onClick={() => setEditingAbout(value => !value)}
+                      aria-label={editingAbout ? "Finish editing About this account" : "Edit About this account"}
+                      aria-pressed={editingAbout}
+                      className={cn(
+                        "flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border transition-colors",
+                        editingAbout
+                          ? "border-blue-primary bg-blue-primary text-white"
+                          : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                      )}
+                    >
+                      <Pencil size={14} strokeWidth={2.1} />
+                    </button>
+                  </Tooltip>
+                )}
               </div>
+              {editingAbout && (
+                <p className="mb-3 rounded-lg bg-blue-light px-3 py-2 text-[12px] font-medium text-blue-primary">
+                  Select any value below to change it. Each value saves independently.
+                </p>
+              )}
               {/* LABEL ABOVE, VALUE BELOW (Anir, Sep 4: "everything is so far
                   away from their header. why wouldn't u just make it like
                   header above data point below. just look what u do on other
@@ -1366,24 +1404,65 @@ export function CustomerTabs({
                 needs the prompt — the one with nobody on it — was the one that
                 said nothing at all. */}
             <Card>
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-3 flex items-center justify-between gap-3">
                   <h3 className="text-[15px] font-semibold text-text-primary">
                     Key contacts
                   </h3>
-                  {contacts.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setTab("contacts")}
-                      className="cursor-pointer text-[13px] font-semibold text-blue-primary transition-colors hover:text-blue-hover"
-                    >
-                      All {contacts.length} contacts →
-                    </button>
-                  )}
+                  <span className="flex items-center gap-1.5">
+                    {contacts.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setTab("contacts")}
+                        className="mr-1 cursor-pointer text-[12.5px] font-semibold text-blue-primary transition-colors hover:text-blue-hover"
+                      >
+                        All {contacts.length} contacts →
+                      </button>
+                    )}
+                    {canEditFacts && (
+                      <>
+                        <Tooltip label="Manage key contacts">
+                          <button
+                            type="button"
+                            onClick={() => setTab("contacts")}
+                            aria-label="Edit key contacts"
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                          >
+                            <Pencil size={14} strokeWidth={2.1} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip label="Add a key contact">
+                          <button
+                            type="button"
+                            onClick={() => setContactModalOpen(true)}
+                            aria-label="Add a key contact"
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-opacity hover:opacity-90"
+                          >
+                            <Plus size={15} strokeWidth={2.4} />
+                          </button>
+                        </Tooltip>
+                      </>
+                    )}
+                  </span>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {contacts.slice(0, 4).map((c) => (
-                    <Card key={c.id} className="relative p-3.5 transition-colors hover:border-blue-subtle">
-                      <div className="flex items-start gap-3">
+                    <Card key={c.id} className="group/contact relative p-3.5 transition-colors hover:border-blue-subtle">
+                      {canDeleteContacts && (
+                        <button
+                          type="button"
+                          title={`Remove ${c.full_name}`}
+                          aria-label={`Remove ${c.full_name}`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setRemovingContact({ id: c.id, name: c.full_name });
+                          }}
+                          className="absolute right-3 top-3 z-20 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md bg-white text-error shadow-sm ring-1 ring-border-light transition-all sm:translate-y-0.5 sm:opacity-0 sm:group-hover/contact:translate-y-0 sm:group-hover/contact:opacity-100 sm:focus-visible:translate-y-0 sm:focus-visible:opacity-100 hover:bg-red-50"
+                        >
+                          <Trash2 size={14} strokeWidth={2.2} />
+                        </button>
+                      )}
+                      <div className={cn("flex items-start gap-3", canDeleteContacts && "pr-8")}>
                         <Avatar name={c.full_name} className="h-10 w-10 shrink-0 text-[13px]" />
                         <div className="min-w-0 flex-1">
                           <p className="flex items-center gap-1.5 text-[14px] font-semibold text-text-primary">
@@ -2041,20 +2120,22 @@ export function CustomerTabs({
                 </span>{" "}
                 {contacts.length === 1 ? "contact" : "contacts"} at this account
               </p>
-              <Button
-                onClick={() => setContactModalOpen(true)}
-                className="px-3 py-2 text-[13px]"
-              >
-                <Plus size={15} strokeWidth={2.2} />
-                Add contact
-              </Button>
+              {canEditFacts && (
+                <Button
+                  onClick={() => setContactModalOpen(true)}
+                  className="px-3 py-2 text-[13px]"
+                >
+                  <Plus size={15} strokeWidth={2.2} />
+                  Add contact
+                </Button>
+              )}
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {contacts.map((c) => (
               // Stretched-link card: the name link's ::after covers the whole
               // card (whole-card click → contact), while the LinkedIn icon stays
               // its own link — no nested anchors. Mirrors the main Contacts cards.
-              <Card key={c.id} className="relative hover:border-blue-subtle transition-colors">
+              <Card key={c.id} className="group/contact relative hover:border-blue-subtle transition-colors">
                 <div className="flex items-center gap-3">
                   <Avatar name={c.full_name} className="w-10 h-10 text-[14px]" />
                   <div className="min-w-0">
@@ -2099,7 +2180,7 @@ export function CustomerTabs({
                           e.stopPropagation();
                           setRemovingContact({ id: c.id, name: c.full_name });
                         }}
-                        className="relative z-10 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-error/70 transition-colors hover:bg-red-50 hover:text-error"
+                        className="relative z-10 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md bg-white text-error shadow-sm ring-1 ring-border-light transition-all sm:translate-y-0.5 sm:opacity-0 sm:group-hover/contact:translate-y-0 sm:group-hover/contact:opacity-100 sm:focus-visible:translate-y-0 sm:focus-visible:opacity-100 hover:bg-red-50"
                       >
                         <Trash2 size={14} strokeWidth={2.2} />
                       </button>
@@ -2117,36 +2198,6 @@ export function CustomerTabs({
               />
             )}
             </div>
-            <ConfirmDialog
-              open={!!removingContact}
-              person={removingContact?.name}
-              busy={removeBusy}
-              onClose={() => setRemovingContact(null)}
-              title="Remove this contact?"
-              body={
-                <>
-                  <b>{removingContact?.name}</b> comes off this account.
-                </>
-              }
-              detail="Meetings and requests that named them keep that name. Only the person's record on this account is removed."
-              confirmLabel="Remove contact"
-              onConfirm={async () => {
-                if (!removingContact) return;
-                setRemoveBusy(true);
-                try {
-                  const res = await fetch(
-                    `/api/contacts/${encodeURIComponent(removingContact.id)}`,
-                    { method: "DELETE" }
-                  );
-                  if (res.ok) {
-                    setRemovingContact(null);
-                    router.refresh();
-                  }
-                } finally {
-                  setRemoveBusy(false);
-                }
-              }}
-            />
           </div>
         )}
 
@@ -2865,28 +2916,77 @@ export function CustomerTabs({
             (Anir, Jul 27: "only agent stuff should be the chat bot in the
             bottom right and the agent tab"). */}
         <Card>
-          <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-3">
-            Account
-          </h3>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              Account
+            </h3>
+            {canEditFacts && (
+              <Tooltip label={editingAccount ? "Finish editing account details" : "Edit account details"}>
+                <button
+                  type="button"
+                  onClick={() => setEditingAccount(value => !value)}
+                  aria-label={editingAccount ? "Finish editing account details" : "Edit account details"}
+                  aria-pressed={editingAccount}
+                  className={cn(
+                    "flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border transition-colors",
+                    editingAccount
+                      ? "border-blue-primary bg-blue-primary text-white"
+                      : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+                  )}
+                >
+                  <Pencil size={14} strokeWidth={2.1} />
+                </button>
+              </Tooltip>
+            )}
+          </div>
           <div className="space-y-4">
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
                 Owner
               </label>
-              <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
-                <Avatar name={owner || "Unassigned"} className="h-7 w-7 shrink-0" />
-                <span className={cn("min-w-0 truncate text-[13px] font-semibold", owner ? "text-text-primary" : "text-text-tertiary")}>{owner || "Unassigned"}</span>
-              </div>
+              {editingAccount ? (
+                <PeopleSelect
+                  value={owner}
+                  options={ownerOptions}
+                  onChange={changeAccountOwner}
+                  placeholder="Choose an owner"
+                  ariaLabel="Account owner"
+                />
+              ) : (
+                <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
+                  <Avatar name={owner || "Unassigned"} className="h-7 w-7 shrink-0" />
+                  <span className={cn("min-w-0 truncate text-[13px] font-semibold", owner ? "text-text-primary" : "text-text-tertiary")}>{owner || "Unassigned"}</span>
+                </div>
+              )}
             </div>
             <div>
-              <label className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
-                Competitor / incumbent
-                <InfoHint text="Who they use for this work today, or who you are up against to win it. Knowing that changes how you pitch." />
-              </label>
-              <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
-                <Swords size={15} strokeWidth={1.7} className="shrink-0 text-text-tertiary" />
-                <span className={cn("min-w-0 break-words text-[13px] font-medium", competitor ? "text-text-primary" : "text-text-tertiary")}>{competitor || "None recorded"}</span>
-              </div>
+              {editingAccount ? (
+                <EditableFact
+                  label="Competitor / incumbent"
+                  value={competitor}
+                  placeholder="None recorded"
+                  stacked
+                  canEdit
+                  asDialog
+                  onSave={async (next) => {
+                    const updated = await patchCustomer({ competitor: next });
+                    if (!updated) return "That didn't save.";
+                    setCompetitor(next.trim());
+                    return null;
+                  }}
+                />
+              ) : (
+                <>
+                  <label className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
+                    Competitor / incumbent
+                    <InfoHint text="Who they use for this work today, or who you are up against to win it. Knowing that changes how you pitch." />
+                  </label>
+                  <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
+                    <Swords size={15} strokeWidth={1.7} className="shrink-0 text-text-tertiary" />
+                    <span className={cn("min-w-0 break-words text-[13px] font-medium", competitor ? "text-text-primary" : "text-text-tertiary")}>{competitor || "None recorded"}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </Card>
@@ -3052,6 +3152,24 @@ export function CustomerTabs({
           );
         })()}
       </Modal>
+
+      {/* Contact removal can start from the Overview or the Contacts tab, so
+          the confirmation belongs to the page rather than either panel. */}
+      <ConfirmDialog
+        open={!!removingContact}
+        person={removingContact?.name}
+        busy={removeBusy}
+        onClose={() => setRemovingContact(null)}
+        title="Remove this contact?"
+        body={
+          <>
+            <b>{removingContact?.name}</b> comes off this account.
+          </>
+        }
+        detail="Meetings and requests that named them keep that name. Only the person's record on this account is removed."
+        confirmLabel="Remove contact"
+        onConfirm={removeContact}
+      />
 
       <Modal
         open={contactModalOpen}
