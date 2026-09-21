@@ -1380,13 +1380,29 @@ export function GoalZoom({
                 !soloPerson && "xl:grid-cols-3",
                 fill && "min-h-0 flex-1",
                 expandedDrillColumn &&
-                  "relative z-[121] min-h-0 flex-1 rounded-2xl shadow-[0_24px_64px_-16px_rgba(0,0,0,0.35)]"
+                  "relative z-[121] min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] rounded-2xl bg-white p-3 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.35)]"
               )}
               onClick={expandedDrillColumn ? (event) => event.stopPropagation() : undefined}
               // One height, three boxes. In a full-screen modal the viewport
               // decides instead, so the drag is not offered there.
               style={fill || expandedDrillColumn ? undefined : { height: railHeight }}
             >
+              {expandedDrillColumn && (
+                <div className="col-span-full flex items-center border-b border-border-light px-1 pb-3">
+                  <b className="text-[15px] text-text-primary">
+                    Organization → group → person
+                  </b>
+                  <button
+                    type="button"
+                    aria-label="Close expanded organization, groups, and people"
+                    title="Close expanded view"
+                    onClick={() => setExpandedDrillColumn(null)}
+                    className="ml-auto grid h-8 w-8 cursor-pointer place-items-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/25"
+                  >
+                    <X size={16} strokeWidth={2.2} aria-hidden="true" />
+                  </button>
+                </div>
+              )}
               {/* -------- Box 1: the organization, period by period */}
               <div
                 className={drillBoxClass()}
@@ -1398,7 +1414,8 @@ export function GoalZoom({
                   <span className="ml-auto text-[10.5px] text-text-tertiary">
                     pick a period
                   </span>
-                  {expandButton("organization", "organization periods")}
+                  {!expandedDrillColumn &&
+                    expandButton("organization", "organization periods")}
                 </div>
                 <div key={`${gran}-${fy}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
                   {(() => {
@@ -1570,7 +1587,7 @@ export function GoalZoom({
                     </span>
 
                   </span>
-                  {expandButton("groups", "groups")}
+                  {!expandedDrillColumn && expandButton("groups", "groups")}
                 </div>
                 <div className="border-b border-border-light px-2 py-2">
                   <label className="flex h-9 items-center gap-2 rounded-xl border border-border-light bg-white px-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors focus-within:border-blue-primary/50 focus-within:ring-2 focus-within:ring-blue-primary/10">
@@ -2082,7 +2099,8 @@ export function GoalZoom({
                       </button>
                     ))}
                   </span>
-                  {expandButton("people", "people and details")}
+                  {!expandedDrillColumn &&
+                    expandButton("people", "people and details")}
                 </div>
                 <div key={`p-${gran}-${selIdx}-${selGroup?.group.id ?? "none"}`} className={cn("tab-panel flex-1 space-y-1 overflow-y-auto p-2", !fill && "min-h-0")}>
                   {lineScope === "details" ? (
