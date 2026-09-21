@@ -739,6 +739,11 @@ export async function updateOpportunity(
     const line = { ...merged.lines[0] };
     if (patch.confidence !== undefined) line.confidence = merged.confidence;
     if (patch.revenueType !== undefined) line.revenueType = merged.revenueType;
+    /* The compact editor inside Log a result edits the opportunity as one
+       deal, so its expected signing date travels with the one offering row
+       just like confidence and value. Keeping only the top-level date made
+       every timeline reader prefer the stale row date. */
+    if (patch.estSignDate !== undefined) line.estSignDate = merged.estSignDate;
     /* AND THE MONEY. `value` is written FROM the rows (see normalizeOne: "the
        rows ARE the money once there are any"), so a value posted at the top
        level was recomputed straight back to the row's old figure and thrown

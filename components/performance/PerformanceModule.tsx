@@ -45,6 +45,8 @@ import {
   weightedValue,
   opportunityValue,
   opportunityConfidence,
+  estimatedTcvOf,
+  signDateOf,
   lineLabel,
   lines as oppLines,
   type Opportunity,
@@ -4993,6 +4995,10 @@ function LogActualModal({
     });
   }, [newOpportunities, pipeline]);
   const [newOpportunityOpen, setNewOpportunityOpen] = useState(false);
+  /** The inline opportunity card doubles as the editor after creation. Null
+   *  means the fields are creating a new opportunity; an id means they are
+   *  changing the selected one. Saving always folds the card back down. */
+  const [editingOpportunityId, setEditingOpportunityId] = useState<string | null>(null);
   const [newOpportunityName, setNewOpportunityName] = useState("");
   const [newOpportunityTcv, setNewOpportunityTcv] = useState("");
   const [newOpportunityConfidence, setNewOpportunityConfidence] = useState("50");
@@ -5076,6 +5082,7 @@ function LogActualModal({
   useEffect(() => {
     if (open) return;
     setNewOpportunityOpen(false);
+    setEditingOpportunityId(null);
     setNewOpportunityError(null);
   }, [open]);
 
@@ -5188,6 +5195,9 @@ function LogActualModal({
    *  still empty, so choosing a deal never rewrites a customer by hand. */
   function pickLink(next: string) {
     setLink(next);
+    setNewOpportunityOpen(false);
+    setEditingOpportunityId(null);
+    setNewOpportunityError(null);
     /* A different deal means different chips; the old pressed one no longer
        refers to anything on screen. */
     setPickedChip(null);
@@ -5203,6 +5213,7 @@ function LogActualModal({
 
   function startNewOpportunity() {
     if (!customer.trim()) return;
+    setEditingOpportunityId(null);
     setNewOpportunityName("");
     setNewOpportunityTcv(parsed === null ? "" : String(Math.round(parsed)));
     setNewOpportunityConfidence("50");
@@ -5211,7 +5222,20 @@ function LogActualModal({
     setNewOpportunityOpen(true);
   }
 
-  async function createOpportunity() {
+  function editOpportunity(opportunity: Opportunity) {
+    setEditingOpportunityId(opportunity.id);
+    setNewOpportunityName(opportunity.name);
+    setNewOpportunityTcv(String(Math.round(estimatedTcvOf(opportunity) ?? 0)));
+    setNewOpportunityConfidence(
+      String(Math.round(opportunityConfidence(opportunity) ?? 0))
+    );
+    setNewOpportunitySignDate(signDateOf(opportunity) ?? date ?? defaultDate);
+    setNewOpportunityError(null);
+    setNewOpportunityOpen(true);
+  }
+
+  async function saveOpportunity() {
+    const editingId = editingOpportunityId;
     const tcv = Number(newOpportunityTcv.replace(/,/g, ""));
     const confidence = Number(newOpportunityConfidence);
     if (!newOpportunityName.trim()) {
@@ -5237,28 +5261,42 @@ function LogActualModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          op: "add",
+          op: editingId ? "update" : "add",
+          ...(editingId ? { id: editingId } : {}),
           name: newOpportunityName.trim(),
           customer: customer.trim(),
           ...(customerId ? { customerId } : {}),
           currency: entryCurrency,
+          value: tcv,
           estimatedTcv: tcv,
-          lines: [{ confidence, estSignDate: newOpportunitySignDate }],
+          confidence,
+          estSignDate: newOpportunitySignDate,
+          ...(!editingId
+            ? { lines: [{ value: tcv, confidence, estSignDate: newOpportunitySignDate }] }
+            : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.opportunity) {
         throw new Error(data?.error || "That opportunity did not save.");
       }
-      const created = data.opportunity as Opportunity;
-      setNewOpportunities((current) => [created, ...current]);
-      setLink(`opp:${created.id}`);
-      if (!amount.trim() && typeof created.estimatedTcv === "number") {
-        setAmount(String(Math.round(created.estimatedTcv)));
+      const saved = data.opportunity as Opportunity;
+      setNewOpportunities((current) => [
+        saved,
+        ...current.filter((opportunity) => opportunity.id !== saved.id),
+      ]);
+      setLink(`opp:${saved.id}`);
+      if (!editingId && !amount.trim() && typeof saved.estimatedTcv === "number") {
+        setAmount(String(Math.round(saved.estimatedTcv)));
       }
       setNewOpportunityOpen(false);
+      setEditingOpportunityId(null);
       refreshOpportunities();
-      toast(`${created.name} added and selected.`);
+      toast(
+        editingId
+          ? `${saved.name} updated.`
+          : `${saved.name} added and selected.`
+      );
     } catch (error) {
       setNewOpportunityError(
         error instanceof Error ? error.message : "That opportunity did not save."
@@ -5612,16 +5650,61 @@ function LogActualModal({
               ]}
             />
           </div>
+          {linkedOpp && !newOpportunityOpen && (
+            <button
+              type="button"
+              aria-expanded="false"
+              aria-label={`Edit ${linkedOpp.name} opportunity details`}
+              onClick={() => editOpportunity(linkedOpp)}
+              className="mt-2 flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border-light bg-white px-3 py-2.5 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/20"
+            >
+              <CompanyLogo
+                name={linkedOpp.customer}
+                className="h-7 w-7 shrink-0 text-[8px]"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                  {linkedOpp.name}
+                </span>
+                <span className="block truncate text-[11px] text-text-tertiary tnum">
+                  {fmtAmount(
+                    "currency",
+                    estimatedTcvOf(linkedOpp) ?? 0,
+                    linkedOpp.currency ?? entryCurrency
+                  )}
+                  {" · "}
+                  {Math.round(opportunityConfidence(linkedOpp) ?? 0)}% confidence
+                  {signDateOf(linkedOpp)
+                    ? ` · signs ${signDateOf(linkedOpp)}`
+                    : " · no signing date"}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-semibold text-blue-primary">
+                Edit
+                <ChevronDown size={14} strokeWidth={2.2} aria-hidden="true" />
+              </span>
+            </button>
+          )}
           {newOpportunityOpen && (
             <div className="mt-2.5 rounded-xl border border-blue-subtle bg-blue-light/20 p-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[12.5px] font-semibold text-text-primary">
-                  New opportunity for {customer.trim()}
+                  {editingOpportunityId
+                    ? `Edit ${newOpportunityName || "opportunity"}`
+                    : `New opportunity for ${customer.trim()}`}
                 </p>
                 <button
                   type="button"
-                  onClick={() => setNewOpportunityOpen(false)}
-                  aria-label="Cancel new opportunity"
+                  onClick={() => {
+                    setNewOpportunityOpen(false);
+                    setEditingOpportunityId(null);
+                    setNewOpportunityError(null);
+                  }}
+                  aria-label={
+                    editingOpportunityId
+                      ? "Close opportunity editor"
+                      : "Cancel new opportunity"
+                  }
                   className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-white hover:text-text-primary"
                 >
                   <X size={14} strokeWidth={2.2} />
@@ -5703,16 +5786,20 @@ function LogActualModal({
                 )}
                 <Button
                   variant="secondary"
-                  onClick={() => setNewOpportunityOpen(false)}
+                  onClick={() => {
+                    setNewOpportunityOpen(false);
+                    setEditingOpportunityId(null);
+                    setNewOpportunityError(null);
+                  }}
                   disabled={newOpportunityBusy}
                 >
                   Cancel
                 </Button>
                 <Button
-                  onClick={() => void createOpportunity()}
+                  onClick={() => void saveOpportunity()}
                   loading={newOpportunityBusy}
                 >
-                  Add opportunity
+                  {editingOpportunityId ? "Save changes" : "Add opportunity"}
                 </Button>
               </div>
             </div>
