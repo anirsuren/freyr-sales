@@ -1357,3 +1357,5 @@ In Market Intelligence list views, the People avatar stack fans apart on hover a
 ### Sep 21: review-workspace content reads like a finished product
 
 Mock-mode screens never label records, publishers, people, summaries, charts, emails, calls, targets, or intelligence as sample, fake, fictional, illustrative, placeholder, or demo data. The global disclaimer banner is removed. Generated records use normal product language and credible source names, while protected write behavior remains enforced behind the interface. Completed locally, not deployed.
+
+The Market Intelligence Saved control is an additive filter. Turning it on keeps search, relevance, time range, exact date, source, signal, and view controls visible and preserves their current values; those filters continue to narrow the saved set. Completed locally, not deployed.

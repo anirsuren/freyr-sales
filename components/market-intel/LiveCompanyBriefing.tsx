@@ -326,7 +326,7 @@ export function LiveCompanyBriefing({
   const concerns = (i: Item) =>
     !relevantOnly || isRelevantCompanyItem(briefing.group, i);
   const availableItems = savedOnly ? savedArticles.map(saved => items.find(item => item.url === saved.url) ?? saved) : items;
-  const matched = availableItems.filter((i) => (savedOnly || inRange(i.date)) && hit(i.title, i.body, i.sourceLabel, i.signal?.why));
+  const matched = availableItems.filter((i) => inRange(i.date) && hit(i.title, i.body, i.sourceLabel, i.signal?.why));
   const base = matched.filter(concerns);
   const hiddenByRelevance = matched.length - base.length;
 
@@ -752,7 +752,7 @@ export function LiveCompanyBriefing({
             ]}
           />
         )}
-        <button type="button" disabled={!savedReady} aria-pressed={savedOnly} onClick={() => { setSavedOnly(!savedOnly); setSource("all"); setSelectedSignals([]); setQuery(""); }}
+        <button type="button" disabled={!savedReady} aria-pressed={savedOnly} onClick={() => setSavedOnly(!savedOnly)}
           className={cn("inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold disabled:opacity-40", savedOnly ? "border-amber-400 bg-amber-50 text-amber-700" : "border-border-light bg-white text-text-secondary")}>
           <Bookmark
             className={savedArticles.length > 0 ? "text-amber-600" : undefined}
@@ -761,8 +761,7 @@ export function LiveCompanyBriefing({
             fill={savedArticles.length > 0 ? "currentColor" : "none"}
           />Saved {savedArticles.length}
         </button>
-        {!savedOnly && <>
-          <ColorSelect
+        <ColorSelect
             value={range}
             onChange={(value) => { setRange(value as typeof range); setExactDate(""); }}
             ariaLabel="Filter by time range"
@@ -774,14 +773,13 @@ export function LiveCompanyBriefing({
               { value: "30", label: "Past month", color: "var(--ink-violet)", icon: CalendarRange },
               { value: "90", label: "Past 3 months", color: "var(--ink-teal-deep)", icon: History },
             ]}
-          />
-          <div className="relative flex h-10 items-center gap-2 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary focus-within:border-blue-subtle">
-            <CalendarDays size={14} className="text-blue-primary" />
-            <label htmlFor="briefing-exact-date" className="sr-only">Show updates from an exact date</label>
-            <input id="briefing-exact-date" type="date" value={exactDate} onChange={(event) => setExactDate(event.target.value)} className="cursor-pointer bg-transparent text-[12px] text-text-primary outline-none" />
-            {exactDate && <button type="button" onClick={() => setExactDate("")} className="cursor-pointer text-blue-primary hover:underline">Clear</button>}
-          </div>
-        </>}
+        />
+        <div className="relative flex h-10 items-center gap-2 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary focus-within:border-blue-subtle">
+          <CalendarDays size={14} className="text-blue-primary" />
+          <label htmlFor="briefing-exact-date" className="sr-only">Show updates from an exact date</label>
+          <input id="briefing-exact-date" type="date" value={exactDate} onChange={(event) => setExactDate(event.target.value)} className="cursor-pointer bg-transparent text-[12px] text-text-primary outline-none" />
+          {exactDate && <button type="button" onClick={() => setExactDate("")} className="cursor-pointer text-blue-primary hover:underline">Clear</button>}
+        </div>
       </SearchPriority>
 
       <div className={cn(
@@ -835,7 +833,7 @@ export function LiveCompanyBriefing({
           </div>
 
           <div
-            key={`${source}-${selectedSignals.join(",") || "any"}-${newsView}-${range}-${exactDate}-${relevantOnly}`}
+            key={`${savedOnly}-${source}-${selectedSignals.join(",") || "any"}-${newsView}-${range}-${exactDate}-${relevantOnly}`}
             className={cn(
               "tab-panel",
               newsView === "tiles" && groups.length > 0
