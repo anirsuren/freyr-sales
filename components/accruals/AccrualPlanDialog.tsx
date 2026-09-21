@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { useRouter } from "next/navigation";
@@ -1722,7 +1723,7 @@ export function AccrualPlanDialog({
    */
   const body = (
     <>
-      {/* THE DEAL IS A DROPDOWN, IN THIS SAME DIALOG (Anir, Aug 27:
+      {/* THE DEAL IS A DROPDOWN ONLY WHILE CREATING AN UNBOUND PLAN (Anir, Aug 27:
           "maybe just make it a dropdown... you choose the deal, and then
           the other stuff shows up. It should be one pop-up").
 
@@ -1732,17 +1733,33 @@ export function AccrualPlanDialog({
           so a long list costs nothing, and the plan fields below wait
           until there is something to plan.
 
-          ON A DEAL'S OWN PAGE there is nothing to pick: the caller hands over
-          an empty `pickable` and the deal is already chosen, so the field
-          shows which deal is being planned and offers no way to wander off it.
-          Same field, same screen, one row in the menu. */}
+          AN EXISTING OR PRESELECTED PLAN IS BOUND TO ITS DEAL. Its schedule,
+          versions and deviations all belong to that opportunity, so a picker
+          there would imply that those records can be reassigned. The fixed row
+          names the deal without pretending it can be changed. */}
       <div className="shrink-0">
       {/* NO "WHICH DEAL" ON THE DEAL'S OWN PAGE. Inline, the question is
           already answered by the page around it, and a picker offering one
           option is a control that cannot do anything. */}
       {!inline && (
-      <Field label="Which deal" required>
-        <ColorSelect
+        dealId ? (
+          <Field label="Deal" required>
+            <div className="flex h-11 items-center gap-2.5 rounded-md border border-border bg-surface px-3.5">
+              <CompanyLogo
+                name={dealById.get(editing.opportunityId)?.customer ?? "Deal"}
+                className="h-6 w-6 shrink-0 text-[8px]"
+              />
+              <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-text-primary">
+                {dealById.get(editing.opportunityId)?.name ?? "This deal"}
+              </span>
+              <span className="hidden shrink-0 text-[11.5px] font-medium text-text-tertiary sm:inline">
+                This plan belongs to this deal
+              </span>
+            </div>
+          </Field>
+        ) : (
+          <Field label="Which deal" required>
+            <ColorSelect
           value={editing.opportunityId}
           ariaLabel="Which deal are you planning"
           collapsible={false}
@@ -1829,8 +1846,9 @@ export function AccrualPlanDialog({
                 ]
               : []),
           ]}
-        />
-      </Field>
+            />
+          </Field>
+        )
       )}
       </div>
 
