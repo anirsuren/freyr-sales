@@ -1419,3 +1419,5 @@ The Market Intelligence Saved control is an additive filter. Turning it on keeps
 The Market Intelligence tracked-person activity dialog uses the large review surface: up to 1380px/94vw wide and 78vh tall on desktop, with a wider profile rail and the remaining space dedicated to the post feed. Completed locally, not deployed.
 
 In Market Intelligence list rows, hover arrows sit inline immediately after the linked company name or latest-intelligence headline, including after wrapped text. They never occupy the far edge of the column as a separate flex item. Completed locally, not deployed.
+
+Market Intelligence list views keep the Company column compact at 250px for customers and 260px for competitors. Extra horizontal room belongs to Latest intelligence, where longer headlines benefit from it, while company names and division tags may wrap naturally within their smaller column. Completed locally, not deployed.

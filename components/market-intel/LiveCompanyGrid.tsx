@@ -462,7 +462,7 @@ export function LiveCompanyGrid({
           <div className={cn("min-w-[1370px]", group === "customer" && "min-w-[1450px]")}>
             <div
               className="grid items-center gap-5 border-b border-border-light bg-surface/80 px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary"
-              style={{ gridTemplateColumns: group === "customer" ? "minmax(285px,1.2fr) 180px 225px minmax(260px,1.1fr) 130px 120px 90px" : "minmax(300px,1.2fr) 190px 240px minmax(270px,1.2fr) 120px 90px" }}
+              style={{ gridTemplateColumns: group === "customer" ? "250px 180px 225px minmax(295px,1fr) 130px 120px 90px" : "260px 190px 240px minmax(330px,1fr) 120px 90px" }}
             >
               <span>Company</span>
               <span>Intelligence pulse</span>
@@ -475,7 +475,7 @@ export function LiveCompanyGrid({
             <div className="mi-list-stagger divide-y divide-border-light">
               {listRows.map(row => {
                 const card = row.card;
-                const rowTemplate = group === "customer" ? "minmax(285px,1.2fr) 180px 225px minmax(260px,1.1fr) 130px 120px 90px" : "minmax(300px,1.2fr) 190px 240px minmax(270px,1.2fr) 120px 90px";
+                const rowTemplate = group === "customer" ? "250px 180px 225px minmax(295px,1fr) 130px 120px 90px" : "260px 190px 240px minmax(330px,1fr) 120px 90px";
                 if (!card) return (
                   <div key={row.id} className="relative grid min-h-[106px] items-center gap-5 px-5 py-4" style={{ gridTemplateColumns: rowTemplate }}>
                     <div className="flex min-w-0 items-center gap-2.5">
