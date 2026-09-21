@@ -980,7 +980,7 @@ export function SentBackCard({
               <button
                 type="button"
                 onClick={() => onFix(a.id)}
-                className="ml-auto shrink-0 cursor-pointer rounded-lg bg-[color:#DC2626] px-3.5 py-2 text-[12.5px] font-bold text-white transition-all hover:opacity-90"
+                className="ml-auto shrink-0 cursor-pointer rounded-lg bg-blue-primary px-3.5 py-2 text-[12.5px] font-bold text-white transition-all hover:bg-blue-hover active:scale-[0.98]"
               >
                 {isMe ? "Fix it" : "Open it"}
               </button>
