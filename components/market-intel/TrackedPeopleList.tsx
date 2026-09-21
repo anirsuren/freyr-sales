@@ -155,6 +155,7 @@ export function TrackedPeopleList({
         onClose={() => setOpenId(null)}
         title={open ? open.name : ""}
         size="workflow"
+        dialogClassName="!max-w-[min(1380px,94vw)]"
       >
         {open && (
           /**
@@ -175,7 +176,7 @@ export function TrackedPeopleList({
            * column and one scroller, the modal's, because side-by-side panes
            * do not exist there.
            */
-          <div className="grid grid-cols-1 items-start gap-5 md:h-[70vh] md:grid-cols-[minmax(0,1fr)_296px] md:items-stretch md:gap-0">
+          <div className="grid grid-cols-1 items-start gap-5 md:h-[78vh] md:grid-cols-[minmax(0,1fr)_320px] md:items-stretch md:gap-0">
             {/* POSTS OWN THE LEFT (Anir, Aug 11: "the person goes on the
                 right, and then on the left are all the posts").
 
