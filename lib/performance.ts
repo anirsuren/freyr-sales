@@ -1230,6 +1230,10 @@ export async function sendBackActual(input: {
   by: string;
   note?: string;
 }): Promise<void> {
+  const reason = str(input.note, 300);
+  if (!reason) {
+    throw new Error("Say what needs fixing before sending this claim back.");
+  }
   const state = await readRow();
   const entry = state.actuals.find((a) => a.id === input.actualId);
   if (!entry) throw new Error("That entry is gone. Refresh and retry.");
@@ -1239,7 +1243,7 @@ export async function sendBackActual(input: {
   entry.status = "sent_back";
   entry.verifiedBy = undefined;
   entry.verifiedAt = undefined;
-  entry.managerNote = input.note ? str(input.note, 300) : undefined;
+  entry.managerNote = reason;
   // The name goes on the rejection, always — a note with nobody behind it
   // leaves the rep with nobody to ask.
   entry.sentBackBy = str(input.by, 80) || undefined;

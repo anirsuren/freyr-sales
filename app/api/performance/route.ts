@@ -530,10 +530,13 @@ export async function POST(req: NextRequest) {
         await verifyActual({ actualId: String(body.actualId ?? ""), by: me.name });
         break;
       case "send-back-actual":
+        if (!String(body.note ?? "").trim()) {
+          throw new Error("Say what needs fixing before sending this claim back.");
+        }
         await sendBackActual({
           actualId: String(body.actualId ?? ""),
           by: me.name,
-          note: body.note ? String(body.note) : undefined,
+          note: String(body.note).trim(),
         });
         break;
       case "log-actual":

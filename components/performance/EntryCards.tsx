@@ -2531,11 +2531,14 @@ export function ClaimReviewDialog({
    *  again, so it says so and drops the Verify button. */
   const locked = entryStatus(a) === "verified";
   const [note, setNote] = useState("");
+  const [noteError, setNoteError] = useState(false);
+  const hasSendBackReason = note.trim().length > 0;
   const goal = state.goals.find((g) => g.id === a.goalId);
   const sub = goal?.subgoals.find((x) => x.id === a.subgoalId);
   const close = () => {
     setSendingBack(false);
     setNote("");
+    setNoteError(false);
     onClose();
   };
   return (
@@ -2843,11 +2846,32 @@ export function ClaimReviewDialog({
                 <input
                   required
                   value={note}
-                  onChange={(e) => setNote(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setNote(next);
+                    if (next.trim()) setNoteError(false);
+                  }}
+                  onBlur={() => setNoteError(!note.trim())}
                   autoFocus
                   placeholder="They see this note"
-                  className="mt-1.5 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
+                  aria-invalid={noteError}
+                  aria-describedby={noteError ? "send-back-reason-error" : undefined}
+                  className={cn(
+                    "mt-1.5 h-[38px] w-full rounded-lg border bg-white px-3 text-[13px] outline-none",
+                    noteError
+                      ? "border-error focus:border-error"
+                      : "border-border-light focus:border-blue-subtle"
+                  )}
                 />
+                {noteError && (
+                  <p
+                    id="send-back-reason-error"
+                    role="alert"
+                    className="mt-1 text-[11.5px] font-semibold text-error"
+                  >
+                    Enter what needs fixing before sending this claim back.
+                  </p>
+                )}
               </div>
             )}
 
@@ -2863,15 +2887,19 @@ export function ClaimReviewDialog({
                   </button>
                   <button
                     type="button"
-                    disabled={busy}
+                    disabled={busy || !hasSendBackReason}
                     onClick={async () => {
+                      if (!hasSendBackReason) {
+                        setNoteError(true);
+                        return;
+                      }
                       const ok = await run(
-                        { op: "send-back-actual", actualId: a.id, note },
+                        { op: "send-back-actual", actualId: a.id, note: note.trim() },
                         "Sent back with your note"
                       );
                       if (ok) close();
                     }}
-                    className="cursor-pointer rounded-lg bg-[color:#B02020] px-4 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-[color:#8F1A1A] disabled:opacity-50"
+                    className="cursor-pointer rounded-lg bg-[color:#B02020] px-4 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-[color:#8F1A1A] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-[color:#B02020]"
                   >
                     Send it back
                   </button>

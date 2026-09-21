@@ -196,6 +196,13 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 21 send-back reason enforcement:** The required “What needs fixing”
+  note in the claim review dialog now keeps Send it back disabled for empty or
+  whitespace-only input, shows an inline error after an empty blur, trims the
+  saved note, and is enforced again at the API and data-store boundaries.
+  Verified in the localhost Mock flow without submitting a claim. Typecheck and
+  rule tests pass. Local only, not deployed.
+
 - **Sep 19 collapsed sidebar brand spacing:** The collapsed 72px sidebar now
   centers the Freyr mark with real side padding and stacks the DEV environment
   badge beneath it. The badge no longer forces the logo against the viewport
