@@ -1341,3 +1341,5 @@ Logged results in the People drill-down render as individually separated cards r
 Logged-result cards show a disclosure chevron only inside the expanded Organization → group → person surface, where the card truly opens inline. In the embedded three-column drill, clicking a result opens its separate detail dialog, so the row must not display a dropdown chevron. Completed locally, not deployed.
 
 Inline result details belong to the expanded Organization → group → person surface. Closing that surface by its close action, backdrop, collapse control, or Escape clears the selected inline result before returning to the page, so the same result never reappears as a second standalone modal after the parent closes. Completed locally, not deployed.
+
+Lead lists use the same focused expansion treatment as Goals. When one lead is open, every other lead row dims to 45% opacity and returns to full opacity on hover; the selected lead and its expanded details remain fully emphasized. Completed locally, not deployed.

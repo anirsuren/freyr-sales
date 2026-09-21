@@ -706,10 +706,11 @@ export function LeadsModule({
                       onClick={() => setOpenRow(open ? null : lead.id)}
                       aria-expanded={open}
                       className={cn(
-                        "cursor-pointer transition-colors",
+                        "cursor-pointer transition-[background-color,opacity] duration-200",
                         open
                           ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-                          : "hover:bg-surface"
+                          : "hover:bg-surface",
+                        openRow !== null && !open && "opacity-45 hover:opacity-100"
                       )}
                     >
                       <td className="px-4 py-2.5">
