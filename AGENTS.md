@@ -196,6 +196,15 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 21 frozen real Market Intelligence stories:** Mock Customer,
+  Competitor, and Market Intelligence now share a static set of real MHRA
+  stories with working GOV.UK destinations instead of generated headlines and
+  `market-intel.example` links. The M&A tracker uses a separate frozen set of
+  real transactions linked to original company releases. Dates and collection
+  clocks no longer move on reload, so review data stays stable. Typecheck and
+  rule tests pass. Verified on localhost across all three Market Intelligence
+  views. Local only, not deployed.
+
 - **Sep 21 Market Intelligence list revamp:** Customer and Competitor
   Intelligence list views now carry the same decision-useful information as
   their tiles: activity sparklines, momentum, posts/news/site/signal counts,
