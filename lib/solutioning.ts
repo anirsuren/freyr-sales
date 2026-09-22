@@ -1,4 +1,4 @@
-import { validateNewSolutioningRequest } from "./solutioningValidation";
+import { validateSolutioningCreation } from "./solutioningValidation";
 import { getDataMode } from "./dataMode";
 import { mockFillSolutioning, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
 import { canonicalMockTeammate } from "./salesTeam";
@@ -1166,7 +1166,7 @@ export async function createRequest(input: {
   /** One per division, pre-filled with the configured lead (SOL-008). */
   workstreams?: SolutionWorkstream[];
 }): Promise<SolutionRequest> {
-  validateNewSolutioningRequest(input, todayISO());
+  validateSolutioningCreation(input, todayISO());
   return withWrite(async () => buildRecord(await readRow(), input, true));
 }
 

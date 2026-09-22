@@ -196,6 +196,15 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Create submission from existing request:** The detail-page action
+  now carries the request brief into its submission or presentation. Linked
+  work no longer fails the fresh-request brief/date validator when a legacy
+  request lacks details or its due date has passed; new standalone records
+  still require both. The API verifies the linked parent and copies its
+  canonical brief/date. Verified in localhost Mock mode by creating SUB-0005
+  from REQ-F0211, seeing the inherited brief and documents, and running the
+  focused validation test, typecheck, and lint. Local only, not deployed.
+
 - **Sep 22 Solutioning owner confirmation:** Replaced the cramped generic
   dialog with a compact request summary and a clear current-owner-to-new-owner
   row with avatars. Verified its layout in a localhost Mock request without

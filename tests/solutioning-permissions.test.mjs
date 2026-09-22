@@ -19,7 +19,7 @@ function load(file) {
   return mod.exports;
 }
 
-const { validateNewSolutioningRequest, canAssignSolutioning } = load('lib/solutioningValidation.ts');
+const { validateNewSolutioningRequest, validateSolutioningCreation, canAssignSolutioning } = load('lib/solutioningValidation.ts');
 const access = load('lib/moduleAccess.ts');
 test('assignment belongs to Solutioning Owners, with admin override', () => {
   assert.equal(canAssignSolutioning('sol_member', ['sol_owner']), true);
@@ -42,4 +42,11 @@ test('new requests require a real date, today or later, and brief', () => {
   assert.throws(() => check('2026-09-17', '   '));
   assert.doesNotThrow(() => check('2026-09-16'));
   assert.doesNotThrow(() => check('2026-09-17'));
+});
+test('work linked to an existing request can start without re-entering its brief or due date', () => {
+  for (const type of ['submission', 'presentation']) {
+    assert.doesNotThrow(() => validateSolutioningCreation({ type, requestId: 'sr-1', neededBy: '2026-08-24' }, '2026-09-22'));
+    assert.throws(() => validateSolutioningCreation({ type, neededBy: '2026-08-24' }, '2026-09-22'));
+  }
+  assert.throws(() => validateSolutioningCreation({ type: 'request', requestId: 'sr-1', neededBy: '2026-08-24' }, '2026-09-22'));
 });

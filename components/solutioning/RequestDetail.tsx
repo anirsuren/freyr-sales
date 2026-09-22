@@ -584,6 +584,7 @@ export function RequestDetail({
               kind: r.kind,
               requestId: r.id,
               title: r.title,
+              details: r.details,
               customer: r.customer,
               ...(r.customerId ? { customerId: r.customerId } : {}),
               ...(r.subtype ? { subtype: r.subtype } : {}),

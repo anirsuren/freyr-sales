@@ -16,6 +16,19 @@ export function validateNewSolutioningRequest(
   }
 }
 
+/** Work raised from an existing request inherits that request's brief and due
+ * date. Legacy requests may have no brief or a date that has since passed;
+ * those facts must not prevent their owner from starting the deliverable. */
+export function validateSolutioningCreation(
+  input: { type?: string; requestId?: string; neededBy?: string; details?: string },
+  today: string,
+): void {
+  const linkedWork =
+    (input.type === "submission" || input.type === "presentation") &&
+    !!input.requestId?.trim();
+  if (!linkedWork) validateNewSolutioningRequest(input, today);
+}
+
 export function canAssignSolutioning(role: string, privileges: readonly string[]): boolean {
   return role === "admin" || privileges.includes("admin") || privileges.includes("sol_owner");
 }

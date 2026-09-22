@@ -23,6 +23,7 @@ import {
   updateRequest,
   type DocCategory,
   type SolutioningKind,
+  type SolutionRequest,
   commentOnRequest,
 } from "@/lib/solutioning";
 import { listOfferingCategories, listOfferings } from "@/lib/offerings";
@@ -247,8 +248,18 @@ export async function POST(req: NextRequest) {
        * Open work only: a finished or cancelled deliverable does not stop the
        * team raising the next one against the same ask.
        */
+      let linkedRequest: SolutionRequest | undefined;
       if (isDeliverable && body.requestId) {
         const current = await readSolutioning();
+        linkedRequest = current.requests.find(
+          (x) => x.id === body.requestId && x.type === "request" && x.kind === kind
+        );
+        if (!linkedRequest) {
+          return NextResponse.json(
+            { error: "The source request could not be found." },
+            { status: 400 }
+          );
+        }
         const existing = current.requests.find(
           (x) =>
             x.requestId === body.requestId &&
@@ -277,14 +288,14 @@ export async function POST(req: NextRequest) {
         kind,
         subtype: body.subtype,
         title: String(body.title ?? ""),
-        details: body.details,
+        details: linkedRequest ? linkedRequest.details : body.details,
         customerId: body.customerId,
         customer: String(body.customer ?? ""),
         opportunityIds: body.opportunityIds,
         opportunityLabels: body.opportunityLabels,
         contactIds: body.contactIds,
         contactNames: body.contactNames,
-        neededBy: body.neededBy,
+        neededBy: linkedRequest ? linkedRequest.neededBy : body.neededBy,
         meetingAt: body.meetingAt,
         attendees: body.attendees,
         requestedBy: me.name,
