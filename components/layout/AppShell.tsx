@@ -30,6 +30,7 @@ import {
   ASK_AGENT_EVENT,
   type AskAgentDetail,
 } from "@/lib/agentEvents";
+import { consumeAgentNavigationHandoff } from "@/lib/agentNavigationHandoff";
 import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 import { cn } from "@/lib/utils";
 
@@ -211,6 +212,25 @@ export function AppShell({
     window.addEventListener(ASK_AGENT_EVENT, revealAgent);
     return () => window.removeEventListener(ASK_AGENT_EVENT, revealAgent);
   }, [agentHiddenStorageKey, agentStateReady]);
+
+  // A link clicked inside the full Agent page carries that conversation onto
+  // the destination record. The marker is one-shot: normal navigation never
+  // makes the dock pop open unexpectedly, while a company/contact/offering
+  // answer remains visible beside the page it opened.
+  useEffect(() => {
+    if (!agentStateReady || pathname.startsWith("/agent")) return;
+    try {
+      if (!consumeAgentNavigationHandoff(currentUser.id)) return;
+      setAgentHidden(false);
+      setAgentOpen(true);
+      localStorage.removeItem(agentHiddenStorageKey);
+    } catch {}
+  }, [
+    agentHiddenStorageKey,
+    agentStateReady,
+    currentUser.id,
+    pathname,
+  ]);
 
   // close the mobile drawer on route change
   useEffect(() => {

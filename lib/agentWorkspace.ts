@@ -241,8 +241,25 @@ export async function readAgentWorkspace(
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
         followUpEvidence: "No dedicated last-contact date is recorded on a lead. Updated time is a record edit, not proof of a follow-up. Only describe contact history explicitly recorded in the note; otherwise say it is unknown.",
-        url: "/leads",
+        leadListUrl: "/leads",
+        companyUrl: r.customerId
+          ? `/customers/${encodeURIComponent(r.customerId)}`
+          : null,
       }));
+    const countBy = (field: "status" | "source" | "owner") =>
+      rows.reduce<Record<string, number>>((counts, row) => {
+        const value = String(row[field] || "Unspecified");
+        counts[value] = (counts[value] || 0) + 1;
+        return counts;
+      }, {});
+    summary = {
+      totalRecords: rows.length,
+      statusCounts: countBy("status"),
+      sourceCounts: countBy("source"),
+      ownerCounts: countBy("owner"),
+      basis:
+        "These aggregates cover every visible lead before search filtering and pagination. Use them for totals and breakdowns; do not count only the returned page of records.",
+    };
   } else if (key === "opportunities") {
     const offeringsAllowed = await canOpenModule("/offerings");
     if (offeringsAllowed) await initializeLiveOfferings();

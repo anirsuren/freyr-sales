@@ -529,50 +529,52 @@ export default async function RepPage({
 
   return (
     <div className="space-y-6 stagger">
-      <BackButton fallback="/team" label="Back" />
+      <div className="space-y-2.5">
+        <BackButton fallback="/team" label="Back" />
 
-      {/* Identity */}
-      <div className="flex items-center gap-4">
-        <Avatar name={name} className="w-16 h-16 text-[20px] shrink-0" />
-        <div className="min-w-0">
-          <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary flex items-center gap-2">
-            {name}
-            {isYou && (
-              <span className="text-[11px] font-bold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded bg-blue-light text-blue-primary">
-                You
-              </span>
-            )}
-          </h1>
-          <p className="text-[13px] text-text-secondary mt-0.5">
-            {title}{region ? ` · ${region}` : ""} · {me.deals} deal{me.deals === 1 ? "" : "s"} owned
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px]">
-            <a
-              href={`mailto:${email}`}
-              className="inline-flex items-center gap-1.5 text-text-secondary hover:text-blue-primary transition-colors"
-            >
-              <Mail size={13} strokeWidth={1.9} className="shrink-0" />
-              {email}
-            </a>
-            {phone && (
+        {/* Keep the return path and profile identity visually connected. */}
+        <div className="flex items-center gap-4">
+          <Avatar name={name} className="w-16 h-16 text-[20px] shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-text-primary flex items-center gap-2">
+              {name}
+              {isYou && (
+                <span className="text-[11px] font-bold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded bg-blue-light text-blue-primary">
+                  You
+                </span>
+              )}
+            </h1>
+            <p className="text-[13px] text-text-secondary mt-0.5">
+              {title}{region ? ` · ${region}` : ""} · {me.deals} deal{me.deals === 1 ? "" : "s"} owned
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px]">
               <a
-                href={`tel:${phone.replace(/[^+\d]/g, "")}`}
-                className="inline-flex items-center gap-1.5 text-text-secondary hover:text-blue-primary transition-colors tnum"
+                href={`mailto:${email}`}
+                className="inline-flex items-center gap-1.5 text-text-secondary hover:text-blue-primary transition-colors"
               >
-                <PhoneCall size={13} strokeWidth={1.9} className="shrink-0" />
-                {phone}
+                <Mail size={13} strokeWidth={1.9} className="shrink-0" />
+                {email}
               </a>
-            )}
-            <a
-              href={teamsChatUrl(name)}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`Message ${name.split(" ")[0]} on Teams`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1 text-[12px] font-semibold text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
-            >
-              <TeamsIcon size={14} />
-              Teams
-            </a>
+              {phone && (
+                <a
+                  href={`tel:${phone.replace(/[^+\d]/g, "")}`}
+                  className="inline-flex items-center gap-1.5 text-text-secondary hover:text-blue-primary transition-colors tnum"
+                >
+                  <PhoneCall size={13} strokeWidth={1.9} className="shrink-0" />
+                  {phone}
+                </a>
+              )}
+              <a
+                href={teamsChatUrl(name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Message ${name.split(" ")[0]} on Teams`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border-light px-2.5 py-1 text-[12px] font-semibold text-text-secondary hover:border-blue-subtle hover:bg-blue-light/40 transition-colors"
+              >
+                <TeamsIcon size={14} />
+                Teams
+              </a>
+            </div>
           </div>
         </div>
       </div>

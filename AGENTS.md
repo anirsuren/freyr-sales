@@ -196,6 +196,24 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 21 Vertex AI foundation:** Enabled Agent Platform/Vertex AI API in GCP
+  project `sound-fastness-480519-a6`, added the current Google Gen AI SDK,
+  Application Default Credentials support, a provider-switched Gemini tool
+  loop, health diagnostics, a connection verifier, and the AWS Workload
+  Identity Federation configuration. Local ADC and the live Vertex request are
+  verified. The Google service account can be impersonated only by AWS account
+  `602367507820` role `freyr-sales-ecs-task-role`. Anthropic remains the default
+  until federation is verified inside ECS. The Vertex provider was exercised
+  end-to-end through the localhost Mock UI for offering and customer retrieval,
+  internal links, and Market Intel tool routing. UI testing found and fixed a
+  Gemini thought-part leak, reduced ordinary warm tool requests from the first
+  11-second run to roughly 3–6 seconds with minimal thinking, and repaired named
+  customer links that collapsed to the Customers index. The same pass fixed the
+  agent's Market Intel reader to use the committed frozen feed in Mock mode;
+  the UI now returns real captured GSK posts with their exact LinkedIn links.
+  Health reports the Vertex brain working; typecheck, focused agent tests, and
+  production build pass. Local only, not deployed.
+
 - **Sep 21 Market Intelligence row alignment:** Customer and Competitor list
   rows vertically center the company name/tag block against its logo, star,
   pulse, activity, and intelligence columns. Companies without a division tag
@@ -1431,3 +1449,15 @@ Market Intelligence list views keep the Company column compact at 250px for cust
 Every internal teammate link in Mock mode resolves through the shared sales roster. Rep profiles accept both durable Team identity slugs and readable name slugs used by record tables, and persisted Solutioning rows from the retired mock cast migrate every related owner, requester, preparer, document, workstream, attendee, and activity reference together. A valid mock teammate link must never land on Rep not found. Completed locally, not deployed.
 
 An unavailable inline PDF preview is a handled viewer fallback rather than an application error. Show the download-original message without emitting a console error that makes the development overlay claim there is an Issue; valid real PDFs render normally, and failed previews retain the working original-download path. Completed locally, not deployed.
+
+Internal links in the full Agent page carry the active conversation to the destination record. Clicking a company, contact, offering, teammate, report, or other in-app entity navigates normally, opens the bottom-right assistant on the destination, and resumes the same conversation there. External source links keep their normal behavior, and ordinary navigation never opens the assistant unexpectedly. Completed locally, not deployed.
+
+Every company named by the Agent renders as an identity pill with the company logo and company name. When the same organization exists as a customer, Market Intelligence company, and lead, that overlap is one company identity rather than an ambiguous name: prefer the customer record and its full account destination, falling back to Market Intelligence when no customer exists. Completed locally, not deployed.
+
+The compact bottom-right Agent renders model-provided Markdown links with the same rules as the full Agent page. Internal records and materials appear as clean clickable labels or identity pills, external citations show readable source labels, and raw `[label](/path)` syntax never appears in the conversation. Completed locally, not deployed.
+
+Customer key-contact phone rows preserve international identity. Each number displays the contact's own country flag and explicit `+` dialing code separately from the readable national number; when a shared code such as +1 is enriched with the contact's location, that person's country selects the flag rather than the account's headquarters. Completed locally, not deployed.
+
+The floating Agent uses one control surface at a time. While its 480px conversation panel is open, the launcher disappears instead of remaining as a second oversized close button; the header owns both Close and an explicit Open full chat button that carries the active conversation to the full Agent page. Message bubbles use the wider panel with more breathing room and readable line spacing. Completed locally, not deployed.
+
+Lead status analytics are a drill-down workspace rather than a dead chart. Clicking a status or the expand control opens a near-full-width modal with the donut and selectable status categories in a stable left rail and the actual matching lead records in a wide table on the right. The table includes company, status, source, owner, request, and last movement, with working customer and converted-opportunity links. Completed locally, not deployed.

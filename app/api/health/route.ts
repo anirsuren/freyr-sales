@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { armMarketIntelSelfRefresh, armSiteUpdatesScan } from "@/lib/marketIntelCron";
 import { armMonthlyEmailSchedule } from "@/lib/monthlyEmailCron";
-import { claudeStatus } from "@/lib/claude";
+import {
+  activeAgentStatus,
+  configuredAgentProvider,
+} from "@/lib/agentProvider";
+import { vertexStatus } from "@/lib/vertex";
 import { getDb } from "@/lib/db";
 import { getServiceStatus } from "@/lib/env";
 import { getDataMode } from "@/lib/dataMode";
@@ -101,7 +105,9 @@ export async function GET() {
         services: getServiceStatus(),
         // Whether the agent's brain is ACTUALLY reachable, not merely
         // configured — a present-but-rejected key used to be invisible.
-        agentBrain: claudeStatus(),
+        agentProvider: configuredAgentProvider(),
+        agentBrain: activeAgentStatus(),
+        vertexBrain: vertexStatus(),
         durationMs: Date.now() - started,
       },
       { headers: { "Cache-Control": "no-store" } }

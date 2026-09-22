@@ -25,11 +25,13 @@
     "sweep:charts": "node tests/sweeps/chart-rules.mjs",
     "sweep:defects": "node tests/sweeps/defects.mjs",
     "sweep:menus": "node tests/sweeps/menus.mjs",
-    "sweep:dark": "node tests/sweeps/dark-mode.mjs"
+    "sweep:dark": "node tests/sweeps/dark-mode.mjs",
+    "vertex:verify": "node --env-file=.env.local scripts/verify-vertex.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
     "@aws-sdk/client-sesv2": "^3.1117.0",
+    "@google/genai": "^2.23.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.2",
     "@supabase/supabase-js": "^2.108.2",

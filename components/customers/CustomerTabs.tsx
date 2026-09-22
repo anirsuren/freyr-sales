@@ -6,6 +6,7 @@ import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import { formatPhoneNumber, phoneProblem, nationalDigitBudget, phoneDigits } from "@/lib/phone";
 import { splitPhone, joinPhone } from "@/lib/countries";
+import { contactPhoneDisplay } from "@/lib/contactPhoneDisplay";
 import { formatMoney as fmtMoney } from "@/lib/pipeline";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
@@ -1445,8 +1446,12 @@ export function CustomerTabs({
                   </span>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {contacts.slice(0, 4).map((c) => (
-                    <Card key={c.id} className="group/contact relative p-3.5 transition-colors hover:border-blue-subtle">
+                  {contacts.slice(0, 4).map((c) => {
+                    const displayedPhone = c.phone
+                      ? contactPhoneDisplay(c.phone, c.raw_linkedin_data)
+                      : null;
+                    return (
+                      <Card key={c.id} className="group/contact relative p-3.5 transition-colors hover:border-blue-subtle">
                       {canDeleteContacts && (
                         <button
                           type="button"
@@ -1491,15 +1496,19 @@ export function CustomerTabs({
                               {c.phone && (
                                 <a href={`tel:${c.phone}`} className="relative z-10 flex w-fit items-center gap-1.5 text-[12px] text-text-tertiary hover:text-blue-primary">
                                   <Phone size={12.5} strokeWidth={1.6} className="shrink-0" />
-                                  <span className="tnum">{formatPhoneNumber(c.phone)}</span>
+                                  <span className="shrink-0" aria-label="Phone country and dialing code">
+                                    {displayedPhone?.countryAndCode}
+                                  </span>
+                                  <span className="tnum">{displayedPhone?.nationalNumber}</span>
                                 </a>
                               )}
                             </div>
                           )}
                         </div>
                       </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    );
+                  })}
                 </div>
                 {contacts.length === 0 && (
                   <p className="text-[13px] text-text-secondary">

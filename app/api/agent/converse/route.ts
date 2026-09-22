@@ -19,7 +19,11 @@ import {
   type ChatTurn,
   type ChatAction,
 } from "@/lib/agentChat";
-import { agentConverseAgentic, type AgentToolDef } from "@/lib/claude";
+import type { AgentToolDef } from "@/lib/claude";
+import {
+  agentConversePrimary,
+  configuredAgentProvider,
+} from "@/lib/agentProvider";
 import { offeringsAnswer } from "@/lib/offeringsAgent";
 import {
   getOffering,
@@ -395,6 +399,37 @@ export async function POST(req: NextRequest) {
 
   if (forceMock) return deterministic();
 
+  // Aggregate lead questions are common and already have a precise repository
+  // reader. Put that result in the first prompt so the model can answer in one
+  // pass. Previously it received the whole workspace, decided to call the same
+  // reader, and then needed a second model pass to phrase the result.
+  const leadSummaryQuestion =
+    moduleAccess.leads &&
+    /\bleads?\b/i.test(message) &&
+    /(how many|count|status|source|overview|breakdown|tell me about|new|contacted|qualifying|nurturing|converted|disqualified)/i.test(
+      message,
+    );
+  const leadAggregateQuestion =
+    leadSummaryQuestion &&
+    /(how many|count|status|source|overview|breakdown)/i.test(message);
+  const prefetchedLeadRaw = leadSummaryQuestion
+    ? await readAgentWorkspace(actor, "leads", "", false, 0, false)
+    : "";
+  const prefetchedLeadContext = (() => {
+    if (!prefetchedLeadRaw || !leadAggregateQuestion) return prefetchedLeadRaw;
+    try {
+      const data = JSON.parse(prefetchedLeadRaw);
+      return JSON.stringify({
+        module: data.module,
+        scope: data.scope,
+        summary: data.summary,
+        pageUrl: "/leads",
+      });
+    } catch {
+      return prefetchedLeadRaw;
+    }
+  })();
+
   // -----------------------------------------------------------------------
   // PRIMARY: the real tool-using agent. Claude gets the whole book and DECIDES
   // what to do — read deeper detail, list/filter, or take a real (human-led)
@@ -431,6 +466,7 @@ export async function POST(req: NextRequest) {
    * the search tool is left for digging into documents.
    */
   const catalogueGrounding = (() => {
+    if (leadSummaryQuestion) return "";
     if (!moduleAccess.offerings) return "";
     try {
       /**
@@ -488,6 +524,7 @@ export async function POST(req: NextRequest) {
   })();
 
   const knowledgeGrounding = await (async () => {
+    if (leadSummaryQuestion) return "";
     if (!moduleAccess.offerings) return "";
     try {
       const corpus = secureKnowledgePassagesForMember(
@@ -539,7 +576,7 @@ export async function POST(req: NextRequest) {
    */
   const offeringsOnly = !moduleAccess.customers && !moduleAccess.opportunities;
 
-  const facts = getDataMode() === "live"
+  const facts = leadSummaryQuestion ? "" : getDataMode() === "live"
     ? JSON.stringify({customers:customers.map(c=>({id:c.id,name:c.company_name,owner:c.owner,ownerUserId:c.owner_user_id,country:c.geography,url:`/customers/${encodeURIComponent(c.id)}`})),note:"For pipeline figures, read_workspace opportunities is authoritative. It excludes Won/Lost from open counts and preserves currency. Customer visibility is not ownership."})
     : offeringsOnly ? "" : buildFacts(ctx, deals, needsApproval, runs);
   const savedSignature =
@@ -620,7 +657,7 @@ export async function POST(req: NextRequest) {
      * read "verify someone's number" as a phone number. Both are core flows it
      * now has the steps for.
      */
-    `HOW THIS APP WORKS. The product manual below is authoritative for any
+    (leadSummaryQuestion ? "" : `HOW THIS APP WORKS. The product manual below is authoritative for any
 how-to, where-is, or who-can question about Freyr Sales Intelligence itself:
 the pages, the buttons, and the steps. Answer those from it directly and name
 the page and control. Never say a feature does not exist just because it is
@@ -628,7 +665,7 @@ absent from the offerings catalogue or the market intel feed; those hold
 Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
       onPath,
       message
-    )}\n"""\n\n` +
+    )}\n"""\n\n`) +
 
     // A CHATBOT, NOT AN OPERATOR (Anir, Jul 29: "just have it like a normal
     // chatbot for now. I don't know what kind of features they wanted to do and
@@ -682,7 +719,12 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
           : "") +
         "\n"
       : "") +
-    (offeringsOnly ? "" : "WORKSPACE BOOK (visible records, not necessarily owned by the current user):\n" + facts) +
+    (prefetchedLeadContext
+      ? "PREFETCHED LEADS DATA (authoritative and complete for totals and breakdowns; answer directly from this data without another workspace read):\n" +
+        prefetchedLeadContext +
+        "\n\n"
+      : "") +
+    (offeringsOnly || !facts ? "" : "WORKSPACE BOOK (visible records, not necessarily owned by the current user):\n" + facts) +
     offeringFocus +
     catalogueGrounding +
     knowledgeGrounding;
@@ -757,33 +799,39 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
         deals: cDeals,
         contactCount: cContacts.length,
       });
-      const content = [
-        `Account: ${c.company_name} - ${c.industry}, ${c.geography}, size ${c.size_tier}`,
-        `Enrichment: ${c.enrichment_summary || "n/a"}`,
-        `Health: ${health.label} (${health.score}/100)`,
-        `Open deals (${open.length}, ${formatMoney(
-          open.reduce((s, d) => s + d.value, 0)
-        )}): ${open
-          .map((d) => `${d.stage} ${formatMoney(d.value)}, quiet ${d.staleDays}d`)
-          .join("; ") || "none"}`,
-        `Contacts (${cContacts.length}): ${cContacts
-          .map(
-            (x) =>
-              `${x.full_name}, ${x.job_title}${x.email ? ` <${x.email}>` : ""}`
-          )
-          .join("; ") || "none mapped"}`,
-        `Recent interactions: ${cInts
-          .slice(0, 6)
-          .map(
-            (i) =>
-              `${new Date(i.created_at).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })} ${i.outcome}: ${(i.notes || "").replace(/\s+/g, " ").slice(0, 100)}`
-          )
-          .join(" | ") || "none"}`,
-      ].join("\n");
-      return { content };
+      return {
+        content: JSON.stringify({
+          customer: {
+            id: c.id,
+            name: c.company_name,
+            industry: c.industry,
+            country: c.geography,
+            size: c.size_tier,
+            summary: c.enrichment_summary || "n/a",
+            url: `/customers/${encodeURIComponent(c.id)}`,
+          },
+          health: { label: health.label, score: health.score },
+          openDeals: open.map((d) => ({
+            stage: d.stage,
+            value: formatMoney(d.value),
+            quietDays: d.staleDays,
+          })),
+          contacts: cContacts.map((x) => ({
+            name: x.full_name,
+            title: x.job_title,
+            email: x.email || undefined,
+          })),
+          recentInteractions: cInts.slice(0, 6).map((i) => ({
+            date: new Date(i.created_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            }),
+            outcome: i.outcome,
+            notes: (i.notes || "").replace(/\s+/g, " ").slice(0, 100),
+          })),
+          note: "Use customer.url for every link to this named account.",
+        }),
+      };
     }
 
     if (name === "list_accounts") {
@@ -800,21 +848,21 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
       if (filter === "at_risk") {
         rows = customers
           .filter((c) => healthOf(c).band === "at_risk")
-          .map((c) => `${c.company_name}: health ${healthOf(c).score}/100`);
+          .map((c) => `${c.company_name}: health ${healthOf(c).score}/100, URL /customers/${encodeURIComponent(c.id)}`);
       } else if (filter === "cooling") {
         rows = open
           .filter((d) => d.staleDays > ROTTING_DAYS)
           .sort((a, b) => b.staleDays - a.staleDays)
-          .map((d) => `${d.company} - ${formatMoney(d.value)}, quiet ${d.staleDays}d (${d.stage})`);
+          .map((d) => `${d.company} - ${formatMoney(d.value)}, quiet ${d.staleDays}d (${d.stage}), URL /customers/${encodeURIComponent(d.customerId)}`);
       } else if (filter === "biggest") {
         rows = [...open]
           .sort((a, b) => b.value - a.value)
           .slice(0, 8)
-          .map((d) => `${d.company} - ${formatMoney(d.value)} (${d.stage})`);
+          .map((d) => `${d.company} - ${formatMoney(d.value)} (${d.stage}), URL /customers/${encodeURIComponent(d.customerId)}`);
       } else {
         rows = customers.map((c) => {
           const d = open.find((x) => x.customerId === c.id);
-          return `${c.company_name} - ${d ? `${d.stage} ${formatMoney(d.value)}` : "no open deal"}, health ${healthOf(c).score}/100`;
+          return `${c.company_name} - ${d ? `${d.stage} ${formatMoney(d.value)}` : "no open deal"}, health ${healthOf(c).score}/100, URL /customers/${encodeURIComponent(c.id)}`;
         });
       }
       return { content: rows.length ? rows.join("\n") : `No accounts match "${filter}".` };
@@ -943,19 +991,44 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
   // are useful. The server-level Real-mode guard still refuses them even if a
   // caller bypasses this tool list. Turning the live agent into an operator
   // therefore requires an explicit capability decision in both places.
-  const readOnlyTools = AGENT_TOOLS.filter(t => t.name === "read_workspace" || (t.name === "search_offerings" && moduleAccess.offerings) || (["search_market_intel","read_market_source"].includes(t.name) && moduleAccess.market_intel) || (["get_account_detail","list_accounts"].includes(t.name) && moduleAccess.customers));
-  const agentResult = await agentConverseAgentic(
+  const readOnlyTools = AGENT_TOOLS.filter(t =>
+    (!(leadSummaryQuestion && t.name === "read_workspace")) &&
+    (t.name === "read_workspace" ||
+      (t.name === "search_offerings" && moduleAccess.offerings) ||
+      (["search_market_intel", "read_market_source"].includes(t.name) && moduleAccess.market_intel) ||
+      (["get_account_detail", "list_accounts"].includes(t.name) && moduleAccess.customers))
+  );
+  const agentStartedAt = performance.now();
+  const agentResult = await agentConversePrimary(
     agentSystem + namedMarketContext + "\nRESPONSE PRESENTATION: Give a concise answer, normally 150–250 words unless more detail is requested. Link every named application record using its provided canonical destination, including the first mention. Never expose backend tool names as user navigation or fabricate a page for a tool. Keep opaque database IDs out of prose unless requested; put them only inside the supplied link destinations. When explaining navigation, link named pages using navigation in VERIFIED CURRENT USER and verified routes in the app guide (for example [Team](/team)); do not leave page directions as unlinked text. Internal application links MUST preserve the exact relative path returned by the tool, e.g. [Company name](/market-intel/company-id). NEVER prepend https://app, any hostname or any invented prefix. External article citations use the exact supplied destination. A /agent-source/N destination is a request-local citation reference: copy it exactly as [Publisher or article title](/agent-source/N); the application restores its verified source URL. Never rewrite, shorten, or invent a source destination. Use a descriptive publisher or article title as the link label and copy its supplied destination byte-for-byte; never show a raw URL or application path (including paths in parentheses or code formatting). Write [Team members](/admin/members), never Team members (/admin/members). Never place whitespace between ] and (. Use only verified destinations. Finish every answer with <followups>[\"question one\",\"question two\",\"question three\"]</followups>. These must be three short, distinct next questions (aim for 4–8 words each) the USER could ask, specific to this question and answer, exploring new useful information rather than repeating answered questions or generic starters. This metadata is removed from the displayed answer. Do not mention the metadata. Generate it in this same response, without extra tool calls solely for suggestions.",
     turns,
     readOnlyTools,
     runTool
   );
   if (agentResult && agentResult.text) {
+    console.info("[agent] response", {
+      provider: configuredAgentProvider(),
+      elapsedMs: Math.round(performance.now() - agentStartedAt),
+      modelCalls: agentResult.usage.modelCalls,
+      inputTokens: agentResult.usage.inputTokens,
+      prefetchedModule: leadSummaryQuestion ? "leads" : null,
+    });
+    let answer = sourceReferences.expand(agentResult.text);
+    // A named account must never link to the Customers index. Models can
+    // occasionally collapse a supplied detail URL to the familiar module
+    // route; repair only exact, verified customer names and IDs.
+    for (const customer of customers) {
+      const name = escapeRegExp(customer.company_name);
+      answer = answer.replace(
+        new RegExp(`\\[(${name})\\]\\(/customers(?:/accounts)?\\)`, "g"),
+        `[$1](/customers/${encodeURIComponent(customer.id)})`
+      );
+    }
     return NextResponse.json({
       ok: true,
-      ...splitAgentAnswer(sourceReferences.expand(agentResult.text)),
+      ...splitAgentAnswer(answer),
       entityContext,
-      source: "claude-agent",
+      source: configuredAgentProvider() === "vertex" ? "vertex-agent" : "claude-agent",
       did: agentResult.dids[0],
       continuationAvailable: agentResult.truncated,
       usage: agentResult.usage,

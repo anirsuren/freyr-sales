@@ -3,7 +3,7 @@ import { normalizeAgentLinks, readableLinkLabel } from "@/lib/agentAnswerPresent
 import { useTypewriter, trimStreamingLink } from "./useTypewriter";
 import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 
-import { useEffect, useId, useRef, useState, useCallback, useMemo, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useCallback, useMemo, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import {
   KnowledgePanel,
@@ -49,6 +49,7 @@ import { VIZ_SERIES } from "@/components/charts/palette";
 import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
+import { queueAgentNavigationHandoff } from "@/lib/agentNavigationHandoff";
 
 type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[] };
 type OfferingContext = { id: string; name: string };
@@ -771,6 +772,18 @@ export function AgentChat({
   const visibleConvos =
     loadedStorageKey === storageKey ? convos : EMPTY_CONVOS;
   const active = visibleConvos.find((c) => c.id === activeId) || null;
+
+  function handoffInternalNavigation(event: ReactMouseEvent<HTMLDivElement>) {
+    const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>(
+      "a[href]"
+    );
+    if (!anchor || !activeId || anchor.hasAttribute("download")) return;
+    const href = anchor.getAttribute("href") || "";
+    if (!href.startsWith("/") || href.startsWith("//")) return;
+    try {
+      queueAgentNavigationHandoff(currentUser.id, activeId);
+    } catch {}
+  }
   const offeringContext = active?.offeringContext ?? pendingOffering;
   const offeringContextId = offeringContext?.id;
   /**
@@ -1155,7 +1168,10 @@ export function AgentChat({
       </Modal>
 
       {/* Thread + composer */}
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div
+        className="flex-1 min-w-0 flex flex-col"
+        onClickCapture={handoffInternalNavigation}
+      >
         <div className="md:hidden flex items-center justify-between border-b border-border-light px-4 py-2">
           <button onClick={() => setMobileHistoryOpen(true)} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-text-secondary"><MessageSquareText size={17} />Your chats</button>
           <button onClick={() => newChat()} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-blue-primary"><Plus size={17} />New chat</button>

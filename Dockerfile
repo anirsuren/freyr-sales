@@ -77,6 +77,9 @@ RUN groupadd --system --gid 1001 nodejs && \
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# This external-account file contains no private key. In ECS it exchanges the
+# task role's short-lived AWS credentials for a short-lived Google token.
+COPY --from=builder --chown=nextjs:nodejs /app/deploy/gcp-aws-wif.json ./config/gcp-aws-wif.json
 # Next's standalone tracer includes `sharp` but can omit its platform-specific
 # optional packages. Image optimization then fails at request time because the
 # Linux libvips shared library is absent. Copy the packages installed for the

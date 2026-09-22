@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import React, { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   BarChart3,
@@ -81,8 +81,12 @@ const KIND: Record<
   },
   company: {
     href: (id) => `/customers/${encodeURIComponent(id)}`,
-    mark: (name) => (
-      <CompanyLogo name={name} className="w-4 h-4 text-[7px] shrink-0" />
+    mark: (name, logoUrl) => (
+      <CompanyLogo
+        name={name}
+        src={logoUrl}
+        className="w-4 h-4 text-[7px] shrink-0"
+      />
     ),
   },
   contact: {
@@ -180,8 +184,26 @@ export function unambiguousEntities(entities: Entity[]): Entity[] {
     byName.set(entity.name, matches);
   }
   return [...byName.values()]
-    .filter((matches) => matches.size === 1)
-    .map((matches) => [...matches.values()][0])
+    .map((matches) => {
+      const records = [...matches.values()];
+      if (records.length === 1) return records[0];
+
+      // A company commonly appears in more than one index at once: as the
+      // customer record, its Market Intel collection, and sometimes a lead.
+      // Those are different destinations for the same organization, not an
+      // ambiguous identity. Prefer the customer record when it exists so a
+      // bare company mention always renders with its company logo and opens
+      // the full account. If there is no customer, the Market Intel company
+      // is the canonical company identity.
+      const company = records.find((entity) => entity.kind === "company");
+      if (company) return company;
+      const marketCompany = records.find(
+        (entity) => entity.kind === "marketCompany"
+      );
+      if (marketCompany) return marketCompany;
+      return null;
+    })
+    .filter((entity): entity is Entity => entity !== null)
     .sort((a, b) => b.name.length - a.name.length);
 }
 
@@ -208,6 +230,15 @@ export function entitiesForAnswer(text: string, entities: Entity[], context: str
   }
   return [...groups.values()].flatMap(group => {
     const explicit = group.filter(e => urls.has(KIND[e.kind].href(e.id)));
+    // `/leads` identifies a list, not the organization named by the link.
+    // Preserve a same-named company candidate so entityLink can render the
+    // company logo and canonical account destination.
+    if (explicit.some((entity) => entity.kind === "lead")) {
+      const company =
+        group.find((entity) => entity.kind === "company") ||
+        group.find((entity) => entity.kind === "marketCompany");
+      if (company) return [company, ...explicit];
+    }
     const linked = explicit.length ? explicit : group.filter(e => context.includes(KIND[e.kind].href(e.id)));
     const destinations = new Set(linked.map(e => KIND[e.kind].href(e.id)));
     return destinations.size === 1 ? linked : group;
@@ -314,8 +345,30 @@ export function injectEntities(
 
 /** Explicit model links and automatically detected names share the same badge. */
 export function entityLink(href: string, label: string, entities: Entity[], key: string): ReactNode | null {
-  const candidates = entities.filter(e => KIND[e.kind].href(e.id) === href || (href === "/team" && e.kind === "person"));
   const normalizedLabel = label.trim().toLocaleLowerCase();
+  // Lead records only have a shared list destination. When the assistant names
+  // the company attached to that lead, keep the organization's identity and
+  // destination: a company logo that opens the account. Treating the shared
+  // `/leads` URL as the entity made every company wear the person-plus icon.
+  if (href === "/leads") {
+    const companies = entities.filter(
+      (entity) =>
+        ["company", "marketCompany"].includes(entity.kind) &&
+        entity.name.trim().toLocaleLowerCase() === normalizedLabel,
+    );
+    const company =
+      companies.find((entity) => entity.kind === "company") || companies[0];
+    if (company) {
+      const style = KIND[company.kind];
+      return (
+        <Link key={key} href={style.href(company.id)} className={PILL}>
+          {style.mark(company.name, company.logoUrl)}
+          {label}
+        </Link>
+      );
+    }
+  }
+  const candidates = entities.filter(e => KIND[e.kind].href(e.id) === href || (href === "/team" && e.kind === "person"));
   const named = candidates.filter(e => e.name.trim().toLocaleLowerCase() === normalizedLabel);
   // Shared list destinations do not identify a person or record. A Team link
   // stays a navigation link; a named teammate gets only their own portrait.

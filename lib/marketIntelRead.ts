@@ -3,6 +3,21 @@ import { getDataMode } from "./dataMode";
 import * as real from "./marketIntelFeed";
 import { readDemoIntel } from "./marketIntelDemoFeed";
 export * from "./marketIntelFeed";
+export async function readMarketIntelFeed(options?: { fresh?: boolean }) {
+  if (getDataMode() !== "mock") return real.readMarketIntelFeed(options);
+  const demo = await readDemoIntel();
+  return {
+    version: demo.meta.version,
+    companies: demo.companies,
+    people: demo.people,
+    mna: demo.meta.mna,
+    thought: demo.meta.thought,
+    health: demo.meta.health,
+    updatedAt: demo.meta.updatedAt,
+    spendUsd: demo.meta.spendUsd,
+    apifyDay: demo.meta.apifyDay,
+  };
+}
 export async function readMarketIntelSummaries(options?: {fresh?:boolean}) {
   if (getDataMode() !== "mock") return real.readMarketIntelSummaries(options);
   const demo = await readDemoIntel();

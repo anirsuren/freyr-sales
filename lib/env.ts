@@ -22,6 +22,8 @@ export const hasSupabase = () => live() && isSupabaseConfigured();
 
 export const hasAnthropic = () => !!process.env.ANTHROPIC_API_KEY;
 
+export const hasVertex = () => !!process.env.GOOGLE_CLOUD_PROJECT;
+
 export const hasFirecrawl = () => !!process.env.FIRECRAWL_API_KEY;
 
 export const hasApify = () => !!process.env.APIFY_API_TOKEN;
@@ -42,6 +44,7 @@ export const hasElevenLabs = () => !!process.env.ELEVENLABS_API_KEY;
 export function getServiceStatus() {
   return {
     anthropic: hasAnthropic(),
+    vertex: hasVertex(),
     // System status answers "is the service configured?". Mock mode changes
     // which records are displayed; it does not make Supabase disappear.
     supabase: isSupabaseConfigured(),

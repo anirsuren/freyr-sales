@@ -4,7 +4,7 @@ import {
   readMarketIntelFeed,
   type FeedCompany,
   type MarketIntelFeed,
-} from "@/lib/marketIntelFeed";
+} from "@/lib/marketIntelRead";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 
 /**

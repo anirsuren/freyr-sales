@@ -40,6 +40,7 @@ import {
   leadStatusColor,
   type Lead,
   type LeadSource,
+  type LeadStatus,
 } from "@/lib/leadsShared";
 import { repSlug } from "@/lib/team";
 import { tint } from "@/lib/tint";
@@ -68,6 +69,11 @@ function percentage(part: number, whole: number) {
 }
 
 export function LeadAnalytics({ leads }: { leads: Lead[] }) {
+  const [statusWorkspaceOpen, setStatusWorkspaceOpen] = useState(false);
+  const [statusWorkspaceFilter, setStatusWorkspaceFilter] = useState<
+    LeadStatus | "all"
+  >("all");
+  const [statusWorkspaceQuery, setStatusWorkspaceQuery] = useState("");
   const [sourceWorkspaceOpen, setSourceWorkspaceOpen] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<LeadSource | "all">("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -221,6 +227,37 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
     new Set(leads.map((lead) => lead.owner || "Unassigned"))
   ).sort((a, b) => a.localeCompare(b));
 
+  const statusNeedle = statusWorkspaceQuery.trim().toLowerCase();
+  const statusWorkspaceLeads = leads
+    .filter(
+      (lead) =>
+        statusWorkspaceFilter === "all" || lead.status === statusWorkspaceFilter
+    )
+    .filter(
+      (lead) =>
+        !statusNeedle ||
+        [
+          lead.name,
+          lead.company,
+          lead.title,
+          lead.source,
+          lead.owner,
+          lead.interest,
+          lead.ref,
+        ].some((value) => value?.toLowerCase().includes(statusNeedle))
+    )
+    .sort(
+      (a, b) =>
+        Date.parse(b.updatedAt || b.createdAt) -
+        Date.parse(a.updatedAt || a.createdAt)
+    );
+
+  function openStatusWorkspace(status: LeadStatus | "all") {
+    setStatusWorkspaceFilter(status);
+    setStatusWorkspaceQuery("");
+    setStatusWorkspaceOpen(true);
+  }
+
   function openSourceWorkspace(source: LeadSource | "all") {
     setSourceFilter(source);
     setStatusFilter("all");
@@ -293,20 +330,15 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
               </h3>
               <InfoHint text="Current lead status. This does not pretend to be stage history: the lead record stores its current stage, not every previous stage change." />
             </div>
-            <ExpandedChartModal
-              title="Where leads sit now"
-              subtitle="Current lead status across this workspace."
-              triggerLabel="Expand lead status"
-              chart={{
-                kind: "donut",
-                segments: data.statusSegments,
-                centerLabel: String(leads.length),
-                centerSub: "leads",
-                format: "number",
-                legendBars: true,
-                legendValues: true,
-              }}
-            />
+            <button
+              type="button"
+              onClick={() => openStatusWorkspace("all")}
+              aria-label="Open lead status and records"
+              title="Open lead status and records"
+              className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-white text-text-primary shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
+            >
+              <Maximize2 size={14} strokeWidth={2.1} aria-hidden="true" />
+            </button>
           </div>
           <div className="mt-3 grid items-center gap-5 sm:grid-cols-[150px_minmax(0,1fr)]">
             <div className="flex justify-center">
@@ -321,11 +353,18 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
             </div>
             <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">
               {activeStatusSegments.map((segment) => (
-                <div key={segment.label} className="flex min-w-0 items-center gap-2 text-[11.5px]">
+                <button
+                  type="button"
+                  key={segment.label}
+                  onClick={() => openStatusWorkspace(segment.label as LeadStatus)}
+                  aria-label={`Open ${segment.value} ${segment.label} leads`}
+                  className="group flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1 text-left text-[11.5px] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
+                >
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: segment.color }} />
                   <span className="truncate text-text-secondary">{segment.label}</span>
                   <span className="ml-auto font-semibold text-text-primary tnum">{segment.value}</span>
-                </div>
+                  <ChevronRight size={12} className="shrink-0 text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary" aria-hidden="true" />
+                </button>
               ))}
             </div>
           </div>
@@ -402,6 +441,207 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
           </div>
         </section>
       </div>
+
+      <Modal
+        open={statusWorkspaceOpen}
+        onClose={() => setStatusWorkspaceOpen(false)}
+        title="Where leads sit now"
+        titleAfter={
+          <span className="rounded-full bg-blue-light px-2 py-0.5 text-[11px] font-bold text-blue-primary tnum">
+            {statusWorkspaceLeads.length}
+          </span>
+        }
+        size="chart"
+        tall
+        dialogClassName="!h-[min(850px,calc(100vh-1.5rem))] !w-[min(1680px,97vw)] !max-w-[min(1680px,97vw)]"
+        bodyClassName="!p-0"
+      >
+        <div className="grid h-full min-h-0 lg:grid-cols-[340px_minmax(0,1fr)]">
+          <aside className="min-h-0 overflow-y-auto border-b border-border-light bg-surface/55 p-5 lg:border-b-0 lg:border-r">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+              Lead status
+            </p>
+            <div className="mt-4 flex justify-center">
+              <DonutChart
+                segments={activeStatusSegments}
+                centerLabel={String(leads.length)}
+                centerSub="leads"
+                size={210}
+                thickness={24}
+                format="number"
+              />
+            </div>
+            <div className="mt-5 space-y-1.5">
+              <button
+                type="button"
+                onClick={() => setStatusWorkspaceFilter("all")}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
+                  statusWorkspaceFilter === "all"
+                    ? "bg-blue-light text-blue-primary"
+                    : "text-text-secondary hover:bg-white"
+                }`}
+              >
+                <span className="h-2.5 w-2.5 rounded-full bg-blue-primary" />
+                <span className="flex-1 text-[13px] font-semibold">All leads</span>
+                <span className="text-[12px] font-bold tnum">{leads.length}</span>
+              </button>
+              {activeStatusSegments.map((segment) => (
+                <button
+                  type="button"
+                  key={segment.label}
+                  onClick={() =>
+                    setStatusWorkspaceFilter(segment.label as LeadStatus)
+                  }
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
+                    statusWorkspaceFilter === segment.label
+                      ? "bg-white shadow-sm ring-1 ring-border-light"
+                      : "text-text-secondary hover:bg-white"
+                  }`}
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: segment.color }}
+                  />
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">
+                    {segment.label}
+                  </span>
+                  <span className="text-[12px] font-bold text-text-primary tnum">
+                    {segment.value}
+                  </span>
+                  <span className="w-8 text-right text-[10.5px] text-text-tertiary tnum">
+                    {percentage(segment.value, leads.length)}%
+                  </span>
+                </button>
+              ))}
+            </div>
+          </aside>
+
+          <section className="flex min-h-0 min-w-0 flex-col bg-white">
+            <div className="shrink-0 border-b border-border-light p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-[15px] font-semibold text-text-primary">
+                    {statusWorkspaceFilter === "all"
+                      ? "All leads"
+                      : `${statusWorkspaceFilter} leads`}
+                  </h3>
+                  <p className="mt-0.5 text-[11.5px] text-text-tertiary">
+                    Click a company or opportunity to open its full record.
+                  </p>
+                </div>
+                <label className="relative block w-full sm:w-[360px]">
+                  <Search
+                    size={16}
+                    strokeWidth={2}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+                    aria-hidden="true"
+                  />
+                  <input
+                    value={statusWorkspaceQuery}
+                    onChange={(event) => setStatusWorkspaceQuery(event.target.value)}
+                    placeholder="Search these leads…"
+                    aria-label="Search leads in this status"
+                    className="h-10 w-full rounded-xl border border-border-light bg-surface pl-9 pr-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary focus:bg-white"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto">
+              {statusWorkspaceLeads.length ? (
+                <table className="w-full min-w-[1050px] table-fixed text-left">
+                  <thead className="sticky top-0 z-10 bg-surface shadow-[0_1px_0_var(--border-light)]">
+                    <tr className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary [&>th]:px-4 [&>th]:py-2.5">
+                      <th className="w-[17%]">Lead</th>
+                      <th className="w-[16%]">Company</th>
+                      <th className="w-[11%]">Status</th>
+                      <th className="w-[12%]">Source</th>
+                      <th className="w-[14%]">Owner</th>
+                      <th className="w-[20%]">What they asked about</th>
+                      <th className="w-[10%]">Last moved</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light">
+                    {statusWorkspaceLeads.map((lead) => {
+                      const sourceColor = leadSourceColor(lead.source);
+                      const SourceIcon = LEAD_SOURCE_ICONS[lead.source];
+                      const statusColor = leadStatusColor(lead.status);
+                      return (
+                        <tr key={lead.id} className="align-top transition-colors hover:bg-surface/60 [&>td]:px-4 [&>td]:py-3">
+                          <td>
+                            <span className="flex min-w-0 items-start gap-2.5">
+                              <Avatar name={lead.name} initialsOnly className="h-8 w-8 shrink-0 text-[9px]" />
+                              <span className="min-w-0">
+                                <span className="block truncate text-[12.5px] font-semibold text-text-primary">{lead.name}</span>
+                                <span className="mt-0.5 block truncate text-[11px] text-text-tertiary">{lead.title || lead.ref}</span>
+                              </span>
+                            </span>
+                          </td>
+                          <td>
+                            {lead.customerId ? (
+                              <Link href={`/customers/${lead.customerId}`} className="group/company flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary hover:text-blue-primary">
+                                <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
+                                <span className="min-w-0 truncate group-hover/company:underline">{lead.company}</span>
+                                <ArrowUpRight size={13} className="shrink-0 opacity-0 transition-opacity group-hover/company:opacity-100" aria-hidden="true" />
+                              </Link>
+                            ) : (
+                              <span className="flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary">
+                                <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
+                                <span className="min-w-0 truncate">{lead.company}</span>
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <span className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: tint(statusColor, 9), color: statusColor }}>
+                              {lead.status}
+                            </span>
+                            {lead.convertedOpportunityId ? (
+                              <Link href={`/opportunities/${lead.convertedOpportunityId}`} className="mt-1.5 flex items-center gap-1 text-[10.5px] font-semibold text-blue-primary hover:underline">
+                                Opportunity <ArrowUpRight size={11} aria-hidden="true" />
+                              </Link>
+                            ) : null}
+                          </td>
+                          <td>
+                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: tint(sourceColor, 9), color: sourceColor }}>
+                              <SourceIcon size={12} strokeWidth={2.2} aria-hidden="true" />
+                              {lead.source}
+                            </span>
+                          </td>
+                          <td>
+                            {lead.owner ? (
+                              <Link href={`/analytics/reps/${repSlug(lead.owner)}`} className="group/owner flex min-w-0 items-center gap-2 text-[12px] text-text-secondary hover:text-blue-primary">
+                                <Avatar name={lead.owner} className="h-6 w-6 shrink-0 text-[8px]" />
+                                <span className="min-w-0 truncate group-hover/owner:underline">{lead.owner}</span>
+                              </Link>
+                            ) : (
+                              <span className="text-[11.5px] text-text-tertiary">Unassigned</span>
+                            )}
+                          </td>
+                          <td>
+                            <p className="line-clamp-3 text-[11.5px] leading-[1.45] text-text-secondary" title={lead.interest || undefined}>
+                              {lead.interest || "No request recorded"}
+                            </p>
+                          </td>
+                          <td className="text-[11px] leading-4 text-text-secondary tnum">
+                            <LocalTime value={lead.updatedAt || lead.createdAt} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="flex h-full min-h-64 items-center justify-center px-6 text-center">
+                  <div>
+                    <p className="text-[13px] font-semibold text-text-primary">No leads match</p>
+                    <p className="mt-1 text-[12px] text-text-secondary">Try another status or clear the search.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      </Modal>
 
       <Modal
         open={sourceWorkspaceOpen}

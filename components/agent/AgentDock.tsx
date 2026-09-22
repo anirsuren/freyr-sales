@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import {
   Sparkles,
   ArrowUp,
@@ -15,9 +16,14 @@ import { putConversations } from "@/lib/saveConversations";
 import { clockTime, dayLabel, sameDay } from "@/lib/chatTime";
 import {
   injectEntities,
+  entityLink,
   useEntityIndex,
   type Entity,
 } from "@/components/agent/EntityPills";
+import {
+  normalizeAgentLinks,
+  readableLinkLabel,
+} from "@/lib/agentAnswerPresentation";
 import { useTypewriter, trimStreamingLink } from "@/components/agent/useTypewriter";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
@@ -26,13 +32,13 @@ import {
   type AgentOfferingContext,
   type AskAgentDetail,
 } from "@/lib/agentEvents";
+import { AGENT_DOCK_ACTIVE_KEY } from "@/lib/agentNavigationHandoff";
 
 // The dock and the full Agent page deliberately use the SAME account-backed
 // conversation model. A rep can start beside an offering, then continue that
 // thread in /agent without losing the context or the messages.
 const CONVERSATIONS_KEY = "freyr.agent.conversations";
 const LEGACY_THREAD_KEY = "freyr.assistant.thread.v2";
-const ACTIVE_DOCK_KEY = "freyr.agent.dock.active.v1";
 
 type Msg = { role: "user" | "agent"; text: string; ts: number };
 type Convo = {
@@ -214,17 +220,22 @@ function suggestionsFor(label: string, offeringsOnly = false): string[] {
   return ["What should I work on next?", "Summarize my pipeline", "Which deals have no recent activity?"];
 }
 
-// Minimal, safe markdown: **bold**, `code`, and line breaks. Content is our own
-// agent's reply, but we still build React nodes (no dangerouslySetInnerHTML).
-function renderRich(
+// Minimal, safe markdown: links, **bold**, `code`, and line breaks. Content is
+// our own agent's reply, but we still build React nodes (no inner HTML). The
+// compact dock deliberately uses the same link rules as the full Agent page:
+// otherwise a material citation becomes visible Markdown such as
+// `[Success story](/offerings/...)` as soon as the conversation follows the
+// user onto a record page.
+export function renderRich(
   text: string,
   entities: Entity[] = [],
   linkable = true
 ): ReactNode {
-  return text.split("\n").map((line, li) => {
+  return normalizeAgentLinks(text).split("\n").map((line, li) => {
     const nodes: ReactNode[] = [];
-    // **bold**, *italic*, `code` — match bold before italic so ** wins over *.
-    const re = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`)/g;
+    // Links first, then bold, italic and code. Only app paths and HTTP(S)
+    // citations are linkable; other schemes remain plain text.
+    const re = /(\[([^\]]+)\]\(((?:https?:\/\/|\/)[^)\s]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`)/g;
     let last = 0;
     let m: RegExpExecArray | null;
     let k = 0;
@@ -239,22 +250,49 @@ function renderRich(
       // raw, so the assistant writing **Anant Puranik** — which is exactly
       // what it does when it leads with a name — produced bold grey text and
       // never a pill. Entities are injected inside the emphasis now.
-      if (m[2] != null)
+      if (m[2] != null && m[3] != null) {
+        const href = m[3];
+        const label = readableLinkLabel(m[2], href);
+        const badge = entityLink(href, label, entities, `${li}-l${k++}`);
+        if (badge) nodes.push(badge);
+        else if (/^https?:\/\//i.test(href))
+          nodes.push(
+            <a
+              key={`${li}-l${k++}`}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-blue-primary underline decoration-blue-subtle underline-offset-2 hover:decoration-blue-primary"
+            >
+              {label}
+            </a>
+          );
+        else
+          nodes.push(
+            <Link
+              key={`${li}-l${k++}`}
+              href={href}
+              className="font-medium text-blue-primary hover:underline"
+            >
+              {label}
+            </Link>
+          );
+      } else if (m[4] != null)
         nodes.push(
           <strong key={k++}>
-            {injectEntities(m[2], entities, `${li}-b${k}`, linkable)}
+            {injectEntities(m[4], entities, `${li}-b${k}`, linkable)}
           </strong>
         );
-      else if (m[3] != null)
+      else if (m[5] != null)
         nodes.push(
           <em key={k++}>
-            {injectEntities(m[3], entities, `${li}-i${k}`, linkable)}
+            {injectEntities(m[5], entities, `${li}-i${k}`, linkable)}
           </em>
         );
-      else if (m[4] != null)
+      else if (m[6] != null)
         nodes.push(
           <code key={k++} className="px-1 py-0.5 rounded bg-black/5 text-[12px]">
-            {m[4]}
+            {m[6]}
           </code>
         );
       last = m.index + m[0].length;
@@ -358,7 +396,7 @@ export function AgentDock({
     currentUser.id
   );
   const activeDockStorageKey = userScopedStorageKey(
-    ACTIVE_DOCK_KEY,
+    AGENT_DOCK_ACTIVE_KEY,
     currentUser.id
   );
   const label = pageLabel(pathname);
@@ -985,7 +1023,7 @@ export function AgentDock({
             "flex min-h-0 flex-col overflow-hidden bg-white",
             embedded
               ? "h-full w-full border-l border-border-light shadow-[-8px_0_30px_rgba(16,24,40,0.06)]"
-              : `fixed bottom-24 right-5 z-[120] w-[min(400px,calc(100vw-2.5rem))] rounded-2xl slide-in-right print:hidden ${POPOVER_SURFACE}`
+              : `fixed bottom-5 right-5 z-[120] w-[min(480px,calc(100vw-2.5rem))] rounded-2xl slide-in-right print:hidden ${POPOVER_SURFACE}`
           )}
         >
           {/* Header */}
@@ -1005,6 +1043,17 @@ export function AgentDock({
                     : `On ${label}`}
               </p>
             </div>
+            {!embedded && (
+              <Link
+                href="/agent"
+                aria-label="Open this conversation in the full Agent chat"
+                title="Open full chat"
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 text-[11.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+              >
+                <MessageCircle size={14} strokeWidth={2} />
+                <span>Open full chat</span>
+              </Link>
+            )}
             {dockable && onDockChange && (
               <button
                 type="button"
@@ -1035,10 +1084,10 @@ export function AgentDock({
             ref={scrollRef}
             className={cn(
               "flex-1 overflow-y-auto px-4 py-4 space-y-2.5",
-              embedded ? "min-h-0" : "h-[400px] max-h-[58vh]"
+              embedded ? "min-h-0" : "h-[460px] max-h-[66vh]"
             )}
           >
-            <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-md bg-surface text-text-primary px-3.5 py-2.5 text-[13px] leading-relaxed">
+            <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 text-[13px] leading-[1.55] text-text-primary">
               {renderRich(greeting, entities, !offeringsOnly)}
             </div>
             {visibleMsgs.map((m, i) => {
@@ -1071,7 +1120,7 @@ export function AgentDock({
                   >
                     <div
                       className={cn(
-                        "w-fit max-w-[85%] px-3.5 py-2 text-[13px] leading-relaxed",
+                        "w-fit max-w-[92%] px-3.5 py-2.5 text-[13px] leading-[1.55]",
                         m.role === "agent"
                           ? "rounded-2xl rounded-bl-md bg-surface text-text-primary"
                           : "rounded-2xl rounded-br-md bg-blue-primary text-white"
@@ -1160,7 +1209,7 @@ export function AgentDock({
       )}
 
       {/* Bubble */}
-      {(!embedded || !open) && (
+      {!open && (
         <button
           ref={launcherRef}
           data-agent-dock-launcher
