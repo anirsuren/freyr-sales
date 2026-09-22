@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CalendarClock, Flag, Inbox } from "lucide-react";
+import { CalendarClock, Flag, Inbox, Minus, MoveHorizontal, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,9 +17,7 @@ import { cn } from "@/lib/utils";
  *
  * The FDL timeline's language, scaled to one row: a rail, a dot per real date,
  * the today marker as the one line that is not a guess, dates set underneath.
- * The tweaks are all subtraction — there is no panning, no zooming and no axis,
- * because three points on a fixed span have nothing to explore. What is added
- * is the fill: the rail carries a coloured bar from the request to today, so
+ * The rail carries a coloured bar from the request to today, so
  * the elapsed stretch is a length rather than something to work out.
  *
  * The reserved tones do exactly what they mean here — amber inside a week of
@@ -66,6 +64,10 @@ function label(ms: number): string {
   });
 }
 
+function shortLabel(ms: number): string {
+  return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export function NeededByTimeline({
   requestedAt,
   neededBy,
@@ -99,6 +101,44 @@ export function NeededByTimeline({
    */
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => setNow(midnight(new Date())), []);
+  const [view, setView] = useState({ zoom: 1, start: 0 });
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{ x: number; start: number; pointerId: number } | null>(null);
+  const maxZoom = 12;
+  const clampStart = (start: number, zoom: number) =>
+    Math.min(Math.max(0, 1 - 1 / zoom), Math.max(0, start));
+  const zoomTo = (nextZoom: number, anchor = 1) => {
+    setView((current) => {
+      const zoom = Math.min(maxZoom, Math.max(1, nextZoom));
+      const atAnchor = current.start + anchor / current.zoom;
+      return { zoom, start: clampStart(atAnchor - anchor / zoom, zoom) };
+    });
+  };
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      const anchor = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+      const factor = Math.exp(-event.deltaY * (event.ctrlKey ? 0.012 : 0.006));
+      setView((current) => {
+        const zoom = Math.min(maxZoom, Math.max(1, current.zoom * factor));
+        const atAnchor = current.start + anchor / current.zoom;
+        return { zoom, start: clampStart(atAnchor - anchor / zoom, zoom) };
+      });
+    };
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const today = now ?? due;
+  const from = Math.min(asked, due, today);
+  const to = Math.max(asked, due, today);
+  const span = Math.max(to - from, DAY);
+  const position = (ms: number) => ((ms - from) / span - view.start) * view.zoom;
+  const at = (ms: number) => `${position(ms) * 100}%`;
+  const visible = (ms: number) => position(ms) >= 0 && position(ms) <= 1;
 
   /**
    * WHERE "NEEDED BY" ACTUALLY FITS (Anir, Sep 6, after three wrong answers:
@@ -128,20 +168,17 @@ export function NeededByTimeline({
       const box = boxRef.current;
       const req = reqRef.current;
       const need = needRef.current;
-      if (!box || !req || !need) return;
+      if (!box || !need) return;
       const W = box.clientWidth;
       if (!W || !Number.isFinite(asked) || !Number.isFinite(due)) return;
       /* Same window arithmetic as the render, self-contained so the effect
          can live up here with the other hooks. */
-      const today = now ?? due;
-      const lo = Math.min(asked, due, today);
-      const hi = Math.max(asked, due, today);
-      const flagX = ((due - lo) / Math.max(hi - lo, DAY)) * W;
+      const flagX = (((due - from) / span - view.start) * view.zoom) * W;
       const halfNeed = need.offsetWidth / 2;
       /* Requested starts at -11px in this box's coordinates (the rail's own
          overhang), so its right edge is its width minus that. 16px of air
          between the two captions. */
-      const minCentre = -11 + req.offsetWidth + 16 + halfNeed;
+      const minCentre = -11 + (req?.offsetWidth ?? 0) + 16 + halfNeed;
       /* Keep a few real pixels inside the content edge. Sitting exactly on
          the card's overflow-hidden boundary could shave the final digit off
          the date at some zoom levels. */
@@ -151,17 +188,8 @@ export function NeededByTimeline({
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [asked, due, now]);
-  const today = now ?? due;
+  }, [asked, due, from, span, view]);
   if (!Number.isFinite(asked) || !Number.isFinite(due)) return null;
-
-  /* The window always holds all three, so today never falls off the end of a
-     request that is a month overdue, and a request due tomorrow is not drawn
-     on a rail three days wide. */
-  const from = Math.min(asked, due, today);
-  const to = Math.max(asked, due, today);
-  const span = Math.max(to - from, DAY);
-  const at = (ms: number) => `${((ms - from) / span) * 100}%`;
 
   const daysLeft = Math.round((due - today) / DAY);
   const overdue = !done && daysLeft < 0;
@@ -186,8 +214,8 @@ export function NeededByTimeline({
 
   /* Today sitting on a marker at either end of the rail: the flag hugs that
      edge rather than centring past it. */
-  const atStart = Math.abs(today - Math.min(asked, due)) < DAY / 2;
-  const atEnd = !atStart && Math.abs(today - Math.max(asked, due)) < DAY / 2;
+  const atStart = position(today) <= 0.025;
+  const atEnd = position(today) >= 0.975;
 
   const remaining = done
     ? "Closed"
@@ -208,6 +236,27 @@ export function NeededByTimeline({
         </span>
         <span className={cn("text-[11.5px] font-bold", tone.text)}>{remaining}</span>
       </div>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-1 text-[9.5px] text-text-tertiary">
+          <MoveHorizontal size={12} aria-hidden="true" />
+          <span className="truncate">
+            {view.zoom <= 1.001
+              ? "Scroll to zoom · drag to move"
+              : `${shortLabel(from + view.start * span)} – ${shortLabel(from + (view.start + 1 / view.zoom) * span)}`}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center rounded-lg border border-border-light bg-white p-0.5 shadow-sm">
+          <button type="button" aria-label="Zoom out" onClick={() => zoomTo(view.zoom / 1.6)} disabled={view.zoom <= 1.001} className="grid h-6 w-6 cursor-pointer place-items-center rounded-md text-text-secondary hover:bg-surface disabled:cursor-default disabled:opacity-35">
+            <Minus size={12} strokeWidth={2.4} />
+          </button>
+          <button type="button" aria-label="Reset zoom" title="Reset zoom" onClick={() => setView({ zoom: 1, start: 0 })} className="h-6 min-w-9 cursor-pointer rounded-md px-1 text-[9.5px] font-bold text-text-secondary hover:bg-surface">
+            {view.zoom <= 1.001 ? "Fit" : `${view.zoom.toFixed(1)}×`}
+          </button>
+          <button type="button" aria-label="Zoom in" onClick={() => zoomTo(view.zoom * 1.6)} disabled={view.zoom >= maxZoom - 0.001} className="grid h-6 w-6 cursor-pointer place-items-center rounded-md text-text-secondary hover:bg-surface disabled:cursor-default disabled:opacity-35">
+            <Plus size={12} strokeWidth={2.4} />
+          </button>
+        </span>
+      </div>
 
       {/* THE TODAY FLAG GETS ITS OWN BAND ABOVE THE RAIL.
           Anir asked to "visually see today", and the first cut hid it whenever
@@ -216,9 +265,8 @@ export function NeededByTimeline({
           because a flag at the dot's own height collided with it.
 
           Giving the flag 22px of clear air above the rail means it never
-          collides with anything, so it never has to be suppressed: today is on
-          this chart on every request, including the ones where today IS the
-          day it was asked for. */}
+          collides with anything in the full view. Zooming can move it outside
+          the visible date range, where it is intentionally clipped. */}
       {/* THE MARKERS SIT ON TOP OF THE RAIL (Anir, Aug 30: "make sure the
           icons at the ends are on top of the bar").
 
@@ -228,7 +276,28 @@ export function NeededByTimeline({
           runs the full width and the two circles are laid over it rather than
           bookending it. They carry a white ring, which is what makes them read
           as on top rather than as a break in the line. */}
-      <div className="relative mt-3 h-[86px]">
+      <div
+        ref={viewportRef}
+        className="relative mt-2 h-[86px] select-none overflow-hidden"
+        style={{ touchAction: "pan-y", cursor: view.zoom > 1 ? "grab" : "default" }}
+        onPointerDown={(event) => {
+          if (view.zoom <= 1 || event.button !== 0) return;
+          event.preventDefault();
+          dragRef.current = { x: event.clientX, start: view.start, pointerId: event.pointerId };
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          const drag = dragRef.current;
+          if (!drag || drag.pointerId !== event.pointerId) return;
+          const width = Math.max(1, event.currentTarget.getBoundingClientRect().width);
+          setView((current) => ({ ...current, start: clampStart(drag.start - (event.clientX - drag.x) / (width * current.zoom), current.zoom) }));
+        }}
+        onPointerUp={(event) => {
+          if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onPointerCancel={() => { dragRef.current = null; }}
+      >
         <div ref={boxRef} className="absolute inset-x-[11px] top-0 h-full">
         <div
           className="absolute -left-[11px] -right-[11px] h-[6px] rounded-full bg-border-light"
@@ -246,7 +315,7 @@ export function NeededByTimeline({
                than beside it. Only the left edge moves; the right end still
                lands exactly on today. */
             left: `calc(${at(Math.min(asked, due))} - 11px)`,
-            width: `calc(${((Math.min(Math.max(today, asked), Math.max(due, asked)) - Math.min(asked, due)) / span) * 100}% + 11px)`,
+            width: `calc(${((Math.min(Math.max(today, asked), Math.max(due, asked)) - Math.min(asked, due)) / span) * view.zoom * 100}% + 11px)`,
             background: ELAPSED,
           }}
         />
@@ -286,10 +355,10 @@ export function NeededByTimeline({
             visibly begins. The track itself already reaches back out over the
             inset with -left-[11px]; the caption does the same now, so it
             starts where the rail starts. */}
-        <span
+        {visible(asked) && <span
           ref={reqRef}
-          className="absolute -left-[11px] whitespace-nowrap"
-          style={{ top: RAIL_TOP + 18 }}
+          className="absolute whitespace-nowrap"
+          style={{ top: RAIL_TOP + 18, left: `calc(${at(asked)} - 11px)` }}
         >
           <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
             Requested
@@ -297,7 +366,7 @@ export function NeededByTimeline({
           <span className="block text-[11.5px] font-semibold tnum text-text-primary">
             {label(asked)}
           </span>
-        </span>
+        </span>}
 
         {/* SAME LINE (Anir, Sep 6: "they have to be in the same fucking
             line"). Needed by stays centred under its flag, one row with
@@ -306,7 +375,7 @@ export function NeededByTimeline({
             caption — and never past the right edge. A flag near the left
             pushes its words right just enough to clear; everywhere else they
             sit dead under it. */}
-        <span
+        {visible(due) && <span
           ref={needRef}
           className="absolute flex -translate-x-1/2 flex-col items-center whitespace-nowrap"
           style={{
@@ -315,7 +384,7 @@ export function NeededByTimeline({
             left:
               needLeftPx !== null
                 ? `${needLeftPx}px`
-                : `${((due - from) / span) * 100}%`,
+                : at(due),
             top: RAIL_TOP + 18,
           }}
         >
@@ -325,13 +394,13 @@ export function NeededByTimeline({
           <span className="block text-[11.5px] font-semibold tnum text-text-primary">
             {label(due)}
           </span>
-        </span>
+        </span>}
 
         {/* TODAY. The one mark here that is not a plan, so it is always drawn.
             It hugs whichever end it sits at, for the same reason the captions
             do: centred on a marker at 0% or 100%, half the pill would hang
             outside the card. */}
-        <div
+        {visible(today) && <div
           className={cn(
             "pointer-events-none absolute z-20 flex flex-col items-center",
             atStart ? "items-start" : atEnd ? "items-end" : "-translate-x-1/2"
@@ -351,7 +420,7 @@ export function NeededByTimeline({
             className={cn("block w-px bg-blue-primary/70", atStart && "ml-[11px]", atEnd && "mr-[11px]")}
             style={{ height: RAIL_TOP - 17 }}
           />
-        </div>
+        </div>}
         </div>
       </div>
     </div>

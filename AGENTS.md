@@ -196,6 +196,12 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Solutioning deadline zoom:** The “Where it stands” rail now has the
+  same zoom in, zoom out, Fit, scroll-to-zoom, and drag-to-pan controls as Goals.
+  It starts with all three dates visible and shows the current date range when
+  zoomed. Verified zoom and reset in a localhost Mock request; typecheck and
+  focused lint pass. Local only, not deployed.
+
 - **Sep 22 FDL Components loading header:** The route's loading screen now
   uses a title-sized skeleton instead of rendering the full page title above
   placeholder content. Typecheck and focused lint pass. Local only, not deployed.
