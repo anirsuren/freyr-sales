@@ -1,6 +1,8 @@
 import { SIGNAL_META } from "./marketIntelSignals";
 import {
   buildBriefing,
+  readFeedCompany,
+  readFeedPeople,
   readMarketIntelFeed,
   type FeedCompany,
   type MarketIntelFeed,
@@ -35,14 +37,14 @@ function trim(text: string, max: number): string {
 }
 
 function companyBlock(
-  feed: MarketIntelFeed,
   company: FeedCompany,
+  companyNames: { id: string; name: string }[],
   peopleLines: string[],
   since: number | null = null
 ): string {
   const signals = buildBriefing(
     company,
-    Object.values(feed.companies).map((c) => ({ id: c.id, name: c.name }))
+    companyNames
   ).signals;
   const inWindow = (date: string | null | undefined) => since === null || (Date.parse(date ?? "") >= since && Date.parse(date ?? "") <= Date.now());
   const windowPosts = company.posts.filter(p => inWindow(p.date));
@@ -50,20 +52,21 @@ function companyBlock(
   const windowSite = (company.site ?? []).filter(n => inWindow(n.published));
   const posts = [...windowPosts]
     .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0))
-    .slice(0, 100);
+    .slice(0, 5);
   const news = [...windowNews]
     .sort(
       (a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0)
     )
-    .slice(0, 100);
+    .slice(0, 12);
   const site = [...windowSite]
     .sort((a, b) => (Date.parse(b.published ?? "") || 0) - (Date.parse(a.published ?? "") || 0))
-    .slice(0, 100);
-  let remainingEvidence = 60000;
+    .slice(0, 5);
+  let remainingEvidence = 8000;
   const sourceEvidence = (item: {articleText?: string; articleTextPartial?: boolean; excerpt?: string}) => {
     const body = item.articleText || item.excerpt;
-    if (!body || remainingEvidence <= 0) return " [Original article text unavailable in this result; summary alone cannot establish detailed terms.]";
-    const limit = Math.min(6000, remainingEvidence);
+    if (!body) return " [Original article text unavailable in this result; summary alone cannot establish detailed terms.]";
+    if (remainingEvidence <= 0) return " [Publisher excerpt omitted to keep this briefing concise; use read_market_source for detail.]";
+    const limit = Math.min(900, remainingEvidence);
     const text = body.replace(/\s+/g, " ").trim();
     const excerpt = text.slice(0, limit);
     remainingEvidence -= excerpt.length;
@@ -107,26 +110,57 @@ Coverage: Counts describe matching stored records within DATE SCOPE when supplie
 export async function searchMarketIntel(query: string, question = query): Promise<string> {
   const days = question.match(/\b(?:past|last)\s+(\d+)\s+days?\b/i);
   const since = days ? Date.now() - Math.min(3650, Number(days[1])) * 86400000 : null;
-  const [feed, tracking] = await Promise.all([
-    readMarketIntelFeed().catch(() => null),
-    readMarketIntelTracking().catch(() => ({ companies: [], people: [] })),
-  ]);
+  const tracking = await readMarketIntelTracking().catch(() => ({ companies: [], people: [] }));
+  const q = query.toLowerCase();
+  const words = q.split(/[^a-z0-9&]+/).filter((w) => w.length >= 3);
+  const normalized = ` ${q.replace(/[^\p{L}\p{N}]+/gu, " ")} `;
+  const tracked = tracking.companies;
+  const exact = tracked.filter(c => {
+    const name = c.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    return name && normalized.includes(` ${name} `);
+  }).sort((a,b) => b.name.length-a.name.length);
+  const partial = tracked.filter(c => c.name.toLowerCase().split(/\s+/).some(part => part.length >= 4 && normalized.includes(` ${part} `)));
+  const named = exact[0] ?? (partial.length === 1 ? partial[0] : undefined);
+  if (named && !/\bm\s*&\s*a\b|merger|acquisition|acquire|deal/.test(q)) {
+    const personIds = tracking.people.filter(p => p.companyId === named.id).map(p => p.id);
+    const [company, people] = await Promise.all([
+      readFeedCompany(named.id).catch(() => null),
+      readFeedPeople(personIds).catch(() => ({})),
+    ]);
+    if (company) return companyBlock(company, tracked.map(c => ({id:c.id,name:c.name})), peopleLinesFor(named.id, people), since);
+    // A company may be on the user's tracking list before its first collection.
+    // Check the legacy/complete feed before claiming that no stored news exists.
+    const fallback = await readMarketIntelFeed().catch(() => null);
+    const stored = fallback?.companies[named.id] ?? Object.values(fallback?.companies ?? {}).find(c => c.name.toLowerCase() === named.name.toLowerCase());
+    if (stored) return companyBlock(stored, tracked.map(c => ({id:c.id,name:c.name})), peopleLinesFor(named.id, fallback?.people ?? people), since);
+    return `${named.name} is on the tracking list, but its Market Intelligence page has no collected feed yet. There are no stored posts, news, or website updates to summarize. Do not claim it is untracked, link to a missing briefing page, or invent recent activity.`;
+  }
+
+  const feed = await readMarketIntelFeed().catch(() => null);
   if (!feed || Object.keys(feed.companies).length === 0) {
     return "The Market Intelligence feed has no data yet (first refresh pending).";
   }
-
-  const q = query.toLowerCase();
-  const words = q.split(/[^a-z0-9&]+/).filter((w) => w.length >= 3);
   const companies = Object.values(feed.companies);
+  const feedNamed = companies.filter(c => {
+    const name = c.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    return name && normalized.includes(` ${name} `);
+  }).sort((a,b) => b.name.length-a.name.length)[0];
+  if (feedNamed) return companyBlock(
+    feedNamed,
+    companies.map(c => ({id:c.id,name:c.name})),
+    peopleLinesFor(feedNamed.id, feed.people),
+    since,
+  );
 
-  const peopleLinesFor = (companyId: string) =>
-    tracking.people
+  function peopleLinesFor(companyId: string, people: MarketIntelFeed["people"]) {
+    return tracking.people
       .filter((p) => p.companyId === companyId)
       .map(p => {
-        const posts = [...(feed.people[p.id]?.posts ?? [])].sort((a,b)=>(Date.parse(b.date??"")||0)-(Date.parse(a.date??"")||0));
+        const posts = [...(people[p.id]?.posts ?? [])].sort((a,b)=>(Date.parse(b.date??"")||0)-(Date.parse(a.date??"")||0));
         const recent = posts.filter(post => since === null || Date.parse(post.date??"") >= since);
         return `- [${p.name}](${p.linkedinUrl}), ${p.role || "tracked person"}: ${posts.length} stored posts across all dates; latest ${posts[0]?.date || "unknown/no dated post"}.\n` + recent.slice(0,3).map(post=>`  [${fmtDate(post.date)}] ${trim(post.text,200)} [Post](${post.url})`).join("\n");
       });
+  }
 
   // Deals asked for by name get the whole board.
   if (/\bm\s*&\s*a\b|merger|acquisition|acquire|deal/.test(q)) {
@@ -141,16 +175,6 @@ export async function searchMarketIntel(query: string, question = query): Promis
       ].join("\n");
     }
   }
-
-  // A named tracked company gets its complete record.
-  const normalized = ` ${q.replace(/[^\p{L}\p{N}]+/gu, " ")} `;
-  const exact = companies.filter(c => {
-    const name = c.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-    return name && normalized.includes(` ${name} `);
-  }).sort((a,b) => b.name.length-a.name.length);
-  const partial = companies.filter(c => c.name.toLowerCase().split(/\s+/).some(part => part.length >= 4 && normalized.includes(` ${part} `)));
-  const named = exact[0] ?? (partial.length === 1 ? partial[0] : undefined);
-  if (named) return companyBlock(feed, named, peopleLinesFor(named.id), since);
 
   // A tracked person's name resolves to their posts.
   const person = tracking.people.find((p) => q.includes(p.name.toLowerCase()));
