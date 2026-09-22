@@ -3,7 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check, Search } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { OpenInNewTab } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
+import { repSlug } from "@/lib/team";
 
 // A custom people-picker dropdown — shows each teammate's profile photo, both in
 // the trigger and in every option (Suren: "the dropdown should not look this
@@ -13,7 +15,7 @@ import { cn } from "@/lib/utils";
 // Options may be plain names, or `{ name, sub }` when a second line matters —
 // the contact picker keeps each person's job title that way instead of losing
 // it in the swap away from <select> (Anir, Jul 30 dropdown sweep).
-export type PersonOption = string | { name: string; sub?: string };
+export type PersonOption = string | { name: string; sub?: string; href?: string };
 
 export function PeopleSelect({
   value,
@@ -23,6 +25,7 @@ export function PeopleSelect({
   allowUnassigned = true,
   className,
   ariaLabel,
+  hrefForPerson,
 }: {
   value: string;
   options: PersonOption[];
@@ -31,6 +34,8 @@ export function PeopleSelect({
   allowUnassigned?: boolean;
   className?: string;
   ariaLabel?: string;
+  /** Defaults to the teammate profile; contact pickers can provide a contact URL. */
+  hrefForPerson?: (name: string) => string | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -56,10 +61,10 @@ export function PeopleSelect({
   }, [open]);
 
   const normalized = options.map((o) =>
-    typeof o === "string" ? { name: o, sub: undefined } : o
+    typeof o === "string" ? { name: o, sub: undefined, href: undefined } : o
   );
   const items = allowUnassigned
-    ? [{ name: "", sub: undefined }, ...normalized]
+    ? [{ name: "", sub: undefined, href: undefined }, ...normalized]
     : normalized;
   const q = query.trim().toLowerCase();
   const visibleItems = q
@@ -140,7 +145,7 @@ export function PeopleSelect({
                   setOpen(false);
                 }}
                 className={cn(
-                  "w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] text-left transition-colors",
+                  "group/opt w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] text-left transition-colors",
                   on
                     ? "bg-blue-light text-blue-primary font-semibold"
                     : "text-text-primary hover:bg-surface"
@@ -160,6 +165,12 @@ export function PeopleSelect({
                   )}
                 </span>
                 {on && <Check size={15} strokeWidth={2.5} className="text-blue-primary shrink-0" />}
+                {m.name && (
+                  <OpenInNewTab
+                    href={m.href ?? hrefForPerson?.(m.name) ?? `/team?member=${encodeURIComponent(repSlug(m.name))}`}
+                    label={m.name}
+                  />
+                )}
               </button>
             );
           })}

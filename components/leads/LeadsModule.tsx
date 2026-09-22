@@ -1141,6 +1141,7 @@ export function LeadsModule({
                         value: c.name,
                         label: c.name,
                         logoName: c.name,
+                        href: `/customers/${c.id}`,
                       })),
                     ]}
                   />

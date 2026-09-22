@@ -600,6 +600,7 @@ function DeviationsTable({
               ...opportunities.map((opportunity) => ({
                 value: opportunity.id,
                 label: opportunity.name,
+                href: `/opportunities/${opportunity.id}`,
                 logoName: opportunity.customer,
                 description: `${opportunity.externalId || opportunity.id} · ${opportunity.customer}`,
               })),

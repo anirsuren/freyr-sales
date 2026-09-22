@@ -17,6 +17,7 @@ import type {
   OpportunityOption,
 } from "@/components/meetings/MeetingsModule";
 import { todayISO } from "@/lib/utils";
+import { repSlug } from "@/lib/team";
 
 /**
  * PLANNING A MEETING (Suren, Aug 28): "when I click on the new meeting they
@@ -548,6 +549,7 @@ export function NewMeetingDialog({
                 return {
                   value: c.id,
                   label: c.name,
+                  href: `/customers/${c.id}`,
                   logoName: c.name,
                   color: "var(--ink-bright-blue)",
                   description: parts.length ? parts.join(" · ") : "nothing yet",
@@ -571,6 +573,7 @@ export function NewMeetingDialog({
                       ...[...theirContacts, ...addedContacts].map((c) => ({
                         id: c.id,
                         label: c.name,
+                        href: `/contacts/${c.id}`,
                         sub: c.title,
                         avatarName: c.name,
                       })),
@@ -632,6 +635,7 @@ export function NewMeetingDialog({
                     options={[...theirDeals, ...addedDeals].map((o) => ({
                       id: o.id,
                       label: o.label,
+                      href: `/opportunities/${o.id}`,
                       sub: o.customer,
                       logoName: o.customer,
                     }))}
@@ -683,7 +687,7 @@ export function NewMeetingDialog({
               onChange={setOwner}
               options={[...new Set([meName, ...members])]
                 .filter(Boolean)
-                .map((n) => ({ value: n, label: n, avatarName: n }))}
+                .map((n) => ({ value: n, label: n, avatarName: n, href: `/team?member=${encodeURIComponent(repSlug(n))}` }))}
             />
           </Field>
           {/* "who is the primary presenter of the meeting" */}
@@ -691,7 +695,7 @@ export function NewMeetingDialog({
           <Field label="Presenting">
             <MultiPicker
               variant="dropdown"
-              options={memberChoices.map((m) => ({ id: m, label: m, avatarName: m }))}
+              options={memberChoices.map((m) => ({ id: m, label: m, avatarName: m, href: `/team?member=${encodeURIComponent(repSlug(m))}` }))}
               selected={presenters}
               onToggle={(id) =>
                 setPresenters((cur) =>
@@ -707,7 +711,7 @@ export function NewMeetingDialog({
             <Field label="Also attending from Freyr">
               <MultiPicker
                 variant="dropdown"
-                options={memberChoices.map((m) => ({ id: m, label: m, avatarName: m }))}
+                options={memberChoices.map((m) => ({ id: m, label: m, avatarName: m, href: `/team?member=${encodeURIComponent(repSlug(m))}` }))}
                 selected={attendees}
                 onToggle={(id) =>
                   setAttendees((cur) =>

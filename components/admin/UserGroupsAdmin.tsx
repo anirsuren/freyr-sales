@@ -31,6 +31,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { MultiPicker } from "@/components/ui/MultiPicker";
 import { useStoredView } from "@/lib/useStoredView";
+import { repSlug } from "@/lib/team";
 import { GROUP_TYPES, GROUP_TYPE_META } from "@/lib/privileges";
 import Link from "next/link";
 import { AdminTabActions } from "./AdminTabActions";
@@ -402,7 +403,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                 below."). */}
             <div className="mt-1.5">
               <MultiPicker
-                options={memberNames.map((m) => ({ id: m, label: m }))}
+                options={memberNames.map((m) => ({ id: m, label: m, href: `/team?member=${encodeURIComponent(repSlug(m))}` }))}
                 selected={members}
                 onToggle={(id) =>
                   setMembers((prev) => {

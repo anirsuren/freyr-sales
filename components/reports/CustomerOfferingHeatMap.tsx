@@ -1684,6 +1684,7 @@ export function CustomerOfferingHeatMap({
                     label: o.name,
                     sub: o.customer,
                     logoName: o.customer,
+                    href: `/opportunities/${o.id}`,
                   }))}
                   selected={draft.opportunity_ids}
                   onToggle={(id) =>

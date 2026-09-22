@@ -761,6 +761,7 @@ export function OfferingActivities({
                     label: o.name,
                     sub: o.customer,
                     logoName: o.customer,
+                    href: `/opportunities/${o.id}`,
                   }))}
                   selected={opportunityIds}
                   onToggle={(id) =>

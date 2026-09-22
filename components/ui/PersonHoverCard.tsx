@@ -5,8 +5,9 @@ import { Avatar } from "@/components/ui/Avatar";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
+import { OpenInNewTab } from "@/components/ui/ColorSelect";
 import { ROLE_META, RoleTag, type WorkspaceRoleKey } from "@/components/ui/RoleTag";
-import { repEmail, teamsChatUrl } from "@/lib/team";
+import { repEmail, repSlug, teamsChatUrl } from "@/lib/team";
 
 /**
  * THE ROLE IS A TAG, NOT A WORD (Anir, Aug 30: "it says admin, shouldn't it be
@@ -169,7 +170,7 @@ export function PersonHoverCard({
       className="inline-flex"
       content={
         <div>
-          <div className="flex items-center gap-2.5">
+          <div className="group/opt flex items-start gap-2.5">
             <Avatar name={name} className="h-10 w-10 shrink-0 text-[12px]" />
             <div className="min-w-0">
               <p className="break-words text-[13.5px] font-semibold leading-tight text-text-primary">
@@ -206,6 +207,7 @@ export function PersonHoverCard({
                 </span>
               )}
             </div>
+            <OpenInNewTab href={`/team?member=${encodeURIComponent(repSlug(name))}`} label={name} />
           </div>
           <div className="mt-2.5 flex items-center gap-1.5">
             {links.map((l) => (

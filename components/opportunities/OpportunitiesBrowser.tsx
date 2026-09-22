@@ -2383,11 +2383,15 @@ export function OpportunitiesBrowser({
                 label: "Customer",
                 values: customerFilter,
                 onChange: setCustomerFilter,
-                options: customersInPipeline.map((c) => ({
-                  value: c,
-                  label: c,
-                  logoName: c,
-                })),
+                options: customersInPipeline.map((c) => {
+                  const accountId = list.find((o) => o.customer === c && o.customerId)?.customerId;
+                  return {
+                    value: c,
+                    label: c,
+                    logoName: c,
+                    href: accountId ? `/customers/${accountId}` : undefined,
+                  };
+                }),
               },
               {
                 key: "level",
@@ -4005,6 +4009,7 @@ function SingleOfferingEditor({
               options={offerings.map((o) => ({
                 id: o.id,
                 label: o.name,
+                href: `/offerings/${o.id}`,
                 group: o.type || "Other",
                 color: colorForOfferingId.get(o.id) ?? "#475569",
                 /* THE AGENTS WEAR THEIR OWN FACES (Anir, Sep 3: "I think

@@ -430,6 +430,7 @@ function GroupDialog({
                 id: c.id,
                 label: c.name,
                 logoName: c.name,
+                href: `/customers/${c.id}`,
                 sub:
                   c.openCount > 0
                     ? `${c.openCount} open ${c.openCount === 1 ? "deal" : "deals"}`

@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Search, UserRound, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { OpenInNewTab } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
+import { repSlug } from "@/lib/team";
 
 export type PickablePerson = {
   name: string;
@@ -163,7 +165,7 @@ export function PeoplePicker({
                   key={p.name}
                   type="button"
                   onClick={() => toggle(p.name)}
-                  className="flex w-full items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors hover:bg-blue-light/50"
+                  className="group/opt flex w-full items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors hover:bg-blue-light/50"
                 >
                   <Avatar name={p.name} className="h-8 w-8 shrink-0 text-[10px]" />
                   <span className="min-w-0 flex-1 leading-tight">
@@ -183,6 +185,7 @@ export function PeoplePicker({
                       className="shrink-0 text-blue-primary"
                     />
                   )}
+                  <OpenInNewTab href={`/team?member=${encodeURIComponent(repSlug(p.name))}`} label={p.name} />
                 </button>
               );
             })}

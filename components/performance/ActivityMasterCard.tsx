@@ -403,9 +403,10 @@ export function ActivityMasterCard({
                                 options={goals
                                   .filter((g) => !a.goalIds.includes(g.id))
                                   .map((g) => ({
-                                    id: g.id,
-                                    label: g.name,
-                                    sub: String(g.year),
+                                     id: g.id,
+                                     label: g.name,
+                                     href: `/performance/goal/${g.id}`,
+                                     sub: String(g.year),
                                     color: typeMeta(g.type).color,
                                     icon: typeMeta(g.type).icon,
                                     group: g.type || "Other",

@@ -753,7 +753,10 @@ export function SolutioningModule({
               onChange: setCustomerPick,
               options: [
                 ...new Set(state.requests.map((r) => r.customer).filter(Boolean)),
-              ].map((c) => ({ value: c, label: c, logoName: c })),
+              ].map((c) => {
+                const accountId = state.requests.find((r) => r.customer === c && r.customerId)?.customerId;
+                return { value: c, label: c, logoName: c, href: accountId ? `/customers/${accountId}` : undefined };
+              }),
             },
           ]}
           view={

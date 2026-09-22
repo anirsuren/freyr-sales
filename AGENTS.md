@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Open record from entity popups:** Shared single/multi selectors, people pickers, and person hover cards now show a quiet open-in-new-tab arrow on linked record rows while hovered or focused; the arrow leaves the selection and form in place. Customer, contact, opportunity, offering, teammate, and goal options across the main forms now supply their record destination where one exists. The shared arrow keeps `/mock-mode` in links opened from Mock mode. Verified on the Belmara Pharma meeting-request popup: opening Marcello Bianchi launched his Mock contact page in a separate tab while the form stayed open. Local only, not deployed.
+
 - **Sep 22 Solutioning Customer POC picker:** The meeting/request form now has a visible Clear action beside a selected Customer POC and an explicit “Clear selected contacts” row in the picker. Clicking outside the multi-select uses pointer events to close it reliably. Verified locally on Belmara Pharma by selecting and clearing the mock “test” contact; typecheck passes and focused lint has no errors (one existing hook-dependency warning in the shared picker). Local only, not deployed.
 
 - **Sep 22 Customer contacts shortcut:** “All N contacts” and the key-contact edit shortcut now select the account's Contacts tab, reveal that tab in the horizontal strip, and scroll the strip and contact list below the sticky header into view. Verified on Belmara Pharma in localhost Mock mode; typecheck and focused lint pass. Local only, not deployed.

@@ -4689,6 +4689,7 @@ function SubgoalEditorFields({
                       return {
                         value: g.id,
                         label: g.name,
+                        href: `/admin/groups/${g.id}`,
                         color: "var(--ink-bright-blue)",
                         avatarName: g.head,
                         crown: true,
@@ -5469,6 +5470,7 @@ function LogActualModal({
                 }}
                 options={state.goals.map((g) => ({
                   id: g.id,
+                  href: `/performance/goal/${g.id}`,
                   label:
                     (g.componentGoalIds?.length ?? 0) > 0
                       ? `${g.name} · adds up`
@@ -5644,6 +5646,7 @@ function LogActualModal({
                     value: a.id,
                     label: a.name,
                     logoName: a.name,
+                    href: `/customers/${a.id}`,
                   })),
                 ]}
               />
@@ -5696,6 +5699,7 @@ function LogActualModal({
                     .join(" · "),
                   color: "var(--ink-bright-blue)",
                   logoName: o.customer || undefined,
+                  href: `/opportunities/${o.id}`,
                 })),
                 ...(selectedAccount?.deals ?? []).map((d) => ({
                   value: `eng:${d.id}`,

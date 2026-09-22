@@ -9,6 +9,7 @@ import { Check, ChevronDown, ChevronLeft, ChevronRight, Search, X, type LucideIc
 import {
   floatingMenuStyle,
   menuMotionVars,
+  OpenInNewTab,
   type FloatingMenuStyle,
 } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,8 @@ import { tint } from "@/lib/tint";
 export type MultiPickerOption = {
   id: string;
   label: string;
+  /** Destination for opening this record without changing the selection. */
+  href?: string;
   sub?: string;
   /** Identity colour — chips and menu rows wear it (chip rule: colour +
    *  icon, never plain gray). */
@@ -102,7 +105,7 @@ function OptionRow({
       aria-selected={on}
       onClick={onPick}
       className={cn(
-        "menu-row-in relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-[background-color,transform]",
+        "menu-row-in group/opt relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-[background-color,transform]",
         !on && "hover:bg-surface active:scale-[0.99]"
       )}
       style={{
@@ -134,6 +137,7 @@ function OptionRow({
       {on && (
         <Check size={14} strokeWidth={2.6} className="shrink-0" style={{ color: accent }} />
       )}
+      {o.href && <OpenInNewTab href={o.href} label={o.label} />}
     </button>
   );
 }
@@ -767,7 +771,7 @@ export function MultiPicker({
                   onToggle(o.id);
                   setQuery("");
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] text-text-primary transition-colors hover:bg-surface"
+                className="group/opt flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] text-text-primary transition-colors hover:bg-surface"
               >
                 {o.agentName ? (
                   <AgentAvatar name={o.agentName} size={24} className="shrink-0" />
@@ -795,6 +799,7 @@ export function MultiPicker({
                     {o.sub}
                   </span>
                 )}
+                {o.href && <OpenInNewTab href={o.href} label={o.label} />}
               </button>
             ))
           )}

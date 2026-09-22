@@ -1452,6 +1452,7 @@ export function ContractsModule({
                     value: c.name,
                     label: c.name,
                     logoName: c.name,
+                    href: `/customers/${c.id}`,
                     color: "var(--ink-bright-blue)",
                   })),
                 ]}

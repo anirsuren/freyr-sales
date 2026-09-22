@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState, useRef, useEffect, type CSSProperties } from "react";
+import { usePathname } from "next/navigation";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { createPortal } from "react-dom";
 import {
@@ -28,6 +29,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { repSlug } from "@/lib/team";
 
 /** The default floor for a trigger's width. Named so `dense` can tell a
  *  caller-set floor from the one it inherited. */
@@ -39,17 +41,22 @@ const DEFAULT_MIN_WIDTH = 170;
  * invisible until the row is hovered or the link itself is focused, and
  * opens the record in a new tab without touching the selection.
  */
-function OpenInNewTab({ href, label }: { href: string; label: string }) {
+export function OpenInNewTab({ href, label }: { href: string; label: string }) {
+  const pathname = usePathname();
+  const destination =
+    pathname?.startsWith("/mock-mode/") && href.startsWith("/") && !href.startsWith("/mock-mode/")
+      ? `/mock-mode${href}`
+      : href;
   return (
     <a
-      href={href}
+      href={destination}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Open ${label} in a new tab`}
       title={`Open ${label} in a new tab`}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className="ml-0.5 hidden shrink-0 rounded p-1 text-text-tertiary opacity-0 transition-opacity hover:bg-surface hover:text-blue-primary focus-visible:opacity-100 group-hover/opt:opacity-100 sm:block"
+      className="relative z-10 ml-0.5 inline-flex shrink-0 rounded p-1 text-text-tertiary opacity-0 transition-opacity hover:bg-surface hover:text-blue-primary focus-visible:opacity-100 group-hover/opt:opacity-100 [@media(hover:none)]:opacity-100"
     >
       <ExternalLink size={12} strokeWidth={2.2} aria-hidden="true" />
     </a>
@@ -991,7 +998,12 @@ export function ColorSelect({
                     <Check size={15} strokeWidth={2.6} style={{ color: accent }} />
                   )}
                 </span>
-                {o.href && <OpenInNewTab href={o.href} label={o.label} />}
+                {(o.href || o.avatarName) && (
+                  <OpenInNewTab
+                    href={o.href ?? `/team?member=${encodeURIComponent(repSlug(o.avatarName!))}`}
+                    label={o.label}
+                  />
+                )}
               </button>
               </Fragment>
             );
@@ -1537,7 +1549,12 @@ export function MultiColorSelect({
                     width from the longest label above; anything wider than
                     the 400px cap wraps rather than cutting. */}
                 <span className={cn("min-w-0 flex-1 whitespace-normal leading-tight", on && "font-semibold")}>{o.label}</span>
-                {o.href && <OpenInNewTab href={o.href} label={o.label} />}
+                {(o.href || o.avatarName) && (
+                  <OpenInNewTab
+                    href={o.href ?? `/team?member=${encodeURIComponent(repSlug(o.avatarName!))}`}
+                    label={o.label}
+                  />
+                )}
               </button>
             );
           })}

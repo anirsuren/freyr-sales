@@ -9,6 +9,7 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { MultiPicker } from "@/components/ui/MultiPicker";
 import { useToast } from "@/components/ui/Toast";
 import type { RecordTeam, TeamedRecord } from "@/lib/recordTeams";
+import { repSlug } from "@/lib/team";
 
 /**
  * SAY WHO IS ON THIS RECORD.
@@ -142,7 +143,7 @@ export function RecordTeamButton({
                 }
                 options={roster
                   .filter((n) => n !== owner)
-                  .map((n) => ({ id: n, label: n, avatarName: n }))}
+                  .map((n) => ({ id: n, label: n, avatarName: n, href: `/team?member=${encodeURIComponent(repSlug(n))}` }))}
               />
             </Field>
           </div>

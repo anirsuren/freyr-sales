@@ -3111,6 +3111,7 @@ export function CustomerTabs({
                     options={contacts.map((c) => ({
                       name: c.full_name,
                       sub: c.job_title || undefined,
+                      href: `/contacts/${c.id}`,
                     }))}
                   />
                 </div>

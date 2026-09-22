@@ -421,7 +421,7 @@ export function CustomerEditForm({
                 { value: "NA", label: "NA", color: "#C7CDD6" },
                 ...[...customers]
                   .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((c) => ({ value: c.id, label: c.name, logoName: c.name })),
+                  .map((c) => ({ value: c.id, label: c.name, logoName: c.name, href: `/customers/${c.id}` })),
               ]}
             />
           </div>
