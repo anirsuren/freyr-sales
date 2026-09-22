@@ -196,6 +196,13 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 mock Sales Materials dates:** The 700-day mock upload-date spread
+  produced 2024–25 timestamps. All generated showroom materials and legacy
+  demo assets now use stable Aug–Sep 2026 dates; existing persisted mock rows
+  are upgraded on catalogue load without touching live uploads. Verified all
+  710 visible Sales Materials in localhost Mock mode have dates from Aug 1 to
+  Sep 21, 2026; typecheck passes. Local only, not deployed.
+
 - **Sep 22 Agent popup chat history:** The bottom-right Agent popup now has a
   three-line history button and a new-chat button. Its history is grouped by
   date and uses the same saved conversations as the full Agent page; selecting

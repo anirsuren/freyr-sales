@@ -730,7 +730,7 @@ const SERVICE = "Freyr Services";
 // that known import date on the records themselves. This makes every sample
 // material row show a date while live materials continue to use their own
 // persisted `addedAt` value (or the timestamp embedded in their Docs path).
-const DEMO_MATERIAL_ADDED_AT = "2026-07-30T12:00:00.000Z";
+const DEMO_MATERIAL_ADDED_AT = "2026-08-03T12:00:00.000Z";
 
 // Eswar Subramanian Ramakrishnan, "Freya.Register - Technical Details",
 // supplied 5 Aug 2026. Keep this as structured source copy so the Roadmap tab
@@ -3199,12 +3199,12 @@ const SHOWROOM_ACCOUNT_MATERIALS: {
   },
 ];
 
-/** A deterministic date somewhere in the last two years, laid out so a
- *  library's files were plainly added over time rather than all at once. */
+/** A deterministic August–September 2026 date for invented showroom records.
+ *  The old 700-day window put generated uploads as far back as 2024. */
 function showroomStamp(key: string, index: number): string {
   const DAY = 24 * 60 * 60 * 1000;
   const at = new Date(
-    Date.now() - demoInt(6, 700, key, "when", index) * DAY
+    Date.UTC(2026, 7, 1) + demoInt(0, 51, key, "when", index) * DAY
   );
   at.setUTCHours(
     demoInt(8, 18, key, "h", index),
@@ -3213,6 +3213,31 @@ function showroomStamp(key: string, index: number): string {
     0
   );
   return at.toISOString();
+}
+
+const SHOWROOM_DATE_FLOOR = "2026-08-01";
+
+/** Older generated rows live in the persisted mock catalogue, so changing the
+ *  generator alone would not repair the dates already visible in the UI. */
+function refreshShowroomMaterialDates(s: OfferingsStore): boolean {
+  let changed = false;
+  for (const offering of s.offerings) {
+    for (const [index, material] of (offering.materials ?? []).entries()) {
+      const generated = material.id.startsWith(`sm-${offering.id}-`);
+      const starter = DEMO_MATERIAL_IDS.has(material.id);
+      if ((!generated && !starter) || (material.addedAt && material.addedAt >= SHOWROOM_DATE_FLOOR)) continue;
+      const accountIndex = material.id.match(/-a(\d+)$/);
+      const regularIndex = material.id.match(/-(\d{2})$/);
+      material.addedAt = starter
+        ? DEMO_MATERIAL_ADDED_AT
+        : showroomStamp(
+            offering.id,
+            accountIndex ? 39 + Number(accountIndex[1]) : regularIndex ? Number(regularIndex[1]) - 1 : index
+          );
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 /** The sales library for one showroom offering. Every offering carries enough
@@ -3776,6 +3801,7 @@ function fillShowroomCatalog(s: OfferingsStore): boolean {
     s.showroomDepthVersion = SHOWROOM_DEPTH_VERSION;
     changed = true;
   }
+  if (refreshShowroomMaterialDates(s)) changed = true;
   return changed;
 }
 
