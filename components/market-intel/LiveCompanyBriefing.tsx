@@ -60,6 +60,7 @@ import { groupStories, type StoryGroup, type StoryInput } from "@/lib/marketInte
 import { clipText, outletName, titleFromUrl } from "@/lib/marketIntelText";
 import {
   isRelevantCompanyItem,
+  mentionMatcher,
   type BriefingPost,
   type FeedNews,
   type FeedPost,
@@ -162,6 +163,7 @@ export function LiveCompanyBriefing({
   const isCompetitor = briefing.group === "competitor";
   const [source, setSource] = useState<Source>("all");
   const [selectedSignals, setSelectedSignals] = useState<SignalId[]>([]);
+  const [selectedCompetitor, setSelectedCompetitor] = useState<string | null>(null);
   /* A COMPETITOR SHOWS WHAT CONCERNS US BY DEFAULT (Saras, Sep 10: "only if
      their posts are related to these industries should they show up here").
      Nothing is thrown away: the switch shows everything, with a count. */
@@ -359,9 +361,11 @@ export function LiveCompanyBriefing({
   ].filter((s) => s.always || s.count > 0);
 
   const passesSource = (i: Item) => source === "all" || i.kind === source;
+  const matchesSelectedCompetitor = selectedCompetitor ? mentionMatcher(selectedCompetitor) : null;
   const filtered = base
     .filter(passesSource)
-    .filter((i) => selectedSignals.length === 0 || selectedSignals.some((signal) => kindsOf(i).includes(signal)));
+    .filter((i) => selectedSignals.length === 0 || selectedSignals.some((signal) => kindsOf(i).includes(signal)))
+    .filter((i) => !matchesSelectedCompetitor || matchesSelectedCompetitor(`${i.title} ${i.body ?? ""}`));
   const groups = groupStories(filtered).filter((group) =>
     [group.lead, ...group.others].every((item) => !removedUrls.has(item.url))
   );
@@ -824,7 +828,7 @@ export function LiveCompanyBriefing({
                 <button
                   key={s.key}
                   type="button"
-                  onClick={() => setSource(s.key)}
+                  onClick={() => { setSource(s.key); if (s.key !== "all") setSelectedCompetitor(null); }}
                   aria-pressed={on}
                   className={cn(
                     "flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors",
@@ -855,8 +859,15 @@ export function LiveCompanyBriefing({
           />
           </div>
 
+          {selectedCompetitor && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-blue-subtle bg-blue-light px-3 py-2 text-[12px] text-text-primary" role="status">
+              <span>Showing competitor mentions of <strong>{selectedCompetitor}</strong> · {groups.length} {groups.length === 1 ? "story" : "stories"}</span>
+              <button type="button" onClick={() => { setSelectedCompetitor(null); setSelectedSignals([]); }} className="shrink-0 cursor-pointer font-semibold text-blue-primary hover:underline">Clear filter</button>
+            </div>
+          )}
+
           <div
-            key={`${savedOnly}-${source}-${selectedSignals.join(",") || "any"}-${newsView}-${range}-${exactDate}-${relevantOnly}`}
+            key={`${savedOnly}-${source}-${selectedSignals.join(",") || "any"}-${selectedCompetitor ?? "any"}-${newsView}-${range}-${exactDate}-${relevantOnly}`}
             className={cn(
               "tab-panel",
               newsView === "tiles" && groups.length > 0
@@ -1029,7 +1040,7 @@ export function LiveCompanyBriefing({
                   {selectedSignals.length > 0 ? `${selectedSignals.length} selected` : "Showing every signal"}
                 </p>
               </div>
-              {selectedSignals.length > 0 && <button type="button" onClick={() => setSelectedSignals([])} className="shrink-0 cursor-pointer text-[11.5px] font-semibold text-blue-primary hover:underline">Clear</button>}
+              {selectedSignals.length > 0 && <button type="button" onClick={() => { setSelectedSignals([]); setSelectedCompetitor(null); }} className="shrink-0 cursor-pointer text-[11.5px] font-semibold text-blue-primary hover:underline">Clear</button>}
             </div>
             <div className="mt-2.5 space-y-1">
               {signalsFor(briefing.group).map(signal => {
@@ -1041,7 +1052,7 @@ export function LiveCompanyBriefing({
                     <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded border", checked ? "border-blue-primary bg-blue-primary text-white" : "border-border-light bg-white")}>
                       {checked && <Check size={10} strokeWidth={3} />}
                     </span>
-                    <input type="checkbox" className="sr-only" checked={checked} onChange={() => setSelectedSignals(current => checked ? current.filter(item => item !== signal) : [...current, signal])} />
+                    <input type="checkbox" className="sr-only" checked={checked} onChange={() => { setSelectedCompetitor(null); setSelectedSignals(current => checked ? current.filter(item => item !== signal) : [...current, signal]); }} />
                     <Icon size={14} style={{ color: meta.color }} className="shrink-0" />
                     <span className="min-w-0 flex-1 text-[12px] font-semibold leading-snug text-text-primary">{meta.label}</span>
                     <span className="tnum text-[11.5px] font-semibold text-text-secondary">{signalCounts[signal] ?? 0}</span>
@@ -1062,9 +1073,21 @@ export function LiveCompanyBriefing({
                   <button
                     type="button"
                     key={mention.name}
-                    onClick={() => { setSelectedSignals(["competitor_mentions"]); setSource("all"); }}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-full bg-[rgba(180,49,143,0.10)] px-2.5 py-1 text-[12px] font-semibold text-[color:var(--ink-magenta)] hover:bg-[rgba(180,49,143,0.16)]"
+                    onClick={() => {
+                      if (selectedCompetitor === mention.name) {
+                        setSelectedCompetitor(null);
+                        setSelectedSignals([]);
+                      } else {
+                        setSelectedCompetitor(mention.name);
+                        setSelectedSignals(["competitor_mentions"]);
+                        setSource("all");
+                      }
+                    }}
+                    aria-pressed={selectedCompetitor === mention.name}
+                    aria-label={`${selectedCompetitor === mention.name ? "Clear" : "Show"} mentions of ${mention.name}`}
+                    className={cn("flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors", selectedCompetitor === mention.name ? "border-[color:var(--ink-magenta)] bg-[rgba(180,49,143,0.16)] text-[color:var(--ink-magenta)]" : "border-transparent bg-[rgba(180,49,143,0.10)] text-[color:var(--ink-magenta)] hover:bg-[rgba(180,49,143,0.16)]")}
                   >
+                    {selectedCompetitor === mention.name && <Check size={12} strokeWidth={2.5} />}
                     {mention.name}
                     <span className="tnum font-bold">{mention.count}</span>
                   </button>

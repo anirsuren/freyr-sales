@@ -1151,7 +1151,7 @@ function tidyLine(text: string, max: number): string {
  * has to stand on its own; a one-word name must also keep its own capitals
  * (or be in a shouted headline), so "Element" is not every "element".
  */
-function mentionMatcher(name: string): (text: string) => boolean {
+export function mentionMatcher(name: string): (text: string) => boolean {
   const clean = name.trim();
   const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
   const edge = (body: string, flags: string) => new RegExp(`(?<![\\p{L}\\p{N}])${body}(?![\\p{L}\\p{N}])`, flags);
