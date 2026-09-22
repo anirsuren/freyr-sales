@@ -196,6 +196,11 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Sales Materials group spacing:** Reduced the gap between grouped
+  offering rows in the sidebar Sales Materials page from 24px to 8px. Verified
+  in the 48-material live list and Mock mode on localhost; typecheck passes.
+  Local only, not deployed.
+
 - **Sep 22 mock Sales Materials dates:** The 700-day mock upload-date spread
   produced 2024–25 timestamps. All generated showroom materials and legacy
   demo assets now use stable Aug–Sep 2026 dates; existing persisted mock rows

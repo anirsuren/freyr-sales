@@ -909,7 +909,7 @@ const TABLE_CLASS =
            width as a NUMBER — max-content sizing would let one long one-line
            description stretch the whole run off the screen. */
         <div className="mt-4 overflow-x-auto pb-1">
-          <div className="space-y-6 [&>div]:min-w-[1790px]">
+          <div className="space-y-2 [&>div]:min-w-[1790px]">
           {offeringGroups.map((group) => {
             /* A SEARCH THAT FINDS ONE FILE SHOULD SHOW YOU THE FILE.
                Collapsed-on-arrival is right when you are browsing all
