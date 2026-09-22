@@ -909,7 +909,7 @@ const TABLE_CLASS =
            width as a NUMBER — max-content sizing would let one long one-line
            description stretch the whole run off the screen. */
         <div className="mt-4 overflow-x-auto pb-1">
-          <div className="space-y-2 [&>div]:min-w-[1790px]">
+          <div className="space-y-6 [&>div]:min-w-[1790px]">
           {offeringGroups.map((group) => {
             /* A SEARCH THAT FINDS ONE FILE SHOULD SHOW YOU THE FILE.
                Collapsed-on-arrival is right when you are browsing all
@@ -967,7 +967,7 @@ const TABLE_CLASS =
                   }}
                   aria-expanded={!shut}
                   className={cn(
-                    "grid w-full cursor-pointer grid-cols-[15px_300px_260px_auto] items-center gap-3 bg-blue-light/50 px-4 py-2.5 text-left shadow-[inset_3px_0_0_0_var(--blue-primary)] transition-colors hover:bg-blue-light/75",
+                    "flex w-full cursor-pointer items-center gap-3 bg-blue-light/50 px-4 py-2.5 text-left shadow-[inset_3px_0_0_0_var(--blue-primary)] transition-colors hover:bg-blue-light/75",
                     /* Not border-b: a full-width rule paints across the rail
                        and breaks it. freyr-rule-inset starts 3px in. */
                     !shut && "freyr-rule-bottom-inset"
@@ -985,13 +985,13 @@ const TABLE_CLASS =
                       "remove these icons"). The name is the label and the
                       chevron is the control; a third glyph between them was
                       decoration. */}
-                  <b className="truncate text-[13px] text-text-primary">{group.name}</b>
+                  <b className="max-w-[360px] shrink-0 truncate text-[13px] text-text-primary">{group.name}</b>
                   {/* THE CATEGORY, QUIETLY (Anir, Aug 26: "beside the main name
                       of the offering, add the offering category in small font,
                       between the offering name and the number of materials.
                       These three small things don't need to be very
                       highlighted"). */}
-                  <span className="truncate text-[11px] text-text-tertiary">
+                  <span className="max-w-[300px] truncate text-[11px] text-text-tertiary">
                     {group.category ?? ""}
                   </span>
                   {/* In brackets (Saras, Aug 27: "please put the 'X material'

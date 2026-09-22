@@ -200,10 +200,11 @@ what was written back, `deleted-test-customers.json`).
 
 - **Sep 22 Market Intel competitor mention chips:** Selecting a named competitor filters to stories that actually mention that company, highlights the selected chip, and shows a result count and Clear filter action above the feed. Clicking the same chip again restores the full feed; manual signal/source changes clear the named chip state. Verified in localhost Mock mode on Takeda/Sanofi by toggling the chip on and off; typecheck and focused lint pass. Local only, not deployed.
 
-- **Sep 22 Sales Materials group spacing:** Reduced the gap between grouped
-  offering rows in the sidebar Sales Materials page from 24px to 8px. Verified
-  in the 48-material live list and Mock mode on localhost; typecheck passes.
-  Local only, not deployed.
+- **Sep 22 Sales Materials group spacing:** Restored the original 24px gap
+  between grouped offering rows. The actual issue was the fixed-width columns
+  separating each header's offering name, category, and material count; those
+  elements now sit together with content-sized spacing. Verified in localhost
+  Mock mode; typecheck passes. Local only, not deployed.
 
 - **Sep 22 mock Sales Materials dates:** The 700-day mock upload-date spread
   produced 2024–25 timestamps. All generated showroom materials and legacy
