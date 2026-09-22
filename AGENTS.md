@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Customer contacts shortcut:** “All N contacts” and the key-contact edit shortcut now select the account's Contacts tab, reveal that tab in the horizontal strip, and scroll the strip and contact list below the sticky header into view. Verified on Belmara Pharma in localhost Mock mode; typecheck and focused lint pass. Local only, not deployed.
+
 - **Sep 22 Mock Solutioning document assignment:** The two Solutioning pages
   offered six retired mock teammate names while stored assignments normalized
   those names to the current roster, making a successful save display as

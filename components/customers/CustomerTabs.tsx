@@ -8,7 +8,7 @@ import { formatPhoneNumber, phoneProblem, nationalDigitBudget, phoneDigits } fro
 import { splitPhone, joinPhone } from "@/lib/countries";
 import { contactPhoneDisplay } from "@/lib/contactPhoneDisplay";
 import { formatMoney as fmtMoney } from "@/lib/pipeline";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { DateEcho } from "@/components/ui/DateEcho";
 import { useRouter } from "next/navigation";
@@ -465,6 +465,7 @@ export function CustomerTabs({
      mode because it was not rendered there at all; now that it is, landing
      anywhere else means arriving at a band instead of at the account. */
   const [tab, setTabState] = useState("overview");
+  const tabStripRef = useRef<HTMLDivElement>(null);
   const [accountRailOpen, setAccountRailOpen] = useState(true);
   // Persist the active tab in the URL (?tab=) so it's always clear which tab
   // you're on AND browser-back from a deal/session returns to the SAME tab, not
@@ -476,6 +477,17 @@ export function CustomerTabs({
       url.searchParams.set("tab", key);
       replaceAppBrowserUrl(url);
     } catch {}
+  };
+  const openContactsTab = () => {
+    setTab("contacts");
+    // This link sits well below the tab strip. Bring both the selected tab and
+    // the list into view so the change is visible at the point of the click.
+    requestAnimationFrame(() => {
+      const strip = tabStripRef.current;
+      strip?.scrollIntoView({ behavior: "smooth", block: "start" });
+      strip?.querySelector<HTMLButtonElement>('[data-account-tab="contacts"]')
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    });
   };
   // Deep-link support (?tab=offerings etc.) — read after mount via
   // window.location so SSR markup stays identical (same pattern as the intake
@@ -1025,6 +1037,7 @@ export function CustomerTabs({
             right to click on it"). Wrapping to a second row is what made the
             page read as two tab systems in the first place. */}
         <div
+          ref={tabStripRef}
           role="tablist"
           aria-label="Account sections"
           /* SCROLLS, WITHOUT A SCROLLBAR (Anir, Aug 28: "the scroll bar is a
@@ -1049,7 +1062,7 @@ export function CustomerTabs({
              1208px row, so no gap on earth fits thirteen of them on one line.
              He chose scrolling over wrapping ("obviously you have to scroll
              left and right to click on it"); this makes the scroll shorter. */
-          className="mb-6 flex flex-nowrap gap-5 overflow-x-auto overflow-y-hidden border-b border-border-light [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="mb-6 flex scroll-mt-36 flex-nowrap gap-5 overflow-x-auto overflow-y-hidden border-b border-border-light [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {/* OVERVIEW LEADS THE ROW (Anir, Aug 30: "where is overview").
               It was rendered after every band, so on an account with eleven
@@ -1119,6 +1132,7 @@ export function CustomerTabs({
           ).map((t) => (
             <button
               key={t.key}
+              data-account-tab={t.key}
               role="tab"
               aria-selected={tab === t.key}
               onClick={() => setTab(t.key)}
@@ -1413,7 +1427,7 @@ export function CustomerTabs({
                     {contacts.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => setTab("contacts")}
+                        onClick={openContactsTab}
                         className="mr-1 cursor-pointer text-[12.5px] font-semibold text-blue-primary transition-colors hover:text-blue-hover"
                       >
                         All {contacts.length} contacts →
@@ -1424,7 +1438,7 @@ export function CustomerTabs({
                         <Tooltip label="Manage key contacts">
                           <button
                             type="button"
-                            onClick={() => setTab("contacts")}
+                            onClick={openContactsTab}
                             aria-label="Edit key contacts"
                             className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
                           >
