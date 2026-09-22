@@ -300,13 +300,15 @@ export async function POST(req: NextRequest) {
       readMemberProfile(scope).catch(() => ({ title: "", signature: "" })),
     ]);
   const opportunities = moduleAccess.opportunities ? (await readOpportunities()).opportunities : [];
-  /* BOTH PIPELINES: Mock is pitch sessions, Real is opportunities and has no
-     sessions at all. Reading only the former is what made the agent answer
-     "$0 open" over a $112.0M book. */
-  const deals = [
-    ...buildDeals(sessions, customers, contacts, interactions),
-    ...dealsFromOpportunities(opportunities, customers),
-  ];
+  // Pipeline and Opportunities are separate views. Adding their rows together
+  // made a simple "open pipeline" question report a fictional combined total.
+  // The Pipeline board is backed by pitch sessions where they exist; live
+  // workspaces without sessions use the Opportunities book instead.
+  const sessionDeals = buildDeals(sessions, customers, contacts, interactions);
+  const opportunityDeals = dealsFromOpportunities(opportunities, customers);
+  const deals = sessionDeals.length ? sessionDeals : opportunityDeals;
+  const pipelineQuestion = sessionDeals.length > 0 &&
+    /\b(cooling|quiet|open pipeline|stale deals?|rotting deals?)\b/i.test(message);
   const { actions } = focusActions(
     nextBestActions({ sessions, customers, contacts, interactions, opportunities }),
     customers,
@@ -415,6 +417,21 @@ export async function POST(req: NextRequest) {
   const leadAggregateQuestion =
     leadSummaryQuestion &&
     /(how many|count|status|source|overview|breakdown)/i.test(message);
+  const trackingListQuestion =
+    moduleAccess.market_intel &&
+    /\b(track(?:ing|ed)?|my list|starred|favorites?|favourites?)\b/i.test(message) &&
+    /\b(compan(?:y|ies)|customers?|competitors?|list)\b/i.test(message) &&
+    !/\b(latest|recent|news|post|article|about|why|how|add|remove|star|unstar|update|lately)\b/i.test(message);
+  const offeringsInventoryQuestion =
+    moduleAccess.offerings &&
+    /\b(offerings|products|services|portfolio|catalogue|catalog)\b/i.test(message) &&
+    /\b(how many|list all|list our|what offerings do we have|what products do we have|what services do we have|show me all)\b/i.test(message) &&
+    !/\b(material|document|file|deck|video|owner|customer|market|available|availability|price|cost)\b/i.test(message);
+  const opportunityAggregateQuestion =
+    moduleAccess.opportunities &&
+    /\bopportunit(?:y|ies)\b/i.test(message) &&
+    /\b(how many|count|total|estimated tcv|worth)\b/i.test(message) &&
+    !/\b(which|largest|biggest|top|closing|quarter|month|owner|stage|status|customer|company)\b/i.test(message);
   const prefetchedLeadRaw = leadSummaryQuestion
     ? await readAgentWorkspace(actor, "leads", "", false, 0, false)
     : "";
@@ -431,6 +448,19 @@ export async function POST(req: NextRequest) {
     } catch {
       return prefetchedLeadRaw;
     }
+  })();
+  const prefetchedTrackingContext = trackingListQuestion
+    ? await readAgentWorkspace(actor, "market_intel", "", true, 0, false)
+    : "";
+  const prefetchedOpportunityRaw = opportunityAggregateQuestion
+    ? await readAgentWorkspace(actor, "opportunities", "", /\bmy\b/i.test(message), 0, false)
+    : "";
+  const opportunityContext = (() => {
+    if (!prefetchedOpportunityRaw) return "";
+    try {
+      const data = JSON.parse(prefetchedOpportunityRaw);
+      return JSON.stringify({module:data.module,scope:data.scope,summary:data.summary,pageUrl:"/opportunities"});
+    } catch { return prefetchedOpportunityRaw; }
   })();
   const trackedForQuestion = moduleAccess.market_intel
     ? await readMarketIntelTracking().catch(() => null)
@@ -486,7 +516,7 @@ export async function POST(req: NextRequest) {
    * the search tool is left for digging into documents.
    */
   const catalogueGrounding = (() => {
-    if (leadSummaryQuestion || marketFocused) return "";
+    if (leadSummaryQuestion || marketFocused || trackingListQuestion || opportunityAggregateQuestion) return "";
     if (!moduleAccess.offerings) return "";
     try {
       /**
@@ -544,7 +574,7 @@ export async function POST(req: NextRequest) {
   })();
 
   const knowledgeGrounding = await (async () => {
-    if (leadSummaryQuestion || marketFocused) return "";
+    if (leadSummaryQuestion || marketFocused || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion) return "";
     if (!moduleAccess.offerings) return "";
     try {
       const corpus = secureKnowledgePassagesForMember(
@@ -596,9 +626,12 @@ export async function POST(req: NextRequest) {
    */
   const offeringsOnly = !moduleAccess.customers && !moduleAccess.opportunities;
 
-  const facts = leadSummaryQuestion || marketFocused ? "" : getDataMode() === "live"
+  const facts = leadSummaryQuestion || marketFocused || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion ? "" : getDataMode() === "live"
     ? JSON.stringify({customers:customers.map(c=>({id:c.id,name:c.company_name,owner:c.owner,ownerUserId:c.owner_user_id,country:c.geography,url:`/customers/${encodeURIComponent(c.id)}`})),note:"For pipeline figures, read_workspace opportunities is authoritative. It excludes Won/Lost from open counts and preserves currency. Customer visibility is not ownership."})
-    : offeringsOnly ? "" : buildFacts(ctx, deals, needsApproval, runs);
+    : offeringsOnly ? "" : buildFacts(ctx, deals, needsApproval, runs) +
+      (sessionDeals.length
+        ? "\nPIPELINE SOURCE: [Pipeline](/pipeline). This board's pitch-session deals are separate from the [Opportunities](/opportunities) revenue view. Never add the two totals or link an open-pipeline answer to Opportunities."
+        : "\nPIPELINE SOURCE: [Opportunities](/opportunities).");
   const savedSignature =
     memberProfile.signature.trim() || `${actorName}\nFreyr Solutions`;
   const memberIdentity = memberProfile.title
@@ -671,7 +704,7 @@ export async function POST(req: NextRequest) {
      * read "verify someone's number" as a phone number. Both are core flows it
      * now has the steps for.
      */
-    (leadSummaryQuestion || marketFocused ? "" : `HOW THIS APP WORKS. The product manual below is authoritative for any
+    (leadSummaryQuestion || marketFocused || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion ? "" : `HOW THIS APP WORKS. The product manual below is authoritative for any
 how-to, where-is, or who-can question about Freyr Sales Intelligence itself:
 the pages, the buttons, and the steps. Answer those from it directly and name
 the page and control. Never say a feature does not exist just because it is
@@ -736,6 +769,11 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     (prefetchedLeadContext
       ? "PREFETCHED LEADS DATA (authoritative and complete for totals and breakdowns; answer directly from this data without another workspace read):\n" +
         prefetchedLeadContext +
+        "\n\n"
+      : "") +
+    (prefetchedTrackingContext
+      ? "PREFETCHED PERSONAL TRACKING DATA (authoritative for this user's My list, starred companies, and group counts; answer from this data without another workspace read):\n" +
+        prefetchedTrackingContext +
         "\n\n"
       : "") +
     (offeringsOnly || !facts ? "" : "WORKSPACE BOOK (visible records, not necessarily owned by the current user):\n" + facts) +
@@ -1014,7 +1052,7 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
   );
   const focusedMarketSystem =
     `You are Freyr AI. Answer ${firstName}'s question from the CURRENT COMPANY RECORDS below. ` +
-    "Give the answer first, then at most four short dated points. Use the newest relevant stored items. " +
+    "Give the answer first, then at most four short points. Begin each source point with its stored publication date, or say undated; never imply a publication date is the event date. Use the newest relevant stored items. " +
     "Cite each factual point with the exact supplied source link. Publication dates are not event dates. " +
     "Publisher excerpts can be partial; do not add deal terms, regulatory indications, or numbers they do not support. " +
     "A tracked company with no collected feed is still tracked: say updates are unavailable, and do not invent news or link to a missing briefing. " +
@@ -1022,14 +1060,25 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     "For links copy only supplied destinations; never print raw URLs. " +
     'Finish with <followups>["question one","question two","question three"]</followups> using three relevant short questions.\n' +
     namedMarketContext;
+  const focusedListSystem =
+    `You are Freyr AI. Answer ${firstName}'s question directly from the PREFETCHED DATA below. ` +
+    "It is the complete current source for the requested counts. Keep the answer short. For a broad 'what do we have' question, give the total, group counts and a few linked examples. List every record only when the user explicitly says 'list all' or 'show me all'. " +
+    "Use only the supplied counts and canonical links. Keep different currencies separate and do not combine Pipeline and Opportunities totals. Do not infer that a tracked company is a CRM customer. " +
+    "Use Markdown bullets for a breakdown and a table only if a full list benefits from one. " +
+    "Finish with <followups>[\"question one\",\"question two\",\"question three\"]</followups>.\n" +
+    (trackingListQuestion ? prefetchedTrackingContext : offeringsInventoryQuestion ? catalogueGrounding : opportunityAggregateQuestion ? opportunityContext : prefetchedLeadContext);
   const agentStartedAt = performance.now();
-  const agentResult = await agentConversePrimary(
-    (marketFocused ? focusedMarketSystem : agentSystem + namedMarketContext) + "\nRESPONSE PRESENTATION: Give a concise answer, normally 150–250 words unless more detail is requested. Link every named application record using its provided canonical destination, including the first mention. Never expose backend tool names as user navigation or fabricate a page for a tool. Keep opaque database IDs out of prose unless requested; put them only inside the supplied link destinations. When explaining navigation, link named pages using navigation in VERIFIED CURRENT USER and verified routes in the app guide (for example [Team](/team)); do not leave page directions as unlinked text. Internal application links MUST preserve the exact relative path returned by the tool, e.g. [Company name](/market-intel/company-id). NEVER prepend https://app, any hostname or any invented prefix. External article citations use the exact supplied destination. A /agent-source/N destination is a request-local citation reference: copy it exactly as [Publisher or article title](/agent-source/N); the application restores its verified source URL. Never rewrite, shorten, or invent a source destination. Use a descriptive publisher or article title as the link label and copy its supplied destination byte-for-byte; never show a raw URL or application path (including paths in parentheses or code formatting). Write [Team members](/admin/members), never Team members (/admin/members). Never place whitespace between ] and (. Use only verified destinations. Finish every answer with <followups>[\"question one\",\"question two\",\"question three\"]</followups>. These must be three short, distinct next questions (aim for 4–8 words each) the USER could ask, specific to this question and answer, exploring new useful information rather than repeating answered questions or generic starters. This metadata is removed from the displayed answer. Do not mention the metadata. Generate it in this same response, without extra tool calls solely for suggestions.",
-    turns,
-    marketFocused ? [] : readOnlyTools,
-    runTool
-  );
-  if (agentResult && agentResult.text) {
+  const responseSystem = (marketFocused ? focusedMarketSystem : leadAggregateQuestion || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion ? focusedListSystem : agentSystem + namedMarketContext) + "\nRESPONSE PRESENTATION: Give a concise answer, normally 150–250 words unless more detail is requested. Link every named application record using its provided canonical destination, including the first mention. Never expose backend tool names as user navigation or fabricate a page for a tool. Keep opaque database IDs out of prose unless requested; put them only inside the supplied link destinations. When explaining navigation, link named pages using navigation in VERIFIED CURRENT USER and verified routes in the app guide (for example [Team](/team)); do not leave page directions as unlinked text. Internal application links MUST preserve the exact relative path returned by the tool, e.g. [Company name](/market-intel/company-id). NEVER prepend https://app, any hostname or any invented prefix. External article citations use the exact supplied destination. A /agent-source/N destination is a request-local citation reference: copy it exactly as [Publisher or article title](/agent-source/N); the application restores its verified source URL. Never rewrite, shorten, or invent a source destination. Use a descriptive publisher or article title as the link label and copy its supplied destination byte-for-byte; never show a raw URL or application path (including paths in parentheses or code formatting). Write [Team members](/admin/members), never Team members (/admin/members). Never place whitespace between ] and (. Use only verified destinations. Finish every answer with <followups>[\"question one\",\"question two\",\"question three\"]</followups>. These must be three short, distinct next questions (aim for 4–8 words each) the USER could ask, specific to this question and answer, exploring new useful information rather than repeating answered questions or generic starters. This metadata is removed from the displayed answer. Do not mention the metadata. Generate it in this same response, without extra tool calls solely for suggestions.";
+  const responseTools = marketFocused || leadAggregateQuestion || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion ? [] : readOnlyTools;
+  let firstDeltaMs: number | null = null;
+  const runAgent = (onText?: (delta: string) => void) =>
+    agentConversePrimary(responseSystem, turns, responseTools, runTool, undefined,
+      onText ? (delta) => {
+        if (firstDeltaMs === null) firstDeltaMs = Math.round(performance.now() - requestStartedAt);
+        onText(delta);
+      } : undefined);
+  const finishResult = (agentResult: Awaited<ReturnType<typeof runAgent>>) => {
+    if (!agentResult?.text) return null;
     console.info("[agent] response", {
       provider: configuredAgentProvider(),
       elapsedMs: Math.round(performance.now() - agentStartedAt),
@@ -1037,9 +1086,13 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
       totalMs: Math.round(performance.now() - requestStartedAt),
       modelCalls: agentResult.usage.modelCalls,
       inputTokens: agentResult.usage.inputTokens,
-      prefetchedModule: leadSummaryQuestion ? "leads" : null,
+      firstDeltaMs,
+      prefetchedModule: leadSummaryQuestion ? "leads" : trackingListQuestion ? "market_intel" : offeringsInventoryQuestion ? "offerings" : opportunityAggregateQuestion ? "opportunities" : null,
     });
     let answer = sourceReferences.expand(agentResult.text);
+    if (pipelineQuestion) {
+      answer = answer.replace(/\[Opportunities\]\(\/opportunities\)/g, "[Pipeline](/pipeline)");
+    }
     // A named account must never link to the Customers index. Models can
     // occasionally collapse a supplied detail URL to the familiar module
     // route; repair only exact, verified customer names and IDs.
@@ -1050,7 +1103,7 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
         `[$1](/customers/${encodeURIComponent(customer.id)})`
       );
     }
-    return NextResponse.json({
+    return {
       ok: true,
       ...splitAgentAnswer(answer),
       entityContext,
@@ -1058,8 +1111,35 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
       did: agentResult.dids[0],
       continuationAvailable: agentResult.truncated,
       usage: agentResult.usage,
+    };
+  };
+  if (body.stream === true && configuredAgentProvider() === "vertex" && responseTools.length === 0) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const send = (event: Record<string, unknown>) =>
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+        try {
+          const result = await runAgent((delta) => send({ type: "delta", text: delta }));
+          const payload = finishResult(result);
+          send(payload ? { type: "done", ...payload } : { type: "error", error: "The assistant is unreachable right now." });
+        } catch {
+          send({ type: "error", error: "The assistant is unreachable right now." });
+        } finally {
+          controller.close();
+        }
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Content-Type-Options": "nosniff",
+      },
     });
   }
+  const payload = finishResult(await runAgent());
+  if (payload) return NextResponse.json(payload);
 
   // NO PRE-WRITTEN ANSWER EVER REACHES A PERSON.
   //

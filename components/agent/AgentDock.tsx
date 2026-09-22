@@ -28,6 +28,7 @@ import {
   readableLinkLabel,
 } from "@/lib/agentAnswerPresentation";
 import { useTypewriter, trimStreamingLink } from "@/components/agent/useTypewriter";
+import { readAgentResponse } from "@/lib/agentStreamClient";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 import {
@@ -447,6 +448,7 @@ export function AgentDock({
     useState<AgentOfferingContext | null>(null);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [streamingPreview, setStreamingPreview] = useState("");
   const [pending, setPending] = useState<string | null>(null);
   // Customers, contacts, offerings, FDL components, teammates and reports.
   const entities = useEntityIndex();
@@ -817,6 +819,7 @@ export function AgentDock({
     const userTs = Date.now();
     setInput("");
     setBusy(true);
+    setStreamingPreview("");
     setActiveId(conversationId);
     setConvos((previous) => {
       let next = isNew
@@ -860,6 +863,7 @@ export function AgentDock({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
+          stream: true,
           history: prior,
           excludeSources: active?.excludedSources ?? [],
           offeringId: requestOffering?.id,
@@ -905,8 +909,11 @@ export function AgentDock({
         }),
         signal: controller.signal,
       });
-      if (!res.ok) throw new Error("assistant unreachable");
-      const data = await res.json();
+      let receivedProgress = false;
+      const data = await readAgentResponse(res, (answerSoFar) => {
+        receivedProgress = true;
+        if (activeUserIdRef.current === requestUserId) setStreamingPreview(answerSoFar);
+      });
       if (activeUserIdRef.current !== requestUserId) return;
       const reply =
         typeof data.reply === "string" && data.reply.trim()
@@ -927,7 +934,7 @@ export function AgentDock({
             : conversation
         )
       );
-      setTypingTs(replyTs);
+      setTypingTs(receivedProgress ? null : replyTs);
     } catch {
       if (activeUserIdRef.current !== requestUserId) return;
       const replyTs = Date.now();
@@ -956,6 +963,7 @@ export function AgentDock({
         requestControllerRef.current = null;
       }
       if (activeUserIdRef.current === requestUserId) setBusy(false);
+      setStreamingPreview("");
     }
   }
 
@@ -1273,8 +1281,10 @@ export function AgentDock({
               );
             })}
             {busy && (
-              <div className="w-fit rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5">
-                <Thinking />
+              <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 text-[13px] leading-[1.55]">
+                {streamingPreview
+                  ? renderRich(trimStreamingLink(streamingPreview), entities, !offeringsOnly)
+                  : <Thinking />}
               </div>
             )}
           </div>

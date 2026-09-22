@@ -1,5 +1,6 @@
 "use client";
 import { normalizeAgentLinks, readableLinkLabel } from "@/lib/agentAnswerPresentation";
+import { readAgentResponse } from "@/lib/agentStreamClient";
 import { useTypewriter, trimStreamingLink } from "./useTypewriter";
 import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 
@@ -491,6 +492,7 @@ export function AgentChat({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [typingReply, setTypingReply] = useState<{ conversationId: string; ts: number } | null>(null);
+  const [streamingPreview, setStreamingPreview] = useState<{ conversationId: string; text: string } | null>(null);
   // History opens immediately; only a reply received in this open chat types.
   const activeConversationRef = useRef(activeId);
   activeConversationRef.current = activeId;
@@ -780,6 +782,7 @@ export function AgentChat({
         return next;
       });
       setSendingId(id);
+      setStreamingPreview(null);
 
       /**
        * NEVER KILL AN ANSWER BECAUSE SOMEBODY LOOKED AWAY (Anir, Aug 20: "I
@@ -818,6 +821,7 @@ export function AgentChat({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message: text,
+            stream: true,
             history: prior,
             // Empty means the whole knowledge base; a selection scopes THIS
             // chat to it without hiding anything from any other chat.
@@ -831,16 +835,22 @@ export function AgentChat({
         // An unreachable assistant is an error, not a message. Throwing sends
         // it to the catch below, which says so plainly instead of printing
         // something that looks like the agent talking.
-        if (!res.ok) throw new Error("assistant unreachable");
-        const data = await res.json();
+        let receivedProgress = false;
+        const data = await readAgentResponse(res, (answerSoFar) => {
+          receivedProgress = true;
+          if (activeUserIdRef.current === requestUserId) {
+            setStreamingPreview({ conversationId: id, text: answerSoFar });
+          }
+        });
         if (activeUserIdRef.current !== requestUserId) return;
         const reply: string = data.reply;
         if (!reply) throw new Error("empty reply");
         const nextSuggestions: string[] = Array.isArray(data.suggestions) ? data.suggestions.filter((s: unknown) => typeof s === "string").slice(0, 3) : [];
         const replyTs = Date.now();
-        if (activeConversationRef.current === id) {
+        if (!receivedProgress && activeConversationRef.current === id) {
           setTypingReply({ conversationId: id, ts: replyTs });
         }
+        setStreamingPreview(null);
         setConvos((prev) => {
           const next = prev.map((c) =>
             c.id === id
@@ -856,6 +866,7 @@ export function AgentChat({
         });
       } catch {
         if (activeUserIdRef.current !== requestUserId) return;
+        setStreamingPreview(null);
         setConvos((prev) => {
           const next = prev.map((c) =>
             c.id === id
@@ -1248,8 +1259,10 @@ export function AgentChat({
                   <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0 mt-0.5">
                     <Sparkles size={16} strokeWidth={1.9} />
                   </span>
-                  <div className="bg-surface border border-border-light rounded-2xl rounded-tl-md px-4 py-3">
-                    <ThinkingDots />
+                  <div className="bg-surface border border-border-light rounded-2xl rounded-tl-md px-4 py-3 text-[14px] leading-relaxed">
+                    {streamingPreview?.conversationId === active.id && streamingPreview.text
+                      ? <MarkdownText text={trimStreamingLink(streamingPreview.text)} entities={entities} />
+                      : <ThinkingDots />}
                   </div>
                 </div>
               )}

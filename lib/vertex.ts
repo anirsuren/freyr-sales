@@ -180,7 +180,8 @@ export async function vertexConverseAgentic(
     name: string,
     input: unknown
   ) => Promise<{ content: string; did?: string }>,
-  maxSteps = 4
+  maxSteps = 4,
+  onText?: (delta: string) => void,
 ): Promise<VertexAgentResult | null> {
   const contents = normalizeTurns(turns);
   if (!contents.length || contents[contents.length - 1].role !== "user") {
@@ -199,6 +200,39 @@ export async function vertexConverseAgentic(
   try {
     const { client: vertex, config } = getClient();
     const declarations = toolDeclarations(tools);
+    if (!declarations.length && onText) {
+      const stream = await vertex.models.generateContentStream({
+        model: config.model,
+        contents,
+        config: generationConfig(system, false),
+      });
+      let answer = "";
+      let finalChunk: Awaited<ReturnType<GoogleGenAI["models"]["generateContent"]>> | null = null;
+      for await (const chunk of stream) {
+        finalChunk = chunk;
+        // Streaming chunks are fragments, so preserve their leading/trailing
+        // spaces. visibleResponseText trims complete responses and would glue
+        // adjacent words together here.
+        const delta = (chunk.candidates?.[0]?.content?.parts || [])
+          .filter((part) => !part.thought && typeof part.text === "string")
+          .map((part) => part.text)
+          .join("");
+        if (delta) {
+          answer += delta;
+          onText(delta);
+        }
+      }
+      answer = answer.trim();
+      if (!answer) throw new Error("Vertex returned no written answer");
+      if (finalChunk) addUsage(usage, finalChunk);
+      noteVertexCall(true);
+      return {
+        text: answer,
+        dids,
+        truncated: finalChunk?.candidates?.[0]?.finishReason === "MAX_TOKENS",
+        usage,
+      };
+    }
     for (let step = 0; step < maxSteps; step++) {
       const response = await vertex.models.generateContent({
         model: config.model,

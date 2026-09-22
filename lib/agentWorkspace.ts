@@ -32,7 +32,7 @@ import { listWorkspaceAccess } from "./accessStore";
 import { PRIVILEGE_MODULES } from "./privileges";
 import { portfolioReport } from "./revenue";
 import { buildDeals } from "./pipeline";
-import { opportunityValue, opportunityConfidence, signDateOf } from "./opportunitiesShared";
+import { opportunityValue, opportunityConfidence, signDateOf, sumEstimates } from "./opportunitiesShared";
 import {
   resolveHeatMapCell,
   type HeatMapOpportunity,
@@ -264,8 +264,25 @@ export async function readAgentWorkspace(
     const offeringsAllowed = await canOpenModule("/offerings");
     if (offeringsAllowed) await initializeLiveOfferings();
     const catalog = offeringsAllowed ? listOfferings() : [];
-    rows = (await readOpportunities()).opportunities
-      .filter((r) => ownedInScope(r.owner))
+    const visibleOpportunities = (await readOpportunities()).opportunities
+      .filter((r) => ownedInScope(r.owner));
+    const tcvByCurrency = new Map<string, typeof visibleOpportunities>();
+    for (const deal of visibleOpportunities) {
+      const currency = deal.currency || "USD";
+      tcvByCurrency.set(currency, [...(tcvByCurrency.get(currency) ?? []), deal]);
+    }
+    summary = {
+      totalRecords: visibleOpportunities.length,
+      statusCounts: visibleOpportunities.reduce<Record<string, number>>((counts, deal) => {
+        const status = deal.status || "Unspecified";
+        counts[status] = (counts[status] || 0) + 1;
+        return counts;
+      }, {}),
+      estimatedTcvByCurrency: Object.fromEntries([...tcvByCurrency].map(([currency, deals]) => [currency, sumEstimates(deals, "tcv")])),
+      pageUrl: "/opportunities",
+      basis: "Same unfiltered opportunity records and Estimated TCV measure as the Opportunities page. Do not call every record open unless the status counts support it. Keep currencies separate. These are distinct from pitch-session deals on Pipeline; never sum both views.",
+    };
+    rows = visibleOpportunities
       .map((r) => ({
         id: r.id,
         name: r.name,

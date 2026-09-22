@@ -31,11 +31,12 @@ export async function agentConversePrimary(
     name: string,
     input: unknown
   ) => Promise<{ content: string; did?: string }>,
-  maxSteps?: number
+  maxSteps?: number,
+  onText?: (delta: string) => void,
 ) {
   if (configuredAgentProvider() === "vertex") {
     if (!isVertexConfigured()) return null;
-    return vertexConverseAgentic(system, turns, tools, runTool, maxSteps);
+    return vertexConverseAgentic(system, turns, tools, runTool, maxSteps, onText);
   }
   return claudeConverseAgentic(system, turns, tools, runTool, maxSteps);
 }
