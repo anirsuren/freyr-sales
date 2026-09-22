@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CalendarClock, Flag, Inbox, Minus, MoveHorizontal, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -152,18 +152,17 @@ export function NeededByTimeline({
    * has been wrong on some card width, because the words' width in pixels is
    * a fact of the rendered page, not something to estimate.
    *
-   * So it is measured. After paint, read the container's width, the
+   * So it is measured before paint. Read the container's width, the
    * Requested caption's real right edge and this caption's real width, and
    * centre it on the flag pushed right ONLY as far as those measurements
-   * demand. Re-measured on resize. The first server paint centres it on the
-   * flag directly, which is correct everywhere except the few pixels the
-   * effect then fixes.
+   * demand. Re-measured on resize. The server markup centres it on the flag;
+   * the layout effect fixes any needed pixels before the client paints.
    */
   const boxRef = useRef<HTMLDivElement | null>(null);
   const reqRef = useRef<HTMLSpanElement | null>(null);
   const needRef = useRef<HTMLSpanElement | null>(null);
   const [needLeftPx, setNeedLeftPx] = useState<number | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const measure = () => {
       const box = boxRef.current;
       const req = reqRef.current;
@@ -307,7 +306,7 @@ export function NeededByTimeline({
             the deadline once it is past, so an overdue bar does not run off
             the end of its own rail). */}
         <div
-          className="absolute h-[6px] rounded-full transition-[width] duration-500"
+          className="absolute h-[6px] rounded-full"
           style={{
             top: RAIL_TOP,
             /* Reaches out under the first marker the same 11px the track
@@ -379,8 +378,8 @@ export function NeededByTimeline({
           ref={needRef}
           className="absolute flex -translate-x-1/2 flex-col items-center whitespace-nowrap"
           style={{
-            /* Server paint: dead under the flag. After mount the measured
-               value replaces it, moving only when the real text demands. */
+            /* Server markup: dead under the flag. Before client paint the
+               measured value moves it only when the real text demands. */
             left:
               needLeftPx !== null
                 ? `${needLeftPx}px`

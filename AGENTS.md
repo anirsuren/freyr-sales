@@ -1555,3 +1555,7 @@ Lead status analytics are a drill-down workspace rather than a dead chart. Click
 ### Sep 22: Solutioning table scroll and mock-mode navigation
 
 Solutioning's request, submission, and presentation tables keep the reference, title, and document count together in the first column; that column scrolls with the rest of the table rather than sticking over expanded rows. The horizontal rail remains visible on long tables and moves its thumb directly without a React render or a geometry measurement for each horizontal scroll event. Solutioning room switches and newly created records retain `/mock-mode` when the current workspace is in progress mode. A prefixed URL opened with a live cookie now reaches the mode-switch effect instead of being stripped first, so the blue workspace banner does not silently disappear or fail to return. Typecheck and focused lint pass; verified in the local Mock-mode browser. Completed locally, not deployed.
+
+### Sep 22: Solutioning timeline zoom stays in sync
+
+The Where it stands elapsed bar changes width in the same render as its date markers when zooming or resetting; it no longer animates its width for half a second after the markers move. The deadline caption's measured alignment updates before the browser paints, so it does not visibly lag behind the zoomed timeline. Verified by zooming and resetting a longer local Mock-mode submission timeline; typecheck and focused lint pass. Completed locally, not deployed.
