@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Solutioning Customer POC picker:** The meeting/request form now has a visible Clear action beside a selected Customer POC and an explicit “Clear selected contacts” row in the picker. Clicking outside the multi-select uses pointer events to close it reliably. Verified locally on Belmara Pharma by selecting and clearing the mock “test” contact; typecheck passes and focused lint has no errors (one existing hook-dependency warning in the shared picker). Local only, not deployed.
+
 - **Sep 22 Customer contacts shortcut:** “All N contacts” and the key-contact edit shortcut now select the account's Contacts tab, reveal that tab in the horizontal strip, and scroll the strip and contact list below the sticky header into view. Verified on Belmara Pharma in localhost Mock mode; typecheck and focused lint pass. Local only, not deployed.
 
 - **Sep 22 Mock Solutioning document assignment:** The two Solutioning pages

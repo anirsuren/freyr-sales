@@ -2729,12 +2729,13 @@ export function NewRequestDialog({
                 Customer POC
                 <span className="ml-1 font-normal text-text-tertiary">Optional</span>
               </span>
-              <div className="mt-1.5">
+              <div className="mt-1.5 flex items-center gap-2">
                 <MultiColorSelect
                   values={contactIds}
                   onChange={setContactIds}
                   ariaLabel="Contacts this is for"
                   minWidth={220}
+                  clearLabel="Clear selected contacts"
                   allLabel={
                     customer
                       ? contacts.length
@@ -2753,6 +2754,16 @@ export function NewRequestDialog({
                   createLabel={customer ? "Create a new contact" : undefined}
                   onCreate={customer ? () => setSub("contact") : undefined}
                 />
+                {contactIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setContactIds([])}
+                    aria-label="Clear selected customer contacts"
+                    className="shrink-0 text-[12px] font-medium text-blue-primary hover:text-blue-hover"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </label>
             <div className="hidden sm:block" aria-hidden="true" />

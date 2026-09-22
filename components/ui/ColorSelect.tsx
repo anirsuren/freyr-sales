@@ -1019,6 +1019,7 @@ export function MultiColorSelect({
   options,
   onChange,
   allLabel,
+  clearLabel,
   placeholder,
   className,
   minWidth = 170,
@@ -1039,6 +1040,8 @@ export function MultiColorSelect({
   onChange: (next: string[]) => void;
   /** Trigger + clear-row label when nothing is restricted, e.g. "All formats". */
   allLabel: string;
+  /** Optional explicit wording for the row that removes every selection. */
+  clearLabel?: string;
   /** What the empty trigger says, when "nothing picked" must read as a
    *  prompt rather than a state (Saras, Aug 28: two offering owners read
    *  the required division picker's "Any division" as a valid choice —
@@ -1190,12 +1193,12 @@ export function MultiColorSelect({
         return floatingMenuStyle(rect, width, 260);
       });
     };
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc);
     document.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("pointerdown", onDoc);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
@@ -1472,7 +1475,7 @@ export function MultiColorSelect({
             ) : (
               <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-border" />
             )}
-            {allLabel}
+            {values.length > 0 && clearLabel ? clearLabel : allLabel}
           </button>
           {visibleOptions.map((o, rowIndex) => {
             const on = values.includes(o.value);
