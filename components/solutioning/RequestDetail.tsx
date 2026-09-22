@@ -2397,6 +2397,9 @@ function DocRow({
             dense
             options={[
               { value: "", label: "Nobody on it", color: "#64748B", icon: CircleDashed },
+              ...(d.assignedTo && !members.includes(d.assignedTo)
+                ? [{ value: d.assignedTo, label: d.assignedTo, avatarName: d.assignedTo }]
+                : []),
               ...members.map((m) => ({ value: m, label: m, avatarName: m })),
             ]}
           />
@@ -2975,6 +2978,9 @@ function PersonPick({
           }}
           options={[
             { value: "", label: "Nobody yet", color: "#8E98A8", icon: CircleDashed },
+            ...(value && !members.includes(value)
+              ? [{ value, label: value, avatarName: value }]
+              : []),
             ...members.map((m) => ({ value: m, label: m, avatarName: m })),
           ]}
         />

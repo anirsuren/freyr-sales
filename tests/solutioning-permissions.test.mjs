@@ -20,7 +20,17 @@ function load(file) {
 }
 
 const { validateNewSolutioningRequest, validateSolutioningCreation, canAssignSolutioning } = load('lib/solutioningValidation.ts');
+const { SALES_TEAM, MOCK_SOLUTIONING_TEAM, canonicalMockTeammate } = load('lib/salesTeam.ts');
 const access = load('lib/moduleAccess.ts');
+test('Mock Solutioning assignees use canonical roster names', () => {
+  for (const name of MOCK_SOLUTIONING_TEAM) {
+    assert.ok(SALES_TEAM.includes(name), `${name} must exist on the team roster`);
+    assert.equal(canonicalMockTeammate(name), name);
+  }
+  for (const oldName of ['Elena Rossi', 'Omar Haddad', 'Nina Kowalski', 'Marcus Chen', 'Grace Liu']) {
+    assert.ok(MOCK_SOLUTIONING_TEAM.includes(canonicalMockTeammate(oldName)));
+  }
+});
 test('assignment belongs to Solutioning Owners, with admin override', () => {
   assert.equal(canAssignSolutioning('sol_member', ['sol_owner']), true);
   assert.equal(canAssignSolutioning('admin', []), true);

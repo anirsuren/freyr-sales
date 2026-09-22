@@ -44,6 +44,17 @@ export const SALES_TEAM: string[] = [
   "Leonard Stanton",
 ];
 
+/** The Mock solutioning people pickers must use the same identities that
+ * persisted Solutioning rows are normalized to. */
+export const MOCK_SOLUTIONING_TEAM: string[] = [
+  "Margaret Whitfield",
+  "Gordon Ashby",
+  "Audrey Kingsley",
+  "Marcus Bramwell",
+  "Grace Lockwood",
+  "Daniel Foster",
+];
+
 /**
  * Early mock Solutioning rows predate the shared roster and were saved with a
  * separate cast. Map those persisted names onto the teammates who now own the

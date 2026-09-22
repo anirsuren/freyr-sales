@@ -4,6 +4,7 @@ import { readOpportunities } from "@/lib/opportunities";
 import { getDb } from "@/lib/db";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
+import { MOCK_SOLUTIONING_TEAM } from "@/lib/salesTeam";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import {
@@ -82,14 +83,7 @@ export default async function SolutioningPage({
             .filter(Boolean)
         ),
       ].sort((a, b) => a.localeCompare(b))
-    : [
-        "Elena Rossi",
-        "Omar Haddad",
-        "Nina Kowalski",
-        "Marcus Chen",
-        "Grace Liu",
-        "Daniel Foster",
-      ];
+    : MOCK_SOLUTIONING_TEAM;
   return (
     <SolutioningModule
       state={visibleState}

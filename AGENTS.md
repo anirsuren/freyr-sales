@@ -196,6 +196,15 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Mock Solutioning document assignment:** The two Solutioning pages
+  offered six retired mock teammate names while stored assignments normalized
+  those names to the current roster, making a successful save display as
+  “Nobody on it.” Both pages now share canonical Mock Solutioning choices;
+  document and workstream controls also show a saved assignee who is no longer
+  selectable. Verified SUB-F0342's analysis assignee displays as Margaret
+  Whitfield after saving and a full reload; roster regression test, typecheck,
+  and focused lint pass. Local only, not deployed.
+
 - **Sep 22 Create submission from existing request:** The detail-page action
   now carries the request brief into its submission or presentation. Linked
   work no longer fails the fresh-request brief/date validator when a legacy

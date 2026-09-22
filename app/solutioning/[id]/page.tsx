@@ -1,8 +1,9 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { RequestDetail } from "@/components/solutioning/RequestDetail";
 import { readSolutioning } from "@/lib/solutioning";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
+import { MOCK_SOLUTIONING_TEAM } from "@/lib/salesTeam";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import {
@@ -75,7 +76,7 @@ export default async function SolutioningRequestPage({
             .filter(Boolean)
         ),
       ].sort((a, b) => a.localeCompare(b))
-    : ["Elena Rossi", "Omar Haddad", "Nina Kowalski", "Marcus Chen", "Grace Liu", "Daniel Foster"];
+    : MOCK_SOLUTIONING_TEAM;
 
   /* Every OTHER request's documents, compactly, so "link a document from
      another request" (Suren: a meeting "can refer to a document that was
