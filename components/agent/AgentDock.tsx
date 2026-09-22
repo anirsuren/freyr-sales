@@ -7,13 +7,16 @@ import {
   ArrowUp,
   X,
   MessageCircle,
+  Menu,
+  Plus,
+  MessageSquareText,
   PanelRightOpen,
   PanelRightClose,
 } from "lucide-react";
 import { cn, POPOVER_SURFACE } from "@/lib/utils";
 import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { putConversations } from "@/lib/saveConversations";
-import { clockTime, dayLabel, sameDay } from "@/lib/chatTime";
+import { bucketByDay, clockTime, dayLabel, listStamp, sameDay } from "@/lib/chatTime";
 import {
   injectEntities,
   entityLink,
@@ -437,6 +440,7 @@ export function AgentDock({
   const label = pageLabel(pathname);
   const [subject, setSubject] = useState("");
   const [typingTs, setTypingTs] = useState<number | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [convos, setConvos] = useState<Convo[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingOffering, setPendingOffering] =
@@ -466,6 +470,7 @@ export function AgentDock({
       const detail =
         (e as CustomEvent<AskAgentDetail>).detail ?? ({} as AskAgentDetail);
       if (detail.open !== false) onOpenChange(true);
+      setHistoryOpen(false);
       if (detail.offering) {
         explicitContextRef.current = true;
         setPendingOffering(detail.offering);
@@ -498,6 +503,7 @@ export function AgentDock({
     setBusy(false);
     setPending(null);
     setTypingTs(null);
+    setHistoryOpen(false);
 
     const legacyConversationKeys = [
       CONVERSATIONS_KEY,
@@ -753,13 +759,32 @@ export function AgentDock({
   }, [pathname, open]);
 
   useEffect(() => {
-    if (open) {
+    if (open && !historyOpen) {
       setTimeout(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
         inputRef.current?.focus();
       }, 60);
     }
-  }, [open, visibleMsgs.length, busy]);
+  }, [open, historyOpen, visibleMsgs.length, busy]);
+
+  function startNewChat() {
+    setActiveId(null);
+    setPendingOffering(null);
+    setPending(null);
+    setTypingTs(null);
+    setInput("");
+    setHistoryOpen(false);
+    window.setTimeout(() => inputRef.current?.focus(), 0);
+  }
+
+  function openConversation(id: string) {
+    setActiveId(id);
+    setPendingOffering(null);
+    setPending(null);
+    setTypingTs(null);
+    setInput("");
+    setHistoryOpen(false);
+  }
 
   // Send a queued prompt once the panel is open and idle.
   useEffect(() => {
@@ -1069,7 +1094,7 @@ export function AgentDock({
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-semibold text-text-primary leading-tight">Freyr AI</p>
               <p className="text-[11.5px] text-text-tertiary truncate leading-tight">
-                {offeringContext?.material
+                {historyOpen ? "Past chats" : offeringContext?.material
                   ? `Focused on ${offeringContext.material.label}`
                   : offeringContext
                     ? `Focused on ${offeringContext.name}`
@@ -1078,6 +1103,28 @@ export function AgentDock({
                     : `On ${label}`}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setHistoryOpen((previous) => !previous)}
+              aria-label={historyOpen ? "Back to chat" : "Show past chats"}
+              aria-expanded={historyOpen}
+              title={historyOpen ? "Back to chat" : "Past chats"}
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                historyOpen ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface hover:text-blue-primary"
+              )}
+            >
+              <Menu size={18} strokeWidth={1.9} />
+            </button>
+            <button
+              type="button"
+              onClick={startNewChat}
+              aria-label="New chat"
+              title="New chat"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-blue-primary"
+            >
+              <Plus size={19} strokeWidth={1.9} />
+            </button>
             {!embedded && (
               <Link
                 href="/agent"
@@ -1113,6 +1160,50 @@ export function AgentDock({
             </button>
           </div>
           {historySyncFailed && <p role="status" className="mx-4 mt-2 rounded-md bg-warning/10 px-3 py-2 text-xs text-text-primary">Your changes are saved on this device. Account history could not sync; another tab may have changed this chat.</p>}
+
+          {historyOpen ? (
+            <div className={cn("min-h-0 flex-1 overflow-y-auto px-3 py-3", embedded ? "" : "h-[520px] max-h-[72vh]")}>
+              <button
+                type="button"
+                onClick={startNewChat}
+                className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-primary px-3 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-blue-hover"
+              >
+                <Plus size={17} strokeWidth={2} />
+                New chat
+              </button>
+              {visibleConvos.length === 0 ? (
+                <p className="px-2 py-3 text-[13px] text-text-tertiary">No past chats yet. Start a new chat here.</p>
+              ) : (
+                bucketByDay(visibleConvos, (conversation) => conversation.updated || 0).map((group) => (
+                  <div key={group.label} className="mb-4">
+                    <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">{group.label}</p>
+                    <ul className="space-y-1">
+                      {group.items.map((conversation) => (
+                        <li key={conversation.id}>
+                          <button
+                            type="button"
+                            onClick={() => openConversation(conversation.id)}
+                            aria-current={conversation.id === activeId ? "true" : undefined}
+                            className={cn(
+                              "flex w-full items-center gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors",
+                              conversation.id === activeId
+                                ? "bg-blue-light text-blue-primary"
+                                : "text-text-secondary hover:bg-surface hover:text-text-primary"
+                            )}
+                          >
+                            <MessageSquareText size={16} strokeWidth={1.8} className="shrink-0" />
+                            <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{conversation.title || "New chat"}</span>
+                            <span className="shrink-0 text-[11px] font-normal text-text-tertiary">{conversation.updated ? listStamp(conversation.updated) : ""}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+          <>
 
           {/* Messages: greeting is always the first bubble so it never vanishes */}
           <div
@@ -1240,6 +1331,8 @@ export function AgentDock({
               </button>
             </div>
           </div>
+          </>
+          )}
         </div>
       )}
 

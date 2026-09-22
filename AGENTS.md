@@ -196,6 +196,13 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Agent popup chat history:** The bottom-right Agent popup now has a
+  three-line history button and a new-chat button. Its history is grouped by
+  date and uses the same saved conversations as the full Agent page; selecting
+  a chat opens it inside the popup. Verified in the localhost Mock UI by
+  switching between saved chats and starting a blank chat. Typecheck and
+  focused lint pass. Local only, not deployed.
+
 - **Sep 22 Agent popup response rendering:** The compact Agent popup now
   renders fenced chart responses as charts and displays Markdown status bullets
   without stray asterisks. The full Agent page and popup share one chart
