@@ -9,6 +9,7 @@ import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { addMockModePrefix, isMockModePath } from "@/lib/modeUrl";
 import {
   AlarmClock,
   ArrowLeft,
@@ -501,8 +502,7 @@ export function SolutioningModule({
   const requestTableHead = (
     <thead>
       <tr className="border-b border-border-light text-left text-[12.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary [&>th]:whitespace-nowrap">
-        <th className="w-[125px] px-4 py-2.5">Request ID</th>
-        <th className="w-[270px] px-4 py-2.5">Solution title</th>
+        <th className="w-[340px] px-4 py-2.5">{ROOM_META[room].rowNoun}</th>
         <th className="w-[140px] px-4 py-2.5">Request type</th>
         <th className="w-[185px] px-4 py-2.5">Opportunity ID</th>
         <th className="w-[185px] px-4 py-2.5">Customer</th>
@@ -513,7 +513,6 @@ export function SolutioningModule({
         <th className="w-[125px] px-4 py-2.5">Due</th>
         <th className="w-[125px] px-4 py-2.5">Submitted</th>
         <th className="w-[160px] px-4 py-2.5">Solution status</th>
-        <th className="w-[130px] px-4 py-2.5">Documents</th>
         <th className="w-[110px] px-4 py-2.5 text-left">Actions</th>
       </tr>
     </thead>
@@ -1048,8 +1047,8 @@ export function SolutioningModule({
           </div>
         </div>
       ) : groupBy !== "none" ? (
-        <PinnableTable id="solutioning-request-groups" wrapperClassName="tab-panel">
-          <div className="min-w-[2260px] space-y-3">
+        <PinnableTable key={`${room}-groups`} id="solutioning-request-groups" wrapperClassName="tab-panel">
+          <div className="min-w-[2020px] space-y-3">
             {renderedGroups.map(([label, requests]) => {
               const closed = shutGroups.includes(label);
               return (
@@ -1069,18 +1068,20 @@ export function SolutioningModule({
                       !closed && "border-b border-border-light"
                     )}
                   >
-                    {closed ? (
-                      <ChevronRight size={16} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
-                    ) : (
-                      <ChevronDown size={16} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
-                    )}
-                    {groupMark(label)}
-                    <span className="min-w-0 max-w-[320px] truncate text-[14px] font-semibold text-text-primary">
-                      {label}
-                    </span>
-                    <span className="shrink-0 text-[12px] font-medium text-text-secondary tnum">
-                      {groupTotals.get(label) ?? requests.length}{" "}
-                      {(groupTotals.get(label) ?? requests.length) === 1 ? "request" : "requests"}
+                    <span className="inline-flex max-w-[calc(100vw-330px)] items-center gap-3">
+                      {closed ? (
+                        <ChevronRight size={16} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
+                      ) : (
+                        <ChevronDown size={16} strokeWidth={2.2} className="shrink-0 text-text-tertiary" />
+                      )}
+                      {groupMark(label)}
+                      <span className="min-w-0 max-w-[320px] truncate text-[14px] font-semibold text-text-primary">
+                        {label}
+                      </span>
+                      <span className="shrink-0 text-[12px] font-medium text-text-secondary tnum">
+                        {groupTotals.get(label) ?? requests.length}{" "}
+                        {(groupTotals.get(label) ?? requests.length) === 1 ? "request" : "requests"}
+                      </span>
                     </span>
                     <span className="min-w-0 flex-1" />
                   </button>
@@ -1100,14 +1101,14 @@ export function SolutioningModule({
         </PinnableTable>
       ) : (
         <Card key="table" className="tab-panel overflow-hidden p-0">
-          <PinnableTable id="solutioning-requests">
-            <table className="w-full min-w-[2260px] table-fixed border-collapse text-[13px]">
+          <PinnableTable key={`${room}-table`} id="solutioning-requests">
+            <table className="w-full min-w-[2020px] table-fixed border-collapse text-[13px]">
               {requestTableHead}
               <tbody>
                 {renderedRows.map(renderRequestRow)}
                 {renderLimit < shown.length && (
                   <tr ref={loadMoreRef} aria-hidden="true">
-                    <td colSpan={14} className="h-px p-0" />
+                    <td colSpan={12} className="h-px p-0" />
                   </tr>
                 )}
               </tbody>
@@ -1192,7 +1193,8 @@ export function SolutioningModule({
             if (data?.request) {
               toast(`${data.request.ref} created.`);
               setCreating(false);
-              router.push(`/solutioning/${data.request.id}`);
+              const detailHref = `/solutioning/${data.request.id}`;
+              router.push(isMockModePath(window.location.pathname) ? addMockModePrefix(detailHref) : detailHref);
             }
             return !!data;
           }}
@@ -1275,23 +1277,26 @@ function RequestRow({
           : "border-b border-border-light last:border-0 hover:bg-[var(--surface)]"
       )}
     >
-      <td className="px-4 py-3.5">
-        <span className="whitespace-nowrap text-[11px] font-bold text-text-secondary tnum">
-          {r.ref}
-        </span>
-      </td>
-      <td className="px-4 py-3.5">
+      <td className="w-[340px] px-4 py-3">
+        <span className="block whitespace-nowrap text-[10.5px] font-bold text-text-tertiary tnum">{r.ref}</span>
         <Link
           href={requestHref}
           onClick={(e) => e.stopPropagation()}
-          /* Keep the hit area on the words. A clamped block inside this link
-             expanded the anchor across the title cell, so hovering or
-             clicking the blank space beside a short title behaved like the
-             full-page link instead of the row's expand control. */
-          className="inline text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
+          className="mt-0.5 block w-fit max-w-full line-clamp-2 text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
         >
           {r.title}
         </Link>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle();
+          }}
+          className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-blue-primary hover:underline"
+        >
+          <FileText size={12} strokeWidth={2} />
+          {visibleRequestDocs(r).length} {visibleRequestDocs(r).length === 1 ? "document" : "documents"}
+        </button>
       </td>
       <td className="px-4 py-3.5">
         <KindChip kind={r.kind} size="sm" iconOnly={hideKindLabel} />
@@ -1422,18 +1427,6 @@ function RequestRow({
         </span>
       </td>
       <td className="px-4 py-3.5">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggle();
-          }}
-          className="text-left text-[12px] font-semibold text-blue-primary hover:underline"
-        >
-          {visibleRequestDocs(r).length} {visibleRequestDocs(r).length === 1 ? "document" : "documents"}
-        </button>
-      </td>
-      <td className="px-4 py-3.5">
         <span className="flex items-center justify-start gap-0.5">
         {/* THE DROPDOWN EVERY OTHER TABLE HAS (Anir, Aug 24: "you have a
             table, it looks fine, but there should definitely be a dropdown,
@@ -1509,7 +1502,7 @@ function RequestRow({
         {/* max-w-0 on the cell so the panel can never stretch the table —
             the same trap the claim table hit on Aug 23. */}
         <td
-          colSpan={14}
+          colSpan={12}
           className="max-w-0 pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
         >
           <div className="tab-panel sticky left-0 w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border-light bg-white sm:w-[calc(100vw-290px)]">

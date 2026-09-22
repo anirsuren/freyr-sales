@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   addMockModePrefix,
   isMockModePath,
-  stripMockModePrefix,
 } from "@/lib/modeUrl";
 
 /**
@@ -75,10 +74,9 @@ export function ModeUrlSync({ mode }: { mode: "mock" | "live" }) {
       );
       return;
     }
-    if (mode === "live" && hasPrefix) {
-      const bare = stripMockModePrefix(here);
-      window.history.replaceState(window.history.state, "", `${bare}${suffix}`);
-    }
+    // A prefixed URL opened with a live cookie is an explicit request to
+    // enter Mock mode. Leave it intact for the arrival effect below; stripping
+    // it here raced that effect and silently served live data without a banner.
   }, [pathname, mode]);
 
   /**

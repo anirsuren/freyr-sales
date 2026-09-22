@@ -217,7 +217,9 @@ export function PinnableTable({
   const pinned = usePinned(id);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const floatRef = useRef<HTMLDivElement>(null);
-  const railRef = useRef<HTMLDivElement>(null);
+  const railTrackRef = useRef<HTMLDivElement>(null);
+  const railThumbRef = useRef<HTMLSpanElement>(null);
+  const railDrag = useRef<{ offset: number; trackLeft: number } | null>(null);
   const [rail, setRail] = useState<{
     left: number;
     width: number;
@@ -288,7 +290,8 @@ export function PinnableTable({
      * Track the event once at the top and coalesce trackpad bursts into the next
      * animation frame so header pinning never competes with the scroll itself. */
     let frame: number | null = null;
-    const scheduleMeasure = () => {
+    const scheduleMeasure = (event?: Event) => {
+      if (event?.type === "scroll" && event.target === scroller) return;
       if (frame !== null) return;
       frame = window.requestAnimationFrame(() => {
         frame = null;
@@ -297,7 +300,7 @@ export function PinnableTable({
     };
     window.addEventListener("scroll", scheduleMeasure, { capture: true, passive: true });
     window.addEventListener("resize", scheduleMeasure);
-    const observer = new ResizeObserver(scheduleMeasure);
+    const observer = new ResizeObserver(() => scheduleMeasure());
     observer.observe(scroller);
     return () => {
       window.removeEventListener("scroll", scheduleMeasure, true);
@@ -390,10 +393,11 @@ export function PinnableTable({
 
     measure();
     // The capture listener sees the page's nested scroll container too. A
-    // requestAnimationFrame gate keeps the proxy rail from forcing layout more
+    // requestAnimationFrame gate keeps the visible rail from forcing layout more
     // than once per painted frame during a trackpad gesture.
     let frame: number | null = null;
-    const scheduleMeasure = () => {
+    const scheduleMeasure = (event?: Event) => {
+      if (event?.type === "scroll" && event.target === scroller) return;
       if (frame !== null) return;
       frame = window.requestAnimationFrame(() => {
         frame = null;
@@ -402,7 +406,7 @@ export function PinnableTable({
     };
     window.addEventListener("scroll", scheduleMeasure, { capture: true, passive: true });
     window.addEventListener("resize", scheduleMeasure);
-    const observer = new ResizeObserver(scheduleMeasure);
+    const observer = new ResizeObserver(() => scheduleMeasure());
     observer.observe(scroller);
     return () => {
       window.removeEventListener("scroll", scheduleMeasure, true);
@@ -412,33 +416,44 @@ export function PinnableTable({
     };
   }, []);
 
-  // Two-way sync: dragging the proxy scrolls the table, and scrolling the table
-  // (or the floating header strip) moves the proxy back.
+  // Scrolling the table moves the visible thumb without re-rendering the table.
   useEffect(() => {
     const scroller = scrollerRef.current;
-    const proxy = railRef.current;
-    if (!scroller || !proxy || !rail) return;
-    let lock = false;
-    const fromProxy = () => {
-      if (lock) return;
-      lock = true;
-      scroller.scrollLeft = proxy.scrollLeft;
-      lock = false;
+    if (!scroller || !rail) return;
+    const trackWidth = Math.max(0, rail.width - 16);
+    const thumbWidth = Math.min(trackWidth, Math.max(48, trackWidth * rail.width / rail.inner));
+    const travel = Math.max(0, trackWidth - thumbWidth);
+    const maxScroll = Math.max(0, rail.inner - rail.width);
+    const syncThumb = () => {
+      const left = maxScroll ? travel * scroller.scrollLeft / maxScroll : 0;
+      if (railThumbRef.current) railThumbRef.current.style.transform = `translateX(${left}px)`;
+      railTrackRef.current?.setAttribute("aria-valuenow", String(Math.round(scroller.scrollLeft)));
     };
-    const fromTable = () => {
-      if (lock) return;
-      lock = true;
-      proxy.scrollLeft = scroller.scrollLeft;
-      lock = false;
-    };
-    proxy.scrollLeft = scroller.scrollLeft;
-    proxy.addEventListener("scroll", fromProxy, { passive: true });
-    scroller.addEventListener("scroll", fromTable, { passive: true });
+    syncThumb();
+    scroller.addEventListener("scroll", syncThumb, { passive: true });
     return () => {
-      proxy.removeEventListener("scroll", fromProxy);
-      scroller.removeEventListener("scroll", fromTable);
+      scroller.removeEventListener("scroll", syncThumb);
     };
   }, [rail]);
+
+  // macOS can hide the native scrollbar. Draw a draggable thumb with a stable
+  // hit target; pointer, wheel, and keyboard all scroll the real table.
+  const railTrackWidth = Math.max(0, (rail?.width ?? 0) - 16);
+  const railThumbWidth = rail
+    ? Math.min(railTrackWidth, Math.max(48, railTrackWidth * rail.width / rail.inner))
+    : 0;
+  const railTravel = Math.max(0, railTrackWidth - railThumbWidth);
+  const railMaxScroll = Math.max(0, (rail?.inner ?? 0) - (rail?.width ?? 0));
+  const scrollFromRailPointer = (clientX: number) => {
+    const scroller = scrollerRef.current;
+    const drag = railDrag.current;
+    if (!scroller || !drag || !railTravel) return;
+    const x = clientX - drag.trackLeft - 8;
+    const left = Math.max(0, Math.min(railTravel, x - drag.offset));
+    scroller.scrollLeft = left / railTravel * railMaxScroll;
+    if (railThumbRef.current) railThumbRef.current.style.transform = `translateX(${left}px)`;
+    railTrackRef.current?.setAttribute("aria-valuenow", String(Math.round(scroller.scrollLeft)));
+  };
 
   return (
     /* THE PIN SITS OVER THE LAST HEADING, so the last heading has to end
@@ -462,6 +477,7 @@ export function PinnableTable({
           no business scrolling up and down in any case: it grows with its rows
           and the page is what scrolls. */}
       <div
+        id={`${id}-horizontal-scroller`}
         ref={scrollerRef}
         className={cn("overflow-x-auto overflow-y-hidden", wrapperClassName)}
       >
@@ -514,12 +530,65 @@ export function PinnableTable({
         typeof document !== "undefined" &&
         createPortal(
           <div
-            ref={railRef}
-            aria-hidden="true"
-            className="freyr-rail fixed bottom-0 z-30 overflow-x-auto overflow-y-hidden border-t border-border-light bg-white/95 backdrop-blur-sm"
-            style={{ left: rail.left, width: rail.width, height: 14 }}
+            className="fixed bottom-0 z-30 border-t border-border-light bg-white/95 backdrop-blur-sm"
+            style={{ left: rail.left, width: rail.width, height: 18 }}
           >
-            <div style={{ width: rail.inner, height: 1 }} />
+            <div
+              ref={railTrackRef}
+              role="scrollbar"
+              aria-label="Scroll table horizontally"
+              aria-controls={`${id}-horizontal-scroller`}
+              aria-orientation="horizontal"
+              aria-valuemin={0}
+              aria-valuemax={Math.round(railMaxScroll)}
+              aria-valuenow={0}
+              tabIndex={0}
+              className="absolute inset-0 cursor-ew-resize touch-none"
+              onWheel={(event) => {
+                const scroller = scrollerRef.current;
+                if (!scroller) return;
+                scroller.scrollLeft += Math.abs(event.deltaX) > Math.abs(event.deltaY)
+                  ? event.deltaX
+                  : event.deltaY;
+                event.preventDefault();
+              }}
+              onPointerDown={(event) => {
+                const trackLeft = event.currentTarget.getBoundingClientRect().left;
+                const scrollLeft = scrollerRef.current?.scrollLeft ?? 0;
+                const thumbLeft = railMaxScroll ? railTravel * scrollLeft / railMaxScroll : 0;
+                const x = event.clientX - trackLeft - 8;
+                railDrag.current = {
+                  trackLeft,
+                  offset: x >= thumbLeft && x <= thumbLeft + railThumbWidth
+                    ? x - thumbLeft
+                    : railThumbWidth / 2,
+                };
+                event.currentTarget.setPointerCapture(event.pointerId);
+                scrollFromRailPointer(event.clientX);
+              }}
+              onPointerMove={(event) => {
+                if (railDrag.current) scrollFromRailPointer(event.clientX);
+              }}
+              onPointerUp={() => { railDrag.current = null; }}
+              onPointerCancel={() => { railDrag.current = null; }}
+              onKeyDown={(event) => {
+                const scroller = scrollerRef.current;
+                if (!scroller) return;
+                if (event.key === "ArrowLeft") scroller.scrollLeft -= 120;
+                else if (event.key === "ArrowRight") scroller.scrollLeft += 120;
+                else if (event.key === "Home") scroller.scrollLeft = 0;
+                else if (event.key === "End") scroller.scrollLeft = railMaxScroll;
+                else return;
+                event.preventDefault();
+              }}
+            >
+              <span className="absolute left-2 right-2 top-[8px] h-[2px] rounded-full bg-border" />
+              <span
+                ref={railThumbRef}
+                className="absolute top-[5px] h-[8px] rounded-full bg-text-tertiary transition-colors hover:bg-text-secondary"
+                style={{ left: 8, width: railThumbWidth }}
+              />
+            </div>
           </div>,
           document.body
         )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { addMockModePrefix, isMockModePath } from "@/lib/modeUrl";
 import { FileCheck2, Inbox, CalendarClock,
   Presentation } from "lucide-react";
 import { PageTabs } from "@/components/ui/PageTabs";
@@ -76,7 +77,9 @@ export function SolutioningTabs({
 
   useEffect(() => {
     for (const tab of TABS) {
-      if (tab.key !== active) router.prefetch(tab.href);
+      if (tab.key !== active) {
+        router.prefetch(isMockModePath(window.location.pathname) ? addMockModePrefix(tab.href) : tab.href);
+      }
     }
   }, [active, router]);
 
@@ -105,7 +108,7 @@ export function SolutioningTabs({
                 const next = TABS.find((t) => t.key === key);
                 if (!next) return;
                 setClicked(key);
-                startTransition(() => router.push(next.href, { scroll: false }));
+                startTransition(() => router.push(isMockModePath(window.location.pathname) ? addMockModePrefix(next.href) : next.href, { scroll: false }));
               }}
             />
           </div>
