@@ -602,7 +602,7 @@ export function VerifiedPill({
         "group/vp cursor-pointer transition-all hover:-translate-y-px hover:shadow active:translate-y-0 active:shadow-none",
         verified
           ? "hover:border-[rgba(220,38,38,0.45)] hover:bg-[rgba(220,38,38,0.08)] hover:text-[#DC2626]"
-          : "hover:border-[rgba(220,38,38,0.55)] hover:bg-[rgba(220,38,38,0.14)]"
+          : "hover:border-[rgba(22,163,74,0.55)] hover:bg-[rgba(22,163,74,0.10)] hover:text-[#16A34A]"
       )}
     >
       <span className="grid shrink-0 place-items-center">

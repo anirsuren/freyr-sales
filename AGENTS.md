@@ -196,6 +196,11 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Verify button hover:** Actionable “Not verified” goal pills now turn
+  green when their hover label changes to “Verify”; the resting status remains
+  red, and hovering a signed-off pill still shows the red undo action. Typecheck
+  and focused lint pass. Local only, not deployed.
+
 - **Sep 22 Org goal subgoal folding:** Each subgoal header now folds its
   people list while keeping the name, owner, target, progress, and sign-off
   visible. A Collapse all / Expand all control handles the whole goal. Verified
