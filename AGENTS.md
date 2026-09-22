@@ -196,6 +196,12 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Org goal subgoal folding:** Each subgoal header now folds its
+  people list while keeping the name, owner, target, progress, and sign-off
+  visible. A Collapse all / Expand all control handles the whole goal. Verified
+  both controls in localhost Mock mode on Booked Revenue; typecheck and focused
+  lint pass. Local only, not deployed.
+
 - **Sep 22 Goal progress status colors:** The compact period, group, person,
   and table bars now split unchecked results into red sent-back and yellow
   awaiting-review segments, matching the expanded timeline. A small sent-back

@@ -1611,6 +1611,17 @@ function GoalRows({
 }) {
   /** Which assigned person's numbers are unfolded under their row. */
   const [openPerson, setOpenPerson] = useState<string | null>(null);
+  /** Keep the subgoal totals visible while their people lists can fold away. */
+  const [collapsedSubgoals, setCollapsedSubgoals] = useState<Set<string>>(
+    () => new Set()
+  );
+  const toggleSubgoal = (id: string) =>
+    setCollapsedSubgoals((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const actual = actualValue(actuals, goal, { rates: state.rates });
   /**
    * WHAT ACTUALLY COUNTS (Anir, Aug 20: "it says 'percent met' is at 100%, but
@@ -2495,7 +2506,26 @@ function GoalRows({
                   </div>
                 )
               ) : (
-                goal.subgoals.map((s) => {
+                <>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allCollapsed = goal.subgoals.every((s) => collapsedSubgoals.has(s.id));
+                      setCollapsedSubgoals(
+                        allCollapsed ? new Set() : new Set(goal.subgoals.map((s) => s.id))
+                      );
+                    }}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:bg-surface hover:text-blue-primary"
+                  >
+                    {goal.subgoals.every((s) => collapsedSubgoals.has(s.id)) ? (
+                      <><ChevronsUpDown size={13} strokeWidth={2.2} /> Expand all subgoals</>
+                    ) : (
+                      <><ChevronsDownUp size={13} strokeWidth={2.2} /> Collapse all subgoals</>
+                    )}
+                  </button>
+                </div>
+                {goal.subgoals.map((s) => {
                   const subActual = actualValue(actuals, goal, {
                     subgoalId: s.id,
                   });
@@ -2527,14 +2557,29 @@ function GoalRows({
                             there?"). A bold name with a crown and a table under
                             it gave no clue it was a piece of the goal you had
                             just opened rather than a thing in its own right. */}
-                        <span className="flex min-w-0 flex-col">
-                          <span className="text-[13px] font-bold text-text-primary">
-                            {s.name}
+                        <button
+                          type="button"
+                          aria-expanded={!collapsedSubgoals.has(s.id)}
+                          aria-controls={`subgoal-people-${s.id}`}
+                          aria-label={`${collapsedSubgoals.has(s.id) ? "Expand" : "Collapse"} ${s.name}`}
+                          onClick={() => toggleSubgoal(s.id)}
+                          className="flex min-w-0 cursor-pointer items-center gap-2 rounded-md text-left hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30"
+                        >
+                          <ChevronDown
+                            size={15}
+                            strokeWidth={2.2}
+                            className={cn(
+                              "shrink-0 text-text-tertiary transition-transform",
+                              collapsedSubgoals.has(s.id) && "-rotate-90"
+                            )}
+                          />
+                          <span className="flex min-w-0 flex-col">
+                            <span className="text-[13px] font-bold text-text-primary">{s.name}</span>
+                            <span className="text-[10.5px] text-text-tertiary">
+                              A piece of {goal.name}, carried by the people below
+                            </span>
                           </span>
-                          <span className="text-[10.5px] text-text-tertiary">
-                            A piece of {goal.name}, carried by the people below
-                          </span>
-                        </span>
+                        </button>
                         {s.owners.length > 0 && (
                           <span
                             className="flex items-center gap-1.5"
@@ -2621,13 +2666,19 @@ function GoalRows({
                           </span>
                         </span>
                       </div>
+                      <div
+                        id={`subgoal-people-${s.id}`}
+                        className="freyr-fold"
+                        data-open={collapsedSubgoals.has(s.id) ? "false" : "true"}
+                      >
+                        <div className="pt-2.5">
                       {s.people.length > 0 && (
                         /* ONE CARD PER PERSON, the same shape the goal-level
                            list uses. A subgoal's people were still wearing the
                            old five-column table - person, target, actual,
                            % met, verified - which is exactly the redundancy
                            Anir asked to collapse into a single lane. */
-                        <div className="mt-2.5 space-y-2">
+                        <div className="space-y-2">
                           {s.people.map((p) => {
                             const pActuals = actuals.filter(
                               (entry) => entry.subgoalId === s.id
@@ -2796,7 +2847,7 @@ function GoalRows({
                         // A real empty state, centred (Anir, Aug 12: "make
                         // that section bigger and put Assign people in the
                         // center") — the squeezed row read as a footnote.
-                        <div className="mt-2.5 flex flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-border-light bg-white px-4 py-6 text-center">
+                        <div className="flex flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-border-light bg-white px-4 py-6 text-center">
                           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(0,113,227,0.08)] text-blue-primary">
                             <UsersRound size={17} strokeWidth={2} />
                           </span>
@@ -2834,9 +2885,13 @@ function GoalRows({
                           )}
                         </div>
                       )}
+                        </div>
+                      </div>
                     </div>
                   );
                 })
+                }
+                </>
               )}
               </div>
               </div>
