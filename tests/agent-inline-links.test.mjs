@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),ts=require('typescript'),React=require('react');
 const source=readFileSync(new URL('../components/agent/AgentChat.tsx',import.meta.url),'utf8');
-const part=source.slice(source.indexOf('function renderInline('),source.indexOf('\ntype ChartSpec'));
+const part=source.slice(source.indexOf('function renderInline('),source.indexOf('\nfunction MarkdownText('));
 const js=ts.transpileModule(part,{compilerOptions:{jsx:ts.JsxEmit.React,target:ts.ScriptTarget.ES2020}}).outputText;
 const renderInline=new Function('React','Link','injectEntities','entityLink','readableLinkLabel','APP_ROUTES',js+';return renderInline;')(React,'a',text=>[text],()=>null,text=>text,new Set(['offerings']));
 test('bold and italic markdown preserve nested readable links without exposing raw paths',()=>{

@@ -196,6 +196,12 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Agent popup response rendering:** The compact Agent popup now
+  renders fenced chart responses as charts and displays Markdown status bullets
+  without stray asterisks. The full Agent page and popup share one chart
+  parser/renderer. Verified on localhost using the saved lead-status reply;
+  typecheck and focused inline-link tests pass. Local only, not deployed.
+
 - **Sep 21 Vertex AI foundation:** Enabled Agent Platform/Vertex AI API in GCP
   project `sound-fastness-480519-a6`, added the current Google Gen AI SDK,
   Application Default Credentials support, a provider-switched Gemini tool

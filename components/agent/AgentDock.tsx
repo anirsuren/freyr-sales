@@ -33,6 +33,7 @@ import {
   type AskAgentDetail,
 } from "@/lib/agentEvents";
 import { AGENT_DOCK_ACTIVE_KEY } from "@/lib/agentNavigationHandoff";
+import { ChatChart, parseChartSpec } from "@/components/agent/AgentResponseChart";
 
 // The dock and the full Agent page deliberately use the SAME account-backed
 // conversation model. A rep can start beside an offering, then continue that
@@ -231,7 +232,39 @@ export function renderRich(
   entities: Entity[] = [],
   linkable = true
 ): ReactNode {
-  return normalizeAgentLinks(text).split("\n").map((line, li) => {
+  const lines = normalizeAgentLinks(text).split("\n");
+  const blocks: ReactNode[] = [];
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    const fence = line.trim().match(/^```(\w*)\s*$/);
+    if (fence) {
+      const body: string[] = [];
+      let end = li + 1;
+      while (end < lines.length && !/^```\s*$/.test(lines[end].trim())) {
+        body.push(lines[end]);
+        end++;
+      }
+      // The reply is revealed a few characters at a time. Hide an unfinished
+      // fence, including its JSON, until there is a complete chart to show.
+      if (end === lines.length) break;
+      if (fence[1] === "chart") {
+        const spec = parseChartSpec(body.join("\n"));
+        if (spec) blocks.push(<ChatChart key={`chart-${li}`} spec={spec} />);
+      } else {
+        blocks.push(
+          <pre key={`code-${li}`} className="my-2 overflow-x-auto rounded-lg bg-surface px-3 py-2 text-[12px] leading-relaxed">
+            {body.join("\n")}
+          </pre>
+        );
+      }
+      li = end;
+      continue;
+    }
+    // Strip the list marker before parsing emphasis. A line such as
+    // `* **Converted:** 18 leads` otherwise pairs the list's first `*`
+    // with the bold marker and leaves a literal asterisk beside the label.
+    const bullet = line.match(/^\s*[-*•]\s+(.+)$/);
+    const content = bullet ? bullet[1] : line;
     const nodes: ReactNode[] = [];
     // Links first, then bold, italic and code. Only app paths and HTTP(S)
     // citations are linkable; other schemes remain plain text.
@@ -241,8 +274,8 @@ export function renderRich(
     let k = 0;
     const plain = (s: string, kb: string) =>
       nodes.push(...injectEntities(s, entities, kb, linkable));
-    while ((m = re.exec(line))) {
-      if (m.index > last) plain(line.slice(last, m.index), `${li}-${k}`);
+    while ((m = re.exec(content))) {
+      if (m.index > last) plain(content.slice(last, m.index), `${li}-${k}`);
       // A NAME INSIDE BOLD IS STILL A NAME (Anir, Aug 15: "whenever it
       // mentions a person's name or any sort of asset like that, it should
       // always have the icon... it has to be in a pill shape. It's still not
@@ -297,13 +330,15 @@ export function renderRich(
         );
       last = m.index + m[0].length;
     }
-    if (last < line.length) plain(line.slice(last), `${li}-end`);
-    return (
-      <span key={li} className="block min-h-[2px]">
-        {nodes}
+    if (last < content.length) plain(content.slice(last), `${li}-end`);
+    blocks.push(
+      <span key={li} className={bullet ? "flex min-h-[2px] gap-2 pl-2" : "block min-h-[2px]"}>
+        {bullet && <span aria-hidden="true">•</span>}
+        <span>{nodes}</span>
       </span>
     );
-  });
+  }
+  return blocks;
 }
 
 // A little personality while it works (Anir: "like Claude Code's rotating
