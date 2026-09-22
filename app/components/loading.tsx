@@ -3,8 +3,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 // A route-level boundary lets Next open this page before catalogue reads finish.
 export default function ComponentsLoading() {
   return (
-    <div aria-busy="true" aria-label="FDL Components">
-      <h1 className="text-2xl font-semibold mb-2">FDL Components</h1>
+    <div aria-busy="true" aria-label="Loading FDL Components">
+      <Skeleton className="mb-2 h-7 w-56 max-w-full" />
       <Skeleton className="mb-6 h-4 w-96 max-w-full" />
       <Skeleton className="mb-5 h-14 w-full rounded-xl" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

@@ -196,6 +196,10 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 FDL Components loading header:** The route's loading screen now
+  uses a title-sized skeleton instead of rendering the full page title above
+  placeholder content. Typecheck and focused lint pass. Local only, not deployed.
+
 - **Sep 22 Verify button hover:** Actionable “Not verified” goal pills now turn
   green when their hover label changes to “Verify”; the resting status remains
   red, and hovering a signed-off pill still shows the red undo action. Typecheck
