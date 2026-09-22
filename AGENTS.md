@@ -196,6 +196,11 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Solutioning owner confirmation:** Replaced the cramped generic
+  dialog with a compact request summary and a clear current-owner-to-new-owner
+  row with avatars. Verified its layout in a localhost Mock request without
+  changing the owner; typecheck and focused lint pass. Local only, not deployed.
+
 - **Sep 22 Solutioning deadline zoom:** The “Where it stands” rail now has the
   same zoom in, zoom out, Fit, scroll-to-zoom, and drag-to-pan controls as Goals.
   It starts with all three dates visible and shows the current date range when

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowRight,
   Building2,
   CalendarDays,
   Check,
@@ -46,6 +47,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { ActionBar, type BarAction } from "@/components/ui/ActionBar";
 import { UploadProgress } from "@/components/ui/UploadProgress";
@@ -1795,30 +1797,57 @@ export function RequestDetail({
         </div>
       </Modal>
 
-      <ConfirmDialog
+      <Modal
         open={confirmOwner !== null}
-        person={confirmOwner}
         onClose={() => setConfirmOwner(null)}
-        onConfirm={() => {
-          const owner = confirmOwner;
-          setConfirmOwner(null);
-          if (owner) void post({ op: "assign-request", owner });
-        }}
-        busy={busy}
-        tone="primary"
-        title={r.owner ? "Change owner?" : "Assign owner?"}
-        body={
-          <>
-            <b>{confirmOwner}</b> will become the owner of <b>{r.title}</b>.
-          </>
-        }
-        detail={
-          r.owner
-            ? `${r.owner} will no longer own this ${recordLabel}.`
-            : `This ${recordLabel} will move into ${confirmOwner ?? "their"}'s assigned work.`
-        }
-        confirmLabel={r.owner ? "Change owner" : "Assign owner"}
-      />
+        title={r.owner ? "Change owner" : "Assign owner"}
+      >
+        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-text-tertiary">
+          {recordLabel}
+        </p>
+        <p className="mt-1 text-[13px] font-semibold leading-snug text-text-primary">
+          {r.title}
+        </p>
+
+        <div className="mt-4 flex items-center gap-3 rounded-xl border border-border-light bg-surface-subtle p-3">
+          {r.owner && (
+            <>
+              <div className="min-w-0 flex-1">
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Current owner</span>
+                <span className="mt-1.5 flex min-w-0 items-center gap-2">
+                  <Avatar name={r.owner} className="h-7 w-7 shrink-0" />
+                  <span className="truncate text-[12.5px] font-medium text-text-secondary">{r.owner}</span>
+                </span>
+              </div>
+              <ArrowRight size={16} className="shrink-0 text-blue-primary" aria-hidden="true" />
+            </>
+          )}
+          <div className="min-w-0 flex-1">
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">New owner</span>
+            <span className="mt-1.5 flex min-w-0 items-center gap-2">
+              <Avatar name={confirmOwner ?? ""} className="h-7 w-7 shrink-0" />
+              <span className="truncate text-[12.5px] font-semibold text-text-primary">{confirmOwner}</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setConfirmOwner(null)} disabled={busy} className="!px-3.5 !py-2 !text-[12.5px]">
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              const owner = confirmOwner;
+              setConfirmOwner(null);
+              if (owner) void post({ op: "assign-request", owner });
+            }}
+            disabled={busy}
+            className="!px-3.5 !py-2 !text-[12.5px]"
+          >
+            {r.owner ? "Change owner" : "Assign owner"}
+          </Button>
+        </div>
+      </Modal>
 
       <ConfirmDialog
         open={confirmComplete}
