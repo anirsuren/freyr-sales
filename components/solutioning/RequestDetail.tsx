@@ -113,18 +113,21 @@ import { tint } from "@/lib/tint";
 export function timelineMark(what: string): { icon: LucideIcon; color: string } {
   const w = what.toLowerCase();
   if (w.startsWith("requested")) return { icon: ClipboardList, color: "var(--ink-bright-blue)" };
-  if (w.startsWith("picked it up") || w.startsWith("took this up"))
+  if (w.startsWith("picked it up") || w.startsWith("took this up") || w.startsWith("took ownership"))
     return { icon: Hand, color: "#4338CA" };
   if (w.startsWith("started this") || w.startsWith("created this"))
     return { icon: Hand, color: "#4338CA" };
   if (w.startsWith("copied ")) return { icon: ClipboardList, color: "#0891B2" };
-  if (w.startsWith("handed it back") || w.startsWith("took it off"))
+  if (w.startsWith("handed it back") || w.startsWith("took it off") || w.startsWith("handed back"))
     return { icon: Undo2, color: "var(--ink-amber)" };
-  if (w.includes("completed")) return { icon: CheckCircle2, color: "#16A34A" };
+  if (w.startsWith("cancelled ") || w.endsWith("to cancelled"))
+    return { icon: AlertCircle, color: "#DC2626" };
+  if ((w.startsWith("marked ") && w.includes(" completed")) || w.startsWith("completed automatically") || w.endsWith("to completed"))
+    return { icon: CheckCircle2, color: "#16A34A" };
   if (w.startsWith("reopened")) return { icon: RotateCcw, color: "var(--ink-violet-soft)" };
-  if (w.startsWith("added")) return { icon: FilePlus2, color: "#0891B2" };
+  if (w.startsWith("added") || w.includes(": added ")) return { icon: FilePlus2, color: "#0891B2" };
   if (w.startsWith("linked")) return { icon: Link2, color: "#0891B2" };
-  if (w.startsWith("removed") || w.includes("deleted"))
+  if (w.startsWith("removed") || w.includes(": removed ") || w.includes("deleted"))
     return { icon: Trash2, color: "#DC2626" };
   if (w.startsWith("assigned")) return { icon: UserRound, color: "var(--ink-violet-soft)" };
   return { icon: FileText, color: "#64748B" };
@@ -476,11 +479,12 @@ export function RequestDetail({
       : DOC_TABS;
   const docs = tab === "overview" ? [] : r.docs.filter((d) => d.category === tab);
   const hint = DOC_TABS.find((t) => t.key === tab)?.hint;
+  const legacyRepeatedLabels = new Set(["Marked it completed", "Reopened it", "Picked it up", "Took this up"]);
   const timelineItems = chronologicalActivity(r)
     .filter((a, i, items) =>
       a.comment
         ? true
-        : !items.some(
+        : !legacyRepeatedLabels.has(a.what) || !items.some(
             (b, j) =>
               j < i &&
               !b.comment &&
@@ -1442,18 +1446,9 @@ export function RequestDetail({
                   right? The timeline has to be stuck there, and then obviously
                   I can scroll inside"). The body is content-sized for short
                   histories and capped for long ones, where it scrolls. */}
-              {/* ONE MINUTE OF FIDDLING IS ONE ENTRY, NOT SIX (Suren, Aug 28:
-                  "this should show like 5 not 7").
-
-                  Toggling completed → reopened → completed while looking at a
-                  record is one person making up their mind, and it wrote a row
-                  per click: the same two lines three times over, stamped to
-                  the same minute, burying the two things that actually
-                  happened that day.
-
-                  So a repeat of the same action, by the same person, inside
-                  the same minute shows once. A COMMENT is never folded — the
-                  same sentence typed twice is two things somebody said. */}
+              {/* Fold only older generic duplicate clicks within one minute.
+                  Detailed events contain the changed names and values, so
+                  even same-minute edits must remain distinct in the audit. */}
               {/* IT TAKES THE ROOM IT NEEDS, AND NO MORE. Two events end after
                   the second event; a long history gets roughly six rows before
                   the body becomes its own scroll area. */}
@@ -1489,7 +1484,7 @@ export function RequestDetail({
                       <span className="block min-w-0">
                         <span
                           className={cn(
-                            "block whitespace-pre-wrap text-[12.5px] leading-snug",
+                            "block whitespace-pre-wrap break-words text-[12.5px] leading-snug",
                             a.comment
                               ? "rounded-lg bg-surface px-2.5 py-2 text-text-primary"
                               : "font-semibold text-text-primary"

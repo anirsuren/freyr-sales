@@ -3,6 +3,7 @@ import { getDataMode } from "./dataMode";
 import { mockFillSolutioning, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
 import { canonicalMockTeammate } from "./salesTeam";
 import { todayISO } from "@/lib/utils";
+import { describeListChange, describeTextChange, describeValueChange, describeWorkstreamChanges } from "./solutioningActivity";
 
 /**
  * SOLUTIONING — presentations, submissions and meetings, requested by sales
@@ -492,7 +493,9 @@ function normalizeDoc(v: unknown): SolutionDoc | null {
 function normalizeActivity(v: unknown): RequestActivity | null {
   if (!v || typeof v !== "object") return null;
   const r = v as Partial<RequestActivity>;
-  let what = str(r.what, r.comment ? 2000 : 240);
+  // Events may describe several changes in one save. Truncating them here
+  // silently discarded the people and values the audit trail needs to show.
+  let what = str(r.what, r.comment ? 2000 : 12000);
   if (!what) return null;
   /* A NAME, NOT A TOKEN (Anir, Aug 27, twice: "why does it say that weird
      number" and again "why is that weird text still showing up? What is
@@ -611,7 +614,6 @@ function normalizeRequest(v: unknown): SolutionRequest | null {
       ? r.activity
           .map(normalizeActivity)
           .filter((a): a is RequestActivity => a !== null)
-          .slice(0, 200)
       : [],
   };
 }
@@ -1249,7 +1251,7 @@ async function buildRecord(
           record.activity.push({
             at: new Date().toISOString(),
             by: input.requestedBy,
-            what: `Copied ${inputsToCopy.length} document${inputsToCopy.length === 1 ? "" : "s"} from ${source.ref}`,
+            what: `Copied from ${source.ref}: ${inputsToCopy.map((doc) => `${doc.name} v${doc.version}`).join(", ")}`,
           });
         }
       }
@@ -1264,10 +1266,10 @@ async function buildRecord(
       by: input.requestedBy,
       what:
         type === "request"
-          ? `Requested this ${KIND_WORD[input.kind]}`
+          ? `Requested ${KIND_WORD[input.kind]} for ${customer}: ${title}`
           : record.requestId
-            ? `Created this ${KIND_WORD[input.kind]} from a request`
-            : `Started this ${KIND_WORD[input.kind]}`,
+            ? `Created this ${KIND_WORD[input.kind]} from ${state.requests.find((item) => item.id === record.requestId)?.ref ?? "a request"}`
+            : `Started ${KIND_WORD[input.kind]} for ${customer}: ${title}`,
     });
     state.requests.unshift(record);
     if (persist) await writeRow(state);
@@ -1345,12 +1347,10 @@ export async function setPriority(input: {
   return withWrite(async () => {
     const state = await readRow();
     const r = mustFind(state, input.requestId);
+    const change = describeValueChange("Priority", r.priority, input.priority);
+    if (!change) return;
     r.priority = input.priority ?? undefined;
-    touch(
-      r,
-      input.by,
-      input.priority ? `Priority set to ${input.priority}` : "Priority cleared"
-    );
+    touch(r, input.by, change);
     await writeRow(state);
   });
 }
@@ -1382,16 +1382,12 @@ export async function setWorkstream(input: {
       w = { division, contributors: [] };
       list.push(w);
     }
-    const said: string[] = [];
+    const previous = { lead: w.lead, primaryAssignee: w.primaryAssignee, contributors: [...w.contributors] };
     if (input.lead !== undefined) {
       w.lead = str(input.lead ?? "", 80) || undefined;
-      said.push(w.lead ? `lead ${w.lead}` : "lead cleared");
     }
     if (input.primaryAssignee !== undefined) {
       w.primaryAssignee = str(input.primaryAssignee ?? "", 80) || undefined;
-      said.push(
-        w.primaryAssignee ? `assignee ${w.primaryAssignee}` : "assignee cleared"
-      );
     }
     if (input.contributors !== undefined) {
       w.contributors = strList(input.contributors, 80);
@@ -1413,9 +1409,7 @@ export async function setWorkstream(input: {
       }
     }
     w.contributors = [...contributorMap.values()];
-    if (input.contributors !== undefined) {
-      said.push(`${w.contributors.length} contributor(s)`);
-    }
+    const said = describeWorkstreamChanges(previous, w);
     /* SOL-013: "Once all required Solutioning Leads are selected, it can move
        to Assigned." Only ever forward out of New, and never over the top of
        work that has already started or finished. */
@@ -1429,7 +1423,8 @@ export async function setWorkstream(input: {
       r.status = "assigned";
       said.push("every division now has a lead, so this is Assigned");
     }
-    touch(r, input.by, `${division}: ${said.join(", ")}`);
+    if (said.length === 0) return;
+    touch(r, input.by, `${division}: ${said.join("; ")}`);
     await writeRow(state);
   });
 }
@@ -1458,12 +1453,21 @@ export async function assignRequestOwner(input: {
       throw new Error("Closed solutioning records cannot be reassigned.");
     }
     const previousOwner = r.owner;
+    const previousStatus = r.status;
     const owner = str(input.owner ?? "", 80) || undefined;
+    if (previousOwner === owner) return;
     if (r.owner && !owner) {
       throw new Error("Choose the replacement owner before removing the current one.");
     }
     r.owner = owner;
+    const previousContributors = (r.workstreams ?? []).map((workstream) => ({
+      division: workstream.division, contributors: [...workstream.contributors],
+    }));
     removeRequestOwnerFromContributors(r);
+    const removedContributors = previousContributors.flatMap((before) => {
+      const current = r.workstreams?.find((workstream) => workstream.division === before.division);
+      return describeListChange(`as contributor in ${before.division}`, before.contributors, current?.contributors);
+    });
     if (owner) {
       r.pickedUpAt = r.pickedUpAt ?? new Date().toISOString();
       if (r.status === "initiated") r.status = "assigned";
@@ -1471,15 +1475,13 @@ export async function assignRequestOwner(input: {
       r.pickedUpAt = undefined;
       if (r.status === "assigned") r.status = "initiated";
     }
-    touch(
-      r,
-      input.by,
-      owner
+    const ownershipChange = owner
         ? previousOwner && previousOwner !== owner
           ? `Owner changed from ${previousOwner} to ${owner}`
           : `Assigned to ${owner}`
-        : "Assignment cleared"
-    );
+        : "Assignment cleared";
+    const statusChange = describeValueChange("Status", previousStatus.replaceAll("_", " "), r.status.replaceAll("_", " "));
+    touch(r, input.by, [ownershipChange, ...removedContributors, statusChange].filter(Boolean).join("; "));
     await writeRow(state);
   });
 }
@@ -1496,8 +1498,10 @@ export async function setDeliverableStatus(input: {
     const r = mustFind(state, input.requestId);
     if (r.type === "request")
       throw new Error("A request does not carry a deliverable status.");
+    const change = describeValueChange("Deliverable status", r.deliverableStatus, input.status);
+    if (!change) return;
     r.deliverableStatus = input.status;
-    touch(r, input.by, `Moved to ${input.status}`);
+    touch(r, input.by, change);
     await writeRow(state);
   });
 }
@@ -1521,12 +1525,13 @@ export async function cancelRequest(input: {
     if (!input.allowed)
       throw new Error("Only the requester, its owner or a manager can cancel this.");
     if (r.status === "cancelled") return;
+    const previousStatus = r.status;
     r.status = "cancelled";
     if (r.type !== "request") r.deliverableStatus = "Cancelled";
     touch(
       r,
       input.by,
-      input.reason ? `Cancelled — ${str(input.reason, 300)}` : "Cancelled"
+      `Cancelled ${r.ref} (was ${previousStatus.replaceAll("_", " ")})${input.reason ? ` — ${str(input.reason, 300)}` : ""}`
     );
     await writeRow(state);
   });
@@ -1543,6 +1548,7 @@ export async function pickUpRequest(input: {
       throw new Error("This request is already completed.");
     if (r.owner && r.owner !== input.by)
       throw new Error(`${r.owner} already picked this up.`);
+    const previousStatus = r.status;
     r.owner = input.by;
     removeRequestOwnerFromContributors(r);
     r.pickedUpAt = r.pickedUpAt ?? new Date().toISOString();
@@ -1556,7 +1562,7 @@ export async function pickUpRequest(input: {
          up. Business." — his own phrase in the same breath was "can you guys
          take this up?", so the record speaks it. Old rows keep their words;
          the timeline mark matches both. */
-      what: "Took this up",
+      what: `Took ownership${previousStatus !== r.status ? `; status changed from ${previousStatus.replaceAll("_", " ")} to ${r.status.replaceAll("_", " ")}` : ""}`,
     });
 
     /**
@@ -1613,7 +1619,7 @@ export async function pickUpRequest(input: {
       r.activity.push({
         at: new Date().toISOString(),
         by: input.by,
-        what: `Started ${made.ref} from this`,
+        what: `Started ${made.ref} (${made.title}) from this request`,
       });
     }
 
@@ -1651,6 +1657,7 @@ export async function releaseRequest(input: {
     if (r.owner !== input.by && !input.managerial)
       throw new Error(`${r.owner} picked this up, so only they can hand it back.`);
     const wasOwner = r.owner;
+    const previousStatus = r.status;
     r.owner = undefined;
     r.pickedUpAt = undefined;
     if (r.status === "in_progress" && r.docs.length === 0) r.status = "initiated";
@@ -1658,9 +1665,7 @@ export async function releaseRequest(input: {
       at: new Date().toISOString(),
       by: input.by,
       what:
-        wasOwner === input.by
-          ? "Handed it back"
-          : `Took it off ${wasOwner}`,
+        `${wasOwner === input.by ? `Handed back ownership from ${wasOwner}` : `Removed ${wasOwner} as owner`}${previousStatus !== r.status ? `; status changed from ${previousStatus.replaceAll("_", " ")} to ${r.status.replaceAll("_", " ")}` : ""}`,
     });
     await writeRow(state);
   });
@@ -1685,13 +1690,14 @@ export async function completeRequest(input: {
         `Only ${r.requestedBy}, who asked for it, can mark this completed.`
       );
     if (r.status === "completed") return;
+    const previousStatus = r.status;
     r.status = "completed";
     r.completedBy = input.by;
     r.completedAt = new Date().toISOString();
     r.activity.push({
       at: new Date().toISOString(),
       by: input.by,
-      what: "Marked it completed",
+      what: `Marked ${r.type === "request" ? "request" : r.type} completed (${r.ref}); was ${previousStatus.replaceAll("_", " ")}`,
     });
 
     /**
@@ -1720,7 +1726,7 @@ export async function completeRequest(input: {
           home.activity.push({
             at: new Date().toISOString(),
             by: input.by,
-            what: `Completed automatically: ${r.ref} was delivered`,
+            what: `Completed automatically: ${r.ref} (${r.title}) was delivered`,
           });
         }
       }
@@ -1744,7 +1750,7 @@ export async function reopenRequest(input: {
     r.activity.push({
       at: new Date().toISOString(),
       by: input.by,
-      what: "Reopened it",
+      what: `Reopened ${r.ref}; status is ${r.status.replaceAll("_", " ")}`,
     });
     await writeRow(state);
   });
@@ -1823,8 +1829,8 @@ export async function addDocument(input: {
       at: new Date().toISOString(),
       by: input.by,
       what: ref
-        ? `Linked ${name} from ${state.requests.find((x) => x.id === ref!.requestId)?.ref ?? "another request"}`
-        : `Added ${name} v${version}`,
+        ? `Linked ${name} (${input.category}) from ${state.requests.find((x) => x.id === ref!.requestId)?.ref ?? "another request"}`
+        : `Added ${name} v${version} to ${input.category} documents${doc.assignedTo ? `; assigned to ${doc.assignedTo}` : ""}`,
     });
     await writeRow(state);
     return doc;
@@ -1843,13 +1849,13 @@ export async function assignDocument(input: {
     const doc = r.docs.find((d) => d.id === input.docId);
     if (!doc) throw new Error("That document is gone. Refresh and retry.");
     const next = input.assignedTo ? str(input.assignedTo, 80) : undefined;
+    const change = describeValueChange(`Assignee for ${doc.name} v${doc.version}`, doc.assignedTo, next);
+    if (!change) return;
     doc.assignedTo = next || undefined;
     r.activity.push({
       at: new Date().toISOString(),
       by: input.by,
-      what: next
-        ? `Put ${next} on ${doc.name}`
-        : `Cleared the assignee on ${doc.name}`,
+      what: change,
     });
     await writeRow(state);
   });
@@ -1872,7 +1878,7 @@ export async function removeDocument(input: {
     r.activity.push({
       at: new Date().toISOString(),
       by: input.by,
-      what: `Removed ${doc.name}${doc.ref ? "" : ` v${doc.version}`}`,
+      what: `Removed ${doc.name}${doc.ref ? " (linked)" : ` v${doc.version}`} from ${doc.category} documents${doc.assignedTo ? ` (assigned to ${doc.assignedTo})` : ""}`,
     });
     await writeRow(state);
   });
@@ -1901,6 +1907,13 @@ export async function updateRequest(input: {
     const state = await readRow();
     const r = mustFind(state, input.requestId);
     const p = input.patch;
+    const before = {
+      title: r.title, details: r.details, subtype: r.subtype,
+      neededBy: r.neededBy, meetingAt: r.meetingAt,
+      attendees: [...(r.attendees ?? [])],
+      opportunityIds: [...r.opportunityIds], opportunityLabels: [...r.opportunityLabels],
+      contactIds: [...r.contactIds], contactNames: [...r.contactNames],
+    };
     if (p.title !== undefined) {
       const t = str(p.title, 200);
       if (!t) throw new Error("A request needs a title.");
@@ -1922,10 +1935,27 @@ export async function updateRequest(input: {
     if (p.contactIds !== undefined) r.contactIds = strList(p.contactIds, 60);
     if (p.contactNames !== undefined)
       r.contactNames = strList(p.contactNames, 120);
+    const changes = [
+      describeValueChange("Title", before.title, r.title),
+      describeTextChange("Brief", before.details, r.details),
+      describeValueChange("Type", before.subtype, r.subtype),
+      describeValueChange("Needed by", before.neededBy, r.neededBy),
+      describeValueChange("Meeting time", before.meetingAt, r.meetingAt),
+      ...describeListChange("as attendee", before.attendees, r.attendees),
+      ...describeListChange("as linked opportunity", before.opportunityLabels, r.opportunityLabels),
+      ...describeListChange("as linked contact", before.contactNames, r.contactNames),
+    ].filter((change): change is string => Boolean(change));
+    if (before.opportunityIds.join("\0") !== r.opportunityIds.join("\0") && !changes.some((change) => change.includes("opportunity"))) {
+      changes.push("Linked opportunities updated");
+    }
+    if (before.contactIds.join("\0") !== r.contactIds.join("\0") && !changes.some((change) => change.includes("contact"))) {
+      changes.push("Linked contacts updated");
+    }
+    if (changes.length === 0) return;
     r.activity.push({
       at: new Date().toISOString(),
       by: input.by,
-      what: "Edited the request",
+      what: changes.join("; "),
     });
     await writeRow(state);
   });
@@ -1968,7 +1998,7 @@ export async function deleteRequest(input: {
       other.activity.push({
         at: new Date().toISOString(),
         by: "System",
-        what: `${r.ref} was deleted; ${dropped.length} linked document${dropped.length === 1 ? "" : "s"} removed`,
+        what: `${r.ref} was deleted; removed linked documents: ${dropped.map((doc) => doc.name).join(", ")}`,
       });
     }
     state.requests = state.requests.filter((x) => x.id !== input.requestId);
