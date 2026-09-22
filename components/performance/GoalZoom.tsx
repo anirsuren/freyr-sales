@@ -35,7 +35,6 @@ import {
   type EntryStatus,
   type GoalUnit,
   ENTRY_COLOR,
-  GOAL_PROGRESS_COLOR,
   entryStatus,
   entryStatusLabel,
   ENTRY_INK,
@@ -59,7 +58,7 @@ import {
   type PrimaryGoal,
   resultWhen,
 } from "@/lib/performanceShared";
-import { typeMeta, GroupPill, PaceTimeline } from "./bits";
+import { typeMeta, GroupPill, PaceTimeline, StatusBarSegments } from "./bits";
 import { ClaimReviewDialog, EntryTimeline } from "./EntryCards";
 import { EvidencePreview } from "./EvidenceViewer";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -1640,29 +1639,14 @@ export function GoalZoom({
                           )}
                         >
                           {!empty && (
-                            <>
-                              <span
-                                className={cn("h-full", lit && "bar-lit")}
-                                style={{
-                                  width: `${Math.min(100, (r.verified / scaleBase) * 100)}%`,
-                                  background: ENTRY_COLOR.verified,
-                                  ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
-                                }}
-                              />
-                              <span
-                                className={cn("unverified-fill-sm h-full", lit && "bar-lit")}
-                                style={{
-                                  width: `${Math.min(100, (r.awaiting / scaleBase) * 100)}%`,
-                                  ["--fill" as string]:
-                                    r.sentBack > 0
-                                      ? ENTRY_COLOR.sent_back
-                                      : GOAL_PROGRESS_COLOR.reported,
-                                  ["--bar-glow" as string]: r.sentBack > 0
-                                      ? ENTRY_COLOR.sent_back
-                                      : GOAL_PROGRESS_COLOR.reported,
-                                }}
-                              />
-                            </>
+                            <StatusBarSegments
+                              verified={r.verified}
+                              awaiting={r.awaiting}
+                              sentBack={r.sentBack}
+                              base={scaleBase}
+                              small
+                              lit={lit}
+                            />
                           )}
                         </span>
                         <b
@@ -1950,30 +1934,13 @@ export function GoalZoom({
                           </span>
                           {(r2.verified > 0 || r2.awaiting > 0) && (
                             <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
-                              <span
-                                className={cn("block h-full", lit && "bar-lit")}
-                                style={{
-                                  width: `${Math.min(100, (r2.verified / maxG) * 100)}%`,
-                                  background: ENTRY_COLOR.verified,
-                                  ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
-                                }}
-                              />
-                              {/* ONE GREEN MEASURE. Signed-off work is solid;
-                                  work waiting for verification is striped.
-                                  Only a sent-back result changes the rail to
-                                  red because that work needs a fix. */}
-                              <span
-                                className={cn("unverified-fill-sm block h-full", lit && "bar-lit")}
-                                style={{
-                                  width: `${Math.min(100, (r2.awaiting / maxG) * 100)}%`,
-                                  ["--fill" as string]:
-                                    r2.sentBack > 0
-                                      ? ENTRY_COLOR.sent_back
-                                      : GOAL_PROGRESS_COLOR.reported,
-                                  ["--bar-glow" as string]: r2.sentBack > 0
-                                      ? ENTRY_COLOR.sent_back
-                                      : GOAL_PROGRESS_COLOR.reported,
-                                }}
+                              <StatusBarSegments
+                                verified={r2.verified}
+                                awaiting={r2.awaiting}
+                                sentBack={r2.sentBack}
+                                base={maxG}
+                                small
+                                lit={lit}
                               />
                             </span>
                           )}
@@ -2158,32 +2125,12 @@ export function GoalZoom({
                                     return (
                                       <span className="flex items-center gap-2 pl-7">
                                         <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border-light)]">
-                                          <span
-                                            className={cn("block h-full", lit && "bar-lit")}
-                                            style={{
-                                              width: base
-                                                ? `${Math.min(100, (v / base) * 100)}%`
-                                                : "0%",
-                                              background: ENTRY_COLOR.verified,
-                                            }}
-                                          />
-                                          <span
-                                            className={cn(
-                                              "unverified-fill block h-full",
-                                              lit && "bar-lit"
-                                            )}
-                                            style={{
-                                              width: base
-                                                ? `${Math.min(100, (w / base) * 100)}%`
-                                                : "0%",
-                                              ["--fill" as string]:
-                                                sb > 0
-                                                  ? ENTRY_COLOR.sent_back
-                                                  : GOAL_PROGRESS_COLOR.reported,
-                                              ["--bar-glow" as string]: sb > 0
-                                                  ? ENTRY_COLOR.sent_back
-                                                  : GOAL_PROGRESS_COLOR.reported,
-                                            }}
+                                          <StatusBarSegments
+                                            verified={v}
+                                            awaiting={w}
+                                            sentBack={sb}
+                                            base={base}
+                                            lit={lit}
                                           />
                                         </span>
                                         <span className="shrink-0 text-[9.5px] tnum text-text-tertiary">
@@ -2472,26 +2419,13 @@ export function GoalZoom({
                             </span>
                           ) : (
                           <span className="flex h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--border-light)]">
-                            <span
-                              className={cn("block h-full", lit && "bar-lit")}
-                              style={{
-                                width: `${Math.min(100, (p.verified / maxP) * 100)}%`,
-                                background: ENTRY_COLOR.verified,
-                                ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
-                              }}
-                            />
-                            <span
-                              className={cn("unverified-fill-sm block h-full", lit && "bar-lit")}
-                              style={{
-                                width: `${Math.min(100, (p.awaiting / maxP) * 100)}%`,
-                                ["--fill" as string]:
-                                  p.sentBack > 0
-                                    ? ENTRY_COLOR.sent_back
-                                    : GOAL_PROGRESS_COLOR.reported,
-                                ["--bar-glow" as string]: p.sentBack > 0
-                                    ? ENTRY_COLOR.sent_back
-                                    : GOAL_PROGRESS_COLOR.reported,
-                              }}
+                            <StatusBarSegments
+                              verified={p.verified}
+                              awaiting={p.awaiting}
+                              sentBack={p.sentBack}
+                              base={maxP}
+                              small
+                              lit={lit}
                             />
                           </span>
                           ))}

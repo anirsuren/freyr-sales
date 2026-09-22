@@ -1755,26 +1755,13 @@ export function PersonGoalPanel({
               {fmtAmount(goal.unit, verified)} signed off
             </span>
           </div>
-          {/* Signed off, then whatever is still owed — the same two-part
-              bar and the same colours as every other track. It was one solid
-              blue sweep, which drew refused money as if it counted. */}
+          {/* Use the same three status segments as the goal timeline. */}
           <span className="mt-1 flex h-2 overflow-hidden rounded-full bg-surface">
-            <span
-              className="block h-full"
-              style={{
-                width: `${target > 0 ? Math.min(100, (verified / target) * 100) : 0}%`,
-                background: ENTRY_COLOR.verified,
-              }}
-            />
-            <span
-              className="unverified-fill block h-full"
-              style={{
-                width: `${target > 0 ? Math.min(100 - Math.min(100, (verified / target) * 100), (waiting / target) * 100) : 0}%`,
-                ["--fill" as string]:
-                  sentBackMine > 0
-                    ? GOAL_PROGRESS_COLOR.sent_back
-                    : GOAL_PROGRESS_COLOR.reported,
-              }}
+            <StatusBarSegments
+              verified={verified}
+              awaiting={waiting}
+              sentBack={sentBackMine}
+              base={target}
             />
           </span>
         </div>
@@ -2156,6 +2143,56 @@ export function PersonProgress({
   );
 }
 
+/** The compact bars use the same status order as PaceTimeline: green counted,
+ * red sent back, yellow awaiting review. `awaiting` includes sent-back entries. */
+export function StatusBarSegments({
+  verified,
+  awaiting,
+  sentBack = 0,
+  base,
+  small = false,
+  lit = false,
+  barFill = false,
+}: {
+  verified: number;
+  awaiting: number;
+  sentBack?: number;
+  base: number;
+  small?: boolean;
+  lit?: boolean;
+  barFill?: boolean;
+}) {
+  const pct = (value: number) =>
+    base > 0 ? Math.min(100, Math.max(0, (value / base) * 100)) : 0;
+  const green = pct(verified);
+  const red = Math.min(100 - green, pct(Math.min(Math.max(0, sentBack), Math.max(0, awaiting))));
+  const yellow = Math.min(100 - green - red, pct(Math.max(0, awaiting - sentBack)));
+  const segments = [
+    { key: "verified", width: green, color: ENTRY_COLOR.verified, striped: false },
+    { key: "sent-back", width: red, color: GOAL_PROGRESS_COLOR.sent_back, striped: true },
+    { key: "waiting", width: yellow, color: GOAL_PROGRESS_COLOR.reported, striped: true },
+  ];
+  return <>
+    {segments.filter((segment) => segment.width > 0).map((segment) => (
+      <span
+        key={segment.key}
+        className={cn(
+          "block h-full shrink-0",
+          segment.striped && (small ? "unverified-fill-sm" : "unverified-fill"),
+          barFill && "bar-fill",
+          lit && "bar-lit"
+        )}
+        style={{
+          width: `${segment.width}%`,
+          background: segment.striped ? undefined : segment.color,
+          ["--fill" as string]: segment.color,
+          ["--bar-glow" as string]: segment.color,
+        }}
+      />
+    ))}
+  </>;
+}
+
 export function MiniBar({
   actual,
   claimed,
@@ -2175,11 +2212,6 @@ export function MiniBar({
 }) {
   const all = claimed ?? actual;
   const pct = Math.min(100, pctMet(actual, target));
-  const claimedPct = Math.min(100, pctMet(all, target));
-  const unverifiedColor =
-    sentBack > 0
-      ? GOAL_PROGRESS_COLOR.sent_back
-      : GOAL_PROGRESS_COLOR.reported;
   return (
     <span className="flex items-center gap-2">
       <span
@@ -2190,21 +2222,13 @@ export function MiniBar({
           lit && "h-2 w-28"
         )}
       >
-        <span
-          className={cn("bar-fill block h-full", lit && "bar-lit")}
-          style={{
-            width: `${target > 0 ? pct : 0}%`,
-            background: ENTRY_COLOR.verified,
-            ["--bar-glow" as string]: "rgba(22,163,74,0.75)",
-          }}
-        />
-        <span
-          className={cn("unverified-fill bar-fill block h-full", lit && "bar-lit")}
-          style={{
-            width: `${target > 0 ? Math.max(0, claimedPct - pct) : 0}%`,
-            ["--fill" as string]: unverifiedColor,
-            ["--bar-glow" as string]: unverifiedColor,
-          }}
+        <StatusBarSegments
+          verified={actual}
+          awaiting={Math.max(0, all - actual)}
+          sentBack={sentBack}
+          base={target}
+          lit={lit}
+          barFill
         />
       </span>
       <span

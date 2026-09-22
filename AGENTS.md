@@ -196,6 +196,12 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 22 Goal progress status colors:** The compact period, group, person,
+  and table bars now split unchecked results into red sent-back and yellow
+  awaiting-review segments, matching the expanded timeline. A small sent-back
+  amount no longer recolors all pending progress red. Typecheck and focused
+  lint pass. Local only, not deployed.
+
 - **Sep 22 Agent latency and Market Intel grounding:** Localhost is configured for Vertex AI; the deployed production build remains on the older Anthropic path. Named-company Market Intel retrieval now reads one company and its followed people directly, limits briefings to recent dated source excerpts, and preserves a full-feed fallback for legacy rows. Straightforward latest/news/post questions use a short single-pass Vertex prompt without the unrelated offerings corpus or extra tools; chat history is capped at 32,000 characters. In the localhost UI, a GSK post question returned linked original posts and used one Vertex model call with about 3,000 input tokens (down from about 6,900 on the prior broad path). Server-side work measured about 3.4 seconds and the request about 6.3 seconds; user-visible elapsed was still about 11 seconds, so the under-three-second goal is not met. The current Agent list answer correctly reports 20 tracked companies (12 customers, 8 competitors), matching the Market Intel UI; an older chat incorrectly said 90 and linked Pfizer. Pfizer's old linked briefing has no collected feed in this local real-data workspace. The agent must not invent updates or link to an empty briefing. Typecheck and focused lint pass. Local only, not deployed.
 
 - **Sep 22 Market Intel competitor mention chips:** Selecting a named competitor filters to stories that actually mention that company, highlights the selected chip, and shows a result count and Clear filter action above the feed. Clicking the same chip again restores the full feed; manual signal/source changes clear the named chip state. Verified in localhost Mock mode on Takeda/Sanofi by toggling the chip on and off; typecheck and focused lint pass. Local only, not deployed.
