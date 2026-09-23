@@ -1150,6 +1150,8 @@ function TipHeader({
      * that has nothing rejected looks exactly as it did.
      */
     pendingColor?: string;
+    /** Optional status-specific slices for the unverified part of the bar. */
+    pendingBands?: { value: number; color: string }[];
     caption?: string;
     /**
      * WHAT THE BAR IS MADE OF, IN WORDS AND MONEY (Anir, Aug 20: "I want the
@@ -1163,6 +1165,13 @@ function TipHeader({
     bands?: { color: string; label: string; value: string }[];
   };
 }) {
+  const doneWidth = Math.max(0, Math.min(100, bar?.done ?? 0));
+  let remainingWidth = 100 - doneWidth;
+  const pendingSlices = bar?.pendingBands?.map((band) => {
+    const width = Math.max(0, Math.min(remainingWidth, band.value));
+    remainingWidth -= width;
+    return { ...band, width };
+  });
   return (
     <div className="flex shrink-0 items-start gap-2.5">
       <SeriesMark
@@ -1188,21 +1197,25 @@ function TipHeader({
               <span
                 className="block h-full"
                 style={{
-                  width: `${Math.max(0, Math.min(100, bar.done))}%`,
+                  width: `${doneWidth}%`,
                   background: bar.color ?? color ?? VIZ.blue,
                 }}
               />
-              {/* Same stripe the bar itself wears — the tip used to paint
-                  this segment flat, so the card described the chart in a
-                  different visual language than the chart. */}
-              <span
-                className="unverified-fill-sm block h-full"
-                style={{
-                  width: `${Math.max(0, Math.min(100 - Math.min(100, bar.done), bar.pending ?? 0))}%`,
-                  ["--fill" as string]:
-                    bar.pendingColor ?? bar.color ?? color ?? VIZ.blue,
-                }}
-              />
+              {pendingSlices?.length ? pendingSlices.map((slice, index) => (
+                <span
+                  key={`${slice.color}-${index}`}
+                  className="unverified-fill-sm block h-full"
+                  style={{ width: `${slice.width}%`, ["--fill" as string]: slice.color }}
+                />
+              )) : (
+                <span
+                  className="unverified-fill-sm block h-full"
+                  style={{
+                    width: `${Math.max(0, Math.min(100 - doneWidth, bar.pending ?? 0))}%`,
+                    ["--fill" as string]: bar.pendingColor ?? bar.color ?? color ?? VIZ.blue,
+                  }}
+                />
+              )}
             </span>
             {bar.caption && (
               <span className="mt-1 block text-[11px] text-text-secondary tnum">

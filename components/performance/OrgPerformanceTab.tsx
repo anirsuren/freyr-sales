@@ -696,6 +696,10 @@ export function OrgPerformanceTab({
         pending: goal.target > 0 ? pctMet(awaiting, goal.target) : 0,
         color: MONEY,
         pendingColor: GOAL_PROGRESS_COLOR.reported,
+        pendingBands: goal.target > 0 ? [
+          ...(sentBack > 0 ? [{ value: pctMet(sentBack, goal.target), color: GOAL_PROGRESS_COLOR.sent_back }] : []),
+          ...(waiting > 0 ? [{ value: pctMet(waiting, goal.target), color: GOAL_PROGRESS_COLOR.reported }] : []),
+        ] : [],
         caption:
           goal.target > 0
             ? `${fmtAmount(goal.unit, actual, goal.currency)} of ${fmtAmount(goal.unit, goal.target, goal.currency)}`
@@ -1179,6 +1183,10 @@ export function OrgPerformanceTab({
                       /* Bands below carry the exact status colours. Amber is
                          the fallback if a caller cannot render the split. */
                       pendingColor: GOAL_PROGRESS_COLOR.reported,
+                      pendingBands: g.target > 0 ? [
+                        ...(sentBack > 0 ? [{ value: pctMet(sentBack, g.target), color: GOAL_PROGRESS_COLOR.sent_back }] : []),
+                        ...(awaiting - sentBack > 0 ? [{ value: pctMet(awaiting - sentBack, g.target), color: GOAL_PROGRESS_COLOR.reported }] : []),
+                      ] : [],
                       caption:
                         g.target > 0
                           ? `${fmtAmount(g.unit, a)} of ${fmtAmount(g.unit, g.target)}`

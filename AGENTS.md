@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Goal progress tooltip status colors:** The People and Org performance bar-chart hover now splits unverified progress into red sent-back and yellow waiting segments, matching the counts and status legend in the same tooltip. Shared chart rendering retains its existing fallback for other callers. Typecheck, focused lint, and diff check pass; the local Mock-mode chart and banner were inspected. Local only, not deployed.
+
 - **Sep 23 Claim verification progress zoom:** The progress bar in “Verify this claim” now has an expand control. Its larger, read-only view shows verified progress against the target and every result behind the goal; clicking the status segments or side filters narrows the list, and the claim under review remains highlighted. Closing returns to the verification decision without changing it. Verified in local Mock mode, including Waiting filtering and return focus; typecheck, focused lint, and diff check pass. Local only, not deployed.
 
 - **Sep 23 Result correction popup:** The Goals “Fix and resubmit result” dialog is narrower and organized around the correction: original result and status in a compact header, reviewer feedback beside the editable amount/date/account fields, and supporting evidence in a small secondary panel. The same update/resubmission behavior is preserved. Verified visually in local Mock mode with its banner visible; typecheck, focused lint, and diff check pass. Local only, not deployed.
