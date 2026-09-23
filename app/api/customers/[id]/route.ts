@@ -47,6 +47,7 @@ const LENGTH_CAPS: { field: string; max: number; label: string }[] = [
   { field: "customer_type", max: 120, label: "customer type" },
   { field: "ownership", max: 120, label: "ownership" },
   { field: "revenue", max: 60, label: "revenue" },
+  { field: "enrichment_summary", max: 4000, label: "account description" },
   { field: "competitor", max: 200, label: "competitor" },
 ];
 
@@ -327,6 +328,8 @@ export async function PATCH(
     patch.ownership = body.ownership.trim() || null;
   if (typeof body.revenue === "string")
     patch.revenue = body.revenue.trim() || null;
+  if (typeof body.enrichment_summary === "string")
+    patch.enrichment_summary = body.enrichment_summary.trim() || null;
   if (body.analyzed_at) patch.analyzed_at = new Date().toISOString();
   // Adoption link: which offerings this customer already uses (offering ids).
   if (Array.isArray(body.offerings_in_use))

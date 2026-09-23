@@ -1567,3 +1567,7 @@ Market Intelligence company details stick close to the top of their own scrollin
 ### Sep 22: Customer offerings read as an account portfolio
 
 The customer Offerings tab opens with account-specific usage, recorded revenue, available catalogue count, and customer type. In-use offerings show their description, revenue, activity count, and material count before expansion; the detail view keeps the full description, revenue lines, activities, and sales materials together, with the no-longer-in-use action below those facts. A revenue chart appears only when there are multiple commercial models to compare, and the empty available section disappears when the customer already uses every applicable offering. Typecheck and focused lint pass. Local visual verification is pending because localhost redirects to Access pending (configuration error). Completed locally, not deployed.
+
+### Sep 22: About this account opens one complete editor
+
+The pencil on About this account opens a single dialog with every fact shown in that section: company name, industry, size, locations, website, customer type, ownership, revenue, and account description. The read-only values no longer become a second set of edit buttons. One Save changes action submits the section together; the customer PATCH route now accepts the description with a length cap. Typecheck and focused lint pass. Local visual verification is pending because localhost redirects to Access pending (configuration error). Completed locally, not deployed.

@@ -42,7 +42,7 @@ import {
 } from "@/components/customers/CustomerOfferingsTab";
 import { CustomerDigitalComponents } from "@/components/customers/CustomerDigitalComponents";
 import { CustomerAccountPlanTab } from "@/components/customers/CustomerAccountPlanTab";
-import { SizeBadge, Badge, OutcomeBadge } from "@/components/ui/Badge";
+import { SizeBadge, Badge, OutcomeBadge, SIZE_TIER_META } from "@/components/ui/Badge";
 import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
@@ -111,6 +111,20 @@ const CUSTOMER_OUTCOMES: Outcome[] = [
   "ai_call_completed",
   "ai_call_failed",
 ];
+
+function aboutDraftFor(customer: Customer) {
+  return {
+    company_name: customer.company_name ?? "",
+    industry: customer.industry ?? "",
+    size_tier: customer.size_tier ?? "",
+    geography: customer.geography ?? "",
+    website_url: customer.website_url ?? "",
+    customer_type: customer.customer_type ?? "",
+    ownership: customer.ownership ?? "",
+    revenue: expandMoneyShorthand(customer.revenue ?? "", { integer: true }),
+    enrichment_summary: customer.enrichment_summary ?? "",
+  };
+}
 
 // "Ask Agent" is no longer a tab — the agent rides in a right-side drawer so
 // it's reachable from every tab without hiding the account (Anir, Jul 3).
@@ -519,11 +533,10 @@ export function CustomerTabs({
   const [notes, setNotes] = useState<AccountNote[]>(customer.notes_log || []);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteKind, setNoteKind] = useState<"call" | "email" | "meeting" | "note">("note");
-  /* SECTION-SCOPED EDITING (Anir, Sep 21): an admin should correct account
-     facts where they are reading them. The pencil on About turns only this
-     section live; contacts, activity, and every derived chart keep their own
-     actions and never inherit a page-wide edit mode. */
   const [editingAbout, setEditingAbout] = useState(false);
+  const [aboutDraft, setAboutDraft] = useState(() => aboutDraftFor(customer));
+  const [aboutSaving, setAboutSaving] = useState(false);
+  const [aboutError, setAboutError] = useState("");
   const [editingAccount, setEditingAccount] = useState(false);
   const [noteNext, setNoteNext] = useState("");
   const [noteFollow, setNoteFollow] = useState("");
@@ -799,6 +812,29 @@ export function CustomerTabs({
       toast("Could not save: try again");
       return null;
     }
+  }
+
+  function openAboutEditor() {
+    setAboutDraft(aboutDraftFor(customer));
+    setAboutError("");
+    setEditingAbout(true);
+  }
+
+  async function saveAboutEditor() {
+    if (!aboutDraft.company_name.trim()) {
+      setAboutError("Enter the company name.");
+      return;
+    }
+    setAboutSaving(true);
+    setAboutError("");
+    const updated = await patchCustomer(aboutDraft);
+    setAboutSaving(false);
+    if (!updated) {
+      setAboutError("The account details were not saved. Please try again.");
+      return;
+    }
+    setEditingAbout(false);
+    toast("Account details saved.");
   }
 
   function closeContactModal() {
@@ -1206,29 +1242,19 @@ export function CustomerTabs({
                   About this account
                 </h3>
                 {canEditFacts && (
-                  <Tooltip label={editingAbout ? "Finish editing this section" : "Edit about this account"}>
+                  <Tooltip label="Edit about this account">
                     <button
                       type="button"
-                      onClick={() => setEditingAbout(value => !value)}
-                      aria-label={editingAbout ? "Finish editing About this account" : "Edit About this account"}
-                      aria-pressed={editingAbout}
-                      className={cn(
-                        "flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border transition-colors",
-                        editingAbout
-                          ? "border-blue-primary bg-blue-primary text-white"
-                          : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
-                      )}
+                      onClick={openAboutEditor}
+                      aria-label="Edit about this account"
+                      aria-haspopup="dialog"
+                      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
                     >
                       <Pencil size={14} strokeWidth={2.1} />
                     </button>
                   </Tooltip>
                 )}
               </div>
-              {editingAbout && (
-                <p className="mb-3 rounded-lg bg-blue-light px-3 py-2 text-[12px] font-medium text-blue-primary">
-                  Select any value below to change it. Each value saves independently.
-                </p>
-              )}
               {/* LABEL ABOVE, VALUE BELOW (Anir, Sep 4: "everything is so far
                   away from their header. why wouldn't u just make it like
                   header above data point below. just look what u do on other
@@ -1243,7 +1269,7 @@ export function CustomerTabs({
                   stacked
                   label="Company name"
                   value={customer.company_name ?? ""}
-                  canEdit={canEditFacts && editingAbout}
+                  canEdit={false}
                   onSave={async (v) =>
                     (await patchCustomer({ company_name: v })) ? null : "That didn't save."
                   }
@@ -1252,7 +1278,7 @@ export function CustomerTabs({
                   stacked
                   label="Industry"
                   value={customer.industry ?? ""}
-                  canEdit={canEditFacts && editingAbout}
+                  canEdit={false}
                   renderValue={(v) => (
                     <AttributeTag
                       value={v}
@@ -1270,7 +1296,7 @@ export function CustomerTabs({
                   stacked
                   label="Size"
                   value={customer.size_tier ?? ""}
-                  canEdit={canEditFacts && editingAbout}
+                  canEdit={false}
                   /* THE STORED WORDS, NOT INVENTED ONES. Every account holds
                      "small" / "mid" / "large" (lib/utils SIZE_TIER_LABEL), and
                      this picker shipped offering Small / Medium / Large /
@@ -1304,7 +1330,7 @@ export function CustomerTabs({
                   stacked
                   label="Locations"
                   value={customer.geography ?? ""}
-                  canEdit={canEditFacts && editingAbout}
+                  canEdit={false}
                   renderValue={(v) => <GeographyValue value={v} />}
                   onSave={async (v) =>
                     (await patchCustomer({ geography: v })) ? null : "That didn't save."
@@ -1314,7 +1340,7 @@ export function CustomerTabs({
                   stacked
                   label="Website"
                   value={customer.website_url ?? ""}
-                  canEdit={canEditFacts && editingAbout}
+                  canEdit={false}
                   format={(v) => v.replace(/^https?:\/\//, "")}
                   renderValue={(v) => {
                     const href = safeHref(v);
@@ -1347,7 +1373,7 @@ export function CustomerTabs({
                   stacked
                   label="Customer type"
                   value={customer.customer_type ?? ""}
-                  canEdit={canEditFacts && editingAbout}
+                  canEdit={false}
                   onSave={async (v) =>
                     (await patchCustomer({ customer_type: v })) ? null : "That didn't save."
                   }
@@ -1366,7 +1392,7 @@ export function CustomerTabs({
                   stacked
                   label="Ownership"
                   value={customer.ownership ?? ""}
-                  canEdit={canEditFacts && editingAbout}
+                  canEdit={false}
                   onSave={async (v) =>
                     (await patchCustomer({ ownership: v })) ? null : "That didn't save."
                   }
@@ -1377,7 +1403,7 @@ export function CustomerTabs({
                   value={expandMoneyShorthand(customer.revenue ?? "", { integer: true })}
                   kind="money"
                   format={(value) => `$${withCommas(value)}`}
-                  canEdit={canEditFacts && editingAbout}
+                  canEdit={false}
                   onSave={async (v) =>
                     (await patchCustomer({ revenue: v })) ? null : "That didn't save."
                   }
@@ -3020,6 +3046,75 @@ export function CustomerTabs({
         )}
       </aside>
       )}
+
+      <Modal
+        open={editingAbout}
+        onClose={() => { if (!aboutSaving) setEditingAbout(false); }}
+        title="Edit account details"
+        size="workflow"
+        tall
+      >
+        <form
+          onSubmit={(event) => { event.preventDefault(); void saveAboutEditor(); }}
+          className="space-y-5"
+        >
+          <p className="text-[13px] text-text-secondary">Update the account facts below, then save them together.</p>
+          <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
+            <Field label="Company name" required>
+              <Input autoFocus required maxLength={200} value={aboutDraft.company_name} onChange={(event) => setAboutDraft((draft) => ({ ...draft, company_name: event.target.value }))} />
+            </Field>
+            <Field label="Industry">
+              <Input maxLength={120} value={aboutDraft.industry} onChange={(event) => setAboutDraft((draft) => ({ ...draft, industry: event.target.value }))} />
+            </Field>
+            <Field label="Size">
+              <ColorSelect
+                ariaLabel="Size"
+                value={aboutDraft.size_tier}
+                onChange={(value) => setAboutDraft((draft) => ({ ...draft, size_tier: value }))}
+                className="w-full"
+                options={[
+                  { value: "", label: "Not set", color: "var(--ink-bright-blue)", icon: Package },
+                  ...(["small", "mid", "large"] as const).map((value) => ({
+                    value,
+                    label: SIZE_TIER_LABEL[value],
+                    color: SIZE_TIER_META[value].color,
+                    icon: SIZE_TIER_META[value].icon,
+                  })),
+                ]}
+              />
+            </Field>
+            <Field label="Locations">
+              <Input maxLength={200} value={aboutDraft.geography} onChange={(event) => setAboutDraft((draft) => ({ ...draft, geography: event.target.value }))} />
+            </Field>
+            <Field label="Website">
+              <Input maxLength={500} value={aboutDraft.website_url} onChange={(event) => setAboutDraft((draft) => ({ ...draft, website_url: event.target.value }))} placeholder="example.com" />
+            </Field>
+            <Field label="Customer type">
+              <Input maxLength={120} value={aboutDraft.customer_type} onChange={(event) => setAboutDraft((draft) => ({ ...draft, customer_type: event.target.value }))} />
+            </Field>
+            <Field label="Ownership">
+              <Input maxLength={120} value={aboutDraft.ownership} onChange={(event) => setAboutDraft((draft) => ({ ...draft, ownership: event.target.value }))} placeholder="Public or private" />
+            </Field>
+            <Field label="Revenue">
+              <MoneyInput ariaLabel="Revenue" value={aboutDraft.revenue} onChange={(value) => setAboutDraft((draft) => ({ ...draft, revenue: value }))} className="h-11" />
+            </Field>
+          </div>
+          <Field label="Account description">
+            <textarea
+              value={aboutDraft.enrichment_summary}
+              onChange={(event) => setAboutDraft((draft) => ({ ...draft, enrichment_summary: event.target.value }))}
+              maxLength={4000}
+              rows={4}
+              className="w-full resize-y rounded-lg border border-border bg-surface px-3.5 py-3 text-[14px] leading-relaxed text-text-primary outline-none transition focus:border-blue-primary focus:shadow-focus"
+            />
+          </Field>
+          {aboutError && <p role="alert" className="text-[12px] font-medium text-error">{aboutError}</p>}
+          <div className="flex justify-end gap-2 border-t border-border-light pt-4">
+            <Button type="button" variant="secondary" onClick={() => setEditingAbout(false)} disabled={aboutSaving}>Cancel</Button>
+            <Button type="submit" loading={aboutSaving}>Save changes</Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* New deal modal (#58) — full deal detail, not just name/stage/value */}
       <Modal
