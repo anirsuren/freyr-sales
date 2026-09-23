@@ -10,6 +10,8 @@ import { manualFor } from "@/lib/appManual";
 import { nextBestActions, focusActions, DRAFTABLE } from "@/lib/agent";
 import { buildDeals, dealsFromOpportunities, formatMoney, ROTTING_DAYS } from "@/lib/pipeline";
 import { readOpportunities } from "@/lib/opportunities";
+import { readLeads } from "@/lib/leads";
+import { LEAD_STATUSES } from "@/lib/leadsShared";
 import { accountHealth } from "@/lib/health";
 import {
   answerAgentChat,
@@ -408,9 +410,18 @@ export async function POST(req: NextRequest) {
   // reader. Put that result in the first prompt so the model can answer in one
   // pass. Previously it received the whole workspace, decided to call the same
   // reader, and then needed a second model pass to phrase the result.
+  const recentLeadContext = history.slice(-3).some((turn) => /\bleads?\b/i.test(turn.text));
+  const requestedLeadStatus = LEAD_STATUSES.find((status) =>
+    new RegExp(`\\b${status}\\b`, "i").test(message),
+  );
+  const leadStatusDetailQuestion =
+    moduleAccess.leads &&
+    !!requestedLeadStatus &&
+    (/\bleads?\b/i.test(message) || recentLeadContext) &&
+    /\b(who|which|show|list|names?|ones)\b/i.test(message);
   const leadSummaryQuestion =
     moduleAccess.leads &&
-    /\bleads?\b/i.test(message) &&
+    (/\bleads?\b/i.test(message) || leadStatusDetailQuestion) &&
     /(how many|count|status|source|overview|breakdown|tell me about|new|contacted|qualifying|nurturing|converted|disqualified)/i.test(
       message,
     );
@@ -432,8 +443,28 @@ export async function POST(req: NextRequest) {
     /\bopportunit(?:y|ies)\b/i.test(message) &&
     /\b(how many|count|total|estimated tcv|worth)\b/i.test(message) &&
     !/\b(which|largest|biggest|top|closing|quarter|month|owner|stage|status|customer|company)\b/i.test(message);
-  const prefetchedLeadRaw = leadSummaryQuestion
+  const prefetchedLeadRaw = leadSummaryQuestion && !leadStatusDetailQuestion
     ? await readAgentWorkspace(actor, "leads", "", false, 0, false)
+    : "";
+  const leadStatusContext = leadStatusDetailQuestion && requestedLeadStatus
+    ? await readLeads().then(({ leads }) => {
+        const matches = leads.filter((lead) => lead.status === requestedLeadStatus);
+        return JSON.stringify({
+          module: "leads",
+          status: requestedLeadStatus,
+          totalMatching: matches.length,
+          shown: Math.min(matches.length, 50),
+          truncated: matches.length > 50,
+          pageUrl: "/leads",
+          records: matches.slice(0, 50).map((lead) => ({
+            name: lead.name,
+            company: lead.company,
+            title: lead.title || null,
+            source: lead.source,
+            companyUrl: lead.customerId ? `/customers/${encodeURIComponent(lead.customerId)}` : null,
+          })),
+        });
+      })
     : "";
   const prefetchedLeadContext = (() => {
     if (!prefetchedLeadRaw || !leadAggregateQuestion) return prefetchedLeadRaw;
@@ -771,6 +802,11 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
         prefetchedLeadContext +
         "\n\n"
       : "") +
+    (leadStatusContext
+      ? "PREFETCHED LEAD STATUS MATCHES (exact matches from the complete visible lead store; identify a truncated list):\n" +
+        leadStatusContext +
+        "\n\n"
+      : "") +
     (prefetchedTrackingContext
       ? "PREFETCHED PERSONAL TRACKING DATA (authoritative for this user's My list, starred companies, and group counts; answer from this data without another workspace read):\n" +
         prefetchedTrackingContext +
@@ -1062,14 +1098,14 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     namedMarketContext;
   const focusedListSystem =
     `You are Freyr AI. Answer ${firstName}'s question directly from the PREFETCHED DATA below. ` +
-    "It is the complete current source for the requested counts. Keep the answer short. For a broad 'what do we have' question, give the total, group counts and a few linked examples. List every record only when the user explicitly says 'list all' or 'show me all'. " +
+    "It is the current source for the requested counts or status matches. Keep the answer short. When asked who is in a lead status, name the matching people with their companies; do not substitute a count for the requested names. If the list is truncated, say how many are shown and give the total. For a broad 'what do we have' question, give the total, group counts and a few linked examples. List every record only when the user explicitly says 'list all' or 'show me all', or asks who is in a status. " +
     "Use only the supplied counts and canonical links. Keep different currencies separate and do not combine Pipeline and Opportunities totals. Do not infer that a tracked company is a CRM customer. " +
     "Use Markdown bullets for a breakdown and a table only if a full list benefits from one. " +
     "Finish with <followups>[\"question one\",\"question two\",\"question three\"]</followups>.\n" +
-    (trackingListQuestion ? prefetchedTrackingContext : offeringsInventoryQuestion ? catalogueGrounding : opportunityAggregateQuestion ? opportunityContext : prefetchedLeadContext);
+    (trackingListQuestion ? prefetchedTrackingContext : offeringsInventoryQuestion ? catalogueGrounding : opportunityAggregateQuestion ? opportunityContext : leadStatusDetailQuestion ? leadStatusContext : prefetchedLeadContext);
   const agentStartedAt = performance.now();
-  const responseSystem = (marketFocused ? focusedMarketSystem : leadAggregateQuestion || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion ? focusedListSystem : agentSystem + namedMarketContext) + "\nRESPONSE PRESENTATION: Give a concise answer, normally 150–250 words unless more detail is requested. Link every named application record using its provided canonical destination, including the first mention. Never expose backend tool names as user navigation or fabricate a page for a tool. Keep opaque database IDs out of prose unless requested; put them only inside the supplied link destinations. When explaining navigation, link named pages using navigation in VERIFIED CURRENT USER and verified routes in the app guide (for example [Team](/team)); do not leave page directions as unlinked text. Internal application links MUST preserve the exact relative path returned by the tool, e.g. [Company name](/market-intel/company-id). NEVER prepend https://app, any hostname or any invented prefix. External article citations use the exact supplied destination. A /agent-source/N destination is a request-local citation reference: copy it exactly as [Publisher or article title](/agent-source/N); the application restores its verified source URL. Never rewrite, shorten, or invent a source destination. Use a descriptive publisher or article title as the link label and copy its supplied destination byte-for-byte; never show a raw URL or application path (including paths in parentheses or code formatting). Write [Team members](/admin/members), never Team members (/admin/members). Never place whitespace between ] and (. Use only verified destinations. Finish every answer with <followups>[\"question one\",\"question two\",\"question three\"]</followups>. These must be three short, distinct next questions (aim for 4–8 words each) the USER could ask, specific to this question and answer, exploring new useful information rather than repeating answered questions or generic starters. This metadata is removed from the displayed answer. Do not mention the metadata. Generate it in this same response, without extra tool calls solely for suggestions.";
-  const responseTools = marketFocused || leadAggregateQuestion || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion ? [] : readOnlyTools;
+  const responseSystem = (marketFocused ? focusedMarketSystem : leadAggregateQuestion || leadStatusDetailQuestion || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion ? focusedListSystem : agentSystem + namedMarketContext) + "\nRESPONSE PRESENTATION: Give a concise answer, normally 150–250 words unless more detail is requested. Link every named application record using its provided canonical destination, including the first mention. Never expose backend tool names as user navigation or fabricate a page for a tool. Keep opaque database IDs out of prose unless requested; put them only inside the supplied link destinations. When explaining navigation, link named pages using navigation in VERIFIED CURRENT USER and verified routes in the app guide (for example [Team](/team)); do not leave page directions as unlinked text. Internal application links MUST preserve the exact relative path returned by the tool, e.g. [Company name](/market-intel/company-id). NEVER prepend https://app, any hostname or any invented prefix. External article citations use the exact supplied destination. A /agent-source/N destination is a request-local citation reference: copy it exactly as [Publisher or article title](/agent-source/N); the application restores its verified source URL. Never rewrite, shorten, or invent a source destination. Use a descriptive publisher or article title as the link label and copy its supplied destination byte-for-byte; never show a raw URL or application path (including paths in parentheses or code formatting). Write [Team members](/admin/members), never Team members (/admin/members). Never place whitespace between ] and (. Use only verified destinations. Finish every answer with <followups>[\"question one\",\"question two\",\"question three\"]</followups>. These must be three short, distinct next questions (aim for 4–8 words each) the USER could ask, specific to this question and answer, exploring new useful information rather than repeating answered questions or generic starters. This metadata is removed from the displayed answer. Do not mention the metadata. Generate it in this same response, without extra tool calls solely for suggestions.";
+  const responseTools = marketFocused || leadAggregateQuestion || leadStatusDetailQuestion || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion ? [] : readOnlyTools;
   let firstDeltaMs: number | null = null;
   const runAgent = (onText?: (delta: string) => void) =>
     agentConversePrimary(responseSystem, turns, responseTools, runTool, undefined,
