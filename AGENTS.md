@@ -1559,3 +1559,7 @@ Solutioning's request, submission, and presentation tables keep the reference, t
 ### Sep 22: Solutioning timeline zoom stays in sync
 
 The Where it stands elapsed bar changes width in the same render as its date markers when zooming or resetting; it no longer animates its width for half a second after the markers move. The deadline caption's measured alignment updates before the browser paints, so it does not visibly lag behind the zoomed timeline. Verified by zooming and resetting a longer local Mock-mode submission timeline; typecheck and focused lint pass. Completed locally, not deployed.
+
+### Sep 22: Company details and customer contract columns
+
+Market Intelligence company details stick close to the top of their own scrolling workspace instead of remaining 60px lower than the article feed. The panel height now accounts for the app header and, in Mock mode, its workspace banner. Customer Contracts tables reserve readable widths for status, owner, and value; long contract names wrap in the first column rather than clipping or squeezing those facts. Typecheck and focused lint pass. Local visual verification is pending because localhost currently redirects to Access pending (configuration error). Completed locally, not deployed.

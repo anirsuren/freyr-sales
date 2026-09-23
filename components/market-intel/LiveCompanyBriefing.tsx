@@ -71,6 +71,7 @@ import type { TrackedPerson, TrackedCompany } from "@/lib/marketIntelTracking";
 import type { Division } from "@/lib/offeringMaterials";
 import { useStoredView } from "@/lib/useStoredView";
 import { tint } from "@/lib/tint";
+import { useCurrentDataMode } from "@/components/auth/CurrentUserProvider";
 
 /**
  * ONE COMPANY, REAL DATA ONLY. Every post links to the actual LinkedIn post,
@@ -159,6 +160,7 @@ export function LiveCompanyBriefing({
   watch?: WatchState;
 }) {
   const router = useRouter();
+  const dataMode = useCurrentDataMode();
   const { toast } = useToast();
   const isCompetitor = briefing.group === "competitor";
   const [source, setSource] = useState<Source>("all");
@@ -993,7 +995,7 @@ export function LiveCompanyBriefing({
         </div>
 
         {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4). */}
-        <div className="sticky top-[60px] min-w-0 self-start">
+        <div className="sticky top-3 min-w-0 self-start">
           {!detailsOpen && (
             <button
               type="button"
@@ -1015,7 +1017,12 @@ export function LiveCompanyBriefing({
             className={cn(
               "flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm motion-safe:transition-[opacity,transform] motion-safe:duration-200 motion-safe:ease-out",
               detailsOpen
-                ? "h-[calc(100dvh-72px)] min-h-[420px] translate-x-0 opacity-100"
+                ? cn(
+                    dataMode === "mock"
+                      ? "h-[calc(100dvh-114px)]"
+                      : "h-[calc(100dvh-68px)]",
+                    "min-h-[420px] translate-x-0 opacity-100"
+                  )
                 : "pointer-events-none h-0 translate-x-4 opacity-0"
             )}
           >

@@ -359,6 +359,9 @@ export function Customer360({
   );
   const customerOpportunityTable =
     active?.key === "opportunities" && cols.some((column) => column.key === "signs");
+  const customerContractTable = active?.key === "contracts";
+  const compactCustomerContractTable =
+    customerContractTable && cols.length === 2 && anyAmount && !anyWhen;
   const solutionArtifactTable = [
     "solutionRequests",
     "submissions",
@@ -844,6 +847,8 @@ export function Customer360({
                     "w-full border-collapse text-left",
                     customerOpportunityTable
                       ? "table-fixed min-w-[1180px]"
+                      : compactCustomerContractTable
+                        ? "table-fixed min-w-[1050px]"
                       : solutionArtifactTable
                         ? "table-fixed min-w-[1000px]"
                         : "min-w-[480px]"
@@ -864,6 +869,14 @@ export function Customer360({
                       <col style={{ width: "15%" }} />
                       <col style={{ width: "12%" }} />
                       <col style={{ width: "7%" }} />
+                    </colgroup>
+                  )}
+                  {compactCustomerContractTable && (
+                    <colgroup>
+                      <col style={{ width: "49%" }} />
+                      <col style={{ width: "22%" }} />
+                      <col style={{ width: "20%" }} />
+                      <col style={{ width: "9%" }} />
                     </colgroup>
                   )}
                   {solutionArtifactTable && compactSolutionArtifactTable && (
@@ -976,6 +989,8 @@ export function Customer360({
                                     "block text-[13.5px] font-semibold text-text-primary hover:text-blue-primary",
                                     customerOpportunityTable
                                       ? "line-clamp-2 break-words leading-[1.25]"
+                                      : customerContractTable
+                                        ? "break-words leading-[1.25]"
                                       : solutionArtifactTable
                                         ? "break-words leading-[1.25]"
                                         : "truncate"
@@ -989,6 +1004,8 @@ export function Customer360({
                                     "block text-[13.5px] font-semibold text-text-primary",
                                     customerOpportunityTable
                                       ? "line-clamp-2 break-words leading-[1.25]"
+                                      : customerContractTable
+                                        ? "break-words leading-[1.25]"
                                       : solutionArtifactTable
                                         ? "break-words leading-[1.25]"
                                         : "truncate"
@@ -1081,7 +1098,7 @@ export function Customer360({
                                         name={v}
                                         className="h-5 w-5 shrink-0 text-[7px]"
                                       />
-                                      <span className="truncate">{v}</span>
+                                      <span className={customerContractTable ? "break-words" : "truncate"}>{v}</span>
                                     </span>
                                   ) : c.kind === "company" && named ? (
                                     <span className="flex min-w-0 items-center gap-1.5">
