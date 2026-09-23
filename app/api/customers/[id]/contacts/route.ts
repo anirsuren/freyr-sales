@@ -110,6 +110,7 @@ export async function POST(
     const contact = await db.contacts.create({
       customer_id: customerId,
       full_name: fullName,
+      is_key: false,
       email,
       phone: optionalString(body?.phone, 60),
       linkedin_url: linkedinUrl,

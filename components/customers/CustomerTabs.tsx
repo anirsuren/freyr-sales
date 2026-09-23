@@ -29,6 +29,8 @@ import {
   Phone,
   Briefcase,
   Pencil,
+  Star,
+  Search,
   PanelRightClose,
   PanelRightOpen,
   Maximize2,
@@ -516,13 +518,11 @@ export function CustomerTabs({
   };
   const openContactsTab = () => {
     setTab("contacts");
-    // This link sits well below the tab strip. Bring both the selected tab and
-    // the list into view so the change is visible at the point of the click.
+    // The full account header and selected tab must be visible on arrival.
     requestAnimationFrame(() => {
-      const strip = tabStripRef.current;
-      strip?.scrollIntoView({ behavior: "smooth", block: "start" });
-      strip?.querySelector<HTMLButtonElement>('[data-account-tab="contacts"]')
-        ?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      tabStripRef.current?.querySelector<HTMLButtonElement>('[data-account-tab="contacts"]')
+        ?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+      window.scrollTo({ top: 0, behavior: "auto" });
     });
   };
   // Deep-link support (?tab=offerings etc.) — read after mount via
@@ -573,6 +573,21 @@ export function CustomerTabs({
   const [attUrl, setAttUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [contactSearch, setContactSearch] = useState("");
+  const [keyOnly, setKeyOnly] = useState(false);
+  const [keyOverrides, setKeyOverrides] = useState<Record<string, boolean>>({});
+  const [contactOverrides, setContactOverrides] = useState<Record<string, Contact>>({});
+  const [keySaving, setKeySaving] = useState<string | null>(null);
+  const displayedContacts = contacts.map((contact) => contactOverrides[contact.id] ?? contact);
+  const isKeyContact = (contact: Contact, index: number) => keyOverrides[contact.id] ?? contact.is_key ?? index < 4;
+  const keyContacts = displayedContacts.filter((contact, index) => isKeyContact(contact, index));
+  const filteredContacts = displayedContacts
+    .map((contact, index) => ({ contact, index }))
+    .filter(({ contact, index }) => (!keyOnly || isKeyContact(contact, index)) &&
+      `${contact.full_name} ${contact.job_title ?? ""} ${contact.email ?? ""} ${contact.role_bucket ?? ""}`
+        .toLocaleLowerCase().includes(contactSearch.trim().toLocaleLowerCase()))
+    .sort((a, b) => Number(isKeyContact(b.contact, b.index)) - Number(isKeyContact(a.contact, a.index)) || a.index - b.index);
   /* Red, and it asks first — the standing rule for every delete in the app. */
   const [removingContact, setRemovingContact] = useState<{
     id: string;
@@ -641,6 +656,11 @@ export function CustomerTabs({
     setAttUrl("");
     setBusy(false);
     setContactModalOpen(false);
+    setEditingContact(null);
+    setContactSearch("");
+    setKeyOnly(false);
+    setKeyOverrides({});
+    setContactOverrides({});
     setEditingAbout(false);
     setEditingAccount(false);
     setContactBusy(false);
@@ -864,6 +884,7 @@ export function CustomerTabs({
   function closeContactModal() {
     if (contactBusy) return;
     setContactModalOpen(false);
+    setEditingContact(null);
     setContactForm({
       fullName: "",
       jobTitle: "",
@@ -874,13 +895,46 @@ export function CustomerTabs({
     });
   }
 
+  function editContact(contact: Contact) {
+    setEditingContact(contact);
+    setContactForm({
+      fullName: contact.full_name,
+      jobTitle: contact.job_title ?? "",
+      role: contact.role_bucket ?? "",
+      email: contact.email ?? "",
+      phone: contact.phone ?? "",
+      linkedinUrl: contact.linkedin_url ?? "",
+    });
+    setContactModalOpen(true);
+  }
+
+  async function toggleKeyContact(contact: Contact, index: number) {
+    if (keySaving) return;
+    const next = !isKeyContact(contact, index);
+    setKeySaving(contact.id);
+    setKeyOverrides((previous) => ({ ...previous, [contact.id]: next }));
+    try {
+      const response = await fetch(`/api/contacts/${contact.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_key: next }),
+      });
+      if (!response.ok) throw new Error();
+    } catch {
+      setKeyOverrides((previous) => ({ ...previous, [contact.id]: !next }));
+      toast("Could not update key contacts.", "error");
+    } finally {
+      setKeySaving(null);
+    }
+  }
+
   async function addContact() {
     const fullName = contactForm.fullName.trim();
     if (!fullName || contactBusy) return;
     setContactBusy(true);
     try {
-      const response = await fetch(`/api/customers/${customer.id}/contacts`, {
-        method: "POST",
+      const response = await fetch(editingContact ? `/api/contacts/${editingContact.id}` : `/api/customers/${customer.id}/contacts`, {
+        method: editingContact ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           full_name: fullName,
@@ -896,8 +950,12 @@ export function CustomerTabs({
         toast(data.error || "Could not add the contact.", "error");
         return;
       }
-      toast(`${fullName} added`);
+      toast(editingContact ? `${fullName} updated` : `${fullName} added`);
+      if (editingContact && data.contact) {
+        setContactOverrides((previous) => ({ ...previous, [editingContact.id]: data.contact as Contact }));
+      }
       setContactModalOpen(false);
+      setEditingContact(null);
       setContactForm({
         fullName: "",
         jobTitle: "",
@@ -906,7 +964,7 @@ export function CustomerTabs({
         phone: "",
         linkedinUrl: "",
       });
-      router.refresh();
+      if (!editingContact) window.location.reload();
     } catch {
       toast("Could not add the contact.", "error");
     } finally {
@@ -1485,16 +1543,6 @@ export function CustomerTabs({
                     )}
                     {canEditFacts && (
                       <>
-                        <Tooltip label="Manage key contacts">
-                          <button
-                            type="button"
-                            onClick={openContactsTab}
-                            aria-label="Edit key contacts"
-                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
-                          >
-                            <Pencil size={14} strokeWidth={2.1} />
-                          </button>
-                        </Tooltip>
                         <Tooltip label="Add a key contact">
                           <button
                             type="button"
@@ -1510,31 +1558,17 @@ export function CustomerTabs({
                   </span>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {contacts.slice(0, 4).map((c) => {
+                  {keyContacts.map((c) => {
                     const displayedPhone = c.phone
                       ? contactPhoneDisplay(c.phone, c.raw_linkedin_data)
                       : null;
                     return (
                       <Card key={c.id} className="group/contact relative p-3.5 transition-colors hover:border-blue-subtle">
-                      {canDeleteContacts && (
-                        <button
-                          type="button"
-                          title={`Remove ${c.full_name}`}
-                          aria-label={`Remove ${c.full_name}`}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            setRemovingContact({ id: c.id, name: c.full_name });
-                          }}
-                          className="absolute right-3 top-3 z-20 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md bg-white text-error shadow-sm ring-1 ring-border-light transition-all sm:translate-y-0.5 sm:opacity-0 sm:group-hover/contact:translate-y-0 sm:group-hover/contact:opacity-100 sm:focus-visible:translate-y-0 sm:focus-visible:opacity-100 hover:bg-red-50"
-                        >
-                          <Trash2 size={14} strokeWidth={2.2} />
-                        </button>
-                      )}
-                      <div className={cn("flex items-start gap-3", canDeleteContacts && "pr-8")}>
+                      <div className="flex items-start gap-3">
                         <Avatar name={c.full_name} className="h-10 w-10 shrink-0 text-[13px]" />
                         <div className="min-w-0 flex-1">
                           <p className="flex items-center gap-1.5 text-[14px] font-semibold text-text-primary">
+                            <Star size={14} fill="currentColor" className="shrink-0 text-blue-primary" aria-label="Key contact" />
                             <Link
                               href={`/contacts/${c.id}`}
                               aria-label={`View ${c.full_name}`}
@@ -1574,10 +1608,11 @@ export function CustomerTabs({
                     );
                   })}
                 </div>
-                {contacts.length === 0 && (
+                {keyContacts.length === 0 && (
                   <p className="text-[13px] text-text-secondary">
-                    Nobody is on this account yet. Add the people you deal with
-                    and they show up here and on every deal.
+                    {contacts.length === 0
+                      ? "Nobody is on this account yet. Add the people you deal with."
+                      : "No key contacts yet. Star people in the Contacts tab to show them here."}
                   </p>
                 )}
             </Card>
@@ -2186,17 +2221,32 @@ export function CustomerTabs({
 
         {tab === "contacts" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[13px] text-text-secondary">
-                <span className="font-semibold text-text-primary tnum">
-                  {contacts.length}
-                </span>{" "}
-                {contacts.length === 1 ? "contact" : "contacts"} at this account
-              </p>
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border-light bg-surface p-2.5">
+              <label className="relative min-w-[180px] flex-1">
+                <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                <input
+                  type="search"
+                  value={contactSearch}
+                  onChange={(event) => setContactSearch(event.target.value)}
+                  placeholder="Search names, titles, roles, emails…"
+                  aria-label="Search account contacts"
+                  className="h-10 w-full rounded-lg border border-border-light bg-white pl-9 pr-3 text-[13px] text-text-primary outline-none focus:border-blue-primary focus:shadow-focus"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setKeyOnly((value) => !value)}
+                aria-pressed={keyOnly}
+                className={cn("flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium", keyOnly ? "border-blue-subtle bg-blue-light text-blue-primary" : "border-border-light bg-white text-text-secondary hover:text-blue-primary")}
+              >
+                <Star size={15} fill={keyOnly ? "currentColor" : "none"} />
+                Key contacts <span className="tnum">{keyContacts.length}</span>
+              </button>
+              <span className="shrink-0 px-1 text-[12px] text-text-secondary tnum">{filteredContacts.length} of {contacts.length}</span>
               {canEditFacts && (
                 <Button
                   onClick={() => setContactModalOpen(true)}
-                  className="px-3 py-2 text-[13px]"
+                  className="h-10 shrink-0 px-3 py-2 text-[13px]"
                 >
                   <Plus size={15} strokeWidth={2.2} />
                   Add contact
@@ -2204,12 +2254,12 @@ export function CustomerTabs({
               )}
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {contacts.map((c) => (
+            {filteredContacts.map(({ contact: c, index }) => (
               // Stretched-link card: the name link's ::after covers the whole
               // card (whole-card click → contact), while the LinkedIn icon stays
               // its own link — no nested anchors. Mirrors the main Contacts cards.
               <Card key={c.id} className="group/contact relative hover:border-blue-subtle transition-colors">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 pr-20">
                   <Avatar name={c.full_name} className="w-10 h-10 text-[14px]" />
                   <div className="min-w-0">
                     <p className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
@@ -2226,6 +2276,27 @@ export function CustomerTabs({
                     </p>
                     <p className="text-[13px] text-text-secondary break-words">{c.job_title}</p>
                   </div>
+                </div>
+                <div className="absolute right-4 top-4 z-20 flex items-center gap-1">
+                  <Tooltip label={isKeyContact(c, index) ? "Remove from key contacts" : "Mark as key contact"}>
+                    <button
+                      type="button"
+                      onClick={() => toggleKeyContact(c, index)}
+                      disabled={!canEditFacts || keySaving === c.id}
+                      aria-label={`${isKeyContact(c, index) ? "Unstar" : "Star"} ${c.full_name}`}
+                      aria-pressed={isKeyContact(c, index)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-blue-primary hover:bg-blue-light disabled:cursor-default"
+                    >
+                      <Star size={17} fill={isKeyContact(c, index) ? "currentColor" : "none"} />
+                    </button>
+                  </Tooltip>
+                  {canEditFacts && (
+                    <Tooltip label={`Edit ${c.full_name}`}>
+                      <button type="button" onClick={() => editContact(c)} aria-label={`Edit ${c.full_name}`} className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:bg-blue-light hover:text-blue-primary">
+                        <Pencil size={15} />
+                      </button>
+                    </Tooltip>
+                  )}
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-2">
                   {c.role_bucket ? (
@@ -2262,11 +2333,11 @@ export function CustomerTabs({
                 </div>
               </Card>
             ))}
-            {contacts.length === 0 && (
+            {filteredContacts.length === 0 && (
               <EmptyState
                 icon={Users}
-                title="No contacts yet"
-                description="Add the people you work with at this account and they'll show up here."
+                title={contacts.length === 0 ? "No contacts yet" : "No matching contacts"}
+                description={contacts.length === 0 ? "Add the people you work with at this account and they'll show up here." : "Try another search or turn off the key contacts filter."}
                 className="md:col-span-2"
               />
             )}
@@ -3352,7 +3423,7 @@ export function CustomerTabs({
       <Modal
         open={contactModalOpen}
         onClose={closeContactModal}
-        title={`Add a contact at ${customer.company_name}`}
+        title={editingContact ? `Edit ${editingContact.full_name}` : `Add a contact at ${customer.company_name}`}
         size="wide"
       >
         <div className="space-y-4">
@@ -3467,7 +3538,7 @@ export function CustomerTabs({
               loading={contactBusy}
               disabled={!contactForm.fullName.trim()}
             >
-              Add contact
+              {editingContact ? "Save changes" : "Add contact"}
             </Button>
           </div>
         </div>

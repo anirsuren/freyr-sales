@@ -1591,3 +1591,7 @@ The compact conversation stays pinned to the latest exchange when a long answer 
 ### Sep 22: Market Intel tracked people rail
 
 Tracked-person rows reserve the right edge for LinkedIn and the hover/focus stop-following action, so names and roles can use the remaining width over two lines. Post counts sit below the role instead of squeezing names horizontally. On wide company briefings, the floating Agent launcher sits just left of an open company-details rail and returns to the normal right corner when the rail is hidden. Verified locally on AstraZeneca in Mock mode with the rail open and closed; typecheck and focused lint pass. Completed locally, not deployed.
+
+### Sep 22: Customer key contacts and full-list controls
+
+The Overview's Key contacts summary now shows explicitly starred people and no longer has the redundant edit button. All contacts opens the Contacts tab at the top of the account page with its selected tab visible. The Contacts tab has one search/filter/add toolbar, visible star toggles, and per-contact editing. Key status is persisted on contacts; migration `030_key_contacts.sql` preserves the first four previously shown contacts as initial keys. Verified on Belmara Pharma in local Mock mode: navigation lands at scroll position zero, search narrows the list, stars persist through reload, and edit saves without leaving the Contacts tab. Typecheck and focused lint pass. Completed locally, not deployed; migration must run before the live app uses this field.

@@ -236,6 +236,8 @@ export interface OfferingUsage {
 export interface Contact {
   id: string;
   customer_id: string;
+  /** Highlight this person in the account's Key contacts summary. */
+  is_key?: boolean | null;
   full_name: string;
   email: string | null;
   linkedin_url: string | null;
