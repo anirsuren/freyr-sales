@@ -34,9 +34,7 @@ export function TimeAgo({
     <time
       dateTime={value}
       title={exact}
-      // `help` rather than `default`: the cursor is what says "there is more
-      // here", since a tooltip nobody knows about is a tooltip nobody opens.
-      className={`cursor-help ${className || ""}`}
+      className={`cursor-default ${className || ""}`}
     >
       {prefix}
       {timeAgo(value)}
