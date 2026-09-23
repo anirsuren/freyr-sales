@@ -1250,6 +1250,12 @@ function RequestRow({
     r.neededBy && r.status !== "completed"
       ? r.neededBy < todayISO()
       : false;
+  const statusLabel = solutionStatusLabel(r, overdue);
+  const statusMeta = SOLUTION_STATUS_DISPLAY[statusLabel] ?? {
+    color: "var(--text-tertiary)",
+    icon: CircleDot,
+  };
+  const StatusIcon = statusMeta.icon;
   const preparedBy = r.completedBy || r.owner || "Not started";
   return (
     <>
@@ -1414,8 +1420,12 @@ function RequestRow({
         {r.completedAt ? <DateText value={r.completedAt} /> : <span className="text-text-tertiary">-</span>}
       </td>
       <td className="px-4 py-3.5">
-        <span className={cn("inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold", overdue ? "bg-red-50 text-error" : "bg-blue-light text-blue-primary")}>
-          {solutionStatusLabel(r, overdue)}
+        <span
+          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold"
+          style={{ color: statusMeta.color, background: tint(statusMeta.color, 10) }}
+        >
+          <StatusIcon size={12} strokeWidth={2.2} aria-hidden="true" />
+          {statusLabel}
         </span>
       </td>
       <td className="px-4 py-3.5">
