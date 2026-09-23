@@ -71,32 +71,33 @@ export function TrackedPeopleList({
           const posts = personPosts[person.id];
           return (
             <li key={person.id} className="group/person">
-                <span className="flex items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-surface">
+                <span className="flex items-start gap-2 rounded-lg px-1 py-1.5 transition-colors hover:bg-surface">
                   <button
                     type="button"
                     onClick={() => setOpenId(person.id)}
-                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
+                    className="flex min-w-0 flex-1 cursor-pointer items-start gap-2.5 text-left"
                   >
                     <Avatar
                       name={person.name}
                       src={person.photoUrl || undefined}
                       className="h-8 w-8 shrink-0 text-[10px]"
                     />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                    <span className="min-w-0 flex-1 pt-0.5">
+                      <span className="block line-clamp-2 break-words text-[12.5px] font-semibold leading-snug text-text-primary">
                         {person.name}
                       </span>
-                      <span className="block truncate text-[11px] text-text-tertiary">
+                      <span className="mt-0.5 block line-clamp-2 break-words text-[11px] leading-snug text-text-tertiary">
                         {person.role || "Tracked for posts"}
                       </span>
-                    </span>
-                    <span className="shrink-0 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
-                      {posts === undefined
-                        ? "pending"
-                        : `${posts.length} ${posts.length === 1 ? "post" : "posts"}`}
+                      <span className="mt-1.5 inline-block rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-bright-blue)] tnum">
+                        {posts === undefined
+                          ? "pending"
+                          : `${posts.length} ${posts.length === 1 ? "post" : "posts"}`}
+                      </span>
                     </span>
                   </button>
-                  {person.linkedinUrl && (
+                  <span className="flex w-6 shrink-0 flex-col items-center gap-1">
+                    {person.linkedinUrl && (
                     <a
                       href={safeHref(person.linkedinUrl) as string}
                       target="_blank"
@@ -107,16 +108,17 @@ export function TrackedPeopleList({
                     >
                       <LinkedInIcon size={13} />
                     </a>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingId(person.id)}
-                    className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary opacity-0 transition-all hover:bg-[rgba(220,38,38,0.10)] hover:text-[#DC2626] group-hover/person:opacity-100"
-                    aria-label={`Stop following ${person.name}`}
-                    title="Stop following"
-                  >
-                    <X size={13} strokeWidth={2.4} />
-                  </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingId(person.id)}
+                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary opacity-0 transition-all hover:bg-[rgba(220,38,38,0.10)] hover:text-[#DC2626] focus-visible:opacity-100 group-hover/person:opacity-100"
+                      aria-label={`Stop following ${person.name}`}
+                      title="Stop following"
+                    >
+                      <X size={13} strokeWidth={2.4} />
+                    </button>
+                  </span>
                 </span>
             </li>
           );

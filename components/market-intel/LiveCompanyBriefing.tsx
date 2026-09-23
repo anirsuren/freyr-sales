@@ -680,7 +680,7 @@ export function LiveCompanyBriefing({
   };
 
   return (
-    <div>
+    <div data-market-intel-details-open={detailsOpen}>
       {/* A briefing left open must keep pulling fresh server data. */}
       <AutoFresh />
       <ConfirmDialog
