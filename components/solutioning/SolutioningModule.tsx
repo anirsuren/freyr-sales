@@ -1937,10 +1937,10 @@ export function NewRequestDialog({
         label: "For this opportunity",
         name: sourceOpportunity.label,
         company: sourceOpportunity.label.toLowerCase().includes(sourceCompany.toLowerCase()) ? "" : sourceCompany,
-        kind: "opportunity" as const,
+        logoName: sourceCompany,
       }
     : prefillCustomerId && sourceCompany
-      ? { label: "For this customer", name: sourceCompany, company: "", kind: "customer" as const }
+      ? { label: "For this customer", name: sourceCompany, company: "", logoName: sourceCompany }
       : null;
   const matchedByName = sourceCompany
     ? (customers.find(
@@ -3109,7 +3109,7 @@ function FrameOrNot({
   chromeless: boolean;
   onClose: () => void;
   title: string;
-  context?: { label: string; name: string; company: string; kind: "opportunity" | "customer" } | null;
+  context?: { label: string; name: string; company: string; logoName: string } | null;
   onBack?: () => void;
   stepBack?: () => void;
   children: React.ReactNode;
@@ -3124,9 +3124,7 @@ function FrameOrNot({
         title={title}
         titleAfter={context ? (
           <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-[12px] font-medium text-blue-primary" title={`${context.label}: ${context.name}${context.company ? ` · ${context.company}` : ""}`}>
-            {context.kind === "opportunity"
-              ? <Briefcase size={13} className="shrink-0" aria-hidden="true" />
-              : <Building2 size={13} className="shrink-0" aria-hidden="true" />}
+            <CompanyLogo name={context.logoName} className="h-6 w-6 rounded-md text-[8px]" />
             <span className="shrink-0">{context.label}:</span>
             <span className="truncate font-semibold">{context.name}</span>
             {context.company && <span className="hidden shrink-0 text-text-secondary sm:inline">· {context.company}</span>}

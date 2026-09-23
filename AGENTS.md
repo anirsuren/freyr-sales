@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Request origin company logo:** The persistent “For this opportunity/customer” header in the Solutioning request dialog now displays the customer’s `CompanyLogo` instead of a generic briefcase/building icon. Existing real logo assets and fallback marks remain consistent with the rest of the app. Verified the header in the Mock-mode chooser; typecheck and focused lint pass. Local only, not deployed.
+
 - **Sep 23 Solutioning request origin in dialog header:** When launched from an opportunity or customer, both the request-kind chooser and every request form now keep a clear “For this opportunity/customer” label and record name in the modal header. This replaces the opportunity-only note in the scrolling form body, so the origin stays visible while selecting the kind and filling the form. Verified in the opportunity flow in Mock-mode; typecheck and focused lint pass. Local only, not deployed.
 
 - **Sep 23 Opportunity request type display:** Solutioning requests in the opportunity/customer connected-record table now show their selected request kind as the same colored icon chip used in Solutioning, with the subtype beneath it. The type remains plain data for search and filtering, but no longer looks like an editable field in the record table. Typecheck and focused lint pass. Local only, not deployed.
