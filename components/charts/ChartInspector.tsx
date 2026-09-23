@@ -56,17 +56,20 @@ export function ChartInspector({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [selectedOutcome, setSelectedOutcome] = useState<string | null>(null);
+  const outcomeOptions = useMemo(() => [...new Set(records.map((record) => record.outcome).filter((outcome): outcome is string => !!outcome))], [records]);
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return records;
     return records.filter((record) =>
+      (!selectedOutcome || record.outcome === selectedOutcome) &&
+      (!needle ||
       `${record.label} ${record.meta || ""} ${record.value || ""} ${
         record.outcome ? OUTCOME_META[record.outcome]?.label || record.outcome : ""
       }`
         .toLowerCase()
-        .includes(needle)
+        .includes(needle))
     );
-  }, [query, records]);
+  }, [query, records, selectedOutcome]);
 
   const recordRow = (record: ChartRecord, compact = false) => {
     const content = (
@@ -120,7 +123,7 @@ export function ChartInspector({
             <Tooltip label={`Enlarge ${title}`}>
               <button
                 type="button"
-                onClick={() => setOpen(true)}
+                onClick={() => { setSelectedOutcome(null); setOpen(true); }}
                 aria-label={`Enlarge ${title}`}
                 title={`Enlarge ${title}`}
                 className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white p-0 text-text-secondary shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
@@ -163,35 +166,30 @@ export function ChartInspector({
         </div>
       </Card>
 
-      <Modal open={open} onClose={() => setOpen(false)} title={title} size="chart">
-        {description && <p className="mb-4 text-[13px] text-text-secondary">{description}</p>}
-        {showSearch && records.length > 0 && (
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="relative w-[320px]">
-              <Search size={14} strokeWidth={1.8} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={searchPlaceholder}
-                className="h-9 w-full rounded-md border border-border bg-white pl-9 pr-3 text-[12.5px] outline-none focus:border-blue-primary"
-              />
+      <Modal open={open} onClose={() => setOpen(false)} title={title} size="chart" bodyClassName="flex flex-col">
+        <div className="flex min-h-0 flex-1 flex-col p-2">
+          {description && <p className="border-b border-border-light pb-3 text-[13px] text-text-secondary">{description}</p>}
+          <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,.65fr)]">
+            <div className="flex min-h-[320px] items-center justify-center overflow-auto rounded-2xl border border-border-light bg-surface p-5">
+              <ChartExpansionSuppressionProvider>{expandedChildren || children}</ChartExpansionSuppressionProvider>
             </div>
-            <span className="text-[12px] text-text-tertiary tnum">{matches.length} records</span>
+            <div className="flex min-h-[320px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-white">
+              <div className="border-b border-border-light p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Explore the chart</p>
+                <p className="mt-1 text-[12.5px] text-text-secondary">{matches.length} {matches.length === 1 ? "record" : "records"} in this view</p>
+                {showSearch && records.length > 0 && <div className="relative mt-3"><Search size={14} strokeWidth={1.8} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchPlaceholder} aria-label={searchPlaceholder} className="h-9 w-full rounded-lg border border-border bg-white pl-9 pr-3 text-[12.5px] outline-none focus:border-blue-primary" /></div>}
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                {outcomeOptions.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5 border-b border-border-light pb-3">
+                  <button type="button" aria-pressed={selectedOutcome === null} onClick={() => setSelectedOutcome(null)} className={cn("rounded-full px-3 py-1.5 text-[12px] font-semibold", selectedOutcome === null ? "bg-blue-light text-blue-primary" : "bg-surface text-text-secondary hover:text-text-primary")}>All outcomes</button>
+                  {outcomeOptions.map((outcome) => <button key={outcome} type="button" aria-pressed={selectedOutcome === outcome} onClick={() => setSelectedOutcome(outcome)} className={cn("rounded-full px-3 py-1.5 text-[12px] font-semibold", selectedOutcome === outcome ? "bg-blue-light text-blue-primary" : "bg-surface text-text-secondary hover:text-text-primary")}>{OUTCOME_META[outcome]?.label || outcome}</button>)}
+                </div>}
+                <div className="divide-y divide-border-light">{matches.map((record) => recordRow(record))}</div>
+                {matches.length === 0 && <p className="p-4 text-[13px] text-text-secondary">{records.length === 0 ? "No individual records are attached to this chart." : "Nothing matches this selection."}</p>}
+              </div>
+            </div>
           </div>
-        )}
-        <div className="rounded-lg border border-border-light bg-surface/30 p-5">
-          <ChartExpansionSuppressionProvider>
-            {expandedChildren || children}
-          </ChartExpansionSuppressionProvider>
         </div>
-        {records.length > 0 && (
-          <div className="mt-4 overflow-hidden rounded-lg border border-border-light">
-            <div className="max-h-[260px] divide-y divide-border-light overflow-y-auto">
-              {matches.map((record) => recordRow(record))}
-              {matches.length === 0 && <p className="p-5 text-[13px] text-text-tertiary">No matching records.</p>}
-            </div>
-          </div>
-        )}
       </Modal>
     </>
   );

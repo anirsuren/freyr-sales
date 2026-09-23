@@ -190,7 +190,7 @@ export function Modal({
               // until the bottom"). The document viewer takes the window.
               "max-w-[min(1900px,96vw)]"
             : size === "chart"
-            ? "max-w-[1180px]"
+            ? "max-w-[min(1580px,calc(100vw-2rem))] h-[min(840px,calc(100vh-2rem))]"
             : size === "workflow"
             ? "max-w-[980px]"
             : size === "wide"

@@ -48,10 +48,11 @@ export function ExpandableChart({
   rows?: ChartDetailRow[];
   /** Optional caveat shown under the table — e.g. what the total excludes. */
   footnote?: string;
-  children: (expanded: boolean) => ReactNode;
+  children: (expanded: boolean, selectedRow: number | null) => ReactNode;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
   return (
     <>
@@ -60,7 +61,7 @@ export function ExpandableChart({
             expansion is a primary reading control, not a hover easter egg. */}
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => { setSelectedRow(null); setOpen(true); }}
           aria-label={`Open ${title} full size`}
           title="Open full size"
           className="absolute -top-1 right-0 z-10 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border-light bg-[var(--white)] text-text-secondary shadow-[0_1px_2px_rgba(16,24,40,0.06)] transition-all hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30"
@@ -68,73 +69,36 @@ export function ExpandableChart({
           <Maximize2 size={13} strokeWidth={2} />
         </button>
         <ChartExpansionSuppressionProvider>
-          {children(false)}
+          {children(false, null)}
         </ChartExpansionSuppressionProvider>
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title={title} size="chart">
-        {subtitle && (
-          <p className="mb-4 text-[13px] text-text-secondary">{subtitle}</p>
-        )}
-        <div className="mb-5 flex justify-center">
-          <InteractiveChartTipProvider>
-            <ChartExpansionSuppressionProvider>
-              {children(true)}
-            </ChartExpansionSuppressionProvider>
-          </InteractiveChartTipProvider>
-        </div>
-
-        {rows && rows.length > 0 && (
-          <div className="border-t border-border-light pt-4">
-            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-              Full breakdown
-            </p>
-            <ul className="space-y-2.5">
-              {rows.map((row, index) => (
-                <li key={`${row.label}-${index}`} className="min-w-0">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="flex min-w-0 items-baseline gap-2">
-                      {row.color && (
-                        <span
-                          aria-hidden="true"
-                          className="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ background: row.color }}
-                        />
-                      )}
-                      <span className="min-w-0">
-                        <span className="text-[13px] font-medium text-text-primary">
-                          {row.label}
-                        </span>
-                        {row.sub && (
-                          <span className="block text-[11.5px] text-text-secondary">
-                            {row.sub}
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-[13px] font-semibold tnum text-text-primary">
-                      {row.value}
-                    </span>
-                  </div>
-                  {typeof row.percent === "number" && (
-                    <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full bg-surface">
-                      <span
-                        className="block h-full rounded-full"
-                        style={{
-                          width: `${Math.max(0, Math.min(100, row.percent))}%`,
-                          background: row.color || "var(--blue-primary)",
-                        }}
-                      />
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-            {footnote && (
-              <p className="mt-3 text-[11.5px] text-text-tertiary">{footnote}</p>
-            )}
+      <Modal open={open} onClose={() => setOpen(false)} title={title} size="chart" bodyClassName="flex flex-col">
+        <div className="flex min-h-0 flex-1 flex-col p-2">
+          {subtitle && <p className="border-b border-border-light pb-3 text-[13px] text-text-secondary">{subtitle}</p>}
+          <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,.65fr)]">
+            <div className="flex min-h-[320px] items-center justify-center overflow-auto rounded-2xl border border-border-light bg-surface p-5">
+              <InteractiveChartTipProvider>
+                <ChartExpansionSuppressionProvider>{children(true, selectedRow)}</ChartExpansionSuppressionProvider>
+              </InteractiveChartTipProvider>
+            </div>
+            <div className="min-h-[320px] overflow-y-auto rounded-2xl border border-border-light bg-white p-3">
+              <p className="px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Explore the chart</p>
+              {rows?.length ? (
+                <>
+                  <button type="button" aria-pressed={selectedRow === null} onClick={() => setSelectedRow(null)} className={cn("mb-1 w-full rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold", selectedRow === null ? "bg-blue-light text-blue-primary" : "text-text-primary hover:bg-surface")}>All categories</button>
+                  {rows.map((row, index) => (
+                    <button key={`${row.label}-${index}`} type="button" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)} className={cn("mb-1 w-full rounded-xl px-3 py-2.5 text-left transition-colors", selectedRow === index ? "bg-blue-light/70" : "hover:bg-surface")}>
+                      <span className="flex items-start gap-2.5"><span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color || "var(--blue-primary)" }} /><span className="min-w-0 flex-1 text-[13px] font-medium text-text-primary">{row.label}</span><span className="shrink-0 text-[13px] font-semibold tabular-nums text-text-primary">{row.value}</span></span>
+                      {selectedRow === index && <span className="mt-2 block pl-5 text-[12px] text-text-secondary">{row.sub || (/^0(?:\b|\s)/.test(row.value) ? "Nothing in this category right now." : "Showing this category in the chart breakdown.")}</span>}
+                    </button>
+                  ))}
+                </>
+              ) : <p className="px-2 text-[12.5px] text-text-secondary">Use the chart to inspect its values.</p>}
+              {footnote && <p className="mt-3 border-t border-border-light px-2 pt-3 text-[11.5px] text-text-tertiary">{footnote}</p>}
+            </div>
           </div>
-        )}
+        </div>
       </Modal>
     </>
   );

@@ -453,7 +453,6 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
         }
         size="chart"
         tall
-        dialogClassName="!h-[min(850px,calc(100vh-1.5rem))] !w-[min(1680px,97vw)] !max-w-[min(1680px,97vw)]"
         bodyClassName="!p-0"
       >
         <div className="grid h-full min-h-0 lg:grid-cols-[340px_minmax(0,1fr)]">
@@ -654,7 +653,6 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
         }
         size="chart"
         tall
-        dialogClassName="!h-[min(820px,calc(100vh-2rem))] !w-[min(1500px,96vw)] !max-w-[min(1500px,96vw)]"
         bodyClassName="flex flex-col !p-0"
       >
         <div className="shrink-0 border-b border-border-light bg-white p-4">

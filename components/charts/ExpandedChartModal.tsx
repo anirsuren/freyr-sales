@@ -7,12 +7,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Maximize2 } from "lucide-react";
+import { ArrowRight, Maximize2 } from "lucide-react";
+import Link from "next/link";
 import {
   AreaChart,
   BarChart,
   DonutChart,
-  DonutLegend,
   LineChart,
   InteractiveChartTipProvider,
   type TipItem,
@@ -51,6 +51,17 @@ export type ExpandedChartItem = {
   key: string;
   label: string;
   color: string;
+  value?: string;
+  percentage?: number;
+  isEmpty?: boolean;
+  records?: ExpandedChartRecord[];
+};
+
+export type ExpandedChartRecord = {
+  label: string;
+  meta?: string;
+  value?: string;
+  href?: string;
 };
 
 export type ExpandedChartControlProps = {
@@ -79,7 +90,9 @@ export function ExpandedChartControl({
 }: ExpandedChartControlProps) {
   const suppressed = useChartExpansionSuppressed();
   const [open, setOpen] = useState(false);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const keys = items.map((item) => item.key);
+  const selectedItem = items.find((item) => item.key === selectedKey);
 
   if (suppressed) return null;
 
@@ -96,7 +109,7 @@ export function ExpandedChartControl({
         aria-expanded={open}
         aria-label={openLabel}
         title={openLabel}
-        onClick={() => setOpen(true)}
+        onClick={() => { setSelectedKey(null); setOpen(true); }}
         className={cn(
           "inline-flex h-8 !w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-white !p-0 text-text-primary shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,background-color,color,box-shadow,transform] hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary hover:shadow-[0_4px_12px_rgba(0,113,227,0.10)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30",
           className
@@ -110,20 +123,65 @@ export function ExpandedChartControl({
         onClose={() => setOpen(false)}
         title={title}
         size="chart"
+        bodyClassName="flex flex-col"
       >
-        <div className="px-2 pb-2">
+        <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
           {subtitle && (
             <p className="border-b border-border-light px-1 pb-3 text-[13px] leading-relaxed text-text-secondary">
               {subtitle}
             </p>
           )}
-
-          <div className="mt-4 min-h-[390px] rounded-2xl border border-border-light bg-surface p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.38)]">
-            <InteractiveChartTipProvider>
-              <ChartExpansionSuppressionProvider>
-                {renderExpanded(keys)}
-              </ChartExpansionSuppressionProvider>
-            </InteractiveChartTipProvider>
+          <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,.65fr)]">
+            <div className="flex min-h-[320px] items-center justify-center overflow-auto rounded-2xl border border-border-light bg-surface p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.38)]">
+              {selectedItem?.isEmpty ? (
+                <div className="max-w-sm text-center">
+                  <span className="mx-auto mb-4 block h-3 w-3 rounded-full" style={{ backgroundColor: selectedItem.color }} />
+                  <p className="text-[18px] font-semibold text-text-primary">No results for {selectedItem.label}</p>
+                  <p className="mt-2 text-[13px] text-text-secondary">This category has no results in the current view.</p>
+                </div>
+              ) : (
+                <InteractiveChartTipProvider>
+                  <ChartExpansionSuppressionProvider>
+                    {renderExpanded(selectedItem ? [selectedItem.key] : keys)}
+                  </ChartExpansionSuppressionProvider>
+                </InteractiveChartTipProvider>
+              )}
+            </div>
+            <div className="flex min-h-[320px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-white">
+              <div className="border-b border-border-light px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Explore the chart</p>
+                <p className="mt-1 text-[13px] text-text-secondary">Choose a category to see it on its own.</p>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                <button type="button" aria-pressed={selectedKey === null} onClick={() => setSelectedKey(null)} className={cn("mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition-colors", selectedKey === null ? "bg-blue-light text-blue-primary" : "text-text-primary hover:bg-surface")}>
+                  All categories <span className="text-[11px] font-medium text-text-tertiary">{items.length}</span>
+                </button>
+                {items.map((item) => (
+                  <button key={item.key} type="button" aria-pressed={selectedKey === item.key} onClick={() => setSelectedKey(item.key)} className={cn("mb-1 flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors", selectedKey === item.key ? "border-blue-subtle bg-blue-light/70" : "border-transparent hover:bg-surface")}>
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">{item.label}</span>
+                    {item.value && <span className="shrink-0 text-[13px] font-semibold tabular-nums text-text-primary">{item.value}</span>}
+                    {item.percentage !== undefined && <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-text-tertiary">{item.percentage}%</span>}
+                    <ArrowRight size={14} className="shrink-0 text-text-tertiary" />
+                  </button>
+                ))}
+                {selectedItem && (
+                  <div className="mt-4 border-t border-border-light px-2 pt-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">{selectedItem.label} details</p>
+                    {selectedItem.records?.length ? (
+                      <div className="mt-2 space-y-1">
+                        {selectedItem.records.map((record, index) => {
+                          const content = <><span className="min-w-0 flex-1"><span className="block text-[12.5px] font-semibold text-text-primary">{record.label}</span>{record.meta && <span className="block text-[11.5px] text-text-secondary">{record.meta}</span>}</span>{record.value && <span className="shrink-0 text-[12px] font-semibold tabular-nums text-text-primary">{record.value}</span>}</>;
+                          return record.href ? <Link key={`${record.label}-${index}`} href={record.href} className="flex items-start gap-3 rounded-lg px-2 py-2 hover:bg-surface">{content}</Link> : <div key={`${record.label}-${index}`} className="flex items-start gap-3 rounded-lg px-2 py-2">{content}</div>;
+                        })}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-[12.5px] leading-relaxed text-text-secondary">{selectedItem.isEmpty ? "There is nothing in this category right now." : "This chart shows the category total; individual records are not listed here."}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </Modal>
@@ -148,6 +206,7 @@ type VisibilityDatum = {
   id?: string;
   label: string;
   color?: string;
+  details?: ExpandedChartRecord[];
 };
 
 export type ExpandedLineChart = {
@@ -295,6 +354,17 @@ export function ExpandedChartModal({
     key: keys[index],
     label: item.label,
     color: itemColor(item, index),
+    value: chart.kind === "bar" ? formatValue(chart.format, chart.data[index].value)
+      : chart.kind === "donut" ? formatValue(chart.format, chart.segments[index].value)
+      : undefined,
+    percentage: chart.kind === "donut" ? Math.round(100 * chart.segments[index].value / Math.max(1, chart.segments.reduce((sum, segment) => sum + segment.value, 0))) : undefined,
+    isEmpty: chart.kind === "bar" ? chart.data[index].value === 0
+      : chart.kind === "donut" ? chart.segments[index].value === 0
+      : chart.kind === "line" ? chart.series[index].points.every((value) => value === 0)
+      : chart.data.every((value) => value === 0),
+    records: "details" in item && Array.isArray(item.details) ? item.details
+      : "tip" in item && Array.isArray(item.tip) ? item.tip.map((tip) => ({ label: tip.name, meta: tip.sub, value: tip.value }))
+      : undefined,
   }));
   const donutSyncId = useId();
 
@@ -389,39 +459,16 @@ export function ExpandedChartModal({
     const allShown = segments.length === chart.segments.length;
     const syncId = `${donutSyncId}-${visible.join("-")}`;
     return (
-      <div className="grid min-h-[350px] w-full grid-cols-1 items-stretch md:grid-cols-[minmax(300px,.9fr)_minmax(380px,1.1fr)]">
-        <div className="flex items-center justify-center p-6">
-          <DonutChart
-            segments={segments}
-            size={280}
-            thickness={25}
-            centerLabel={
-              allShown && chart.centerLabel
-                ? chart.centerLabel
-                : formatValue(chart.format, shownTotal)
-            }
-            centerSub={
-              allShown && chart.centerSub ? chart.centerSub : "shown"
-            }
-            format={chart.format}
-            syncId={syncId}
-          />
-        </div>
-        <div className="flex min-w-0 flex-col justify-center border-t border-border-light p-7 md:border-l md:border-t-0">
-          <p className="mb-4 text-[10.5px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">
-            Breakdown
-          </p>
-          <DonutLegend
-            items={segments}
-            total={shownTotal}
-            format={chart.format}
-            syncId={syncId}
-            bars={chart.legendBars}
-            pill={chart.legendPills}
-            showValues={chart.legendValues}
-            className={chart.legendBars === false ? "w-fit max-w-full" : "w-full"}
-          />
-        </div>
+      <div className="flex min-h-[350px] w-full items-center justify-center">
+        <DonutChart
+          segments={segments}
+          size={280}
+          thickness={27}
+          centerLabel={allShown && chart.centerLabel ? chart.centerLabel : formatValue(chart.format, shownTotal)}
+          centerSub={allShown && chart.centerSub ? chart.centerSub : segments[0]?.label || "shown"}
+          format={chart.format}
+          syncId={syncId}
+        />
       </div>
     );
   }

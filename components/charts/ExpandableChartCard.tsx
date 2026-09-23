@@ -77,7 +77,7 @@ export function ExpandableChartCard({
   return (
     <Card className={className}>
       <ExpandableChart title={title} subtitle={subtitle} rows={rows} footnote={footnote}>
-        {(expanded) => (
+        {(expanded, selectedRow) => (
           <div className={expanded ? "w-full" : undefined}>
             {!expanded && (
               <>
@@ -90,7 +90,7 @@ export function ExpandableChartCard({
               </>
             )}
             {kind === "bar" && bar && (
-              <BarChart {...bar} height={expanded ? 320 : 190} />
+              <BarChart {...bar} data={expanded && selectedRow !== null ? bar.data.filter((_, index) => index === selectedRow) : bar.data} height={expanded ? 320 : 190} />
             )}
             {kind === "donut" && donut && (
               <div
@@ -102,11 +102,12 @@ export function ExpandableChartCard({
               >
                 <DonutChart
                   {...donut}
+                  segments={expanded && selectedRow !== null ? donut.segments.filter((_, index) => index === selectedRow) : donut.segments}
                   syncId={donutSync}
                   size={expanded ? 220 : 140}
                   thickness={expanded ? 22 : 15}
                 />
-                {legend && <DonutLegend {...legend} syncId={donutSync} />}
+                {legend && !expanded && <DonutLegend {...legend} syncId={donutSync} />}
               </div>
             )}
             {kind === "area" && area && (

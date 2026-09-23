@@ -173,23 +173,26 @@ export function ContactTalkTimePanel({ calls, color }: { calls: TalkTimeCall[]; 
         <div className="mt-3 flex min-h-0 flex-1 flex-col">{bars(false)}</div>
       </Card>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Talk time by contact" size="chart">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          {searchField("w-[320px]")}
-          <span className="text-[12px] text-text-tertiary tnum">{matches.length} matching calls</span>
-        </div>
-        <div className="rounded-lg border border-border-light bg-surface/30 p-5">{bars(true)}</div>
-        <div className="mt-4 max-h-[260px] overflow-y-auto rounded-lg border border-border-light divide-y divide-border-light">
-          {matches.map((call) => (
-            <Link key={call.id} href={call.href} className="grid grid-cols-[minmax(180px,1fr)_minmax(150px,1fr)_130px_90px_170px_24px] items-center gap-3 px-4 py-3 hover:bg-surface">
-              <span className="flex min-w-0 items-center gap-2.5"><Avatar name={call.name} className="h-7 w-7 text-[9px]" /><span className="text-[12.5px] font-semibold text-text-primary">{call.name}</span></span>
-              <span className="flex min-w-0 items-center gap-2 text-[12px] text-text-secondary"><CompanyLogo name={call.company} className="h-[18px] w-[18px] shrink-0 text-[7px]" />{call.company}</span>
-              <span><OutcomeBadge outcome={call.outcome} /></span>
-              <span className="text-[12px] font-semibold text-text-primary tnum">{fmtLength(call.value)}</span>
-              <span className="text-[11.5px] text-text-tertiary">{formatDateTime(call.createdAt)}</span>
-              <span className="text-blue-primary">→</span>
-            </Link>
-          ))}
+      <Modal open={open} onClose={() => setOpen(false)} title="Talk time by contact" size="chart" bodyClassName="flex flex-col">
+        <div className="grid min-h-0 flex-1 gap-4 p-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,.65fr)]">
+          <div className="flex min-h-[320px] flex-col overflow-hidden rounded-2xl border border-border-light bg-surface p-5">{bars(true)}</div>
+          <div className="flex min-h-[320px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-white">
+            <div className="border-b border-border-light p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Explore the chart</p>
+              <p className="mt-1 text-[12px] text-text-secondary">{matches.length} matching calls</p>
+              <div className="mt-3">{searchField("w-full")}</div>
+            </div>
+            <div className="min-h-0 flex-1 divide-y divide-border-light overflow-y-auto">
+              {matches.map((call) => (
+                <Link key={call.id} href={call.href} className="flex items-start gap-3 px-4 py-3 hover:bg-surface">
+                  <Avatar name={call.name} className="h-8 w-8 shrink-0 text-[9px]" />
+                  <span className="min-w-0 flex-1"><span className="block text-[12.5px] font-semibold text-text-primary">{call.name}</span><span className="block truncate text-[11.5px] text-text-secondary">{call.company} · {formatDateTime(call.createdAt)}</span><span className="mt-1 block"><OutcomeBadge outcome={call.outcome} /></span></span>
+                  <span className="shrink-0 text-[12.5px] font-semibold tabular-nums text-text-primary">{fmtLength(call.value)}</span>
+                </Link>
+              ))}
+              {matches.length === 0 && <p className="p-4 text-[13px] text-text-secondary">No calls match this search.</p>}
+            </div>
+          </div>
         </div>
       </Modal>
     </>

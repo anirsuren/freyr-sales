@@ -739,11 +739,8 @@ export function OrgPerformanceTab({
     "unscheduled",
     "unset",
   ] as const)
-    .map((key) => ({
-      id: key,
-      label: PACE_LABEL[key],
-      color: PACE_COLOR[key],
-      value: withValue.filter(
+    .map((key) => {
+      const matchingGoals = withValue.filter(
         (entry) =>
           paceVerdict(
             entry.verified,
@@ -753,8 +750,21 @@ export function OrgPerformanceTab({
             undefined,
             milestoneByNow(entry.goal)
           ) === key
-      ).length,
-    }));
+      );
+      return {
+        id: key,
+        label: PACE_LABEL[key],
+        color: PACE_COLOR[key],
+        value: matchingGoals.length,
+        details: matchingGoals.map(({ goal, verified }) => ({
+          label: goal.name,
+          meta: goal.target > 0
+            ? `${fmtAmount(goal.unit, verified, goal.currency)} verified of ${fmtAmount(goal.unit, goal.target, goal.currency)} target`
+            : "No target set",
+          value: goal.target > 0 ? `${Math.round(pctMet(verified, goal.target))}%` : undefined,
+        })),
+      };
+    });
   const activePaceSegments = paceSegments.filter(
     (segment) => segment.value > 0
   );
