@@ -1529,7 +1529,7 @@ export function DealOverviewEditor({
                       }}
                       options={CURRENCIES.map((c) => ({
                         value: c.code,
-                        label: `${c.flag} ${c.code} ${c.name}`,
+                        label: `${c.flag} ${c.symbol.trim() === c.code ? "" : `${c.symbol.trim()} `}${c.code} ${c.name}`,
                         noMark: true,
                       }))}
                     />
