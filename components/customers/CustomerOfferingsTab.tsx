@@ -255,14 +255,15 @@ function RevenueSection({
     // name read as the end of the card, so the revenue panel underneath looked
     // like a separate thing (Anir, Jul 25: "remove the line below the title, it
     // throws me off — i think its over but its not"). Spacing carries the break.
-    <div className="mt-4">
-      <div className="flex items-center justify-between mb-2.5">
-        <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+    <div className="mt-5 rounded-xl border border-border-light bg-surface/40 p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-text-secondary">
           <DollarSign size={13} strokeWidth={2} className="text-success" />
-          Revenue on this offering
+          Revenue
+          {total > 0 && <span className="ml-1 font-semibold normal-case tracking-normal text-text-primary tnum">{formatMoney(total)} on file</span>}
         </p>
         <div className="flex items-center gap-2">
-          {total > 0 && (
+          {byType.length > 1 && (
             <ExpandedChartModal
               title="Revenue on this offering"
               subtitle="Revenue split by commercial model."
@@ -300,15 +301,15 @@ function RevenueSection({
           width of the card for a two-item split, which read as a chart in its
           own right competing with the donut. The donut gets more room so the
           centre total isn't pressed against the ring. */}
-      {total > 0 && (
+      {total > 0 && byType.length > 1 && (
         // Neutral card, not a green wash. Tinting the whole panel green made the
         // revenue block read as an alert rather than a figure (Anir, Jul 26: "I
         // don't know why you're doing the green background on the revenue card.
         // It looks weird"). Colour now lives only in the donut and its legend.
-        <div className="mb-2.5 grid grid-cols-[150px_minmax(0,1fr)] items-center gap-6 rounded-xl border border-border-light bg-white px-4 py-4">
+        <div className="mb-3 grid items-center gap-4 rounded-xl border border-border-light bg-white px-4 py-3 sm:grid-cols-[124px_minmax(0,1fr)]">
           <div className="flex justify-center">
             <DonutChart
-              size={132}
+              size={112}
               thickness={13}
               segments={byType.map((b) => ({
                 label: b.label,
@@ -330,7 +331,7 @@ function RevenueSection({
             {byType.map((b) => (
               <li
                 key={b.type}
-                className="grid min-w-0 grid-cols-[minmax(90px,auto)_minmax(40px,1fr)_auto] items-center gap-3 text-[12.5px]"
+                className="grid min-w-0 grid-cols-[minmax(80px,auto)_minmax(24px,1fr)_auto] items-center gap-2 text-[12px]"
               >
                 <span className="flex min-w-0 items-center gap-1.5 text-text-secondary">
                   <span
@@ -360,8 +361,8 @@ function RevenueSection({
         </div>
       )}
 
-      {lines.length > 0 && (
-        <ul className="space-y-1.5 mb-2">
+      {lines.length > 0 ? (
+        <ul className="space-y-1.5">
           {lines.map((l) => {
             const typeColor = REV_COLOR[l.revenue_type];
             return (
@@ -405,6 +406,8 @@ function RevenueSection({
             );
           })}
         </ul>
+      ) : (
+        <p className="text-[12.5px] text-text-secondary">No revenue recorded yet.</p>
       )}
       <ConfirmDialog
         open={confirmLine !== null}
@@ -801,91 +804,65 @@ export function CustomerOfferingsTab({
     using: boolean;
   }) => {
     const expanded = expandedIds.has(o.id);
+    const revenueTotal = linesForOffering(o.id).reduce((sum, line) => sum + (line.amount || 0), 0);
+    const activityCount = activitiesForOffering(o.id).length;
     return (
       <Card
-        className="overflow-hidden border border-border p-0 shadow-[0_2px_10px_rgba(15,23,42,0.05)]"
+        className="relative overflow-hidden border border-border-light bg-white p-0 shadow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-success"
         data-testid={`cust-offering-${o.id}`}
       >
-        <div
-          className={`flex items-start justify-between gap-3 bg-surface/60 px-5 py-4 ${
-            expanded ? "border-b border-border-light" : ""
-          }`}
-        >
-          {/* No glyph beside the offering name (Anir, Sep 2: "can you just
-              remove these icons from all the offering names? They're not really
-              needed"). */}
-          <div className="flex min-w-0 items-start gap-3">
+        <div className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(245px,360px)_auto] lg:items-center">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={`/offerings/${o.id}`}
+                className="text-[15px] font-semibold text-text-primary hover:text-blue-primary hover:underline"
+              >
+                {o.name}
+              </Link>
+              {o.availability && <AvailabilityPill value={o.availability} size="sm" />}
+            </div>
+            {(o.category || o.type) && (
+              <p className="mt-1 text-[12px] text-text-tertiary">
+                {[o.category, o.type].filter(Boolean).join(" · ")}
+              </p>
+            )}
+            {o.description && !expanded && (
+              <p className="mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed text-text-secondary">
+                {o.description}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-3 border-y border-border-light py-2 lg:border-y-0 lg:border-l lg:py-0 lg:pl-4">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={`/offerings/${o.id}`}
-                  className="text-[15px] font-semibold text-text-primary hover:text-blue-primary"
-                >
-                  {o.name}
-                </Link>
-                {o.availability && (
-                  <AvailabilityPill value={o.availability} size="sm" />
-                )}
-                {using && (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                    style={{
-                      background: "rgba(34,197,94,0.14)",
-                      color: "#16A34A",
-                    }}
-                  >
-                    <CheckCircle2 size={12} strokeWidth={2.2} />
-                    In use
-                  </span>
-                )}
-              </div>
-              {(o.category || o.type) && (
-                <p className="mt-0.5 text-[12px] text-text-tertiary">
-                  {[o.category, o.type].filter(Boolean).join(" · ")}
-                </p>
-              )}
+              <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Revenue</p>
+              <p className="mt-1 whitespace-nowrap text-[13px] font-semibold text-text-primary tnum">{revenueTotal > 0 ? compactMoney(revenueTotal) : "—"}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Activities</p>
+              <p className="mt-1 text-[13px] font-semibold text-text-primary tnum">{activityCount}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Materials</p>
+              <p className="mt-1 text-[13px] font-semibold text-text-primary tnum">{o.materials.length}</p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              onClick={() => toggleInUse(o.id, !using)}
-              disabled={busyId === o.id}
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-50 ${
-                using
-                  ? "border-error/30 text-error hover:bg-error/10"
-                  : "border-border-light text-success hover:bg-success/10"
-              }`}
-            >
-              {using ? (
-                <>
-                  <X size={13} strokeWidth={2.2} />
-                  {busyId === o.id ? "…" : "Not using anymore"}
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 size={13} strokeWidth={2} />
-                  {busyId === o.id ? "…" : "Mark as already using"}
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleExpanded(o.id)}
-              aria-label={expanded ? `Collapse ${o.name}` : `Expand ${o.name}`}
-              title={expanded ? "Collapse offering" : "Expand offering"}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light/50 hover:text-blue-primary"
-            >
-              {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => toggleExpanded(o.id)}
+            aria-expanded={expanded}
+            aria-label={expanded ? `Hide ${o.name} details` : `Show ${o.name} details`}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
+          >
+            {expanded ? "Hide details" : "View details"}
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
         </div>
 
         {expanded && (
-          <div className="px-5 pb-5">
+          <div className="border-t border-border-light bg-white px-5 pb-5 pt-1">
             {o.description && (
-              /* pl-12 lined this up under the offering's icon tile; the tile is
-                 gone (Anir, Sep 2), so the paragraph starts at the card edge. */
-              <p className="mt-2.5 line-clamp-3 whitespace-pre-line text-[13px] leading-relaxed text-text-secondary">
+              <p className="mt-3 whitespace-pre-line text-[13px] leading-relaxed text-text-secondary">
                 {o.description}
               </p>
             )}
@@ -978,6 +955,17 @@ export function CustomerOfferingsTab({
                 </div>
               </div>
             )}
+            <div className="mt-5 border-t border-border-light pt-4">
+              <button
+                type="button"
+                onClick={() => toggleInUse(o.id, false)}
+                disabled={busyId === o.id}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] font-semibold text-error transition-colors hover:bg-error/10 disabled:opacity-50"
+              >
+                <X size={13} strokeWidth={2.2} />
+                {busyId === o.id ? "Updating…" : "Mark as no longer in use"}
+              </button>
+            </div>
           </div>
         )}
       </Card>
@@ -1105,23 +1093,25 @@ export function CustomerOfferingsTab({
   const allVisibleOpen =
     visibleInUse.length > 0 &&
     visibleInUse.every((offering) => expandedIds.has(offering.id));
+  const totalRevenueOnFile = usageState
+    .filter((entry) => inUseIds.has(entry.offering_id))
+    .flatMap((entry) => entry.revenue_lines || [])
+    .reduce((sum, line) => sum + (line.amount || 0), 0);
   return (
-    <div className="space-y-6">
-      <div className="overflow-hidden rounded-xl border border-border-light bg-surface/45">
-        <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[14px] font-semibold text-text-primary">
-              Customer offerings
-            </h2>
-            <p className="mt-0.5 text-[12.5px] text-text-secondary">
-              <span className="font-semibold text-text-primary tnum">{inUse.length}</span>{" "}
-              in use ·{" "}
-              <span className="font-semibold text-text-primary tnum">{toPitch.length}</span>{" "}
-              available to add
-            </p>
+    <div className="space-y-7">
+      <div className="overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm">
+        <div className="flex flex-col gap-5 px-5 py-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-[19px] font-semibold tracking-[-0.02em] text-text-primary">Offerings at {customerName}</h2>
+            <p className="mt-1 text-[13px] text-text-secondary">What this account uses, and what else fits its profile.</p>
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+              <span className="inline-flex items-baseline gap-1.5 text-[12px] text-text-secondary"><b className="text-[18px] font-semibold text-text-primary tnum">{inUse.length}</b> in use</span>
+              <span className="inline-flex items-baseline gap-1.5 text-[12px] text-text-secondary"><b className="text-[18px] font-semibold text-text-primary tnum">{compactMoney(totalRevenueOnFile)}</b> revenue on file</span>
+              <span className="inline-flex items-baseline gap-1.5 text-[12px] text-text-secondary"><b className="text-[18px] font-semibold text-text-primary tnum">{toPitch.length}</b> available to add</span>
+            </div>
           </div>
-          <div className="flex shrink-0 items-center justify-end gap-2 text-[12px] text-text-secondary">
-            <span className="inline-flex items-center gap-1 font-medium">
+          <div className="flex min-w-0 flex-col gap-1.5 text-[12px] text-text-secondary xl:items-end">
+            <span className="inline-flex items-center gap-1 font-semibold">
               Customer type
               <InfoHint text="The company's industry and size. We use it to show relevant offerings from the catalogue. Change it here if the customer was classified incorrectly." />
             </span>
@@ -1135,8 +1125,8 @@ export function CustomerOfferingsTab({
             />
           </div>
         </div>
-        <div className="flex flex-col gap-2 border-t border-border-light bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-3 focus-within:border-blue-primary focus-within:shadow-input-focus sm:max-w-[520px]">
+        <div className="flex flex-col gap-2 border-t border-border-light bg-surface/35 px-5 py-3 sm:flex-row sm:items-center">
+          <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-light bg-white px-3 focus-within:border-blue-primary focus-within:shadow-input-focus">
             <Search size={15} strokeWidth={2} className="shrink-0 text-text-tertiary" />
             <input
               value={offeringQuery}
@@ -1159,7 +1149,7 @@ export function CustomerOfferingsTab({
               })
             }
             disabled={visibleInUse.length === 0}
-            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:cursor-default disabled:opacity-40"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:cursor-default disabled:opacity-40"
           >
             {allVisibleOpen ? (
               <ChevronUp size={14} strokeWidth={2.2} />
@@ -1183,19 +1173,17 @@ export function CustomerOfferingsTab({
 
       {visibleInUse.length > 0 && (
         <section>
-          <h3 className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.05em] text-text-tertiary mb-2.5">
-            <CheckCircle2
-              size={14}
-              strokeWidth={2}
-              className="text-success"
-            />
-            Already in use
-            <span className="text-text-primary tnum">
-              ({visibleInUse.length}
-              {normalizedOfferingQuery ? ` of ${inUse.length}` : ""})
-            </span>
-          </h3>
-          <div className="space-y-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+              <CheckCircle2 size={16} strokeWidth={2} className="text-success" />
+              In use
+              <span className="text-[12px] font-medium text-text-tertiary tnum">
+                {visibleInUse.length}{normalizedOfferingQuery ? ` of ${inUse.length}` : ""}
+              </span>
+            </h3>
+            <p className="hidden text-[12px] text-text-tertiary sm:block">Select an offering to review its revenue, activity, and materials.</p>
+          </div>
+          <div className="space-y-2.5">
             {visibleInUse.map((o) => (
               <OfferingCard key={o.id} o={o} using />
             ))}
@@ -1203,14 +1191,14 @@ export function CustomerOfferingsTab({
         </section>
       )}
 
-      {(!normalizedOfferingQuery || visibleToPitch.length > 0) && (
+      {(!normalizedOfferingQuery || visibleToPitch.length > 0) &&
+        (toPitch.length > 0 || applicable.length === 0) && (
         <section>
-          <h3 className="mb-2.5 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-            <Sparkles size={14} strokeWidth={2} className="text-blue-primary" />
+          <h3 className="mb-3 flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+            <Sparkles size={16} strokeWidth={2} className="text-blue-primary" />
             Available to add
-            <span className="text-text-primary tnum">
-              ({visibleToPitch.length}
-              {normalizedOfferingQuery ? ` of ${toPitch.length}` : ""})
+            <span className="text-[12px] font-medium text-text-tertiary tnum">
+              {visibleToPitch.length}{normalizedOfferingQuery ? ` of ${toPitch.length}` : ""}
             </span>
           </h3>
           {applicable.length === 0 ? (

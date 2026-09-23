@@ -1563,3 +1563,7 @@ The Where it stands elapsed bar changes width in the same render as its date mar
 ### Sep 22: Company details and customer contract columns
 
 Market Intelligence company details stick close to the top of their own scrolling workspace instead of remaining 60px lower than the article feed. The panel height now accounts for the app header and, in Mock mode, its workspace banner. Customer Contracts tables reserve readable widths for status, owner, and value; long contract names wrap in the first column rather than clipping or squeezing those facts. Typecheck and focused lint pass. Local visual verification is pending because localhost currently redirects to Access pending (configuration error). Completed locally, not deployed.
+
+### Sep 22: Customer offerings read as an account portfolio
+
+The customer Offerings tab opens with account-specific usage, recorded revenue, available catalogue count, and customer type. In-use offerings show their description, revenue, activity count, and material count before expansion; the detail view keeps the full description, revenue lines, activities, and sales materials together, with the no-longer-in-use action below those facts. A revenue chart appears only when there are multiple commercial models to compare, and the empty available section disappears when the customer already uses every applicable offering. Typecheck and focused lint pass. Local visual verification is pending because localhost redirects to Access pending (configuration error). Completed locally, not deployed.
