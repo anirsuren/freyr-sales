@@ -29,3 +29,22 @@ test("stores only bounded profile facts and ignores empty or extra actor fields"
   assert.equal((profile as Record<string, unknown>)?.extra, undefined);
   assert.equal(normalizeLeadLinkedInProfile({}), null);
 });
+
+test("normalizes the working public-profile provider's nested facts", () => {
+  const profile = normalizeLeadLinkedInProfile({
+    basic_info: {
+      fullname: "Eric Kelly",
+      headline: "Regulatory affairs leader",
+      about: "Public bio",
+      location: { full: "Boston, Massachusetts, United States" },
+      current_company: { name: "Takeda" },
+      top_skills: ["Regulatory Affairs"],
+    },
+    experience: [{ title: "Director", company: "Takeda" }],
+    education: [{ school: "Example University", degree: "MS" }],
+  });
+  assert.equal(profile?.fullName, "Eric Kelly");
+  assert.equal(profile?.currentCompany, "Takeda");
+  assert.equal(profile?.location, "Boston, Massachusetts, United States");
+  assert.deepEqual(profile?.skills, ["Regulatory Affairs"]);
+});

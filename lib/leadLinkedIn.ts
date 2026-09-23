@@ -26,6 +26,8 @@ function records(value: unknown, max: number): Record<string, unknown>[] {
 export function normalizeLeadLinkedInProfile(raw: unknown, fetchedAt = new Date().toISOString()): LeadLinkedInProfile | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
+  const basic = value.basic_info && typeof value.basic_info === "object"
+    ? value.basic_info as Record<string, unknown> : value;
   const experience = records(value.experience, 12).map((item) => ({
     title: text(item.title, 140),
     company: text(item.company ?? item.companyName, 140),
@@ -36,16 +38,20 @@ export function normalizeLeadLinkedInProfile(raw: unknown, fetchedAt = new Date(
     school: text(item.school ?? item.schoolName, 140),
     degree: text(item.degree ?? item.degreeName, 140),
   })).filter((item) => item.school || item.degree);
-  const skills = (Array.isArray(value.skills) ? value.skills : []).slice(0, 30)
+  const skills = (Array.isArray(value.skills) ? value.skills : Array.isArray(basic.top_skills) ? basic.top_skills : []).slice(0, 30)
     .map((item) => text(typeof item === "string" ? item : (item as Record<string, unknown>)?.name, 80))
     .filter(Boolean);
-    const profile = {
-    fullName: text(value.fullName ?? value.name ?? [value.firstName, value.lastName].filter(Boolean).join(" "), 120),
-    headline: text(value.headline, 300),
-    currentCompany: text(value.currentCompany, 140),
-    currentTitle: text(value.currentTitle, 140),
-    location: text(value.location, 160),
-    about: text(value.about ?? value.summary, 3000),
+  const location = basic.location && typeof basic.location === "object"
+    ? (basic.location as Record<string, unknown>).full : basic.location;
+  const company = basic.current_company && typeof basic.current_company === "object"
+    ? (basic.current_company as Record<string, unknown>).name : basic.current_company;
+  const profile = {
+    fullName: text(value.fullName ?? basic.fullname ?? value.name ?? [value.firstName, value.lastName].filter(Boolean).join(" "), 120),
+    headline: text(basic.headline, 300),
+    currentCompany: text(value.currentCompany ?? company, 140),
+    currentTitle: text(value.currentTitle ?? basic.current_title, 140),
+    location: text(location, 160),
+    about: text(basic.about ?? basic.summary, 3000),
     experience,
     education,
     skills,

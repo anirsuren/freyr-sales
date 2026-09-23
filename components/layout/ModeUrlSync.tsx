@@ -54,6 +54,55 @@ export function ModeUrlSync({ mode }: { mode: "mock" | "live" }) {
   const pathname = usePathname();
   const router = useRouter();
 
+  /**
+   * A mode change in another tab updates the shared cookie, but Next keeps this
+   * tab's root layout mounted. Reconcile when the tab becomes active so the
+   * banner, URL, and data are rendered from the same workspace again.
+   */
+  useEffect(() => {
+    let active = true;
+    let checking = false;
+    const reconcile = async () => {
+      if (checking || document.visibilityState === "hidden") return;
+      const here = window.location.pathname;
+      if (skip(here)) return;
+      checking = true;
+      try {
+        const response = await fetch("/api/settings/data-mode", { cache: "no-store" });
+        if (!active || !response.ok) return;
+        const current = (await response.json()) as { mode?: string };
+        if (!active) return;
+        const cookieMode = current.mode === "mock" ? "mock" : "live";
+        const suffix = `${window.location.search}${window.location.hash}`;
+        if (isMockModePath(here)) {
+          if (mode !== "mock" || cookieMode !== "mock") {
+            // The labelled URL is an explicit Mock-mode choice. Middleware
+            // restores its cookie before rendering the next document.
+            window.location.reload();
+          }
+        } else if (cookieMode === "mock") {
+          window.location.replace(`${addMockModePrefix(here)}${suffix}`);
+        } else if (mode !== "live") {
+          window.location.reload();
+        }
+      } catch {
+        // A transient connection failure must not change the workspace.
+      } finally {
+        checking = false;
+      }
+    };
+    void reconcile();
+    window.addEventListener("focus", reconcile);
+    window.addEventListener("pageshow", reconcile);
+    document.addEventListener("visibilitychange", reconcile);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", reconcile);
+      window.removeEventListener("pageshow", reconcile);
+      document.removeEventListener("visibilitychange", reconcile);
+    };
+  }, [mode]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const here = window.location.pathname;

@@ -8,7 +8,7 @@ import {
   saveLead,
   saveLeadLinkedInLookup,
 } from "@/lib/leads";
-import { scrapeLeadLinkedInPosts, scrapeLinkedInProfile } from "@/lib/apify";
+import { scrapeLeadLinkedInPosts, scrapeLeadLinkedInProfile } from "@/lib/apify";
 import { leadLinkedInUrl, normalizeLeadLinkedInProfile } from "@/lib/leadLinkedIn";
 import {
   canOpenModule,
@@ -107,8 +107,8 @@ export async function POST(req: NextRequest) {
       }
       try {
         const [raw, recentPosts] = await Promise.all([
-          scrapeLinkedInProfile(url),
-          scrapeLeadLinkedInPosts(url).catch(() => []),
+          scrapeLeadLinkedInProfile(url),
+          scrapeLeadLinkedInPosts(url, lead.name).catch(() => []),
         ]);
         const profile = normalizeLeadLinkedInProfile({ ...raw, recentPosts });
         if (!profile) throw new Error("No readable profile details were returned.");

@@ -76,8 +76,28 @@ export async function scrapeLinkedInProfile(linkedinUrl: string): Promise<any> {
   return results[0];
 }
 
+/** The same public-profile actor used by Market Intel, with no mock fallback. */
+export async function scrapeLeadLinkedInProfile(linkedinUrl: string): Promise<Record<string, unknown>> {
+  const token = process.env.APIFY_API_TOKEN;
+  const username = new URL(linkedinUrl).pathname.match(/^\/in\/([^/]+)/)?.[1];
+  if (!token || !username) throw new Error("LinkedIn profile lookup is unavailable.");
+  const response = await fetch(`${APIFY_BASE}/acts/apimaestro~linkedin-profile-detail/run-sync-get-dataset-items?token=${token}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username }),
+    signal: AbortSignal.timeout(90_000),
+  });
+  if (!response.ok) throw new Error(`Profile lookup HTTP ${response.status}`);
+  const items = await response.json();
+  const profile = Array.isArray(items) ? items[0] : null;
+  if (!profile || typeof profile !== "object" || !profile.basic_info?.fullname) {
+    throw new Error("No readable LinkedIn profile was returned.");
+  }
+  return profile;
+}
+
 /** A bounded recent-post fetch. Failure does not erase otherwise useful profile facts. */
-export async function scrapeLeadLinkedInPosts(linkedinUrl: string): Promise<Array<{ text: string; url: string; date: string | null }>> {
+export async function scrapeLeadLinkedInPosts(linkedinUrl: string, leadName: string): Promise<Array<{ text: string; url: string; date: string | null }>> {
   const token = process.env.APIFY_API_TOKEN;
   const username = new URL(linkedinUrl).pathname.match(/^\/in\/([^/]+)/)?.[1];
   if (!token || !username) return [];
@@ -90,7 +110,15 @@ export async function scrapeLeadLinkedInPosts(linkedinUrl: string): Promise<Arra
   if (!response.ok) throw new Error(`Recent posts lookup HTTP ${response.status}`);
   const items = await response.json();
   if (!Array.isArray(items)) return [];
-  return items.slice(0, 10).map((item) => ({
+  const nameTokens = (value: string) => value.toLowerCase().normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "").split(/[^a-z]+/).filter(Boolean);
+  const expected = nameTokens(leadName);
+  return items.filter((item) => {
+    const author = item?.author;
+    if (!author || typeof author !== "object" || expected.length < 2) return false;
+    const actual = nameTokens(`${author.first_name ?? ""} ${author.last_name ?? ""}`);
+    return actual[0] === expected[0] && actual.includes(expected[expected.length - 1]);
+  }).slice(0, 10).map((item) => ({
     text: typeof item?.text === "string" ? item.text : "",
     url: typeof item?.post_url === "string" ? item.post_url : typeof item?.url === "string" ? item.url : "",
     date: typeof item?.posted_at?.timestamp === "string" ? item.posted_at.timestamp : null,

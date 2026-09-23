@@ -1035,7 +1035,7 @@ export function LeadsModule({
                                       </div>
                                       <span className="flex items-center gap-2">
                                         {canWrite && <button type="button" disabled={enrichingId === lead.id} onClick={(event) => { event.stopPropagation(); void enrichLead(lead.id); }} className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-blue-primary disabled:opacity-50"><RefreshCw size={12} /> {lead.linkedinProfile ? "Refresh" : "Retry lookup"}</button>}
-                                        <button type="button" onClick={(event) => { event.stopPropagation(); askFreyrAgent({ prompt: `Tell me about lead ${lead.ref}, ${lead.name} at ${lead.company}. Use the saved lead record and LinkedIn profile facts, state when those facts were fetched, and distinguish unknown facts from verified ones.` }); }} className="inline-flex items-center gap-1 rounded-md bg-blue-light px-2 py-1 text-[11.5px] font-semibold text-blue-primary"><Sparkles size={12} /> Ask AI</button>
+                                        <button type="button" onClick={(event) => { event.stopPropagation(); askFreyrAgent({ prompt: `Tell me about lead ${lead.ref}, ${lead.name} at ${lead.company}. Use the saved lead record and LinkedIn profile snapshot, state when it was fetched, distinguish entered lead facts from unverified public-profile claims, and identify what remains unknown.` }); }} className="inline-flex items-center gap-1 rounded-md bg-blue-light px-2 py-1 text-[11.5px] font-semibold text-blue-primary"><Sparkles size={12} /> Ask AI</button>
                                       </span>
                                     </div>
                                     {lead.linkedinProfile && (
