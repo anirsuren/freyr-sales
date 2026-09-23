@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Contract group dropdowns:** Customer and status groups on the Contracts page now have full-width expand/collapse headers with a chevron, count, and value. A compact Open all / Close all control sits next to the grouping selector; changing grouping resets the folded state. Verified in local Mock mode that one customer folds independently, all groups close and reopen, status grouping works, and the Mock banner stays visible. Typecheck, focused lint, and diff check pass. Local only, not deployed.
+
 - **Sep 23 Solutioning status pills:** The Solutioning table now uses the same status colors and icons as the record detail and grouping views. Request initiated is blue with a dashed circle, Assigned is cyan with a person check, Work in progress is violet with a progress mark, Completed is green with a check, and Delayed is orange with a clock. Verified in the local Mock table that all five render distinct computed colors and icons; typecheck and focused lint pass. Local only, not deployed.
 
 - **Sep 23 Mock-mode people names:** The 240 generated customer and showroom contacts now have distinct given names and surnames, while the familiar first thirty showroom identities stay stable. Existing generated Leads, Meetings, Solutioning, and Contracts rows replace only old synthetic names and email slugs in place, preserving status, notes, manual edits, and hand-created rows. The shared cast keeps links consistent across those modules and customer contacts. Verified with a focused uniqueness/migration test, typecheck, lint, and the local Mock Leads page; the Mock banner remained visible. Local only, not deployed.

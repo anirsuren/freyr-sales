@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   CircleDashed,
   ChevronDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Circle,
   CalendarClock,
   CalendarDays,
@@ -199,6 +201,7 @@ export function ContractsModule({
   const [confirmDelete, setConfirmDelete] = useState<Contract | null>(null);
   const [sort, setSort] = useState<"value" | "customer" | "starting" | "status">("value");
   const [groupBy, setGroupBy] = useState<"none" | "customer" | "status">("none");
+  const [closedGroups, setClosedGroups] = useState<string[]>([]);
   const [showAllAwaiting, setShowAllAwaiting] = useState(false);
   const [awaitingQuery, setAwaitingQuery] = useState("");
 
@@ -291,6 +294,7 @@ export function ContractsModule({
       }))
       .sort((a, b) => b.total - a.total);
   }, [shown, groupBy]);
+  const anyGroupOpen = groups?.some((group) => !closedGroups.includes(group.key)) ?? false;
 
   /** The baseline the delivery side reads, as a sheet. */
   /* NOTHING ON SCREEN, NOTHING TO EXPORT (Anir, Aug 14, on the Reports
@@ -744,6 +748,7 @@ export function ContractsModule({
         onClearAll={() => {
           setStatuses([]);
           setGroupBy("none");
+          setClosedGroups([]);
         }}
         groups={[
           {
@@ -759,19 +764,35 @@ export function ContractsModule({
           },
         ]}
         filtersAfter={
-          <ColorSelect
-            value={groupBy}
-            onChange={(v) => setGroupBy(v as typeof groupBy)}
-            ariaLabel="Group contracts"
-            minWidth={180}
-            dense
-            collapsible={false}
-            options={[
-              { value: "none", label: "No grouping", color: "#64748B", icon: Rows3 },
-              { value: "customer", label: "By customer", color: "var(--ink-violet-soft)", icon: Building2 },
-              { value: "status", label: "By status", color: "var(--ink-orange)", icon: ListChecks },
-            ]}
-          />
+          <div className="flex items-center gap-2">
+            <ColorSelect
+              value={groupBy}
+              onChange={(v) => {
+                setGroupBy(v as typeof groupBy);
+                setClosedGroups([]);
+              }}
+              ariaLabel="Group contracts"
+              minWidth={180}
+              dense
+              collapsible={false}
+              options={[
+                { value: "none", label: "No grouping", color: "#64748B", icon: Rows3 },
+                { value: "customer", label: "By customer", color: "var(--ink-violet-soft)", icon: Building2 },
+                { value: "status", label: "By status", color: "var(--ink-orange)", icon: ListChecks },
+              ]}
+            />
+            {groups && groups.length > 0 && (
+              <button
+                type="button"
+                aria-label={anyGroupOpen ? "Close all contract groups" : "Open all contract groups"}
+                onClick={() => setClosedGroups(anyGroupOpen ? groups.map((group) => group.key) : [])}
+                className="inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+              >
+                {anyGroupOpen ? <ChevronsDownUp size={14} strokeWidth={2.2} /> : <ChevronsUpDown size={14} strokeWidth={2.2} />}
+                {anyGroupOpen ? "Close all" : "Open all"}
+              </button>
+            )}
+          </div>
         }
         sort={
           <ColorSelect
@@ -828,12 +849,14 @@ export function ContractsModule({
         <div className="mt-4 space-y-2.5">
           {(groups
             ? groups.flatMap((g) => [
-                /* Group header with its own total — same shape as the pipeline
-                   and the accruals list. */
-                <div
+                <button
                   key={`h-${g.key}`}
+                  type="button"
                   data-contract-group={g.key}
-                  className="flex items-center gap-2.5 px-1 pb-0.5 pt-2"
+                  aria-expanded={!closedGroups.includes(g.key)}
+                  aria-label={`${g.key}: ${g.rows.length} ${g.rows.length === 1 ? "contract" : "contracts"}, ${formatMoney(g.total)}. ${closedGroups.includes(g.key) ? "Open" : "Close"} group`}
+                  onClick={() => setClosedGroups((current) => current.includes(g.key) ? current.filter((key) => key !== g.key) : [...current, g.key])}
+                  className="group flex w-full items-center gap-2.5 rounded-lg border border-border-light bg-white px-3 py-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/25"
                 >
                   {groupBy === "customer" ? (
                     <CompanyLogo name={g.key} className="h-6 w-6 shrink-0" />
@@ -848,9 +871,9 @@ export function ContractsModule({
                     {g.rows.length} {g.rows.length === 1 ? "contract" : "contracts"} ·{" "}
                     {formatMoney(g.total)}
                   </span>
-                  <span className="h-px flex-1 bg-border-light" />
-                </div>,
-                ...g.rows,
+                  <ChevronDown size={16} strokeWidth={2} className={cn("ml-auto shrink-0 text-text-secondary transition-transform", closedGroups.includes(g.key) && "-rotate-90")} />
+                </button>,
+                ...(closedGroups.includes(g.key) ? [] : g.rows),
               ])
             : shown
           ).map((entry) => {
