@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Result correction popup:** The Goals “Fix and resubmit result” dialog is narrower and organized around the correction: original result and status in a compact header, reviewer feedback beside the editable amount/date/account fields, and supporting evidence in a small secondary panel. The same update/resubmission behavior is preserved. Verified visually in local Mock mode with its banner visible; typecheck, focused lint, and diff check pass. Local only, not deployed.
+
 - **Sep 23 Rich customer contacts:** The add/edit contact dialog now has a wider, organized layout for professional details, reachability, location, and relationship context. It saves department, city/country, buying role, team relationship notes, and professional background, and displays the new context on the contact profile. Adding from Key contacts now starts starred and persists that choice; the edit form preserves existing key status. Development migrations `030_key_contacts.sql` and `031_contact_context.sql` were applied to the development Supabase project (not production). Verified the Mock-mode dialog and banner visually, and typecheck and focused lint pass. Local code only, not deployed; both migrations are required on production before deploying this change.
 
 - **Sep 23 Request origin company logo:** The persistent “For this opportunity/customer” header in the Solutioning request dialog now displays the customer’s `CompanyLogo` instead of a generic briefcase/building icon. Existing real logo assets and fallback marks remain consistent with the rest of the app. Verified the header in the Mock-mode chooser; typecheck and focused lint pass. Local only, not deployed.

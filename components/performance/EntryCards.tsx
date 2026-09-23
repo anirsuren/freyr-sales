@@ -1732,25 +1732,27 @@ export function MyEntriesCard({
               onClose={() => setEditFor(null)}
               title={fixing ? "Fix and resubmit result" : "Edit result"}
               size="workflow"
-              dialogClassName="!max-w-[1100px]"
+              dialogClassName="!max-w-[960px]"
               bodyClassName="!p-0"
             >
-              <div className="border-b border-border-light bg-surface/70 px-6 py-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="border-b border-border-light bg-[#F8FAFD] px-7 py-5">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary">
-                      Result being corrected
+                    <span className="mb-2 block text-[10.5px] font-bold uppercase tracking-[0.1em] text-text-tertiary">
+                      {fixing ? "Returned for correction" : "Result on record"}
                     </span>
                     <div className="flex flex-wrap items-center gap-2">
                       {goalChip(state, a.goalId)}
-                      <span className="text-[12px] text-text-secondary">
-                        Logged {stamp(a.addedAt).label ?? formatDate(a.date)}
-                        {stamp(a.addedAt).time ? ` at ${stamp(a.addedAt).time}` : ""}
-                      </span>
                     </div>
+                    <p className="mt-2 text-[12px] text-text-secondary">
+                      Logged {stamp(a.addedAt).label ?? formatDate(a.date)}
+                      {stamp(a.addedAt).time ? ` at ${stamp(a.addedAt).time}` : ""}
+                      <span className="mx-2 text-border-strong">·</span>
+                      Original result: <span className="font-semibold text-text-primary">{goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}</span>
+                    </p>
                   </div>
                   {fixing && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:#FDECEC] px-3 py-1.5 text-[11.5px] font-bold text-[color:var(--status-red)]">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F7D1D1] bg-[#FFF2F1] px-3 py-1.5 text-[11.5px] font-bold text-[color:var(--status-red)]">
                       <AlertCircle size={13} strokeWidth={2.5} />
                       Needs correction
                     </span>
@@ -1758,18 +1760,18 @@ export function MyEntriesCard({
                 </div>
               </div>
 
-              <div className="space-y-5 px-6 py-5">
+              <div className="grid items-start gap-6 px-7 py-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
                 {/* The rejection note travels WITH the form. Fixing a claim
                     without the reason in front of you is guesswork. */}
                 {a.managerNote && (
-                  <section className="overflow-hidden rounded-2xl border border-[color:#F3B2B2] bg-[color:#FFF8F8]">
-                    <div className="flex items-center gap-2 border-b border-[color:#F7D1D1] px-4 py-3">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:#FDE5E5] text-[color:var(--status-red)]">
+                  <section className="overflow-hidden rounded-2xl border border-[#F4CCCC] bg-[#FFF9F8] lg:col-start-1 lg:row-start-1">
+                    <div className="flex items-center gap-2.5 px-4 pb-2 pt-4">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FFE9E6] text-[color:var(--status-red)]">
                         <AlertCircle size={16} strokeWidth={2.4} />
                       </span>
                       <div className="min-w-0">
-                        <span className="block text-[10.5px] font-bold uppercase tracking-[0.07em] text-[color:var(--status-red)]">
-                          Why it was sent back
+                        <span className="block text-[11px] font-bold uppercase tracking-[0.07em] text-[color:var(--status-red)]">
+                          Reviewer&apos;s feedback
                         </span>
                         {a.sentBackBy && (
                           <span className="mt-0.5 inline-flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
@@ -1782,28 +1784,28 @@ export function MyEntriesCard({
                         )}
                       </div>
                     </div>
-                    <blockquote className="px-4 py-3.5 text-[14px] leading-6 text-text-primary">
+                    <blockquote className="px-4 pb-4 pl-[62px] text-[14px] font-medium leading-6 text-text-primary">
                       &ldquo;{a.managerNote}&rdquo;
                     </blockquote>
                   </section>
                 )}
 
-                <section className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.03)]">
-                  <div className="mb-4 flex items-start gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary">
-                      <PenLine size={15} strokeWidth={2.2} />
+                <section className={cn("min-w-0 lg:col-start-2 lg:row-start-1", a.managerNote && "lg:row-span-2")}>
+                  <div className="mb-5 flex items-start gap-3 border-b border-border-light pb-4">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
+                      <PenLine size={18} strokeWidth={2.2} />
                     </span>
                     <div>
-                      <h3 className="text-[13.5px] font-bold text-text-primary">
-                        Corrected result
+                      <h3 className="text-[16px] font-bold tracking-tight text-text-primary">
+                        {fixing ? "Make your correction" : "Update this result"}
                       </h3>
-                      <p className="mt-0.5 text-[11.5px] text-text-secondary">
-                        Update the result and the date it actually happened.
+                      <p className="mt-0.5 text-[12px] text-text-secondary">
+                        Set the amount and date that should be verified.
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                     <label className="block">
                       <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
                         Amount<RequiredMark />
@@ -1840,7 +1842,7 @@ export function MyEntriesCard({
                         }))
                       }
                       className={cn(
-                        "h-11 w-full rounded-xl border bg-white pl-9 pr-3 text-[14px] outline-none transition-shadow focus:ring-2 tnum",
+                        "h-12 w-full rounded-xl border bg-white pl-9 pr-3 text-[15px] font-semibold outline-none transition-shadow focus:ring-2 tnum",
                         amountInvalid
                           ? "border-error focus:border-error focus:ring-error/10"
                           : "border-border-light focus:border-blue-primary focus:ring-blue-primary/10"
@@ -1864,10 +1866,10 @@ export function MyEntriesCard({
                     onChange={(e) =>
                       setDraft((d) => ({ ...d, date: e.target.value }))
                     }
-                    className="h-11 w-full rounded-xl border border-border-light bg-white px-3 text-[14px] outline-none transition-shadow focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
+                    className="h-12 w-full rounded-xl border border-border-light bg-white px-3 text-[14px] outline-none transition-shadow focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
                   />
                 </label>
-                <div className="block sm:col-span-2">
+                <div className="block sm:col-span-2 lg:col-span-1 xl:col-span-2">
                   <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
                     Customer account<OptionalMark />
                   </span>
@@ -1884,7 +1886,7 @@ export function MyEntriesCard({
                     collapsible={false}
                     fill
                     minWidth={0}
-                    className="w-full [&_button[aria-haspopup='listbox']]:!h-14 [&_button[aria-haspopup='listbox']]:!rounded-xl [&_button[aria-haspopup='listbox']]:!px-4 [&_button[aria-haspopup='listbox']]:!text-[16px]"
+                    className="w-full [&_button[aria-haspopup='listbox']]:!h-12 [&_button[aria-haspopup='listbox']]:!rounded-xl [&_button[aria-haspopup='listbox']]:!px-3 [&_button[aria-haspopup='listbox']]:!text-[14px]"
                     onChange={(value) => {
                       if (value === "__current") return;
                       const selected = customerOptions.find(
@@ -1933,9 +1935,9 @@ export function MyEntriesCard({
                   not add it. */}
               {/* The picker draws its own label and hint — saying "Evidence"
                   above it printed the word twice (Anir, Aug 20). */}
-                <section className="rounded-2xl border border-border-light bg-surface/45 p-4">
+                <section className={cn("min-w-0 rounded-2xl border border-border-light bg-[#FAFBFD] p-4 lg:col-start-1", a.managerNote ? "lg:row-start-2" : "lg:row-start-1")}>
                   <div className="mb-3 flex items-start gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-blue-primary shadow-sm ring-1 ring-border-light">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-blue-primary ring-1 ring-border-light">
                       <Paperclip size={15} strokeWidth={2.2} />
                     </span>
                     <div>
@@ -1952,7 +1954,6 @@ export function MyEntriesCard({
                     onChange={setDraftEvidence}
                     onUploadingChange={setUploadingEvidence}
                     showLabel={false}
-                    roomy
                   />
                 </section>
               </div>
