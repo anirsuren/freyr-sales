@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import { useStoredSet } from "@/lib/useStoredView";
-import { AlertTriangle, Briefcase, Calendar, CalendarDays, CalendarRange, ChevronDown, ChevronRight, Columns2, Grid2X2, GripVertical, Layers, Package, TrendingUp, UserRound } from "lucide-react";
+import { AlertTriangle, Briefcase, Calendar, CalendarDays, CalendarRange, ChevronDown, ChevronRight, Columns2, Grid2X2, GripVertical, Layers, Package, Pin, TrendingUp, UserRound } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { BarChart } from "@/components/charts/Charts";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -364,7 +364,7 @@ function confidenceTint(_pct: number): { fg: string; bg: string; border: string 
 /**
  * QUIET, AND BESIDE THE NAME — never a column of its own. The period grid is
  * the thing this table is for; a sixth header would push it sideways for a
- * figure that is two characters wide. It rides in the pinned name cell, which
+ * figure that is two characters wide. It rides in the width-locked name cell, which
  * is width-locked, so the money columns do not move a pixel (Anir, Aug 30:
  * "it looks like everything's shifting to the right — I don't like that").
  */
@@ -575,6 +575,24 @@ export function OpportunitySummary({
    * first rows above the fold instead of below a 180px chart.
    */
   const [chartOpen, setChartOpen] = useState(false);
+  const [pinFirstColumn, setPinFirstColumn] = useState(false);
+  const pinStorageKey = `${storageKey || "freyr.summary.anon"}.pinFirstColumn`;
+  useEffect(() => {
+    try {
+      setPinFirstColumn(localStorage.getItem(pinStorageKey) === "1");
+    } catch {
+      setPinFirstColumn(false);
+    }
+  }, [pinStorageKey]);
+  const toggleFirstColumnPin = () => {
+    const next = !pinFirstColumn;
+    setPinFirstColumn(next);
+    try {
+      localStorage.setItem(pinStorageKey, next ? "1" : "0");
+    } catch {
+      // Keep the choice for this visit if storage is unavailable.
+    }
+  };
 
   const measureLabel = measure === "acv" ? "Estimated ACV" : "Estimated TCV";
 
@@ -774,8 +792,8 @@ export function OpportunitySummary({
    * them, and every money column slid right. The figures you were reading
    * moved because you opened something underneath them.
    *
-   * Pinned, so opening and closing changes what is listed and never where the
-   * numbers sit. Long names truncate, which they already did.
+   * Width-locked, so opening and closing changes what is listed and never
+   * where the numbers sit. Horizontal pinning is a separate reader choice.
    */
   /**
    * WIDE ENOUGH FOR A DEAL'S ACTUAL NAME (Anir, Sep 3: "I really don't want
@@ -878,7 +896,7 @@ export function OpportunitySummary({
       >
         <th
           scope="row"
-          className="sticky left-0 z-[1] bg-white px-3 py-2 text-left font-normal"
+          className={cn("bg-white px-3 py-2 text-left font-normal", pinFirstColumn && "sticky left-0 z-[1]")}
           style={{ ...nameCol, paddingLeft: `${12 + depth * 18}px` }}
         >
           {/* Read once, because the button above the name needs to know
@@ -1079,7 +1097,7 @@ export function OpportunitySummary({
               >
                 <th
                   scope="row"
-                  className="sticky left-0 z-[1] bg-white px-3 py-1.5 text-left font-normal"
+                  className={cn("bg-white px-3 py-1.5 text-left font-normal", pinFirstColumn && "sticky left-0 z-[1]")}
                   style={{ ...nameCol, paddingLeft: `${12 + (depth + 1) * 18}px` }}
                 >
                   <button
@@ -1368,16 +1386,34 @@ export function OpportunitySummary({
               number you have to go and find.
 
               It scrolls sideways when there are more periods than fit; the
-              first column is pinned so the row never loses its name. */}
+              first column can be pinned from its own header. */}
           <div className="mt-3 overflow-x-auto rounded-xl border border-border-light">
             <table className="w-full border-collapse bg-white text-left">
               <thead>
                 <tr className="border-b border-border-light bg-surface">
                   <th
                     style={nameCol}
-                    className="sticky left-0 z-[2] whitespace-nowrap bg-surface px-3 py-2 text-left text-[12px] font-bold uppercase tracking-[0.04em] text-text-tertiary"
+                    className={cn("whitespace-nowrap bg-surface px-3 py-2 text-left text-[12px] font-bold uppercase tracking-[0.04em] text-text-tertiary", pinFirstColumn ? "sticky left-0 z-[2]" : "relative")}
                   >
                     {order.length ? DIMENSION_LABEL[order[0]] : "Opportunity"}
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <Tooltip label={pinFirstColumn ? "Unpin first column" : "Pin first column while scrolling"}>
+                        <button
+                          type="button"
+                          aria-label={pinFirstColumn ? "Unpin first column" : "Pin first column"}
+                          aria-pressed={pinFirstColumn}
+                          onClick={toggleFirstColumnPin}
+                          className={cn(
+                            "flex h-6 w-6 items-center justify-center rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary",
+                            pinFirstColumn
+                              ? "text-blue-primary hover:bg-blue-light"
+                              : "text-text-tertiary/60 hover:bg-white hover:text-blue-primary"
+                          )}
+                        >
+                          <Pin size={14} className={cn(pinFirstColumn && "fill-current")} aria-hidden="true" />
+                        </button>
+                      </Tooltip>
+                    </span>
                   </th>
                   <th className="whitespace-nowrap px-3 py-2 text-[12px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
                     Total
@@ -1398,7 +1434,7 @@ export function OpportunitySummary({
                   <th
                     scope="row"
                     style={nameCol}
-                    className="sticky left-0 z-[1] whitespace-nowrap bg-[color:rgba(0,113,227,0.06)] px-3 py-2 text-left text-[14px] font-bold text-text-primary"
+                    className={cn("whitespace-nowrap bg-[#f2f7ff] px-3 py-2 text-left text-[14px] font-bold text-text-primary", pinFirstColumn && "sticky left-0 z-[1]")}
                   >
                     All {deals.length} {deals.length === 1 ? "deal" : "deals"}
                   </th>
@@ -1432,7 +1468,7 @@ export function OpportunitySummary({
                           <th
                             scope="row"
                             style={nameCol}
-                            className="sticky left-0 z-[1] bg-white px-3 py-1.5 text-left font-normal"
+                            className={cn("bg-white px-3 py-1.5 text-left font-normal", pinFirstColumn && "sticky left-0 z-[1]")}
                           >
                             <button
                               type="button"
