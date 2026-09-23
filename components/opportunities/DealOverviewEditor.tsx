@@ -1677,11 +1677,8 @@ export function DealOverviewEditor({
                       convert. USD_INSET is that offset, in one place. */}
                   <td className="text-[13px] text-text-secondary">
                     <span className="flex items-center gap-2">
-                      <span
-                        aria-hidden="true"
-                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface text-[11px] font-bold text-text-secondary"
-                      >
-                        $
+                      <span aria-hidden="true" className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-[18px]">
+                        {currencyMeta("USD").flag}
                       </span>
                       USD US dollar
                     </span>

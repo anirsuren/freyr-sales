@@ -4239,7 +4239,7 @@ function SingleOfferingEditor({
             <tbody className="divide-y divide-border-light">
               <tr className="align-middle [&>td]:px-3 [&>td]:py-2.5">
                 <td className="text-[13px] text-text-secondary">
-                  {currencyMeta(line.localCurrency).symbol.trim()} {line.localCurrency}{" "}
+                  {currencyMeta(line.localCurrency).flag}{" "}{currencyMeta(line.localCurrency).symbol.trim()} {line.localCurrency}{" "}
                   {currencyMeta(line.localCurrency).name}
                 </td>
                 <td className="text-[13px] font-semibold tnum text-text-primary">
@@ -4247,7 +4247,7 @@ function SingleOfferingEditor({
                 </td>
               </tr>
               <tr className="align-middle [&>td]:px-3 [&>td]:py-2.5">
-                <td className="text-[13px] text-text-secondary">$ USD US dollar</td>
+                <td className="text-[13px] text-text-secondary">{currencyMeta("USD").flag} $ USD US dollar</td>
                 <td
                   className={
                     Number(line.value) > 0
