@@ -1162,7 +1162,7 @@ export function Customer360({
                run between grid CELLS, so in two columns they draw a line down
                the middle and skip the row boundaries. */
             <ul className="mt-1 grid gap-x-6 sm:grid-cols-2">
-              {active.items.slice(0, 8).map((item) => (
+              {active.items.map((item) => (
                 <li
                   key={item.id}
                   className="flex items-start gap-3 border-t border-border-light py-2.5 first:border-t-0 sm:[&:nth-child(2)]:border-t-0"
@@ -1240,11 +1240,6 @@ export function Customer360({
                 </li>
               ))}
             </ul>
-            )}
-            {(active.count ?? active.items.length) > 8 && (
-              <p className="mt-2 border-t border-border-light pt-2 text-[12px] text-text-tertiary">
-                and {(active.count ?? active.items.length) - 8} more
-              </p>
             )}
           </div>
         </>

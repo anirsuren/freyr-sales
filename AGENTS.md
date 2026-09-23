@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Connected-record rows are complete:** The shared customer/opportunity connected-record view no longer caps non-table bands at eight items or prints an “and N more” footer beneath tables that already show every row. Month-by-month accrual schedules and other connected sections render their complete item lists on the page. Typecheck and focused lint pass. Local only, not deployed.
+
 - **Sep 23 Lead status donut selection:** In the enlarged Leads status workspace, clicking a donut slice selects that status and immediately filters the lead table on the right; clicking the selected slice again returns to all leads. The selected slice stays emphasized and the enlarged chart no longer opens hover tooltips. The existing status list remains an equivalent filter. Typecheck and focused lint pass. Local only, not deployed.
 
 - **Sep 23 graph pop-up explorer:** Graph pop-ups now use a consistent, larger chart workspace, including the Lead analytics workspaces. Shared charts have a category explorer beside the plot; selecting a segment isolates it, and zero-value categories show a clear empty state. The organization Goals pace chart lists the goals behind each pace category. Legacy analytics and voice chart pop-ups use the same layout, with searchable records where available. Verified Target met, Ahead, and No schedule in local Mock mode; focused lint, typecheck, and production build pass. The build briefly interrupted the local dev server; it was restarted and the opportunity page and Mock banner were verified afterward. Do not run another production build against the active dev server. Local only, not deployed.

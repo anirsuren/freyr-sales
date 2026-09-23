@@ -1532,7 +1532,7 @@ export function AreaChart({
         preserveAspectRatio="none"
         className="w-full block"
         style={{ height }}
-        role={onSegmentClick ? "group" : "img"}
+        role="img"
         aria-label={`Trend chart, ${data.length} points, trending ${trend}${
           goalLabel ? `, ${goalLabel}` : ""
         }`}
@@ -1905,7 +1905,7 @@ export function DonutChart({
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
-        role="img"
+        role={onSegmentClick ? "group" : "img"}
         // Entrance = the whole ring settling in (rotate + fade). The per-slice
         // dash sweep is gone for good — animating dash lengths left square
         // notches at segment edges (the "glitchy pie" Suren kept seeing).
