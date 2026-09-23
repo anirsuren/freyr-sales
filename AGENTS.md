@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Solutioning row actions are explicit:** Empty cells in request, submission, and presentation rows no longer toggle the inline breakdown or show a pointer cursor. The title and document-count links open the full record; only the Actions chevron expands or collapses the inline breakdown. Verified in local Mock mode by clicking an empty cell and the chevron on the same request; typecheck and focused lint pass. Local only, not deployed.
+
 - **Sep 23 Deviations summary stays on one line:** The Needs attention and Most deviations chip groups use one non-wrapping strip. At narrower widths, that strip scrolls horizontally instead of moving owner chips onto a second line. Verified visually in local Mock mode; typecheck and focused lint pass. Local only, not deployed.
 
 - **Sep 23 Optional first-column pin in opportunity summaries:** The first column of the booked/accrual/customer summary table now scrolls away by default. A quiet pin inside its header toggles sticky behavior without adding table space, and the choice persists separately for each summary. Pinned cells have opaque backgrounds so horizontal scrolling cannot show figures through them. Verified in the Mock accrual table by scrolling with the pin on and off and reloading with it off; typecheck and focused lint pass (four existing warnings). Local only, not deployed.

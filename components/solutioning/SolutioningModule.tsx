@@ -1253,20 +1253,15 @@ function RequestRow({
   const preparedBy = r.completedBy || r.owner || "Not started";
   return (
     <>
-    {/* Empty row space toggles the inline breakdown. The request title is the
-        direct route to the full page; entity links and controls keep their
-        own destinations. */}
+    {/* The request title opens the full page. Only the chevron in Actions
+        toggles the inline breakdown; empty cells are not hidden controls. */}
     <tr
-      onClick={(event) => {
-        if ((event.target as Element).closest("a,button,input,select,textarea,[role='button']")) return;
-        onToggle();
-      }}
       /* THE RAIL RUNS THE WHOLE WAY (Anir, Aug 25: "the blue thing has to
          extend all the way"). The deal table lights the OPEN row itself — same
          tint, same 3px rail — so the row and the panel under it read as one
          block instead of a panel floating below an untouched row. */
       className={cn(
-        "group cursor-pointer align-middle transition-colors",
+        "group align-middle transition-colors",
         /* NO RULE ACROSS AN OPEN ROW (Anir, Aug 26: "there's a line... on the
            left side, there's a line separation for that blue line I was
            talking about"). The row's own border-b painted a 1px line straight
@@ -1275,7 +1270,7 @@ function RequestRow({
            block, and its card already separates it from the next row. */
         open
           ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-          : "border-b border-border-light last:border-0 hover:bg-[var(--surface)]"
+          : "border-b border-border-light last:border-0"
       )}
     >
       <td className="w-[340px] px-4 py-3">
@@ -1287,17 +1282,13 @@ function RequestRow({
         >
           {r.title}
         </Link>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggle();
-          }}
+        <Link
+          href={requestHref}
           className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-blue-primary hover:underline"
         >
           <FileText size={12} strokeWidth={2} />
           {visibleRequestDocs(r).length} {visibleRequestDocs(r).length === 1 ? "document" : "documents"}
-        </button>
+        </Link>
       </td>
       <td className="px-4 py-3.5">
         <KindChip kind={r.kind} size="sm" iconOnly={hideKindLabel} />
