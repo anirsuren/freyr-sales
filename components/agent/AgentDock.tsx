@@ -8,7 +8,7 @@ import {
   X,
   MessageCircle,
   Menu,
-  Plus,
+  ArrowLeft,
   MessageSquareText,
   PanelRightOpen,
   PanelRightClose,
@@ -1151,16 +1151,7 @@ export function AgentDock({
                 historyOpen ? "bg-blue-light text-blue-primary" : "text-text-secondary hover:bg-surface hover:text-blue-primary"
               )}
             >
-              <Menu size={18} strokeWidth={1.9} />
-            </button>
-            <button
-              type="button"
-              onClick={startNewChat}
-              aria-label="New chat"
-              title="New chat"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-blue-primary"
-            >
-              <Plus size={19} strokeWidth={1.9} />
+              {historyOpen ? <ArrowLeft size={18} strokeWidth={1.9} /> : <Menu size={18} strokeWidth={1.9} />}
             </button>
             {!embedded && (
               <Link
@@ -1199,13 +1190,12 @@ export function AgentDock({
           {historySyncFailed && <p role="status" className="mx-4 mt-2 rounded-md bg-warning/10 px-3 py-2 text-xs text-text-primary">Your changes are saved on this device. Account history could not sync; another tab may have changed this chat.</p>}
 
           {historyOpen ? (
-            <div className={cn("min-h-0 flex-1 overflow-y-auto px-3 py-3", embedded ? "" : "h-[520px] max-h-[72vh]")}>
+            <div className={cn("agent-dock-history-enter min-h-0 flex-1 overflow-y-auto px-3 py-3", embedded ? "" : "h-[520px] max-h-[72vh]")}>
               <button
                 type="button"
                 onClick={startNewChat}
                 className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-primary px-3 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-blue-hover"
               >
-                <Plus size={17} strokeWidth={2} />
                 New chat
               </button>
               {visibleConvos.length === 0 ? (
@@ -1240,7 +1230,7 @@ export function AgentDock({
               )}
             </div>
           ) : (
-          <>
+          <div className="agent-dock-chat-enter flex min-h-0 flex-1 flex-col">
 
           {/* Messages: greeting is always the first bubble so it never vanishes */}
           <div
@@ -1378,7 +1368,7 @@ export function AgentDock({
               </button>
             </div>
           </div>
-          </>
+          </div>
           )}
         </div>
       )}

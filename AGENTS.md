@@ -274,11 +274,19 @@ what was written back, `deleted-test-customers.json`).
   Sep 21, 2026; typecheck passes. Local only, not deployed.
 
 - **Sep 22 Agent popup chat history:** The bottom-right Agent popup now has a
-  three-line history button and a new-chat button. Its history is grouped by
+  three-line history button. Its history is grouped by
   date and uses the same saved conversations as the full Agent page; selecting
   a chat opens it inside the popup. Verified in the localhost Mock UI by
   switching between saved chats and starting a blank chat. Typecheck and
   focused lint pass. Local only, not deployed.
+
+- **Sep 22 Agent popup history flow:** Removed the standalone plus button from
+  the compact chat header. The history control now switches to a back arrow,
+  and both history and chat views slide/fade into place; reduced-motion users
+  see an instant switch. "New chat" remains the single creation action at the
+  top of past chats. Verified in localhost Mock mode by opening history and
+  starting a fresh chat; typecheck and focused lint pass. Local only, not
+  deployed.
 
 - **Sep 22 Agent popup response rendering:** The compact Agent popup now
   renders fenced chart responses as charts and displays Markdown status bullets
