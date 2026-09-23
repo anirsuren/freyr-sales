@@ -1,4 +1,5 @@
 import "server-only";
+import { leadLinkedInUrl, normalizeLeadLinkedInProfile } from "./leadLinkedIn";
 
 import { getDataMode } from "./dataMode";
 import { mockFillLeads, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
@@ -8,6 +9,7 @@ import {
   LEAD_STATUSES,
   nextLeadRef,
   type Lead,
+  type LeadLinkedInProfile,
   type LeadSource,
   type LeadStatus,
   type LeadsState,
@@ -76,6 +78,9 @@ function normalizeLead(v: unknown): Lead | null {
     email: str(r.email, 200) || undefined,
     phone: str(r.phone, 60) || undefined,
     country: str(r.country, 80) || undefined,
+    linkedinUrl: leadLinkedInUrl(str(r.linkedinUrl, 300)) || undefined,
+    linkedinProfile: r.linkedinProfile ? normalizeLeadLinkedInProfile(r.linkedinProfile, str(r.linkedinProfile.fetchedAt, 40)) ?? undefined : undefined,
+    linkedinStatus: r.linkedinStatus === "ready" || r.linkedinStatus === "unavailable" ? r.linkedinStatus : undefined,
     source: sourceOf(r.source),
     interest: str(r.interest, 500) || undefined,
     offeringId: str(r.offeringId, 60) || undefined,
@@ -281,6 +286,7 @@ export type LeadInput = {
   email?: string;
   phone?: string;
   country?: string;
+  linkedinUrl?: string;
   source?: string;
   interest?: string;
   offeringId?: string;
@@ -296,9 +302,17 @@ export async function saveLead(input: LeadInput, who: string): Promise<Lead> {
     const existing = input.id
       ? state.leads.find((l) => l.id === input.id)
       : undefined;
+    const linkedinUrl = input.linkedinUrl === undefined
+      ? existing?.linkedinUrl || ""
+      : leadLinkedInUrl(input.linkedinUrl);
+    if (linkedinUrl === null) throw new Error("Enter a LinkedIn profile link, such as linkedin.com/in/name.");
+    const sameLinkedIn = !!existing && existing.linkedinUrl === (linkedinUrl || undefined);
     const draft = normalizeLead({
       ...existing,
       ...input,
+      linkedinUrl: linkedinUrl || undefined,
+      linkedinProfile: sameLinkedIn ? existing.linkedinProfile : undefined,
+      linkedinStatus: sameLinkedIn ? existing.linkedinStatus : undefined,
       id: existing?.id ?? uid(),
       /* Minted once. A lead people quote by number in a pipeline meeting must
          not renumber itself when somebody fixes a typo in the company name. */
@@ -314,6 +328,24 @@ export async function saveLead(input: LeadInput, who: string): Promise<Lead> {
     state.leads = [...state.leads.filter((l) => l.id !== draft.id), draft];
     await writeRow(state);
     return draft;
+  });
+}
+
+/** Store a lookup only if the lead still points at the URL that was fetched. */
+export async function saveLeadLinkedInLookup(
+  id: string, url: string, profile: LeadLinkedInProfile | null,
+): Promise<Lead | null> {
+  return withWrite(async () => {
+    const state = await readRow();
+    const index = state.leads.findIndex((lead) => lead.id === id);
+    if (index < 0 || state.leads[index].linkedinUrl !== url) return null;
+    const updated: Lead = {
+      ...state.leads[index], linkedinProfile: profile || undefined,
+      linkedinStatus: profile ? "ready" : "unavailable",
+    };
+    state.leads[index] = updated;
+    await writeRow(state);
+    return updated;
   });
 }
 

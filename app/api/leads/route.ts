@@ -6,7 +6,10 @@ import {
   readLeads,
   removeLead,
   saveLead,
+  saveLeadLinkedInLookup,
 } from "@/lib/leads";
+import { scrapeLeadLinkedInPosts, scrapeLinkedInProfile } from "@/lib/apify";
+import { leadLinkedInUrl, normalizeLeadLinkedInProfile } from "@/lib/leadLinkedIn";
 import {
   canOpenModule,
   moduleCreateRefusal,
@@ -85,8 +88,45 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+      const requestedUrl = (body.lead as { linkedinUrl?: unknown } | undefined)?.linkedinUrl;
+      if (requestedUrl !== undefined && (typeof requestedUrl !== "string" || leadLinkedInUrl(requestedUrl) === null)) {
+        return NextResponse.json({ error: "Enter a LinkedIn profile link, such as linkedin.com/in/name." }, { status: 400 });
+      }
       const lead = await saveLead(body.lead ?? {}, me.name);
       return NextResponse.json({ ok: true, lead, state: await readLeads() });
+    }
+    if (op === "enrich-linkedin") {
+      const id = String(body.id ?? "");
+      const lead = (await readLeads()).leads.find((item) => item.id === id);
+      if (!lead) return NextResponse.json({ error: "That lead is gone." }, { status: 404 });
+      if (!lead.linkedinUrl) return NextResponse.json({ error: "Add a LinkedIn profile link first." }, { status: 400 });
+      const url = lead.linkedinUrl;
+      if (!process.env.APIFY_API_TOKEN) {
+        await saveLeadLinkedInLookup(id, url, null);
+        return NextResponse.json({ error: "Profile lookup is not configured. The link is saved, but no profile facts were imported." }, { status: 503 });
+      }
+      try {
+        const [raw, recentPosts] = await Promise.all([
+          scrapeLinkedInProfile(url),
+          scrapeLeadLinkedInPosts(url).catch(() => []),
+        ]);
+        const profile = normalizeLeadLinkedInProfile({ ...raw, recentPosts });
+        if (!profile) throw new Error("No readable profile details were returned.");
+        if (profile.fullName && lead.name) {
+          const nameParts = (value: string) => value.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z]+/).filter((part) => part.length > 1);
+          const expected = nameParts(lead.name);
+          const actual = nameParts(profile.fullName);
+          if (expected.length && !expected.some((part) => actual.includes(part))) {
+            return NextResponse.json({ error: `The LinkedIn profile belongs to ${profile.fullName}, not ${lead.name}. The link is saved, but no facts were imported.` }, { status: 409 });
+          }
+        }
+        const saved = await saveLeadLinkedInLookup(id, url, profile);
+        if (!saved) return NextResponse.json({ error: "The lead changed while the profile was loading. Please retry." }, { status: 409 });
+        return NextResponse.json({ ok: true, lead: saved, state: await readLeads() });
+      } catch {
+        await saveLeadLinkedInLookup(id, url, null);
+        return NextResponse.json({ error: "The link was saved, but the profile could not be read. You can retry from this lead." }, { status: 502 });
+      }
     }
     if (op === "delete") {
       const refusal = await moduleDeleteRefusal("/leads");

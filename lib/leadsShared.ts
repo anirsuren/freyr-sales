@@ -55,6 +55,21 @@ export const LEAD_STATUSES = [
 ] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
+export type LeadLinkedInProfile = {
+  fullName: string;
+  headline: string;
+  currentCompany: string;
+  currentTitle: string;
+  location: string;
+  about: string;
+  experience: { title: string; company: string; duration: string; description: string }[];
+  education: { school: string; degree: string }[];
+  skills: string[];
+  recentPosts: { text: string; url: string; date: string | null }[];
+  fetchedAt: string;
+  source: "LinkedIn profile lookup";
+};
+
 export type Lead = {
   id: string;
   /** LEAD-0001. Quotable in a meeting, never reused. */
@@ -69,6 +84,9 @@ export type Lead = {
   email?: string;
   phone?: string;
   country?: string;
+  linkedinUrl?: string;
+  linkedinProfile?: LeadLinkedInProfile;
+  linkedinStatus?: "ready" | "unavailable";
   source: LeadSource;
   /** Free text: which offering they asked about, what they typed in the form. */
   interest?: string;

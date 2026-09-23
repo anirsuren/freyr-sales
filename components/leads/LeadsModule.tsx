@@ -14,6 +14,8 @@ import {
   Globe2,
   Handshake,
   Mail,
+  ExternalLink,
+  RefreshCw,
   MapPin,
   Megaphone,
   MessageCircle,
@@ -41,6 +43,7 @@ import { PageToolbar } from "@/components/ui/PageToolbar";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { Modal } from "@/components/ui/Modal";
 import {
   countryOptions,
@@ -60,6 +63,8 @@ import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn, todayISO } from "@/lib/utils";
+import { askFreyrAgent } from "@/lib/agentEvents";
+import { leadLinkedInUrl } from "@/lib/leadLinkedIn";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { PinnableTable } from "@/components/ui/PinnableTable";
 import { PriorityLabel, PriorityTooltip } from "@/components/ui/SearchPriority";
@@ -144,6 +149,7 @@ const BLANK = {
   email: "",
   phone: "",
   country: "",
+  linkedinUrl: "",
   source: "Website",
   interest: "",
   status: "New",
@@ -208,6 +214,7 @@ export function LeadsModule({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Lead | null>(null);
   /** Which lead is folded open. Same mechanic as every other list here. */
   const [openRow, setOpenRow] = useState<string | null>(null);
@@ -228,7 +235,7 @@ export function LeadsModule({
       if (sources.length && !sources.includes(l.source)) return false;
       if (owners.length && !owners.includes(l.owner ?? "__none")) return false;
       if (!q) return true;
-      return [l.ref, l.name, l.company, l.email ?? "", l.interest ?? "", l.title ?? ""]
+      return [l.ref, l.name, l.company, l.email ?? "", l.interest ?? "", l.title ?? "", l.linkedinProfile?.headline ?? ""]
         .join(" ")
         .toLowerCase()
         .includes(q);
@@ -279,10 +286,10 @@ export function LeadsModule({
       `freyr-leads-${todayISO()}.csv`,
       toCSV(
         ["Name", "Title", "Company", "Source", "Status", "Owner",
-         "Email", "Phone", "Country", "Asked about", "Came in", "Last moved"],
+         "Email", "Phone", "LinkedIn", "Country", "Asked about", "Came in", "Last moved"],
         shown.map((l) => [
           l.name, l.title ?? "", l.company, l.source, l.status,
-          l.owner ?? "", l.email ?? "", l.phone ?? "", l.country ?? "",
+          l.owner ?? "", l.email ?? "", l.phone ?? "", l.linkedinUrl ?? "", l.country ?? "",
           l.interest ?? "", l.createdAt.slice(0, 10), l.updatedAt.slice(0, 10),
         ])
       )
@@ -306,7 +313,7 @@ export function LeadsModule({
       if (data.state) setState(data.state);
       toast(success);
       router.refresh();
-      return true;
+      return (data.lead as Lead | undefined) ?? true;
     } catch {
       toast("That didn't save.", "error");
       return false;
@@ -351,7 +358,33 @@ export function LeadsModule({
     if (why) return why;
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       return "Enter a valid email address, or leave it empty.";
+    if (leadLinkedInUrl(d.linkedinUrl) === null)
+      return "Enter a LinkedIn profile link, such as linkedin.com/in/name.";
     return null;
+  }
+
+  async function enrichLead(id: string) {
+    setEnrichingId(id);
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "enrich-linkedin", id }),
+      });
+      const data = await res.json();
+      if (data.state) setState(data.state);
+      if (!res.ok) {
+        toast(data.error || "The LinkedIn profile could not be read.", "error");
+        const fresh = await fetch("/api/leads").then((response) => response.json());
+        if (fresh.state) setState(fresh.state);
+      } else {
+        toast("LinkedIn profile facts saved to the lead.");
+      }
+    } catch {
+      toast("The LinkedIn profile could not be read. The link is still saved.", "error");
+    } finally {
+      setEnrichingId(null);
+    }
   }
 
   async function save() {
@@ -392,11 +425,20 @@ export function LeadsModule({
       toast("Enter a valid email address, or leave it empty.", "error");
       return;
     }
+    if (leadLinkedInUrl(editing.linkedinUrl) === null) {
+      toast("Enter a LinkedIn profile link, such as linkedin.com/in/name.", "error");
+      return;
+    }
+    const priorUrl = state.leads.find((lead) => lead.id === editing.id)?.linkedinUrl || "";
+    const nextUrl = leadLinkedInUrl(editing.linkedinUrl) || "";
     const ok = await post(
       { op: "save", lead: { ...editing, id: editing.id || undefined } },
       editing.id ? "Lead updated." : "Lead added."
     );
-    if (ok) setEditing(null);
+    if (ok) {
+      setEditing(null);
+      if (typeof ok === "object" && nextUrl && priorUrl !== nextUrl) void enrichLead(ok.id);
+    }
   }
 
   return (
@@ -729,6 +771,12 @@ export function LeadsModule({
                                 {lead.title}
                               </span>
                             )}
+                            {lead.linkedinUrl && (
+                              <span className="mt-0.5 flex items-center gap-1 text-[10.5px] font-medium text-blue-primary">
+                                <LinkedInIcon size={11} aria-hidden="true" />
+                                {enrichingId === lead.id ? "Reading profile…" : lead.linkedinStatus === "ready" ? "LinkedIn saved" : lead.linkedinStatus === "unavailable" ? "Lookup unavailable" : "LinkedIn linked"}
+                              </span>
+                            )}
                           </span>
                         </span>
                       </td>
@@ -930,6 +978,14 @@ export function LeadsModule({
                                     ) : <span className="mt-1 flex min-h-5 items-center text-[12px] leading-5 text-text-tertiary">Not added</span>}
                                   </span>
                                   <span className="flex min-w-0 flex-col">
+                                    <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><LinkedInIcon size={12} aria-hidden="true" /> LinkedIn</span>
+                                    {lead.linkedinUrl ? (
+                                      <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="mt-1 inline-flex min-h-5 items-center gap-1 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                        Open profile <ExternalLink size={12} aria-hidden="true" />
+                                      </a>
+                                    ) : <span className="mt-1 text-[12px] text-text-tertiary">Not added</span>}
+                                  </span>
+                                  <span className="flex min-w-0 flex-col">
                                     <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><MapPin size={12} strokeWidth={2} aria-hidden="true" /> Country</span>
                                     {lead.country ? (
                                       <span className="mt-1 flex min-h-5 min-w-0 leading-5 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
@@ -967,6 +1023,33 @@ export function LeadsModule({
                                     ) : <span className="mt-1 flex min-h-5 items-center text-[12px] leading-5 text-text-tertiary">Unassigned</span>}
                                   </span>
                                 </div>
+
+                                {lead.linkedinUrl && (
+                                  <div className="mt-4 rounded-lg border border-border-light bg-surface p-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <div>
+                                        <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">LinkedIn profile facts</span>
+                                        <span className="text-[11px] text-text-tertiary">
+                                          {enrichingId === lead.id ? "Reading profile…" : lead.linkedinProfile ? `Saved ${new Date(lead.linkedinProfile.fetchedAt).toLocaleDateString()}` : lead.linkedinStatus === "unavailable" ? "Lookup unavailable; link saved" : "No profile facts saved yet"}
+                                        </span>
+                                      </div>
+                                      <span className="flex items-center gap-2">
+                                        {canWrite && <button type="button" disabled={enrichingId === lead.id} onClick={(event) => { event.stopPropagation(); void enrichLead(lead.id); }} className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-blue-primary disabled:opacity-50"><RefreshCw size={12} /> {lead.linkedinProfile ? "Refresh" : "Retry lookup"}</button>}
+                                        <button type="button" onClick={(event) => { event.stopPropagation(); askFreyrAgent({ prompt: `Tell me about lead ${lead.ref}, ${lead.name} at ${lead.company}. Use the saved lead record and LinkedIn profile facts, state when those facts were fetched, and distinguish unknown facts from verified ones.` }); }} className="inline-flex items-center gap-1 rounded-md bg-blue-light px-2 py-1 text-[11.5px] font-semibold text-blue-primary"><Sparkles size={12} /> Ask AI</button>
+                                      </span>
+                                    </div>
+                                    {lead.linkedinProfile && (
+                                      <div className="mt-2 space-y-1 text-[12px] leading-relaxed text-text-secondary">
+                                        {lead.linkedinProfile.headline && <p className="font-semibold text-text-primary">{lead.linkedinProfile.headline}</p>}
+                                        {lead.linkedinProfile.location && <p>{lead.linkedinProfile.location}</p>}
+                                        {lead.linkedinProfile.about && <p className="line-clamp-4">{lead.linkedinProfile.about}</p>}
+                                        {lead.linkedinProfile.experience.length > 0 && <p><span className="font-semibold">Experience:</span> {lead.linkedinProfile.experience.map((item) => [item.title, item.company].filter(Boolean).join(" at ")).join(" · ")}</p>}
+                                        {lead.linkedinProfile.skills.length > 0 && <p><span className="font-semibold">Skills:</span> {lead.linkedinProfile.skills.join(", ")}</p>}
+                                        {lead.linkedinProfile.recentPosts?.length > 0 && <div className="pt-1"><span className="font-semibold">Recent public posts:</span><ul className="mt-1 space-y-1">{lead.linkedinProfile.recentPosts.map((post) => <li key={post.url}><a href={post.url} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="text-blue-primary hover:underline">{post.text.slice(0, 180)}{post.text.length > 180 ? "…" : ""}</a>{post.date ? <span className="ml-1 text-text-tertiary">({post.date})</span> : null}</li>)}</ul></div>}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
 
                                 {lead.note && (
                                   <div className="mt-4 rounded-lg bg-surface px-3 py-2.5">
@@ -1270,6 +1353,17 @@ export function LeadsModule({
                 ) : null;
               })()}
             </Field>
+            <div className="sm:col-span-2">
+              <Field label="LinkedIn profile" hint="Add a personal profile URL. Available public profile facts are saved on this lead for AI answers; lookup may be incomplete.">
+                <Input
+                  type="url"
+                  value={editing.linkedinUrl}
+                  maxLength={300}
+                  onChange={(e) => setEditing({ ...editing, linkedinUrl: e.target.value })}
+                  placeholder="https://www.linkedin.com/in/name"
+                />
+              </Field>
+            </div>
             <Field label="Source">
               <ColorSelect
                 value={editing.source}
