@@ -5,7 +5,7 @@ import { safeHref } from "@/lib/safeUrl";
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import { formatPhoneNumber, phoneProblem, nationalDigitBudget, phoneDigits } from "@/lib/phone";
-import { splitPhone, joinPhone } from "@/lib/countries";
+import { splitPhone, joinPhone, countryOptions } from "@/lib/countries";
 import { contactPhoneDisplay } from "@/lib/contactPhoneDisplay";
 import { formatMoney as fmtMoney } from "@/lib/pipeline";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -83,6 +83,7 @@ import { AttributeTag } from "@/components/ui/AttributeTag";
 import { industryMeta } from "@/components/ui/IndustryTag";
 import {
   countryOnlyGeography,
+  countryNameForGeography,
   flagForGeography,
 } from "@/lib/countryFlags";
 import type {
@@ -124,6 +125,36 @@ function aboutDraftFor(customer: Customer) {
     revenue: expandMoneyShorthand(customer.revenue ?? "", { integer: true }),
     enrichment_summary: customer.enrichment_summary ?? "",
   };
+}
+
+const COMMON_CITIES: Record<string, string[]> = {
+  Switzerland: ["Basel", "Bern", "Geneva", "Lausanne", "Zurich"],
+  "United States": ["Boston", "Chicago", "New York", "Philadelphia", "Princeton", "San Francisco"],
+  "United Kingdom": ["Cambridge", "Edinburgh", "London", "Manchester", "Oxford"],
+  Germany: ["Berlin", "Frankfurt", "Hamburg", "Munich"],
+  France: ["Lyon", "Marseille", "Paris"],
+  India: ["Bengaluru", "Delhi", "Hyderabad", "Mumbai", "Pune"],
+  Canada: ["Montreal", "Ottawa", "Toronto", "Vancouver"],
+  Singapore: ["Singapore"],
+  Japan: ["Osaka", "Tokyo"],
+  Australia: ["Melbourne", "Sydney"],
+};
+
+function locationParts(geography: string): { country: string; city: string } {
+  const value = geography.trim();
+  if (!value) return { country: "", city: "" };
+  const country = countryNameForGeography(value) ?? countryOnlyGeography(value);
+  const parenthesized = value.match(/\(([^)]+)\)/)?.[1]?.trim();
+  const city = parenthesized ?? (value.endsWith(`, ${country}`) ? value.slice(0, -country.length - 2).trim() : "");
+  return { country, city };
+}
+
+function locationGeography(country: string, city: string, previous: string): string {
+  if (!country) return "";
+  // Older accounts sometimes carry another office after the primary location.
+  // Changing the city must not silently discard that separate fact.
+  const otherOffices = previous.match(/\s+(—\s*.+)$/)?.[1] ?? "";
+  return `${city ? `${country} (${city})` : country}${otherOffices ? ` ${otherOffices}` : ""}`;
 }
 
 // "Ask Agent" is no longer a tab — the agent rides in a right-side drawer so
@@ -339,18 +370,8 @@ function PipelineMomentumModal({
 // ONLY agent surfaces in the app are the chat bubble bottom-right and the /agent
 // pages (Anir, Jul 27). The dock still takes any of those asks.
 
-/**
- * Geography is ONE chip: the flag and the country, nothing else.
- *
- * The raw field is free text carrying cities and prose — "United States
- * (Princeton, NJ) — offices in London, Singapore" is a real value — and this
- * used to spell all of it out across two lines. Suren, Jul 27: "I don't think
- * you need to see Cambridge. I don't think we care about cities. We only care
- * about countries, so just remove cities." `countryOnlyGeography` does the
- * reducing at the source, so every geography in the app reads the same.
- */
 function GeographyValue({ value }: { value: string }) {
-  const country = countryOnlyGeography(value);
+  const { country, city } = locationParts(value);
   const flag = flagForGeography(country);
 
   return (
@@ -363,9 +384,10 @@ function GeographyValue({ value }: { value: string }) {
         // Inline because the palette is a runtime value, not a Tailwind class.
         // 1A ≈ 10% alpha — a tint that stays readable in both themes.
         style={{ color: "#0891B2", background: "#0891B21A" }}
-        title={`Geography: ${country}`}
+        title={`Location: ${city ? `${city}, ` : ""}${country}`}
       >
-        <span className="sr-only">Geography: </span>
+        <span className="sr-only">Location: </span>
+        {city && <span>{city},</span>}
         {flag && <span aria-hidden="true">{flag}</span>}
         {country}
       </span>
@@ -535,6 +557,8 @@ export function CustomerTabs({
   const [noteKind, setNoteKind] = useState<"call" | "email" | "meeting" | "note">("note");
   const [editingAbout, setEditingAbout] = useState(false);
   const [aboutDraft, setAboutDraft] = useState(() => aboutDraftFor(customer));
+  const { country: aboutCountry, city: aboutCity } = locationParts(aboutDraft.geography);
+  const cityChoices = [...new Set([aboutCity, ...(COMMON_CITIES[aboutCountry] ?? [])].filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const [aboutSaving, setAboutSaving] = useState(false);
   const [aboutError, setAboutError] = useState("");
   const [editingAccount, setEditingAccount] = useState(false);
@@ -3084,7 +3108,42 @@ export function CustomerTabs({
               />
             </Field>
             <Field label="Locations">
-              <Input maxLength={200} value={aboutDraft.geography} onChange={(event) => setAboutDraft((draft) => ({ ...draft, geography: event.target.value }))} />
+              <span className="grid grid-cols-2 gap-2">
+                <span className="min-w-0">
+                  <span className="mb-1 block text-[11px] text-text-tertiary">City</span>
+                  <ColorSelect
+                    ariaLabel="City"
+                    value={aboutCity}
+                    onChange={(city) => setAboutDraft((draft) => ({ ...draft, geography: locationGeography(aboutCountry, city, draft.geography) }))}
+                    fill
+                    searchable
+                    className="w-full"
+                    options={[
+                      { value: "", label: aboutCountry ? "Choose city" : "Choose country first", noMark: true },
+                      ...cityChoices.map((city) => ({ value: city, label: city, noMark: true })),
+                    ]}
+                    onCreateQuery={aboutCountry ? (city) => setAboutDraft((draft) => ({ ...draft, geography: locationGeography(aboutCountry, city.slice(0, 100), draft.geography) })) : undefined}
+                  />
+                </span>
+                <span className="min-w-0">
+                  <span className="mb-1 block text-[11px] text-text-tertiary">Country</span>
+                  <ColorSelect
+                    ariaLabel="Country"
+                    value={aboutCountry}
+                    onChange={(country) => setAboutDraft((draft) => ({ ...draft, geography: locationGeography(country, "", draft.geography) }))}
+                    fill
+                    searchable
+                    className="w-full"
+                    options={[
+                      { value: "", label: "Choose country", noMark: true },
+                      ...countryOptions(),
+                      ...(aboutCountry && !countryOptions().some((country) => country.value === aboutCountry)
+                        ? [{ value: aboutCountry, label: `${flagForGeography(aboutCountry) ?? "🌐"}  ${aboutCountry}`, noMark: true as const }]
+                        : []),
+                    ]}
+                  />
+                </span>
+              </span>
             </Field>
             <Field label="Website">
               <Input maxLength={500} value={aboutDraft.website_url} onChange={(event) => setAboutDraft((draft) => ({ ...draft, website_url: event.target.value }))} placeholder="example.com" />

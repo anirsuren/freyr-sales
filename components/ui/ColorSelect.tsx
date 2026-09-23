@@ -310,6 +310,7 @@ export function ColorSelect({
   searchable: forceSearchable,
   createLabel,
   onCreate,
+  onCreateQuery,
 }: {
   value: string;
   options: ColorOption[];
@@ -370,6 +371,8 @@ export function ColorSelect({
    *  record without first typing a query that cannot match. */
   createLabel?: string;
   onCreate?: () => void;
+  /** Add the text typed into this dropdown as a new option. */
+  onCreateQuery?: (query: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<FloatingMenuStyle | null>(null);
@@ -867,6 +870,19 @@ export function ColorSelect({
                   {createLabel}
                 </button>
               )}
+              {onCreateQuery && menuQuery.trim() && !options.some((option) => option.label.toLocaleLowerCase() === menuQuery.trim().toLocaleLowerCase() || option.value.toLocaleLowerCase() === menuQuery.trim().toLocaleLowerCase()) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCreateQuery(menuQuery.trim());
+                    setOpen(false);
+                  }}
+                  className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold text-blue-primary transition-colors hover:bg-blue-light/50"
+                >
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-primary text-white"><Plus size={12} strokeWidth={2.6} /></span>
+                  Use “{menuQuery.trim()}”
+                </button>
+              )}
             </div>
           )}
           {visibleOptions.map((o, rowIndex) => {
@@ -1012,7 +1028,7 @@ export function ColorSelect({
             menuQuery.trim() &&
             visibleOptions.length === 0 && (
               <p className="px-2.5 py-2 text-[12.5px] text-text-tertiary">
-                Nothing matches that.
+                {onCreateQuery ? "Choose the new value above." : "Nothing matches that."}
               </p>
             )}
         </div>,
