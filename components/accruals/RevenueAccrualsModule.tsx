@@ -976,9 +976,9 @@ export function RevenueAccrualsModule({
     () => focusedOpportunityId
   );
   const [query, setQuery] = useState(() => params.get("q") ?? "");
-  const [only, setOnly] = useState<"all" | "flagged" | "missing">(() => {
+  const [only, setOnly] = useState<"all" | "flagged" | "mismatch" | "missing">(() => {
     const show = params.get("show");
-    return show === "flagged" || show === "missing" ? show : "all";
+    return show === "flagged" || show === "mismatch" || show === "missing" ? show : "all";
   });
   const [tab, setTab] = useState<"plans" | "deviation">(() =>
     embeddedTab ?? (params.get("tab") === "deviation" ? "deviation" : "plans")
@@ -1281,7 +1281,19 @@ export function RevenueAccrualsModule({
     );
   }, [deals, scheduled]);
 
-  const flagged = judged.filter((j) => j.verdict.invalid);
+  const flagged = useMemo(() => judged.filter((j) => j.verdict.invalid), [judged]);
+  const mismatched = useMemo(
+    () => judged.filter((j) =>
+      j.plan.lines.length > 0 &&
+      oppById.has(j.plan.opportunityId) &&
+      j.verdict.problems.includes("does_not_add_up")
+    ),
+    [judged, oppById]
+  );
+  const mismatchedIds = useMemo(
+    () => new Set(mismatched.map((j) => j.plan.opportunityId)),
+    [mismatched]
+  );
   const plannedTotal = judged.reduce((s, j) => s + planTotal(j.plan), 0);
 
   const frozenThisMonth = state.snapshots.some(
@@ -1351,6 +1363,7 @@ export function RevenueAccrualsModule({
     return judged
       .filter((j) => {
         if (only === "flagged" && !j.verdict.invalid) return false;
+        if (only === "mismatch" && !mismatchedIds.has(j.plan.opportunityId)) return false;
         if (only === "missing") return false;
         if (!matchesDeal(j.plan.opportunityId, j.plan.customer)) return false;
         /* A plan with no month left inside the chosen years is not part of
@@ -1367,7 +1380,7 @@ export function RevenueAccrualsModule({
          sort order touches, and a live control that changes nothing on screen
          is worse than no control. */
       .sort((a, b) => planTotal(b.plan) - planTotal(a.plan));
-  }, [judged, query, only, matchesDeal, linesInScope]);
+  }, [judged, query, only, matchesDeal, linesInScope, mismatchedIds]);
 
   /** WHAT IS ACTUALLY PLANNED IN THE CHOSEN YEARS. The fold line above the
    *  table reads this, so a collapsed dashboard still says how much money is
@@ -1387,9 +1400,13 @@ export function RevenueAccrualsModule({
   const shownOpportunities = useMemo(() => {
     const planned = new Map(state.plans.map((p) => [p.opportunityId, p]));
     const flaggedIds = new Set(flagged.map((j) => j.plan.opportunityId));
+    const shownIds = new Set(shown.map((j) => j.plan.opportunityId));
     const q = query.trim().toLowerCase();
     return opportunities.filter((o) => {
       if (!matchesDeal(o.id, o.customer)) return false;
+      /* Reuse the judged plans for this exact issue, so the tree, chart,
+         count and export cannot disagree about which schedules are short. */
+      if (only === "mismatch") return shownIds.has(o.id);
       /* THE SEARCH NARROWS THE TABLE TOO. It filtered the plans underneath
          but not the deals the table is drawn from, so searching "TEST accrual"
          left every other deal on screen, greyed as "no schedule" because its
@@ -1424,7 +1441,7 @@ export function RevenueAccrualsModule({
       if (fyFilter.length > 0) return !!plan && linesInScope(plan).length > 0;
       return !plan || linesInScope(plan).length > 0;
     });
-  }, [opportunities, state.plans, matchesDeal, linesInScope, fyFilter, query, only, flagged]);
+  }, [opportunities, state.plans, matchesDeal, linesInScope, fyFilter, query, only, flagged, shown]);
 
   /**
    * THE SHAPE OF THE YEAR, NOT A LIST OF NUMBERS (Anir, Aug 26: "the revenue
@@ -1815,8 +1832,8 @@ export function RevenueAccrualsModule({
                The financial year leads, because it is the one filter that is
                about the accrual rather than about the deal.
 
-               `only` is single-choice, so it takes the first value it is
-               handed and an empty array means the default; every other group
+               `only` is single-choice, so it takes the newly chosen value
+               and an empty array means the default; every other group
                here is a true multi-select, empty meaning all. */
             filterAriaLabel="Filter accrual plans"
             groups={[
@@ -1939,9 +1956,10 @@ export function RevenueAccrualsModule({
                 label: "Show",
                 values: only === "all" ? [] : [only],
                 onChange: (next) =>
-                  setOnly((next[0] as typeof only) ?? "all"),
+                  setOnly((next.at(-1) as typeof only) ?? "all"),
                 options: [
                   { value: "flagged", label: `Flagged (${flagged.length})`, color: RED },
+                  { value: "mismatch", label: `Months don't add up (${mismatched.length})`, color: RED },
                   { value: "missing", label: `Need a plan (${missing.length})`, color: AMBER },
                 ],
               },
