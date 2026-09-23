@@ -35,7 +35,7 @@ export async function PATCH(
   }
   const patch: Record<string, string | boolean | null> = {};
   if (typeof body.is_key === "boolean") patch.is_key = body.is_key;
-  const limits = { full_name: 120, job_title: 160, role_bucket: 120, email: 254, phone: 60, linkedin_url: 500 } as const;
+  const limits = { full_name: 120, job_title: 160, role_bucket: 120, department: 120, city: 120, country: 120, buying_role: 80, relationship_notes: 2000, career_summary: 2000, email: 254, phone: 60, linkedin_url: 500 } as const;
   for (const [field, limit] of Object.entries(limits)) {
     if (typeof body[field] !== "string") continue;
     if (body[field].trim().length > limit) return NextResponse.json({ error: `${field.replaceAll("_", " ")} is too long.` }, { status: 400 });

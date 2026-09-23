@@ -10,7 +10,6 @@ import {
   Brain,
   CheckCircle2,
   XCircle,
-  SearchX,
   ArrowLeft,
   Sparkles,
   MapPin,
@@ -22,10 +21,10 @@ import {
   Tag,
   Briefcase,
   UserRound,
+  Star,
   type LucideIcon,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
@@ -35,7 +34,7 @@ import { ContactSessions } from "@/components/sessions/ContactSessions";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
 import { personaFor } from "@/lib/persona";
 import { RecordView } from "@/components/RecordView";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import { ContactOutreachPanel } from "@/components/contacts/ContactOutreachPanel";
 import { ContactEngagement } from "@/components/contacts/ContactEngagement";
 import { buildDeals } from "@/lib/pipeline";
@@ -187,6 +186,9 @@ export default async function ContactDetailPage({
               <LinkedInLink url={contact.linkedin_url} size={18} />
             </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {contact.is_key && (
+                <Badge label="Key contact" bg="rgba(0,113,227,0.10)" color="var(--ink-blue)" icon={Star} className="!normal-case tracking-normal" />
+              )}
               {contact.role_bucket && (
                 <Badge
                   label={contact.role_bucket}
@@ -238,6 +240,30 @@ export default async function ContactDetailPage({
           )}
         </div>
       </div>
+
+      {(contact.department || contact.city || contact.country || contact.buying_role || contact.relationship_notes) && (
+        <Card className="mb-6">
+          <h2 className="mb-4 text-[14px] font-semibold text-text-primary">Contact context</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["Department", contact.department],
+              ["Location", [contact.city, contact.country].filter(Boolean).join(", ")],
+              ["Buying role", contact.buying_role],
+            ].filter(([, value]) => value).map(([label, value]) => (
+              <div key={label}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">{label}</p>
+                <p className="mt-1 text-[13px] font-medium text-text-primary">{value}</p>
+              </div>
+            ))}
+          </div>
+          {contact.relationship_notes && (
+            <div className="mt-4 border-t border-border-light pt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Relationship notes</p>
+              <p className="mt-1 whitespace-pre-wrap text-[13px] leading-6 text-text-secondary">{contact.relationship_notes}</p>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* The one-line "Next move" strip is gone (Suren, Jul 27: "I don't want
           no next move", stripping per-record agent nags app-wide). The

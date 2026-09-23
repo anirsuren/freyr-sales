@@ -30,6 +30,8 @@ import {
   Briefcase,
   Pencil,
   Star,
+  MapPin,
+  UserRoundCheck,
   Search,
   PanelRightClose,
   PanelRightOpen,
@@ -47,6 +49,7 @@ import { CustomerAccountPlanTab } from "@/components/customers/CustomerAccountPl
 import { SizeBadge, Badge, OutcomeBadge, SIZE_TIER_META } from "@/components/ui/Badge";
 import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -599,6 +602,13 @@ export function CustomerTabs({
     fullName: "",
     jobTitle: "",
     role: "",
+    department: "",
+    city: "",
+    country: "",
+    buyingRole: "",
+    relationshipNotes: "",
+    background: "",
+    isKey: false,
     email: "",
     phone: "",
     linkedinUrl: "",
@@ -668,6 +678,13 @@ export function CustomerTabs({
       fullName: "",
       jobTitle: "",
       role: "",
+      department: "",
+      city: "",
+      country: "",
+      buyingRole: "",
+      relationshipNotes: "",
+      background: "",
+      isKey: false,
       email: "",
       phone: "",
       linkedinUrl: "",
@@ -889,6 +906,13 @@ export function CustomerTabs({
       fullName: "",
       jobTitle: "",
       role: "",
+      department: "",
+      city: "",
+      country: "",
+      buyingRole: "",
+      relationshipNotes: "",
+      background: "",
+      isKey: false,
       email: "",
       phone: "",
       linkedinUrl: "",
@@ -901,6 +925,13 @@ export function CustomerTabs({
       fullName: contact.full_name,
       jobTitle: contact.job_title ?? "",
       role: contact.role_bucket ?? "",
+      department: contact.department ?? "",
+      city: contact.city ?? "",
+      country: contact.country ?? "",
+      buyingRole: contact.buying_role ?? "",
+      relationshipNotes: contact.relationship_notes ?? "",
+      background: contact.career_summary ?? "",
+      isKey: isKeyContact(contact, displayedContacts.findIndex((item) => item.id === contact.id)),
       email: contact.email ?? "",
       phone: contact.phone ?? "",
       linkedinUrl: contact.linkedin_url ?? "",
@@ -940,6 +971,13 @@ export function CustomerTabs({
           full_name: fullName,
           job_title: contactForm.jobTitle,
           role_bucket: contactForm.role,
+          department: contactForm.department,
+          city: contactForm.city,
+          country: contactForm.country,
+          buying_role: contactForm.buyingRole,
+          relationship_notes: contactForm.relationshipNotes,
+          career_summary: contactForm.background,
+          is_key: contactForm.isKey,
           email: contactForm.email,
           phone: contactForm.phone,
           linkedin_url: contactForm.linkedinUrl,
@@ -960,6 +998,13 @@ export function CustomerTabs({
         fullName: "",
         jobTitle: "",
         role: "",
+        department: "",
+        city: "",
+        country: "",
+        buyingRole: "",
+        relationshipNotes: "",
+        background: "",
+        isKey: false,
         email: "",
         phone: "",
         linkedinUrl: "",
@@ -1546,7 +1591,11 @@ export function CustomerTabs({
                         <Tooltip label="Add a key contact">
                           <button
                             type="button"
-                            onClick={() => setContactModalOpen(true)}
+                            onClick={() => {
+                              setEditingContact(null);
+                              setContactForm((form) => ({ ...form, isKey: true }));
+                              setContactModalOpen(true);
+                            }}
                             aria-label="Add a key contact"
                             className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-blue-primary text-white transition-opacity hover:opacity-90"
                           >
@@ -3424,10 +3473,30 @@ export function CustomerTabs({
         open={contactModalOpen}
         onClose={closeContactModal}
         title={editingContact ? `Edit ${editingContact.full_name}` : `Add a contact at ${customer.company_name}`}
-        size="wide"
+        size="workflow"
       >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border-light bg-surface px-4 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <CompanyLogo name={customer.company_name} className="h-9 w-9 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-text-primary">{customer.company_name}</p>
+                <p className="text-[12px] text-text-secondary">Contact will be saved on this account</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setContactForm((form) => ({ ...form, isKey: !form.isKey }))}
+              aria-pressed={contactForm.isKey}
+              className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition-colors", contactForm.isKey ? "border-blue-subtle bg-blue-light text-blue-primary" : "border-border bg-white text-text-secondary hover:border-blue-subtle hover:text-blue-primary")}
+            >
+              <Star size={15} fill={contactForm.isKey ? "currentColor" : "none"} />
+              {contactForm.isKey ? "Key contact" : "Mark as key contact"}
+            </button>
+          </div>
+          <div>
+            <div className="mb-3 flex items-center gap-2 border-b border-border-light pb-2 text-[13px] font-semibold text-text-primary"><Briefcase size={16} className="text-blue-primary" /> Professional details</div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Full name" required>
               <Input
                 autoFocus
@@ -3455,7 +3524,7 @@ export function CustomerTabs({
                 maxLength={160}
               />
             </Field>
-            <Field label="Role">
+            <Field label="Function" hint="Their area of work, such as Regulatory Affairs or Procurement.">
               <Input
                 value={contactForm.role}
                 onChange={(event) =>
@@ -3464,10 +3533,35 @@ export function CustomerTabs({
                     role: event.target.value,
                   }))
                 }
-                placeholder="e.g. Decision maker"
+                placeholder="e.g. Regulatory Affairs"
                 maxLength={120}
               />
             </Field>
+            <Field label="Department">
+              <Input value={contactForm.department} onChange={(event) => setContactForm((form) => ({ ...form, department: event.target.value }))} placeholder="e.g. Global Regulatory" maxLength={120} />
+            </Field>
+            <div className="min-w-0">
+              <p className="mb-1.5 flex items-center gap-1 text-[13px] font-medium text-text-primary">Buying role <OptionalMark /></p>
+              <ColorSelect
+                value={contactForm.buyingRole}
+                onChange={(value) => setContactForm((form) => ({ ...form, buyingRole: value }))}
+                options={[
+                  { value: "", label: "Choose a buying role", icon: UserRoundCheck },
+                  { value: "Decision maker", label: "Decision maker", icon: UserRoundCheck, color: "#0069d6" },
+                  { value: "Champion", label: "Champion", icon: Star, color: "#7c3aed" },
+                  { value: "Influencer", label: "Influencer", icon: Users, color: "#0f8a83" },
+                  { value: "Evaluator", label: "Evaluator", icon: Search, color: "#b45309" },
+                  { value: "Economic buyer", label: "Economic buyer", icon: Briefcase, color: "#b42318" },
+                ]}
+                fill
+                ariaLabel="Buying role"
+              />
+            </div>
+            </div>
+          </div>
+          <div>
+            <div className="mb-3 flex items-center gap-2 border-b border-border-light pb-2 text-[13px] font-semibold text-text-primary"><Mail size={16} className="text-blue-primary" /> Reach this person</div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Email">
               <Input
                 type="email"
@@ -3531,6 +3625,27 @@ export function CustomerTabs({
                 maxLength={500}
               />
             </Field>
+            <div className="min-w-0">
+              <p className="mb-1.5 flex items-center gap-1 text-[13px] font-medium text-text-primary">Country <OptionalMark /></p>
+              <ColorSelect value={contactForm.country} onChange={(value) => setContactForm((form) => ({ ...form, country: value }))} options={[{ value: "", label: "Choose a country", icon: MapPin }, ...countryOptions()]} fill ariaLabel="Country" />
+            </div>
+            <Field label="City">
+              <Input value={contactForm.city} onChange={(event) => setContactForm((form) => ({ ...form, city: event.target.value }))} placeholder="e.g. New Brunswick" maxLength={120} />
+            </Field>
+            </div>
+          </div>
+          <div>
+            <div className="mb-3 flex items-center gap-2 border-b border-border-light pb-2 text-[13px] font-semibold text-text-primary"><FileText size={16} className="text-blue-primary" /> Context</div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label htmlFor="contact-background" className="mb-1.5 block text-[13px] font-medium text-text-primary">Professional background <OptionalMark /></label>
+                <textarea id="contact-background" value={contactForm.background} onChange={(event) => setContactForm((form) => ({ ...form, background: event.target.value }))} placeholder="Experience, expertise, and relevant history" maxLength={2000} rows={3} className="w-full resize-y rounded-md border border-border bg-surface px-3.5 py-2.5 text-[14px] text-text-primary outline-none transition focus:border-blue-primary focus:shadow-focus" />
+              </div>
+              <div className="min-w-0">
+                <label htmlFor="contact-relationship" className="mb-1.5 block text-[13px] font-medium text-text-primary">Relationship notes <OptionalMark /></label>
+                <textarea id="contact-relationship" value={contactForm.relationshipNotes} onChange={(event) => setContactForm((form) => ({ ...form, relationshipNotes: event.target.value }))} placeholder="What your team knows about working with this person" maxLength={2000} rows={3} className="w-full resize-y rounded-md border border-border bg-surface px-3.5 py-2.5 text-[14px] text-text-primary outline-none transition focus:border-blue-primary focus:shadow-focus" />
+              </div>
+            </div>
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4">
             <Button

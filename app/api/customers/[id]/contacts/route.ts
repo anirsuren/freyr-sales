@@ -110,13 +110,18 @@ export async function POST(
     const contact = await db.contacts.create({
       customer_id: customerId,
       full_name: fullName,
-      is_key: false,
+      is_key: body?.is_key === true,
       email,
       phone: optionalString(body?.phone, 60),
       linkedin_url: linkedinUrl,
       job_title: optionalString(body?.job_title, 160),
       role_bucket: optionalString(body?.role_bucket, 120),
-      career_summary: null,
+      department: optionalString(body?.department, 120),
+      city: optionalString(body?.city, 120),
+      country: optionalString(body?.country, 120),
+      buying_role: optionalString(body?.buying_role, 80),
+      relationship_notes: optionalString(body?.relationship_notes, 2000),
+      career_summary: optionalString(body?.career_summary, 2000),
       enrichment_summary: null,
     });
     return NextResponse.json({ ok: true, contact }, { status: 201 });

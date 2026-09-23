@@ -245,6 +245,11 @@ export interface Contact {
   raw_linkedin_data?: any;
   job_title: string | null;
   role_bucket: string | null;
+  department?: string | null;
+  city?: string | null;
+  country?: string | null;
+  buying_role?: string | null;
+  relationship_notes?: string | null;
   career_summary: string | null;
   enrichment_summary: string | null;
   created_at: string;
