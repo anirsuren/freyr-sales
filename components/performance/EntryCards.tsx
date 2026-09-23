@@ -9,6 +9,7 @@ import {
   Eye,
   FileText,
   Hourglass,
+  Maximize2,
   Paperclip,
   PenLine,
   RotateCcw,
@@ -25,6 +26,7 @@ import {
   stampedAt,
   entryStatus,
   goalFamilyActuals,
+  familyValue,
   inGoalCurrency,
   isPending,
   fmtAmount,
@@ -2521,6 +2523,125 @@ export function VerifyQueueCard({
 }
 
 
+function ClaimProgressZoom({
+  entry,
+  state,
+  onClose,
+}: {
+  entry: PerfActual;
+  state: PerformanceState;
+  onClose: () => void;
+}) {
+  const goal = state.goals.find((item) => item.id === entry.goalId);
+  const [filter, setFilter] = useState<"all" | "verified" | "reported" | "sent_back">("all");
+  if (!goal) return null;
+
+  const claims = goalFamilyActuals(state, goal).sort(
+    (left, right) => Date.parse(right.date) - Date.parse(left.date)
+  );
+  const valueFor = (status: "verified" | "reported" | "sent_back") =>
+    familyValue(
+      { actuals: claims.filter((claim) => entryStatus(claim) === status), rates: state.rates },
+      goal
+    );
+  const verified = valueFor("verified");
+  const waiting = valueFor("reported");
+  const sentBack = valueFor("sent_back");
+  const total = verified + waiting + sentBack;
+  const visible = filter === "all" ? claims : claims.filter((claim) => entryStatus(claim) === filter);
+  const groups = [
+    { key: "all" as const, label: "All results", value: total, count: claims.length, color: "#2563EB" },
+    { key: "verified" as const, label: "Signed off", value: verified, count: claims.filter((claim) => entryStatus(claim) === "verified").length, color: ENTRY_COLOR.verified },
+    { key: "reported" as const, label: "Waiting", value: waiting, count: claims.filter((claim) => entryStatus(claim) === "reported").length, color: ENTRY_COLOR.reported },
+    { key: "sent_back" as const, label: "Sent back", value: sentBack, count: claims.filter((claim) => entryStatus(claim) === "sent_back").length, color: ENTRY_COLOR.sent_back },
+  ];
+  const share = (value: number) => Math.min(100, Math.max(0, value / goal.target * 100));
+
+  return (
+    <Modal open onClose={onClose} title={`${goal.name} · progress breakdown`} size="viewer" tall stacked dialogClassName="!max-w-[min(1180px,calc(100vw-2rem))] !h-[min(780px,calc(100vh-2rem))]" bodyClassName="!p-0">
+      <div className="grid h-full min-h-0 lg:grid-cols-[310px_minmax(0,1fr)]">
+        <aside className="border-b border-border-light bg-[#F8FAFD] p-6 lg:border-b-0 lg:border-r">
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-tertiary">Progress toward target</p>
+          <div className="mt-3 flex items-baseline gap-2 tnum">
+            <b className="text-[30px] font-bold tracking-tight text-text-primary">{Math.round(pctMet(verified, goal.target))}%</b>
+            <span className="text-[13px] text-text-secondary">signed off</span>
+          </div>
+          <div className="mt-1 flex justify-between text-[12px] text-text-secondary tnum">
+            <span>{fmtAmount(goal.unit, verified, goal.currency)} verified</span>
+            <span>{fmtAmount(goal.unit, goal.target, goal.currency)} target</span>
+          </div>
+          <div className="mt-4 flex h-4 overflow-hidden rounded-full bg-border-light" aria-label="Goal progress by verification status">
+            {groups.slice(1).map((group) => (
+              <button
+                key={group.key}
+                type="button"
+                onClick={() => setFilter(group.key)}
+                title={`${group.label}: ${fmtAmount(goal.unit, group.value, goal.currency)}`}
+                aria-label={`Show ${group.label.toLowerCase()} results`}
+                className="h-full cursor-pointer transition-opacity hover:opacity-75"
+                style={{ width: `${share(group.value)}%`, background: group.color }}
+              />
+            ))}
+          </div>
+          <p className="mt-2 text-[12px] leading-5 text-text-secondary">Only signed-off results count toward the percentage. Waiting and sent-back results remain visible for review.</p>
+          <div className="mt-6 space-y-2" aria-label="Filter results by status">
+            {groups.map((group) => (
+              <button
+                key={group.key}
+                type="button"
+                onClick={() => setFilter(group.key)}
+                aria-pressed={filter === group.key}
+                className={cn("flex w-full cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors", filter === group.key ? "border-blue-subtle bg-white shadow-sm" : "border-transparent hover:bg-white")}
+              >
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: group.color }} />
+                <span className="min-w-0 flex-1 text-[13px] font-semibold text-text-primary">{group.label}</span>
+                <span className="text-[12px] font-semibold text-text-secondary tnum">{group.count}</span>
+              </button>
+            ))}
+          </div>
+        </aside>
+        <section className="min-h-0 overflow-y-auto p-6">
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <div>
+              <h3 className="text-[17px] font-bold text-text-primary">{groups.find((group) => group.key === filter)?.label}</h3>
+              <p className="mt-0.5 text-[12px] text-text-secondary">Every result contributing to this goal is listed here. The claim under review is highlighted.</p>
+            </div>
+            <span className="shrink-0 text-[12px] font-semibold text-text-secondary">{visible.length} shown</span>
+          </div>
+          {visible.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border-light px-5 py-12 text-center text-[13px] text-text-secondary">No results in this status.</div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-border-light">
+              {visible.map((claim) => {
+                const status = entryStatus(claim);
+                const claimGoal = state.goals.find((item) => item.id === claim.goalId);
+                const subgoal = claimGoal?.subgoals.find((item) => item.id === claim.subgoalId);
+                return (
+                  <div key={claim.id} className={cn("flex items-center gap-4 border-b border-border-light px-4 py-3 last:border-b-0", claim.id === entry.id && "bg-blue-light/50")}>
+                    <Avatar name={claim.person} className="h-9 w-9 shrink-0 text-[11px]" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[13px] font-semibold text-text-primary">{claim.person}</span>
+                        {claim.id === entry.id && <span className="rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold text-blue-primary">This claim</span>}
+                      </div>
+                      <p className="mt-0.5 truncate text-[11.5px] text-text-secondary">{claim.customer || subgoal?.name || "Goal result"} · {formatDate(claim.date)}</p>
+                    </div>
+                    <span className="hidden shrink-0 items-center gap-1.5 text-[11px] font-semibold sm:inline-flex" style={{ color: ENTRY_COLOR[status] }}>
+                      <span className="h-2 w-2 rounded-full" style={{ background: ENTRY_COLOR[status] }} />
+                      {status === "verified" ? "Signed off" : status === "reported" ? "Waiting" : "Sent back"}
+                    </span>
+                    <b className="shrink-0 text-[13px] text-text-primary tnum">{fmtAmount(goal.unit, claim.amount, claim.currency)}</b>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
+    </Modal>
+  );
+}
+
 /**
  * REVIEW A CLAIM, THEN DECIDE — shared by the verification queue and the
  * standalone goal page's rail, which until now still had the original
@@ -2551,6 +2672,7 @@ export function ClaimReviewDialog({
   startInSendBack?: boolean;
 }) {
   const [sendingBack, setSendingBack] = useState(startInSendBack);
+  const [progressExpanded, setProgressExpanded] = useState(false);
   /** Already signed off: this dialog is here to take that back, not to do it
    *  again, so it says so and drops the Verify button. */
   const locked = entryStatus(a) === "verified";
@@ -2560,6 +2682,7 @@ export function ClaimReviewDialog({
   const goal = state.goals.find((g) => g.id === a.goalId);
   const sub = goal?.subgoals.find((x) => x.id === a.subgoalId);
   const close = () => {
+    setProgressExpanded(false);
     setSendingBack(false);
     setNote("");
     setNoteError(false);
@@ -2643,7 +2766,7 @@ export function ClaimReviewDialog({
                     : "this claim, waiting";
               return (
                 <div className="mb-3 rounded-xl bg-surface px-3.5 pb-3 pt-2.5">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                     <b className="text-[13.5px] font-bold text-text-primary">
                       {goal.name}
                     </b>
@@ -2654,7 +2777,7 @@ export function ClaimReviewDialog({
                         stands was the smallest thing in the card. The figure
                         carries the goal's own verdict colour and the sentence
                         steps back behind it. */}
-                    <span className="flex items-baseline gap-1.5 tnum">
+                    <span className="flex items-center gap-2 tnum">
                       <b
                         className="text-[16px] font-bold"
                         style={{
@@ -2671,6 +2794,15 @@ export function ClaimReviewDialog({
                       <span className="text-[11.5px] text-text-tertiary">
                         there, counting what is signed off
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => setProgressExpanded(true)}
+                        aria-label={`Expand progress for ${goal.name}`}
+                        title="Explore the results behind this progress"
+                        className="ml-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                      >
+                        <Maximize2 size={14} strokeWidth={2.2} />
+                      </button>
                     </span>
                   </div>
                   {/* The two ends, labelled, exactly like the pace track. */}
@@ -2962,6 +3094,7 @@ export function ClaimReviewDialog({
                 </>
               )}
             </div>
+            {progressExpanded && <ClaimProgressZoom entry={a} state={state} onClose={() => setProgressExpanded(false)} />}
           </Modal>
         );
 }
