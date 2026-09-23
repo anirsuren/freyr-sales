@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ArrowRight, Maximize2 } from "lucide-react";
+import { ArrowRight, CalendarDays, Maximize2 } from "lucide-react";
 import Link from "next/link";
 import {
   AreaChart,
@@ -19,6 +19,7 @@ import {
 } from "@/components/charts/Charts";
 import { VIZ, VIZ_SERIES } from "@/components/charts/palette";
 import { Modal } from "@/components/ui/Modal";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { cn } from "@/lib/utils";
 
 /**
@@ -168,10 +169,21 @@ export function ExpandedChartControl({
               <div className="min-h-0 flex-1 overflow-y-auto p-2">
                 {points ? (
                   <div className="px-2 pb-3">
-                    <label htmlFor="chart-point-week" className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Week starting</label>
-                    <select id="chart-point-week" value={pointIndex} onChange={(event) => setSelectedPoint(Number(event.target.value))} className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-[13px] font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-blue-primary/30">
-                      {points.map((entry, index) => <option key={`${entry.label}-${index}`} value={index}>{entry.label} · {entry.records.length} {entry.records.length === 1 ? "lead" : "leads"}</option>)}
-                    </select>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Week starting</p>
+                    <ColorSelect
+                      value={String(pointIndex)}
+                      options={points.map((entry, index) => ({
+                        value: String(index),
+                        label: `${entry.label} · ${entry.records.length} ${entry.records.length === 1 ? "lead" : "leads"}`,
+                        color: "#0071E3",
+                        icon: CalendarDays,
+                      }))}
+                      onChange={(value) => setSelectedPoint(Number(value))}
+                      ariaLabel="Week starting"
+                      fill
+                      dense
+                      collapsible={false}
+                    />
                     <div className="mt-4 flex items-baseline justify-between border-b border-border-light pb-3">
                       <p className="text-[14px] font-semibold text-text-primary">{point?.label}</p>
                       <span className="text-[12px] font-semibold tabular-nums text-blue-primary">{point?.records.length || 0} {point?.records.length === 1 ? "lead" : "leads"}</span>
