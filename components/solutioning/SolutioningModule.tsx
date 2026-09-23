@@ -1932,6 +1932,16 @@ export function NewRequestDialog({
     ? opportunities.find((o) => o.id === prefillOpportunityId)
     : undefined;
   const sourceCompany = prefillCompany?.trim() || sourceOpportunity?.customer.trim() || "";
+  const sourceContext = sourceOpportunity
+    ? {
+        label: "For this opportunity",
+        name: sourceOpportunity.label,
+        company: sourceOpportunity.label.toLowerCase().includes(sourceCompany.toLowerCase()) ? "" : sourceCompany,
+        kind: "opportunity" as const,
+      }
+    : prefillCustomerId && sourceCompany
+      ? { label: "For this customer", name: sourceCompany, company: "", kind: "customer" as const }
+      : null;
   const matchedByName = sourceCompany
     ? (customers.find(
         (c) => c.name.trim().toLowerCase() === sourceCompany.toLowerCase()
@@ -2243,6 +2253,7 @@ export function NewRequestDialog({
     <FrameOrNot
       chromeless={chromeless}
       onClose={onClose}
+      context={sourceContext}
       title={
         directKind
           ? `New ${KIND_META[directKind].label.toLowerCase()}`
@@ -2255,20 +2266,6 @@ export function NewRequestDialog({
     >
       {/* All steps share a fixed frame; longer forms scroll inside it. */}
       <div className="flex min-h-[380px] flex-col">
-      {sourceOpportunity && !sub && (
-        <div className="mb-4 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
-          <Briefcase size={19} className="shrink-0 text-blue-primary" aria-hidden="true" />
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-blue-primary">
-              Request for this opportunity
-            </p>
-            <p className="truncate text-[14px] font-semibold text-text-primary" title={sourceOpportunity.label}>
-              {sourceOpportunity.label}
-            </p>
-            <p className="text-[12px] text-text-secondary">{sourceCompany}</p>
-          </div>
-        </div>
-      )}
       {sub ? (
         /* A PAGE OF THIS DIALOG. Same frame, same width, a back arrow where
            the form was — and the form itself is still mounted behind this,
@@ -3104,6 +3101,7 @@ function FrameOrNot({
   chromeless,
   onClose,
   title,
+  context,
   onBack,
   stepBack,
   children,
@@ -3111,6 +3109,7 @@ function FrameOrNot({
   chromeless: boolean;
   onClose: () => void;
   title: string;
+  context?: { label: string; name: string; company: string; kind: "opportunity" | "customer" } | null;
   onBack?: () => void;
   stepBack?: () => void;
   children: React.ReactNode;
@@ -3123,6 +3122,16 @@ function FrameOrNot({
         onClose={onClose}
         onBack={stepBack}
         title={title}
+        titleAfter={context ? (
+          <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-[12px] font-medium text-blue-primary" title={`${context.label}: ${context.name}${context.company ? ` · ${context.company}` : ""}`}>
+            {context.kind === "opportunity"
+              ? <Briefcase size={13} className="shrink-0" aria-hidden="true" />
+              : <Building2 size={13} className="shrink-0" aria-hidden="true" />}
+            <span className="shrink-0">{context.label}:</span>
+            <span className="truncate font-semibold">{context.name}</span>
+            {context.company && <span className="hidden shrink-0 text-text-secondary sm:inline">· {context.company}</span>}
+          </span>
+        ) : undefined}
         size="workflow"
         dialogClassName="h-[min(720px,calc(100dvh-4rem))]"
       >

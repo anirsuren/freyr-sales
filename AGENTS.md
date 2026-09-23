@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Solutioning request origin in dialog header:** When launched from an opportunity or customer, both the request-kind chooser and every request form now keep a clear “For this opportunity/customer” label and record name in the modal header. This replaces the opportunity-only note in the scrolling form body, so the origin stays visible while selecting the kind and filling the form. Verified in the opportunity flow in Mock-mode; typecheck and focused lint pass. Local only, not deployed.
+
 - **Sep 23 Opportunity request type display:** Solutioning requests in the opportunity/customer connected-record table now show their selected request kind as the same colored icon chip used in Solutioning, with the subtype beneath it. The type remains plain data for search and filtering, but no longer looks like an editable field in the record table. Typecheck and focused lint pass. Local only, not deployed.
 
 - **Sep 23 Connected-record rows are complete:** The shared customer/opportunity connected-record view no longer caps non-table bands at eight items or prints an “and N more” footer beneath tables that already show every row. Month-by-month accrual schedules and other connected sections render their complete item lists on the page. Typecheck and focused lint pass. Local only, not deployed.
