@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Deviations summary stays on one line:** The Needs attention and Most deviations chip groups use one non-wrapping strip. At narrower widths, that strip scrolls horizontally instead of moving owner chips onto a second line. Verified visually in local Mock mode; typecheck and focused lint pass. Local only, not deployed.
+
 - **Sep 23 Optional first-column pin in opportunity summaries:** The first column of the booked/accrual/customer summary table now scrolls away by default. A quiet pin inside its header toggles sticky behavior without adding table space, and the choice persists separately for each summary. Pinned cells have opaque backgrounds so horizontal scrolling cannot show figures through them. Verified in the Mock accrual table by scrolling with the pin on and off and reloading with it off; typecheck and focused lint pass (four existing warnings). Local only, not deployed.
 
 - **Sep 23 Solutioning attendee picker and popup dismissal:** The meeting request now has a dedicated attendee card with an Add people control and visible, removable selected teammates. The shared selectors and other click-away menus use capture-phase pointer events so clicks elsewhere inside a popup dismiss an open menu reliably; nested selector buttons in the request form are no longer wrapped in labels. Verified in the Belmara Pharma Mock request: attendee, customer, and Customer POC menus close on outside click; the attendee trigger toggles and Escape closes it; selecting a teammate preserves the choice. Typecheck, focused lint, and production build pass. Local only, not deployed.

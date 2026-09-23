@@ -433,18 +433,11 @@ function DeviationsTable({
           when it is on, and pressing an on chip clears it. `aria-pressed`
           says the same thing to a screen reader that the fill says to an eye. */}
       {(byOwner.length > 0 || inactiveCount > 0 || invalidAll.length > 0) && (
-        <div
-          className={cn(
-            "mt-4 grid gap-3",
-            byOwner.length > 0 && (inactiveCount > 0 || invalidAll.length > 0)
-              ? "lg:grid-cols-[minmax(280px,0.8fr)_minmax(420px,1.2fr)]"
-              : "grid-cols-1"
-          )}
-        >
+        <div className="mt-4 flex min-w-0 gap-3 overflow-x-auto pb-1">
           {/* THE INVALID ENTRIES, one press away (Manoj, Sep 10). Same chip
               shape as the others, and pressing it again shows everything. */}
           {(invalidAll.length > 0 || inactiveCount > 0) && (
-            <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-border-light bg-surface/55 px-3 py-2.5">
+            <div className="flex shrink-0 flex-nowrap items-center gap-2 whitespace-nowrap rounded-xl border border-border-light bg-surface/55 px-3 py-2.5">
               <span className="mr-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
                 Needs attention
               </span>
@@ -508,7 +501,7 @@ function DeviationsTable({
           )}
 
           {byOwner.length > 0 && (
-            <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-[rgba(124,58,237,0.16)] bg-[rgba(124,58,237,0.035)] px-3 py-2.5">
+            <div className="flex shrink-0 flex-nowrap items-center gap-2 whitespace-nowrap rounded-xl border border-[rgba(124,58,237,0.16)] bg-[rgba(124,58,237,0.035)] px-3 py-2.5">
               <span className="mr-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
                 Most deviations
               </span>
