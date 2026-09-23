@@ -169,10 +169,10 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
         setViewsOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setViewsOpen(false);
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc, true);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("pointerdown", onDoc, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [viewsOpen]);

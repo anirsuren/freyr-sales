@@ -51,11 +51,11 @@ export function PeoplePicker({
 
   useEffect(() => {
     if (!open) return;
-    const away = (e: MouseEvent) => {
+    const away = (e: PointerEvent) => {
       if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", away);
-    return () => document.removeEventListener("mousedown", away);
+    document.addEventListener("pointerdown", away, true);
+    return () => document.removeEventListener("pointerdown", away, true);
   }, [open]);
 
   const options = useMemo(() => {

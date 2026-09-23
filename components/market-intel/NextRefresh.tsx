@@ -80,13 +80,13 @@ export function RefreshChip({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
-    document.addEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey);
     const close = () => setOpen(false);
     window.addEventListener("resize", close);
     window.addEventListener("scroll", close, true);
     return () => {
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", close);
       window.removeEventListener("scroll", close, true);

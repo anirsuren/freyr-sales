@@ -1011,8 +1011,8 @@ export function AgentDock({
       if (target.closest?.("[data-agent-dock-launcher]")) return;
       onOpenChange(false);
     };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
   }, [open, embedded, onOpenChange]);
 
   /**

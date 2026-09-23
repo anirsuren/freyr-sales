@@ -167,10 +167,10 @@ export function VideoPlayer({
       if (!speedRef.current?.contains(e.target as Node)) setSpeedOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSpeedOpen(false);
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc, true);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("pointerdown", onDoc, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [speedOpen]);

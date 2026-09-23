@@ -140,7 +140,7 @@ export function ViewSelect<T extends string>({
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (event: MouseEvent) => {
+    const onDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (!boxRef.current?.contains(target) && !menuRef.current?.contains(target)) {
         setOpen(false);
@@ -159,12 +159,12 @@ export function ViewSelect<T extends string>({
       });
     };
     place();
-    document.addEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey);
     window.addEventListener("scroll", place, true);
     window.addEventListener("resize", place);
     return () => {
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("scroll", place, true);
       window.removeEventListener("resize", place);

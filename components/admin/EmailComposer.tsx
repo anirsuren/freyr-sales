@@ -379,8 +379,8 @@ function RecipientField({
         return "";
       });
     };
-    document.addEventListener("mousedown", away);
-    return () => document.removeEventListener("mousedown", away);
+    document.addEventListener("pointerdown", away, true);
+    return () => document.removeEventListener("pointerdown", away, true);
   }, [open, value, onChange]);
 
   const commit = (address: string) => {

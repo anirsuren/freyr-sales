@@ -330,10 +330,10 @@ export function TopBar({
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setUserOpen(false);
     };
-    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("pointerdown", closeOutside, true);
     document.addEventListener("keydown", closeOnEscape);
     return () => {
-      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("pointerdown", closeOutside, true);
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [userOpen]);

@@ -220,12 +220,12 @@ export function PersonSelect({
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     const onScroll = () => anchorMenu();
     const onResize = () => setOpen(false);
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc, true);
     document.addEventListener("keydown", onKey);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     window.addEventListener("resize", onResize);
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("pointerdown", onDoc, true);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
       window.removeEventListener("resize", onResize);

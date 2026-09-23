@@ -64,12 +64,12 @@ export function CompanyAdminControls({
       if (rect) setMenuStyle(floatingMenuStyle(rect, 220, 110));
     };
     const onResize = () => setMenuOpen(false);
-    document.addEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     window.addEventListener("resize", onResize);
     return () => {
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("scroll", onScroll, { capture: true });
       window.removeEventListener("resize", onResize);

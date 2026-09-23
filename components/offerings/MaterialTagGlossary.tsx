@@ -135,10 +135,10 @@ export function MaterialTagGlossary({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(null);
     };
-    document.addEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);

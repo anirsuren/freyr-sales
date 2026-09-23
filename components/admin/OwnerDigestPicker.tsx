@@ -84,10 +84,10 @@ export function OwnerDigestPicker({
       setPicking(null);
       setPerson(null);
     };
-    document.addEventListener("mousedown", away);
+    document.addEventListener("pointerdown", away, true);
     document.addEventListener("keydown", esc);
     return () => {
-      document.removeEventListener("mousedown", away);
+      document.removeEventListener("pointerdown", away, true);
       document.removeEventListener("keydown", esc);
     };
   }, [open]);

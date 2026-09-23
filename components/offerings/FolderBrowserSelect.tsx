@@ -97,11 +97,11 @@ export function FolderBrowserSelect({
       );
     };
     const onResize = () => setOpen(false);
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc, true);
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("pointerdown", onDoc, true);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, {
         capture: true,

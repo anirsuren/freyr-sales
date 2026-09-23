@@ -498,7 +498,7 @@ export function ColorSelect({
 
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: MouseEvent) => {
+    const onDoc = (e: PointerEvent) => {
       const target = e.target as Node;
       if (
         ref.current &&
@@ -534,12 +534,12 @@ export function ColorSelect({
         return floatingMenuStyle(rect, width, 260);
       });
     };
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc, true);
     document.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("pointerdown", onDoc, true);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
@@ -1056,6 +1056,7 @@ export function MultiColorSelect({
   allColor = "var(--ink-bright-blue)",
   collapsible = true,
   triggerLabel,
+  fixedTriggerLabel,
   width,
   maxWidth,
   dense = false,
@@ -1087,6 +1088,8 @@ export function MultiColorSelect({
   collapsible?: boolean;
   /** Short stable field name used in dense toolbars, e.g. "Customer". */
   triggerLabel?: string;
+  /** Keep an action-style trigger label while selections are displayed nearby. */
+  fixedTriggerLabel?: string;
   /** Fixed trigger width for a dense toolbar. */
   width?: number;
   /** Let a selected value widen the trigger up to this limit. */
@@ -1185,7 +1188,7 @@ export function MultiColorSelect({
 
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: MouseEvent) => {
+    const onDoc = (e: PointerEvent) => {
       const target = e.target as Node;
       if (
         ref.current &&
@@ -1221,12 +1224,12 @@ export function MultiColorSelect({
         return floatingMenuStyle(rect, width, 260);
       });
     };
-    document.addEventListener("pointerdown", onDoc);
+    document.addEventListener("pointerdown", onDoc, true);
     document.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("pointerdown", onDoc);
+      document.removeEventListener("pointerdown", onDoc, true);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
@@ -1240,13 +1243,13 @@ export function MultiColorSelect({
   // trigger falls back to the count.
   const joined = picked.map((option) => option.label).join(", ");
   const summary =
-    picked.length === 0
+    fixedTriggerLabel ?? (picked.length === 0
       ? triggerLabel || placeholder || allLabel
       : picked.length === 1
         ? picked[0].label
         : joined.length <= 34
           ? joined
-          : `${picked.length} selected`;
+          : `${picked.length} selected`);
   const selectionLabel =
     picked.length === 0
       ? (placeholder ?? allLabel)
@@ -1357,7 +1360,11 @@ export function MultiColorSelect({
           {/* This leading slot is always 20px wide. Swapping an unrestricted
               icon for one/two/three selection dots cannot move the label. */}
           <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-            {picked.length === 1 && picked[0].agentName ? (
+            {fixedTriggerLabel && AllIcon ? (
+              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-primary text-white">
+                <AllIcon size={12} strokeWidth={2.1} />
+              </span>
+            ) : picked.length === 1 && picked[0].agentName ? (
               <AgentAvatar
                 name={picked[0].agentName!}
                 size={20}

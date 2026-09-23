@@ -190,12 +190,12 @@ export function LookupField({
         )
       );
     };
-    document.addEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     window.addEventListener("resize", shut);
     return () => {
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("scroll", onScroll, { capture: true });
       window.removeEventListener("resize", shut);
