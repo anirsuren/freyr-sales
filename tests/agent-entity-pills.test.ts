@@ -49,3 +49,17 @@ test("a company named in a lead answer keeps its company link and logo", () => {
   assert.ok(pill && typeof pill === "object" && "props" in pill);
   assert.equal((pill as { props: { href: string } }).props.href, "/customers/cust-fill-003");
 });
+
+test("explicit offering and teammate links keep identity marks while the index loads", () => {
+  const offering = entityLink("/offerings/agent-fia", "Agent.Fia", [], "offering");
+  const teammate = entityLink("/team?member=member-1", "Neha Sharma", [], "teammate");
+  assert.ok(offering && typeof offering === "object" && "props" in offering);
+  assert.ok(teammate && typeof teammate === "object" && "props" in teammate);
+  const offeringProps = offering.props as { href: string; children: unknown[] };
+  const teammateProps = teammate.props as { href: string; children: Array<{ props: { name: string } }> };
+  assert.equal(offeringProps.href, "/offerings/agent-fia");
+  assert.equal(teammateProps.href, "/team?member=member-1");
+  assert.ok(offeringProps.children[0]);
+  assert.equal(teammateProps.children[0].props.name, "Neha Sharma");
+  assert.equal(entityLink("/team", "Team", [], "navigation"), null);
+});

@@ -375,7 +375,25 @@ export function entityLink(href: string, label: string, entities: Entity[], key:
   const entity = named.length === 1 ? named[0] :
     candidates.length === 1 && !["person", "lead", "contract"].includes(candidates[0].kind)
       ? candidates[0] : undefined;
-  if (!entity) return null;
+  if (!entity) {
+    // The answer can arrive before the separate name index has loaded. An
+    // explicit record URL still identifies the kind of thing being linked, so
+    // show its identity mark immediately instead of flashing a plain blue link
+    // in the compact chat (or leaving old saved answers that way indefinitely).
+    const fallbackKind: EntityKind | null =
+      /^\/customers\/[^/?#]+\/?$/.test(href) ? "company" :
+      /^\/contacts\/[^/?#]+\/?$/.test(href) ? "contact" :
+      /^\/offerings\/[^/?#]+\/?$/.test(href) ? "offering" :
+      /^\/components\/[^/?#]+\/?$/.test(href) ? "component" :
+      /^\/team\?member=[^&#]+/.test(href) ? "person" : null;
+    if (!fallbackKind || !label.trim() || label.startsWith("/")) return null;
+    return (
+      <Link key={key} href={href} className={PILL}>
+        {KIND[fallbackKind].mark(label)}
+        {label}
+      </Link>
+    );
+  }
   const style = KIND[entity.kind];
   return <Link key={key} href={style.href(entity.id)} {...(entity.kind === "trackedPerson" ? {target:"_blank",rel:"noopener noreferrer"} : {})} className={PILL}>{style.mark(entity.name, entity.logoUrl)}{label.startsWith('/') ? entity.name : label}</Link>;
 }

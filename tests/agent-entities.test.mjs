@@ -141,13 +141,13 @@ test("a module grant is respected independently of role", async () => {
   assert.equal(data.marketCompanies.length, 1);
   assert.deepEqual(data.offerings, []);
 });
-test("ambiguous names never choose an arbitrary destination", () => {
+test("a company in two indexes keeps its customer destination", () => {
   const entities = [
     { name: "GSK", id: "crm", kind: "company" },
     { name: "GSK", id: "intel", kind: "marketCompany" },
   ];
-  assert.deepEqual(unambiguousEntities(entities), []);
-  assert.deepEqual(injectEntities("GSK", entities, "x"), ["GSK"]);
+  assert.deepEqual(unambiguousEntities(entities), [entities[0]]);
+  assert.equal(injectEntities("GSK", entities, "x")[0].props.href, "/customers/crm");
 });
 test("longest names win; duplicates of same record are safe", () => {
   const a = { name: "Example", id: "a", kind: "company" },

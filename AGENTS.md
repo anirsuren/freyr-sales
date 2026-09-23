@@ -1571,3 +1571,7 @@ The customer Offerings tab opens with account-specific usage, recorded revenue, 
 ### Sep 22: About this account opens one complete editor
 
 The pencil on About this account opens a single dialog with every fact shown in that section: company name, industry, size, locations, website, customer type, ownership, revenue, and account description. The read-only values no longer become a second set of edit buttons. One Save changes action submits the section together; the customer PATCH route now accepts the description with a length cap. Typecheck and focused lint pass. Local visual verification is pending because localhost redirects to Access pending (configuration error). Completed locally, not deployed.
+
+### Sep 22: Compact Agent reply identity parity
+
+The floating Agent chat scopes each answer to its verified entity links and stores the answer's entity context just like the full chat. Explicit offering, component, customer, contact, and teammate links render with their identity mark even before the separate name index loads, so saved answers do not fall back to plain blue links. Markdown headings in compact replies render as headings rather than literal hash marks. Typecheck, focused lint, and agent identity tests pass. Completed locally, not deployed.

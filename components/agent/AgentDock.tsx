@@ -20,6 +20,7 @@ import { bucketByDay, clockTime, dayLabel, listStamp, sameDay } from "@/lib/chat
 import {
   injectEntities,
   entityLink,
+  entitiesForAnswer,
   useEntityIndex,
   type Entity,
 } from "@/components/agent/EntityPills";
@@ -45,7 +46,7 @@ import { ChatChart, parseChartSpec } from "@/components/agent/AgentResponseChart
 const CONVERSATIONS_KEY = "freyr.agent.conversations";
 const LEGACY_THREAD_KEY = "freyr.assistant.thread.v2";
 
-type Msg = { role: "user" | "agent"; text: string; ts: number };
+type Msg = { role: "user" | "agent"; text: string; ts: number; entityContext?: string[] };
 type Convo = {
   id: string;
   title: string;
@@ -233,9 +234,11 @@ function suggestionsFor(label: string, offeringsOnly = false): string[] {
 // user onto a record page.
 export function renderRich(
   text: string,
-  entities: Entity[] = [],
-  linkable = true
+  allEntities: Entity[] = [],
+  linkable = true,
+  entityContext: string[] = [],
 ): ReactNode {
+  const entities = entitiesForAnswer(text, allEntities, entityContext);
   const lines = normalizeAgentLinks(text).split("\n");
   const blocks: ReactNode[] = [];
   for (let li = 0; li < lines.length; li++) {
@@ -267,8 +270,9 @@ export function renderRich(
     // Strip the list marker before parsing emphasis. A line such as
     // `* **Converted:** 18 leads` otherwise pairs the list's first `*`
     // with the bold marker and leaves a literal asterisk beside the label.
-    const bullet = line.match(/^\s*[-*•]\s+(.+)$/);
-    const content = bullet ? bullet[1] : line;
+    const heading = line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*#*$/);
+    const bullet = heading ? null : line.match(/^\s*[-*•]\s+(.+)$/);
+    const content = heading ? heading[1] : bullet ? bullet[1] : line;
     const nodes: ReactNode[] = [];
     // Links first, then bold, italic and code. Only app paths and HTTP(S)
     // citations are linkable; other schemes remain plain text.
@@ -336,6 +340,7 @@ export function renderRich(
     }
     if (last < content.length) plain(content.slice(last), `${li}-end`);
     blocks.push(
+      heading ? <h3 key={li} className="mt-2 mb-1 font-semibold">{nodes}</h3> :
       <span key={li} className={bullet ? "flex min-h-[2px] gap-2 pl-2" : "block min-h-[2px]"}>
         {bullet && <span aria-hidden="true">•</span>}
         <span>{nodes}</span>
@@ -389,14 +394,16 @@ function TypedReply({
   active,
   entities,
   linksOn,
+  entityContext,
 }: {
   text: string;
   active: boolean;
   entities: Parameters<typeof renderRich>[1];
   linksOn: boolean;
+  entityContext?: string[];
 }) {
   const shown = useTypewriter(text, active);
-  return <>{renderRich(trimStreamingLink(shown), entities, linksOn)}</>;
+  return <>{renderRich(trimStreamingLink(shown), entities, linksOn, entityContext)}</>;
 }
 
 export function AgentDock({
@@ -927,7 +934,10 @@ export function AgentDock({
                 ...conversation,
                 messages: [
                   ...conversation.messages,
-                  { role: "agent" as const, text: reply, ts: replyTs },
+                  { role: "agent" as const, text: reply, ts: replyTs,
+                    entityContext: Array.isArray(data.entityContext)
+                      ? data.entityContext.filter((value): value is string => typeof value === "string")
+                      : [] },
                 ],
                 updated: replyTs,
               }
@@ -1268,6 +1278,7 @@ export function AgentDock({
                           active={m.ts === typingTs}
                           entities={entities}
                           linksOn={!offeringsOnly}
+                          entityContext={m.entityContext}
                         />
                       ) : (
                         m.text
