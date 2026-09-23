@@ -69,6 +69,7 @@ import {
   typeMeta,
 } from "@/components/performance/bits";
 import { GoalZoom } from "@/components/performance/GoalZoom";
+import { KindChip } from "@/components/solutioning/bits";
 import {
   actualValue,
   entryStatus,
@@ -1039,6 +1040,11 @@ export function Customer360({
                                 solutionArtifactTable && c.key === "status";
                               const leadSource = active.key === "leads" && c.key === "source";
                               const leadStatus = active.key === "leads" && c.key === "status";
+                              const requestType = active.key === "solutionRequests" && c.key === "type";
+                              const [kindName, subtype] = requestType ? v.split(" · ", 2) : ["", ""];
+                              const requestKind = kindName === "submission" || kindName === "presentation" || kindName === "meeting"
+                                ? kindName
+                                : null;
                               const identityColor = opportunityStage
                                 ? OPPORTUNITY_LEVEL_COLOR[v] ?? "#8E98A8"
                                 : opportunityStatus
@@ -1071,7 +1077,12 @@ export function Customer360({
                                       "whitespace-nowrap"
                                   )}
                                 >
-                                  {IdentityIcon && identityColor ? (
+                                  {requestKind ? (
+                                    <span className="inline-flex flex-col items-start gap-1">
+                                      <KindChip kind={requestKind} size="sm" />
+                                      {subtype && <span className="pl-0.5 text-[11px] font-medium text-text-secondary">{subtype}</span>}
+                                    </span>
+                                  ) : IdentityIcon && identityColor ? (
                                     <span
                                       className={cn(
                                         "inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold",

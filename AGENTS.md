@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Opportunity request type display:** Solutioning requests in the opportunity/customer connected-record table now show their selected request kind as the same colored icon chip used in Solutioning, with the subtype beneath it. The type remains plain data for search and filtering, but no longer looks like an editable field in the record table. Typecheck and focused lint pass. Local only, not deployed.
+
 - **Sep 23 Connected-record rows are complete:** The shared customer/opportunity connected-record view no longer caps non-table bands at eight items or prints an “and N more” footer beneath tables that already show every row. Month-by-month accrual schedules and other connected sections render their complete item lists on the page. Typecheck and focused lint pass. Local only, not deployed.
 
 - **Sep 23 Lead status donut selection:** In the enlarged Leads status workspace, clicking a donut slice selects that status and immediately filters the lead table on the right; clicking the selected slice again returns to all leads. The selected slice stays emphasized and the enlarged chart no longer opens hover tooltips. The existing status list remains an equivalent filter. Typecheck and focused lint pass. Local only, not deployed.
