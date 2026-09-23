@@ -4,6 +4,7 @@ import { SEED_OPPORTUNITIES } from "./pipelineSeed";
 import { hasSupabase } from "./env";
 import { sampleDocPath } from "./sampleDocuments";
 import { mockFillMeetings, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
+import { refreshMockFillNames } from "./mockFillCast";
 
 /**
  * MEETINGS — customer meetings, as their own object.
@@ -343,8 +344,9 @@ async function topUpMockFill(): Promise<MeetingsState> {
        held the old rows. Hand-added rows carry no fill prefix and survive. */
     const beforeSweep = base.meetings.length;
     base.meetings = base.meetings.filter((r) => !isStaleFillRow(r.id));
+    const namesChanged = refreshMockFillNames(base.meetings);
     if (hasMockFillRows(base.meetings.map((m) => m.id))) {
-      if (base.meetings.length !== beforeSweep)
+      if (base.meetings.length !== beforeSweep || namesChanged)
         await writeRow({ ...base, sampleVersion: SAMPLE_VERSION }).catch(() => undefined);
       return base;
     }
@@ -368,7 +370,8 @@ export async function readMeetings(): Promise<MeetingsState> {
     const state = normalize(existing);
     if (
       hasMockFillRows(state.meetings.map((m) => m.id)) &&
-      !state.meetings.some((meeting) => isStaleFillRow(meeting.id))
+      !state.meetings.some((meeting) => isStaleFillRow(meeting.id)) &&
+      !refreshMockFillNames(state.meetings)
     )
       return state;
   }

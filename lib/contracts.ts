@@ -3,6 +3,7 @@ import "server-only";
 import { getDataMode } from "./dataMode";
 import { spreadEvenly } from "./revenueAccrualsShared";
 import { mockFillContracts, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
+import { refreshMockFillNames } from "./mockFillCast";
 import {
   CONTRACT_STATUSES,
   type ContractDoc,
@@ -297,8 +298,9 @@ async function topUpMockFill(): Promise<ContractsState> {
        held the old rows. Hand-added rows carry no fill prefix and survive. */
     const beforeSweep = base.contracts.length;
     base.contracts = base.contracts.filter((r) => !isStaleFillRow(r.id));
+    const namesChanged = refreshMockFillNames(base.contracts);
     if (hasMockFillRows(base.contracts.map((r) => r.id))) {
-      if (base.contracts.length !== beforeSweep) await writeRow(base).catch(() => undefined);
+      if (base.contracts.length !== beforeSweep || namesChanged) await writeRow(base).catch(() => undefined);
       return base;
     }
     const rows = mockFillContracts();
@@ -348,7 +350,8 @@ export async function readContracts(): Promise<ContractsState> {
     const state = normalize(existing);
     if (
       hasMockFillRows(state.contracts.map((c) => c.id)) &&
-      !state.contracts.some((contract) => isStaleFillRow(contract.id))
+      !state.contracts.some((contract) => isStaleFillRow(contract.id)) &&
+      !refreshMockFillNames(state.contracts)
     )
       return withDerivedSchedules(state);
   }

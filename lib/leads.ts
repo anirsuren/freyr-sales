@@ -3,6 +3,7 @@ import { leadLinkedInUrl, normalizeLeadLinkedInProfile } from "./leadLinkedIn";
 
 import { getDataMode } from "./dataMode";
 import { mockFillLeads, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
+import { refreshMockFillNames } from "./mockFillCast";
 import {
   EMPTY_LEADS,
   LEAD_SOURCES,
@@ -251,8 +252,9 @@ async function topUpMockFill(): Promise<LeadsState> {
        held the old rows. Hand-added rows carry no fill prefix and survive. */
     const beforeSweep = base.leads.length;
     base.leads = base.leads.filter((r) => !isStaleFillRow(r.id));
+    const namesChanged = refreshMockFillNames(base.leads);
     if (hasMockFillRows(base.leads.map((r) => r.id))) {
-      if (base.leads.length !== beforeSweep) await writeRow(base).catch(() => undefined);
+      if (base.leads.length !== beforeSweep || namesChanged) await writeRow(base).catch(() => undefined);
       return base;
     }
     const rows = mockFillLeads();
@@ -270,7 +272,8 @@ export async function readLeads(): Promise<LeadsState> {
     const state = normalize(existing);
     if (
       hasMockFillRows(state.leads.map((l) => l.id)) &&
-      !state.leads.some((lead) => isStaleFillRow(lead.id))
+      !state.leads.some((lead) => isStaleFillRow(lead.id)) &&
+      !refreshMockFillNames(state.leads)
     )
       return state;
   }

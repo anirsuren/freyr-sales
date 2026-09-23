@@ -74,6 +74,34 @@ export const FILL_LAST = [
   "Okafor", "Weiss", "Moreno", "Jensen", "Iyer", "Berg", "Ricci", "Adeyemi",
   "Khan", "Petrov", "Rahman", "Larsen", "Duarte", "Cisse", "Marchetti",
   "Doyle", "Nowak", "Fischer", "Almeida", "Kaur", "Nakamura", "Olsen", "Ruiz",
+  "Moreau", "Sato", "Desai", "Mbeki", "Costa", "Hoffmann", "Park", "Mensah",
+  "Dubois", "Patel", "Andersson", "Fernandez", "Kobayashi", "Diallo", "Novak", "Silva",
+  "Bennett", "Chaudhry", "Adebayo", "Rossi", "Kim", "Muller", "Santos", "Hassan",
+  "Yamamoto", "Schneider", "Mwangi", "Gonzalez", "Shah", "Kowalski", "Chen", "Ndlovu",
+  "Pereira", "Larsson", "Ito", "Kapoor", "Williams", "Abebe", "Garcia", "Leclerc",
+  "Singh", "Haddad", "Mori", "Okoye", "Ribeiro", "Hansen", "Choi", "Ali",
+  "Martin", "Bose", "Osei", "Conti", "Johansson", "Rivera", "Gupta", "Takahashi",
+  "Diop", "Clarke", "Lefebvre", "Mehta", "O'Connor", "Watanabe", "Bello", "Gomez",
+  "Liu", "Pillay", "Barbosa", "Eriksson", "Kumar", "Thompson", "Ibrahim", "Marin",
+  "Nakajima", "Otieno", "Sullivan", "Verma", "Carvalho", "Bauer", "Reyes", "Afolayan",
+  "Klein", "Mendoza", "Joshi", "Kondo", "Moyo", "Ferreira", "Holm", "Ahmed",
+  "Bernard", "Rao", "Svensson", "Castillo", "Omondi", "Lombardi", "Cho", "Cooper",
+  "Naidoo", "Blanc", "Reddy", "Ogawa", "Ramirez", "Nielsen", "Toure", "Wallace",
+  "Hernandez", "Bhatt", "Njeri", "Fontaine", "Li", "Romano", "Murphy", "Das",
+  "Sakamoto", "Maseko", "Andersen", "Vega", "Basu", "Laurent", "Wilson", "Adekunle",
+  "Becker", "Campos", "Malhotra", "Kato", "Kamau", "Gallo", "Evans", "Chowdhury",
+  "Bouchard", "Sharma", "Fujimoto", "Boateng", "Meyer", "Navarro", "Krishnan", "Yilmaz",
+  "Davis", "Araujo", "Hirano", "Sarpong", "Weber", "Vargas", "Pande", "Khoury",
+  "Harris", "Oliveira", "Sugimoto", "Acheampong", "Schmidt", "Salazar", "Batra", "Farah",
+  "Turner", "Rocha", "Hashimoto", "Asante", "Wagner", "Ponce", "Sethi", "Farouk",
+  "Brown", "Teixeira", "Matsuda", "Kone", "Hartmann", "Ortega", "Chatterjee", "Saad",
+  "Roberts", "Lima", "Hayashi", "Traore", "Neumann", "Cabrera", "Banerjee", "Nasser",
+  "Taylor", "Cardoso", "Ishikawa", "Banda", "Schulte", "Rojas", "Kulkarni", "Saleh",
+  "Walker", "Correia", "Maeda", "Dlamini", "Kruger", "Serrano", "Bhandari", "Hamdan",
+  "Edwards", "Coelho", "Miyazaki", "Chirwa", "Friedrich", "Molina", "Agarwal", "Darwish",
+  "Collins", "Tavares", "Ueda", "Munyua", "Zimmermann", "Valdez", "Sinha", "Mansour",
+  "Reed", "Nunes", "Shimizu", "Kariuki", "Braun", "Espinoza", "Menon", "Hariri",
+  "Parker", "Mendes", "Aoki", "Mutiso", "Richter", "Paredes", "Dubey", "Nahas",
 ];
 
 /**
@@ -112,19 +140,69 @@ export function fillCompany(account: number): string {
 /**
  * A globally unique invented person for each ordinal in the mock directory.
  *
- * The previous stride arithmetic produced only 150-ish combinations for 700+
- * contacts, which is how six unrelated companies all acquired "Aisha Berg".
- * The directory has more distinct given names than it has generated contact
- * slots, so browsing or sorting never produces a wall of six Yukis or Aishas.
- * The surname advances independently and the Cartesian fallback keeps future
- * expansions unique if the directory ever grows beyond today's cast.
+ * The generated account and showroom directories currently need 240 names.
+ * Both pools cover that entire cast without repeating a given name or surname,
+ * so unrelated leads no longer appear to be siblings. Keep the index stable:
+ * other mock stores derive the same person's name from the same ordinal.
+ * Beyond the curated pool, initials preserve unique full names.
  */
 export function mockPersonName(ordinal: number): string {
   const safe = Math.max(0, Math.floor(ordinal));
   const first = FILL_FIRST[safe % FILL_FIRST.length]!;
   const cycle = Math.floor(safe / FILL_FIRST.length);
-  const last = FILL_LAST[(safe * 7 + cycle * 11) % FILL_LAST.length]!;
+  // Keep the first thirty showroom identities (including Belmara's contacts)
+  // stable while giving every later person a surname of their own.
+  const lastIndex = safe < 30 ? (safe * 7) % 30 : safe % FILL_LAST.length;
+  const last = FILL_LAST[lastIndex]!;
   return cycle === 0 ? `${first} ${last}` : `${first} ${String.fromCharCode(65 + (cycle % 26))}. ${last}`;
+}
+
+/**
+ * Refresh names embedded in existing generated store rows without reseeding the
+ * record. A generated lead, meeting, request or contract may have been edited
+ * in Mock mode, so only the old synthetic person's name (and email slug) is
+ * replaced. Hand-created rows and manually changed names are left alone.
+ */
+const oldToNew = Array.from({ length: FILL_ACCOUNTS * 5 }, (_, ordinal) => {
+  const first = FILL_FIRST[ordinal]!;
+  const oldLast = FILL_LAST[(ordinal * 7) % 30]!;
+  return [`${first} ${oldLast}`, mockPersonName(ordinal)] as const;
+}).filter(([before, after]) => before !== after);
+
+const nameReplacements = new Map<string, string>(
+  oldToNew.flatMap(([before, after]) => [
+    [before, after],
+    [before.toLowerCase().replace(/[^a-z]+/g, "."), after.toLowerCase().replace(/[^a-z]+/g, ".")],
+  ])
+);
+const namePattern = new RegExp(
+  Array.from(nameReplacements.keys())
+    .sort((a, b) => b.length - a.length)
+    .map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|"),
+  "g"
+);
+
+export function refreshMockFillNames<T extends { id: string }>(rows: T[]): boolean {
+  let changed = false;
+  const visit = (value: unknown): unknown => {
+    if (typeof value === "string") {
+      const next = value.replace(namePattern, (match) => nameReplacements.get(match) ?? match);
+      if (next !== value) changed = true;
+      return next;
+    }
+    if (Array.isArray(value)) return value.map(visit);
+    if (value && typeof value === "object") {
+      for (const [key, field] of Object.entries(value)) {
+        (value as Record<string, unknown>)[key] = visit(field);
+      }
+    }
+    return value;
+  };
+  for (const row of rows) {
+    if (/^fill10-/.test(row.id)) visit(row);
+  }
+  return changed;
 }
 
 /** `account` is 1-based (cust-fill-001 is account 1); `slot` is 0-4. */

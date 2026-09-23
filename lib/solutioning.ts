@@ -1,6 +1,7 @@
 import { validateSolutioningCreation } from "./solutioningValidation";
 import { getDataMode } from "./dataMode";
 import { mockFillSolutioning, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
+import { refreshMockFillNames } from "./mockFillCast";
 import { canonicalMockTeammate } from "./salesTeam";
 import { todayISO } from "@/lib/utils";
 import { describeListChange, describeTextChange, describeValueChange, describeWorkstreamChanges } from "./solutioningActivity";
@@ -1053,8 +1054,9 @@ async function topUpMockFill(): Promise<SolutioningState> {
        held the old rows. Hand-added rows carry no fill prefix and survive. */
     const beforeSweep = base.requests.length;
     base.requests = base.requests.filter((r) => !isStaleFillRow(r.id));
+    const namesChanged = refreshMockFillNames(base.requests);
     if (hasMockFillRows(base.requests.map((r) => r.id))) {
-      if (base.requests.length !== beforeSweep) await writeRow(base).catch(() => undefined);
+      if (base.requests.length !== beforeSweep || namesChanged) await writeRow(base).catch(() => undefined);
       return base;
     }
     const rows = mockFillSolutioning();
@@ -1073,7 +1075,8 @@ export async function readSolutioning(): Promise<SolutioningState> {
     const state = normalize(existing);
     if (
       hasMockFillRows(state.requests.map((r) => r.id)) &&
-      !state.requests.some((request) => isStaleFillRow(request.id))
+      !state.requests.some((request) => isStaleFillRow(request.id)) &&
+      !refreshMockFillNames(state.requests)
     )
       return state;
   }

@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Mock-mode people names:** The 240 generated customer and showroom contacts now have distinct given names and surnames, while the familiar first thirty showroom identities stay stable. Existing generated Leads, Meetings, Solutioning, and Contracts rows replace only old synthetic names and email slugs in place, preserving status, notes, manual edits, and hand-created rows. The shared cast keeps links consistent across those modules and customer contacts. Verified with a focused uniqueness/migration test, typecheck, lint, and the local Mock Leads page; the Mock banner remained visible. Local only, not deployed.
+
 - **Sep 23 Solutioning row actions are explicit:** Empty cells in request, submission, and presentation rows no longer toggle the inline breakdown or show a pointer cursor. The title and document-count links open the full record; only the Actions chevron expands or collapses the inline breakdown. Verified in local Mock mode by clicking an empty cell and the chevron on the same request; typecheck and focused lint pass. Local only, not deployed.
 
 - **Sep 23 Deviations summary stays on one line:** The Needs attention and Most deviations chip groups use one non-wrapping strip. At narrower widths, that strip scrolls horizontally instead of moving owner chips onto a second line. Verified visually in local Mock mode; typecheck and focused lint pass. Local only, not deployed.
