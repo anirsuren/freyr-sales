@@ -1532,7 +1532,7 @@ export function AreaChart({
         preserveAspectRatio="none"
         className="w-full block"
         style={{ height }}
-        role="img"
+        role={onSegmentClick ? "group" : "img"}
         aria-label={`Trend chart, ${data.length} points, trending ${trend}${
           goalLabel ? `, ${goalLabel}` : ""
         }`}
@@ -1807,6 +1807,9 @@ export function DonutChart({
   centerSub,
   format,
   syncId,
+  selectedIndex = null,
+  onSegmentClick,
+  tooltipOnHover = true,
 }: {
   segments: {
     label: string;
@@ -1824,6 +1827,10 @@ export function DonutChart({
   format?: Fmt;
   /** Same string on this donut and its DonutLegend links their hovers. */
   syncId?: string;
+  /** Selected segment stays emphasized when the chart is used as a filter. */
+  selectedIndex?: number | null;
+  onSegmentClick?: (index: number) => void;
+  tooltipOnHover?: boolean;
 }) {
   const {
     hover,
@@ -1835,7 +1842,7 @@ export function DonutChart({
   } = useChartHover();
   const linked = useDonutSync(syncId);
   // A slice is "lit" when the mouse is on it OR its legend row is hovered.
-  const lit = hover ?? linked;
+  const lit = hover ?? linked ?? selectedIndex;
   const rawTotal = segments.reduce((s, x) => s + x.value, 0);
   const total = rawTotal || 1;
   // Reserve room inside the SVG for the thicker hover stroke. Without this,
@@ -1942,17 +1949,31 @@ export function DonutChart({
                 strokeDasharray={fullCircle ? undefined : `${len} ${Math.max(0, c - len)}`}
                 strokeDashoffset={fullCircle ? undefined : -offset}
                 strokeLinecap="butt"
+                role={onSegmentClick ? "button" : undefined}
+                tabIndex={onSegmentClick ? 0 : undefined}
+                aria-label={onSegmentClick ? `Show ${s.label} records` : undefined}
+                onClick={onSegmentClick ? () => onSegmentClick(i) : undefined}
+                onKeyDown={onSegmentClick ? (event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSegmentClick(i);
+                  }
+                } : undefined}
                 onMouseEnter={(e) => {
-                  showHover(i, tipAnchor(e));
-                  if (syncId) donutSyncBroadcast(syncId, i);
+                  if (tooltipOnHover) {
+                    showHover(i, tipAnchor(e));
+                    if (syncId) donutSyncBroadcast(syncId, i);
+                  }
                 }}
-                onMouseMove={(e) => moveTip(tipAnchor(e))}
+                onMouseMove={(e) => { if (tooltipOnHover) moveTip(tipAnchor(e)); }}
                 onMouseLeave={() => {
-                  closeTip();
-                  if (syncId) donutSyncBroadcast(syncId, null);
+                  if (tooltipOnHover) {
+                    closeTip();
+                    if (syncId) donutSyncBroadcast(syncId, null);
+                  }
                 }}
                 style={{
-                  cursor: "pointer",
+                  cursor: onSegmentClick ? "pointer" : tooltipOnHover ? "help" : "default",
                   // Keep the arc geometry stable. Animating dash lengths caused
                   // square notches at segment endpoints as the sweep completed.
                   transition: "stroke-width 120ms ease, opacity 150ms ease",
@@ -1988,7 +2009,7 @@ export function DonutChart({
           </text>
         )}
       </svg>
-      {hover != null && segments[hover] && (
+      {tooltipOnHover && hover != null && segments[hover] && (
         <PortalTip
           anchor={mouse}
           wide

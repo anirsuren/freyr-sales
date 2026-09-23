@@ -468,6 +468,12 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 size={210}
                 thickness={24}
                 format="number"
+                selectedIndex={statusWorkspaceFilter === "all" ? null : activeStatusSegments.findIndex((segment) => segment.label === statusWorkspaceFilter)}
+                onSegmentClick={(index) => {
+                  const status = activeStatusSegments[index].label as LeadStatus;
+                  setStatusWorkspaceFilter((current) => current === status ? "all" : status);
+                }}
+                tooltipOnHover={false}
               />
             </div>
             <div className="mt-5 space-y-1.5">
