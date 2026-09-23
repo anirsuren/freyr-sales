@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Check, Loader2, Plus, Search, Trash2, Users } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Check, ChevronDown, ExternalLink, Loader2, Plus, Search, Trash2, Users } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
@@ -46,6 +46,22 @@ import { tint } from "@/lib/tint";
 
 /** The two facts the store keeps against one record. Null means nobody. */
 export type DealTeam = { owner?: string; members: string[] } | null;
+
+type WorkItem = {
+  id: string;
+  title: string;
+  customer: string;
+  role: string;
+  status: string;
+  due: string | null;
+  dateLabel: string;
+  href: string;
+};
+type Workload = {
+  deals: WorkItem[];
+  solutioning: WorkItem[];
+  solutioningAvailable: boolean;
+};
 
 /**
  * A NAME THAT MEANS NOBODY, matching lib/recordScope's own list. Every deal
@@ -142,12 +158,47 @@ export function DealPeople({
   mayChangeTeam: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [workloads, setWorkloads] = useState<Record<string, Workload>>({});
+  const [workloadLoading, setWorkloadLoading] = useState<string | null>(null);
+  const [workloadErrors, setWorkloadErrors] = useState<Record<string, string>>({});
+
+  async function showWorkload(name: string, retry = false) {
+    if (!retry && same(expanded ?? "", name)) {
+      setExpanded(null);
+      return;
+    }
+    setExpanded(name);
+    setWorkloadErrors((current) => {
+      const next = { ...current };
+      delete next[name];
+      return next;
+    });
+    if (workloads[name] && !retry) return;
+    setWorkloadLoading(name);
+    try {
+      const params = new URLSearchParams({ person: name, excludeDeal: dealId });
+      const res = await fetch(`/api/opportunities/team-workload?${params}`);
+      const data = await res.json() as Workload & { error?: string };
+      if (!res.ok) throw new Error(data.error || "Could not load current work.");
+      setWorkloads((current) => ({ ...current, [name]: data }));
+    } catch (error) {
+      setWorkloadErrors((current) => ({ ...current, [name]: error instanceof Error ? error.message : "Could not load current work." }));
+    } finally {
+      setWorkloadLoading((current) => same(current ?? "", name) ? null : current);
+    }
+  }
+
+  function workHref(href: string) {
+    return pathname?.startsWith("/mock-mode/") ? `/mock-mode${href}` : href;
+  }
 
   /**
    * EVERYBODY ON THE DEAL WHO IS NOT THE OWNER.
@@ -261,6 +312,8 @@ export function DealPeople({
               onClick={() => {
                 setPicked([]);
                 setQuery("");
+                setExpanded(null);
+                setWorkloads({});
                 setAdding(true);
               }}
               aria-label="Add people to this deal"
@@ -292,6 +345,8 @@ export function DealPeople({
             onClick={() => {
               setPicked([]);
               setQuery("");
+              setExpanded(null);
+              setWorkloads({});
               setAdding(true);
             }}
             className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border-light px-3 py-3 text-[12.5px] font-medium text-text-secondary transition-colors hover:border-blue-primary hover:bg-blue-light hover:text-blue-primary disabled:opacity-50"
@@ -375,9 +430,9 @@ export function DealPeople({
         open={adding}
         onClose={() => setAdding(false)}
         title={`Who else is on ${dealName || "this deal"}?`}
-        size="wide"
+        size="workflow"
         tall
-        dialogClassName="h-[min(620px,calc(100vh-2rem))]"
+        dialogClassName="h-[min(760px,calc(100vh-2rem))]"
         bodyClassName="flex flex-col"
       >
         <div className="flex min-h-0 flex-1 flex-col">
@@ -396,6 +451,10 @@ export function DealPeople({
             />
           </label>
 
+          <p className="mt-2 text-[12px] text-text-secondary">
+            Select a name to see their current work. Use the checkbox to add them.
+          </p>
+
           <div className="mt-3 min-h-0 flex-1 overflow-y-auto rounded-xl border border-border-light">
             {shown.length === 0 ? (
               <p className="p-5 text-[13px] text-text-tertiary">
@@ -407,41 +466,93 @@ export function DealPeople({
               <ul className="divide-y divide-border-light">
                 {shown.map((n) => {
                   const on = picked.some((p) => same(p, n));
+                  const isExpanded = same(expanded ?? "", n);
+                  const workload = workloads[n];
                   return (
                     <li key={n}>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPicked((cur) =>
-                            on ? cur.filter((p) => !same(p, n)) : [...cur, n]
-                          )
-                        }
+                      <div
                         className={cn(
-                          "flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left transition-colors",
-                          on ? "bg-blue-light/60" : "hover:bg-surface"
+                          "flex items-center gap-2 px-3 py-2.5 transition-colors",
+                          on ? "bg-blue-light/60" : isExpanded ? "bg-surface" : "hover:bg-surface"
                         )}
                       >
-                        <Avatar name={n} className="h-8 w-8 shrink-0 text-[11px]" />
-                        <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-text-primary">
-                          {n}
-                        </span>
-                        {same(n, meName) && (
-                          <span className="shrink-0 rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-bold text-blue-primary">
-                            You
+                        <button
+                          type="button"
+                          aria-expanded={isExpanded}
+                          aria-controls={`workload-${n.replace(/[^a-z0-9]/gi, "-")}`}
+                          onClick={() => void showWorkload(n)}
+                          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+                        >
+                          <Avatar name={n} className="h-8 w-8 shrink-0 text-[11px]" />
+                          <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-text-primary">
+                            {n}
                           </span>
-                        )}
-                        <span
-                          aria-hidden="true"
+                          {same(n, meName) && (
+                            <span className="shrink-0 rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-bold text-blue-primary">
+                              You
+                            </span>
+                          )}
+                          {workload && (
+                            <span className="shrink-0 text-[11px] text-text-tertiary">
+                              {workload.deals.length + workload.solutioning.length} active
+                            </span>
+                          )}
+                          <ChevronDown size={16} className={cn("shrink-0 text-text-tertiary transition-transform", isExpanded && "rotate-180")} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`${on ? "Remove" : "Select"} ${n} ${on ? "from" : "for"} this deal`}
+                          aria-pressed={on}
+                          onClick={() => setPicked((cur) => on ? cur.filter((p) => !same(p, n)) : [...cur, n])}
                           className={cn(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+                            "flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary",
                             on
                               ? "border-blue-primary bg-blue-primary text-white"
                               : "border-border"
                           )}
                         >
                           {on && <Check size={12} strokeWidth={3} />}
-                        </span>
-                      </button>
+                        </button>
+                      </div>
+                      {isExpanded && (
+                        <div id={`workload-${n.replace(/[^a-z0-9]/gi, "-")}`} className="border-t border-border-light bg-surface/60 px-4 py-4 sm:px-6">
+                          {workloadLoading === n && !workload ? (
+                            <p className="flex items-center gap-2 text-[12px] text-text-secondary"><Loader2 size={14} className="animate-spin" />Loading current work…</p>
+                          ) : workloadErrors[n] && !workload ? (
+                            <p className="text-[12px] text-error">{workloadErrors[n]} <button type="button" onClick={() => void showWorkload(n, true)} className="font-semibold underline">Retry</button></p>
+                          ) : workload ? (
+                            <div className="space-y-4">
+                              <div className="flex flex-wrap items-center gap-2 text-[12px] font-semibold text-text-primary">
+                                <span className="rounded-full bg-blue-light px-2.5 py-1 text-blue-primary">{workload.deals.length} active deal{workload.deals.length === 1 ? "" : "s"}</span>
+                                {workload.solutioningAvailable && <span className="rounded-full bg-blue-light px-2.5 py-1 text-blue-primary">{workload.solutioning.length} Solutioning item{workload.solutioning.length === 1 ? "" : "s"}</span>}
+                              </div>
+                              {workload.deals.length + workload.solutioning.length === 0 ? (
+                                <p className="text-[12px] text-text-secondary">No other active assignments are recorded for {n}.</p>
+                              ) : (
+                                <div className="grid gap-4 md:grid-cols-2">
+                                  {([ ["Deals", workload.deals], ["Solutioning", workload.solutioning] ] as const).map(([label, items]) => items.length > 0 && (
+                                    <section key={label}>
+                                      <h5 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-text-tertiary">{label}</h5>
+                                      <ul className="space-y-2">
+                                        {items.map((item) => (
+                                          <li key={item.id} className="rounded-lg border border-border-light bg-white p-2.5">
+                                            <a href={workHref(item.href)} target="_blank" rel="noopener noreferrer" className="inline-flex max-w-full items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline">
+                                              <span className="truncate">{item.title}</span><ExternalLink size={12} className="shrink-0" aria-hidden="true" />
+                                            </a>
+                                            <p className="mt-0.5 text-[11px] text-text-secondary">{item.customer} · {item.role}</p>
+                                            <p className="mt-1 text-[11px] text-text-tertiary">{item.status}{item.due ? ` · ${item.dateLabel} ${new Date(`${item.due}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}` : ""}</p>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </section>
+                                  ))}
+                                </div>
+                              )}
+                              <p className="text-[11px] text-text-tertiary">Based on recorded assignments; this does not measure hours or availability.</p>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
                     </li>
                   );
                 })}
