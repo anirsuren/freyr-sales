@@ -1355,13 +1355,17 @@ export function LeadsModule({
             </Field>
             <div className="sm:col-span-2">
               <Field label="LinkedIn profile" hint="Add a personal profile URL. Available public profile facts are saved on this lead for AI answers; lookup may be incomplete.">
-                <Input
-                  type="url"
-                  value={editing.linkedinUrl}
-                  maxLength={300}
-                  onChange={(e) => setEditing({ ...editing, linkedinUrl: e.target.value })}
-                  placeholder="https://www.linkedin.com/in/name"
-                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"><LinkedInIcon size={18} /></span>
+                  <Input
+                    type="url"
+                    value={editing.linkedinUrl}
+                    maxLength={300}
+                    onChange={(e) => setEditing({ ...editing, linkedinUrl: e.target.value })}
+                    placeholder="https://www.linkedin.com/in/name"
+                    className="pl-10"
+                  />
+                </div>
               </Field>
             </div>
             <Field label="Source">

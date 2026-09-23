@@ -5,7 +5,7 @@ import { safeHref } from "@/lib/safeUrl";
 import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import { formatPhoneNumber, phoneProblem, nationalDigitBudget, phoneDigits } from "@/lib/phone";
-import { splitPhone, joinPhone, countryOptions } from "@/lib/countries";
+import { splitPhone, joinPhone, countryOptions, dialOptions, dialOptionValue, dialTriggerLabel, dialCodeFromOption, countryFromDialOption, findCountry } from "@/lib/countries";
 import { contactPhoneDisplay } from "@/lib/contactPhoneDisplay";
 import { formatMoney as fmtMoney } from "@/lib/pipeline";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -36,6 +36,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Maximize2,
+  ExternalLink,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -962,6 +963,12 @@ export function CustomerTabs({
   async function addContact() {
     const fullName = contactForm.fullName.trim();
     if (!fullName || contactBusy) return;
+    const enteredPhone = splitPhone(contactForm.phone);
+    const phoneError = phoneProblem(enteredPhone.dial, enteredPhone.number);
+    if (phoneError) {
+      toast(phoneError, "error");
+      return;
+    }
     setContactBusy(true);
     try {
       const response = await fetch(editingContact ? `/api/contacts/${editingContact.id}` : `/api/customers/${customer.id}/contacts`, {
@@ -1609,7 +1616,7 @@ export function CustomerTabs({
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {keyContacts.map((c) => {
                     const displayedPhone = c.phone
-                      ? contactPhoneDisplay(c.phone, c.raw_linkedin_data)
+                      ? contactPhoneDisplay(c.phone, c.raw_linkedin_data, c.country)
                       : null;
                     return (
                       <Card key={c.id} className="group/contact relative p-3.5 transition-colors hover:border-blue-subtle">
@@ -3577,61 +3584,67 @@ export function CustomerTabs({
               />
             </Field>
             <Field label="Phone">
-              {/* SAME RULES AS THE LEAD FORM (Anir, Sep 4: "for all phone
-                  number fields"). This box has no separate code picker — the
-                  dialling code lives in the string — so it is split on the way
-                  in, grouped for reading, and put back together for storage. */}
-              <Input
-                type="tel"
-                inputMode="tel"
-                value={(() => {
-                  const { dial, number } = splitPhone(contactForm.phone);
-                  const grouped = formatPhoneNumber(number);
-                  return dial ? `${dial} ${grouped}`.trim() : grouped;
-                })()}
-                onChange={(event) => {
-                  const raw = event.target.value;
-                  /* A leading + is the only non-digit that carries meaning. */
-                  const plus = raw.trimStart().startsWith("+");
-                  const { dial, number } = splitPhone(
-                    plus ? raw : `+${phoneDigits(raw)}`
-                  );
-                  const capped = phoneDigits(number).slice(0, nationalDigitBudget(dial));
-                  setContactForm((form) => ({
-                    ...form,
-                    phone: plus && dial ? joinPhone(dial, capped) : capped,
-                  }));
-                }}
-                placeholder="+44 20 0000 0000"
-                maxLength={60}
-              />
+              {(() => {
+                const { dial: storedDial, number } = splitPhone(contactForm.phone);
+                const countryDial = findCountry(contactForm.country)?.dial;
+                const dial = storedDial || (countryDial ? `+${countryDial}` : "+1");
+                return <div className="flex items-center gap-2">
+                  <ColorSelect
+                    value={dialOptionValue(dial, contactForm.country)}
+                    ariaLabel="Phone country and dialing code"
+                    minWidth={105}
+                    triggerLabel={dialTriggerLabel(dial, contactForm.country)}
+                    options={dialOptions()}
+                    onChange={(value) => {
+                      const nextDial = dialCodeFromOption(value);
+                      const country = countryFromDialOption(value);
+                      setContactForm((form) => ({ ...form, phone: joinPhone(nextDial, number), country: country?.name ?? form.country }));
+                    }}
+                  />
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    aria-label="Phone number"
+                    value={formatPhoneNumber(number)}
+                    onChange={(event) => setContactForm((form) => ({
+                      ...form,
+                      phone: joinPhone(dial, phoneDigits(event.target.value).slice(0, nationalDigitBudget(dial))),
+                    }))}
+                    placeholder="Phone number"
+                  />
+                </div>;
+              })()}
               {(() => {
                 const { dial, number } = splitPhone(contactForm.phone);
-                const why = phoneProblem(dial, number);
+                const countryDial = findCountry(contactForm.country)?.dial;
+                const why = phoneProblem(dial || (countryDial ? `+${countryDial}` : "+1"), number);
                 return why ? <p className="mt-1 text-[12px] text-error">{why}</p> : null;
               })()}
             </Field>
             <Field label="LinkedIn URL">
-              <Input
-                type="url"
-                value={contactForm.linkedinUrl}
-                onChange={(event) =>
-                  setContactForm((form) => ({
-                    ...form,
-                    linkedinUrl: event.target.value,
-                  }))
-                }
-                placeholder="https://www.linkedin.com/in/…"
-                maxLength={500}
-              />
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/linkedin.webp" alt="" aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 rounded-[3px]" />
+                <Input type="url" value={contactForm.linkedinUrl} onChange={(event) => setContactForm((form) => ({ ...form, linkedinUrl: event.target.value }))} placeholder="https://www.linkedin.com/in/name" maxLength={500} className="pl-10" />
+              </div>
             </Field>
             <div className="min-w-0">
               <p className="mb-1.5 flex items-center gap-1 text-[13px] font-medium text-text-primary">Country <OptionalMark /></p>
-              <ColorSelect value={contactForm.country} onChange={(value) => setContactForm((form) => ({ ...form, country: value }))} options={[{ value: "", label: "Choose a country", icon: MapPin }, ...countryOptions()]} fill ariaLabel="Country" />
+              <ColorSelect value={contactForm.country} onChange={(value) => setContactForm((form) => {
+                const country = findCountry(value);
+                const { number } = splitPhone(form.phone);
+                return { ...form, country: value, phone: number && country ? joinPhone(`+${country.dial}`, number) : form.phone };
+              })} options={[{ value: "", label: "Choose a country", icon: MapPin }, ...countryOptions()]} fill ariaLabel="Country" />
             </div>
             <Field label="City">
               <Input value={contactForm.city} onChange={(event) => setContactForm((form) => ({ ...form, city: event.target.value }))} placeholder="e.g. New Brunswick" maxLength={120} />
             </Field>
+            {(contactForm.city.trim() || contactForm.country) && <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([contactForm.city.trim(), contactForm.country].filter(Boolean).join(", "))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="self-end inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border-light bg-white px-3 text-[13px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
+            ><MapPin size={15} /> View on Google Maps <ExternalLink size={13} /></a>}
             </div>
           </div>
           <div>

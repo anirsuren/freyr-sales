@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Person contact details:** Customer contact add/edit now uses a searchable flag and dialing-code picker beside a formatted, length-limited phone number; choosing a code synchronizes the person's country, and invalid short numbers cannot be saved. The form shows the LinkedIn mark and offers a Google Maps action for a selected location. Contact profiles and both contact-list views show country-aware phone numbers, with location links where recorded; the lead form's LinkedIn field carries the same mark. Verified the contact dialog and code/country synchronization in local Mock mode with its banner visible; typecheck, focused lint, and diff check pass. Local only, not deployed.
+
 - **Sep 23 Hover cursor cleanup:** Relative timestamps still reveal their exact local time on hover, but no longer force the question-mark help cursor. The shared timestamp component was the only `cursor-help` use in the app; typecheck, focused lint, and diff check pass. Local only, not deployed.
 
 - **Sep 23 Goal progress tooltip status colors:** The People and Org performance bar-chart hover now splits unverified progress into red sent-back and yellow waiting segments, matching the counts and status legend in the same tooltip. Shared chart rendering retains its existing fallback for other callers. Typecheck, focused lint, and diff check pass; the local Mock-mode chart and banner were inspected. Local only, not deployed.

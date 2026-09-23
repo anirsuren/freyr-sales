@@ -42,6 +42,8 @@ import { rankOfferingsForContact } from "@/lib/outreach";
 import { listCustomerTypes, listOfferings } from "@/lib/offerings";
 import { hasElevenLabs } from "@/lib/env";
 import { DateText } from "@/components/ui/DateText";
+import { contactPhoneDisplay } from "@/lib/contactPhoneDisplay";
+import { countryFlag } from "@/lib/countries";
 
 export const metadata = { title: "Contact" };
 export const dynamic = "force-dynamic";
@@ -123,6 +125,9 @@ export default async function ContactDetailPage({
   const firstName = contact.full_name
     .replace(/^(Dr|Mr|Ms|Mrs)\.?\s+/i, "")
     .split(/\s+/)[0];
+  const displayedPhone = contact.phone
+    ? contactPhoneDisplay(contact.phone, contact.raw_linkedin_data, contact.country)
+    : null;
   // The deals this person sits on — the same pipeline derivation every other
   // page uses, scoped to the sessions/interactions already loaded above.
   const contactDeals = customer
@@ -225,7 +230,8 @@ export default async function ContactDetailPage({
               className="inline-flex items-center gap-1.5 text-[12.5px] font-medium px-2.5 py-1.5 rounded-lg border border-border-light bg-white text-text-secondary hover:text-blue-primary hover:border-blue-subtle transition-colors tnum whitespace-nowrap"
             >
               <Phone size={13} strokeWidth={2} />
-              {contact.phone}
+              <span>{displayedPhone?.countryAndCode}</span>
+              <span className="tnum">{displayedPhone?.nationalNumber}</span>
             </a>
           )}
           {contact.email && (
@@ -247,7 +253,6 @@ export default async function ContactDetailPage({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
               ["Department", contact.department],
-              ["Location", [contact.city, contact.country].filter(Boolean).join(", ")],
               ["Buying role", contact.buying_role],
             ].filter(([, value]) => value).map(([label, value]) => (
               <div key={label}>
@@ -255,6 +260,19 @@ export default async function ContactDetailPage({
                 <p className="mt-1 text-[13px] font-medium text-text-primary">{value}</p>
               </div>
             ))}
+            {(contact.city || contact.country) && <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Location</p>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([contact.city, contact.country].filter(Boolean).join(", "))}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex items-center gap-1.5 text-[13px] font-medium text-text-primary hover:text-blue-primary hover:underline"
+              >
+                <span aria-hidden="true">{countryFlag(contact.country)}</span>
+                {[contact.city, contact.country].filter(Boolean).join(", ")}
+                <MapPin size={13} aria-label="View on Google Maps" />
+              </a>
+            </div>}
           </div>
           {contact.relationship_notes && (
             <div className="mt-4 border-t border-border-light pt-4">

@@ -28,10 +28,11 @@ function contactCountry(raw: RawLinkedIn): string {
 
 export function contactPhoneDisplay(
   phone: string,
-  rawLinkedIn?: RawLinkedIn
+  rawLinkedIn?: RawLinkedIn,
+  storedCountry?: string | null
 ): { countryAndCode: string; nationalNumber: string } {
   const { dial, number } = splitPhone(phone);
-  const country = contactCountry(rawLinkedIn);
+  const country = storedCountry || contactCountry(rawLinkedIn);
   const enrichedCountry = findCountry(country);
   const inferredDial = dial || (enrichedCountry ? `+${enrichedCountry.dial}` : "");
   return {

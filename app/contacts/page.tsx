@@ -92,6 +92,8 @@ export default async function ContactsPage() {
       role: c.role_bucket || "",
       email: c.email || "",
       phone: c.phone || null,
+      country: c.country || null,
+      city: c.city || null,
       linkedin: c.linkedin_url || null,
       touches: ints.length,
       lastOutcome: ints[0]?.outcome || null,

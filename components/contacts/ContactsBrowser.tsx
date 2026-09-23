@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
-import { Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, LayoutGrid, List, ArrowDownAZ, Building2, Tag, Users } from "lucide-react";
+import { Download, UserSearch, CheckSquare, Square, X, Mail, PhoneCall, LayoutGrid, List, ArrowDownAZ, Building2, Tag, Users, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge, OutcomeBadge } from "@/components/ui/Badge";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -24,6 +24,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { cn, formatDateTime } from "@/lib/utils";
+import { contactPhoneDisplay } from "@/lib/contactPhoneDisplay";
+import { countryFlag } from "@/lib/countries";
 
 export interface ContactRow {
   id: string;
@@ -34,6 +36,8 @@ export interface ContactRow {
   role: string;
   email: string;
   phone?: string | null;
+  country?: string | null;
+  city?: string | null;
   linkedin?: string | null;
   // Engagement signal for the card's scale-up hover.
   touches?: number;
@@ -48,6 +52,11 @@ export interface ContactRow {
 
 function tel(phone: string) {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
+
+function phoneLabel(phone: string, country?: string | null) {
+  const shown = contactPhoneDisplay(phone, undefined, country);
+  return `${shown.countryAndCode} ${shown.nationalNumber}`.trim();
 }
 
 // Color-code the role pill by function so a rep scans the room by color, not by
@@ -435,7 +444,7 @@ export function ContactsBrowser({
                   {c.phone && (
                     <span className="hidden lg:flex items-center gap-1.5 text-[12px] text-text-secondary tnum min-w-0">
                       <PhoneCall size={12} strokeWidth={1.6} className="shrink-0" />
-                      <span className="truncate">{c.phone}</span>
+                      <span className="truncate">{phoneLabel(c.phone, c.country)}</span>
                     </span>
                   )}
                   {/* The coloured role tag closes the row (Anir: "move the
@@ -557,7 +566,7 @@ export function ContactsBrowser({
                     <Badge label={c.role} bg={roleStyle(c.role).bg} color={roleStyle(c.role).color} className="!normal-case tracking-normal shrink-0" />
                   )}
                 </div>
-                {(c.email || c.phone) && (
+                {(c.email || c.phone || (!selectMode && (c.city || c.country))) && (
                   /* The address IS the button. There used to be an Email and a
                      Call button at the bottom of the reveal that did exactly
                      what these two lines already show (Anir, Jul 28: "you don't
@@ -585,7 +594,7 @@ export function ContactsBrowser({
                       (selectMode ? (
                         <div className="flex items-center gap-1.5 text-[12px] text-text-tertiary tnum">
                           <PhoneCall size={12} strokeWidth={1.6} className="shrink-0" />
-                          <span className="min-w-0">{c.phone}</span>
+                          <span className="min-w-0">{phoneLabel(c.phone, c.country)}</span>
                         </div>
                       ) : (
                         <a
@@ -594,9 +603,16 @@ export function ContactsBrowser({
                           className="relative z-10 flex w-fit max-w-full cursor-pointer items-center gap-1.5 text-[12px] tnum text-text-secondary transition-colors hover:text-blue-primary"
                         >
                           <PhoneCall size={12} strokeWidth={1.6} className="shrink-0 text-blue-primary" />
-                          <span className="min-w-0">{c.phone}</span>
+                          <span className="min-w-0">{phoneLabel(c.phone, c.country)}</span>
                         </a>
                       ))}
+                    {(c.city || c.country) && !selectMode && <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([c.city, c.country].filter(Boolean).join(", "))}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(event) => event.stopPropagation()}
+                      className="relative z-10 flex w-fit items-center gap-1.5 text-[12px] text-text-secondary hover:text-blue-primary"
+                    ><MapPin size={12} /> <span aria-hidden="true">{countryFlag(c.country)}</span> {[c.city, c.country].filter(Boolean).join(", ")}</a>}
                   </div>
                 )}
               </>
