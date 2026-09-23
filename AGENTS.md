@@ -1575,3 +1575,5 @@ The pencil on About this account opens a single dialog with every fact shown in 
 ### Sep 22: Compact Agent reply identity parity
 
 The floating Agent chat scopes each answer to its verified entity links and stores the answer's entity context just like the full chat. Explicit offering, component, customer, contact, and teammate links render with their identity mark even before the separate name index loads, so saved answers do not fall back to plain blue links. Markdown headings in compact replies render as headings rather than literal hash marks. Typecheck, focused lint, and agent identity tests pass. Completed locally, not deployed.
+
+The compact conversation stays pinned to the latest exchange when a long answer grows during streaming or when the entity index turns names into pills. Opening a saved conversation or receiving a new message lands at the bottom immediately; manually scrolling upward pauses that follow behavior so earlier messages remain readable. Verified with the affected Agent.Fia conversation in the local browser; typecheck and focused lint pass. Completed locally, not deployed.

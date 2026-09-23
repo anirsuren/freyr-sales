@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Sparkles,
@@ -463,6 +463,8 @@ export function AgentDock({
   const [historySyncFailed, setHistorySyncFailed] = useState(false);
   const [historyReady, setHistoryReady] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messageContentRef = useRef<HTMLDivElement>(null);
+  const followBottomRef = useRef(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const activeUserIdRef = useRef(currentUser.id);
   const historyBaseRef = useRef<Convo[] | null>(null);
@@ -767,14 +769,31 @@ export function AgentDock({
     return () => observer.disconnect();
   }, [pathname, open]);
 
+  // A long reply grows again when the entity index arrives and plain names
+  // become pills. Keep the last exchange visible through that reflow and while
+  // streaming, but let the rep scroll up to read earlier messages.
+  useLayoutEffect(() => {
+    if (!open || historyOpen) return;
+    followBottomRef.current = true;
+    const scroller = scrollRef.current;
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
+  }, [open, historyOpen, activeId, visibleMsgs.length, busy]);
+
   useEffect(() => {
-    if (open && !historyOpen) {
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-        inputRef.current?.focus();
-      }, 60);
-    }
-  }, [open, historyOpen, visibleMsgs.length, busy]);
+    if (!open || historyOpen) return;
+    inputRef.current?.focus();
+  }, [open, historyOpen]);
+
+  useEffect(() => {
+    if (!open || historyOpen || !messageContentRef.current) return;
+    const observer = new ResizeObserver(() => {
+      const scroller = scrollRef.current;
+      if (scroller && followBottomRef.current)
+        scroller.scrollTop = scroller.scrollHeight;
+    });
+    observer.observe(messageContentRef.current);
+    return () => observer.disconnect();
+  }, [open, historyOpen]);
 
   function startNewChat() {
     setActiveId(null);
@@ -1226,11 +1245,17 @@ export function AgentDock({
           {/* Messages: greeting is always the first bubble so it never vanishes */}
           <div
             ref={scrollRef}
+            onScroll={(event) => {
+              const scroller = event.currentTarget;
+              followBottomRef.current =
+                scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 48;
+            }}
             className={cn(
-              "flex-1 overflow-y-auto px-4 py-4 space-y-2.5",
+              "flex-1 overflow-y-auto px-4 py-4",
               embedded ? "min-h-0" : "h-[460px] max-h-[66vh]"
             )}
           >
+            <div ref={messageContentRef} className="space-y-2.5">
             <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 text-[13px] leading-[1.55] text-text-primary">
               {renderRich(greeting, entities, !offeringsOnly)}
             </div>
@@ -1298,6 +1323,7 @@ export function AgentDock({
                   : <Thinking />}
               </div>
             )}
+            </div>
           </div>
 
           {/* Suggestions (only before the first exchange) + input */}
