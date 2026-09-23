@@ -247,21 +247,29 @@ function PointHitTarget({
   active = false,
   onEnter,
   onLeave,
+  onSelect,
+  label,
 }: {
   left: string;
   top: string;
   active?: boolean;
-  onEnter: (element: HTMLSpanElement) => void;
+  onEnter: (element: HTMLElement) => void;
   onLeave: () => void;
+  onSelect?: () => void;
+  label?: string;
 }) {
+  const className = cn(
+    "absolute z-[2] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full",
+    active ? "h-[12px] w-[12px]" : "h-[8px] w-[8px]"
+  );
+  if (onSelect) {
+    return <button type="button" data-chart-point="true" aria-label={label || "Select chart point"} className={className} style={{ left, top }} onPointerEnter={(event) => onEnter(event.currentTarget)} onPointerLeave={onLeave} onPointerCancel={onLeave} onClick={onSelect} />;
+  }
   return (
     <span
       aria-hidden="true"
       data-chart-point="true"
-      className={cn(
-        "absolute z-[2] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full",
-        active ? "h-[12px] w-[12px]" : "h-[8px] w-[8px]"
-      )}
+      className={className}
       style={{ left, top }}
       onPointerEnter={(event) => onEnter(event.currentTarget)}
       onPointerLeave={onLeave}
@@ -1446,6 +1454,8 @@ export function AreaChart({
   unit,
   pointTips,
   yMax,
+  onPointSelect,
+  selectedPointIndex,
 }: {
   data: number[];
   color?: string;
@@ -1465,6 +1475,8 @@ export function AreaChart({
   // it the chart auto-scales to the data's max, so a flat 30/100 renders pinned
   // to the top — reading like a perfect score instead of an at-risk one.
   yMax?: number;
+  onPointSelect?: (index: number) => void;
+  selectedPointIndex?: number;
 }) {
   const {
     hover,
@@ -1616,7 +1628,7 @@ export function AreaChart({
             left={`${(p[0] / w) * 100}%`}
             top={`${(p[1] / h) * 100}%`}
             color={color}
-            active={hover === i}
+            active={hover === i || selectedPointIndex === i}
             dimmed={hover !== null && hover !== i}
           />
         ))}
@@ -1633,7 +1645,7 @@ export function AreaChart({
               key={`hit-${i}`}
               left={left}
               top={top}
-              active={active === i}
+              active={active === i || selectedPointIndex === i}
               onEnter={(element) => {
                 const rect = element.getBoundingClientRect();
                 showHover(
@@ -1646,6 +1658,8 @@ export function AreaChart({
                 );
               }}
               onLeave={() => closeTip()}
+              onSelect={onPointSelect ? () => { onPointSelect(i); closeTip(0); } : undefined}
+              label={onPointSelect ? `Show records for ${xLabels?.[i] || `point ${i + 1}`}` : undefined}
             />
           );
         })}

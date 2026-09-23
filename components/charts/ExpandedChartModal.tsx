@@ -64,12 +64,20 @@ export type ExpandedChartRecord = {
   href?: string;
 };
 
+export type ExpandedChartPoint = {
+  label: string;
+  records: ExpandedChartRecord[];
+};
+
 export type ExpandedChartControlProps = {
   title: string;
   subtitle?: string;
   items: ExpandedChartItem[];
   /** Render the full-size chart with every item key. */
   renderExpanded: (itemKeys: readonly string[]) => ReactNode;
+  /** Records attached to individual points in an area chart. */
+  points?: ExpandedChartPoint[];
+  renderPointExpanded?: (selectedPoint: number, onSelectPoint: (index: number) => void) => ReactNode;
   /** Optional context added to the icon button's accessible name and title. */
   triggerLabel?: string;
   className?: string;
@@ -85,14 +93,19 @@ export function ExpandedChartControl({
   subtitle,
   items,
   renderExpanded,
+  points,
+  renderPointExpanded,
   triggerLabel = "Open chart",
   className,
 }: ExpandedChartControlProps) {
   const suppressed = useChartExpansionSuppressed();
   const [open, setOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedPoint, setSelectedPoint] = useState<number | null>(null);
   const keys = items.map((item) => item.key);
   const selectedItem = items.find((item) => item.key === selectedKey);
+  const pointIndex = selectedPoint ?? Math.max(0, (points?.length || 1) - 1);
+  const point = points?.[pointIndex];
 
   if (suppressed) return null;
 
@@ -109,7 +122,7 @@ export function ExpandedChartControl({
         aria-expanded={open}
         aria-label={openLabel}
         title={openLabel}
-        onClick={() => { setSelectedKey(null); setOpen(true); }}
+        onClick={() => { setSelectedKey(null); setSelectedPoint(null); setOpen(true); }}
         className={cn(
           "inline-flex h-8 !w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-white !p-0 text-text-primary shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-[border-color,background-color,color,box-shadow,transform] hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary hover:shadow-[0_4px_12px_rgba(0,113,227,0.10)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30",
           className
@@ -142,17 +155,30 @@ export function ExpandedChartControl({
               ) : (
                 <InteractiveChartTipProvider>
                   <ChartExpansionSuppressionProvider>
-                    {renderExpanded(selectedItem ? [selectedItem.key] : keys)}
+                    {points && renderPointExpanded ? renderPointExpanded(pointIndex, setSelectedPoint) : renderExpanded(selectedItem ? [selectedItem.key] : keys)}
                   </ChartExpansionSuppressionProvider>
                 </InteractiveChartTipProvider>
               )}
             </div>
             <div className="flex min-h-[320px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-white">
               <div className="border-b border-border-light px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Explore the chart</p>
-                <p className="mt-1 text-[13px] text-text-secondary">Choose a category to see it on its own.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">{points ? "Leads behind the chart" : "Explore the chart"}</p>
+                <p className="mt-1 text-[13px] text-text-secondary">{points ? "Select a point or week to see every record." : "Choose a category to see it on its own."}</p>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                {points ? (
+                  <div className="px-2 pb-3">
+                    <label htmlFor="chart-point-week" className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Week starting</label>
+                    <select id="chart-point-week" value={pointIndex} onChange={(event) => setSelectedPoint(Number(event.target.value))} className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-[13px] font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-blue-primary/30">
+                      {points.map((entry, index) => <option key={`${entry.label}-${index}`} value={index}>{entry.label} · {entry.records.length} {entry.records.length === 1 ? "lead" : "leads"}</option>)}
+                    </select>
+                    <div className="mt-4 flex items-baseline justify-between border-b border-border-light pb-3">
+                      <p className="text-[14px] font-semibold text-text-primary">{point?.label}</p>
+                      <span className="text-[12px] font-semibold tabular-nums text-blue-primary">{point?.records.length || 0} {point?.records.length === 1 ? "lead" : "leads"}</span>
+                    </div>
+                    {point?.records.length ? <div className="divide-y divide-border-light">{point.records.map((record, index) => <div key={`${record.label}-${index}`} className="flex items-start justify-between gap-3 py-3"><span className="min-w-0"><span className="block text-[13px] font-semibold text-text-primary">{record.label}</span>{record.meta && <span className="mt-0.5 block text-[11.5px] leading-snug text-text-secondary">{record.meta}</span>}</span>{record.value && <span className="shrink-0 rounded-full bg-blue-light px-2 py-0.5 text-[10.5px] font-semibold text-blue-primary">{record.value}</span>}</div>)}</div> : <p className="py-8 text-center text-[13px] text-text-secondary">No leads arrived in this week.</p>}
+                  </div>
+                ) : <>
                 <button type="button" aria-pressed={selectedKey === null} onClick={() => setSelectedKey(null)} className={cn("mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition-colors", selectedKey === null ? "bg-blue-light text-blue-primary" : "text-text-primary hover:bg-surface")}>
                   All categories <span className="text-[11px] font-medium text-text-tertiary">{items.length}</span>
                 </button>
@@ -180,6 +206,7 @@ export function ExpandedChartControl({
                     )}
                   </div>
                 )}
+                </>}
               </div>
             </div>
           </div>
@@ -278,6 +305,7 @@ export type ExpandedAreaChart = VisibilityDatum & {
   data: number[];
   xLabels?: string[];
   pointTips?: TipItem[][];
+  pointDetails?: ExpandedChartPoint[];
   unit?: string;
   format?: ExpandedChartFormat;
   goal?: number;
@@ -367,6 +395,37 @@ export function ExpandedChartModal({
       : undefined,
   }));
   const donutSyncId = useId();
+
+  if (chart.kind === "area" && chart.pointDetails) {
+    return (
+      <ExpandedChartControl
+        {...controlProps}
+        items={items}
+        points={chart.pointDetails}
+        renderExpanded={renderExpanded}
+        renderPointExpanded={(index, onSelectPoint) => (
+          <div className="flex min-h-[350px] w-full items-center">
+            <AreaChart
+              data={chart.data}
+              color={itemColor(chart, 0)}
+              height={330}
+              id={`expanded-area-${donutSyncId.replace(/[^a-zA-Z0-9_-]/g, "")}`}
+              className="w-full"
+              goal={chart.goal}
+              goalLabel={chart.goalLabel}
+              xLabels={chart.xLabels}
+              format={chart.format}
+              unit={chart.unit}
+              pointTips={chart.pointTips}
+              yMax={chart.yMax}
+              selectedPointIndex={index}
+              onPointSelect={onSelectPoint}
+            />
+          </div>
+        )}
+      />
+    );
+  }
 
   function renderExpanded(visible: readonly string[]) {
     const visibleSet = new Set(visible);

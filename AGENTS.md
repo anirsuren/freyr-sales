@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 23 Lead intake chart records:** The expanded 12-week lead intake chart now keeps the selected week's complete lead list in its right panel instead of saying records are unavailable. Clicking a plotted point or choosing a week updates the list, with an explicit empty state for weeks without leads. Verified the Jul 27 point displays all nine Mock leads and the Mock banner remains visible; typecheck and focused lint pass. Local only, not deployed.
+
 - **Sep 23 Person contact details:** Customer contact add/edit now uses a searchable flag and dialing-code picker beside a formatted, length-limited phone number; choosing a code synchronizes the person's country, and invalid short numbers cannot be saved. The form shows the LinkedIn mark and offers a Google Maps action for a selected location. Contact profiles and both contact-list views show country-aware phone numbers, with location links where recorded; the lead form's LinkedIn field carries the same mark. Verified the contact dialog and code/country synchronization in local Mock mode with its banner visible; typecheck, focused lint, and diff check pass. Local only, not deployed.
 
 - **Sep 23 Hover cursor cleanup:** Relative timestamps still reveal their exact local time on hover, but no longer force the question-mark help cursor. The shared timestamp component was the only `cursor-help` use in the app; typecheck, focused lint, and diff check pass. Local only, not deployed.

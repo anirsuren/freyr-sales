@@ -157,6 +157,16 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
           })
         )
       ),
+      pointDetails: weekly.map((week) => ({
+        label: `${shortDate(week.start)}–${shortDate(week.start + WEEK - DAY)}`,
+        records: [...week.leads]
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+          .map((lead) => ({
+            label: lead.name,
+            meta: [lead.company, lead.title, lead.source, lead.owner || "Unassigned"].filter(Boolean).join(" · "),
+            value: lead.status,
+          })),
+      })),
       statusSegments,
       sourceBars,
     };
@@ -300,6 +310,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 data: data.series,
                 xLabels: data.labels,
                 pointTips: data.tips,
+                pointDetails: data.pointDetails,
                 format: "number",
                 unit: "leads",
               }}
