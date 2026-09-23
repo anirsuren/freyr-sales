@@ -103,6 +103,7 @@ export default async function OpportunityPage({
   const bands = await buildOpportunity360(deal.id, role);
 
   const customerId =
+    customers.find((c) => c.id === deal.customerId)?.id ??
     customers.find(
       (c) =>
         (c.company_name ?? "").trim().toLowerCase() ===

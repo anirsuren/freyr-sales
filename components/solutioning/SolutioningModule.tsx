@@ -1926,13 +1926,28 @@ export function NewRequestDialog({
    * already exists it is selected; if not, the picker stays empty and the lead
    * is written into the details instead of being silently dropped.
    */
-  const matchedByName = prefillCompany
+  const sourceOpportunity = prefillOpportunityId
+    ? opportunities.find((o) => o.id === prefillOpportunityId)
+    : undefined;
+  const sourceCompany = prefillCompany?.trim() || sourceOpportunity?.customer.trim() || "";
+  const matchedByName = sourceCompany
     ? (customers.find(
-        (c) => c.name.trim().toLowerCase() === prefillCompany.trim().toLowerCase()
+        (c) => c.name.trim().toLowerCase() === sourceCompany.toLowerCase()
       )?.id ?? "")
     : "";
+  // Imported opportunities can name an account without having a Customer record.
+  // Keep that name selectable in this request rather than losing the deal link.
+  const sourceCustomerId = prefillOpportunityId && sourceCompany && !matchedByName &&
+    !customers.some((c) => c.id === prefillCustomerId)
+    ? `opportunity-customer:${prefillOpportunityId}`
+    : "";
+  const customerOptions = sourceCustomerId
+    ? [{ id: sourceCustomerId, name: sourceCompany }, ...customers]
+    : customers;
   const [customerId, setCustomerId] = useState(
-    prefillCustomerId ?? matchedByName
+    (prefillCustomerId && customers.some((c) => c.id === prefillCustomerId)
+      ? prefillCustomerId
+      : matchedByName || sourceCustomerId)
   );
   const [oppIds, setOppIds] = useState<string[]>(
     prefillOpportunityId ? [prefillOpportunityId] : []
@@ -1986,7 +2001,7 @@ export function NewRequestDialog({
   const [subBusy, setSubBusy] = useState(false);
   const [subError, setSubError] = useState<string | null>(null);
 
-  const customer = customers.find((c) => c.id === customerId) ?? null;
+  const customer = customerOptions.find((c) => c.id === customerId) ?? null;
 
   /**
    * THE FILE GOES UP WHILE HE IS STILL TYPING.
@@ -2054,7 +2069,7 @@ export function NewRequestDialog({
   useEffect(() => {
     setContactIds([]);
     setContacts([]);
-    if (!customerId) return;
+    if (!customerId || customerId === sourceCustomerId) return;
     let cancelled = false;
     fetch(`/api/solutioning?contactsFor=${encodeURIComponent(customerId)}`)
       .then((r) => r.json())
@@ -2065,12 +2080,12 @@ export function NewRequestDialog({
     return () => {
       cancelled = true;
     };
-  }, [customerId]);
+  }, [customerId, sourceCustomerId]);
 
   const customerOpps = [...opportunities, ...newOpps].filter(
     (o) =>
       (o.customerId && o.customerId === customerId) ||
-      (customer && o.customer === customer.name)
+      (customer && o.customer.trim().toLowerCase() === customer.name.trim().toLowerCase())
   );
 
   /** Create the opportunity or the contact, select it, and come straight back. */
@@ -2238,6 +2253,20 @@ export function NewRequestDialog({
     >
       {/* All steps share a fixed frame; longer forms scroll inside it. */}
       <div className="flex min-h-[380px] flex-col">
+      {sourceOpportunity && !sub && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+          <Briefcase size={19} className="shrink-0 text-blue-primary" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-blue-primary">
+              Request for this opportunity
+            </p>
+            <p className="truncate text-[14px] font-semibold text-text-primary" title={sourceOpportunity.label}>
+              {sourceOpportunity.label}
+            </p>
+            <p className="text-[12px] text-text-secondary">{sourceCompany}</p>
+          </div>
+        </div>
+      )}
       {sub ? (
         /* A PAGE OF THIS DIALOG. Same frame, same width, a back arrow where
            the form was — and the form itself is still mounted behind this,
@@ -2590,6 +2619,12 @@ export function NewRequestDialog({
                 Customer <span className="text-error">*</span>
               </span>
               <div className="mt-1.5">
+                {sourceOpportunity ? (
+                  <div className="flex h-10 items-center gap-2 rounded-lg border border-border-light bg-surface px-3 text-[13px] font-medium text-text-primary">
+                    <CompanyLogo name={sourceCompany} className="h-5 w-5 shrink-0 text-[7px]" />
+                    <span className="truncate">{sourceCompany}</span>
+                  </div>
+                ) : (
                 <ColorSelect
                   value={customerId}
                   onChange={(nextCustomerId) => {
@@ -2618,7 +2653,7 @@ export function NewRequestDialog({
                        there and everywhere else this could be helpful where
                        the next step is dependent on the first dropdown having
                        data"). The deal picker below is filtered by this one. */
-                    ...customers.map((c) => {
+                    ...customerOptions.map((c) => {
                       const deals = opportunities.filter(
                         (o) => o.customerId === c.id || o.customer === c.name
                       ).length;
@@ -2629,7 +2664,7 @@ export function NewRequestDialog({
                         /* A picker names records, and the name is often not
                            enough to be sure (Anir, Sep 7). The arrow opens
                            the account in a new tab; the form stays put. */
-                        href: `/customers/${c.id}`,
+                        href: c.id === sourceCustomerId ? undefined : `/customers/${c.id}`,
                         description: deals
                           ? `${deals} ${deals === 1 ? "deal" : "deals"}`
                           : "no deals",
@@ -2638,14 +2673,21 @@ export function NewRequestDialog({
                     }),
                   ]}
                 />
+                )}
               </div>
             </label>
             <label className="block">
               <span className="text-[12px] font-semibold text-text-primary">
                 Opportunity
-                <span className="ml-1 font-normal text-text-tertiary">Optional</span>
+                {!sourceOpportunity && <span className="ml-1 font-normal text-text-tertiary">Optional</span>}
               </span>
               <div className="mt-1.5">
+                {sourceOpportunity ? (
+                  <div className="flex h-10 items-center gap-2 rounded-lg border border-border-light bg-surface px-3 text-[13px] font-medium text-text-primary">
+                    <Briefcase size={16} className="shrink-0 text-blue-primary" aria-hidden="true" />
+                    <span className="truncate" title={sourceOpportunity.label}>{sourceOpportunity.label}</span>
+                  </div>
+                ) : (
                 <MultiColorSelect
                   values={oppIds}
                   onChange={setOppIds}
@@ -2671,6 +2713,7 @@ export function NewRequestDialog({
                   createLabel={customer ? "Create a new opportunity" : undefined}
                   onCreate={customer ? () => setSub("opportunity") : undefined}
                 />
+                )}
               </div>
             </label>
           </div>
@@ -2982,7 +3025,7 @@ export function NewRequestDialog({
                         : undefined,
                   title: title.trim(),
                   details: details.trim() || undefined,
-                  customerId: customer.id,
+                  customerId: customer.id === sourceCustomerId ? undefined : customer.id,
                   customer: customer.name,
                   opportunityIds: pickedDeals.map((o) => o.id),
                   opportunityLabels: pickedDeals.map((o) => o.label),
