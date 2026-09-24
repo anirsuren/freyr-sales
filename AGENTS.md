@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Customer link access feedback:** A lead's linked customer record could send a user without Customers access to Offerings with no explanation. The customer detail route now shows a clear access-required state for that account, before reading customer data; authorized users still open the full record. Typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
+
 - **Sep 24 Lead analytics detail-link hierarchy:** The expanded lead row keeps the contact, email, phone, LinkedIn, company, and owner actionable, but presents them as ordinary dark or muted details until hover/focus. The full lead link remains the single blue action, removing the wall of blue text in the analytics popup. Typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
 
 - **Sep 24 Opportunity review linked fields and save footer:** The separate review editor now uses searchable, identity-aware pickers for the next-step stakeholder, decision-circle contacts, confirmed competitors, external companies, and action owners. Existing Contact and Customer selections keep durable IDs; newly entered people and outside companies create or reuse records on save. The read view links those people, companies, competitors, and owners to their record pages. Contact reuse checks both account and name so stale mock IDs cannot silently attach the wrong person. Save/Cancel live in one sticky footer, with save errors beside the controls. Typecheck, focused lint, diff check, and local Mock-mode editor/picker/footer inspection pass. Local only, per the user's release instruction.

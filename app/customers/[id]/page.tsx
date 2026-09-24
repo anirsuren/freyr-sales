@@ -36,7 +36,7 @@ import {
 } from "@/lib/offerings";
 import { isSalesVisible } from "@/lib/offeringMaterials";
 import { getDataMode } from "@/lib/dataMode";
-import { requireModuleAccess, moduleWriteRefusal, moduleDeleteRefusal } from "@/lib/moduleAccessServer";
+import { canOpenModule, requireModuleAccess, moduleWriteRefusal, moduleDeleteRefusal } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
 import { privilegesForPerson, readPrivileges } from "@/lib/privileges";
 import {
@@ -54,6 +54,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  if (!(await canOpenModule("/customers"))) return { title: "Customers access required" };
   const customer = await getDb().customers.get(id);
   return { title: customer ? `${customer.company_name} · Customers` : "Customer" };
 }
@@ -65,6 +66,14 @@ export default async function CustomerDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  if (!(await canOpenModule("/customers"))) {
+    return <main className="mx-auto flex min-h-[55vh] max-w-xl flex-col items-center justify-center px-6 text-center">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-surface-secondary text-text-secondary"><ParentCompanyIcon size={22} /></div>
+      <h1 className="text-xl font-semibold text-text-primary">Customers access required</h1>
+      <p className="mt-2 text-sm leading-6 text-text-secondary">This account cannot open customer records. Switch to an account with Customers access, or ask a workspace admin to grant it.</p>
+      <Link href="/offerings" className="mt-5 text-[13px] font-semibold text-blue-primary hover:underline">Back to Offerings</Link>
+    </main>;
+  }
   await requireModuleAccess("/customers");
   const [me, privilegeState] = await Promise.all([
     getCurrentUser(),
