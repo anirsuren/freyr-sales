@@ -300,7 +300,6 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
             </div>
             <ExpandedChartModal
               title="New leads · last 12 weeks"
-              subtitle="Weekly lead intake ending on the newest lead in this workspace."
               triggerLabel="Expand lead intake"
               chart={{
                 kind: "area",

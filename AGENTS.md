@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Lead intake popup copy:** Removed the redundant “Weekly lead intake ending on the newest lead in this workspace” subtitle from the expanded chart. Local only, per the user's release instruction.
+
 - **Sep 24 Filter menu viewport placement:** The shared Filter menu now opens above its button when there is too little room below, and limits its two scrollable panes to the available viewport height. This keeps the full Status/Source/Owner option list reachable near the bottom of the Leads page and on other pages using the same menu. Local only, per the user's release instruction.
 
 - **Sep 24 Solutioning attendee and lead LinkedIn feedback:** Meeting requests now show a larger centered “No one added yet” attendee area, which becomes a centered set of removable people chips after selection. New leads with a LinkedIn URL open their detail row while the background profile lookup runs; the lead row shows an animated “Getting LinkedIn details…” status until it finishes, without a persistent “LinkedIn saved” label. The profile card also describes its loading and retry states. Local only, per the user's release instruction.
