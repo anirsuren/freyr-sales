@@ -31,6 +31,7 @@ const DAY = 86_400_000;
    today band sits above the rail, the dots straddle it, the captions hang
    below. Changing the rail moves everything that references it. */
 const RAIL_TOP = 30;
+const OFFSCREEN_DATE_TOP = 62;
 
 function midnight(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -149,7 +150,14 @@ export function NeededByTimeline({
   const requestedSide = position(asked) < 0 ? "left" : position(asked) > 1 ? "right" : null;
   const neededSide = position(due) < 0 ? "left" : position(due) > 1 ? "right" : null;
   const todaySide = position(today) < 0 ? "left" : position(today) > 1 ? "right" : null;
-  const offscreenCount = Number(Boolean(requestedSide)) + Number(Boolean(neededSide));
+  const todayIsOffscreenDue = today === due && todaySide === neededSide && Boolean(neededSide);
+  const oppositeEdges = Boolean(requestedSide && neededSide && requestedSide !== neededSide);
+  // Edge badges only need separate rows when they occupy the same edge.
+  // With Requested left and Needed right, staggering them wastes space and
+  // makes two dates on one timeline look unrelated.
+  const edgeRows = requestedSide && neededSide && requestedSide === neededSide
+    ? 2
+    : requestedSide || neededSide ? 1 : 0;
 
   /**
    * WHERE "NEEDED BY" ACTUALLY FITS (Anir, Sep 6, after three wrong answers:
@@ -287,7 +295,7 @@ export function NeededByTimeline({
           as on top rather than as a break in the line. */}
       <div
         ref={viewportRef}
-        className={cn("relative mt-2 select-none overflow-hidden", offscreenCount ? offscreenCount === 2 ? "h-[126px]" : "h-[108px]" : "h-[86px]")}
+        className={cn("relative mt-2 select-none overflow-hidden", edgeRows === 2 ? "h-[108px]" : "h-[86px]")}
         style={{ touchAction: "pan-y", cursor: view.zoom > 1 ? "grab" : "default" }}
         onPointerDown={(event) => {
           if (view.zoom <= 1 || event.button !== 0) return;
@@ -338,8 +346,8 @@ export function NeededByTimeline({
         {/* Keep the endpoints findable while panning a zoomed view. The arrows
             say the actual date lies beyond this edge; the badge is not a
             replacement dot on the rail. */}
-        {requestedSide && <OffscreenDate side={requestedSide} icon={Inbox} name="Requested" date={label(asked)} hue="var(--ink-bright-blue)" top={86} />}
-        {neededSide && <OffscreenDate side={neededSide} icon={Flag} name="Needed" date={label(due)} hue={tone.hue} top={requestedSide ? 106 : 86} />}
+        {requestedSide && <OffscreenDate side={requestedSide} icon={Inbox} name="Requested" date={oppositeEdges ? shortLabel(asked) : label(asked)} fullDate={label(asked)} hue="var(--ink-bright-blue)" top={OFFSCREEN_DATE_TOP} />}
+        {neededSide && <OffscreenDate side={neededSide} icon={Flag} name={todayIsOffscreenDue ? "Needed today" : "Needed"} date={oppositeEdges ? shortLabel(due) : label(due)} fullDate={label(due)} hue={tone.hue} top={requestedSide === neededSide ? OFFSCREEN_DATE_TOP + 20 : OFFSCREEN_DATE_TOP} />}
 
         {/* REQUESTED FLUSH LEFT, NEEDED BY ON THE LINE BELOW, UNDER ITS OWN
             FLAG (Anir, Sep 6: "the requested text should be all the way to the
@@ -413,7 +421,7 @@ export function NeededByTimeline({
 
         {/* Keep Today at the nearest edge while zoomed away from it. The arrow
             makes clear that its real date lies outside the visible window. */}
-        <div
+        {!todayIsOffscreenDue && <div
           className={cn(
             "pointer-events-none absolute z-20 flex flex-col items-center",
             atStart ? "items-start" : atEnd ? "items-end" : "-translate-x-1/2"
@@ -435,18 +443,19 @@ export function NeededByTimeline({
             className={cn("block w-px bg-blue-primary/70", atStart && "ml-[11px]", atEnd && "mr-[11px]")}
             style={{ height: RAIL_TOP - 17 }}
           />}
-        </div>
+        </div>}
         </div>
       </div>
     </div>
   );
 }
 
-function OffscreenDate({ side, icon: Icon, name, date, hue, top }: {
+function OffscreenDate({ side, icon: Icon, name, date, fullDate, hue, top }: {
   side: "left" | "right";
   icon: typeof Inbox;
   name: string;
   date: string;
+  fullDate?: string;
   hue: string;
   top: number;
 }) {
@@ -455,7 +464,8 @@ function OffscreenDate({ side, icon: Icon, name, date, hue, top }: {
     <span
       className={cn("absolute z-20 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-border-light bg-white px-1.5 py-0.5 text-[9px] font-semibold shadow-sm", side === "left" ? "left-[-11px]" : "right-[-11px]")}
       style={{ top, color: hue }}
-      aria-label={`${name} ${date} is ${side} of the visible dates`}
+      aria-label={`${name} ${fullDate ?? date} is ${side} of the visible dates`}
+      title={`${name} · ${fullDate ?? date}`}
     >
       {side === "left" && <Arrow size={11} strokeWidth={2.5} aria-hidden="true" />}
       <Icon size={10} strokeWidth={2.3} aria-hidden="true" />
