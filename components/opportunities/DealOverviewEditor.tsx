@@ -994,9 +994,12 @@ export function DealOverviewEditor({
    * boxes above already fetched, so the two conversions on this card can never
    * disagree.
    */
-  const [scheduleLocal, setScheduleLocal] = useState(false);
-  const scheduleMoney = (usd: number): string => {
-    if (!scheduleLocal || isBase) return `$${usd.toLocaleString("en-US")}`;
+  const [scheduleView, setScheduleView] = useState<"usd" | "local" | "both">("usd");
+  const scheduleRate = !isBase ? rateFor(currency, signs || undefined) : null;
+  const effectiveScheduleView = scheduleRate ? scheduleView : "usd";
+  const scheduleCurrencies: ("usd" | "local")[] = effectiveScheduleView === "both" ? ["usd", "local"] : [effectiveScheduleView === "local" ? "local" : "usd"];
+  const scheduleMoney = (usd: number, display: "usd" | "local"): string => {
+    if (display === "usd" || isBase) return `$${usd.toLocaleString("en-US")}`;
     const rate = rateFor(currency, signs || undefined);
     if (!rate) return `$${usd.toLocaleString("en-US")}`;
     return `${localSymbol}${Math.round(usd * rate).toLocaleString("en-US")}`;
@@ -1676,23 +1679,20 @@ export function DealOverviewEditor({
                       dollars sat a third of an inch left of the euros they
                       convert. USD_INSET is that offset, in one place. */}
                   <td className="text-[13px] text-text-secondary">
+                    {ro ? <ReadValue text={`${currencyMeta("USD").flag} $ USD US dollar`} /> :
                     <span className="flex items-center gap-2">
                       <span aria-hidden="true" className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-[18px]">
                         {currencyMeta("USD").flag}
                       </span>
                       USD US dollar
-                    </span>
+                    </span>}
                   </td>
                   {fxState === "ready" ? (
                     [tcv, acv].map((typed, i) => {
                       const shown = asUsd(typed);
                       return (
                         <td key={["tcv","acv"][i]}>
-                          {/* The symbol sits exactly where the money box's
-                              symbol sits above it, and the digits exactly
-                              where its digits do, so the two rows read as one
-                              column. Same offsets as components/ui/MoneyInput
-                              (absolute left-3, text at pl-7). */}
+                          {ro ? <ReadValue text={shown.text} empty={!shown.known} /> : (
                           <span className="relative block">
                             {shown.known && (
                               <span
@@ -1712,7 +1712,7 @@ export function DealOverviewEditor({
                             >
                               {shown.known ? shown.text.replace(/^\$/, "") : shown.text}
                             </span>
-                          </span>
+                          </span>)}
                         </td>
                       );
                     })
@@ -1721,7 +1721,7 @@ export function DealOverviewEditor({
                        fresh one, and never a blocked save: what saves is what
                        was typed, which needs no rate at all. */
                     <td colSpan={2} className="text-[13px] text-text-tertiary">
-                      <span className="block pl-7">
+                      <span className={ro ? "block" : "block pl-7"}>
                         {fxState === "loading"
                           ? "Getting the rate."
                           : "Cannot convert right now. What you typed still saves exactly as it is."}
@@ -1756,15 +1756,16 @@ export function DealOverviewEditor({
             {/* LOCAL VERSUS USD, right where he asked for it. Only when the
                 deal is in another currency: on a dollar deal there is nothing
                 to switch between. */}
-            {!isBase && accrualPlan && accrualPlan.lines.length > 0 && (
+            {!isBase && scheduleRate && accrualPlan && accrualPlan.lines.length > 0 && (
               <ViewSwitch
                 ariaLabel="Read the schedule in"
                 className="inline-flex"
-                value={scheduleLocal}
-                onChange={setScheduleLocal}
+                value={effectiveScheduleView}
+                onChange={setScheduleView}
                 options={[
-                  { key: false, label: "USD", mark: currencyMeta("USD").flag },
-                  { key: true, label: currency, mark: currencyMeta(currency).flag },
+                  { key: "usd", label: "USD", mark: currencyMeta("USD").flag },
+                  { key: "local", label: currency, mark: currencyMeta(currency).flag },
+                  { key: "both", label: "Both" },
                 ] as const}
               />
             )}
@@ -1846,19 +1847,20 @@ export function DealOverviewEditor({
                   no type shows whichever parts its own numbers use. Total
                   stays the last column, as the sum. */}
               <div className="mt-2 overflow-x-auto rounded-lg border border-border-light">
-                <table className="w-full min-w-[420px] border-collapse text-left">
+                <table className={cn("w-full border-collapse text-left", effectiveScheduleView === "both" ? "min-w-[760px]" : "min-w-[420px]")}>
                   <thead className="bg-surface text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                     <tr>
                       <th className="px-3 py-2">Month</th>
-                      {scheduleSplitFields.map((f) => (
-                        <th key={f} className="px-3 py-2">
-                          {SPLIT_LABEL[f]} ({scheduleLocal && !isBase ? currency : "USD"})
+                      {scheduleSplitFields.flatMap((f) => scheduleCurrencies.map((display) => (
+                        <th key={`${f}-${display}`} className="px-3 py-2">
+                          {SPLIT_LABEL[f]} ({display === "local" ? currency : "USD"})
+                        </th>
+                      )))}
+                      {scheduleCurrencies.map((display) => (
+                        <th key={`amount-${display}`} className="px-3 py-2">
+                          {scheduleSplitFields.length ? "Total" : "Amount"} ({display === "local" ? currency : "USD"})
                         </th>
                       ))}
-                      <th className="px-3 py-2">
-                        {scheduleSplitFields.length ? "Total" : "Amount"} (
-                        {scheduleLocal && !isBase ? currency : "USD"})
-                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-light">
@@ -1869,17 +1871,19 @@ export function DealOverviewEditor({
                           <td className="px-3 text-[13px] text-text-secondary whitespace-nowrap">
                             {monthLabel(l.month)}
                           </td>
-                          {scheduleSplitFields.map((f) => (
+                          {scheduleSplitFields.flatMap((f) => scheduleCurrencies.map((display) => (
                             <td
-                              key={f}
+                              key={`${f}-${display}`}
                               className="px-3 text-[13px] tnum text-text-secondary"
                             >
-                              {Number(l[f]) > 0 ? scheduleMoney(Number(l[f])) : "·"}
+                              {Number(l[f]) > 0 ? scheduleMoney(Number(l[f]), display) : "·"}
+                            </td>
+                          )))}
+                          {scheduleCurrencies.map((display) => (
+                            <td key={`amount-${display}`} className="px-3 text-[13px] font-semibold tnum text-text-primary">
+                              {scheduleMoney(l.amount || 0, display)}
                             </td>
                           ))}
-                          <td className="px-3 text-[13px] font-semibold tnum text-text-primary">
-                            {scheduleMoney(l.amount || 0)}
-                          </td>
                         </tr>
                       ))}
                   </tbody>
@@ -1918,25 +1922,25 @@ export function DealOverviewEditor({
                           "Total $500,000", which is the table contradicting
                           itself two rows apart. Nothing entered, nothing
                           totalled: same mark as the column it sums. */}
-                      {scheduleSplitFields.map((f) => {
+                      {scheduleSplitFields.flatMap((f) => {
                         const sum = accrualPlan.lines.reduce(
                           (n, l) => n + (Number(l[f]) || 0),
                           0
                         );
-                        return (
+                        return scheduleCurrencies.map((display) => (
                           <td
-                            key={f}
+                            key={`${f}-${display}`}
                             className="px-3 text-[13.5px] font-bold tnum text-blue-primary"
                           >
-                            {sum > 0 ? scheduleMoney(sum) : "·"}
+                            {sum > 0 ? scheduleMoney(sum, display) : "·"}
                           </td>
-                        );
+                        ));
                       })}
-                      <td className="px-3 text-[15px] font-bold tnum text-blue-primary">
-                        {scheduleMoney(
-                          accrualPlan.lines.reduce((n, l) => n + (l.amount || 0), 0)
-                        )}
-                      </td>
+                      {scheduleCurrencies.map((display) => (
+                        <td key={`amount-${display}`} className="px-3 text-[15px] font-bold tnum text-blue-primary">
+                          {scheduleMoney(accrualPlan.lines.reduce((n, l) => n + (l.amount || 0), 0), display)}
+                        </td>
+                      ))}
                     </tr>
                   </tfoot>
                 </table>

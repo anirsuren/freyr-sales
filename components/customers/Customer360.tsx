@@ -528,7 +528,7 @@ export function Customer360({
                   </span>
                 </span>
                 {active.total !== undefined && active.total > 0 && (
-                  <span className="flex items-baseline gap-2">
+                  <span className="flex items-baseline gap-2 border-l border-border-light pl-5">
                     <span
                       className="text-[24px] font-bold leading-none tracking-[-0.01em] tnum"
                       style={{ color: active.color }}
@@ -536,7 +536,7 @@ export function Customer360({
                       {formatMoney(active.total)}
                     </span>
                     <span className="text-[13px] text-text-secondary">
-                      in value
+                      {active.key === "revenueAccruals" ? "scheduled total" : "total value"}
                     </span>
                   </span>
                 )}
@@ -546,7 +546,7 @@ export function Customer360({
 
           {/* Keyed so switching areas animates the panel, never the strip. */}
           <div key={active.key} className="tab-panel" data-c360-band={active.key}>
-            {chromeless && active.key === "solutionRequests" && solutioningControls && (
+            {chromeless && active.key === "solutionRequests" && solutioningControls && active.items.length > 0 && (
               <PageToolbar
                 className="mb-4"
                 query={solutionQuery}

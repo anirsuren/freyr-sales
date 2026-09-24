@@ -1765,3 +1765,7 @@ The deployed Sep 24 screenshot still showed the older inline LinkedIn post list;
 ### Sep 24: Lead follow-up missing-detail placement
 
 The missing qualification details and Edit lead action now appear directly below the recommended follow-up in the lead's expanded card. The old bottom footer was pushed below the long contact/LinkedIn column and often out of view. A completed-details message remains in a footer when nothing is missing. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.
+
+### Sep 24: Opportunity currency and empty-state cleanup
+
+The Revenue Accrual currency table aligns read-only USD amounts with the original-currency row instead of applying editable-field padding to only USD. A schedule with a usable FX rate now offers USD, local currency, and Both; Both shows adjacent columns for each amount and total while the stored accrual remains USD. When no conversion rate is available, the schedule stays in USD rather than labeling dollars as local money. Opportunity Solutioning requests hide the search/type toolbar when there are no requests. The revenue-accrual summary separates its count from the monetary "scheduled total" instead of saying "$110 in value." Typecheck and diff check pass; focused lint has three pre-existing unused-symbol warnings. Completed locally, not deployed.
