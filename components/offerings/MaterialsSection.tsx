@@ -899,8 +899,10 @@ export function MaterialsSection({
               onChange: setDivisions,
               options: DIVISIONS.map((d) => ({
                 value: d,
-                label: `${d} · ${DIVISION_META[d].label}`,
+                label: DIVISION_META[d].label,
+                badge: DIVISION_META[d].short,
                 color: DIVISION_META[d].color,
+                icon: DIVISION_META[d].icon,
               })),
             },
           ]}

@@ -21,6 +21,7 @@ import {
   Radio,
   Repeat2,
   Star,
+  Tag,
   ThumbsUp,
   Users,
 } from "lucide-react";
@@ -425,8 +426,8 @@ export function LiveCompanyGrid({
             {
               key: "division", label: "Division", values: divisionFilter, onChange: setDivisionFilter,
               options: [
-                ...DIVISIONS.map(d => ({ value: d, label: `${DIVISION_META[d].label} (${d})`, icon: DIVISION_META[d].icon })),
-                { value: UNTAGGED, label: `Untagged (${untaggedCount})` },
+                ...DIVISIONS.map(d => ({ value: d, label: DIVISION_META[d].label, badge: DIVISION_META[d].short, color: DIVISION_META[d].color, icon: DIVISION_META[d].icon })),
+                { value: UNTAGGED, label: `Untagged (${untaggedCount})`, icon: Tag },
               ],
             },
             {

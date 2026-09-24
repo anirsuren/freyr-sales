@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 colored filter choices and quiet view switch:** Shared filter menus now show colored icon chips and matching selected checks for options with semantic colors. Customer and Competitor Intel and materials division choices display MPR, MDV, and CON chips that match their table badges. Icon-only view switches no longer show a hover tooltip while retaining their accessible label and labeled dropdown choices. The local Mock company list was visually inspected; typecheck, focused lint, and diff check pass. Local only, not deployed.
+
 - **Sep 24 compact briefing view selector:** Individual Customer and Competitor briefing toolbars now show only the selected List/Tile/Table icon in the view dropdown; the open menu retains all three labeled choices. Verified visually and by opening the choices on a local Mock ArisGlobal briefing; typecheck, focused lint, and diff check pass. Local only, not deployed.
 
 - **Sep 24 Freyr AI launcher position:** Removed the Market Intel detail-rail rule that shifted the launcher 356px inward whenever the rail was on the right. It now stays in the viewport's bottom-right corner with either rail layout. Both left and right ArisGlobal Mock briefing layouts were visually inspected; diff check passes. Local only, not deployed.

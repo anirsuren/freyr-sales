@@ -4,10 +4,11 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import { Check, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/tint";
 
 /**
  * FIVE DROPDOWNS BECOME ONE BUTTON — now the app's filter control, not the
@@ -40,6 +41,8 @@ export type FilterOption = {
   color?: string;
   /** A semantic glyph for concepts such as roles, workflow, or pipeline. */
   icon?: LucideIcon;
+  /** Short code shown with the icon in the same colored chip used on records. */
+  badge?: string;
   /** A compact native mark such as a country or region flag. */
   mark?: string;
   /** Draw a face instead of a dot — owners are people. */
@@ -342,12 +345,8 @@ export function FilterMenu({
                                 a colour dot never did. */}
                             <span
                               aria-hidden="true"
-                              className={cn(
-                                "grid h-[15px] w-[15px] shrink-0 place-items-center rounded-[4px] border transition-colors",
-                                on
-                                  ? "border-blue-primary bg-blue-primary text-white"
-                                  : "border-border bg-white"
-                              )}
+                              className="grid h-[15px] w-[15px] shrink-0 place-items-center rounded-[4px] border border-border bg-white transition-colors"
+                              style={on ? { borderColor: option.color || "var(--blue-primary)", background: option.color || "var(--blue-primary)", color: "white" } : undefined}
                             >
                               {on && <Check size={11} strokeWidth={3} />}
                             </span>
@@ -362,13 +361,14 @@ export function FilterMenu({
                                 className="h-[18px] w-[18px] shrink-0 text-[7px]"
                               />
                             ) : option.icon ? (
-                              <option.icon
-                                size={16}
-                                strokeWidth={2.2}
+                              <span
                                 aria-hidden="true"
-                                className="shrink-0"
-                                style={{ color: option.color || "var(--text-tertiary)" }}
-                              />
+                                className={cn("inline-flex shrink-0 items-center gap-1 rounded-full", option.color ? "px-1.5 py-1" : "")}
+                                style={option.color ? { color: option.color, background: tint(option.color, 10) } : undefined}
+                              >
+                                <option.icon size={14} strokeWidth={2.2} />
+                                {option.badge && <span className="text-[10px] font-bold uppercase tracking-[0.04em]">{option.badge}</span>}
+                              </span>
                             ) : option.mark ? (
                               <span
                                 aria-hidden="true"
@@ -377,7 +377,10 @@ export function FilterMenu({
                                 {option.mark}
                               </span>
                             ) : null}
-                            <span className="min-w-0 flex-1 break-words">{option.label}</span>
+                            <span
+                              className={cn("min-w-0 flex-1 break-words", option.color && !option.icon && "font-semibold")}
+                              style={option.color && !option.icon ? { color: option.color } : undefined}
+                            >{option.label}</span>
                           </button>
                         );
                       })}

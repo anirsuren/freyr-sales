@@ -712,7 +712,7 @@ export function ColorSelect({
         minWidth: fill ? 0 : fitWidth,
       }}
     >
-      <PriorityTooltip label={fullLabel} className="w-full" suppressed={open}>
+      <PriorityTooltip label={fullLabel} className="w-full" suppressed={open || iconOnly}>
         <button
           type="button"
           onClick={toggleMenu}
