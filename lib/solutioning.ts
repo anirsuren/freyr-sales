@@ -1,6 +1,7 @@
 import { validateSolutioningCreation } from "./solutioningValidation";
 import { getDataMode } from "./dataMode";
-import { mockFillSolutioning, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
+import { FILL_GENERATION, mockFillSolutioning, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
+import { sampleDocPath } from "./sampleDocuments";
 import { refreshMockFillNames } from "./mockFillCast";
 import { canonicalMockTeammate } from "./salesTeam";
 import { todayISO } from "@/lib/utils";
@@ -295,6 +296,8 @@ export type SolutionRequest = {
   meetingAt?: string;
   attendees?: string[];
   docs: SolutionDoc[];
+  /** Mock-only one-time sample handoff, so deleting a sample doc stays deleted. */
+  mockHandoffDocsSeeded?: boolean;
   activity: RequestActivity[];
   /** SOL-012 asks for a system-maintained Last Updated. Every write sets it. */
   updatedAt?: string;
@@ -616,6 +619,7 @@ function normalizeRequest(v: unknown): SolutionRequest | null {
     docs: Array.isArray(r.docs)
       ? r.docs.map(normalizeDoc).filter((d): d is SolutionDoc => d !== null)
       : [],
+    mockHandoffDocsSeeded: r.mockHandoffDocsSeeded === true || undefined,
     activity: Array.isArray(r.activity)
       ? r.activity
           .map(normalizeActivity)
@@ -1023,6 +1027,43 @@ function sampleSolutioning(): SolutioningState {
 
 /* ------------------------------------------------------------------ reads */
 
+function isDemoHandoff(state: SolutioningState, child: SolutionRequest): boolean {
+  if (!child.requestId || child.type === "request" || child.mockHandoffDocsSeeded) return false;
+  const source = state.requests.find((request) => request.id === child.requestId);
+  return Boolean(source && (source.id.startsWith(`fill${FILL_GENERATION}-`) || source.id.startsWith("sr-sample-")));
+}
+
+/** Fill only sample handoffs, once. A user's later edits or deletions stay put. */
+function seedMockHandoffDocs(state: SolutioningState): boolean {
+  if (getDataMode() !== "mock") return false;
+  let changed = false;
+  for (const child of state.requests) {
+    if (!isDemoHandoff(state, child)) continue;
+    const by = child.owner || child.requestedBy;
+    const addedAt = child.pickedUpAt || child.requestedAt;
+    if (!child.docs.some((doc) => doc.category === "working")) {
+      child.docs.push({
+        id: uid("sd"), category: "working", name: "Sample response draft", version: 1,
+        docsPath: sampleDocPath("eu-mdr-discovery-questions.docx"), fileName: "eu-mdr-discovery-questions.docx",
+        assignedTo: by, addedBy: by, addedAt,
+        note: "Sample working document for this mock submission.",
+      });
+    }
+    if (!child.docs.some((doc) => doc.category === "final")) {
+      const fileName = child.type === "presentation" ? "helix-capability-deck.pdf" : "publishing-workflow-one-pager.pdf";
+      child.docs.push({
+        id: uid("sd"), category: "final", name: "Sample final deliverable", version: 1,
+        docsPath: sampleDocPath(fileName), fileName,
+        assignedTo: by, addedBy: by, addedAt,
+        note: "Preview document for this mock workflow; replace it with the actual output while working.",
+      });
+    }
+    child.mockHandoffDocsSeeded = true;
+    changed = true;
+  }
+  return changed;
+}
+
 /**
  * MOCK IS A REAL STORE, NOT A PICTURE OF ONE (Anir, Aug 26: "all the same
  * functionality (add, edit etc.) should be on mock mode, but it shouldn't
@@ -1060,8 +1101,9 @@ async function topUpMockFill(): Promise<SolutioningState> {
     const beforeSweep = base.requests.length;
     base.requests = base.requests.filter((r) => !isStaleFillRow(r.id));
     const namesChanged = refreshMockFillNames(base.requests);
+    const demoDocsChanged = seedMockHandoffDocs(base);
     if (hasMockFillRows(base.requests.map((r) => r.id))) {
-      if (base.requests.length !== beforeSweep || namesChanged) await writeRow(base).catch(() => undefined);
+      if (base.requests.length !== beforeSweep || namesChanged || demoDocsChanged) await writeRow(base).catch(() => undefined);
       return base;
     }
     const rows = mockFillSolutioning();
@@ -1081,6 +1123,7 @@ export async function readSolutioning(): Promise<SolutioningState> {
     if (
       hasMockFillRows(state.requests.map((r) => r.id)) &&
       !state.requests.some((request) => isStaleFillRow(request.id)) &&
+      !state.requests.some((request) => isDemoHandoff(state, request)) &&
       !refreshMockFillNames(state.requests)
     )
       return state;
@@ -1284,6 +1327,7 @@ async function buildRecord(
             : `Started ${KIND_WORD[input.kind]} for ${customer}: ${title}`,
     });
     state.requests.unshift(record);
+    seedMockHandoffDocs(state);
     if (persist) await writeRow(state);
     return record;
   }
