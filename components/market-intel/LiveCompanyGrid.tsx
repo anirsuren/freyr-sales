@@ -14,23 +14,20 @@ import {
   ArrowUpRight,
   Globe2,
   ArrowDownWideNarrow,
-  CalendarDays,
-  CalendarRange,
-  History,
-  Sun,
-  Layers,
   LayoutGrid,
   List,
+  MessageSquare,
   Newspaper,
   Radio,
-  Bookmark,
+  Repeat2,
   Star,
-  Tag,
+  ThumbsUp,
   Users,
 } from "lucide-react";
 
 import { Avatar } from "@/components/ui/Avatar";
-import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import { ColorSelect } from "@/components/ui/ColorSelect";
+import { FilterMenu } from "@/components/ui/FilterMenu";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import {
   PrioritySearchInput,
@@ -49,6 +46,8 @@ import { outletName } from "@/lib/marketIntelText";
 import { DIVISIONS, DIVISION_META, type Division } from "@/lib/offeringMaterials";
 import { linkedInUrl, safeHref } from "@/lib/safeUrl";
 import { cn } from "@/lib/utils";
+import { fmtWhen } from "@/lib/whenLabel";
+import type { FeedPost } from "@/lib/marketIntelFeed";
 
 /**
  * The dashboard's card grid plus its toolbar (Anir, Aug 11: "We need search
@@ -94,7 +93,7 @@ function ActivityMetric({
 
 type TrackingPerson = { id: string; name: string; email?: string | null };
 type PeoplePanel =
-  | { kind: "tracked"; companyName: string; people: CardPerson[] }
+  | { kind: "tracked"; companyId: string; companyName: string; people: CardPerson[] }
   | { kind: "tracking"; companyName: string; people: TrackingPerson[]; activeByDefault: boolean };
 
 function PeopleSummary({ people = [], companyName, onOpen }: { people?: CardPerson[]; companyName: string; onOpen: () => void }) {
@@ -127,43 +126,92 @@ function TrackingSummary({ state, companyName, onOpen }: { state: WatchState; co
   );
 }
 
-function PeoplePopup({ panel, onClose }: { panel: PeoplePanel | null; onClose: () => void }) {
-  const tracked = panel?.kind === "tracked";
+function TrackedPeoplePreview({ companyId, companyName, people }: { companyId: string; companyName: string; people: CardPerson[] }) {
+  const [selectedId, setSelectedId] = useState(() => people.find((person) => person.posts > 0)?.id ?? people[0]?.id ?? "");
+  const [postCache, setPostCache] = useState<Record<string, { posts: FeedPost[]; collectedCount: number; pending: boolean }>>({});
+  const [error, setError] = useState("");
+  const selected = people.find((person) => person.id === selectedId) ?? people[0];
+  const selectedPosts = selected ? postCache[selected.id] : undefined;
+
+  useEffect(() => {
+    if (!selectedId || postCache[selectedId]) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({ companyId, personId: selectedId });
+    fetch(`/api/market-intel/people-posts?${params}`, { signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load posts.");
+        setPostCache((previous) => ({ ...previous, [selectedId]: { posts: data.posts ?? [], collectedCount: data.collectedCount ?? 0, pending: data.pending === true } }));
+        setError("");
+      })
+      .catch((caught) => {
+        if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : "Could not load posts.");
+      });
+    return () => controller.abort();
+  }, [companyId, selectedId, postCache]);
+
   return (
-    <Modal open={panel !== null} onClose={onClose} title={panel ? `${tracked ? "People being tracked at" : "People tracking"} ${panel.companyName}` : "People"}>
-      {panel?.kind === "tracked" && panel.people.length > 0 ? (
+    <div>
+      <p className="mb-4 text-[12.5px] leading-relaxed text-text-secondary">
+        {people.length} {people.length === 1 ? "person is" : "people are"} included in {companyName}’s intelligence feed. Select someone to read their collected posts from the past 3 months.
+      </p>
+      <div className="grid gap-4 md:grid-cols-[minmax(225px,0.8fr)_minmax(0,1.2fr)]">
         <div className="space-y-2">
-          <p className="mb-3 text-[12.5px] leading-relaxed text-text-secondary">
-            {panel.people.length} {panel.people.length === 1 ? "person is" : "people are"} included in this company’s intelligence feed.
-          </p>
-          {panel.people.map(person => {
+          {people.map((person) => {
+            const active = person.id === selected?.id;
             const profileHref = linkedInUrl(person.linkedinUrl);
             return (
-              <div key={person.id} className="flex items-center gap-3 rounded-xl border border-border-light bg-white p-3">
-                <Avatar name={person.name} src={person.photoUrl} className="h-10 w-10 shrink-0 text-[12px]" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13.5px] font-semibold text-text-primary">{person.name}</p>
-                  <p className="text-[11.5px] text-text-secondary">{person.role}</p>
-                </div>
-                <span className="whitespace-nowrap rounded-full bg-blue-light px-2.5 py-1 text-[10.5px] font-semibold text-blue-primary tnum">
-                  {person.posts} {person.posts === 1 ? "post" : "posts"}
-                </span>
-                {profileHref && (
-                  <a
-                    href={profileHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`Open ${person.name} on LinkedIn`}
-                    title="Open LinkedIn profile"
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border-light text-blue-primary transition-[background-color,border-color,transform] hover:-translate-y-px hover:border-blue-subtle hover:bg-blue-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
-                  >
-                    <ArrowUpRight size={15} strokeWidth={2.2} />
-                  </a>
-                )}
+              <div key={person.id} className={cn("flex items-center gap-2 rounded-xl border p-2.5 transition-colors", active ? "border-blue-subtle bg-blue-light/50" : "border-border-light bg-white hover:bg-surface")}>
+                <button type="button" onClick={() => { setSelectedId(person.id); setError(""); }} aria-pressed={active} aria-label={`Show posts by ${person.name}`} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+                  <Avatar name={person.name} src={person.photoUrl} className="h-10 w-10 shrink-0 text-[12px]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-semibold leading-snug text-text-primary">{person.name}</span>
+                    <span className="block text-[11px] leading-snug text-text-secondary">{person.role || "Tracked person"}</span>
+                    <span className="mt-1 block text-[10.5px] font-semibold text-blue-primary tnum">{person.posts} {person.posts === 1 ? "post" : "posts"}</span>
+                  </span>
+                </button>
+                {profileHref && <a href={profileHref} target="_blank" rel="noreferrer" aria-label={`Open ${person.name} on LinkedIn`} title="Open LinkedIn profile" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border-light bg-white text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"><LinkedInIcon size={15} /></a>}
               </div>
             );
           })}
         </div>
+        <section aria-label={selected ? `Posts by ${selected.name}` : "Posts"} className="min-h-[280px] rounded-xl border border-border-light bg-surface/50 p-3 md:max-h-[min(62vh,620px)] md:overflow-y-auto">
+          <div className="mb-3 flex items-baseline justify-between gap-3 px-1">
+            <h3 className="text-[13px] font-semibold text-text-primary">{selected?.name ?? "Posts"}</h3>
+            <span className="text-[10.5px] font-semibold uppercase tracking-[0.055em] text-text-tertiary">Recent posts</span>
+          </div>
+          {error ? <p role="alert" className="rounded-lg bg-white p-4 text-[12px] text-text-secondary">{error}</p>
+            : !selectedPosts ? <p className="rounded-lg bg-white p-4 text-[12px] text-text-secondary">Loading posts…</p>
+            : selectedPosts.posts.length === 0 ? <p className="rounded-lg bg-white p-4 text-[12px] leading-relaxed text-text-secondary">{selectedPosts.pending ? "Posts have not been collected for this person yet." : "No public posts were collected in the past 3 months."}</p>
+            : <div className="space-y-2.5">
+              {selectedPosts.collectedCount > selectedPosts.posts.length && <p className="px-1 text-[11px] text-text-secondary">Repeated captures of the same post are shown once.</p>}
+              {selectedPosts.posts.map((post, index) => {
+                const href = safeHref(post.url);
+                return <article key={`${post.url}-${index}`} className="rounded-xl border border-border-light bg-white p-3.5">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="text-[10.5px] font-semibold text-text-tertiary" suppressHydrationWarning>{fmtWhen(post.date) || "Date unavailable"}</span>
+                    {href && <a href={href} target="_blank" rel="noreferrer" aria-label={`Open ${selected.name}'s post on LinkedIn`} className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-blue-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">Open post <ArrowUpRight size={12} /></a>}
+                  </div>
+                  <p className="whitespace-pre-line break-words text-[12.5px] leading-relaxed text-text-primary">{post.text}</p>
+                  {(post.reactions != null || post.comments != null || post.reposts != null) && <div className="mt-3 flex items-center gap-4 border-t border-border-light pt-2.5 text-[10.5px] text-text-tertiary tnum">
+                    {post.reactions != null && <span className="inline-flex items-center gap-1"><ThumbsUp size={12} />{post.reactions}</span>}
+                    {post.comments != null && <span className="inline-flex items-center gap-1"><MessageSquare size={12} />{post.comments}</span>}
+                    {post.reposts != null && <span className="inline-flex items-center gap-1"><Repeat2 size={12} />{post.reposts}</span>}
+                  </div>}
+                </article>;
+              })}</div>}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function PeoplePopup({ panel, onClose }: { panel: PeoplePanel | null; onClose: () => void }) {
+  const tracked = panel?.kind === "tracked";
+  return (
+    <Modal open={panel !== null} onClose={onClose} size={tracked ? "workflow" : "default"} dialogClassName={tracked ? "!max-w-[min(900px,calc(100vw-2rem))]" : undefined} title={panel ? `${tracked ? "People being tracked at" : "People tracking"} ${panel.companyName}` : "People"}>
+      {panel?.kind === "tracked" && panel.people.length > 0 ? (
+        <TrackedPeoplePreview companyId={panel.companyId} companyName={panel.companyName} people={panel.people} />
       ) : panel?.kind === "tracking" && panel.people.length > 0 ? (
         <div className="space-y-2">
           <p className="mb-3 text-[12.5px] leading-relaxed text-text-secondary">
@@ -358,65 +406,41 @@ export function LiveCompanyGrid({
           }
         />
         {view === "companies" && <span className="px-1 text-[12px] font-medium text-text-secondary tnum">{visible} of {total}</span>}
-        {/* STARRED: a favourite inside my own list, not the list itself. */}
-        <button
-          type="button"
-          onClick={() => { setView("companies"); setStarredOnly((v) => view === "companies" ? !v : true); }}
-          aria-pressed={view === "companies" && starredOnly}
-          title={group === "competitor" ? "Only the competitors you starred" : "Only the companies you starred"}
-          className={cn(
-            "flex h-[34px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors",
-            view === "companies" && starredOnly
-              ? "border-transparent bg-[#B45309] text-white"
-              : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
-          )}
-        >
-          <Star size={13} strokeWidth={2.2} fill={view === "companies" && starredOnly ? "currentColor" : "none"} />
-          {group === "competitor" ? "Starred competitors" : "Starred companies"}
-          <span className={cn("tnum", view === "companies" && starredOnly ? "opacity-85" : "text-text-tertiary")}>{starCount}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setView(current => current === "bookmarks" ? "companies" : "bookmarks")}
-          aria-pressed={view === "bookmarks"}
-          title={group === "customer" ? "Saved posts and articles from all customers" : "Saved posts and articles from all competitors"}
-          className={cn(
-            "flex h-[34px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors",
-            view === "bookmarks" ? "border-amber-300 bg-amber-100 text-amber-800" : "border-border-light bg-white text-text-secondary hover:border-amber-300 hover:text-amber-700"
-          )}
-        >
-          <Bookmark size={13} strokeWidth={2.2} fill={view === "bookmarks" ? "currentColor" : "none"} />
-          Bookmarked items
-        </button>
-        {view === "companies" && <>
-        <MultiColorSelect
-          values={divisionFilter}
-          onChange={setDivisionFilter}
-          ariaLabel="Filter by division"
-          minWidth={170}
-          allLabel="All divisions"
-          allIcon={Layers}
-          options={[
-            ...DIVISIONS.map((d) => ({
-              value: d,
-              label: `${DIVISION_META[d].label} (${d})`,
-              color: DIVISION_META[d].color,
-              icon: DIVISION_META[d].icon,
-            })),
-            { value: UNTAGGED, label: `Untagged (${untaggedCount})`, color: "#5B6B8C", icon: Tag },
+        <FilterMenu
+          ariaLabel={`Filter ${group === "competitor" ? "competitors" : "customers"}`}
+          groups={[
+            {
+              key: "saved", label: "Saved view",
+              values: view === "bookmarks" ? ["bookmarks"] : starredOnly ? ["starred"] : [],
+              onChange: next => {
+                const selected = next.at(-1);
+                setView(selected === "bookmarks" ? "bookmarks" : "companies");
+                setStarredOnly(selected === "starred");
+              },
+              options: [
+                { value: "starred", label: `${group === "competitor" ? "Starred competitors" : "Starred companies"} (${starCount})`, icon: Star },
+                { value: "bookmarks", label: "Bookmarked items" },
+              ],
+            },
+            {
+              key: "division", label: "Division", values: divisionFilter, onChange: setDivisionFilter,
+              options: [
+                ...DIVISIONS.map(d => ({ value: d, label: `${DIVISION_META[d].label} (${d})`, icon: DIVISION_META[d].icon })),
+                { value: UNTAGGED, label: `Untagged (${untaggedCount})` },
+              ],
+            },
+            {
+              key: "period", label: "Time period", values: range === "90" ? [] : [range],
+              onChange: next => setRange((next.at(-1) as Range | undefined) ?? "90"),
+              options: [
+                { value: "1", label: "Past day" },
+                { value: "7", label: "Past week" },
+                { value: "30", label: "Past month" },
+                { value: "90", label: "Past 3 months (default)" },
+              ],
+            },
           ]}
-        />
-        <ColorSelect
-          value={range}
-          onChange={value => setRange(value as Range)}
-          ariaLabel="Filter by time range"
-          minWidth={168}
-          options={[
-            { value: "1", label: "Past day", color: "var(--ink-orange)", icon: Sun },
-            { value: "7", label: "Past week", color: "var(--ink-bright-blue)", icon: CalendarDays },
-            { value: "30", label: "Past month", color: "var(--ink-violet)", icon: CalendarRange },
-            { value: "90", label: "Past 3 months", color: "var(--ink-teal-deep)", icon: History },
-          ]}
+          onClearAll={() => { setView("companies"); setStarredOnly(false); setDivisionFilter([]); setRange("90"); }}
         />
         <ColorSelect
           value={sort}
@@ -440,7 +464,6 @@ export function LiveCompanyGrid({
             { value: "tile", label: "Tile view", icon: LayoutGrid, color: "var(--ink-bright-blue)" },
           ]}
         />
-        </>}
       </SearchPriority>
       {view === "companies" && catalogueTotal !== undefined && (
         <p className="mb-4 text-[12px] text-text-secondary tnum">
@@ -486,7 +509,7 @@ export function LiveCompanyGrid({
                     <div>{(divisions[row.id] ?? []).length > 0 ? <DivisionChips divisions={divisions[row.id]} /> : <span className="text-[12px] text-text-tertiary">—</span>}</div>
                     <div className="grid grid-cols-1 gap-1.5 opacity-55"><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /></div>
                     <p className="text-[12px] leading-relaxed text-text-tertiary">The first verified posts, news, and website updates will appear here.</p>
-                    {group === "customer" && <PeopleSummary people={people[row.id]} companyName={row.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyName: row.name, people: people[row.id] ?? [] })} />}
+                    {group === "customer" && <PeopleSummary people={people[row.id]} companyName={row.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyId: row.id, companyName: row.name, people: people[row.id] ?? [] })} />}
                     {isAdmin && <TrackingSummary state={stateOf(row.id)} companyName={row.name} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: row.name, people: trackingPeople[row.id] ?? [], activeByDefault: stateOf(row.id).byDefault === true })} />}
                     <span className="whitespace-nowrap text-[11px] font-medium text-text-tertiary">Pending</span>
                   </div>
@@ -528,7 +551,7 @@ export function LiveCompanyGrid({
                         {storyHref ? <a href={storyHref} target="_blank" rel="noreferrer" className="group/story block overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary transition-colors hover:text-blue-primary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}<ArrowUpRight size={12} className="ml-1 inline-block align-text-top opacity-0 transition-opacity group-hover/story:opacity-100" /></a> : <p className="overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</p>}
                       </> : <p className="text-[12px] leading-relaxed text-text-tertiary">No recent headline in this window. Activity tracking is still active.</p>}
                     </div>
-                    {group === "customer" && <PeopleSummary people={people[card.id]} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyName: card.name, people: people[card.id] ?? [] })} />}
+                    {group === "customer" && <PeopleSummary people={people[card.id]} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyId: card.id, companyName: card.name, people: people[card.id] ?? [] })} />}
                     {isAdmin && <TrackingSummary state={stateOf(card.id)} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: card.name, people: trackingPeople[card.id] ?? [], activeByDefault: stateOf(card.id).byDefault === true })} />}
                     <span className="whitespace-nowrap text-[11px] font-semibold text-text-secondary" title="Latest successful source check">{card.updatedLabel}</span>
                   </div>

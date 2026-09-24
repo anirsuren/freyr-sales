@@ -391,8 +391,8 @@ export function PeopleTab({
               : `Nothing assigned to ${person.split(" ")[0]} yet`,
           emptyDescription:
             person === meName
-              ? "Pick one up from the Goal Master, or a manager assigns you one. It shows up here with its target and everything you log against it."
-              : "A goal reaches someone either way: they pick it up from the Goal Master, or leadership assigns it to them.",
+              ? "An admin can assign you a goal from the Goal Master. Once assigned, it appears here with its target and everything you log against it."
+              : "An admin can assign this person a goal from the Goal Master. It appears here with its target and progress.",
         }}
       />
 

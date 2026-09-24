@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { CalendarClock, Flag, Inbox, Minus, MoveHorizontal, Plus } from "lucide-react";
+import { CalendarClock, ChevronLeft, ChevronRight, Flag, Inbox, Minus, MoveHorizontal, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -107,7 +107,7 @@ export function NeededByTimeline({
   const maxZoom = 12;
   const clampStart = (start: number, zoom: number) =>
     Math.min(Math.max(0, 1 - 1 / zoom), Math.max(0, start));
-  const zoomTo = (nextZoom: number, anchor = 1) => {
+  const zoomTo = (nextZoom: number, anchor = 0.5) => {
     setView((current) => {
       const zoom = Math.min(maxZoom, Math.max(1, nextZoom));
       const atAnchor = current.start + anchor / current.zoom;
@@ -120,6 +120,13 @@ export function NeededByTimeline({
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       const rect = viewport.getBoundingClientRect();
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY) && !event.ctrlKey) {
+        setView((current) => ({
+          ...current,
+          start: clampStart(current.start + event.deltaX / Math.max(1, rect.width * current.zoom), current.zoom),
+        }));
+        return;
+      }
       const anchor = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
       const factor = Math.exp(-event.deltaY * (event.ctrlKey ? 0.012 : 0.006));
       setView((current) => {
@@ -139,6 +146,9 @@ export function NeededByTimeline({
   const position = (ms: number) => ((ms - from) / span - view.start) * view.zoom;
   const at = (ms: number) => `${position(ms) * 100}%`;
   const visible = (ms: number) => position(ms) >= 0 && position(ms) <= 1;
+  const requestedSide = position(asked) < 0 ? "left" : position(asked) > 1 ? "right" : null;
+  const neededSide = position(due) < 0 ? "left" : position(due) > 1 ? "right" : null;
+  const offscreenCount = Number(Boolean(requestedSide)) + Number(Boolean(neededSide));
 
   /**
    * WHERE "NEEDED BY" ACTUALLY FITS (Anir, Sep 6, after three wrong answers:
@@ -264,8 +274,7 @@ export function NeededByTimeline({
           because a flag at the dot's own height collided with it.
 
           Giving the flag 22px of clear air above the rail means it never
-          collides with anything in the full view. Zooming can move it outside
-          the visible date range, where it is intentionally clipped. */}
+          collides with anything in the full view. */}
       {/* THE MARKERS SIT ON TOP OF THE RAIL (Anir, Aug 30: "make sure the
           icons at the ends are on top of the bar").
 
@@ -277,7 +286,7 @@ export function NeededByTimeline({
           as on top rather than as a break in the line. */}
       <div
         ref={viewportRef}
-        className="relative mt-2 h-[86px] select-none overflow-hidden"
+        className={cn("relative mt-2 select-none overflow-hidden", offscreenCount ? offscreenCount === 2 ? "h-[126px]" : "h-[108px]" : "h-[86px]")}
         style={{ touchAction: "pan-y", cursor: view.zoom > 1 ? "grab" : "default" }}
         onPointerDown={(event) => {
           if (view.zoom <= 1 || event.button !== 0) return;
@@ -324,6 +333,12 @@ export function NeededByTimeline({
 
         {/* DUE — the other real date. */}
         <Marker left={at(due)} hue={tone.hue} icon={Flag} />
+
+        {/* Keep the endpoints findable while panning a zoomed view. The arrows
+            say the actual date lies beyond this edge; the badge is not a
+            replacement dot on the rail. */}
+        {requestedSide && <OffscreenDate side={requestedSide} icon={Inbox} name="Requested" date={label(asked)} hue="var(--ink-bright-blue)" top={86} />}
+        {neededSide && <OffscreenDate side={neededSide} icon={Flag} name="Needed" date={label(due)} hue={tone.hue} top={requestedSide ? 106 : 86} />}
 
         {/* REQUESTED FLUSH LEFT, NEEDED BY ON THE LINE BELOW, UNDER ITS OWN
             FLAG (Anir, Sep 6: "the requested text should be all the way to the
@@ -423,6 +438,29 @@ export function NeededByTimeline({
         </div>
       </div>
     </div>
+  );
+}
+
+function OffscreenDate({ side, icon: Icon, name, date, hue, top }: {
+  side: "left" | "right";
+  icon: typeof Inbox;
+  name: string;
+  date: string;
+  hue: string;
+  top: number;
+}) {
+  const Arrow = side === "left" ? ChevronLeft : ChevronRight;
+  return (
+    <span
+      className={cn("absolute z-20 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-border-light bg-white px-1.5 py-0.5 text-[9px] font-semibold shadow-sm", side === "left" ? "left-[-11px]" : "right-[-11px]")}
+      style={{ top, color: hue }}
+      aria-label={`${name} ${date} is ${side} of the visible dates`}
+    >
+      {side === "left" && <Arrow size={11} strokeWidth={2.5} aria-hidden="true" />}
+      <Icon size={10} strokeWidth={2.3} aria-hidden="true" />
+      {name} · {date}
+      {side === "right" && <Arrow size={11} strokeWidth={2.5} aria-hidden="true" />}
+    </span>
   );
 }
 

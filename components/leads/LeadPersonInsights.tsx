@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ArrowRight, AlertCircle, CheckCircle2, Clock3, Pencil, Target } from "lucide-react";
-import { InfoHint } from "@/components/ui/InfoHint";
 import { isOpenLead, leadAgeDays, type Lead } from "@/lib/leadsShared";
 
 const FOLLOW_UP_DAYS = 21;
@@ -82,7 +81,6 @@ export function LeadPersonInsights({
             <span className="inline-flex items-center gap-1.5 text-[11px] text-text-secondary">
               <Clock3 size={13} className="shrink-0" />
               <span><strong className="font-semibold text-text-primary">{age} {age === 1 ? "day" : "days"}</strong> since last update</span>
-              <InfoHint text="Time since the lead was last updated. Open leads should receive another touch within 21 days." />
             </span>
             <span className="text-[11px] font-semibold tnum" style={{ color: clockColor }}>
               {overdueBy > 0 ? `${overdueBy}d overdue` : remaining === 0 ? "Due today" : `${remaining}d remaining`}

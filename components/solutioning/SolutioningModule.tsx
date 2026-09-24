@@ -1971,11 +1971,10 @@ export function NewRequestDialog({
   const [neededBy, setNeededBy] = useState("");
   const [meetingAt, setMeetingAt] = useState("");
   const [attendees, setAttendees] = useState<string[]>([]);
-  const [details, setDetails] = useState(
-    prefillLead
-      ? `From lead ${prefillLead}${prefillCompany ? ` · ${prefillCompany}` : ""}.`
-      : ""
-  );
+  const leadContext = prefillLead
+    ? `From lead ${prefillLead}${prefillCompany ? ` · ${prefillCompany}` : ""}.`
+    : "";
+  const [details, setDetails] = useState("");
   const [saving, setSaving] = useState(false);
   const [docs, setDocs] = useState<StagedDoc[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -2860,11 +2859,12 @@ export function NewRequestDialog({
               What does the Solutioning team need to know?{" "}
               <span className="text-error">*</span>
             </span>
+            {leadContext && <span className="mt-1 block text-[12px] text-text-secondary">{leadContext} Add the actual scope and expected outcome below.</span>}
             <textarea
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               rows={3}
-              placeholder="Scope, context, links, whatever helps them start."
+              placeholder="What is needed, why, and for when? Include the audience, scope, and any useful links."
               className="mt-1.5 w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
             />
           </label>
@@ -3047,7 +3047,7 @@ export function NewRequestDialog({
                         ? presType.trim() || undefined
                         : undefined,
                   title: title.trim(),
-                  details: details.trim() || undefined,
+                  details: leadContext ? `${leadContext}\n${details.trim()}` : details.trim(),
                   customerId: customer.id === sourceCustomerId ? undefined : customer.id,
                   customer: customer.name,
                   opportunityIds: pickedDeals.map((o) => o.id),

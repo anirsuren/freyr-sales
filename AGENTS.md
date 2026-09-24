@@ -196,6 +196,10 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 compact Market Intel filters and tracked-post preview:** Customer and Competitor Intel now put starred companies, bookmarked items, division, and time period behind the shared Filter menu, leaving search, sort, and the icon-only view switch on one row. The tracked-people popup opens a person's recent collected posts on demand, with source links, engagement counts, empty states, and repeated URL captures shown once. Local Mock customer and competitor toolbars, bookmark selection, and a Roche post preview were inspected; typecheck, focused lint, and diff check pass. Local only, not deployed.
+
+- **Sep 24 Solutioning and Goals corrections:** Zoomed Solutioning deadlines keep Requested and Needed dates visible as directional edge indicators when their markers move outside the window; horizontal wheel panning now matches the Goals timeline. The BD member's empty Goals message now accurately says an admin assigns goals from Goal Master. Requests started from a lead require a real Solutioning brief instead of accepting only an automatic lead reference. The unexplained question-mark help icon beside lead follow-up age was removed. Local Mock zoomed timeline inspected; typecheck, focused lint, and diff check pass. Local only, not deployed.
+
 - **Sep 24 Market Intel source links:** The publisher/source name above each Latest intelligence headline in the Customer and Competitor tables now opens the same article URL as the headline. Names without a valid URL remain plain text. Typecheck, focused lint, diff check, and local Mock customer-table accessibility inspection pass; source and headline links resolve to matching URLs. Local only, not deployed.
 
 - **Sep 24 Market Intel activity mix:** Customer and competitor table rows now stack Posts, News, and Website vertically in one Activity mix column, including pending-row placeholders. The narrower column gives the headline more room. Typecheck, focused lint, diff check, and local Mock customer-table visual inspection pass. Local only, not deployed.
