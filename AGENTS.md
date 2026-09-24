@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Lead analytics link hit areas:** In the status and Source performance popups, only the company or owner text opens its linked record. Their logo/avatar, cell spacing, and the rest of the lead row toggle the in-place details dropdown. Typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
+
 - **Sep 24 Opportunity review subsection presentation:** Kept the three Decision brief, People & influence, and Next moves tabs after the user clarified they should remain. Their styling now matches the existing Opportunity, Solutioning, Offering, and Customer tab rows: compact text labels and counts, horizontal overflow, and a blue underline on the active tab. Removed the extra divider above this row. Verified visually in local Mock mode, plus typecheck, focused lint, and diff check. Local only, per the user's release instruction.
 
 - **Sep 24 Solutioning linked record layout:** “What this is for” gives the opportunity column more room and renders each deal as a plain linked record with an icon and natural text wrapping. Contact links use the same restrained treatment, and the columns stack before they get cramped at narrower widths. The oversized opportunity pill shown in an older build is gone locally. Verified with typecheck, focused lint, diff check, and local Mock-mode visual inspection. Local only, per the user's release instruction.

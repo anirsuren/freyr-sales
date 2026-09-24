@@ -647,11 +647,10 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                             </span>
                           </td>
                           <td>
-                            <Link href={companyHref(lead)} className="group/company flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary hover:text-blue-primary">
+                            <span className="inline-flex max-w-full items-center gap-2">
                               <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
-                              <span className="min-w-0 truncate group-hover/company:underline">{lead.company}</span>
-                              <ArrowUpRight size={13} className="shrink-0 opacity-0 transition-opacity group-hover/company:opacity-100" aria-hidden="true" />
-                            </Link>
+                              <Link href={companyHref(lead)} className="min-w-0 truncate text-[12px] font-medium text-text-secondary hover:text-blue-primary hover:underline">{lead.company}</Link>
+                            </span>
                           </td>
                           <td>
                             <span className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: tint(statusColor, 9), color: statusColor }}>
@@ -671,10 +670,10 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                           </td>
                           <td>
                             {lead.owner ? (
-                              <Link href={`/analytics/reps/${repSlug(lead.owner)}`} className="group/owner flex min-w-0 items-center gap-2 text-[12px] text-text-secondary hover:text-blue-primary">
+                              <span className="inline-flex max-w-full items-center gap-2">
                                 <Avatar name={lead.owner} className="h-6 w-6 shrink-0 text-[8px]" />
-                                <span className="min-w-0 truncate group-hover/owner:underline">{lead.owner}</span>
-                              </Link>
+                                <Link href={`/analytics/reps/${repSlug(lead.owner)}`} className="min-w-0 truncate text-[12px] text-text-secondary hover:text-blue-primary hover:underline">{lead.owner}</Link>
+                              </span>
                             ) : (
                               <span className="text-[11.5px] text-text-tertiary">Unassigned</span>
                             )}
@@ -880,14 +879,10 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                         </span>
                       </td>
                       <td>
-                        <Link
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          href={companyHref(lead)} className="group/company flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary hover:text-blue-primary">
+                        <span className="inline-flex max-w-full items-center gap-2">
                           <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
-                          <span className="min-w-0 truncate group-hover/company:underline">{lead.company}</span>
-                          <ArrowUpRight size={13} className="shrink-0 opacity-0 transition-opacity group-hover/company:opacity-100" aria-hidden="true" />
-                        </Link>
+                          <Link target="_blank" rel="noopener noreferrer" href={companyHref(lead)} className="min-w-0 truncate text-[12px] font-medium text-text-secondary hover:text-blue-primary hover:underline">{lead.company}</Link>
+                        </span>
                       </td>
                       <td>
                         {(() => {
@@ -927,10 +922,10 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                       </td>
                       <td>
                         {lead.owner ? (
-                          <Link href={`/analytics/reps/${repSlug(lead.owner)}`} className="group/owner flex min-w-0 items-center gap-2 text-[12px] text-text-secondary hover:text-blue-primary">
+                          <span className="inline-flex max-w-full items-center gap-2">
                             <Avatar name={lead.owner} className="h-6 w-6 shrink-0 text-[8px]" />
-                            <span className="min-w-0 truncate group-hover/owner:underline">{lead.owner}</span>
-                          </Link>
+                            <Link href={`/analytics/reps/${repSlug(lead.owner)}`} className="min-w-0 truncate text-[12px] text-text-secondary hover:text-blue-primary hover:underline">{lead.owner}</Link>
+                          </span>
                         ) : (
                           <span className="text-[11.5px] text-text-tertiary">Unassigned</span>
                         )}
