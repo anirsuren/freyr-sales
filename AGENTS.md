@@ -1769,3 +1769,7 @@ The missing qualification details and Edit lead action now appear directly below
 ### Sep 24: Opportunity currency and empty-state cleanup
 
 The Revenue Accrual currency table aligns read-only USD amounts with the original-currency row instead of applying editable-field padding to only USD. A schedule with a usable FX rate now offers USD, local currency, and Both; Both shows adjacent columns for each amount and total while the stored accrual remains USD. When no conversion rate is available, the schedule stays in USD rather than labeling dollars as local money. Opportunity Solutioning requests hide the search/type toolbar when there are no requests. The revenue-accrual summary separates its count from the monetary "scheduled total" instead of saying "$110 in value." Typecheck and diff check pass; focused lint has three pre-existing unused-symbol warnings. Completed locally, not deployed.
+
+### Sep 24: Source-performance owner menu width
+
+The Leads Source performance popup gives its Owner dropdown a wider menu so a full owner name such as Abhinaya Veeramally stays on one line alongside the avatar and action icons. The toolbar columns remain unchanged. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.

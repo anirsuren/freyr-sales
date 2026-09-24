@@ -792,6 +792,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
               onChange={setOwnerFilter}
               ariaLabel="Filter by owner"
               fill
+              menuMinWidth={350}
               collapsible={false}
               searchable
               options={[
