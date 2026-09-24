@@ -43,7 +43,7 @@ import { LiveCompanyCard, type CardPerson } from "@/components/market-intel/Live
 import { WatchStatus, type WatchState } from "@/components/market-intel/WatchStatus";
 import type { CompanyCard } from "@/lib/marketIntelFeed";
 import type { TrackedCompany } from "@/lib/marketIntelTracking";
-import { outletName } from "@/lib/marketIntelText";
+import { outletHomepage, outletName } from "@/lib/marketIntelText";
 import { DIVISIONS, DIVISION_META, type Division } from "@/lib/offeringMaterials";
 import { linkedInUrl, safeHref } from "@/lib/safeUrl";
 import { cn } from "@/lib/utils";
@@ -92,8 +92,8 @@ function ActivityMetric({
   );
 }
 
-type TrackingPerson = { id: string; name: string; email?: string | null };
-type PeoplePanel =
+export type TrackingPerson = { id: string; name: string; email?: string | null };
+export type PeoplePanel =
   | { kind: "tracked"; companyId: string; companyName: string; people: CardPerson[] }
   | { kind: "tracking"; companyName: string; people: TrackingPerson[]; activeByDefault: boolean };
 
@@ -207,7 +207,7 @@ function TrackedPeoplePreview({ companyId, companyName, people }: { companyId: s
   );
 }
 
-function PeoplePopup({ panel, onClose }: { panel: PeoplePanel | null; onClose: () => void }) {
+export function PeoplePopup({ panel, onClose }: { panel: PeoplePanel | null; onClose: () => void }) {
   const tracked = panel?.kind === "tracked";
   const [query, setQuery] = useState("");
   useEffect(() => { setQuery(""); }, [panel?.companyName, panel?.kind]);
@@ -529,6 +529,7 @@ export function LiveCompanyGrid({
                 const story = card.stories[0] ?? null;
                 const storyHref = safeHref(story?.url);
                 const storyOutlet = story ? outletName(story.source, story.url) : "";
+                const outletHref = story ? outletHomepage(story.source, storyHref ?? undefined) : null;
                 const count = (value: number) => card.countsKnown === false ? "—" : value;
                 return (
                   <div key={card.id} className="group/row relative grid min-h-[118px] items-center gap-5 px-5 py-4 transition-[background-color,box-shadow] duration-200 hover:bg-[rgba(0,113,227,0.025)] hover:shadow-[inset_3px_0_0_var(--blue-primary)]" style={{ gridTemplateColumns: listColumns }}>
@@ -552,8 +553,8 @@ export function LiveCompanyGrid({
                     </div>
                     <div className="min-w-0">
                       {story ? <>
-                        {storyHref ? (
-                          <a href={storyHref} target="_blank" rel="noreferrer" aria-label={`Open ${storyOutlet} source`} className="mb-1 inline-block text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary transition-colors hover:text-blue-primary hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+                        {outletHref ? (
+                          <a href={outletHref} target="_blank" rel="noreferrer" aria-label={`Open ${storyOutlet} website`} className="mb-1 inline-block text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary transition-colors hover:text-blue-primary hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
                             {storyOutlet}
                           </a>
                         ) : (

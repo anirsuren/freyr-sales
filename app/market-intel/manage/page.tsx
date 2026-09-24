@@ -15,6 +15,7 @@ import { readMarketIntelSummaries } from "@/lib/marketIntelRead";
 import { buildManagedCompanies } from "@/lib/marketIntelManaged";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { listWorkspaceAccess } from "@/lib/accessStore";
 
 export const dynamic = "force-dynamic";
 
@@ -47,12 +48,13 @@ export default async function ManageCompaniesPage({
   const group = tab === "competitors" ? "competitor" : "customer";
   /* Adding to the watch list is a write, and each add fires a paid scrape. */
   const canTrack = !(await marketIntelAddRefusal());
-  const [tracking, intel, followers, user, scope] = await Promise.all([
+  const [tracking, intel, followers, user, scope, directory] = await Promise.all([
     readMarketIntelTracking({ fresh: true }).catch(() => ({ companies: [], people: [] })),
     readMarketIntelSummaries().catch(() => null),
     readMarketIntelFollowers().catch(() => ({}) as Record<string, string[]>),
     getCurrentUser(),
     requireServerMemberScope().catch(() => null),
+    process.env.FREYR_WORKSPACE_ID ? listWorkspaceAccess(process.env.FREYR_WORKSPACE_ID).catch(() => null) : Promise.resolve(null),
   ]);
   const mine = scope
     ? await readMarketIntelBookmarks(scope).catch(() => emptyBookmarks())
@@ -82,6 +84,8 @@ export default async function ManageCompaniesPage({
         additionsRemaining={user.role === "bd_member" ? Math.max(0, BD_COMPANY_LIMIT - tracking.companies.filter(company => company.addedBy?.id === scope?.userId).length) : undefined}
         myIds={mine.companyIds}
         starredIds={mine.starredIds}
+        followers={followers}
+        memberDirectory={Object.fromEntries((directory?.members ?? []).map(member => [member.id, { name: member.name, email: member.email }]))}
       />
     </div>
   );

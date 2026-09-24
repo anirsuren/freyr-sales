@@ -44,6 +44,33 @@ const OUTLET_BY_HOST: Record<string, string> = {
   "medicaldialogues.in": "Medical Dialogues",
   "ndtvprofit.com": "NDTV Profit",
 };
+
+/** Publisher label links to the publication, while a headline links to the
+ * specific article. RSS and syndicated article URLs cannot identify the
+ * publisher's homepage on their own, so resolve known names explicitly and
+ * leave uncertain names unlinked rather than sending people to an aggregator. */
+export function outletHomepage(label: string, articleUrl?: string): string | null {
+  const name = outletName(label, articleUrl).toLowerCase();
+  const known: Record<string, string> = {
+    ...Object.fromEntries(Object.entries(OUTLET_BY_HOST).map(([host, outlet]) => [outlet.toLowerCase(), host])),
+    "screener": "screener.in",
+    "firstword pharma": "firstwordpharma.com",
+    "ad hoc news": "ad-hoc-news.de",
+    "tipranks": "tipranks.com",
+    "buttondown": "buttondown.com",
+    "pacermonitor": "pacermonitor.com",
+    "stockgro": "stockgro.club",
+  };
+  const host = known[name];
+  if (host) return `https://${host}/`;
+  try {
+    const url = new URL(articleUrl ?? "");
+    const articleHost = url.hostname.replace(/^www\./, "").toLowerCase();
+    if (!/^(?:news\.google\.com|google\.com|bing\.com|yahoo\.com)$/.test(articleHost)
+      && cleanSourceLabel(articleHost).toLowerCase() === name) return `${url.protocol}//${url.host}/`;
+  } catch { /* Unknown publisher: show its name without a misleading link. */ }
+  return null;
+}
 const COUNTRY_SECOND_LEVEL = /^(co|com|net|org|gov|edu|ac|or|ne|go)$/i;
 
 function hostLabels(address: string): string[] {

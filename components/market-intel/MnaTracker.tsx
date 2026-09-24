@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   ExternalLink,
   Handshake,
-  Layers,
   LayoutGrid,
   List,
   Megaphone,
@@ -24,7 +23,8 @@ import {
   Newspaper,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import { ColorSelect } from "@/components/ui/ColorSelect";
+import { FilterMenu } from "@/components/ui/FilterMenu";
 import {
   PrioritySearchInput,
   SearchPriority,
@@ -224,72 +224,33 @@ export function MnaTracker({
           className="min-w-[200px] flex-1"
         />
         <span className="ml-auto flex flex-wrap items-center gap-2">
-          <MultiColorSelect
-            values={status}
-            onChange={setStatus}
-            ariaLabel="Filter by deal status"
-            minWidth={150}
-            allLabel="All statuses"
-            allIcon={Handshake}
-            options={[
-              { value: "announced", label: "Announced", color: "var(--ink-bright-blue)", icon: Megaphone },
-              { value: "completed", label: "Completed", color: "var(--ink-green)", icon: CheckCircle2 },
+          <FilterMenu
+            ariaLabel="Filter M&A deals"
+            groups={[
+              { key: "status", label: "Status", values: status, onChange: setStatus, options: [
+                { value: "announced", label: "Announced", color: "var(--ink-bright-blue)", icon: Megaphone },
+                { value: "completed", label: "Completed", color: "var(--ink-green)", icon: CheckCircle2 },
+              ] },
+              { key: "division", label: "Division", values: division, onChange: setDivision, options: [
+                { value: "Medicinal Products", label: "Medicinal Products", color: "var(--ink-bright-blue)", icon: Pill },
+                { value: "Medical Devices", label: "Medical Devices", color: "var(--ink-teal-deep)", icon: Stethoscope },
+                { value: "Consumer", label: "Consumer", color: "var(--ink-orange)", icon: ShoppingBag },
+              ] },
+              { key: "time", label: "Time period", values: timeFilter === "all" ? [] : [timeFilter],
+                onChange: next => setTimeFilter((next.at(-1) as typeof timeFilter | undefined) ?? "all"), options: [
+                  { value: "30", label: "Last 30 days", color: "var(--ink-violet)", icon: CalendarClock },
+                  { value: "90", label: "Last 90 days", color: "var(--ink-teal-deep)", icon: CalendarClock },
+                  { value: "year", label: "This year", color: "var(--ink-orange)", icon: CalendarClock },
+                ] },
+              { key: "size", label: "Deal size", values: sizeFilter, onChange: setSizeFilter, options: [
+                { value: "big", label: "$1B and up", color: "var(--ink-teal-deep)", icon: BadgeDollarSign },
+                { value: "small", label: "Under $1B", color: "var(--ink-bright-blue)", icon: BadgeDollarSign },
+                { value: "undisclosed", label: "Undisclosed", color: "#8AB4E8", icon: BadgeDollarSign },
+              ] },
+              { key: "source", label: "Source", values: sourceFilter, onChange: setSourceFilter,
+                options: sources.map(src => ({ value: src, label: src, color: "var(--ink-violet)", icon: Newspaper })) },
             ]}
-          />
-          <MultiColorSelect
-            values={division}
-            onChange={setDivision}
-            ariaLabel="Filter by division"
-            minWidth={190}
-            allLabel="All divisions"
-            allIcon={Layers}
-            options={[
-              { value: "Medicinal Products", label: "Medicinal Products", color: "var(--ink-bright-blue)", icon: Pill },
-              { value: "Medical Devices", label: "Medical Devices", color: "var(--ink-teal-deep)", icon: Stethoscope },
-              { value: "Consumer", label: "Consumer", color: "var(--ink-orange)", icon: ShoppingBag },
-            ]}
-          />
-          <ColorSelect
-            value={timeFilter}
-            onChange={(v) => setTimeFilter(v as typeof timeFilter)}
-            ariaLabel="Filter by time"
-            minWidth={150}
-            options={[
-              /* Blue like every other "All" filter beside it (it was the one grey
-                 chip in the row); the windows wear the company page's colours
-                 for the same spans. */
-              { value: "all", label: "All time", color: "var(--ink-bright-blue)", icon: CalendarClock },
-              { value: "30", label: "Last 30 days", color: "var(--ink-violet)", icon: CalendarClock },
-              { value: "90", label: "Last 90 days", color: "var(--ink-teal-deep)", icon: CalendarClock },
-              { value: "year", label: "This year", color: "var(--ink-orange)", icon: CalendarClock },
-            ]}
-          />
-          <MultiColorSelect
-            values={sizeFilter}
-            onChange={setSizeFilter}
-            ariaLabel="Filter by deal size"
-            minWidth={160}
-            allLabel="Any deal size"
-            allIcon={BadgeDollarSign}
-            options={[
-              { value: "big", label: "$1B and up", color: "var(--ink-teal-deep)", icon: BadgeDollarSign },
-              { value: "small", label: "Under $1B", color: "var(--ink-bright-blue)", icon: BadgeDollarSign },
-              { value: "undisclosed", label: "Undisclosed", color: "#8AB4E8", icon: BadgeDollarSign },
-            ]}
-          />
-          <MultiColorSelect
-            values={sourceFilter}
-            onChange={setSourceFilter}
-            ariaLabel="Filter by source"
-            minWidth={170}
-            allLabel="All sources"
-            allIcon={Newspaper}
-            options={sources.map((src) => ({
-              value: src,
-              label: src,
-              color: "var(--ink-violet)",
-              icon: Newspaper,
-            }))}
+            onClearAll={() => { setStatus([]); setDivision([]); setTimeFilter("all"); setSizeFilter([]); setSourceFilter([]); }}
           />
           <ColorSelect
             value={mnaLayout}

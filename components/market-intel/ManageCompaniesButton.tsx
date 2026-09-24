@@ -36,6 +36,7 @@ import { MiLogo } from "@/components/market-intel/MiLogo";
 import { DivisionChips } from "@/components/market-intel/DivisionChips";
 import { TrackCompanyButton } from "@/components/market-intel/TrackCompanyButton";
 import { WatchStatus } from "@/components/market-intel/WatchStatus";
+import { PeoplePopup, type TrackingPerson } from "@/components/market-intel/LiveCompanyGrid";
 import { DIVISIONS, DIVISION_META } from "@/lib/offeringMaterials";
 import { cn } from "@/lib/utils";
 import { applyBookmarkChanges } from "@/lib/marketIntelBookmarkChanges";
@@ -159,6 +160,8 @@ type ManageProps = {
   /** What the viewer has ticked and starred, straight from the server. */
   myIds?: string[];
   starredIds?: string[];
+  followers?: Record<string, string[]>;
+  memberDirectory?: Record<string, { name: string; email?: string | null }>;
 };
 
 export function ManageCompaniesPanel({
@@ -169,6 +172,8 @@ export function ManageCompaniesPanel({
   additionsRemaining,
   myIds,
   starredIds,
+  followers = {},
+  memberDirectory = {},
 }: ManageProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -183,6 +188,7 @@ export function ManageCompaniesPanel({
   const [sort, setSort] = useState<Sort>("az");
   const [busy, setBusy] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<ManagedCompany | null>(null);
+  const [trackingCompany, setTrackingCompany] = useState<ManagedCompany | null>(null);
   const [saved, setSaved] = useState({ mine: new Set(myIds ?? []), stars: new Set(starredIds ?? []) });
   const [saving, setSaving] = useState(false);
   const dirty = rows.some((c) => c.group === group &&
@@ -336,6 +342,11 @@ export function ManageCompaniesPanel({
     starred: inSection.filter((c) => stars.has(c.id)).length,
     inactive: inSection.filter(idle).length,
   };
+  const trackingPeople: TrackingPerson[] = (trackingCompany ? followers[trackingCompany.id] ?? [] : []).map((id, index) => ({
+    id,
+    name: memberDirectory[id]?.name || `Workspace member ${index + 1}`,
+    email: memberDirectory[id]?.email,
+  }));
 
   const chip = (key: Show, label: string, Icon: LucideIcon, count: number) => {
     const on = show === key;
@@ -368,6 +379,7 @@ export function ManageCompaniesPanel({
 
   return (
     <>
+      <PeoplePopup panel={trackingCompany ? { kind: "tracking", companyName: trackingCompany.name, people: trackingPeople, activeByDefault: trackingCompany.activeByDefault } : null} onClose={() => setTrackingCompany(null)} />
       <div className="rise-in">
         <div className="mb-4 flex flex-wrap items-center gap-x-2.5 gap-y-2">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -513,7 +525,7 @@ export function ManageCompaniesPanel({
                       {c.divisions.length > 0 ? <DivisionChips divisions={c.divisions} /> : <span className="text-[12px] text-text-tertiary">—</span>}
                     </td>
                     {isAdmin && <td className="px-3 py-2.5">
-                      {c.onboarding ? <CollectionStatus company={c} /> : <WatchStatus state={{ followers: c.followers, byDefault: c.activeByDefault }} />}
+                      {c.onboarding ? <CollectionStatus company={c} /> : <button type="button" onClick={() => setTrackingCompany(c)} aria-label={`Show people tracking ${c.name}`} className="cursor-pointer rounded-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"><WatchStatus state={{ followers: c.followers, byDefault: c.activeByDefault }} /></button>}
                     </td>}
                     <td className="px-3 py-2.5">
                       {/* WHICH SOURCES IT IS SET UP FOR: LinkedIn needs a page,
