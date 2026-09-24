@@ -2104,22 +2104,21 @@ export function VerifyQueueCard({
       )}
     >
       {pending && (
-        <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[5px] bg-[color:#D97706]" />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-[5px] bg-[color:#D97706]" />
       )}
-      <div
-        className={cn(
-          "flex items-center gap-2 border-b px-4 py-2.5",
-          pending
-            ? "border-[rgba(217,119,6,0.25)] bg-[rgba(217,119,6,0.07)]"
-            : "border-border-light"
-        )}
-      >
+      <div className="relative">
         <button
           type="button"
           onClick={() => setPanelView(expanded ? "closed" : "open")}
           aria-expanded={expanded}
           aria-label={expanded ? "Hide verification requests" : "Show verification requests"}
-          className="flex min-w-0 cursor-pointer items-center gap-2 rounded-md py-0.5 pr-2 text-left transition-colors hover:bg-[rgba(217,119,6,0.1)]"
+          className={cn(
+            "flex w-full min-w-0 cursor-pointer items-center gap-2 border-b px-4 py-2.5 text-left transition-colors hover:bg-[rgba(217,119,6,0.1)]",
+            picked.size > 0 && "pr-56",
+            pending
+              ? "border-[rgba(217,119,6,0.25)] bg-[rgba(217,119,6,0.07)]"
+              : "border-border-light"
+          )}
         >
           <ChevronDown
             size={15}
@@ -2157,42 +2156,13 @@ export function VerifyQueueCard({
             {fmtAmount("currency", onHold)} on hold until you do
           </span>
           )}
-        </button>
         {/* ONE SENTENCE, WITH THE GROUP NAME AS A TAG INSIDE IT (Anir,
             Aug 15). Two goes at this: "you own test. Only you can lock these"
             read like a typo, and pilling the name mid-sentence just turned it
             into two fragments with the full stop gone. The name is the object
             of the sentence now, so the pill has somewhere to sit and the line
             still reads as English. Blue, like every other group tag. */}
-        {picked.size > 0 ? (
-          <span className="ml-auto flex items-center gap-2">
-            <span className="text-[11.5px] font-semibold text-text-secondary tnum">
-              {picked.size} selected
-            </span>
-            <button
-              type="button"
-              disabled={busy}
-              /* SIGNING OFF IN BULK IS STILL SIGNING OFF (found testing, Aug
-                 19: two claims went reported → verified on one click with no
-                 dialog at all). Anir has made this point twice about the
-                 single-claim pill — "it auto-verified it. It didn't even ask
-                 me. It didn't open up any pop-up" — and the bulk button was
-                 the one path that still did it. It asks first now, naming
-                 what is about to be locked and for how much. */
-              onClick={() => setConfirmBulk(true)}
-              className="cursor-pointer rounded-lg bg-blue-primary px-3 py-1.5 text-[12px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
-            >
-              Verify and lock {picked.size} ✓
-            </button>
-            <button
-              type="button"
-              onClick={() => setPicked(new Set())}
-              className="cursor-pointer rounded-lg border border-border-light px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-            >
-              Clear
-            </button>
-          </span>
-        ) : (
+        {picked.size === 0 && (
         /* A LIST THAT CANNOT GROW OFF THE ROW (Anir, Aug 26: "if there's a
            100 groups, how is this gonna work on this people performance page?
            It's just not gonna work"). Naming every group inline was fine at
@@ -2224,6 +2194,36 @@ export function VerifyQueueCard({
             </span>
           )}
         </span>
+        )}
+        </button>
+        {picked.size > 0 && (
+          <span className="absolute inset-y-0 right-4 flex items-center gap-2">
+            <span className="text-[11.5px] font-semibold text-text-secondary tnum">
+              {picked.size} selected
+            </span>
+            <button
+              type="button"
+              disabled={busy}
+              /* SIGNING OFF IN BULK IS STILL SIGNING OFF (found testing, Aug
+                 19: two claims went reported → verified on one click with no
+                 dialog at all). Anir has made this point twice about the
+                 single-claim pill — "it auto-verified it. It didn't even ask
+                 me. It didn't open up any pop-up" — and the bulk button was
+                 the one path that still did it. It asks first now, naming
+                 what is about to be locked and for how much. */
+              onClick={() => setConfirmBulk(true)}
+              className="cursor-pointer rounded-lg bg-blue-primary px-3 py-1.5 text-[12px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+            >
+              Verify and lock {picked.size} ✓
+            </button>
+            <button
+              type="button"
+              onClick={() => setPicked(new Set())}
+              className="cursor-pointer rounded-lg border border-border-light px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+            >
+              Clear
+            </button>
+          </span>
         )}
       </div>
       <div className="freyr-fold" data-open={expanded ? "true" : "false"}>
