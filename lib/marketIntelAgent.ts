@@ -133,12 +133,12 @@ export async function searchMarketIntel(query: string, question = query): Promis
     const fallback = await readMarketIntelFeed().catch(() => null);
     const stored = fallback?.companies[named.id] ?? Object.values(fallback?.companies ?? {}).find(c => c.name.toLowerCase() === named.name.toLowerCase());
     if (stored) return companyBlock(stored, tracked.map(c => ({id:c.id,name:c.name})), peopleLinesFor(named.id, fallback?.people ?? people), since);
-    return `${named.name} is on the tracking list, but its Market Intelligence page has no collected feed yet. There are no stored posts, news, or website updates to summarize. Do not claim it is untracked, link to a missing briefing page, or invent recent activity.`;
+    return `${named.name} is on the tracking list, but its Market Intel page has no collected feed yet. There are no stored posts, news, or website updates to summarize. Do not claim it is untracked, link to a missing briefing page, or invent recent activity.`;
   }
 
   const feed = await readMarketIntelFeed().catch(() => null);
   if (!feed || Object.keys(feed.companies).length === 0) {
-    return "The Market Intelligence feed has no data yet (first refresh pending).";
+    return "The Market Intel feed has no data yet (first refresh pending).";
   }
   const companies = Object.values(feed.companies);
   const feedNamed = companies.filter(c => {

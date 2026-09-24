@@ -698,7 +698,7 @@ export function LiveCompanyBriefing({
         className="mb-2 inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:text-blue-primary"
       >
         <ArrowLeft size={14} strokeWidth={2} />{" "}
-        {isCompetitor ? "Competitor Intelligence" : "Customer Intelligence"}
+        {isCompetitor ? "Competitor Intel" : "Customer Intel"}
       </SmartBack>
 
       {/* ONE LINE FOR WHO THIS IS AND WHAT YOU CAN DO (Anir, Sep 11: "confusing

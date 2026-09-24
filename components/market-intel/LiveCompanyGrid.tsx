@@ -197,7 +197,7 @@ function PeoplePopup({ panel, onClose }: { panel: PeoplePanel | null; onClose: (
       ) : panel?.kind === "tracking" && panel.people.length > 0 ? (
         <div className="space-y-2">
           <p className="mb-3 text-[12.5px] leading-relaxed text-text-secondary">
-            {panel.people.length} {panel.people.length === 1 ? "person has" : "people have"} this company on their Market Intelligence list.
+            {panel.people.length} {panel.people.length === 1 ? "person has" : "people have"} this company on their Market Intel list.
           </p>
           {panel.people.map(person => (
             <div key={person.id} className="flex items-center gap-3 rounded-xl border border-border-light bg-white p-3">

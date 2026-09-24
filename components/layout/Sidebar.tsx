@@ -294,7 +294,7 @@ export function Sidebar({
     /* A MARKET INTEL COMPANY LIGHTS ITS OWN ROOM (Anir, Sep 11: "It says go back
        to competitor intelligence, but it says I'm selected customer
        intelligence"). /market-intel/<id> carries no ?tab=, so the bare
-       Customer Intelligence entry claimed every company as its child. The
+       Customer Intel entry claimed every company as its child. The
        page says which room it belongs to; until it has, nothing lights. */
     const onMiCompany = itemPath === "/market-intel" && isChild;
     const active = onMiCompany
@@ -312,7 +312,7 @@ export function Sidebar({
         onClick={onMobileClose}
         aria-current={active ? "page" : undefined}
         className={cn(
-          /* Indent tightened so "Competitor Intelligence" fits WHOLE on its
+          /* Indent tightened so "Competitor Intel" fits WHOLE on its
              one line — an ellipsis in a four-item nav is a word nobody can
              read, not a saving. */
           "ml-4 flex items-center gap-2 rounded-md border-l-[3px] py-1.5 pl-2.5 pr-2 text-[12.5px] transition-colors",
@@ -323,7 +323,7 @@ export function Sidebar({
       >
         <Icon size={16} strokeWidth={1.6} className="shrink-0" />
         {/* ONE LINE PER SUB-LINK (Anir, Aug 27: "I want these on one line,
-            like each"). "Competitor Intelligence" was wrapping into a
+            like each"). "Competitor Intel" was wrapping into a
             two-storey pill; nowrap plus truncate keeps every room a single
             row however narrow the rail gets. */}
         <span className="min-w-0 flex-1 truncate whitespace-nowrap">{item.label}</span>
@@ -562,9 +562,9 @@ export function Sidebar({
                 !collapsed &&
                 isActive(pathname, "/market-intel") &&
                 [
-                  { href: "/market-intel", label: "Customer Intelligence", icon: Building2 },
-                  { href: "/market-intel?tab=competitors", label: "Competitor Intelligence", icon: Swords },
-                  { href: "/market-intel?tab=market", label: "Market Intelligence", icon: Globe2 },
+                  { href: "/market-intel", label: "Customer Intel", icon: Building2 },
+                  { href: "/market-intel?tab=competitors", label: "Competitor Intel", icon: Swords },
+                  { href: "/market-intel?tab=market", label: "Market Intel", icon: Globe2 },
                 ].map(subNavLink)}
 
               {/* OPPORTUNITIES HAS THREE ROOMS (Manoj, Sep 10: "Move entire

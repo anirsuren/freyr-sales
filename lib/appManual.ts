@@ -629,7 +629,7 @@ page or record it is looking at, and it suggests three prompts for that page
 before you type.
 
 WHAT IT CAN AND CANNOT DO. It answers about what is on your screen, the
-offerings catalogue and its uploaded materials, the Market Intelligence feed,
+offerings catalogue and its uploaded materials, the Market Intel feed,
 and how this app works. It writes full drafts for you to copy. It cannot save,
 send, file, schedule or change anything in the workspace, and it never contacts
 anyone — so it will show you a draft and stop there.`,
@@ -640,7 +640,7 @@ anyone — so it will show you a draft and stop there.`,
       "tracking", "track", "what does this page track", "watchlist", "linkedin",
       "follow", "m&a", "acquisition", "refresh", "star", "unstar", "remove a company", "my page", "my list"],
     title: "Market Intel",
-    body: `Market Intel access follows the user's assigned module privileges. Three views: Customer Intelligence, Competitor Intelligence, and Market Intelligence (industry M&A).
+    body: `Market Intel access follows the user's assigned module privileges. Three views: Customer Intel, Competitor Intel, and Market Intel (industry M&A).
 Track a company opens a form for company name, official website and LinkedIn company page. Supply at least a website or LinkedIn page and choose divisions. Existing companies cannot be added twice. Add company saves it and closes the form. A named skeleton card stays on the dashboard while its first collection runs in the background, including across reloads or closed tabs. A failed collection offers Retry; no fixed completion time is promised.
 Manage customers and Manage competitors are separate pages. Select companies and press Save changes; unsaved ticks are drafts. To remove one company, open its briefing from Market Intel, click Tracking in the header, then confirm removal in the popup. This changes only your personal list, never another user's list. Alternatively open Manage customers or Manage competitors, untick it and press Save changes. A star is a favourite within My list. Starring a company also adds it to My list if it was absent. Unstarring keeps it on your page and asks for confirmation. Removing a company from My list also removes its star. Do not describe these actions as completely independent. There is no move-between-customer-and-competitor action.
 Each source refreshes no sooner than 24 hours after its previous successful collection. The refresh chip explains the schedule. No twice-daily collection.

@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Market Intel labels:** The sidebar, three section tabs and headings, company and management back links, tracking copy, and in-app guide now use Customer Intel, Competitor Intel, and Market Intel. Verified in the local Mock workspace with its banner visible; typecheck and focused lint pass (one existing unused-import warning). Local only, not deployed.
+
 - **Sep 23 Lead chart week picker:** Replaced the browser-native week selector in the expanded lead intake chart with the app's bounded, searchable styled menu. Its rows keep week and lead count together; selection closes the menu and updates the records, and outside clicks dismiss it. Verified in local Mock mode after the preview process was restarted; typecheck, focused lint, and diff check pass. Local only, not deployed.
 
 - **Sep 23 Lead intake chart records:** The expanded 12-week lead intake chart now keeps the selected week's complete lead list in its right panel instead of saying records are unavailable. Clicking a plotted point or choosing a week updates the list, with an explicit empty state for weeks without leads. Verified the Jul 27 point displays all nine Mock leads and the Mock banner remains visible; typecheck and focused lint pass. Local only, not deployed.

@@ -177,9 +177,9 @@ export default async function MarketIntelCompanyPage({
   /**
    * BACK GOES TO THE BUCKET YOU CAME FROM, NAMED CORRECTLY.
    *
-   * This module has three buckets — Customer Intelligence, Competitor
-   * Intelligence and Market Intelligence — and these two empty states both
-   * hardcoded the label "Market Intelligence" while pointing at
+   * This module has three buckets — Customer Intel, Competitor
+   * Intelligence and Market Intel — and these two empty states both
+   * hardcoded the label "Market Intel" while pointing at
    * /market-intel, which is the CUSTOMER bucket. So a competitor with no
    * activity yet offered a back arrow naming a third bucket and landing on a
    * second one (found Aug 14 walking the flows). The live briefing beside
@@ -191,8 +191,8 @@ export default async function MarketIntelCompanyPage({
       : "/market-intel";
   const backLabel =
     mine?.group === "competitor"
-      ? "Competitor Intelligence"
-      : "Customer Intelligence";
+      ? "Competitor Intel"
+      : "Customer Intel";
   if (!mine) {
     return (
       <div>

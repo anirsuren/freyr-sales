@@ -32,8 +32,8 @@ export async function generateMetadata({
  * competitors should be like a full page when i click on it... track
  * competitors is a popup. that makes more sense").
  *
- * /market-intel/manage?tab=competitors for Competitor Intelligence, the bare
- * path for Customer Intelligence, the same ?tab= the dashboard uses. The list
+ * /market-intel/manage?tab=competitors for Competitor Intel, the bare
+ * path for Customer Intel, the same ?tab= the dashboard uses. The list
  * is every company in that section, ticked or not; adding one is still the
  * Track pop-up in the header.
  */
@@ -63,7 +63,7 @@ export default async function ManageCompaniesPage({
     followers,
   });
   const backHref = group === "competitor" ? "/market-intel?tab=competitors" : "/market-intel";
-  const backLabel = group === "competitor" ? "Competitor Intelligence" : "Customer Intelligence";
+  const backLabel = group === "competitor" ? "Competitor Intel" : "Customer Intel";
 
   return (
     <div>

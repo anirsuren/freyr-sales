@@ -19,7 +19,7 @@ import { PageTabs } from "@/components/ui/PageTabs";
 const TABS = [
   {
     key: "customers",
-    label: "Customer Intelligence",
+    label: "Customer Intel",
     href: "/market-intel",
     icon: Building2,
     color: "var(--ink-bright-blue)",
@@ -28,7 +28,7 @@ const TABS = [
   },
   {
     key: "competitors",
-    label: "Competitor Intelligence",
+    label: "Competitor Intel",
     href: "/market-intel?tab=competitors",
     icon: Swords,
     color: "var(--ink-magenta)",
@@ -37,7 +37,7 @@ const TABS = [
   },
   {
     key: "market",
-    label: "Market Intelligence",
+    label: "Market Intel",
     href: "/market-intel?tab=market",
     icon: Globe2,
     color: "var(--ink-violet)",
@@ -132,7 +132,7 @@ export function MiTabs({
         </p>
       </div>
       {/* The bucket's content ENTERS instead of popping (Anir, Aug 17: the
-          switch to Market Intelligence "is not good. Look at that animation").
+          switch to Market Intel "is not good. Look at that animation").
           Keyed by bucket so each pick replays the entrance; the pill row above
           sits outside and never moves. */}
       {switching ? (
