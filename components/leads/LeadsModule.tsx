@@ -1166,7 +1166,7 @@ export function LeadsModule({
                 placeholder="Who got in touch"
               />
             </Field>
-            <Field label="Company" required>
+            <Field label="Company" required hint="A company typed here is saved on this lead only; it does not create a customer account.">
               {/* THE ACCOUNT, WITH ITS OWN LOGO (Anir, Aug 26: "Company:
                   you're not doing that either" — on the picker showing no
                   logos). This was an <input list> wearing a datalist, which
@@ -1179,29 +1179,25 @@ export function LeadsModule({
                 const typing = editing.companyOther || (!!editing.company && !known);
                 if (typing)
                   return (
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <Input
-                          value={editing.company}
-                          onChange={(e) =>
-                            setEditing({ ...editing, company: e.target.value, companyOther: true })
-                          }
-                          placeholder="Type the company name…"
-                          autoFocus
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEditing({ ...editing, company: "", companyOther: false })
-                          }
-                          className="shrink-0 cursor-pointer rounded-lg border border-border-light bg-white px-2 py-2 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
-                        >
-                          Pick from list
-                        </button>
-                      </div>
-                      <p className="mt-1.5 text-[11.5px] leading-4 text-text-tertiary">
-                        Adds the name to this lead only. It won&apos;t create a customer account.
-                      </p>
+                    <div className="relative">
+                      <Input
+                        value={editing.company}
+                        onChange={(e) =>
+                          setEditing({ ...editing, company: e.target.value, companyOther: true })
+                        }
+                        placeholder="Type the company name…"
+                        className="pr-28"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditing({ ...editing, company: "", companyOther: false })
+                        }
+                        className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md border border-border-light bg-white px-2 py-1.5 text-[11px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
+                      >
+                        Pick from list
+                      </button>
                     </div>
                   );
                 return (
