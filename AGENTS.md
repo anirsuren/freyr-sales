@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Manage companies tab label:** The first Manage customers/competitors scope chip reads “All” instead of “Everything.” Typecheck, focused lint, and diff check pass. Local only, not deployed.
+
 - **Sep 24 Market Intel addition limit and check times:** The BD member's remaining new-company allowance now appears at the top of Track a customer/competitor, explaining the shared 20-company cap and that selecting existing records is unrestricted. At zero, the dialog still opens to explain the limit but its form cannot submit. The list's “Freshness” column is now “Last checked,” with a hint that it reflects the latest successful source check and that daily company checks can finish at different times. Typecheck, focused lint, and diff check pass; the local Mock customer dialog and banner were inspected (admin role hides the BD-only allowance). Local only, not deployed.
 
 - **Sep 24 Market Intel labels:** The sidebar, three section tabs and headings, company and management back links, tracking copy, and in-app guide now use Customer Intel, Competitor Intel, and Market Intel. Verified in the local Mock workspace with its banner visible; typecheck and focused lint pass (one existing unused-import warning). Local only, not deployed.

@@ -428,7 +428,7 @@ export function ManageCompaniesPanel({
           />
         </div>
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-          {chip("all", "Everything", Layers, counts.all)}
+          {chip("all", "All", Layers, counts.all)}
           {chip("mine", "My list", CheckSquare, counts.mine)}
           {chip("starred", "Starred", Star, counts.starred)}
           {isAdmin && chip("inactive", "Inactive", CircleSlash, counts.inactive)}
