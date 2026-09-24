@@ -1,5 +1,6 @@
 // Apify LinkedIn enrichment (Section 6). Uses the thirdwatch LinkedIn profile
 // scraper actor; falls back to a realistic mock profile when no token is set.
+import { leadLinkedInPostDate } from "./leadLinkedIn";
 
 const APIFY_BASE = "https://api.apify.com/v2";
 const LINKEDIN_ACTOR = "thirdwatch~linkedin-profile-scraper";
@@ -97,7 +98,7 @@ export async function scrapeLeadLinkedInProfile(linkedinUrl: string): Promise<Re
 }
 
 /** A bounded recent-post fetch. Failure does not erase otherwise useful profile facts. */
-export async function scrapeLeadLinkedInPosts(linkedinUrl: string, leadName: string): Promise<Array<{ text: string; url: string; date: string | null }>> {
+export async function scrapeLeadLinkedInPosts(linkedinUrl: string, leadName: string): Promise<Array<{ text: string; url: string; date: string | null; reactions?: number; comments?: number; reposts?: number; type?: string }>> {
   const token = process.env.APIFY_API_TOKEN;
   const username = new URL(linkedinUrl).pathname.match(/^\/in\/([^/]+)/)?.[1];
   if (!token || !username) return [];
@@ -121,6 +122,10 @@ export async function scrapeLeadLinkedInPosts(linkedinUrl: string, leadName: str
   }).slice(0, 10).map((item) => ({
     text: typeof item?.text === "string" ? item.text : "",
     url: typeof item?.post_url === "string" ? item.post_url : typeof item?.url === "string" ? item.url : "",
-    date: typeof item?.posted_at?.timestamp === "string" ? item.posted_at.timestamp : null,
+    date: leadLinkedInPostDate(item?.posted_at),
+    ...(Number.isFinite(item?.stats?.total_reactions) ? { reactions: item.stats.total_reactions } : {}),
+    ...(Number.isFinite(item?.stats?.comments) ? { comments: item.stats.comments } : {}),
+    ...(Number.isFinite(item?.stats?.reposts) ? { reposts: item.stats.reposts } : {}),
+    ...(typeof item?.post_type === "string" ? { type: item.post_type } : {}),
   }));
 }

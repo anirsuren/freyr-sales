@@ -15,7 +15,6 @@ import {
   Handshake,
   Mail,
   ExternalLink,
-  RefreshCw,
   MapPin,
   Megaphone,
   MessageCircle,
@@ -103,6 +102,7 @@ import { DateText } from "@/components/ui/DateText";
 import { LeadAnalytics } from "@/components/leads/LeadAnalytics";
 import { LeadPersonInsights } from "@/components/leads/LeadPersonInsights";
 import { LeadJourney } from "@/components/leads/LeadJourney";
+import { LeadLinkedInProfile } from "@/components/leads/LeadLinkedInProfile";
 import { repSlug } from "@/lib/team";
 
 type CustomerOption = { id: string; name: string };
@@ -1024,32 +1024,13 @@ export function LeadsModule({
                                   </span>
                                 </div>
 
-                                {lead.linkedinUrl && (
-                                  <div className="mt-4 rounded-lg border border-border-light bg-surface p-3">
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                      <div>
-                                        <span className="block text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">LinkedIn profile facts</span>
-                                        <span className="text-[11px] text-text-tertiary">
-                                          {enrichingId === lead.id ? "Reading profile…" : lead.linkedinProfile ? `Saved ${new Date(lead.linkedinProfile.fetchedAt).toLocaleDateString()}` : lead.linkedinStatus === "unavailable" ? "Lookup unavailable; link saved" : "No profile facts saved yet"}
-                                        </span>
-                                      </div>
-                                      <span className="flex items-center gap-2">
-                                        {canWrite && <button type="button" disabled={enrichingId === lead.id} onClick={(event) => { event.stopPropagation(); void enrichLead(lead.id); }} className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-blue-primary disabled:opacity-50"><RefreshCw size={12} /> {lead.linkedinProfile ? "Refresh" : "Retry lookup"}</button>}
-                                        <button type="button" onClick={(event) => { event.stopPropagation(); askFreyrAgent({ prompt: `Tell me about lead ${lead.ref}, ${lead.name} at ${lead.company}. Use the saved lead record and LinkedIn profile snapshot, state when it was fetched, distinguish entered lead facts from unverified public-profile claims, and identify what remains unknown.` }); }} className="inline-flex items-center gap-1 rounded-md bg-blue-light px-2 py-1 text-[11.5px] font-semibold text-blue-primary"><Sparkles size={12} /> Ask AI</button>
-                                      </span>
-                                    </div>
-                                    {lead.linkedinProfile && (
-                                      <div className="mt-2 space-y-1 text-[12px] leading-relaxed text-text-secondary">
-                                        {lead.linkedinProfile.headline && <p className="font-semibold text-text-primary">{lead.linkedinProfile.headline}</p>}
-                                        {lead.linkedinProfile.location && <p>{lead.linkedinProfile.location}</p>}
-                                        {lead.linkedinProfile.about && <p className="line-clamp-4">{lead.linkedinProfile.about}</p>}
-                                        {lead.linkedinProfile.experience.length > 0 && <p><span className="font-semibold">Experience:</span> {lead.linkedinProfile.experience.map((item) => [item.title, item.company].filter(Boolean).join(" at ")).join(" · ")}</p>}
-                                        {lead.linkedinProfile.skills.length > 0 && <p><span className="font-semibold">Skills:</span> {lead.linkedinProfile.skills.join(", ")}</p>}
-                                        {lead.linkedinProfile.recentPosts?.length > 0 && <div className="pt-1"><span className="font-semibold">Recent public posts:</span><ul className="mt-1 space-y-1">{lead.linkedinProfile.recentPosts.map((post) => <li key={post.url}><a href={post.url} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="text-blue-primary hover:underline">{post.text.slice(0, 180)}{post.text.length > 180 ? "…" : ""}</a>{post.date ? <span className="ml-1 text-text-tertiary">({post.date})</span> : null}</li>)}</ul></div>}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                                {lead.linkedinUrl && <LeadLinkedInProfile
+                                  lead={lead}
+                                  refreshing={enrichingId === lead.id}
+                                  canWrite={canWrite}
+                                  onRefresh={() => void enrichLead(lead.id)}
+                                  onAsk={() => askFreyrAgent({ prompt: `Tell me about lead ${lead.ref}, ${lead.name} at ${lead.company}. Use the saved lead record and LinkedIn profile snapshot, state when it was fetched, distinguish entered lead facts from unverified public-profile claims, and identify what remains unknown.` })}
+                                />}
 
                                 {lead.note && (
                                   <div className="mt-4 rounded-lg bg-surface px-3 py-2.5">

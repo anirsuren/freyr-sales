@@ -62,10 +62,14 @@ export type LeadLinkedInProfile = {
   currentTitle: string;
   location: string;
   about: string;
+  followerCount?: number;
+  connectionCount?: number;
   experience: { title: string; company: string; duration: string; description: string }[];
-  education: { school: string; degree: string }[];
+  education: { school: string; degree: string; fieldOfStudy?: string; duration?: string }[];
+  honors?: { title: string; subtitle: string }[];
+  organizations?: { title: string; subtitle: string }[];
   skills: string[];
-  recentPosts: { text: string; url: string; date: string | null }[];
+  recentPosts: { text: string; url: string; date: string | null; reactions?: number; comments?: number; reposts?: number; type?: string }[];
   fetchedAt: string;
   source: "LinkedIn profile lookup";
 };
