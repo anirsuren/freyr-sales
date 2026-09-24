@@ -534,7 +534,7 @@ export function LeadsModule({
         />
       </div>
 
-      <LeadAnalytics leads={leads} customers={customers} />
+      <LeadAnalytics leads={leads} />
 
       {/* The toolbar needs air under the stat tiles (Anir, Aug 26: "the search
           bar is touching the cards"). Every other list page spaces this row;
@@ -804,7 +804,7 @@ export function LeadsModule({
                       </td>
                       <td className="px-4 py-2.5">
                         <Link
-                          href={companyDestination(lead.company, linkedCustomer?.id)}
+                          href={companyDestination(lead.company, lead.customerId)}
                           onClick={(event) => event.stopPropagation()}
                           className="group/customer inline-flex max-w-full items-center gap-2 text-[12.5px] text-text-secondary hover:text-blue-primary"
                         >
@@ -1017,12 +1017,12 @@ export function LeadsModule({
                                       <span className="min-w-0 truncate">{lead.source}</span>
                                     </span>
                                   </span>
-                                  {linkedCustomer && (
+                                  {(lead.customerId || linkedCustomer) && (
                                     <span className="flex min-w-0 flex-col">
                                       <span className="flex h-4 shrink-0 items-center whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary">Customer account</span>
-                                      <Link href={`/customers/${linkedCustomer.id}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-h-5 min-w-0 leading-5 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
-                                        <CompanyLogo name={linkedCustomer.name} className="h-5 w-5 shrink-0 rounded-md text-[7px]" />
-                                        <span className="min-w-0 truncate">{linkedCustomer.name}</span>
+                                      <Link href={companyDestination(lead.company, lead.customerId)} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-h-5 min-w-0 leading-5 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                        <CompanyLogo name={lead.company} className="h-5 w-5 shrink-0 rounded-md text-[7px]" />
+                                        <span className="min-w-0 truncate">{lead.company}</span>
                                       </Link>
                                     </span>
                                   )}
@@ -1161,14 +1161,13 @@ export function LeadsModule({
                 placeholder="Who got in touch"
               />
             </Field>
-            <Field label="Company" required hint="A company typed here is saved on this lead only; it does not create a customer account.">
+            <Field label="Company" required hint="A new company will be added as a linked customer account when you save this lead.">
               {/* THE ACCOUNT, WITH ITS OWN LOGO (Anir, Aug 26: "Company:
                   you're not doing that either" — on the picker showing no
                   logos). This was an <input list> wearing a datalist, which
                   renders as the browser's grey autocomplete and looks nothing
                   like the rest of the app. Pick a customer account, or use the
-                  explicit blue add action to type a company name on this lead.
-                  Typed names do not silently create customer accounts. */}
+                  explicit blue add action to type a new customer account name. */}
               {(() => {
                 const known = customers.find((c) => c.name === editing.company);
                 const typing = editing.companyOther || (!!editing.company && !known);
@@ -1178,7 +1177,7 @@ export function LeadsModule({
                       <Input
                         value={editing.company}
                         onChange={(e) =>
-                          setEditing({ ...editing, company: e.target.value, companyOther: true })
+                          setEditing({ ...editing, company: e.target.value, customerId: "", companyOther: true })
                         }
                         placeholder="Type the company name…"
                         className="pr-28"
@@ -1187,7 +1186,7 @@ export function LeadsModule({
                       <button
                         type="button"
                         onClick={() =>
-                          setEditing({ ...editing, company: "", companyOther: false })
+                          setEditing({ ...editing, company: "", customerId: "", companyOther: false })
                         }
                         className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md border border-border-light bg-white px-2 py-1.5 text-[11px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
                       >
@@ -1203,11 +1202,11 @@ export function LeadsModule({
                     collapsible={false}
                     fill
                     onChange={(v) =>
-                      setEditing({ ...editing, company: v, companyOther: false })
+                      setEditing({ ...editing, company: v, customerId: customers.find((customer) => customer.name === v)?.id ?? "", companyOther: false })
                     }
                     createLabel="Add a company not on the list"
                     onCreate={(query) =>
-                      setEditing({ ...editing, company: query, companyOther: true })
+                      setEditing({ ...editing, company: query, customerId: "", companyOther: true })
                     }
                     options={[
                       { value: "", label: "Choose a company", noMark: true },

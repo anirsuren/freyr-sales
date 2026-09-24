@@ -23,6 +23,7 @@ import { PageToolbar } from "@/components/ui/PageToolbar";
 import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { companyDestination } from "@/lib/companyDestination";
 import { Avatar } from "@/components/ui/Avatar";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
@@ -752,18 +753,16 @@ export function MeetingsModule({
                             })()}
                           </span>
                           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] text-text-secondary">
-                            {m.customerId ? (
+                            {m.customer ? (
                               <Link
-                                href={`/customers/${m.customerId}`}
+                                href={companyDestination(m.customer, m.customerId)}
                                 onClick={(e) => e.stopPropagation()}
                                 onKeyDown={(e) => e.stopPropagation()}
                                 className="hover:text-blue-primary hover:underline"
                               >
                                 {m.customer}
                               </Link>
-                            ) : (
-                              <span>{m.customer}</span>
-                            )}
+                            ) : null}
                             {m.opportunityLabels.length > 0 && (
                               <>
                                 <span aria-hidden="true">·</span>

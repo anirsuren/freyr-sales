@@ -334,6 +334,21 @@ export async function saveLead(input: LeadInput, who: string): Promise<Lead> {
   });
 }
 
+/** Attach older text-only leads to the Customer account for their company. */
+export async function linkLeadsToCustomer(companyName: string, customerId: string): Promise<void> {
+  await withWrite(async () => {
+    const state = await readRow();
+    let changed = false;
+    for (const lead of state.leads) {
+      if (lead.company.trim().toLocaleLowerCase() === companyName.trim().toLocaleLowerCase() && lead.customerId !== customerId) {
+        lead.customerId = customerId;
+        changed = true;
+      }
+    }
+    if (changed) await writeRow(state);
+  });
+}
+
 /** Store a lookup only if the lead still points at the URL that was fetched. */
 export async function saveLeadLinkedInLookup(
   id: string, url: string, profile: LeadLinkedInProfile | null,

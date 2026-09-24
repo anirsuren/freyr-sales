@@ -27,6 +27,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { SmartBack } from "@/components/ui/BackButton";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { companyDestination } from "@/lib/companyDestination";
 import { Avatar } from "@/components/ui/Avatar";
 import { Textarea } from "@/components/ui/Textarea";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -633,7 +634,7 @@ export function MeetingDetail({
 
           <SectionCard title="What it is against" icon={Building2}>
             <Link
-              href={m.customerId ? `/customers/${m.customerId}` : "/customers"}
+              href={m.customer ? companyDestination(m.customer, m.customerId) : "/customers"}
               className="flex w-fit items-center gap-2 rounded-md hover:text-blue-primary hover:underline"
             >
               <CompanyLogo name={m.customer} className="h-7 w-7 shrink-0 text-[9px]" />

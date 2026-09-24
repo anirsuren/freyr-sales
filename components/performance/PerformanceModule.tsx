@@ -5575,7 +5575,7 @@ function LogActualModal({
             <OptionalMark />
             <InfoHint
               text={
-                "Which account this number came from. Pick the real account so the money can be traced back to it.\nIf the account has no record here yet, you can type the name instead."
+                "Which account this number came from. Pick an existing account, or type a new name to create and link one when you save."
               }
             />
           </label>

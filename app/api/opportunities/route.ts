@@ -21,6 +21,7 @@ import {
   moduleWriteRefusal,
 } from "@/lib/moduleAccessServer";
 import { todayISO } from "@/lib/utils";
+import { ensureCustomerAccount } from "@/lib/ensureCustomerAccount";
 
 export const dynamic = "force-dynamic";
 
@@ -311,8 +312,13 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
 
+      const opportunityInput = body(raw);
+      const account = opportunityInput.customer?.trim()
+        ? await ensureCustomerAccount(opportunityInput.customer, opportunityInput.customerId, me.name)
+        : null;
       const created = await addOpportunity({
-        ...body(raw),
+        ...opportunityInput,
+        ...(account ? { customer: account.company_name, customerId: account.id } : {}),
         /**
          * THE CREATOR IS THE OWNER. SYSTEM SET, NOT SUBMITTED.
          *
@@ -402,6 +408,11 @@ export async function POST(req: NextRequest) {
        * back unchanged.
        */
       const patch = body(raw);
+      if (patch.customer?.trim()) {
+        const account = await ensureCustomerAccount(patch.customer, patch.customerId, me.name);
+        patch.customer = account.company_name;
+        patch.customerId = account.id;
+      }
       if (patch.owner !== undefined && me.role !== "admin") {
         const before = target?.owner ?? "";
         if (patch.owner !== before) delete patch.owner;

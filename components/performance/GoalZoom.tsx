@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { companyDestination } from "@/lib/companyDestination";
 import {
   ArrowLeft,
   Briefcase,
@@ -2583,9 +2584,9 @@ export function GoalZoom({
                   </div>
                   {a.customer && (
                     <div className="mt-1 pl-8 text-[11px] text-text-secondary">
-                      {a.customerId ? (
+                      {a.customer ? (
                         <Link
-                          href={`/customers/${a.customerId}`}
+                          href={companyDestination(a.customer, a.customerId)}
                           className="inline-flex items-center gap-1.5 hover:text-blue-primary hover:underline"
                         >
                           <CompanyLogo
@@ -2594,15 +2595,7 @@ export function GoalZoom({
                           />
                           {a.customer}
                         </Link>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5">
-                          <CompanyLogo
-                            name={a.customer}
-                            className="h-[18px] w-[18px] shrink-0 text-[6px]"
-                          />
-                          {a.customer}
-                        </span>
-                      )}
+                      ) : null}
                     </div>
                   )}
                   {a.evidence?.length ? (

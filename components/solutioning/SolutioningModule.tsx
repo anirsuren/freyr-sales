@@ -1930,10 +1930,9 @@ export function NewRequestDialog({
    * ARRIVING FROM A LEAD (Suren, Aug 25: a request can be raised "at the
    * customer level, or at the lead level, or at the opportunity level").
    *
-   * A lead usually has no account yet — that is what makes it a lead — so the
-   * company arrives as a NAME rather than an id. If an account of that name
-   * already exists it is selected; otherwise the company name is selected as
-   * a lead-only option, without creating a customer account.
+   * Older leads can still have a company NAME rather than an account id.
+   * Keep that name selected here; creating the request resolves it to a
+   * linked Customer account on the server.
    */
   const sourceOpportunity = prefillOpportunityId
     ? opportunities.find((o) => o.id === prefillOpportunityId)

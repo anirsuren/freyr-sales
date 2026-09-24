@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ratesWithLiveFallback } from "@/lib/fxRates";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
+import { ensureCustomerAccount } from "@/lib/ensureCustomerAccount";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
@@ -551,6 +552,7 @@ export async function POST(req: NextRequest) {
            on a row that already exists, and one of them is how you clear a
            phantom out. */
         await assertRealPerson(String(body.person ?? ""));
+        const actualAccount = body.customer ? await ensureCustomerAccount(String(body.customer), body.customerId ? String(body.customerId) : null, me.name) : null;
         await logActual({
           goalId: String(body.goalId ?? ""),
           subgoalId: body.subgoalId ? String(body.subgoalId) : null,
@@ -558,8 +560,8 @@ export async function POST(req: NextRequest) {
           amount: Number(body.amount),
           date: body.date ? String(body.date) : undefined,
           note: body.note ? String(body.note) : undefined,
-          customer: body.customer ? String(body.customer) : undefined,
-          customerId: body.customerId ? String(body.customerId) : undefined,
+          customer: actualAccount?.company_name,
+          customerId: actualAccount?.id,
           dealId: body.dealId ? String(body.dealId) : undefined,
           opportunityId: body.opportunityId
             ? String(body.opportunityId)
@@ -572,6 +574,7 @@ export async function POST(req: NextRequest) {
         });
         break;
       case "update-actual":
+        const updatedAccount = body.customer ? await ensureCustomerAccount(String(body.customer), body.customerId ? String(body.customerId) : null, me.name) : null;
         await updateActual({
           actualId: String(body.actualId ?? ""),
           amount:
@@ -580,9 +583,8 @@ export async function POST(req: NextRequest) {
               : Number(body.amount),
           date: body.date ? String(body.date) : undefined,
           note: body.note === undefined ? undefined : String(body.note ?? ""),
-          customer:
-            body.customer === undefined ? undefined : String(body.customer ?? ""),
-          customerId: body.customerId ? String(body.customerId) : undefined,
+          customer: body.customer === undefined ? undefined : updatedAccount?.company_name ?? "",
+          customerId: updatedAccount?.id ?? (body.customerId ? String(body.customerId) : undefined),
           dealId: body.dealId ? String(body.dealId) : undefined,
           opportunityId: body.opportunityId
             ? String(body.opportunityId)

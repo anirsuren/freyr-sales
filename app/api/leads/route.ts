@@ -10,6 +10,7 @@ import {
 } from "@/lib/leads";
 import { scrapeLeadLinkedInPosts, scrapeLeadLinkedInProfile } from "@/lib/apify";
 import { leadLinkedInUrl, normalizeLeadLinkedInProfile } from "@/lib/leadLinkedIn";
+import { ensureCustomerAccount } from "@/lib/ensureCustomerAccount";
 import {
   canOpenModule,
   moduleCreateRefusal,
@@ -92,7 +93,10 @@ export async function POST(req: NextRequest) {
       if (requestedUrl !== undefined && (typeof requestedUrl !== "string" || leadLinkedInUrl(requestedUrl) === null)) {
         return NextResponse.json({ error: "Enter a LinkedIn profile link, such as linkedin.com/in/name." }, { status: 400 });
       }
-      const lead = await saveLead(body.lead ?? {}, me.name);
+      const input = body.lead ?? {};
+      const company = String(input.company ?? "").trim();
+      const account = company ? await ensureCustomerAccount(company, input.customerId, me.name) : null;
+      const lead = await saveLead({ ...input, ...(account ? { company: account.company_name, customerId: account.id } : {}) }, me.name);
       return NextResponse.json({ ok: true, lead, state: await readLeads() });
     }
     if (op === "enrich-linkedin") {

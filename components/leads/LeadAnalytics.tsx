@@ -115,11 +115,8 @@ function LeadRowDetails({ lead, columns, companyHref }: { lead: Lead; columns: n
   );
 }
 
-export function LeadAnalytics({ leads, customers }: { leads: Lead[]; customers: { id: string; name: string }[] }) {
-  const companyHref = (lead: Lead) => companyDestination(
-    lead.company,
-    customers.find((customer) => customer.id === lead.customerId || customer.name.trim().toLocaleLowerCase() === lead.company.trim().toLocaleLowerCase())?.id
-  );
+export function LeadAnalytics({ leads }: { leads: Lead[] }) {
+  const companyHref = (lead: Lead) => companyDestination(lead.company, lead.customerId);
   const [statusWorkspaceOpen, setStatusWorkspaceOpen] = useState(false);
   const [statusWorkspaceFilter, setStatusWorkspaceFilter] = useState<
     LeadStatus | "all"

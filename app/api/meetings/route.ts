@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
+import { ensureCustomerAccount } from "@/lib/ensureCustomerAccount";
 import { getRole } from "@/lib/role";
 import {
   addMeetingDoc,
@@ -76,12 +77,14 @@ export async function POST(req: Request) {
          room, and a member's row says edit. */
       const refusal = await moduleCreateRefusal("/meetings");
       if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      const companyName = String(body.customer ?? "").trim();
+      const account = companyName ? await ensureCustomerAccount(companyName, body.customerId ? String(body.customerId) : null, me.name) : null;
       const meeting = await createMeeting({
         title: String(body.title ?? ""),
         type: String(body.type ?? ""),
         meetingAt: String(body.meetingAt ?? ""),
-        customerId: body.customerId ? String(body.customerId) : undefined,
-        customer: String(body.customer ?? ""),
+        customerId: account?.id,
+        customer: account?.company_name ?? "",
         opportunityIds: body.opportunityIds as string[] | undefined,
         opportunityLabels: body.opportunityLabels as string[] | undefined,
         contactIds: body.contactIds as string[] | undefined,
@@ -100,9 +103,15 @@ export async function POST(req: Request) {
     if (!id) return NextResponse.json({ error: "Which meeting?" }, { status: 400 });
 
     if (op === "update") {
+      const patch = (body.patch ?? {}) as Record<string, unknown>;
+      if (typeof patch.customer === "string" && patch.customer.trim()) {
+        const account = await ensureCustomerAccount(patch.customer, typeof patch.customerId === "string" ? patch.customerId : null, me.name);
+        patch.customer = account.company_name;
+        patch.customerId = account.id;
+      }
       await updateMeeting({
         id,
-        patch: (body.patch ?? {}) as Record<string, never>,
+        patch: patch as Record<string, never>,
       });
     } else if (op === "status") {
       await setMeetingStatus({

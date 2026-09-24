@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDb } from "@/lib/db";
+import { ensureCustomerAccount } from "@/lib/ensureCustomerAccount";
 import {
   addDocument,
   assignRequestOwner,
@@ -277,6 +278,10 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      const companyName = String(body.customer ?? linkedRequest?.customer ?? "").trim();
+      const account = companyName
+        ? await ensureCustomerAccount(companyName, body.customerId ?? linkedRequest?.customerId, me.name)
+        : null;
       const request = await createRequest({
         type,
         priority: (["High", "Medium", "Low"] as const).find(
@@ -291,8 +296,8 @@ export async function POST(req: NextRequest) {
         details: linkedRequest ? linkedRequest.details : body.details,
         leadRef: linkedRequest?.leadRef ?? body.leadRef,
         leadName: linkedRequest?.leadName ?? body.leadName,
-        customerId: body.customerId,
-        customer: String(body.customer ?? ""),
+        customerId: account?.id,
+        customer: account?.company_name ?? "",
         opportunityIds: body.opportunityIds,
         opportunityLabels: body.opportunityLabels,
         contactIds: body.contactIds,
