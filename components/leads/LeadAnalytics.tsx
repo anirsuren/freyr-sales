@@ -216,6 +216,8 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
             label: lead.name,
             meta: [lead.company, lead.title, lead.source, lead.owner || "Unassigned"].filter(Boolean).join(" · "),
             value: lead.status,
+            avatar: lead.name,
+            href: `/leads?lead=${encodeURIComponent(lead.ref)}`,
           })),
       })),
       statusSegments,
