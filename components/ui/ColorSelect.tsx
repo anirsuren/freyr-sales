@@ -371,9 +371,10 @@ export function ColorSelect({
    */
   searchable?: boolean;
   /** A permanent action at the top of the menu, for creating a missing
-   *  record without first typing a query that cannot match. */
+   *  record. Pass its search text so a new-record form can start with the
+   *  name the person already typed. */
   createLabel?: string;
-  onCreate?: () => void;
+  onCreate?: (query: string) => void;
   /** Add the text typed into this dropdown as a new option. */
   onCreateQuery?: (query: string) => void;
 }) {
@@ -860,7 +861,7 @@ export function ColorSelect({
                   type="button"
                   onClick={() => {
                     setOpen(false);
-                    onCreate();
+                    onCreate(menuQuery.trim());
                   }}
                   className={cn(
                     "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold text-blue-primary transition-colors hover:bg-blue-light/50",

@@ -1215,8 +1215,8 @@ export function LeadsModule({
                       setEditing({ ...editing, company: v, companyOther: false })
                     }
                     createLabel="Add a company not on the list"
-                    onCreate={() =>
-                      setEditing({ ...editing, company: "", companyOther: true })
+                    onCreate={(query) =>
+                      setEditing({ ...editing, company: query, companyOther: true })
                     }
                     options={[
                       { value: "", label: "Choose a company", noMark: true },
