@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Newspaper,
   Globe2,
-  Radar,
   Star,
   TrendingDown,
   TrendingUp,
@@ -199,10 +198,6 @@ export function LiveCompanyCard({
         <span className="flex items-center gap-1 rounded-full bg-[rgba(194,65,12,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-orange)] tnum">
           <Globe2 size={10.5} strokeWidth={2.2} />
           {card.countsKnown === false ? "—" : card.counts.site} from them
-        </span>
-        <span className="flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--ink-violet-soft)] tnum">
-          <Radar size={10.5} strokeWidth={2.2} />
-          {card.countsKnown === false ? "—" : card.signalTotal} {card.signalTotal === 1 ? "signal" : "signals"}
         </span>
 
       </div>

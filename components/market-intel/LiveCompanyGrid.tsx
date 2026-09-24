@@ -19,6 +19,8 @@ import {
   History,
   Sun,
   Layers,
+  LayoutGrid,
+  List,
   Newspaper,
   Radio,
   Bookmark,
@@ -38,7 +40,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import type { CardPerson } from "@/components/market-intel/LiveCompanyCard";
+import { LiveCompanyCard, type CardPerson } from "@/components/market-intel/LiveCompanyCard";
 
 import { WatchStatus, type WatchState } from "@/components/market-intel/WatchStatus";
 import type { CompanyCard } from "@/lib/marketIntelFeed";
@@ -239,6 +241,7 @@ export function LiveCompanyGrid({
   const [divisionFilter, setDivisionFilter] = useState<string[]>([]);
   const [starredOnly, setStarredOnly] = useState(false);
   const [view, setView] = useState<"companies" | "bookmarks">("companies");
+  const [layout, setLayout] = useStoredView<"table" | "tile">(`freyr.mi.${viewerId}.${group}.layout`, "table", ["table", "tile"]);
   const [stars, setStars] = useState<Set<string>>(new Set(starred));
   const stateOf = (id: string): WatchState => watch[id] ?? { followers: 0 };
 
@@ -340,7 +343,7 @@ export function LiveCompanyGrid({
       >
         <PrioritySearchInput
           grow
-          className="min-w-0 basis-[240px] flex-1"
+          className="min-w-0 basis-[180px] flex-1"
           value={query}
           onChange={setQuery}
           placeholder={
@@ -427,6 +430,16 @@ export function LiveCompanyGrid({
             ...(group === "customer" ? [{ value: "people", label: "By people tracked", color: "var(--ink-teal-deep)" }] : []),
           ]}
         />
+        <ColorSelect
+          value={layout}
+          onChange={value => setLayout(value as "table" | "tile")}
+          ariaLabel={`Company view: ${layout === "table" ? "Table" : "Tile"}`}
+          iconOnly
+          options={[
+            { value: "table", label: "Table view", icon: List, color: "var(--ink-bright-blue)" },
+            { value: "tile", label: "Tile view", icon: LayoutGrid, color: "var(--ink-bright-blue)" },
+          ]}
+        />
         </>}
       </SearchPriority>
       {view === "companies" && catalogueTotal !== undefined && (
@@ -445,7 +458,7 @@ export function LiveCompanyGrid({
             ? "Nothing starred yet. Press the star on any card to mark a favourite."
             : `Nothing matches${q ? ` “${query.trim()}”` : " those filters"}. Clear the ${q ? "search" : "filters"} to see all ${total} ${group === "competitor" ? "competitors" : "customers"} on your page.`}
         </div>
-      ) : (
+      ) : layout === "table" ? (
         <div key="company-list" className="mi-view-list-in overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_12px_36px_-32px_rgba(15,23,42,0.45)]">
           <div className={cn("min-w-[1120px]", group === "customer" && "min-w-[1270px]", isAdmin && "min-w-[1390px]")}>
             <div
@@ -517,6 +530,30 @@ export function LiveCompanyGrid({
             </div>
           </div>
         </div>
+      ) : (
+        <section key="company-tiles" className="mi-view-tiles-in grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-4 stagger">
+          {shownPending.map(company => (
+            <div key={company.id} className="rounded-2xl border border-border-light bg-white p-4 shadow-[0_12px_36px_-32px_rgba(15,23,42,0.45)]">
+              <div className="flex items-center gap-3">
+                <MiLogo name={company.name} logoUrl={company.logoUrl} className="h-10 w-10 shrink-0" />
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-text-primary">{company.name}</p><p className="text-xs text-text-secondary">Starting collection</p></div>
+                <button type="button" aria-label={`${stars.has(company.id) ? "Unstar" : "Star"} ${company.name}`} aria-pressed={stars.has(company.id)} onClick={() => stars.has(company.id) ? setUnstar({ id: company.id, name: company.name }) : void setStar(company.id, true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface", stars.has(company.id) ? "text-amber-600" : "text-text-tertiary hover:text-amber-600")}><Star size={15} fill={stars.has(company.id) ? "currentColor" : "none"} /></button>
+              </div>
+              {(divisions[company.id] ?? []).length > 0 && <DivisionChips divisions={divisions[company.id]} className="mt-3" />}
+            </div>
+          ))}
+          {shown.map(card => (
+            <LiveCompanyCard
+              key={card.id}
+              card={card}
+              people={group === "customer" ? people[card.id] : undefined}
+              divisions={divisions[card.id] ?? []}
+              starred={stars.has(card.id)}
+              onStar={on => on ? void setStar(card.id, true) : setUnstar({ id: card.id, name: card.name })}
+              watch={isAdmin ? stateOf(card.id) : undefined}
+            />
+          ))}
+        </section>
       )}
       <ConfirmDialog
         open={unstar !== null}

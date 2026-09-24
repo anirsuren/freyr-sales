@@ -12,6 +12,8 @@ import {
   ExternalLink,
   FileText,
   Layers,
+  LayoutGrid,
+  List,
   Pill,
   Podcast,
   Presentation,
@@ -61,7 +63,7 @@ const fmtDate = fmtWhen;
 
 type Sort = "newest" | "firm" | "topic";
 
-export function ThoughtLeadershipTracker({ board }: { board: ThoughtBoard | null }) {
+export function ThoughtLeadershipTracker({ board, layout, onLayoutChange }: { board: ThoughtBoard | null; layout: "table" | "tile"; onLayoutChange: (layout: "table" | "tile") => void }) {
   const [firms, setFirms] = useState<string[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
   const [types, setTypes] = useState<string[]>([]);
@@ -157,6 +159,16 @@ export function ThoughtLeadershipTracker({ board }: { board: ThoughtBoard | null
               { value: "topic", label: "By topic", color: "#0F6E56", icon: Layers },
             ]}
           />
+          <ColorSelect
+            value={layout}
+            onChange={(value) => onLayoutChange(value as "table" | "tile")}
+            ariaLabel={`Publication view: ${layout === "table" ? "Table" : "Tile"}`}
+            iconOnly
+            options={[
+              { value: "table", label: "Table view", color: "var(--ink-bright-blue)", icon: List },
+              { value: "tile", label: "Tile view", color: "var(--ink-bright-blue)", icon: LayoutGrid },
+            ]}
+          />
         </span>
       </SearchPriority>
 
@@ -166,6 +178,35 @@ export function ThoughtLeadershipTracker({ board }: { board: ThoughtBoard | null
             ? "The tracker fills with reports and studies on the next refresh."
             : "Nothing matches that search and filter."}
         </Card>
+      ) : layout === "table" ? (
+        <div className="overflow-x-auto rounded-2xl border border-border-light bg-white">
+          <div className="min-w-[980px]">
+            <div className="grid grid-cols-[170px_minmax(300px,1fr)_175px_110px_120px] gap-4 border-b border-border-light bg-surface/80 px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary">
+              <span>Firm</span><span>Publication</span><span>Topic</span><span>Type</span><span>Published</span>
+            </div>
+            <div className="divide-y divide-border-light">
+              {shown.map((item, index) => {
+                const topic = TOPIC_META[item.topic];
+                const type = TYPE_META[item.type];
+                const TIcon = topic.icon;
+                const KIcon = type.icon;
+                const href = safeHref(item.url);
+                return (
+                  <div key={`${item.url}-${index}`} className="grid grid-cols-[170px_minmax(300px,1fr)_175px_110px_120px] items-start gap-4 px-5 py-4 hover:bg-surface/60">
+                    <span className="flex items-center gap-2.5"><CompanyLogo name={item.firm} className="h-8 w-8 shrink-0" /><span className="text-[12.5px] font-semibold text-text-primary">{item.firm}</span></span>
+                    <span className="min-w-0">
+                      {href ? <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-start gap-1 text-[12.5px] font-semibold leading-snug text-blue-primary hover:underline">{item.title}<ExternalLink size={12} className="mt-0.5 shrink-0" /></a> : <span className="text-[12.5px] font-semibold text-text-primary">{item.title}</span>}
+                      {item.summary && <span className="mt-1 block text-[11.5px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">{item.summary}</span>}
+                    </span>
+                    <span className="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ color: topic.color, background: tint(topic.color, 8) }}><TIcon size={11} />{item.topic}</span>
+                    <span className="inline-flex w-fit items-center gap-1 rounded-full bg-[rgba(109,40,217,0.10)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--ink-violet)]"><KIcon size={11} />{type.label}</span>
+                    <span className="text-[11.5px] text-text-secondary" suppressHydrationWarning>{fmtDate(item.date)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 stagger">
           {shown.map((item, index) => {

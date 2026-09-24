@@ -306,6 +306,7 @@ export function ColorSelect({
   inlineDescription = false,
   triggerLabel,
   dense = false,
+  iconOnly = false,
   autoOpen = false,
   searchable: forceSearchable,
   createLabel,
@@ -353,6 +354,8 @@ export function ColorSelect({
   triggerLabel?: string;
   /** Reduce internal padding/gaps without hiding the visible label. */
   dense?: boolean;
+  /** Always show only the selected icon in the trigger; keep full menu labels. */
+  iconOnly?: boolean;
   /** Open the menu the moment the select mounts — for flows where picking IS
    *  the next step (Anir, Aug 17: "my eyes should go there… I don't know
    *  where to go after I click add offering"). */
@@ -469,7 +472,7 @@ export function ColorSelect({
   const showDetailedTrigger = detailed && !compactTrigger;
   // The two-line "detailed" trigger never compacts — it isn't a toolbar shape.
   const searchHasPriority = useSearchPriority();
-  const compact = collapsible && searchHasPriority && !showDetailedTrigger;
+  const compact = iconOnly || (collapsible && searchHasPriority && !showDetailedTrigger);
   // The full label still reaches a screen reader (aria-label) and the mouse
   // (tooltip), so a collapsed control is never a mystery box.
   const fullLabel = ariaLabel || selected?.label || "Filter";
