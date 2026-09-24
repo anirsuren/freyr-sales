@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 compact briefing view selector:** Individual Customer and Competitor briefing toolbars now show only the selected List/Tile/Table icon in the view dropdown; the open menu retains all three labeled choices. Verified visually and by opening the choices on a local Mock ArisGlobal briefing; typecheck, focused lint, and diff check pass. Local only, not deployed.
+
 - **Sep 24 Freyr AI launcher position:** Removed the Market Intel detail-rail rule that shifted the launcher 356px inward whenever the rail was on the right. It now stays in the viewport's bottom-right corner with either rail layout. Both left and right ArisGlobal Mock briefing layouts were visually inspected; diff check passes. Local only, not deployed.
 
 - **Sep 24 company details and source clarity:** The company-details rail now has compact icon buttons to move it left or right directly on the briefing and to hide it. The separate Settings control was removed; right remains the default, and the chosen side is remembered. LinkedIn source rows and post chips use the LinkedIn mark and identify company versus people posts, while website and news cards retain their actual provenance. Goal rows show the creation date without time; the stored timestamp remains intact. A local Mock ArisGlobal briefing confirmed the side switch and a source filter that shows its five LinkedIn posts out of 22 items. Typecheck and diff check pass; focused lint has only existing warnings. Local only, not deployed.

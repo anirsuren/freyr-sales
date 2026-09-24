@@ -832,8 +832,8 @@ export function LiveCompanyBriefing({
           value={newsView}
           onChange={(value) => chooseNewsView(value as NewsView)}
           ariaLabel="Article view"
-          minWidth={128}
           dense
+          iconOnly
           options={[
             { value: "rows", label: "List view", color: "var(--ink-bright-blue)", icon: List },
             { value: "tiles", label: "Tile view", color: "var(--ink-violet)", icon: LayoutGrid },
