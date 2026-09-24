@@ -20,6 +20,8 @@
  * which is worse than accepting a long one.
  */
 
+import { splitPhone } from "@/lib/countries";
+
 /** E.164: country code and national number together, at most fifteen digits. */
 export const E164_MAX_DIGITS = 15;
 
@@ -32,7 +34,8 @@ export function phoneDigits(value: string | null | undefined): string {
 }
 
 /**
- * Group the national number so the eye can hold it.
+ * Group the national number so the eye can hold it. Saved international
+ * numbers retain their dialling code as a separate, visible prefix.
  *
  * Threes, with the last group taking a fourth digit when one is left over, so
  * ten digits read "090 808 0808" rather than "090 808 080 8" — a trailing
@@ -41,6 +44,13 @@ export function phoneDigits(value: string | null | undefined): string {
  * even one.
  */
 export function formatPhoneNumber(value: string | null | undefined): string {
+  // A saved phone includes its dialling code. Keep that code visible instead
+  // of grouping it with the national digits ("+1 732..." became "173 261...").
+  const raw = String(value ?? "").trim();
+  if (raw.startsWith("+")) {
+    const { dial, number } = splitPhone(raw);
+    if (dial) return `${dial} ${formatPhoneNumber(number)}`.trim();
+  }
   const d = phoneDigits(value);
   if (d.length <= 3) return d;
   const groups: string[] = [];
