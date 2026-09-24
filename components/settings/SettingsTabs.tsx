@@ -24,7 +24,6 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { ThemeSetting } from "@/components/settings/ThemeSetting";
-import { MarketIntelDetailsSetting } from "@/components/settings/MarketIntelDetailsSetting";
 import { CrmSyncCard } from "@/components/settings/CrmSyncCard";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -1254,9 +1253,6 @@ export function SettingsTabs({
             )}
             <div className="pt-4 mt-1 border-t border-border-light">
               <ThemeSetting />
-            </div>
-            <div className="border-t border-border-light pt-4">
-              <MarketIntelDetailsSetting />
             </div>
             <div className="flex items-center justify-between gap-5 border-t border-border-light pt-4">
               <div className="min-w-0">

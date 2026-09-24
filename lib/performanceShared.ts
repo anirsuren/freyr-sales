@@ -1072,7 +1072,9 @@ export function stampedAt(iso?: string | null): string | null {
 }
 
 export function goalCreatedOn(createdAt?: string): string | null {
-  return stampedAt(createdAt);
+  // Goal rows need the calendar date only. Keep the original createdAt
+  // timestamp unchanged for audit/history views that need the precise time.
+  return stampedAt(createdAt)?.split(" at ")[0] ?? null;
 }
 
 /**

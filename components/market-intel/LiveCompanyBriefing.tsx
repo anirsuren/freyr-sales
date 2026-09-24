@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowRight,
   Bookmark,
   Building2,
   CalendarDays,
@@ -179,7 +180,7 @@ export function LiveCompanyBriefing({
   const [relevantOnly, setRelevantOnly] = useState(isCompetitor);
   const [detailsView, setDetailsView] = useStoredView("freyr.mi.details", "open", ["open", "closed"] as const);
   const detailsOpen = detailsView === "open";
-  const [detailsSide] = useStoredView("freyr.mi.details.side", "right", ["right", "left"] as const);
+  const [detailsSide, setDetailsSide] = useStoredView("freyr.mi.details.side", "right", ["right", "left"] as const);
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
     "freyr.mi.news.view",
     "rows",
@@ -542,8 +543,8 @@ export function LiveCompanyBriefing({
 
   const leadKind = (item: Item) => kindsOf(item)[0];
   const sourceType = (item: Item) => {
-    if (item.kind === "company") return { label: "Company post", Icon: Building2 };
-    if (item.kind === "people") return { label: "People post", Icon: Users };
+    if (item.kind === "company") return { label: "LinkedIn post: company", Icon: Building2 };
+    if (item.kind === "people") return { label: "LinkedIn post: people", Icon: Users };
     if (item.kind === "site") return { label: "Company website", Icon: Globe2 };
     if (item.kind === "authority") return { label: "Health authority notice", Icon: ShieldAlert };
     return { label: "News article", Icon: Newspaper };
@@ -552,7 +553,9 @@ export function LiveCompanyBriefing({
     const meta = sourceType(item);
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-blue-primary">
-        <meta.Icon size={10} strokeWidth={2.2} /> {meta.label}
+        {item.kind === "company" || item.kind === "people"
+          ? <LinkedInIcon size={11} />
+          : <meta.Icon size={10} strokeWidth={2.2} />}{meta.label}
       </span>
     );
   };
@@ -1019,7 +1022,10 @@ export function LiveCompanyBriefing({
               cards, making the panel look impossible to close. */}
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-blue-subtle bg-blue-light/70 px-4 py-3">
             <h2 className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Company details</h2>
-            <button type="button" onClick={() => setDetailsView("closed")} aria-label="Hide company details" aria-expanded={true} aria-controls="company-details-panel" className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light">{detailsSide === "left" ? <PanelLeftClose size={14} className="shrink-0" /> : <PanelRightClose size={14} className="shrink-0" />}Hide</button>
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => setDetailsSide(detailsSide === "left" ? "right" : "left")} aria-label={`Move company details to the ${detailsSide === "left" ? "right" : "left"}`} title={`Move to ${detailsSide === "left" ? "right" : "left"}`} className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg border border-border-light bg-white text-text-secondary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">{detailsSide === "left" ? <ArrowRight size={15} aria-hidden="true" /> : <ArrowLeft size={15} aria-hidden="true" />}</button>
+              <button type="button" onClick={() => setDetailsView("closed")} aria-label="Hide company details" title="Hide company details" aria-expanded={true} aria-controls="company-details-panel" className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg border border-border-light bg-white text-blue-primary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">{detailsSide === "left" ? <PanelLeftClose size={15} aria-hidden="true" /> : <PanelRightClose size={15} aria-hidden="true" />}</button>
+            </div>
           </div>
           {/* The panel hugs quiet content, while busy content scrolls inside the
               viewport. Extra bottom room keeps the last card clear of chat. */}
@@ -1079,7 +1085,9 @@ export function LiveCompanyBriefing({
                       selected ? "border-blue-subtle bg-blue-light" : "border-transparent hover:bg-surface"
                     )}
                   >
-                    <Icon size={14} strokeWidth={2} style={{ color: item.color }} className="shrink-0" />
+                    {item.key === "company" || item.key === "people"
+                      ? <LinkedInIcon size={15} className="shrink-0" />
+                      : <Icon size={14} strokeWidth={2} style={{ color: item.color }} className="shrink-0" />}
                     <span className="min-w-0 flex-1 text-[12px] font-semibold leading-snug text-text-primary">{item.label}</span>
                     {pending ? <Loader2 size={13} className="shrink-0 text-blue-primary motion-safe:animate-spin" aria-label="Collecting" /> : <span className="tnum text-[11.5px] font-semibold text-text-secondary">{item.count}</span>}
                   </button>
