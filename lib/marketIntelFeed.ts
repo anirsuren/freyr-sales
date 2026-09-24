@@ -39,6 +39,8 @@ export type FeedPost = {
 };
 
 export type FeedNews = {
+  /** Verified final URL on an official health-authority website. */
+  provenance?: "health_authority";
   /** Extracted source evidence for identity validation, not an AI summary. */
   excerpt?: string;
   /** Publisher body read by the collector, retained separately from search snippets. */
@@ -123,6 +125,8 @@ export type FeedCompany = {
   /** Last time the website pass visited. Its own clock: a newsroom moves in
    *  weeks, so it is checked far less often than the news wire. */
   siteAt?: string;
+  /** Last official health-authority discovery pass. */
+  authorityAt?: string;
 };
 
 /** One merger or acquisition on the tracker (Aug 11 call): who bought whom,
@@ -305,6 +309,7 @@ export type FeedCompanySummary = {
   tldr: string | null;
   fetchedAt: string;
   newsAt?: string;
+  authorityAt?: string;
   siteAt?: string;
   counts: { posts: number; news: number; site: number };
   /** Epoch ms of every stored post, article and website item, so month
@@ -915,6 +920,7 @@ export function summarizeCompany(company: FeedCompany): FeedCompanySummary {
     tldr: usableRundown(company.tldr),
     fetchedAt: company.fetchedAt,
     ...(company.newsAt ? { newsAt: company.newsAt } : {}),
+    ...(company.authorityAt ? { authorityAt: company.authorityAt } : {}),
     ...(company.siteAt ? { siteAt: company.siteAt } : {}),
     counts: {
       posts: visibleCompany.posts.length,
@@ -999,7 +1005,7 @@ export function cardFromSummary(summary: FeedCompanySummary, windowDays = PAGE_W
   const { points, labels } = trendFromDates(dates, windowDays);
   const mo = momentumFromDates(dates);
   const freshest =
-    [summary.fetchedAt, summary.newsAt, summary.siteAt].filter(Boolean).sort().pop() ??
+    [summary.fetchedAt, summary.newsAt, summary.siteAt, summary.authorityAt].filter(Boolean).sort().pop() ??
     summary.fetchedAt;
   const pageCutoff = now - windowDays * 86_400_000;
   const inPageWindow = (values: (number | null)[]) =>
@@ -1201,6 +1207,13 @@ export function deriveSignals(
       if (kinds[0] !== "others") why = signalWhy(group, kinds[0]);
     }
     if (group === "customer") {
+      // The compliance category is reserved for notices actually published by
+      // a health authority, never an article or a customer's own release.
+      kinds = kinds.filter(kind => kind !== "compliance_enforcement");
+      if ("provenance" in item && item.provenance === "health_authority") {
+        kinds = ["compliance_enforcement", ...kinds.filter(kind => kind !== "others")];
+        why = signalWhy(group, "compliance_enforcement");
+      }
       const competitors = others.filter((other) => other.found(text)).map((other) => other.name);
       const wasFirstCompetitor = kinds[0] === "competitor_mentions";
       // Stored labels may predate the Freyr-competitor rule. A customer naming
@@ -1305,7 +1318,7 @@ export function buildBriefing(
   // Apify rotation), so showing fetchedAt alone read "updated 25h ago" over
   // news collected two hours earlier.
   const freshest =
-    [company.fetchedAt, company.newsAt, company.siteAt].filter(Boolean).sort().pop() ??
+    [company.fetchedAt, company.newsAt, company.siteAt, company.authorityAt].filter(Boolean).sort().pop() ??
     company.fetchedAt;
   return {
     id: company.id,

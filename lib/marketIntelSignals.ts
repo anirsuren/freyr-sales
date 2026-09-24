@@ -11,6 +11,7 @@ import {
   Landmark,
   MapPinned,
   Package,
+  ShieldAlert,
   Swords,
   Tag,
   UserCog,
@@ -20,7 +21,8 @@ import {
 
 /**
  * THE SIGNALS, FROM SARAS'S WORD DOC (Sep 11, "Sales Intel App - Market Intel
- * Module"): ten for Customer Intel and nine for Competitor Intel, in her order.
+ * Module"): the Customer Intel signals (including the later Compliance &
+ * Enforcement addition) and nine for Competitor Intel, in her order.
  *
  * "The signal titles mentioned in the Word doc are to be displayed in the
  * app. The sub-points within each signal are just for your reference, not to
@@ -42,6 +44,7 @@ export type SignalId =
   | "market_expansion"
   | "corporate_structure"
   | "ra_qa_team"
+  | "compliance_enforcement"
   | "technology"
   | "financial_operational"
   | "events"
@@ -60,6 +63,7 @@ export const CUSTOMER_SIGNALS: readonly SignalId[] = [
   "market_expansion",
   "corporate_structure",
   "ra_qa_team",
+  "compliance_enforcement",
   "technology",
   "financial_operational",
   "events",
@@ -90,6 +94,7 @@ export const SIGNAL_META: Record<SignalId, { label: string; color: string; icon:
   market_expansion: { label: "Market Expansion", color: "var(--ink-teal-deep)", icon: Globe2 },
   corporate_structure: { label: "Corporate Structure Changes", color: "var(--ink-orange)", icon: Building2 },
   ra_qa_team: { label: "RA/QA Team Changes", color: "var(--ink-violet-soft)", icon: UserCog },
+  compliance_enforcement: { label: "Compliance & Enforcement", color: "#C2410C", icon: ShieldAlert },
   technology: { label: "Technology Changes", color: "#0891B2", icon: Cpu },
   financial_operational: { label: "Financial or operational updates", color: "#4F46E5", icon: Landmark },
   events: { label: "Events", color: "var(--ink-violet)", icon: Calendar },
@@ -146,6 +151,15 @@ export const SIGNAL_GUIDE: Record<SignalGroup, Partial<Record<SignalId, string[]
       "RA/QA hiring surge",
       "RA/QA layoffs or restructuring",
       "contractor or consultant hiring for regulatory roles",
+    ],
+    compliance_enforcement: [
+      "official health-authority notices only: FDA Warning Letter or Form 483 observations",
+      "EMA, MHRA, or other health-authority inspection findings",
+      "product recall of any class or field safety notice",
+      "import alert or import ban",
+      "consent decree",
+      "data integrity findings",
+      "certification lapse or failed audit (ISO 13485, MDSAP, GMP)",
     ],
     technology: [
       "public mention of digital transformation, ERP, or platform migration",
@@ -240,6 +254,7 @@ const SIGNAL_WHY: Record<SignalGroup, Partial<Record<SignalId, string>>> = {
     market_expansion: "New markets and sites mean new registrations and site variations, starting now.",
     corporate_structure: "Deals and restructures move marketing authorisations between companies, often on a deadline.",
     ra_qa_team: "A change in the RA/QA team resets priorities and vendors. Be in the conversation early.",
+    compliance_enforcement: "An official authority action may create urgent remediation, quality and regulatory work. Check the notice and its scope.",
     technology: "A systems change reopens how their regulatory work gets done, and who helps them do it.",
     financial_operational: "Budgets, pipeline and capacity decide how much regulatory work they buy this year.",
     events: "Their people will be in a room Freyr can also be in. Plan the meeting before the event.",
@@ -296,7 +311,7 @@ export type ItemLabel = {
   v: number;
 };
 
-/** 3 (Sep 11): Saras's ten customer and nine competitor signals, several per item. */
+/** 3 (Sep 11): customer and competitor signals, several per item. */
 export const CLASSIFY_VERSION = 3;
 /** Labels this old still count as read, so the new list never re-buys every
  *  item by itself; the relabel hatch reads them again when asked. */

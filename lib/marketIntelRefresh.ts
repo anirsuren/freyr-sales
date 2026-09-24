@@ -7,6 +7,7 @@ import { armCompanyOnboarding, editQueuedCompany } from "./marketIntelOnboarding
 import { isDeepStrictEqual } from "node:util";
 import { collectLinkedInPostPages, toPost, linkedInActivityId } from "./linkedinPostCollection";
 import { compatibleCompanyNames } from "./companyIdentity";
+import { collectHealthAuthorityNotices, isCompanyAuthorityNotice, healthAuthorityName } from "./marketIntelAuthorities";
 import type { TrackProgress } from "./marketIntelTrackProgress";
 import { requestMarketIntelSearch } from "./marketIntelSearch";
 import { linkedInIdentifier, companyFeedAuthor } from "./marketIntelLinks";
@@ -940,7 +941,35 @@ export async function runMarketIntelRefresh(options?: {
       }
     }
 
-    // ---- Pass 1c: A RUNDOWN FOR EVERY ACTIVE COMPANY THAT HAS NONE. The
+    // ---- Pass 1c: official regulator notices for customer accounts only.
+    // Search is free and bounded separately from paid news. Each accepted item
+    // carries its final official URL, so syndicated stories cannot masquerade
+    // as an enforcement notice.
+    {
+      const authorityDeadline = Date.now() + 2 * 60_000;
+      const due = sources.filter(source => !competitorIds.has(source.id))
+        .sort((a, b) => (Date.parse(feed.companies[a.id]?.authorityAt || "") || 0) - (Date.parse(feed.companies[b.id]?.authorityAt || "") || 0));
+      for (let at = 0; at < due.length && Date.now() < authorityDeadline; at += 4) {
+        await Promise.all(due.slice(at, at + 4).map(async source => {
+          const entry = feed.companies[source.id];
+          if (!entry || (!options?.force && entry.authorityAt && collectedInCurrentCycle(entry.authorityAt))) return;
+          const found = await collectHealthAuthorityNotices(source.name);
+          if (found.failed) return;
+          const priorUrls = new Set(entry.news.map((item: FeedNews) => item.url));
+          let promoted = false;
+          entry.news = mergeNews(entry.news.map((item: FeedNews) => {
+            if (item.provenance === "health_authority" || !isCompanyAuthorityNotice(item, source.name)) return item;
+            promoted = true;
+            return { ...item, provenance: "health_authority", source: healthAuthorityName(item.url)!, label: { signals: ["compliance_enforcement"], relevant: true, industries: [], isCompanyNews: true, v: CLASSIFY_VERSION } };
+          }), found.items);
+          entry.authorityAt = new Date().toISOString();
+          if (promoted || found.items.some(item => !priorUrls.has(item.url))) entry.tldr = null;
+          await saveFeedCompany(feed, source.id);
+        }));
+      }
+    }
+
+    // ---- Pass 1d: A RUNDOWN FOR EVERY ACTIVE COMPANY THAT HAS NONE. The
     // rundown is only rewritten when new items arrive, so a company whose
     // items came in some other way (a hand re-pull, an old copy) kept an
     // empty rundown until fresh news landed, and forever once nobody had it
@@ -1189,7 +1218,7 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
   // Independent sources run together. Discovery can start searching while the
   // website reader collects official headlines for its follow-up searches.
   const siteCollection = scrapeSiteUpdates(source, activePerplexityKey, {fastInitial:true});
-  const [postsResult, newsResult, siteResult, freshResult] = await Promise.all([
+  const [postsResult, newsResult, siteResult, freshResult, authorityResult] = await Promise.all([
     scrapeCompanyPosts(source),
     scrapeNews(source),
     siteCollection,
@@ -1198,6 +1227,7 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
       officialUpdates: [],
       webSearchToken: activeApifyToken,
     }),
+    company.group === "competitor" ? Promise.resolve({ items: [] as FeedNews[], failed: false }) : collectHealthAuthorityNotices(source.name),
   ]);
   if (postsResult.cost + newsResult.cost > TARGETED_CAP_USD) {
     // Cannot exceed by design (10 posts + 10 articles is at most ~$0.10),
@@ -1211,13 +1241,14 @@ export async function refreshTrackedCompanyNow(company: TrackedCompany): Promise
     logoUrl: existing?.logoUrl,
     logoCheckedAt: existing?.logoCheckedAt,
     posts: mergePosts(existing?.posts ?? [], postsResult.posts),
-    news: mergeNews(existing?.news ?? [], mergeNews(newsResult.news, freshResult.news)),
+    news: mergeNews(existing?.news ?? [], mergeNews(mergeNews(newsResult.news, freshResult.news), authorityResult.items)),
     pendingNews: existing?.pendingNews,
     site: mergeNews((existing?.site ?? []).filter(item => !isNewsIndex(item.url)), siteResult.updates),
     tldr: null,
     fetchedAt: postsResult.failed ? existing?.fetchedAt ?? new Date(0).toISOString() : new Date().toISOString(),
     newsAt: freshResult.failed ? existing?.newsAt : new Date().toISOString(),
     siteAt: siteResult.failed ? existing?.siteAt : new Date().toISOString(),
+    authorityAt: authorityResult.failed ? existing?.authorityAt : new Date().toISOString(),
     collectionWarnings: [
       ...(postsResult.failed ? ["LinkedIn could not be refreshed; saved posts are shown."] : []),
       ...(newsResult.failed && freshResult.failed ? ["News collection is temporarily unavailable."] : []),
@@ -1503,15 +1534,16 @@ export async function addCompanyByLink(
     await publishPreview();
     return result;
   });
-  const [newsResult, freshResult, siteResult] = await Promise.all([
+  const [newsResult, freshResult, siteResult, authorityResult] = await Promise.all([
     phase("news-index", () => scrapeNews({ name, site: domain || undefined, newsQ: newsQuery })),
     // External coverage must not wait for the official-site crawl. Both are
     // independent first-pass sources; the standing refresh can later use
     // official headlines to broaden syndication coverage.
     phase("news-discovery", () => scrapeFreshNews({ name, newsQ: newsQuery, site: domain || undefined }, activePerplexityKey, {initial:true,officialUpdates:[],webSearchToken:activeApifyToken})),
     siteCollection,
+    group === "competitor" ? Promise.resolve({ items: [] as FeedNews[], failed: false }) : phase("health-authorities", () => collectHealthAuthorityNotices(name)),
   ]);
-  if (newsResult.failed && freshResult.failed && (!domain || siteResult.failed) && !probe?.posts.length) {
+  if (newsResult.failed && freshResult.failed && (!domain || siteResult.failed) && !authorityResult.items.length && !probe?.posts.length) {
     throw new Error("The news sources could not be reached. Nothing was added. Please try again later.");
   }
   const warnings = [
@@ -1528,13 +1560,14 @@ export async function addCompanyByLink(
     slug: probe?.slug ?? null,
     author: probe?.author ?? null,
     posts: probe?.posts ?? [],
-    news: mergeNews(newsResult.news, freshResult.news).filter(n => !siteResult.updates.some(site => site.url.replace(/\/$/, "") === n.url.replace(/\/$/, ""))),
+    news: mergeNews(mergeNews(newsResult.news, freshResult.news), authorityResult.items).filter(n => !siteResult.updates.some(site => site.url.replace(/\/$/, "") === n.url.replace(/\/$/, ""))),
     site: siteResult.updates,
     tldr: null,
     group,
     fetchedAt: now,
     collectionWarnings: warnings,
     ...(!freshResult.failed ? { newsAt: now } : {}),
+    ...(!authorityResult.failed ? { authorityAt: now } : {}),
     ...(domain && !siteResult.failed ? { siteAt: now } : {}),
   };
   await meta.onProgress?.({stage:"briefing",name,detail:`${entry.posts.length} posts · ${entry.news.length} news articles · ${entry.site?.length ?? 0} website updates`});

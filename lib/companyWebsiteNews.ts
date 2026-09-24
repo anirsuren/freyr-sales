@@ -405,7 +405,14 @@ export function dedupeCompanyNews(items: FeedNews[]): FeedNews[] {
     if(prior.url.includes('news.google.com')&&!item.url.includes('news.google.com')) prior.url=item.url;
     prior.alternateUrls=[...new Set(aliases)].filter(url=>url!==prior.url);
     if(/(?:\.{3}|…)\s*$/.test(prior.title)&&!/(?:\.{3}|…)\s*$/.test(item.title))prior.title=item.title;
-    prior.label??=item.label;prior.summary??=item.summary;prior.excerpt??=item.excerpt;
+    if (item.provenance === "health_authority") {
+      prior.provenance = item.provenance;
+      prior.source = item.source;
+      prior.label = item.label;
+    } else {
+      prior.label ??= item.label;
+    }
+    prior.summary??=item.summary;prior.excerpt??=item.excerpt;
     const legacyEncoded=!!prior.articleText&&prior.articleText.includes('kAm')&&prior.articleText.includes('k^Am');
     if(item.articleText&&(!prior.articleText||legacyEncoded||(item.articleTextPartial===false&&(prior.articleTextPartial||item.articleText.length>prior.articleText.length)))){
       prior.articleText=item.articleText;prior.articleReadAt=item.articleReadAt;prior.articleTextPartial=item.articleTextPartial;

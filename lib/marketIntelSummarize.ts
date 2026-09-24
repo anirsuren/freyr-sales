@@ -572,6 +572,7 @@ For EACH item answer:
 - "signals": one to three of these ids, the most telling first. Every item gets at least one:
 ${signalLines}
 ${group === "customer" ? `  "competitor_mentions" refers ONLY to Freyr's competitors, not this customer's pharmaceutical or device rivals. Freyr's standing competitor list is: ${COMPETITOR_SOURCES.map((source) => source.name).join(", ")}. A rival drug developer mentioned beside ${companyName} does not qualify unless it is separately a Freyr competitor.` : ""}
+${group === "customer" ? `  "compliance_enforcement" is reserved for a notice published on an official health-authority website (FDA, EMA, MHRA or another regulator). A customer announcement or news report about a recall, audit or warning letter is NOT itself this signal.` : ""}
   Use "others" only when none of the other signals fits, and then on its own.
 - "relevant": true only if the item is about the medicinal products, medical devices or consumer products industries, or about regulatory affairs, quality or compliance work. Share-price news, HR awards, sports sponsorships, government IT contracts, banking, telecom or unrelated lines of business are false.
 - "industries": zero or more of "MPR" (medicinal products), "MDV" (medical devices), "CON" (consumer products), only the ones the item is clearly about.

@@ -28,6 +28,7 @@ import {
   PanelLeftOpen,
   Radar,
   Repeat2,
+  ShieldAlert,
   Sparkles,
   Sun,
   Swords,
@@ -93,7 +94,7 @@ import { useCurrentDataMode } from "@/components/auth/CurrentUserProvider";
  * signals and left the Sources list.
  */
 
-type Source = "all" | "company" | "people" | "news" | "site";
+type Source = "all" | "company" | "people" | "news" | "authority" | "site";
 
 const NEWS_VIEWS = ["rows", "tiles", "table"] as const;
 type NewsView = (typeof NEWS_VIEWS)[number];
@@ -103,7 +104,7 @@ const fmtDate = fmtWhen;
 
 
 type Item = StoryInput & {
-  kind: "company" | "people" | "news" | "site";
+  kind: "company" | "people" | "news" | "authority" | "site";
   url: string;
   sourceLabel: string;
   label?: ItemLabel;
@@ -305,7 +306,7 @@ export function LiveCompanyBriefing({
     })),
     ...briefing.news.map<Item>((n) => ({
       key: n.url,
-      kind: "news",
+      kind: n.provenance === "health_authority" ? "authority" : "news",
       title: n.title || titleFromUrl(n.url),
       body: n.summary ?? null,
       date: n.published,
@@ -367,6 +368,7 @@ export function LiveCompanyBriefing({
       ? []
       : [{ key: "people" as Source, label: "LinkedIn posts: people", icon: Users, color: "var(--ink-magenta)", count: base.filter((i) => i.kind === "people").length, always: true }]),
     { key: "news" as Source, label: "News", icon: Newspaper, color: "var(--ink-teal-deep)", count: base.filter((i) => i.kind === "news").length, always: true },
+    ...(!isCompetitor ? [{ key: "authority" as Source, label: "Health authorities", icon: ShieldAlert, color: "#C2410C", count: base.filter((i) => i.kind === "authority").length, always: true }] : []),
     { key: "site" as Source, label: "Company website", icon: Globe2, color: "var(--ink-orange)", count: base.filter((i) => i.kind === "site").length, always: true },
   ].filter((s) => s.always || s.count > 0);
 
@@ -482,6 +484,7 @@ export function LiveCompanyBriefing({
     if (item.kind === "company") return "Company post";
     if (item.kind === "people") return "People post";
     if (item.kind === "site") return "Company website";
+    if (item.kind === "authority") return "Health authority notice";
     return "News article";
   };
   const othersLine = (group: StoryGroup<Item>, inHeader = false) => {
@@ -540,6 +543,7 @@ export function LiveCompanyBriefing({
     if (item.kind === "company") return { label: "Company post", Icon: Building2 };
     if (item.kind === "people") return { label: "People post", Icon: Users };
     if (item.kind === "site") return { label: "Company website", Icon: Globe2 };
+    if (item.kind === "authority") return { label: "Health authority notice", Icon: ShieldAlert };
     return { label: "News article", Icon: Newspaper };
   };
   const sourceTypeChip = (item: Item) => {
@@ -654,6 +658,10 @@ export function LiveCompanyBriefing({
                 Published by them
               </span>
             </>
+          ) : item.kind === "authority" ? (
+            <span title={article.source} className="flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-orange-800">
+              <ShieldAlert size={10} strokeWidth={2.2} /> Official source: {article.source}
+            </span>
           ) : (
             <span title={article.source} className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-blue-primary">
               <Newspaper size={10} strokeWidth={2.2} /> Source of news article: {outletName(article.source, article.url)}
@@ -886,12 +894,14 @@ export function LiveCompanyBriefing({
                   <tbody className="divide-y divide-border-light">
                     {groups.map((group, index) => {
                       const item = group.lead;
-                      const rowKind = item.kind === "news" ? "news" : item.kind === "site" ? "site" : "post";
+                      const rowKind = item.kind === "news" ? "news" : item.kind === "authority" ? "authority" : item.kind === "site" ? "site" : "post";
                       const lead = leadKind(item);
                       const tagged = lead !== "others";
                       const color = SIGNAL_META[lead].color;
                       const SignalIcon = SIGNAL_META[lead].icon;
-                      const RowIcon = rowKind === "news"
+                      const RowIcon = rowKind === "authority"
+                          ? ShieldAlert
+                          : rowKind === "news"
                           ? Newspaper
                           : rowKind === "site"
                             ? Globe2
@@ -961,7 +971,7 @@ export function LiveCompanyBriefing({
               </Card>
             ) : (
               groups.map((group, index) =>
-                group.lead.kind === "news" || group.lead.kind === "site"
+                group.lead.kind === "news" || group.lead.kind === "authority" || group.lead.kind === "site"
                   ? articleCard(group, `a-${index}`)
                   : postCard(group, `p-${index}`)
               )

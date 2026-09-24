@@ -10,7 +10,7 @@ import { tint } from "@/lib/tint";
  * THE MAIN BAR: SIGNALS (Saras, Sep 11: "the main bar at the top of these
  * modules will be 'Signals' - with a list of all signals. Then another
  * secondary one on 'Sources'"). Her titles in her order, for the tab the
- * company sits in: ten on a customer, nine on a competitor. Every signal is
+ * company sits in: eleven on a customer, nine on a competitor. Every signal is
  * always on the bar with its count; one with nothing in view is muted rather
  * than missing. "All signals" lets go of a pick; clicking the picked signal
  * again does too.
