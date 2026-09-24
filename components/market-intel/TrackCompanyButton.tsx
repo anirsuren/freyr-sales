@@ -5,7 +5,7 @@ import { linkedInIdentifier } from "@/lib/marketIntelLinks";
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { AlertCircle, Building2, Check, Globe2, Plus } from "lucide-react";
+import { AlertCircle, Building2, Check, Globe2, Info, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
@@ -18,6 +18,7 @@ import {
 } from "@/lib/offeringMaterials";
 import { tint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
+import { BD_COMPANY_LIMIT } from "@/lib/marketIntelCompanyLimit";
 
 /**
  * ADD A COMPANY BY ITS OWN SOURCES (Anir, Sep 10: "the user enters the
@@ -82,6 +83,7 @@ export function TrackCompanyButton({
 
   const noun = group === "competitor" ? "competitor" : "customer";
   const pluralNoun = group === "competitor" ? "competitors" : "customers";
+  const atLimit = additionsRemaining === 0;
   const domain = siteDomain(website);
   const slug = linkedInSlug(linkedinUrl);
   const siteTyped = website.trim().length > 0;
@@ -110,10 +112,11 @@ export function TrackCompanyButton({
     !checking &&
     !duplicate &&
     !lookupError &&
+    !atLimit &&
     divisions.length > 0;
 
   useEffect(() => {
-    if (!open || !validLinks) return;
+    if (!open || !validLinks || atLimit) return;
     const controller = new AbortController();
     let requestTimedOut = false;
     let requestTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -157,7 +160,7 @@ export function TrackCompanyButton({
       if (requestTimeout) clearTimeout(requestTimeout);
       controller.abort();
     };
-  }, [open, validLinks, lookupKey, domain, slug]);
+  }, [open, validLinks, lookupKey, domain, slug, atLimit]);
 
   function reset() {
     setCompanyName("");
@@ -263,7 +266,7 @@ export function TrackCompanyButton({
             if (e.key === "Enter") void save();
           }}
           placeholder={props.placeholder}
-          disabled={busy}
+          disabled={busy || atLimit}
           spellCheck={false}
           autoComplete="off"
           aria-invalid={props.flag ? true : undefined}
@@ -287,8 +290,6 @@ export function TrackCompanyButton({
   return (
     <>
       <Button
-        disabled={additionsRemaining === 0}
-        title={additionsRemaining === 0 ? "You have reached your 20-company limit. You can still select existing companies." : undefined}
         onClick={() => {
           reset();
           setOpen(true);
@@ -300,7 +301,6 @@ export function TrackCompanyButton({
         <Plus size={compact ? 14 : 15} strokeWidth={2.4} />
         {title}
       </Button>
-      {additionsRemaining !== undefined && <span className="text-[12px] text-text-secondary">{additionsRemaining} of 20 company additions remaining</span>}
 
       <Modal
         open={open}
@@ -317,6 +317,17 @@ export function TrackCompanyButton({
         }
       >
         <div className="flex flex-col gap-4">
+          {additionsRemaining !== undefined && (
+            <div className="flex items-start gap-3 rounded-xl border border-blue-primary/15 bg-blue-light/50 px-4 py-3 text-[13px] leading-relaxed text-text-secondary" role="note">
+              <Info size={17} className="mt-0.5 shrink-0 text-blue-primary" aria-hidden="true" />
+              <p>
+                <span className="font-semibold text-text-primary">
+                  {atLimit ? "You have used all your company additions." : `You can add ${additionsRemaining} more ${additionsRemaining === 1 ? "company" : "companies"}.`}
+                </span>{" "}
+                You can add up to {BD_COMPANY_LIMIT} new companies to Market Intel in total, across customers and competitors. Companies already in the database can still be selected from Manage {pluralNoun} and do not use an addition.
+              </p>
+            </div>
+          )}
           <div>
             <label
               htmlFor="mi-company-name"
@@ -330,6 +341,7 @@ export function TrackCompanyButton({
               <input
                 id="mi-company-name"
                 value={companyName}
+                disabled={atLimit || busy}
                 onChange={(e) => setCompanyName(e.target.value)}
                 maxLength={120}
                 placeholder={`${group === "competitor" ? "Competitor" : "Customer"} name`}
@@ -391,7 +403,7 @@ export function TrackCompanyButton({
               <span className="text-text-secondary">{siteProblem}</span>
             ) : linkProblem ? (
               <span className="text-text-secondary">{linkProblem}</span>
-            ) : bothEmpty ? (
+            ) : bothEmpty && !atLimit ? (
               <span className="text-text-tertiary">
                 Fill in at least one. Both is best.
               </span>
@@ -419,7 +431,7 @@ export function TrackCompanyButton({
                     key={d}
                     type="button"
                     aria-pressed={on}
-                    disabled={busy}
+                    disabled={busy || atLimit}
                     onClick={() =>
                       setDivisions(
                         on
@@ -497,7 +509,9 @@ export function TrackCompanyButton({
               loading={busy}
               disabled={!ready}
               title={
-                ready
+                atLimit
+                  ? "You have used all your company additions. You can still select existing companies."
+                  : ready
                   ? undefined
                   : `Enter a new ${noun}, wait for the duplicate check, and choose a division`
               }

@@ -271,7 +271,7 @@ export function LiveCompanyCard({
 
       <div className="mt-2 flex items-center gap-1.5 text-[10.5px] font-medium text-text-tertiary">
         <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#1A7A35]" />
-        Updated {card.updatedLabel}
+        Last source check {card.updatedLabel}
         {people && people.length > 0 && (
           <span className="hover-yield group/pile ml-auto flex items-center pl-1">
             {people.slice(0, 5).map((person) => (

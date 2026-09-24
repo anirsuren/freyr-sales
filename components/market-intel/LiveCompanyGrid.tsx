@@ -40,6 +40,7 @@ import {
   SearchPriority,
 } from "@/components/ui/SearchPriority";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -474,10 +475,10 @@ export function LiveCompanyGrid({
         </div>
       ) : view === "list" ? (
         <div key="company-list" className="mi-view-list-in overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_12px_36px_-32px_rgba(15,23,42,0.45)]">
-          <div className={cn("min-w-[1370px]", group === "customer" && "min-w-[1450px]")}>
+          <div className={cn("min-w-[1390px]", group === "customer" && "min-w-[1470px]")}>
             <div
               className="grid items-center gap-5 border-b border-border-light bg-surface/80 px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary"
-              style={{ gridTemplateColumns: group === "customer" ? "250px 180px 225px minmax(295px,1fr) 130px 120px 90px" : "260px 190px 240px minmax(330px,1fr) 120px 90px" }}
+              style={{ gridTemplateColumns: group === "customer" ? "250px 180px 225px minmax(295px,1fr) 130px 120px 110px" : "260px 190px 240px minmax(330px,1fr) 120px 110px" }}
             >
               <span>Company</span>
               <span>Intelligence pulse</span>
@@ -485,12 +486,12 @@ export function LiveCompanyGrid({
               <span>Latest intelligence</span>
               {group === "customer" && <span>People</span>}
               <span>Tracking</span>
-              <span>Freshness</span>
+              <span className="inline-flex items-center gap-1 whitespace-nowrap">Last checked <InfoHint text="Time since the latest successful posts, news, or website check for this company. Sources are checked separately during the daily cycle, so companies can show different times. A check does not necessarily mean new content was found. Several days old means no source has completed a successful check recently, even though tracking is still active." /></span>
             </div>
             <div className="mi-list-stagger divide-y divide-border-light">
               {listRows.map(row => {
                 const card = row.card;
-                const rowTemplate = group === "customer" ? "250px 180px 225px minmax(295px,1fr) 130px 120px 90px" : "260px 190px 240px minmax(330px,1fr) 120px 90px";
+                const rowTemplate = group === "customer" ? "250px 180px 225px minmax(295px,1fr) 130px 120px 110px" : "260px 190px 240px minmax(330px,1fr) 120px 110px";
                 if (!card) return (
                   <div key={row.id} className="relative grid min-h-[106px] items-center gap-5 px-5 py-4" style={{ gridTemplateColumns: rowTemplate }}>
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -543,7 +544,7 @@ export function LiveCompanyGrid({
                     </div>
                     {group === "customer" && <PeopleSummary people={people[card.id]} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyName: card.name, people: people[card.id] ?? [] })} />}
                     {isAdmin ? <TrackingSummary state={stateOf(card.id)} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: card.name, people: trackingPeople[card.id] ?? [], activeByDefault: stateOf(card.id).byDefault === true })} /> : <span className="text-text-tertiary">—</span>}
-                    <span className="whitespace-nowrap text-[11px] font-semibold text-text-secondary">{card.updatedLabel}</span>
+                    <span className="whitespace-nowrap text-[11px] font-semibold text-text-secondary" title="Latest successful source check">{card.updatedLabel}</span>
                   </div>
                 );
               })}
