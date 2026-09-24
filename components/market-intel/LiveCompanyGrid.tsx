@@ -328,7 +328,7 @@ export function LiveCompanyGrid({
     (id) => (divisions[id] ?? []).length === 0
   ).length;
   const listColumns = [
-    "260px", "135px", "225px", "minmax(330px,1fr)",
+    "260px", "135px", "145px", "minmax(410px,1fr)",
     ...(group === "customer" ? ["130px"] : []),
     ...(isAdmin ? ["125px"] : []),
     "115px",
@@ -484,7 +484,7 @@ export function LiveCompanyGrid({
                       <span className="block min-w-0 text-[13.5px] font-semibold leading-snug text-text-primary">{row.name}</span>
                     </div>
                     <div>{(divisions[row.id] ?? []).length > 0 ? <DivisionChips divisions={divisions[row.id]} /> : <span className="text-[12px] text-text-tertiary">—</span>}</div>
-                    <div className="grid grid-cols-2 gap-1.5 opacity-55"><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /></div>
+                    <div className="grid grid-cols-1 gap-1.5 opacity-55"><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /></div>
                     <p className="text-[12px] leading-relaxed text-text-tertiary">The first verified posts, news, and website updates will appear here.</p>
                     {group === "customer" && <PeopleSummary people={people[row.id]} companyName={row.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyName: row.name, people: people[row.id] ?? [] })} />}
                     {isAdmin && <TrackingSummary state={stateOf(row.id)} companyName={row.name} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: row.name, people: trackingPeople[row.id] ?? [], activeByDefault: stateOf(row.id).byDefault === true })} />}
@@ -510,7 +510,7 @@ export function LiveCompanyGrid({
                       </Link>
                     </div>
                     <div>{(divisions[card.id] ?? []).length > 0 ? <DivisionChips divisions={divisions[card.id]} /> : <span className="text-[12px] text-text-tertiary">—</span>}</div>
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-1 gap-1.5">
                       <ActivityMetric icon={<LinkedInIcon size={11} />} label="Posts" value={count(card.counts.posts)} tone="blue" />
                       <ActivityMetric icon={<Newspaper size={11} strokeWidth={2.2} />} label="News" value={count(card.counts.news)} tone="teal" />
                       <ActivityMetric icon={<Globe2 size={11} strokeWidth={2.2} />} label="Website" value={count(card.counts.site)} tone="orange" />

@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Market Intel activity mix:** Customer and competitor table rows now stack Posts, News, and Website vertically in one Activity mix column, including pending-row placeholders. The narrower column gives the headline more room. Typecheck, focused lint, diff check, and local Mock customer-table visual inspection pass. Local only, not deployed.
+
 - **Sep 24 compact Intel view switch:** Customer and competitor lists again offer Table and Tile views through an icon-only dropdown on the search/filter row; Table remains their default and each choice is remembered per member and section. Market Intel's Thought Leadership and M&A trackers also offer the same compact dropdown and now have actual table layouts alongside their existing tiles; Market Intel keeps Tile as its default. The misleading Signals count stays absent from company tiles. Typecheck and diff check pass, focused lint has only an existing ColorSelect hook-dependency warning, and all three sections and both Market tracker tables were inspected in local Mock mode. Local only, not deployed.
 
 - **Sep 24 Market Intel card source headers:** Briefing cards put the signal first, item type second, and the named article source third. Signal and provenance chips are smaller; the Financial/Operational label now reads “Financial or operational updates.” Repeated-story sources open from a compact control in the same header row rather than consuming space below the summary. Typecheck, focused lint, diff check, and a Mock briefing check of the visible row and expanded source menu pass. Local only, not deployed.
