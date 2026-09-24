@@ -27,10 +27,12 @@ const fmtDate = fmtWhen;
 export function TrackedPeopleList({
   people,
   personPosts = {},
+  canManage = false,
 }: {
   people: TrackedPerson[];
   /** Collected posts by person id; a missing key means no sync yet. */
   personPosts?: Record<string, FeedPost[]>;
+  canManage?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -109,15 +111,15 @@ export function TrackedPeopleList({
                       <LinkedInIcon size={13} />
                     </a>
                     )}
-                    <button
+                    {canManage && <button
                       type="button"
                       onClick={() => setConfirmingId(person.id)}
-                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary opacity-0 transition-all hover:bg-[rgba(220,38,38,0.10)] hover:text-[#DC2626] focus-visible:opacity-100 group-hover/person:opacity-100"
+                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary opacity-70 transition-all hover:bg-[rgba(220,38,38,0.10)] hover:text-[#DC2626] hover:opacity-100 focus-visible:opacity-100"
                       aria-label={`Stop following ${person.name}`}
                       title="Stop following"
                     >
                       <X size={13} strokeWidth={2.4} />
-                    </button>
+                    </button>}
                   </span>
                 </span>
             </li>

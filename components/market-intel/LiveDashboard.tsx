@@ -55,7 +55,7 @@ export function LiveMarketIntelDashboard({
   memberDirectory?: Record<string, { name: string; email?: string | null }>;
   isAdmin?: boolean;
   /** The person looking: what they ticked, and what they starred. */
-  viewer?: { userId: string; myIds: string[]; starredIds: string[] };
+  viewer?: { userId: string; myIds: string[]; starredIds: string[]; personIds?: string[] };
   /** Which intelligence bucket this dashboard shows. */
   group?: "customer" | "competitor";
   /** Passed straight to the button: the Market Intel row decides. */
@@ -105,7 +105,9 @@ export function LiveMarketIntelDashboard({
   // followed at a competitor (Saras, Sep 10), so that bucket carries none.
   const peopleByCompany: Record<string, CardPerson[]> = {};
   if (group !== "competitor") {
+    const followedPeople = viewer.personIds && new Set(viewer.personIds);
     for (const person of tracking.people) {
+      if (followedPeople && !followedPeople.has(person.id)) continue;
       (peopleByCompany[person.companyId] ??= []).push({
         id: person.id,
         name: displayPersonName(person.name),

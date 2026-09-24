@@ -12,7 +12,6 @@ import {
   Swords,
   Users,
 } from "lucide-react";
-import { CompanyIntel } from "@/components/market-intel/CompanyIntel";
 import { LiveCompanyBriefing } from "@/components/market-intel/LiveCompanyBriefing";
 import { TrackPersonButton } from "@/components/market-intel/TrackPersonControls";
 import { TrackedPeopleList } from "@/components/market-intel/TrackedPeopleList";
@@ -47,6 +46,7 @@ import { MiSectionMarker } from "@/components/market-intel/MiSection";
 import { MyListToggle } from "@/components/market-intel/MyListToggle";
 import type { Division } from "@/lib/offeringMaterials";
 import { moduleWriteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
+import { marketIntelPeopleRefusal } from "@/lib/marketIntelAddAccess";
 import { displayPersonName } from "@/lib/personName";
 
 export const dynamic = "force-dynamic";
@@ -89,10 +89,6 @@ export default async function MarketIntelCompanyPage({
     companies: [],
     people: [],
   }));
-  /* Names as names, not as typed on LinkedIn ("Stephane COUSIN", "Shawn. Stragier"). */
-  const extraPeople = tracking.people
-    .filter((p) => p.companyId === id)
-    .map((p) => ({ ...p, name: displayPersonName(p.name) }));
   const sourceDefault = (companyId: string): Division[] =>
     ([...COMPANY_SOURCES, ...COMPETITOR_SOURCES].find((s) => s.id === companyId)?.divisions ??
       []) as Division[];
@@ -100,6 +96,7 @@ export default async function MarketIntelCompanyPage({
      the module's write privilege for the tags; the person who added it, or
      an admin, for the removal (Sep 10). */
   const canEdit = !(await moduleWriteRefusal("/market-intel"));
+  const canManagePeople = !(await marketIntelPeopleRefusal());
   const [user, followers, myScope] = await Promise.all([
     getCurrentUser(),
     readMarketIntelFollowers().catch(() => ({}) as Record<string, string[]>),
@@ -111,6 +108,15 @@ export default async function MarketIntelCompanyPage({
   const myLists = myScope
     ? await readMarketIntelBookmarks(myScope).catch(() => emptyBookmarks())
     : emptyBookmarks();
+  const followedPeople = myLists.personIds && new Set(myLists.personIds);
+  /* Older lists show the existing team people until a member makes a choice. */
+  const extraPeople = tracking.people
+    .filter((p) => p.companyId === id && (!followedPeople || followedPeople.has(p.id)))
+    .map((p) => ({ ...p, name: displayPersonName(p.name) }));
+  const availablePeople = followedPeople
+    ? tracking.people.filter((p) => p.companyId === id && !followedPeople.has(p.id))
+        .map((p) => ({ ...p, name: displayPersonName(p.name) }))
+    : [];
   const onMyPage = myLists.companyIds.includes(id);
   const starred = myLists.starredIds.includes(id);
   const watchOf = (companyId: string) => ({
@@ -153,11 +159,13 @@ export default async function MarketIntelCompanyPage({
             briefing={{ ...briefing, logoUrl: trackedConfig?.logoUrl || briefing.logoUrl || null }}
             refreshUpdatedAt={intel?.meta.updatedAt ?? null}
             extraPeople={isCompetitor ? [] : extraPeople}
+            availablePeople={isCompetitor ? [] : availablePeople}
             personPosts={Object.fromEntries(
               withFeed.map((p) => [p.id, peopleFeeds[p.id]?.posts ?? []])
             )}
             divisions={companyDivisions(tracking, id, sourceDefault(id))}
             canWrite={canEdit}
+            canManagePeople={canManagePeople}
             isAdmin={isAdmin}
             watch={watchOf(id)}
             onMyPage={onMyPage}
@@ -223,7 +231,7 @@ export default async function MarketIntelCompanyPage({
 
   // A company the team added: real configuration, honestly empty briefing.
   const people = tracking.people
-    .filter((p) => p.companyId === mine.id)
+    .filter((p) => p.companyId === mine.id && (!followedPeople || followedPeople.has(p.id)))
     .map((p) => ({ ...p, name: displayPersonName(p.name) }));
   const addedOn = new Date(mine.addedAt).toLocaleDateString("en-US", {
     month: "short",
@@ -375,15 +383,14 @@ export default async function MarketIntelCompanyPage({
             <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
               <Users size={14} strokeWidth={2} className="text-blue-primary" />
               People tracked
-              {canEdit && <TrackPersonButton companyId={mine.id} companyName={mine.name} />}
+              {canManagePeople && <TrackPersonButton companyId={mine.id} companyName={mine.name} availablePeople={availablePeople} />}
             </h2>
             {people.length === 0 ? (
               <p className="mt-2.5 text-[12px] leading-relaxed text-text-secondary">
-                Nobody yet. Add the senior people whose posts you want to see,
-                with the plus above.
+                Nobody yet.{canManagePeople ? " Add the senior people whose posts you want to see." : ""}
               </p>
             ) : (
-              <TrackedPeopleList people={people} />
+              <TrackedPeopleList people={people} canManage={canManagePeople} />
             )}
           </Card>
           )}

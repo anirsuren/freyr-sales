@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Market Intel people for BD members:** BD members with Market Intel access can add people from a customer briefing and stop following existing people. The add and remove endpoints use the same dedicated permission as the visible controls. A member's people choices now persist in their own Market Intel list: stopping hides that person's posts for that member without deleting the team's collected record, and Add person offers a one-click way to re-follow them or accepts a new LinkedIn profile. The main customer list's people display follows the same selection. Typecheck, focused lint, diff check, and a Mock-mode stop/re-follow round trip pass; the authenticated local session was admin, so a live BD-role session has not yet been exercised. Local only, not deployed.
+
 - **Sep 24 Complete Market Intel rundowns:** Company briefings now show the rundown directly on the white page in smaller type. Legacy or overlong rundowns that ended with an ellipsis display only complete sentences; new digests no longer append an ellipsis at a word limit. Missing-rundown backfill recognizes cutoffs with no complete sentence as missing. Typecheck and targeted rundown tests pass. Local only, not deployed.
 
 - **Sep 24 Market Intel company lists:** Customer and competitor Intel now use the list view only. The main and Manage lists show Division in its own column; the main list no longer has Intelligence Pulse, and Tracking appears only for admins. Typecheck, focused lint, and local Mock customer, competitor, and Manage-list inspection pass. Local only, not deployed.

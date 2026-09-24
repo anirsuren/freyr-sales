@@ -33,6 +33,8 @@ export type MarketIntelBookmarks = {
   companyIds: string[];
   /** Favourites, always a subset of the list above. */
   starredIds: string[];
+  /** People this member follows. Absent on older rows means the existing team list. */
+  personIds?: string[];
   updatedAt: string;
 };
 
@@ -70,6 +72,12 @@ function ids(value: unknown): string[] {
   return Array.from(out).slice(0, 500);
 }
 
+function trackedPersonIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim().slice(0, 180)).filter(Boolean))].slice(0, 2000);
+}
+
 export async function readMarketIntelBookmarks(
   scope: WorkspaceMemberScope
 ): Promise<MarketIntelBookmarks> {
@@ -84,10 +92,10 @@ export async function readMarketIntelBookmarks(
   if (error) throw new Error(error.message);
   if (getDataMode() === "mock" && data?.catalog?.demoVersion !== MOCK_BOOKMARK_VERSION) {
     const tracking = await (await import("./marketIntelTracking")).readMarketIntelTracking();
-    return writeBookmarks(scope, [...new Set([...ids(data?.catalog?.companyIds), ...tracking.companies.map(c=>c.id)])], [...new Set([...ids(data?.catalog?.starredIds), ...tracking.companies.slice(0,4).map(c=>c.id)])]);
+    return writeBookmarks(scope, [...new Set([...ids(data?.catalog?.companyIds), ...tracking.companies.map(c=>c.id)])], [...new Set([...ids(data?.catalog?.starredIds), ...tracking.companies.slice(0,4).map(c=>c.id)])], Array.isArray(data?.catalog?.personIds) ? trackedPersonIds(data.catalog.personIds) : undefined);
   }
   const catalog = data?.catalog as
-    | { companyIds?: unknown; starredIds?: unknown; updatedAt?: unknown }
+    | { companyIds?: unknown; starredIds?: unknown; personIds?: unknown; updatedAt?: unknown }
     | null;
   const list = ids(catalog?.companyIds);
   const listSet = new Set(list);
@@ -95,6 +103,7 @@ export async function readMarketIntelBookmarks(
     companyIds: list,
     /* A star only counts while the company is still on the list. */
     starredIds: ids(catalog?.starredIds).filter((id) => listSet.has(id)),
+    ...(Array.isArray(catalog?.personIds) ? { personIds: trackedPersonIds(catalog.personIds) } : {}),
     updatedAt: typeof catalog?.updatedAt === "string" ? catalog.updatedAt : "",
   };
 }
@@ -141,7 +150,7 @@ export async function setMarketIntelBookmark(
     list.delete(id);
     stars.delete(id);
   }
-  return writeBookmarks(scope, Array.from(list), Array.from(stars));
+  return writeBookmarks(scope, Array.from(list), Array.from(stars), current.personIds);
 }
 
 /** Star or unstar. Starring puts it on the list too: a favourite you cannot
@@ -162,7 +171,7 @@ export async function setMarketIntelStar(
   } else {
     stars.delete(id);
   }
-  return writeBookmarks(scope, Array.from(list), Array.from(stars));
+  return writeBookmarks(scope, Array.from(list), Array.from(stars), current.personIds);
 }
 
 /** Tick or untick a whole batch at once: the "select all" box in the pop-up. */
@@ -183,7 +192,23 @@ export async function setMarketIntelBookmarks(
       stars.delete(id);
     }
   }
-  return writeBookmarks(scope, Array.from(list), Array.from(stars));
+  return writeBookmarks(scope, Array.from(list), Array.from(stars), current.personIds);
+}
+
+/** A member's first change starts from the people already visible to them. */
+export async function setMarketIntelPersonBookmark(
+  scope: WorkspaceMemberScope,
+  personId: string,
+  on: boolean,
+  existingPersonIds: string[],
+): Promise<MarketIntelBookmarks> {
+  const id = personId.trim().slice(0, 180);
+  if (!id) throw new Error("Which person?");
+  const current = await readMarketIntelBookmarks(scope);
+  const people = new Set(current.personIds ?? trackedPersonIds(existingPersonIds));
+  if (on) people.add(id);
+  else people.delete(id);
+  return writeBookmarks(scope, current.companyIds, current.starredIds, Array.from(people));
 }
 
 /** Persist the entire draft in one write, preserving untouched companies. */
@@ -201,7 +226,8 @@ export async function saveMarketIntelBookmarkChanges(
     const current = { companyIds: ids(data?.catalog?.companyIds), starredIds: ids(data?.catalog?.starredIds) };
     const merged = applyBookmarkChanges(current, changes);
     const updatedAt = new Date().toISOString();
-    const next = { ...merged, updatedAt };
+    const personIds = Array.isArray(data?.catalog?.personIds) ? trackedPersonIds(data.catalog.personIds) : undefined;
+    const next = { ...merged, ...(personIds ? { personIds } : {}), updatedAt };
     const row = { id: rowId(scope), catalog: { workspaceId: scope.workspaceId, userId: scope.userId, ...next, ...(getDataMode() === "mock" ? {demoVersion:MOCK_BOOKMARK_VERSION} : {}) }, updated_at: updatedAt };
     if (!data) {
       const { error: insertError } = await db.from("offering_catalog_state").insert(row);
@@ -220,7 +246,8 @@ export async function saveMarketIntelBookmarkChanges(
 async function writeBookmarks(
   scope: WorkspaceMemberScope,
   companyIds: string[],
-  starredIds: string[]
+  starredIds: string[],
+  personIds?: string[],
 ): Promise<MarketIntelBookmarks> {
   scope = await marketIntelMemberScope(scope);
   const db = client();
@@ -229,6 +256,7 @@ async function writeBookmarks(
   const next: MarketIntelBookmarks = {
     companyIds,
     starredIds: starredIds.filter((id) => listSet.has(id)),
+    ...(personIds ? { personIds: trackedPersonIds(personIds) } : {}),
     updatedAt: new Date().toISOString(),
   };
   const { error } = await db.from("offering_catalog_state").upsert(
@@ -240,6 +268,7 @@ async function writeBookmarks(
         ...(getDataMode() === "mock" ? {demoVersion:MOCK_BOOKMARK_VERSION} : {}),
         companyIds: next.companyIds,
         starredIds: next.starredIds,
+        ...(next.personIds ? { personIds: next.personIds } : {}),
         updatedAt: next.updatedAt,
       },
       updated_at: next.updatedAt,

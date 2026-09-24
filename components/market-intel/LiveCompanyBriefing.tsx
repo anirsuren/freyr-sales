@@ -136,9 +136,11 @@ export function LiveCompanyBriefing({
   refreshUpdatedAt = null,
   collection,
   extraPeople = [],
+  availablePeople = [],
   personPosts = {},
   divisions = [],
   canWrite = false,
+  canManagePeople = false,
   isAdmin = false,
   watch = { followers: 0 },
   onMyPage = false,
@@ -148,11 +150,14 @@ export function LiveCompanyBriefing({
   collection?: TrackedCompany["onboarding"];
   refreshUpdatedAt?: string | null;
   extraPeople?: TrackedPerson[];
+  availablePeople?: TrackedPerson[];
   /** Collected posts per tracked person id; a missing key means no sync yet. */
   personPosts?: Record<string, FeedPost[]>;
   divisions?: Division[];
-  /** May this viewer change the watch (tags, people)? The module's write privilege. */
+  /** May this viewer change company tags? The module's write privilege. */
   canWrite?: boolean;
+  /** May follow and stop following people on this customer briefing. */
+  canManagePeople?: boolean;
   /** Admins: move between tabs, delete for everyone. */
   isAdmin?: boolean;
   /** Is this company on the viewer's own page, and starred there? */
@@ -1117,14 +1122,14 @@ export function LiveCompanyBriefing({
               <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
                 <Users size={14} strokeWidth={2} className="text-blue-primary" />
                 People tracked
-                {canWrite && <TrackPersonButton companyId={briefing.id} companyName={briefing.name} />}
+                {canManagePeople && <TrackPersonButton companyId={briefing.id} companyName={briefing.name} availablePeople={availablePeople} />}
               </h2>
               {extraPeople.length === 0 ? (
                 <p className="mt-2.5 text-[12px] leading-relaxed text-text-secondary">
-                  Nobody yet.{canWrite ? " Add the senior people whose posts you want in this feed, with the plus above." : ""}
+                  Nobody yet.{canManagePeople ? " Add the senior people whose posts you want in this feed." : ""}
                 </p>
               ) : (
-                <TrackedPeopleList people={extraPeople} personPosts={railPosts} />
+                <TrackedPeopleList people={extraPeople} personPosts={railPosts} canManage={canManagePeople} />
               )}
             </Card>
           )}

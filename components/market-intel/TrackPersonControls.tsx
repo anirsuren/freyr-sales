@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { linkedInIdentifier } from "@/lib/marketIntelLinks";
 import { RequiredMark } from "@/components/ui/RequiredMark";
+import type { TrackedPerson } from "@/lib/marketIntelTracking";
 
 /**
  * Follow one more person: paste their LinkedIn profile link and that's it
@@ -19,9 +20,11 @@ import { RequiredMark } from "@/components/ui/RequiredMark";
 export function TrackPersonButton({
   companyId,
   companyName,
+  availablePeople = [],
 }: {
   companyId: string;
   companyName: string;
+  availablePeople?: TrackedPerson[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -41,15 +44,15 @@ export function TrackPersonButton({
       ? "That's a company page. Paste a person's profile."
       : "Paste a profile link, like linkedin.com/in/their-name.";
 
-  async function save() {
-    if (!profile) return;
+  async function save(nextUrl = linkedinUrl) {
+    if (!linkedInIdentifier(nextUrl, "in")) return;
     setBusy(true);
     setError("");
     try {
       const res = await fetch("/api/market-intel/tracking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "person-link", companyId, linkedinUrl }),
+        body: JSON.stringify({ kind: "person-link", companyId, linkedinUrl: nextUrl }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Could not save.");
@@ -69,11 +72,11 @@ export function TrackPersonButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="ml-auto flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[rgba(0,113,227,0.08)] text-blue-primary transition-colors hover:bg-blue-primary hover:text-white"
+        className="ml-auto flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-[rgba(0,113,227,0.08)] px-2 text-[11px] font-semibold text-blue-primary transition-colors hover:bg-blue-primary hover:text-white"
         aria-label={`Follow someone at ${companyName}`}
         title="Follow someone here"
       >
-        <Plus size={14} strokeWidth={2.4} />
+        <Plus size={13} strokeWidth={2.4} /> Add person
       </button>
 
       <Modal
@@ -84,6 +87,25 @@ export function TrackPersonButton({
         title={`Follow someone at ${companyName}`}
       >
         <div className="space-y-3">
+          {availablePeople.length > 0 && (
+            <div className="rounded-xl border border-border-light bg-[#F8FAFD] p-3">
+              <p className="mb-2 text-[12px] font-semibold text-text-primary">Follow someone here again</p>
+              <div className="max-h-40 space-y-1 overflow-y-auto">
+                {availablePeople.map((person) => (
+                  <button
+                    key={person.id}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => save(person.linkedinUrl)}
+                    className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white disabled:opacity-50"
+                  >
+                    <span className="min-w-0 truncate text-[12px] font-medium text-text-primary">{person.name}</span>
+                    <span className="shrink-0 text-[11px] font-semibold text-blue-primary">Follow</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <label
               className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold text-text-primary"
@@ -121,7 +143,7 @@ export function TrackPersonButton({
               {busy ? "Reading the profile and pulling their posts…" : ""}
             </p>
             <Button
-              onClick={save}
+              onClick={() => save()}
               loading={busy}
               disabled={!profile}
               title={profile ? undefined : "Paste their LinkedIn profile link first"}

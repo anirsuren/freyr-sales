@@ -1,5 +1,6 @@
-import { marketIntelAddRefusal } from "@/lib/marketIntelAddAccess";
+import { marketIntelAddRefusal, marketIntelPeopleRefusal } from "@/lib/marketIntelAddAccess";
 import { BD_COMPANY_LIMIT } from "@/lib/marketIntelCompanyLimit";
+import { linkedInIdentifier } from "@/lib/marketIntelLinks";
 import { getDataMode } from "@/lib/dataMode";
 import {
   enqueueCompany,
@@ -30,12 +31,12 @@ import {
   setCompanyGroup,
   trackCompany,
   trackPerson,
-  untrackPerson,
 } from "@/lib/marketIntelTracking";
 import {
   forgetMarketIntelCompany,
   readMarketIntelFollowers,
   setMarketIntelBookmark,
+  setMarketIntelPersonBookmark,
 } from "@/lib/marketIntelBookmarks";
 
 export const dynamic = "force-dynamic";
@@ -62,25 +63,6 @@ async function acquireTrackingWrite(): Promise<() => void> {
   });
   await previous.catch(() => undefined);
   return release;
-}
-
-/**
- * WHO MAY CHANGE THE WATCH LIST — the privilege table, like every other module.
- *
- * Since Sep 10 the Market Intel row gives BD *create* beside Admin (Saras).
- * BD members may add up to 20 companies (Sep 17); existing companies are never scraped
- * twice, it is simply ticked.
- *
- * THE MODEL (Anir, Sep 10): the catalogue holds every company the team knows
- * about; each person ticks the ones they want on their page. A company is
- * collected while at least one person has it ticked, and stops when the last
- * person unticks it. Only an admin deletes it for good.
- */
-async function readOnly(): Promise<NextResponse | null> {
-  const refusal = await moduleWriteRefusal("/market-intel");
-  return refusal
-    ? NextResponse.json({ error: refusal }, { status: 403 })
-    : null;
 }
 
 export async function GET(req: NextRequest) {
@@ -136,9 +118,33 @@ export async function POST(req: NextRequest) {
   }
   const body = (await req.json().catch(() => ({}))) ?? {};
   const addingCompany = body.kind === "company-link" || body.kind === "company";
-  const refusal = addingCompany ? await marketIntelAddRefusal() : await moduleWriteRefusal("/market-intel");
+  const changingPeople = body.kind === "person-link" || body.kind === "person";
+  const refusal = addingCompany
+    ? await marketIntelAddRefusal()
+    : changingPeople
+      ? await marketIntelPeopleRefusal()
+      : await moduleWriteRefusal("/market-intel");
   const shut = refusal ? NextResponse.json({ error: refusal }, { status: 403 }) : null;
   if (shut) return shut;
+  if (changingPeople) {
+    const companyId = String(body.companyId ?? "").trim();
+    const tracking = await readMarketIntelTracking({ fresh: true });
+    const company = tracking.companies.find((item) => item.id === companyId);
+    if (!company || company.group === "competitor") {
+      return NextResponse.json({ error: "Choose a tracked customer before following a person." }, { status: 400 });
+    }
+    if (body.kind === "person-link") {
+      const profile = linkedInIdentifier(String(body.linkedinUrl ?? ""), "in")?.toLowerCase();
+      const existing = profile && tracking.people.find((person) =>
+        person.companyId === companyId &&
+        linkedInIdentifier(person.linkedinUrl, "in")?.toLowerCase() === profile,
+      );
+      if (existing) {
+        await setMarketIntelPersonBookmark(scope, existing.id, true, tracking.people.map((person) => person.id));
+        return NextResponse.json({ ok: true, person: existing });
+      }
+    }
+  }
   const user = await getCurrentUser();
   const isAdmin = user.role === "admin";
   const addedBy = {
@@ -153,6 +159,8 @@ export async function POST(req: NextRequest) {
       if (body.kind === "person-link") {
         const slug = String(body.linkedinUrl ?? "").split("/in/")[1]?.split(/[/?#]/)[0] ?? "New contact";
         const person = await trackPerson({...body,name:body.name || slug.replace(/-/g," ")});
+        const tracking = await readMarketIntelTracking({ fresh: true });
+        await setMarketIntelPersonBookmark(scope, person.id, true, tracking.people.map((entry) => entry.id));
         return NextResponse.json({ok:true,person});
       }
       const result = await trackCompany({...body,name:body.name || "New company"}, {addedBy,additionLimit,divisions:cleanDivisions(body.divisions)});
@@ -216,6 +224,8 @@ export async function POST(req: NextRequest) {
         String(body.companyId ?? "").trim(),
         String(body.linkedinUrl ?? ""),
       );
+      const tracking = await readMarketIntelTracking({ fresh: true });
+      await setMarketIntelPersonBookmark(scope, person.id, true, tracking.people.map((entry) => entry.id));
       return NextResponse.json({ ok: true, person });
     }
     if (body?.kind === "company") {
@@ -239,6 +249,8 @@ export async function POST(req: NextRequest) {
     }
     if (body?.kind === "person") {
       const person = await trackPerson(body);
+      const tracking = await readMarketIntelTracking({ fresh: true });
+      await setMarketIntelPersonBookmark(scope, person.id, true, tracking.people.map((entry) => entry.id));
       if (getDataMode() === "live") after(() =>
         refreshTrackedPersonNow(person).catch((error) =>
           console.error("[market-intel] first person scrape failed:", error),
@@ -290,11 +302,11 @@ export async function DELETE(req: NextRequest) {
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
-  const shut = await readOnly();
-  if (shut) return shut;
+  const body = (await req.json().catch(() => ({}))) ?? {};
+  const refusal = body.kind === "person" ? await marketIntelPeopleRefusal() : await moduleWriteRefusal("/market-intel");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const user = await getCurrentUser();
   const isAdmin = user.role === "admin";
-  const body = (await req.json().catch(() => ({}))) ?? {};
   const id = String(body?.id ?? "").trim();
   if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
   const releaseWrite = await acquireTrackingWrite();
@@ -336,7 +348,11 @@ export async function DELETE(req: NextRequest) {
       });
     }
     if (body?.kind === "person") {
-      await untrackPerson(id);
+      const tracking = await readMarketIntelTracking({ fresh: true });
+      if (!tracking.people.some((person) => person.id === id)) {
+        return NextResponse.json({ error: "This person is no longer on the tracked list." }, { status: 404 });
+      }
+      await setMarketIntelPersonBookmark(scope, id, false, tracking.people.map((person) => person.id));
       return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ error: "Unknown request." }, { status: 400 });

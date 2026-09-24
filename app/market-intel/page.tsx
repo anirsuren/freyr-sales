@@ -44,5 +44,5 @@ export default async function MarketIntelPage({
     workspaceId ? listWorkspaceAccess(workspaceId).catch(() => null) : Promise.resolve(null),
   ]);
   const memberDirectory = Object.fromEntries((directory?.members ?? []).map(member => [member.id, { name: member.name, email: member.email }]));
-  return <LiveMarketIntelDashboard summaries={intel?.companies ?? {}} meta={meta} tracking={tracking} group={group} canTrack={canTrack} people={people} followers={followers} memberDirectory={memberDirectory} isAdmin={user.role === "admin"} viewer={{userId:scope?.userId ?? "",myIds:mine.companyIds,starredIds:mine.starredIds}} />;
+  return <LiveMarketIntelDashboard summaries={intel?.companies ?? {}} meta={meta} tracking={tracking} group={group} canTrack={canTrack} people={people} followers={followers} memberDirectory={memberDirectory} isAdmin={user.role === "admin"} viewer={{userId:scope?.userId ?? "",myIds:mine.companyIds,starredIds:mine.starredIds,personIds:mine.personIds}} />;
 }
