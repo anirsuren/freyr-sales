@@ -2107,6 +2107,18 @@ input {
     var(--fill, var(--entry-verified));
 }
 
+/* The verification dialog's waiting claim needs enough contrast to read at
+   its 10px height. Keep the hatch, but let the amber base carry the status. */
+.unverified-fill.claim-review-waiting-fill {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(var(--bar-veil), 0.12) 0 5px,
+      rgba(var(--bar-veil), 0.32) 5px 10px
+    ),
+    var(--fill);
+}
+
 /**
  * THE SEARCH BOX'S OWN LINE, SWAPPING (Anir, Aug 20: "this thing needs to be
  * an animation, the search bar"). A short rise and fade, so the words change

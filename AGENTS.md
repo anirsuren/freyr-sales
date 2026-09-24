@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Claim-review waiting contrast:** The verification dialog's waiting claim segment uses a deeper amber with a stronger hatch, and its amount label and legend use the same readable tone. This is scoped to the dialog so other performance charts keep their established status palette. Typecheck, focused lint, diff check, and local Mock-mode visual inspection pass. Local only, per the user's release instruction.
+
 - **Sep 24 Performance verification dropdown hit area:** The entire “Waiting for your verification” header now opens and closes its claim queue, including the right-side group summary and empty space. When claims are selected, the bulk Verify and Clear buttons remain separate controls. Typecheck, focused lint, diff check, and a local Mock-mode right-edge click and selected-state layout inspection pass. Local only, per the user's release instruction.
 
 - **Sep 24 Opportunity review:** Each Opportunity detail has an Opportunity review tab for the compelling event, agreed next step and highest stakeholder, two obstacles, confirmed competitors, Freyr's strategy, a seniority-by-function people-to-influence grid, external third parties, and owned actions with deadlines. Reviews persist on the Opportunity record. People added to the grid create or reuse Contact records on the linked Customer account, and their names open those contacts; changing a person's name resolves the correct contact rather than retaining the old name's link. Incomplete actions are rejected. Typecheck, focused lint, diff check, and local Mock-mode visual inspection pass. Local only, per the user's release instruction.

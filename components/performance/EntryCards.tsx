@@ -2756,8 +2756,8 @@ export function ClaimReviewDialog({
                   ? ENTRY_COLOR.verified
                   : status === "sent_back"
                     ? ENTRY_COLOR.sent_back
-                    : ENTRY_COLOR.reported;
-              const claimProgressColor = GOAL_PROGRESS_COLOR[status];
+                    : "var(--ink-amber)";
+              const claimProgressColor = status === "reported" ? "var(--ink-amber)" : GOAL_PROGRESS_COLOR[status];
               const claimWord =
                 status === "verified"
                   ? "this claim"
@@ -2834,7 +2834,7 @@ export function ClaimReviewDialog({
                       />
                     ) : (
                       <span
-                        className="unverified-fill block h-full"
+                        className={cn("unverified-fill block h-full", status === "reported" && "claim-review-waiting-fill")}
                         style={{
                           width: `${share(a.amount)}%`,
                           ["--fill" as string]: claimProgressColor,
