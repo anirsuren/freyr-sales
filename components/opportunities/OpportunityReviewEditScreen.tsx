@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import type { OpportunityReview } from "@/lib/opportunitiesShared";
+import type { OpportunityReview, OpportunityReviewOptions } from "@/lib/opportunitiesShared";
 import { OpportunityReviewTab } from "./OpportunityReviewTab";
 
-export function OpportunityReviewEditScreen({ dealId, review }: { dealId: string; review?: OpportunityReview }) {
+export function OpportunityReviewEditScreen({ dealId, review, options }: { dealId: string; review?: OpportunityReview; options: OpportunityReviewOptions }) {
   const router = useRouter();
   const back = () => router.push(`/opportunities/${dealId}?tab=review`);
 
@@ -24,5 +24,5 @@ export function OpportunityReviewEditScreen({ dealId, review }: { dealId: string
     }
   }
 
-  return <OpportunityReviewTab review={review} mayEdit dealId={dealId} editPage onSave={save} onCancel={back} />;
+  return <OpportunityReviewTab review={review} mayEdit dealId={dealId} editPage onSave={save} onCancel={back} options={options} />;
 }

@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Opportunity review linked fields and save footer:** The separate review editor now uses searchable, identity-aware pickers for the next-step stakeholder, decision-circle contacts, confirmed competitors, external companies, and action owners. Existing Contact and Customer selections keep durable IDs; newly entered people and outside companies create or reuse records on save. The read view links those people, companies, competitors, and owners to their record pages. Contact reuse checks both account and name so stale mock IDs cannot silently attach the wrong person. Save/Cancel live in one sticky footer, with save errors beside the controls. Typecheck, focused lint, diff check, and local Mock-mode editor/picker/footer inspection pass. Local only, per the user's release instruction.
+
 - **Sep 24 Opportunity review tab motion:** Switching between Decision brief, People & influence, and Next moves now uses the existing app tab-panel reveal and short content stagger, with the app's reduced-motion behavior. Verified local Mock-mode tab switching, typecheck, focused lint, and diff check. Local only, per the user's release instruction.
 
 - **Sep 24 Lead analytics link hit areas:** In the status and Source performance popups, only the company or owner text opens its linked record. Their logo/avatar, cell spacing, and the rest of the lead row toggle the in-place details dropdown. Typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.

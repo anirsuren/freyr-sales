@@ -20,7 +20,7 @@ export async function ensureLeadContact(customerId: string, lead: LeadContactInp
   const email = String(lead.email ?? "").trim().toLocaleLowerCase();
   if (lead.contactId) {
     const linked = await db.contacts.get(lead.contactId);
-    if (linked?.customer_id === customerId) return linked;
+    if (linked?.customer_id === customerId && linked.full_name.trim().toLocaleLowerCase() === name.toLocaleLowerCase()) return linked;
   }
   const contacts = await db.contacts.list(customerId);
   const existing = contacts.find((contact) => email && contact.email?.trim().toLocaleLowerCase() === email)

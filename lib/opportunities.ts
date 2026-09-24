@@ -1,5 +1,6 @@
 import { isCurrencyCode, type CurrencyCode } from "./currency";
 import { ensureLeadContact } from "./ensureLeadContact";
+import { ensureCustomerAccount } from "./ensureCustomerAccount";
 import type {
   OpportunityActivity,
   OpportunityGoalLink,
@@ -62,9 +63,10 @@ function normalizeReview(raw: unknown): OpportunityReview | undefined {
   const obstacles = Array.isArray(value.obstacles) ? value.obstacles : [];
   return {
     compellingEvent: text(value.compellingEvent, 3000),
-    nextStep: { date: day(next.date) || "", objective: text(next.objective, 1000), stakeholderName: text(next.stakeholderName, 120), stakeholderTitle: text(next.stakeholderTitle, 120) },
+    nextStep: { date: day(next.date) || "", objective: text(next.objective, 1000), stakeholderName: text(next.stakeholderName, 120), stakeholderTitle: text(next.stakeholderTitle, 120), stakeholderContactId: text(next.stakeholderContactId, 80) || undefined },
     obstacles: [text(obstacles[0], 1000), text(obstacles[1], 1000)],
     competitors: (Array.isArray(value.competitors) ? value.competitors : []).slice(0, 30).map((v) => text(v, 160)).filter(Boolean),
+    competitorIds: value.competitorIds && typeof value.competitorIds === "object" && !Array.isArray(value.competitorIds) ? Object.fromEntries(Object.entries(value.competitorIds as Record<string, unknown>).map(([name, id]) => [text(name, 160), text(id, 80)]).filter(([name, id]) => name && id)) : {},
     strategy: text(value.strategy, 3000),
     people: (Array.isArray(value.people) ? value.people : []).slice(0, 100).flatMap((item) => {
       if (!item || typeof item !== "object") return [];
@@ -77,13 +79,13 @@ function normalizeReview(raw: unknown): OpportunityReview | undefined {
       if (!item || typeof item !== "object") return [];
       const p = item as Record<string, unknown>;
       const company = text(p.company, 160);
-      return company ? [{ id: text(p.id, 60) || uid(), company, role: text(p.role, 500), sentiment: sentiment(p.sentiment) }] : [];
+      return company ? [{ id: text(p.id, 60) || uid(), company, customerId: text(p.customerId, 80) || undefined, role: text(p.role, 500), sentiment: sentiment(p.sentiment) }] : [];
     }),
     actions: (Array.isArray(value.actions) ? value.actions : []).slice(0, 100).flatMap((item) => {
       if (!item || typeof item !== "object") return [];
       const p = item as Record<string, unknown>;
       const action = text(p.action, 1000);
-      return action ? [{ id: text(p.id, 60) || uid(), action, owner: text(p.owner, 120), deadline: day(p.deadline) || "" }] : [];
+      return action ? [{ id: text(p.id, 60) || uid(), action, owner: text(p.owner, 120), ownerId: text(p.ownerId, 80) || undefined, deadline: day(p.deadline) || "" }] : [];
     }),
   };
 }
@@ -791,16 +793,32 @@ export async function updateOpportunity(
   if (patch.review !== undefined && merged.review?.actions.some((action) => !action.owner || !action.deadline)) {
     throw new Error("Every review action needs an owner and deadline.");
   }
+  if (patch.review !== undefined && merged.review && !merged.customerId && merged.customer) {
+    const account = await ensureCustomerAccount(merged.customer);
+    merged.customerId = account.id;
+  }
   if (patch.review !== undefined && merged.review && merged.customerId) {
     for (const person of merged.review.people) {
       const previous = state.opportunities[idx].review?.people.find((item) => item.id === person.id);
       const contact = await ensureLeadContact(merged.customerId, {
         name: person.name,
-        contactId: previous?.name === person.name ? previous.contactId : undefined,
+        contactId: person.contactId || (previous?.name === person.name ? previous.contactId : undefined),
         title: person.title,
         linkedinUrl: person.linkedin,
       });
       person.contactId = contact?.id;
+    }
+    if (merged.review.nextStep.stakeholderName) {
+      const stakeholder = await ensureLeadContact(merged.customerId, {
+        name: merged.review.nextStep.stakeholderName,
+        contactId: merged.review.nextStep.stakeholderContactId || merged.review.people.find((person) => person.name.toLowerCase() === merged.review!.nextStep.stakeholderName.toLowerCase())?.contactId,
+        title: merged.review.nextStep.stakeholderTitle,
+      });
+      merged.review.nextStep.stakeholderContactId = stakeholder?.id;
+    }
+    for (const party of merged.review.thirdParties) {
+      const account = await ensureCustomerAccount(party.company, party.customerId);
+      party.customerId = account.id;
     }
   }
   /* ONE OFFERING PER OPPORTUNITY MEANS ONE CONFIDENCE. The list reads the

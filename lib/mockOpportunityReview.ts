@@ -14,6 +14,7 @@ export function mockOpportunityReview(deal: Opportunity, ordinal: number): Oppor
   const contactId = (slot: number) => fillAccount ? contact(slot).id : undefined;
   const nextDate = `2026-10-${String(5 + (ordinal % 20)).padStart(2, "0")}`;
   const actionDate = `2026-10-${String(11 + (ordinal % 17)).padStart(2, "0")}`;
+  const competitor = [{ name: "Veeva", id: "veeva" }, { name: "IQVIA", id: "iqvia" }, { name: "ArisGlobal", id: "arisglobal" }][ordinal % 3]!;
 
   return {
     compellingEvent: `${account} is preparing its next regulatory milestone. The team needs an agreed ${offering} approach before the scope and budget are locked; delay would push the planned start into the next review cycle.`,
@@ -22,12 +23,14 @@ export function mockOpportunityReview(deal: Opportunity, ordinal: number): Oppor
       objective: `Confirm the ${offering} scope, success measures, and decision path with the customer.`,
       stakeholderName: sponsor.name,
       stakeholderTitle: "VP, Regulatory Affairs",
+      stakeholderContactId: contactId(0),
     },
     obstacles: [
       "The customer has not yet agreed which work stays with its internal regulatory team.",
       "Procurement needs a phased price and a clear handoff plan before it will approve the work.",
     ],
-    competitors: [["Veeva"], ["IQVIA"], ["ArisGlobal"]][ordinal % 3]!,
+    competitors: [competitor.name],
+    competitorIds: { [competitor.name]: competitor.id },
     strategy: `Lead with a short, measurable ${offering} pilot. Show the customer how Freyr will reduce review cycles, assign one accountable delivery lead, and make the handoff to its internal team predictable.`,
     people: [
       { id: `${deal.id}-review-sponsor`, contactId: contactId(0), seniority: "senior", function: "business", name: sponsor.name, title: "VP, Regulatory Affairs", role: "Executive Sponsor", linkedin: "", sentiment: "Positive" },

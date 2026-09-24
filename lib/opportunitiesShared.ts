@@ -315,13 +315,21 @@ export type OpportunityReviewPerson = {
 
 export type OpportunityReview = {
   compellingEvent: string;
-  nextStep: { date: string; objective: string; stakeholderName: string; stakeholderTitle: string };
+  nextStep: { date: string; objective: string; stakeholderName: string; stakeholderTitle: string; stakeholderContactId?: string };
   obstacles: [string, string];
   competitors: string[];
+  competitorIds?: Record<string, string>;
   strategy: string;
   people: OpportunityReviewPerson[];
-  thirdParties: { id: string; company: string; role: string; sentiment: OpportunityReviewPerson["sentiment"] }[];
-  actions: { id: string; action: string; owner: string; deadline: string }[];
+  thirdParties: { id: string; company: string; customerId?: string; role: string; sentiment: OpportunityReviewPerson["sentiment"] }[];
+  actions: { id: string; action: string; owner: string; ownerId?: string; deadline: string }[];
+};
+
+export type OpportunityReviewOptions = {
+  contacts: { id: string; name: string; title: string; linkedin: string }[];
+  companies: { id: string; name: string }[];
+  competitors: { id: string; name: string }[];
+  teammates: { id: string; name: string }[];
 };
 
 export type Opportunity = {
