@@ -644,14 +644,14 @@ export function Customer360({
                           every family table, whatever the words inside; the
                           shared widths are generous and the page may
                           scroll. */}
-                      <table className="w-full min-w-[880px] table-fixed text-left">
+                      <table className="w-full min-w-[980px] table-fixed text-left">
                         <colgroup>
-                          <col />
-                          <col style={{ width: 120 }} />
-                          <col style={{ width: 120 }} />
-                          <col style={{ width: 104 }} />
-                          <col style={{ width: 208 }} />
-                          <col style={{ width: 156 }} />
+                          <col style={{ width: "37%" }} />
+                          <col style={{ width: "10%" }} />
+                          <col style={{ width: "10%" }} />
+                          <col style={{ width: "9%" }} />
+                          <col style={{ width: "20%" }} />
+                          <col style={{ width: "14%" }} />
                         </colgroup>
                         <thead>
                           <tr className="border-b border-border-light">
@@ -659,7 +659,7 @@ export function Customer360({
                               (h) => (
                                 <th
                                   key={h}
-                                  className="py-2 pr-4 text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary"
+                                  className={cn("px-3 py-2 text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary", h === "Goal" && "pl-4")}
                                 >
                                   {h}
                                 </th>
@@ -710,7 +710,7 @@ export function Customer360({
                                 )}
                                 style={{ ["--goal-accent" as string]: accent }}
                               >
-                                <td className="py-3 pr-4">
+                                <td className="py-3 pl-4 pr-3">
                                   <span className="flex items-center gap-3">
                                     <TypeIconTile type={goal.type} />
                                     <span className="flex min-w-0 flex-col gap-1">
@@ -736,41 +736,43 @@ export function Customer360({
                                     </span>
                                   </span>
                                 </td>
-                                <td className="whitespace-nowrap py-3 pr-4">
+                                <td className="whitespace-nowrap px-3 py-3">
                                   {goal.target > 0 ? (
                                     <span className="text-[13px] font-semibold text-text-primary tnum">
                                       {fmtAmount(goal.unit, goal.target, goal.currency)}
                                     </span>
                                   ) : (
-                                    <span className="text-[13px] text-text-tertiary">·</span>
+                                    <span className="text-[12px] text-text-tertiary">Not set</span>
                                   )}
                                 </td>
-                                <td className="whitespace-nowrap py-3 pr-4">
+                                <td className="whitespace-nowrap px-3 py-3">
                                   <span className="text-[13px] font-semibold text-text-primary tnum">
                                     {fmtAmount(goal.unit, actual, goal.currency)}
                                   </span>
                                 </td>
-                                <td className="whitespace-nowrap py-3 pr-4">
+                                <td className="whitespace-nowrap px-3 py-3">
                                   {goal.target > 0 ? (
                                     <MetPill
                                       met={verifiedActual >= goal.target}
                                       size="sm"
                                     />
                                   ) : (
-                                    <span className="text-[12px] text-text-tertiary">·</span>
+                                    <span className="text-[12px] text-text-tertiary">—</span>
                                   )}
                                 </td>
-                                <td className="py-3 pr-4">
-                                  <span className="mb-1 block">
-                                    <PacePill pace={pace} size="sm" />
-                                  </span>
-                                  <MiniBar
-                                    actual={verifiedActual}
-                                    claimed={actual}
-                                    target={goal.target}
-                                  />
+                                <td className="px-3 py-3">
+                                  {goal.target > 0 ? <>
+                                    <span className="mb-1 block">
+                                      <PacePill pace={pace} size="sm" />
+                                    </span>
+                                    <MiniBar
+                                      actual={verifiedActual}
+                                      claimed={actual}
+                                      target={goal.target}
+                                    />
+                                  </> : <span className="text-[12px] text-text-tertiary">—</span>}
                                 </td>
-                                <td className="py-3">
+                                <td className="px-3 py-3">
                                   <VerifiedPill
                                     verified={
                                       Boolean(goal.verified) ||
