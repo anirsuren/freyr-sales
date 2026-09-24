@@ -1757,3 +1757,7 @@ The Customer Intel details rail now shows each mentioned competitor's existing M
 ### Sep 24: Thought Leadership filter and Market Intel view transition
 
 Thought Leadership now groups Firm, Topic, and Type under the shared Filter menu, with multi-selection, a selected-count badge, and Clear all. Search, sort, and the table/tile switch stay in the toolbar. Switching table and tile on either Thought Leadership or M&A now has a brief entrance animation, disabled for reduced-motion users. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.
+
+### Sep 24: Lead LinkedIn sales-first presentation
+
+The deployed Sep 24 screenshot still showed the older inline LinkedIn post list; the local lead row already opens a compact profile card and keeps full facts in a popup. The popup now leads with identity and current role, a short bio, and one recent public post. Career history, skills, audience counts, and the full post archive remain available behind collapsed sections, so long histories do not overwhelm the lead's request and follow-up. The inline card no longer lists counts of roles, schools, and posts. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.
