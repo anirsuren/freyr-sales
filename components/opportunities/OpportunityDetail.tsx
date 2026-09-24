@@ -43,7 +43,6 @@ import {
   estimatedTcvOf,
   signDateOf,
   type Opportunity,
-  type OpportunityReview,
   statusColor,
 } from "@/lib/opportunitiesShared";
 import { cn, formatDayLabel } from "@/lib/utils";
@@ -217,22 +216,6 @@ export function OpportunityDetail({
       return null;
     } catch {
       return "That didn't save.";
-    }
-  }
-
-  async function saveReview(review: OpportunityReview): Promise<{ error: string | null; review?: OpportunityReview }> {
-    try {
-      const res = await fetch("/api/opportunities", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ op: "update", id: deal.id, review }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) return { error: data?.error || "That didn't save." };
-      router.refresh();
-      return { error: null, review: data?.opportunity?.review };
-    } catch {
-      return { error: "That didn't save." };
     }
   }
 
@@ -749,7 +732,7 @@ export function OpportunityDetail({
           >
           </DealOverviewEditor>
         ) : tab === "review" ? (
-          <OpportunityReviewTab review={deal.review} mayEdit={verdict.mayEdit} onSave={saveReview} />
+          <OpportunityReviewTab review={deal.review} mayEdit={verdict.mayEdit} dealId={deal.id} />
         ) : (
           <Customer360
             chromeless

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Check, Pencil, Plus, Trash2, Users } from "lucide-react";
 import type { OpportunityReview, OpportunityReviewPerson } from "@/lib/opportunitiesShared";
+import { formatDayLabel } from "@/lib/utils";
 
 const ROLES = ["Executive Sponsor", "Budget Holder", "Decision Maker", "Champion", "Influencer", "Blocker", "Information Giver", "Evaluation Lead"];
 const SENTIMENTS = ["Positive", "Neutral", "Distractor", "Unknown"] as const;
@@ -46,13 +47,20 @@ function Section({ title, note, children }: { title: string; note?: string; chil
   </section>;
 }
 
-export function OpportunityReviewTab({ review, mayEdit, onSave }: {
+function ReviewValue({ value, empty = "Not recorded yet" }: { value: string; empty?: string }) {
+  return <p className={`whitespace-pre-wrap text-[13px] leading-6 ${value ? "text-text-primary" : "text-text-tertiary"}`}>{value || empty}</p>;
+}
+
+export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage = false, onCancel }: {
   review?: OpportunityReview;
   mayEdit: boolean;
-  onSave: (review: OpportunityReview) => Promise<{ error: string | null; review?: OpportunityReview }>;
+  onSave?: (review: OpportunityReview) => Promise<{ error: string | null; review?: OpportunityReview }>;
+  dealId: string;
+  editPage?: boolean;
+  onCancel?: () => void;
 }) {
   const [draft, setDraft] = useState<OpportunityReview>(() => structuredClone(review ?? blankReview()));
-  const [editing, setEditing] = useState(false);
+  const editing = editPage;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => { setDraft(structuredClone(review ?? blankReview())); }, [review]);
@@ -61,8 +69,9 @@ export function OpportunityReviewTab({ review, mayEdit, onSave }: {
   const patchPerson = (id: string, patch: Partial<OpportunityReviewPerson>) => update({ people: draft.people.map((person) => person.id === id ? { ...person, ...patch } : person) });
   const addPerson = (seniority: OpportunityReviewPerson["seniority"], kind: OpportunityReviewPerson["function"]) =>
     update({ people: [...draft.people, { id: uid(), seniority, function: kind, name: "", title: "", role: "", linkedin: "", sentiment: "Unknown" }] });
-  const cancel = () => { setDraft(structuredClone(review ?? blankReview())); setError(""); setEditing(false); };
+  const cancel = () => { setDraft(structuredClone(review ?? blankReview())); setError(""); onCancel?.(); };
   async function save() {
+    if (!onSave) return;
     if (draft.actions.some((action) => !action.action.trim() || !action.owner.trim() || !action.deadline)) {
       setError("Every review action needs a description, owner, and deadline."); return;
     }
@@ -73,36 +82,36 @@ export function OpportunityReviewTab({ review, mayEdit, onSave }: {
     const result = await onSave(draft);
     setSaving(false);
     if (result.error) setError(result.error);
-    else { setDraft(structuredClone(result.review ?? draft)); setEditing(false); }
+    else { setDraft(structuredClone(result.review ?? draft)); onCancel?.(); }
   }
 
   return <div className="space-y-4 pb-12">
-    <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-blue-subtle bg-blue-light/40 px-5 py-4">
-      <div><h2 className="text-[17px] font-semibold text-text-primary">Opportunity review</h2><p className="mt-1 max-w-2xl text-[12.5px] text-text-secondary">Capture why the customer must act, the people shaping the decision, and the actions agreed to move it forward.</p></div>
-      {mayEdit && (!editing ? <button type="button" onClick={() => setEditing(true)} className="inline-flex items-center gap-2 rounded-xl border border-border-light bg-white px-4 py-2 text-[13px] font-semibold text-blue-primary hover:border-blue-primary"><Pencil size={14} /> Edit review</button> : <div className="flex items-center gap-2"><button type="button" onClick={cancel} disabled={saving} className="rounded-xl border border-border-light bg-white px-4 py-2 text-[13px] font-medium text-text-secondary">Cancel</button><button type="button" onClick={() => void save()} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-60"><Check size={15} /> {saving ? "Saving…" : "Save review"}</button></div>)}
+    <div className={`flex flex-wrap items-center gap-3 border-b border-border-light pb-4 ${editing ? "justify-end" : "justify-between"}`}>
+      {!editing && <div><h2 className="text-[18px] font-semibold text-text-primary">Opportunity review</h2><p className="mt-1 text-[12.5px] text-text-secondary">Decision, relationships and next moves</p></div>}
+      {mayEdit && (!editing ? <Link href={`/opportunities/${dealId}/review/edit`} className="inline-flex items-center gap-2 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:bg-surface-secondary"><Pencil size={14} /> Edit review</Link> : <div className="flex items-center gap-2"><button type="button" onClick={cancel} disabled={saving} className="rounded-lg border border-border-light bg-white px-4 py-2 text-[13px] font-medium text-text-secondary">Cancel</button><button type="button" onClick={() => void save()} disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-60"><Check size={15} /> {saving ? "Saving…" : "Save changes"}</button></div>)}
     </div>
     {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-[12.5px] font-medium text-red-700">{error}</p>}
 
     <div className="grid gap-4 xl:grid-cols-2">
       <Section title="Compelling event" note="What is at stake, why must the customer act, and why now? Include the deadline or consequence.">
-        <textarea className={`${field} min-h-28 resize-y`} value={draft.compellingEvent} readOnly={!editing} onChange={(e) => update({ compellingEvent: e.target.value })} placeholder={editing ? "The time-bound opportunity or risk the customer cannot ignore" : "No compelling event recorded yet"} />
+        {editing ? <textarea className={`${field} min-h-28 resize-y`} value={draft.compellingEvent} onChange={(e) => update({ compellingEvent: e.target.value })} placeholder="The time-bound opportunity or risk the customer cannot ignore" /> : <ReviewValue value={draft.compellingEvent} empty="No compelling event recorded yet" />}
       </Section>
       <Section title="Next step agreed with the customer" note="Record the commitment made together, not an internal intention.">
-        <div className="grid gap-3 sm:grid-cols-2"><Field title="Date"><input type="date" className={field} value={draft.nextStep.date} disabled={!editing} onChange={(e) => update({ nextStep: { ...draft.nextStep, date: e.target.value } })} /></Field><Field title="Objective"><input className={field} value={draft.nextStep.objective} readOnly={!editing} onChange={(e) => update({ nextStep: { ...draft.nextStep, objective: e.target.value } })} placeholder="What will be achieved?" /></Field><Field title="Highest stakeholder involved"><input className={field} value={draft.nextStep.stakeholderName} readOnly={!editing} onChange={(e) => update({ nextStep: { ...draft.nextStep, stakeholderName: e.target.value } })} placeholder="Name" /></Field><Field title="Stakeholder title"><input className={field} value={draft.nextStep.stakeholderTitle} readOnly={!editing} onChange={(e) => update({ nextStep: { ...draft.nextStep, stakeholderTitle: e.target.value } })} placeholder="Title" /></Field></div>
+        {editing ? <div className="grid gap-3 sm:grid-cols-2"><Field title="Date"><input type="date" className={field} value={draft.nextStep.date} onChange={(e) => update({ nextStep: { ...draft.nextStep, date: e.target.value } })} /></Field><Field title="Objective"><input className={field} value={draft.nextStep.objective} onChange={(e) => update({ nextStep: { ...draft.nextStep, objective: e.target.value } })} placeholder="What will be achieved?" /></Field><Field title="Highest stakeholder involved"><input className={field} value={draft.nextStep.stakeholderName} onChange={(e) => update({ nextStep: { ...draft.nextStep, stakeholderName: e.target.value } })} placeholder="Name" /></Field><Field title="Stakeholder title"><input className={field} value={draft.nextStep.stakeholderTitle} onChange={(e) => update({ nextStep: { ...draft.nextStep, stakeholderTitle: e.target.value } })} placeholder="Title" /></Field></div> : <div className="grid gap-x-5 gap-y-3 sm:grid-cols-2"><div><span className={label}>Date</span><ReviewValue value={draft.nextStep.date ? formatDayLabel(draft.nextStep.date, "en-US") : ""} /></div><div><span className={label}>Objective</span><ReviewValue value={draft.nextStep.objective} /></div><div><span className={label}>Highest stakeholder involved</span><ReviewValue value={draft.nextStep.stakeholderName} /></div><div><span className={label}>Stakeholder title</span><ReviewValue value={draft.nextStep.stakeholderTitle} /></div></div>}
       </Section>
     </div>
 
     <div className="grid gap-4 xl:grid-cols-2">
       <Section title="Two major obstacles" note="The two biggest barriers to winning this opportunity.">
-        <div className="space-y-3">{draft.obstacles.map((obstacle, index) => <Field key={index} title={`Obstacle ${index + 1}`}><textarea className={`${field} min-h-20 resize-y`} value={obstacle} readOnly={!editing} onChange={(e) => { const next: [string, string] = [...draft.obstacles]; next[index] = e.target.value; update({ obstacles: next }); }} placeholder={editing ? "Describe the obstacle" : "Not recorded"} /></Field>)}</div>
+        <div className="space-y-3">{draft.obstacles.map((obstacle, index) => editing ? <Field key={index} title={`Obstacle ${index + 1}`}><textarea className={`${field} min-h-20 resize-y`} value={obstacle} onChange={(e) => { const next: [string, string] = [...draft.obstacles]; next[index] = e.target.value; update({ obstacles: next }); }} placeholder="Describe the obstacle" /></Field> : <div key={index}><span className={label}>Obstacle {index + 1}</span><ReviewValue value={obstacle} /></div>)}</div>
       </Section>
       <Section title="Confirmed competitors" note="Only include competitors the customer or another reliable source has confirmed. Never assume.">
-        <div className="space-y-2">{draft.competitors.map((competitor, index) => <div key={index} className="flex gap-2"><input className={field} value={competitor} readOnly={!editing} onChange={(e) => update({ competitors: draft.competitors.map((value, at) => at === index ? e.target.value : value) })} aria-label={`Competitor ${index + 1}`} />{editing && <button type="button" onClick={() => update({ competitors: draft.competitors.filter((_, at) => at !== index) })} className="rounded-lg px-2 text-text-tertiary hover:text-red-600" aria-label={`Remove competitor ${index + 1}`}><Trash2 size={16} /></button>}</div>)}{!draft.competitors.length && !editing && <p className="text-[13px] text-text-secondary">None confirmed yet.</p>}{editing && <button type="button" onClick={() => update({ competitors: [...draft.competitors, ""] })} className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary"><Plus size={15} /> Add competitor</button>}</div>
+        <div className="flex flex-wrap gap-2">{draft.competitors.map((competitor, index) => editing ? <div key={index} className="flex w-full gap-2"><input className={field} value={competitor} onChange={(e) => update({ competitors: draft.competitors.map((value, at) => at === index ? e.target.value : value) })} aria-label={`Competitor ${index + 1}`} /><button type="button" onClick={() => update({ competitors: draft.competitors.filter((_, at) => at !== index) })} className="rounded-lg px-2 text-text-tertiary hover:text-red-600" aria-label={`Remove competitor ${index + 1}`}><Trash2 size={16} /></button></div> : <span key={index} className="rounded-full border border-border-light bg-surface-secondary px-3 py-1 text-[12.5px] font-medium text-text-primary">{competitor}</span>)}{!draft.competitors.length && !editing && <p className="text-[13px] text-text-secondary">None confirmed yet.</p>}{editing && <button type="button" onClick={() => update({ competitors: [...draft.competitors, ""] })} className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary"><Plus size={15} /> Add competitor</button>}</div>
       </Section>
     </div>
 
     <Section title="Freyr’s strategy to win" note="The overarching positioning that guides decisions through the sales cycle. Keep short-term tasks in Review actions below.">
-      <textarea className={`${field} min-h-28 resize-y`} value={draft.strategy} readOnly={!editing} onChange={(e) => update({ strategy: e.target.value })} placeholder={editing ? "How Freyr will win and sustain its advantage" : "No strategy recorded yet"} />
+      {editing ? <textarea className={`${field} min-h-28 resize-y`} value={draft.strategy} onChange={(e) => update({ strategy: e.target.value })} placeholder="How Freyr will win and sustain its advantage" /> : <ReviewValue value={draft.strategy} empty="No strategy recorded yet" />}
     </Section>
 
     <Section title="People to influence" note="Place each person by seniority and function. Their decision role and sentiment help the team focus its outreach.">
@@ -131,6 +140,6 @@ export function OpportunityReviewTab({ review, mayEdit, onSave }: {
         <div className="space-y-3">{draft.actions.map((action) => <div key={action.id} className="rounded-xl border border-border-light p-3">{editing ? <div className="grid gap-2 sm:grid-cols-2"><input className={`${field} sm:col-span-2`} value={action.action} onChange={(e) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, action: e.target.value } : item) })} placeholder="Action agreed" aria-label="Review action" /><input className={field} value={action.owner} onChange={(e) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, owner: e.target.value } : item) })} placeholder="Owner" aria-label="Action owner" /><input type="date" className={field} value={action.deadline} onChange={(e) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, deadline: e.target.value } : item) })} aria-label="Action deadline" /><button type="button" onClick={() => update({ actions: draft.actions.filter((item) => item.id !== action.id) })} className="justify-self-end px-2 text-text-tertiary hover:text-red-600 sm:col-span-2" aria-label="Remove action"><Trash2 size={16} /></button></div> : <div><strong className="text-[13px] text-text-primary">{action.action}</strong><p className="mt-1 flex items-center gap-1.5 text-[12px] text-text-secondary"><CalendarDays size={13} /> {action.owner} · {action.deadline}</p></div>}</div>)}{!draft.actions.length && !editing && <p className="text-[13px] text-text-secondary">No actions agreed yet.</p>}{editing && <button type="button" onClick={() => update({ actions: [...draft.actions, { id: uid(), action: "", owner: "", deadline: "" }] })} className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary"><Plus size={15} /> Add action</button>}</div>
       </Section>
     </div>
-    {editing && <div className="flex justify-end gap-2"><button type="button" onClick={cancel} disabled={saving} className="rounded-xl border border-border-light bg-white px-4 py-2 text-[13px] font-medium text-text-secondary">Cancel</button><button type="button" onClick={() => void save()} disabled={saving} className="rounded-xl bg-blue-primary px-5 py-2 text-[13px] font-semibold text-white disabled:opacity-60">{saving ? "Saving…" : "Save review"}</button></div>}
+    {editing && <div className="flex justify-end gap-2"><button type="button" onClick={cancel} disabled={saving} className="rounded-xl border border-border-light bg-white px-4 py-2 text-[13px] font-medium text-text-secondary">Cancel</button><button type="button" onClick={() => void save()} disabled={saving} className="rounded-xl bg-blue-primary px-5 py-2 text-[13px] font-semibold text-white disabled:opacity-60">{saving ? "Saving…" : "Save changes"}</button></div>}
   </div>;
 }

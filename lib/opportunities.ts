@@ -8,6 +8,7 @@ import type {
 import { getDataMode } from "./dataMode";
 import { SEED_OPPORTUNITIES } from "./pipelineSeed";
 import { mockFillOpportunities } from "./mockFillLife";
+import { mockOpportunityReview } from "./mockOpportunityReview";
 import {
   EMPTY_OPPORTUNITIES,
   normalizeConfidence,
@@ -363,8 +364,16 @@ async function readRow(): Promise<OpportunitiesState> {
     .eq("id", activeRowId())
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data && getDataMode() === "mock") return seededMock();
-  return normalize(data?.catalog);
+  const mock = getDataMode() === "mock";
+  const state = !data && mock ? seededMock() : normalize(data?.catalog);
+  // Older mock workspaces already contain seed-owned rows. Supply their new
+  // example reviews on read, while preserving any review someone edited.
+  if (mock) state.opportunities = state.opportunities.map((deal, index) =>
+    !deal.review && /^(?:seed-opp-|demo-opp-|fill\d+-opp-)/.test(deal.id)
+      ? { ...deal, review: mockOpportunityReview(deal, index) }
+      : deal
+  );
+  return state;
 }
 
 async function writeRow(state: OpportunitiesState): Promise<void> {
