@@ -12,7 +12,7 @@ import { EditDealDialog } from "./EditDealDialog";
    edit deal, actually, and within the overview, let them edit if you want").
    The same component the /edit page renders, so the two cannot drift. */
 import { DealOverviewEditor } from "./DealOverviewEditor";
-import { OpportunityReviewTab } from "./OpportunityReviewTab";
+import { OpportunityReviewView } from "./OpportunityReviewView";
 import type { DealTeam } from "./DealPeople";
 import { AddToBandButton } from "./AddToBandButton";
 import { NewContractDialog } from "./NewContractDialog";
@@ -732,7 +732,7 @@ export function OpportunityDetail({
           >
           </DealOverviewEditor>
         ) : tab === "review" ? (
-          <OpportunityReviewTab review={deal.review} mayEdit={verdict.mayEdit} dealId={deal.id} />
+          <OpportunityReviewView review={deal.review} mayEdit={verdict.mayEdit} dealId={deal.id} />
         ) : (
           <Customer360
             chromeless
