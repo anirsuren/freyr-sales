@@ -357,12 +357,12 @@ export function LiveCompanyBriefing({
 
   const SOURCES: { key: Source; label: string; icon: LucideIcon; color: string; count: number; always: boolean }[] = [
     { key: "all" as Source, label: "All sources", icon: Radar, color: "var(--ink-bright-blue)", count: base.length, always: true },
-    { key: "company" as Source, label: "Company posts", icon: Building2, color: "var(--ink-bright-blue)", count: base.filter((i) => i.kind === "company").length, always: true },
+    { key: "company" as Source, label: "LinkedIn posts: company", icon: Building2, color: "var(--ink-bright-blue)", count: base.filter((i) => i.kind === "company").length, always: true },
     ...(isCompetitor
       ? []
-      : [{ key: "people" as Source, label: "People posts", icon: Users, color: "var(--ink-magenta)", count: base.filter((i) => i.kind === "people").length, always: true }]),
+      : [{ key: "people" as Source, label: "LinkedIn posts: people", icon: Users, color: "var(--ink-magenta)", count: base.filter((i) => i.kind === "people").length, always: true }]),
     { key: "news" as Source, label: "News", icon: Newspaper, color: "var(--ink-teal-deep)", count: base.filter((i) => i.kind === "news").length, always: true },
-    { key: "site" as Source, label: "Their website", icon: Globe2, color: "var(--ink-orange)", count: base.filter((i) => i.kind === "site").length, always: true },
+    { key: "site" as Source, label: "Company website", icon: Globe2, color: "var(--ink-orange)", count: base.filter((i) => i.kind === "site").length, always: true },
   ].filter((s) => s.always || s.count > 0);
 
   const passesSource = (i: Item) => source === "all" || i.kind === source;
