@@ -43,7 +43,6 @@ export default async function MarketIntelPage({
     scope ? readMarketIntelBookmarks(scope).catch(() => emptyBookmarks()) : Promise.resolve(emptyBookmarks()),
     workspaceId ? listWorkspaceAccess(workspaceId).catch(() => null) : Promise.resolve(null),
   ]);
-  const preferList = ["saras.verma@freyrsolutions.com", "saras.verma+1@freyrsolutions.com"].includes(user.email?.toLowerCase() ?? "");
   const memberDirectory = Object.fromEntries((directory?.members ?? []).map(member => [member.id, { name: member.name, email: member.email }]));
-  return <LiveMarketIntelDashboard defaultView={preferList ? "list" : "tiles"} summaries={intel?.companies ?? {}} meta={meta} tracking={tracking} group={group} canTrack={canTrack} people={people} followers={followers} memberDirectory={memberDirectory} isAdmin={user.role === "admin"} viewer={{userId:scope?.userId ?? "",myIds:mine.companyIds,starredIds:mine.starredIds}} />;
+  return <LiveMarketIntelDashboard summaries={intel?.companies ?? {}} meta={meta} tracking={tracking} group={group} canTrack={canTrack} people={people} followers={followers} memberDirectory={memberDirectory} isAdmin={user.role === "admin"} viewer={{userId:scope?.userId ?? "",myIds:mine.companyIds,starredIds:mine.starredIds}} />;
 }

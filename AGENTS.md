@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Market Intel company lists:** Customer and competitor Intel now use the list view only. The main and Manage lists show Division in its own column; the main list no longer has Intelligence Pulse, and Tracking appears only for admins. Typecheck, focused lint, and local Mock customer, competitor, and Manage-list inspection pass. Local only, not deployed.
+
 - **Sep 24 Manage companies tab label:** The first Manage customers/competitors scope chip reads “All” instead of “Everything.” Typecheck, focused lint, and diff check pass. Local only, not deployed.
 
 - **Sep 24 Market Intel addition limit and check times:** The BD member's remaining new-company allowance now appears at the top of Track a customer/competitor, explaining the shared 20-company cap and that selecting existing records is unrestricted. At zero, the dialog still opens to explain the limit but its form cannot submit. The list's “Freshness” column is now “Last checked,” with a hint that it reflects the latest successful source check and that daily company checks can finish at different times. Typecheck, focused lint, and diff check pass; the local Mock customer dialog and banner were inspected (admin role hides the BD-only allowance). Local only, not deployed.

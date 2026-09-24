@@ -34,7 +34,6 @@ import { displayPersonName } from "@/lib/personName";
 
 export function LiveMarketIntelDashboard({
   summaries,
-  defaultView = "tiles",
   meta,
   tracking,
   group = "customer",
@@ -46,7 +45,6 @@ export function LiveMarketIntelDashboard({
   viewer = { userId: "", myIds: [], starredIds: [] },
 }: {
   summaries: Record<string, FeedCompanySummary>;
-  defaultView?: "tiles" | "list";
   meta: FeedMeta;
   tracking: MarketIntelTracking;
   /** Post counts per followed person, for the facepiles. */
@@ -182,7 +180,6 @@ export function LiveMarketIntelDashboard({
           isAdmin={isAdmin}
           key={`${viewer.userId}:${group}`}
           viewerId={viewer.userId}
-          defaultView={defaultView}
           cards={cards}
           cardsByRange={cardsByRange}
           pending={pending}

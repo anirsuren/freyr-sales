@@ -435,10 +435,10 @@ export function ManageCompaniesPanel({
         </div>
 
         <div className="mt-3 overflow-x-auto rounded-xl border border-border-light bg-white">
-          <table className="w-full min-w-[820px] border-collapse text-left">
+          <table className="w-full min-w-[900px] border-collapse text-left">
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
-                <th className="w-[48%] py-2.5 pl-4 pr-3">
+                <th className="w-[40%] py-2.5 pl-4 pr-3">
                   <span className="flex items-center gap-3">
                     <TickBox
                       checked={allShownSelected}
@@ -455,6 +455,7 @@ export function ManageCompaniesPanel({
                     </button>
                   </span>
                 </th>
+                <th className="w-[16%] px-3 py-2.5">Division</th>
                 {isAdmin && <th className="w-[18%] px-3 py-2.5">Status</th>}
                 <th className="w-[14%] px-3 py-2.5">Sources</th>
                 <th className="w-[10%] px-3 py-2.5">Starred</th>
@@ -503,9 +504,11 @@ export function ManageCompaniesPanel({
                             <ExternalLink size={11} strokeWidth={2.2} className="opacity-0 transition-opacity group-hover/name:opacity-100" />
                           </Link>
                           {!isAdmin && <CollectionStatus company={c} />}
-                          {c.divisions.length > 0 && <DivisionChips divisions={c.divisions} className="mt-0.5" />}
                         </span>
                       </span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {c.divisions.length > 0 ? <DivisionChips divisions={c.divisions} /> : <span className="text-[12px] text-text-tertiary">—</span>}
                     </td>
                     {isAdmin && <td className="px-3 py-2.5">
                       {c.onboarding ? <CollectionStatus company={c} /> : <WatchStatus state={{ followers: c.followers, byDefault: c.activeByDefault }} />}
@@ -580,7 +583,7 @@ export function ManageCompaniesPanel({
               })}
               {shown.length === 0 && (
                 <tr>
-                  <td colSpan={isAdmin ? 5 : 3} className="px-3 py-8 text-center text-[12.5px] text-text-tertiary">
+                  <td colSpan={isAdmin ? 6 : 4} className="px-3 py-8 text-center text-[12.5px] text-text-tertiary">
                     {show === "mine"
                       ? "No companies selected. Select companies, then Save changes."
                       : show === "starred"
