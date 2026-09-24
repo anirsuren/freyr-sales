@@ -244,7 +244,7 @@ const SIGNAL_WHY: Record<SignalGroup, Partial<Record<SignalId, string>>> = {
     financial_operational: "Budgets, pipeline and capacity decide how much regulatory work they buy this year.",
     events: "Their people will be in a room Freyr can also be in. Plan the meeting before the event.",
     thought_leadership: "They are talking publicly about regulatory work. A natural opener for the next call.",
-    competitor_mentions: "A Freyr competitor is already in the account. Know what they do and where the gaps are.",
+    competitor_mentions: "A Freyr competitor is named here. Check whether this signals an account relationship or an opening.",
   },
   competitor: {
     product_service: "A change in what they sell changes the demo Freyr has to beat and the gaps it can point to.",

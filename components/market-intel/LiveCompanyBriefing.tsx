@@ -62,7 +62,6 @@ import { groupStories, type StoryGroup, type StoryInput } from "@/lib/marketInte
 import { clipText, outletName, titleFromUrl } from "@/lib/marketIntelText";
 import {
   isRelevantCompanyItem,
-  mentionMatcher,
   type BriefingPost,
   type FeedNews,
   type FeedPost,
@@ -350,7 +349,8 @@ export function LiveCompanyBriefing({
 
   const concerns = (i: Item) =>
     !relevantOnly || isRelevantCompanyItem(briefing.group, i);
-  const availableItems = savedOnly ? savedArticles.map(saved => items.find(item => item.url === saved.url) ?? saved) : items;
+  const availableItems = [...(savedOnly ? savedArticles.map(saved => items.find(item => item.url === saved.url) ?? saved) : items)]
+    .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0));
   const matched = availableItems.filter((i) => inRange(i.date) && hit(i.title, i.body, i.sourceLabel, i.signal?.why));
   const base = matched.filter(concerns);
   const hiddenByRelevance = matched.length - base.length;
@@ -371,11 +371,10 @@ export function LiveCompanyBriefing({
   ].filter((s) => s.always || s.count > 0);
 
   const passesSource = (i: Item) => source === "all" || i.kind === source;
-  const matchesSelectedCompetitor = selectedCompetitor ? mentionMatcher(selectedCompetitor) : null;
   const filtered = base
     .filter(passesSource)
     .filter((i) => selectedSignals.length === 0 || selectedSignals.some((signal) => kindsOf(i).includes(signal)))
-    .filter((i) => !matchesSelectedCompetitor || matchesSelectedCompetitor(`${i.title} ${i.body ?? ""}`));
+    .filter((i) => !selectedCompetitor || i.signal?.competitors?.includes(selectedCompetitor));
   const groups = groupStories(filtered).filter((group) =>
     [group.lead, ...group.others].every((item) => !removedUrls.has(item.url))
   );
@@ -673,12 +672,12 @@ export function LiveCompanyBriefing({
           </a>
         </h3>
         {article.summary && (
-          <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
-            {article.summary}{" "}
-            <span className="inline-flex translate-y-[1px] items-center gap-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+          <div className="mt-1">
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               <Sparkles size={9} strokeWidth={2.2} /> AI summary
             </span>
-          </p>
+            <p className="line-clamp-2 text-[12.5px] leading-relaxed text-text-secondary">{article.summary}</p>
+          </div>
         )}
         {item.signal?.why && whyLine(item.signal)}
         {othersLine(group)}
@@ -1082,7 +1081,7 @@ export function LiveCompanyBriefing({
             <Card className="p-4">
               <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
                 <Swords size={14} strokeWidth={2} className="text-blue-primary" />
-                Competitors mentioned
+                Freyr competitors mentioned
               </h2>
               <div className="mt-2.5 flex flex-wrap gap-1.5">
                 {briefing.competitorMentions.map((mention) => (
@@ -1110,8 +1109,7 @@ export function LiveCompanyBriefing({
                 ))}
               </div>
               <p className="mt-2.5 text-[11.5px] leading-snug text-text-tertiary">
-                Named alongside {briefing.name} in the collected posts and
-                articles, past 3 months.
+                Freyr competitors named in this customer’s collected posts and articles.
               </p>
             </Card>
           )}

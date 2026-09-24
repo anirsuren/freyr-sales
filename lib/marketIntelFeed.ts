@@ -1,7 +1,8 @@
 import { marketIntelDatabaseConfig } from "./marketIntelDatabase";
 import { usableRundown } from "./marketIntelRundown";
 import { clipText, titleFromUrl } from "./marketIntelText";
-import { MI_COMPANIES, MI_WATCHLIST, SIGNAL_META } from "./marketIntelMock";
+import { SIGNAL_META } from "./marketIntelMock";
+import { COMPETITOR_SOURCES } from "./marketIntelSources";
 import {
   fallbackSignals,
   isLabeled,
@@ -211,6 +212,8 @@ export type LiveSignal = {
   url: string;
   date: string | null;
   why: string;
+  /** Freyr competitors actually named in this source item. */
+  competitors?: string[];
 };
 
 /** The whole briefing, precomputed server-side into plain serializable data. */
@@ -1167,12 +1170,11 @@ export function mentionMatcher(name: string): (text: string) => boolean {
 
 export function deriveSignals(
   company: FeedCompany,
-  allNames: { id: string; name: string }[]
+  freyrCompetitors: { id: string; name: string }[]
 ): { signals: LiveSignal[]; competitorMentions: { name: string; count: number }[] } {
   const signals: LiveSignal[] = [];
   const group: SignalGroup = company.group === "competitor" ? "competitor" : "customer";
-  const mentionCounts = new Map<string, number>();
-  const others = allNames
+  const others = freyrCompetitors
     .filter((n) => n.id !== company.id && n.name.length > 3)
     .map((n) => ({ name: n.name, found: mentionMatcher(n.name) }));
 
@@ -1198,25 +1200,30 @@ export function deriveSignals(
       kinds = fallbackSignals(text, group);
       if (kinds[0] !== "others") why = signalWhy(group, kinds[0]);
     }
-    let hasCompetitorMention = false;
-    for (const other of others) {
-      if (other.found(text)) {
-        hasCompetitorMention = true;
-        mentionCounts.set(other.name, (mentionCounts.get(other.name) ?? 0) + 1);
+    if (group === "customer") {
+      const competitors = others.filter((other) => other.found(text)).map((other) => other.name);
+      const wasFirstCompetitor = kinds[0] === "competitor_mentions";
+      // Stored labels may predate the Freyr-competitor rule. A customer naming
+      // another drug company is not evidence that Freyr has a competitor there.
+      kinds = kinds.filter((kind) => kind !== "competitor_mentions");
+      if (competitors.length) {
+        kinds = [...kinds.filter((kind) => kind !== "others"), "competitor_mentions"];
+        if (wasFirstCompetitor || !why) why = signalWhy(group, "competitor_mentions");
+      } else if (wasFirstCompetitor) {
+        why = kinds.length ? signalWhy(group, kinds[0]) : "";
       }
-    }
-    if (hasCompetitorMention && group === "customer" && !kinds.includes("competitor_mentions")) {
-      kinds = [...kinds.filter((kind) => kind !== "others"), "competitor_mentions"];
-      if (!why) why = signalWhy(group, "competitor_mentions");
+      if (!kinds.length) kinds = ["others"];
+      signals.push({ kinds, title, sourceLabel, url, date, why, competitors });
+      return;
     }
     signals.push({ kinds, title, sourceLabel, url, date, why });
   };
 
   for (const n of company.news) {
-    consider(n, `${n.title}. ${n.summary ?? ""}`, n.title, n.source, n.url, n.published);
+    consider(n, `${n.title}. ${n.summary ?? ""} ${n.articleText ?? ""}`, n.title, n.source, n.url, n.published);
   }
   for (const n of company.site ?? []) {
-    consider(n, `${n.title}. ${n.summary ?? ""}`, n.title, n.source, n.url, n.published);
+    consider(n, `${n.title}. ${n.summary ?? ""} ${n.articleText ?? ""}`, n.title, n.source, n.url, n.published);
   }
   for (const p of company.posts) {
     const firstLine = clipText(p.text.split("\n")[0], 110);
@@ -1235,6 +1242,10 @@ export function deriveSignals(
       return true;
     });
 
+  const mentionCounts = new Map<string, number>();
+  for (const signal of unique) for (const name of signal.competitors ?? []) {
+    mentionCounts.set(name, (mentionCounts.get(name) ?? 0) + 1);
+  }
   const competitorMentions = [...mentionCounts.entries()]
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
@@ -1327,21 +1338,16 @@ export function buildBriefing(
   };
 }
 
-/** Names for competitor detection: everything on the watch, real and sample. */
-export function allTrackedNames(
-  feed: { companies: Record<string, { id: string; name: string }> } | null,
-  extra: { id: string; name: string }[] = []
+/** Freyr's competitor catalogue, including competitors added in Manage. */
+export function freyrCompetitorNames(
+  tracked: { id: string; name: string; group?: "customer" | "competitor" }[] = []
 ): { id: string; name: string }[] {
   const out = new Map<string, { id: string; name: string }>();
-  for (const c of MI_COMPANIES) out.set(c.id, { id: c.id, name: c.name });
-  for (const name of MI_WATCHLIST) {
-    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    if (!out.has(id)) out.set(id, { id, name });
+  for (const c of COMPETITOR_SOURCES) out.set(c.id, { id: c.id, name: c.name });
+  for (const c of tracked) {
+    if (c.group === "competitor") out.set(c.id, { id: c.id, name: c.name });
+    else if (c.group === "customer") out.delete(c.id);
   }
-  if (feed) {
-    for (const c of Object.values(feed.companies)) out.set(c.id, { id: c.id, name: c.name });
-  }
-  for (const e of extra) out.set(e.id, e);
   return [...out.values()];
 }
 

@@ -22,7 +22,7 @@ import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
 import {
-  allTrackedNames,
+  freyrCompetitorNames,
   buildBriefing,
   readFeedCompany,
   readFeedPeople,
@@ -141,7 +141,7 @@ export default async function MarketIntelCompanyPage({
       const withFeed = extraPeople.filter((p) => peopleFeeds[p.id]);
       const briefing = buildBriefing(
         feedCompany,
-        allTrackedNames(intel ? { companies: intel.companies } : null, tracking.companies),
+        freyrCompetitorNames(tracking.companies),
         withFeed.map((p) => ({
           id: p.id,
           name: p.name,

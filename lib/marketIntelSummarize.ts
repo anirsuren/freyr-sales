@@ -4,6 +4,7 @@ import { load } from "cheerio";
 import { cachedArticleEvidence } from './marketIntelArticleCache';
 import Anthropic from "@anthropic-ai/sdk";
 import type { FeedCompany, FeedNews, MnaItem } from "./marketIntelFeed";
+import { COMPETITOR_SOURCES } from "./marketIntelSources";
 import {
   CLASSIFY_VERSION,
   isItemIndustry,
@@ -570,6 +571,7 @@ For EACH item answer:
 - "isCompanyNews": for news, true only when this is an editorial article or press release about the specified company. False for unrelated people, schools, products or businesses that merely share its name, retail listings, salary/company-directory pages, speaker biographies, historical mentions of former employers, and job advertisements. Also false for event calendars, aggregate news indexes, static leadership pages, regulatory database records, market-report advertisements, and recent pages that only recap an old acquisition. A current publication date does not make the underlying event current. A dated independent analysis substantially discussing the company is valid; merely listing it among vendors is not. Genuine reporting about hiring, finances or other business activities IS company news even if industry "relevant" is false. An article about a new company founded by former employees is not news about their old employer unless it reports a current material action by that employer. Do not assume a shared name establishes identity. For official company posts and website items, use true.
 - "signals": one to three of these ids, the most telling first. Every item gets at least one:
 ${signalLines}
+${group === "customer" ? `  "competitor_mentions" refers ONLY to Freyr's competitors, not this customer's pharmaceutical or device rivals. Freyr's standing competitor list is: ${COMPETITOR_SOURCES.map((source) => source.name).join(", ")}. A rival drug developer mentioned beside ${companyName} does not qualify unless it is separately a Freyr competitor.` : ""}
   Use "others" only when none of the other signals fits, and then on its own.
 - "relevant": true only if the item is about the medicinal products, medical devices or consumer products industries, or about regulatory affairs, quality or compliance work. Share-price news, HR awards, sports sponsorships, government IT contracts, banking, telecom or unrelated lines of business are false.
 - "industries": zero or more of "MPR" (medicinal products), "MDV" (medical devices), "CON" (consumer products), only the ones the item is clearly about.
