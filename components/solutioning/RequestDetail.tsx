@@ -1820,7 +1820,7 @@ export function RequestDetail({
                   <span className="truncate text-[12.5px] font-medium text-text-secondary">{r.owner}</span>
                 </span>
               </div>
-              <ArrowRight size={16} className="shrink-0 text-blue-primary" aria-hidden="true" />
+              <ArrowRight size={16} className="mb-1.5 shrink-0 self-end text-blue-primary" aria-hidden="true" />
             </>
           )}
           <div className="min-w-0 flex-1">
