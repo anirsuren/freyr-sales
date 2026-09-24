@@ -342,6 +342,11 @@ export function ManageCompaniesPanel({
     starred: inSection.filter((c) => stars.has(c.id)).length,
     inactive: inSection.filter(idle).length,
   };
+  const selectedCompanies = rows
+    .filter((company) => company.group === group && mine.has(company.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const selectedPreview = selectedCompanies.slice(0, 5);
+  const moreSelected = selectedCompanies.length - selectedPreview.length;
   const trackingPeople: TrackingPerson[] = (trackingCompany ? followers[trackingCompany.id] ?? [] : []).map((id, index) => ({
     id,
     name: memberDirectory[id]?.name || `Workspace member ${index + 1}`,
@@ -614,11 +619,23 @@ export function ManageCompaniesPanel({
       </div>
 
       <div data-agent-dock-clearance className="sticky bottom-4 z-20 mt-4 flex w-full flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white px-4 py-3 shadow-lg" aria-live="polite">
-        <span className="mr-auto text-[13px] font-medium text-text-secondary">
-          {/* "1 companies" read wrong on the first tick (Sep 13 loop). */}
-          {dirty ? `${plural(rows.filter((c) => c.group === group && mine.has(c.id)).length)} selected · Unsaved changes`
-            : `Now tracking ${plural(rows.filter((c) => c.group === group && saved.mine.has(c.id)).length)}`}
-        </span>
+        <div className="mr-auto flex min-w-0 flex-1 flex-col gap-2">
+          <span className="text-[13px] font-medium text-text-secondary">
+            {dirty ? `${plural(selectedCompanies.length)} selected · Unsaved changes`
+              : `Now tracking ${plural(selectedCompanies.length)}`}
+          </span>
+          {selectedPreview.length > 0 && (
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5" aria-label="Selected companies">
+              {selectedPreview.map((company) => (
+                <span key={company.id} title={company.name} className="inline-flex max-w-[160px] items-center gap-1.5 rounded-full border border-border-light bg-surface px-2 py-1 text-[11px] font-medium text-text-secondary">
+                  <MiLogo name={company.name} logoUrl={company.logoUrl} className="h-5 w-5 shrink-0 rounded-full" />
+                  <span className="hidden truncate sm:inline">{company.name}</span>
+                </span>
+              ))}
+              {moreSelected > 0 && <span className="whitespace-nowrap text-[11px] font-semibold text-text-tertiary">+{moreSelected} more</span>}
+            </div>
+          )}
+        </div>
         {dirty && <button type="button" disabled={saving} onClick={() => adopt([...saved.mine], [...saved.stars])}
           className="rounded-full px-4 py-2 text-[13px] font-semibold text-text-secondary hover:bg-surface disabled:opacity-50">Discard changes</button>}
         <button type="button" onClick={() => void saveDraft()} disabled={!dirty || saving}

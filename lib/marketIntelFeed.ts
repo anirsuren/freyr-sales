@@ -130,6 +130,8 @@ export type FeedCompany = {
   /** Last time the website pass visited. Its own clock: a newsroom moves in
    *  weeks, so it is checked far less often than the news wire. */
   siteAt?: string;
+  /** Failed website scans retry next day without claiming a successful check. */
+  siteFailedAt?: string;
   /** Last official health-authority discovery pass. */
   authorityAt?: string;
 };
@@ -1337,10 +1339,9 @@ export function buildBriefing(
   const { points, labels } = weeklyTrend(windowed);
   const { signals, competitorMentions } = deriveSignals(windowed, allNames);
   const mo = momentum(windowed);
-  // "Updated" means the last time ANY data landed. The cheap same-day news
-  // pass stamps `newsAt` without touching `fetchedAt` (which orders the
-  // Apify rotation), so showing fetchedAt alone read "updated 25h ago" over
-  // news collected two hours earlier.
+  // Show the latest successful source check. The daily news pass stamps
+  // `newsAt` even when it finds no new articles, without changing `fetchedAt`
+  // (which orders the Apify rotation). Failed scans do not advance this age.
   const freshest =
     [company.fetchedAt, company.newsAt, company.siteAt, company.authorityAt].filter(Boolean).sort().pop() ??
     company.fetchedAt;

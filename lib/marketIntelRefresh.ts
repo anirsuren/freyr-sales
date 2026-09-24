@@ -83,7 +83,7 @@ import type { Division } from "./offeringMaterials";
 /** The website pass's own clock: a company posts to its newsroom a handful
  *  of times a month, so checking it twice a day would buy the same answer
  *  twice. Once a day keeps the column fresh without repeated checks during the day. */
-const LOCK_MS = 30 * 60 * 1000;
+const LOCK_MS = 45 * 60 * 1000;
 // Two Apify caps. RUN_CAP_USD bounds one run so it finishes inside the lock;
 // the rotation spreads whatever it cuts across later runs. DAY_CAP_USD is the
 // money knob, over a rolling 24 hours: at once a day the 76 companies need
@@ -784,6 +784,9 @@ export type RefreshSummary = {
   reason?: string;
   companiesRefreshed?: number;
   companiesSkippedFresh?: number;
+  newsChecked?: number;
+  newsFailed?: number;
+  newsRemaining?: number;
   peopleRefreshed?: number;
   spentUsd?: number;
   /** Apify dollars charged in the current 24-hour window, against DAY_CAP_USD. */
@@ -812,6 +815,9 @@ export async function runMarketIntelRefresh(options?: {
   let spentFresh = 0;
   let refreshed = 0;
   let skippedFresh = 0;
+  let newsChecked = 0;
+  let newsFailed = 0;
+  let newsRemaining = 0;
   let peopleRefreshed = 0;
   const budget: LabelBudget = { calls: LABEL_CALLS_PER_RUN };
   /* WHAT ANSWERED AND WHAT DID NOT, written to the meta row at the end so
@@ -841,158 +847,6 @@ export async function runMarketIntelRefresh(options?: {
       )
       .sort((a, b) => lastSync(a.id, feed.companies) - lastSync(b.id, feed.companies));
 
-    // ---- Pass 1: same-day news for EVERYONE, before any Apify money moves.
-    // It reads every company once a day at ~$0.006 a company (Perplexity, its
-    // own billing), ahead of the dollar-capped rotation below, so "nothing from
-    // the past day" is never a budget artifact. Failures cost nothing but that
-    // company's freshness until the next tick.
-    {
-      const newsDeadline = Date.now() + 4 * 60_000;
-      for (const source of [...sources].sort((a,b) => (Date.parse(feed.companies[a.id]?.newsAt || "") || 0) - (Date.parse(feed.companies[b.id]?.newsAt || "") || 0))) {
-        if (Date.now() >= newsDeadline) break;
-        const existing: FeedCompany | undefined = feed.companies[source.id];
-        const newsAt = existing?.newsAt;
-        if (
-          !options?.force &&
-          newsAt &&
-          collectedInCurrentCycle(newsAt)
-        ) {
-          continue;
-        }
-        const fresh = await scrapeFreshNews(source, activePerplexityKey, {webSearchToken:activeApifyToken});
-        spentFresh += fresh.cost;
-        tally.perplexity.tries += 1;
-        if (fresh.failed) {
-          tally.perplexity.fails += 1;
-          tally.perplexity.note = lastPerplexityError;
-          if (!fresh.news.length) continue;
-        }
-        const entry: FeedCompany = existing ?? {
-          id: source.id,
-          name: source.name,
-          slug: null,
-          author: null,
-          posts: [],
-          news: [],
-          tldr: null,
-          group: competitorIds.has(source.id) ? "competitor" : "customer",
-          // Epoch on purpose: Apify has never visited this company, so it
-          // belongs at the FRONT of the rotation below.
-          fetchedAt: new Date(0).toISOString(),
-        };
-        if (fresh.news.length > 0) {
-          entry.news = mergeNews(entry.news ?? [], fresh.news);
-          entry.tldr = null; // the rundown must mention today's stories
-          await applyLabels(entry, budget);
-          await applyDigest(entry);
-        }
-        if (!fresh.failed) entry.newsAt = new Date().toISOString();
-        feed.companies[source.id] = entry;
-        feed.updatedAt = new Date().toISOString();
-        feed.spendUsd =
-          Math.round(((feed.spendUsd ?? 0) + fresh.cost) * 1000) / 1000;
-        // One row per company: a crash keeps everything already learned.
-        await saveFeedCompany(feed, source.id);
-      }
-    }
-
-    // ---- Pass 1b: THE COMPANY'S OWN WEBSITE. A newsroom moves in weeks,
-    // not hours, so once a day is plenty, at ~$0.006 a company. A company
-    // with no domain on file costs nothing and simply has no website column.
-    {
-      const siteDeadline = Date.now() + 2 * 60_000;
-      for (const source of [...sources].sort((a,b) => (Date.parse(feed.companies[a.id]?.siteAt || "") || 0) - (Date.parse(feed.companies[b.id]?.siteAt || "") || 0))) {
-        if (Date.now() >= siteDeadline) break;
-        if (!source.site) continue;
-        const existing: FeedCompany | undefined = feed.companies[source.id];
-        const siteAt = existing?.siteAt;
-        if (
-          !options?.force &&
-          siteAt &&
-          collectedInCurrentCycle(siteAt)
-        ) {
-          continue;
-        }
-        const result = await scrapeSiteUpdates(source, activePerplexityKey, {incremental:true});
-        spentFresh += result.cost;
-        if (result.failed) continue;
-        const entry: FeedCompany = existing ?? {
-          id: source.id,
-          name: source.name,
-          slug: null,
-          author: null,
-          posts: [],
-          news: [],
-          tldr: null,
-          group: competitorIds.has(source.id) ? "competitor" : "customer",
-          fetchedAt: new Date(0).toISOString(),
-        };
-        /* A scan that found nothing new still tidies what is stored (Sep 13
-           loop): Moderna kept 27 website items for 4 pages, copies that only
-           a scan with news of its own would ever have collapsed. */
-        if (result.updates.length > 0 || (entry.site?.length ?? 0) > 0) {
-          entry.site = mergeNews((entry.site ?? []).filter(item => !isNewsIndex(item.url)), result.updates);
-        }
-        if (result.updates.length > 0) await applyLabels(entry, budget);
-        entry.siteAt = new Date().toISOString();
-        feed.companies[source.id] = entry;
-        feed.updatedAt = new Date().toISOString();
-        feed.spendUsd =
-          Math.round(((feed.spendUsd ?? 0) + result.cost) * 1000) / 1000;
-        await saveFeedCompany(feed, source.id);
-      }
-    }
-
-    // ---- Pass 1c: official regulator notices for customer accounts only.
-    // Search is free and bounded separately from paid news. Each accepted item
-    // carries its final official URL, so syndicated stories cannot masquerade
-    // as an enforcement notice.
-    {
-      const authorityDeadline = Date.now() + 2 * 60_000;
-      const due = sources.filter(source => !competitorIds.has(source.id))
-        .sort((a, b) => (Date.parse(feed.companies[a.id]?.authorityAt || "") || 0) - (Date.parse(feed.companies[b.id]?.authorityAt || "") || 0));
-      for (let at = 0; at < due.length && Date.now() < authorityDeadline; at += 4) {
-        await Promise.all(due.slice(at, at + 4).map(async source => {
-          const entry = feed.companies[source.id];
-          if (!entry || (!options?.force && entry.authorityAt && collectedInCurrentCycle(entry.authorityAt))) return;
-          const found = await collectHealthAuthorityNotices(source.name);
-          if (found.failed) return;
-          const priorUrls = new Set(entry.news.map((item: FeedNews) => item.url));
-          let promoted = false;
-          entry.news = mergeNews(entry.news.map((item: FeedNews) => {
-            if (item.provenance === "health_authority" || !isCompanyAuthorityNotice(item, source.name)) return item;
-            promoted = true;
-            return { ...item, provenance: "health_authority", source: healthAuthorityName(item.url)!, label: { signals: ["compliance_enforcement"], relevant: true, industries: [], isCompanyNews: true, v: CLASSIFY_VERSION } };
-          }), found.items);
-          entry.authorityAt = new Date().toISOString();
-          if (promoted || found.items.some(item => !priorUrls.has(item.url))) entry.tldr = null;
-          await saveFeedCompany(feed, source.id);
-        }));
-      }
-    }
-
-    // ---- Pass 1d: A RUNDOWN FOR EVERY ACTIVE COMPANY THAT HAS NONE. The
-    // rundown is only rewritten when new items arrive, so a company whose
-    // items came in some other way (a hand re-pull, an old copy) kept an
-    // empty rundown until fresh news landed, and forever once nobody had it
-    // ticked. GSK, Bayer and Novartis sat like that on Sep 10. One Haiku call
-    // each, only while it is missing; nothing is scraped.
-    const digestDeadline = Date.now() + 60_000;
-    for (const source of sources) {
-      if (Date.now() >= digestDeadline) break;
-      const existing: FeedCompany | undefined = feed.companies[source.id];
-      if (!existing || existing.tldr) continue;
-      /* Website updates count (Sep 13 loop): a company whose only items are its
-         own press releases was skipped here and never got a rundown. */
-      if ((existing.news?.length ?? 0) + (existing.posts?.length ?? 0) + (existing.site?.length ?? 0) === 0) continue;
-      await applyDigest(existing);
-      if (existing.tldr) {
-        feed.companies[source.id] = existing;
-        feed.updatedAt = new Date().toISOString();
-        await saveFeedCompany(feed, source.id);
-      }
-    }
-
     // THE M&A BOARD GOES FIRST WHEN STALE (Anir, Aug 17: "is this thing even
     // working?" — it was 101 hours behind while companies were 3 hours
     // fresh). The company queue drained the run's budget every time, so the
@@ -1018,25 +872,6 @@ export async function runMarketIntelRefresh(options?: {
         // Logged, never fatal: the tracker keeps its last board, but a
         // repeating failure must be visible instead of reading as "stale".
         console.error("[market-intel] M&A refresh failed:", error);
-      }
-    }
-
-    // The thought-leadership board rides the same daily clock, on the
-    // Perplexity bill, never the Apify budget.
-    if (
-      activePerplexityKey &&
-      (options?.force ||
-        !feed.thought?.fetchedAt ||
-        !collectedInCurrentCycle(feed.thought.fetchedAt))
-    ) {
-      try {
-        const cost = await refreshThought(feed, activePerplexityKey);
-        spentFresh += cost;
-        feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + cost) * 1000) / 1000;
-        feed.updatedAt = new Date().toISOString();
-        await saveFeedMeta(feed);
-      } catch (error) {
-        console.error("[market-intel] thought-leadership refresh failed:", error);
       }
     }
 
@@ -1107,6 +942,7 @@ export async function runMarketIntelRefresh(options?: {
         ...(existing?.logoCheckedAt ? { logoCheckedAt: existing.logoCheckedAt } : {}),
         ...(existing?.site ? { site: existing.site } : {}),
         ...(existing?.siteAt ? { siteAt: existing.siteAt } : {}),
+        ...(existing?.siteFailedAt ? { siteFailedAt: existing.siteFailedAt } : {}),
         ...(existing?.authorityAt ? { authorityAt: existing.authorityAt } : {}),
         ...(postsResult.failed ? { postsFailedAt: new Date().toISOString() } : {}),
       };
@@ -1176,6 +1012,184 @@ export async function runMarketIntelRefresh(options?: {
       await saveFeedPerson(feed, person.id);
     }
 
+    // ---- Same-day news, independent of the Apify dollar cap.
+    // Several slow publisher reads must not limit the watchlist to a handful
+    // of companies each day. Keep the oldest-first order and work in parallel.
+    {
+      const newsDeadline = Date.now() + 8 * 60_000;
+      const newsQueue = [...sources].sort((a,b) => (Date.parse(feed.companies[a.id]?.newsAt || "") || 0) - (Date.parse(feed.companies[b.id]?.newsAt || "") || 0));
+      await mapLimit(newsQueue, 6, async source => {
+        if (Date.now() >= newsDeadline) return;
+        try {
+          const existing: FeedCompany | undefined = feed.companies[source.id];
+          const newsAt = existing?.newsAt;
+          if (
+            !options?.force &&
+            newsAt &&
+            collectedInCurrentCycle(newsAt)
+          ) {
+            return;
+          }
+          const fresh = await scrapeFreshNews(source, activePerplexityKey);
+          spentFresh += fresh.cost;
+          tally.perplexity.tries += 1;
+          if (fresh.failed) {
+            newsFailed += 1;
+            tally.perplexity.fails += 1;
+            tally.perplexity.note = lastPerplexityError;
+            if (!fresh.news.length) return;
+          }
+          const entry: FeedCompany = existing ?? {
+            id: source.id,
+            name: source.name,
+            slug: null,
+            author: null,
+            posts: [],
+            news: [],
+            tldr: null,
+            group: competitorIds.has(source.id) ? "competitor" : "customer",
+            // Epoch on purpose: Apify has never visited this company, so it
+            // belongs at the FRONT of the rotation below.
+            fetchedAt: new Date(0).toISOString(),
+          };
+          if (fresh.news.length > 0) {
+            entry.news = mergeNews(entry.news ?? [], fresh.news);
+            entry.tldr = null; // the rundown must mention today's stories
+            await applyLabels(entry, budget);
+            await applyDigest(entry);
+          }
+          if (!fresh.failed) entry.newsAt = new Date().toISOString();
+          feed.companies[source.id] = entry;
+          feed.updatedAt = new Date().toISOString();
+          feed.spendUsd =
+            Math.round(((feed.spendUsd ?? 0) + fresh.cost) * 1000) / 1000;
+          // One row per company: a crash keeps everything already learned.
+          await saveFeedCompany(feed, source.id);
+          if (!fresh.failed) newsChecked += 1;
+        } catch (error) {
+          newsFailed += 1;
+          console.error(`[market-intel] daily news failed for ${source.id}:`, error);
+        }
+      });
+      newsRemaining = sources.filter(source => !collectedInCurrentCycle(feed.companies[source.id]?.newsAt)).length;
+    }
+
+    // ---- A targeted admin refresh still checks that company's
+    // website here. The daily run checks websites once in the dedicated scan
+    // below, rather than spending two separate time budgets on the same job.
+    if (options?.onlyCompanyIds?.length) {
+      const siteDeadline = Date.now() + 2 * 60_000;
+      for (const source of [...sources].sort((a,b) => (Date.parse(feed.companies[a.id]?.siteAt || "") || 0) - (Date.parse(feed.companies[b.id]?.siteAt || "") || 0))) {
+        if (Date.now() >= siteDeadline) break;
+        if (!source.site) continue;
+        const existing: FeedCompany | undefined = feed.companies[source.id];
+        const siteAt = existing?.siteAt;
+        if (
+          !options?.force &&
+          siteAt &&
+          collectedInCurrentCycle(siteAt)
+        ) {
+          continue;
+        }
+        const result = await scrapeSiteUpdates(source, activePerplexityKey, {incremental:true});
+        spentFresh += result.cost;
+        if (result.failed) continue;
+        const entry: FeedCompany = existing ?? {
+          id: source.id,
+          name: source.name,
+          slug: null,
+          author: null,
+          posts: [],
+          news: [],
+          tldr: null,
+          group: competitorIds.has(source.id) ? "competitor" : "customer",
+          fetchedAt: new Date(0).toISOString(),
+        };
+        /* A scan that found nothing new still tidies what is stored (Sep 13
+           loop): Moderna kept 27 website items for 4 pages, copies that only
+           a scan with news of its own would ever have collapsed. */
+        if (result.updates.length > 0 || (entry.site?.length ?? 0) > 0) {
+          entry.site = mergeNews((entry.site ?? []).filter(item => !isNewsIndex(item.url)), result.updates);
+        }
+        if (result.updates.length > 0) await applyLabels(entry, budget);
+        entry.siteAt = new Date().toISOString();
+        feed.companies[source.id] = entry;
+        feed.updatedAt = new Date().toISOString();
+        feed.spendUsd =
+          Math.round(((feed.spendUsd ?? 0) + result.cost) * 1000) / 1000;
+        await saveFeedCompany(feed, source.id);
+      }
+    }
+
+    // ---- Official regulator notices for customer accounts only.
+    // Search is free and bounded separately from paid news. Each accepted item
+    // carries its final official URL, so syndicated stories cannot masquerade
+    // as an enforcement notice.
+    {
+      const authorityDeadline = Date.now() + 2 * 60_000;
+      const due = sources.filter(source => !competitorIds.has(source.id))
+        .sort((a, b) => (Date.parse(feed.companies[a.id]?.authorityAt || "") || 0) - (Date.parse(feed.companies[b.id]?.authorityAt || "") || 0));
+      for (let at = 0; at < due.length && Date.now() < authorityDeadline; at += 4) {
+        await Promise.all(due.slice(at, at + 4).map(async source => {
+          const entry = feed.companies[source.id];
+          if (!entry || (!options?.force && entry.authorityAt && collectedInCurrentCycle(entry.authorityAt))) return;
+          const found = await collectHealthAuthorityNotices(source.name);
+          if (found.failed) return;
+          const priorUrls = new Set(entry.news.map((item: FeedNews) => item.url));
+          let promoted = false;
+          entry.news = mergeNews(entry.news.map((item: FeedNews) => {
+            if (item.provenance === "health_authority" || !isCompanyAuthorityNotice(item, source.name)) return item;
+            promoted = true;
+            return { ...item, provenance: "health_authority", source: healthAuthorityName(item.url)!, label: { signals: ["compliance_enforcement"], relevant: true, industries: [], isCompanyNews: true, v: CLASSIFY_VERSION } };
+          }), found.items);
+          entry.authorityAt = new Date().toISOString();
+          if (promoted || found.items.some(item => !priorUrls.has(item.url))) entry.tldr = null;
+          await saveFeedCompany(feed, source.id);
+        }));
+      }
+    }
+
+    // ---- A RUNDOWN FOR EVERY ACTIVE COMPANY THAT HAS NONE. The
+    // rundown is only rewritten when new items arrive, so a company whose
+    // items came in some other way (a hand re-pull, an old copy) kept an
+    // empty rundown until fresh news landed, and forever once nobody had it
+    // ticked. GSK, Bayer and Novartis sat like that on Sep 10. One Haiku call
+    // each, only while it is missing; nothing is scraped.
+    const digestDeadline = Date.now() + 60_000;
+    for (const source of sources) {
+      if (Date.now() >= digestDeadline) break;
+      const existing: FeedCompany | undefined = feed.companies[source.id];
+      if (!existing || existing.tldr) continue;
+      /* Website updates count (Sep 13 loop): a company whose only items are its
+         own press releases was skipped here and never got a rundown. */
+      if ((existing.news?.length ?? 0) + (existing.posts?.length ?? 0) + (existing.site?.length ?? 0) === 0) continue;
+      await applyDigest(existing);
+      if (existing.tldr) {
+        feed.companies[source.id] = existing;
+        feed.updatedAt = new Date().toISOString();
+        await saveFeedCompany(feed, source.id);
+      }
+    }
+
+    // The thought-leadership board rides the same daily clock, on the
+    // Perplexity bill, never the Apify budget.
+    if (
+      activePerplexityKey &&
+      (options?.force ||
+        !feed.thought?.fetchedAt ||
+        !collectedInCurrentCycle(feed.thought.fetchedAt))
+    ) {
+      try {
+        const cost = await refreshThought(feed, activePerplexityKey);
+        spentFresh += cost;
+        feed.spendUsd = Math.round(((feed.spendUsd ?? 0) + cost) * 1000) / 1000;
+        feed.updatedAt = new Date().toISOString();
+        await saveFeedMeta(feed);
+      } catch (error) {
+        console.error("[market-intel] thought-leadership refresh failed:", error);
+      }
+    }
+
     // Earlier archives only had word-overlap grouping. Backfill their AI
     // event identities after the scheduled boards, companies and people have
     // had their turn; this never adds work to a page view.
@@ -1221,6 +1235,9 @@ export async function runMarketIntelRefresh(options?: {
     ran: true,
     companiesRefreshed: refreshed,
     companiesSkippedFresh: skippedFresh,
+    newsChecked,
+    newsFailed,
+    newsRemaining,
     peopleRefreshed,
     spentUsd: Math.round((spent + spentFresh) * 1000) / 1000,
     apifyTodayUsd: apifySpentToday(feed),
@@ -1840,67 +1857,64 @@ async function runSiteUpdatesRefreshLocked(options?: {force?:boolean;budgetMs?:n
   let spend = 0;
   let reached = 0;
 
-  for (const source of queue) {
+  await mapLimit(queue, 6, async source => {
+    if (Date.now() - started > budgetMs) return;
     reached += 1;
-    if (Date.now() - started > budgetMs) {
-      reached -= 1;
-      break;
-    }
-
-    const existing: FeedCompany | undefined = feed.companies[source.id];
-    if (
-      !options?.force &&
-      existing?.siteAt &&
-      collectedInCurrentCycle(existing.siteAt)
-    ) {
-      skippedFresh += 1;
-      continue;
-    }
-
-    let result: Awaited<ReturnType<typeof scrapeSiteUpdates>>;
     try {
-      result = await scrapeSiteUpdates(source, key, {incremental:true});
-    } catch {
+      const existing: FeedCompany | undefined = feed.companies[source.id];
+      if (
+        !options?.force &&
+        (collectedInCurrentCycle(existing?.siteAt) ||
+          collectedInCurrentCycle(existing?.siteFailedAt))
+      ) {
+        skippedFresh += 1;
+        return;
+      }
+
+      const result = await scrapeSiteUpdates(source, key, {incremental:true});
+      spend += result.cost || 0;
+
+      const entry: FeedCompany = existing ?? {
+        id: source.id,
+        name: source.name,
+        slug: null,
+        author: null,
+        posts: [],
+        news: [],
+        tldr: null,
+        group: registry.competitorIds.has(source.id) ? "competitor" : "customer",
+        fetchedAt: new Date(0).toISOString(),
+      };
+      if (result.failed) failed += 1;
+      /* Tidy what is stored even when nothing new came back (see the daily pass). */
+      if (result.updates.length === 0 && (entry.site?.length ?? 0) > 0) {
+        entry.site = mergeNews((entry.site ?? []).filter(item => !isNewsIndex(item.url)), []);
+      }
+      if (result.updates.length > 0) {
+        entry.site = mergeNews((entry.site ?? []).filter(item => !isNewsIndex(item.url)), result.updates);
+        withUpdates += 1;
+        items += result.updates.length;
+        // New website items are read like everything else, here and now.
+        await applyLabels(entry, { calls: 4 });
+      }
+      if (result.failed) entry.siteFailedAt = new Date().toISOString();
+      else {
+        entry.siteAt = new Date().toISOString();
+        delete entry.siteFailedAt;
+      }
+      feed.companies[source.id] = entry;
+      feed.spendUsd =
+        Math.round(((feed.spendUsd ?? 0) + (result.cost || 0)) * 1000) / 1000;
+      scanned += 1;
+
+      /* Written after every company: this job is designed to be interrupted, and
+         an interrupted run must keep everything it actually learned. */
+      await saveFeedCompany(feed, source.id);
+    } catch (error) {
       failed += 1;
-      continue;
+      console.error(`[market-intel] website scan failed for ${source.id}:`, error);
     }
-    spend += result.cost || 0;
-
-    const entry: FeedCompany = existing ?? {
-      id: source.id,
-      name: source.name,
-      slug: null,
-      author: null,
-      posts: [],
-      news: [],
-      tldr: null,
-      group: registry.competitorIds.has(source.id) ? "competitor" : "customer",
-      fetchedAt: new Date(0).toISOString(),
-    };
-    if (result.failed) failed += 1;
-    /* Tidy what is stored even when nothing new came back (see the daily pass). */
-    if (result.updates.length === 0 && (entry.site?.length ?? 0) > 0) {
-      entry.site = mergeNews((entry.site ?? []).filter(item => !isNewsIndex(item.url)), []);
-    }
-    if (result.updates.length > 0) {
-      entry.site = mergeNews((entry.site ?? []).filter(item => !isNewsIndex(item.url)), result.updates);
-      withUpdates += 1;
-      items += result.updates.length;
-      // New website items are read like everything else, here and now.
-      await applyLabels(entry, { calls: 4 });
-    }
-    /* Stamped even on a failure, so one site that refuses to be read cannot
-       hold the front of the queue and starve everybody behind it. */
-    entry.siteAt = new Date().toISOString();
-    feed.companies[source.id] = entry;
-    feed.spendUsd =
-      Math.round(((feed.spendUsd ?? 0) + (result.cost || 0)) * 1000) / 1000;
-    scanned += 1;
-
-    /* Written after every company: this job is designed to be interrupted, and
-       an interrupted run must keep everything it actually learned. */
-    await saveFeedCompany(feed, source.id);
-  }
+  });
 
   return {
     ran: scanned > 0,
