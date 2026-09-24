@@ -81,7 +81,7 @@ import { useCurrentDataMode } from "@/components/auth/CurrentUserProvider";
  * detected in. Rendered in live mode; mock mode keeps the sample briefings.
  *
  * Sep 10 (Saras's meeting): the nine signals sit in a row at the top and
- * each is a filter; the source dropdown is a visible bar; an item that
+ * each is a filter; source filters sit in company details; an item that
  * carries a signal wears it on its own card instead of appearing twice; the
  * same story from several sources is one card with the other sources named
  * under it; a competitor's briefing shows only what concerns Freyr's
@@ -89,9 +89,9 @@ import { useCurrentDataMode } from "@/components/auth/CurrentUserProvider";
  * competitor.
  *
  * Sep 11 (Saras's Word doc): Signals is the main bar, with her ten customer or
- * nine competitor titles, and Sources is the secondary bar under it. Every
+ * nine competitor titles, and Sources sits below Signals in the details panel. Every
  * item wears at least one signal, so thought leadership and awards became
- * signals and left the Sources bar.
+ * signals and left the Sources list.
  */
 
 type Source = "all" | "company" | "people" | "news" | "site";
@@ -356,7 +356,7 @@ export function LiveCompanyBriefing({
   for (const i of base) for (const kind of kindsOf(i)) signalCounts[kind] = (signalCounts[kind] ?? 0) + 1;
 
   const SOURCES: { key: Source; label: string; icon: LucideIcon; color: string; count: number; always: boolean }[] = [
-    { key: "all" as Source, label: "Everything", icon: Radar, color: "var(--ink-bright-blue)", count: base.length, always: true },
+    { key: "all" as Source, label: "All sources", icon: Radar, color: "var(--ink-bright-blue)", count: base.length, always: true },
     { key: "company" as Source, label: "Company posts", icon: Building2, color: "var(--ink-bright-blue)", count: base.filter((i) => i.kind === "company").length, always: true },
     ...(isCompetitor
       ? []
@@ -812,6 +812,18 @@ export function LiveCompanyBriefing({
           <input id="briefing-exact-date" type="date" value={exactDate} onChange={(event) => setExactDate(event.target.value)} className="cursor-pointer bg-transparent text-[12px] text-text-primary outline-none" />
           {exactDate && <button type="button" onClick={() => setExactDate("")} className="cursor-pointer text-blue-primary hover:underline">Clear</button>}
         </div>
+        <ColorSelect
+          value={newsView}
+          onChange={(value) => chooseNewsView(value as NewsView)}
+          ariaLabel="Article view"
+          minWidth={128}
+          dense
+          options={[
+            { value: "rows", label: "List view", color: "var(--ink-bright-blue)", icon: List },
+            { value: "tiles", label: "Tile view", color: "var(--ink-violet)", icon: LayoutGrid },
+            { value: "table", label: "Table view", color: "var(--ink-teal-deep)", icon: Table2 },
+          ]}
+        />
       </SearchPriority>
 
       <div className={cn(
@@ -821,51 +833,6 @@ export function LiveCompanyBriefing({
           : detailsSide === "left" ? "grid-cols-[minmax(0,1fr)_40px] lg:grid-cols-[40px_minmax(0,1fr)]" : "grid-cols-[minmax(0,1fr)_40px]"
       )}>
         <div className={cn("min-w-0", detailsSide === "left" && "lg:order-2")}>
-          {/* THE SECONDARY BAR: SOURCES (Saras, Sep 11), under the Signals
-              bar: where an item came from. Thought leadership and awards are
-              signals now, so they are not sources any more. */}
-          <div className="mb-3 flex min-w-0 items-center gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1" role="group" aria-label="Sources">
-            <span className="mr-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Sources</span>
-            {SOURCES.map((s) => {
-              const SIcon = s.icon;
-              const on = source === s.key;
-              const pending = collection?.status === "collecting" && collection.stage === "sources" && s.count === 0 && (s.key === "news" || s.key === "site");
-              return (
-                <button
-                  key={s.key}
-                  type="button"
-                  onClick={() => { setSource(s.key); if (s.key !== "all") setSelectedCompetitor(null); }}
-                  aria-pressed={on}
-                  className={cn(
-                    "flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors",
-                    on
-                      ? "border-transparent text-white"
-                      : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
-                  )}
-                  style={on ? { background: s.color } : undefined}
-                >
-                  <SIcon size={12} strokeWidth={2.2} />
-                  {s.label}
-                  {pending ? <span className="inline-flex items-center gap-1 text-blue-primary"><Loader2 size={12} className="motion-safe:animate-spin" /><span className="text-[10px]">Collecting</span></span> : <span className={cn("tnum", on ? "opacity-80" : "text-text-tertiary")}>{s.count}</span>}
-                </button>
-              );
-            })}
-          </div>
-          <ColorSelect
-            value={newsView}
-            onChange={(value) => chooseNewsView(value as NewsView)}
-            ariaLabel="Article view"
-            minWidth={128}
-            dense
-            options={[
-              { value: "rows", label: "List view", color: "var(--ink-bright-blue)", icon: List },
-              { value: "tiles", label: "Tile view", color: "var(--ink-violet)", icon: LayoutGrid },
-              { value: "table", label: "Table view", color: "var(--ink-teal-deep)", icon: Table2 },
-            ]}
-          />
-          </div>
-
           {selectedCompetitor && (
             <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-blue-subtle bg-blue-light px-3 py-2 text-[12px] text-text-primary" role="status">
               <span>Showing competitor mentions of <strong>{selectedCompetitor}</strong> · {groups.length} {groups.length === 1 ? "story" : "stories"}</span>
@@ -1021,7 +988,7 @@ export function LiveCompanyBriefing({
             inert={!detailsOpen}
             className={cn(
               "flex min-w-0 flex-col overflow-hidden rounded-2xl border shadow-sm motion-safe:transition-[opacity,transform] motion-safe:duration-200 motion-safe:ease-out",
-              detailsSide === "left" ? "border-blue-subtle bg-[rgba(0,113,227,0.035)]" : "border-border-light bg-white",
+              "border-blue-subtle bg-[rgba(0,113,227,0.035)]",
               detailsOpen
                 ? cn(
                     dataMode === "mock"
@@ -1035,7 +1002,7 @@ export function LiveCompanyBriefing({
           {/* Keep the rail control outside its scrolling body. Previously the
               header disappeared as soon as someone scrolled down to the last
               cards, making the panel look impossible to close. */}
-          <div className={cn("flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3", detailsSide === "left" ? "border-blue-subtle bg-blue-light/70" : "border-border-light bg-white")}>
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-blue-subtle bg-blue-light/70 px-4 py-3">
             <h2 className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Company details</h2>
             <button type="button" onClick={() => setDetailsView("closed")} aria-label="Hide company details" aria-expanded={true} aria-controls="company-details-panel" className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light">{detailsSide === "left" ? <PanelLeftClose size={14} className="shrink-0" /> : <PanelRightClose size={14} className="shrink-0" />}Hide</button>
           </div>
@@ -1070,6 +1037,37 @@ export function LiveCompanyBriefing({
                     <span className="min-w-0 flex-1 text-[12px] font-semibold leading-snug text-text-primary">{meta.label}</span>
                     <span className="tnum text-[11.5px] font-semibold text-text-secondary">{signalCounts[signal] ?? 0}</span>
                   </label>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className="p-4" aria-labelledby="source-filter-title">
+            <h2 id="source-filter-title" className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
+              <Newspaper size={14} strokeWidth={2} className="text-blue-primary" />
+              Sources
+            </h2>
+            <p className="mt-1 text-[11.5px] leading-snug text-text-tertiary">Where these updates came from</p>
+            <div className="mt-2.5 space-y-1" role="group" aria-label="Sources">
+              {SOURCES.map((item) => {
+                const Icon = item.icon;
+                const selected = source === item.key;
+                const pending = collection?.status === "collecting" && collection.stage === "sources" && item.count === 0 && (item.key === "news" || item.key === "site");
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => { setSource(item.key); if (item.key !== "all") setSelectedCompetitor(null); }}
+                    aria-pressed={selected}
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary",
+                      selected ? "border-blue-subtle bg-blue-light" : "border-transparent hover:bg-surface"
+                    )}
+                  >
+                    <Icon size={14} strokeWidth={2} style={{ color: item.color }} className="shrink-0" />
+                    <span className="min-w-0 flex-1 text-[12px] font-semibold leading-snug text-text-primary">{item.label}</span>
+                    {pending ? <Loader2 size={13} className="shrink-0 text-blue-primary motion-safe:animate-spin" aria-label="Collecting" /> : <span className="tnum text-[11.5px] font-semibold text-text-secondary">{item.count}</span>}
+                  </button>
                 );
               })}
             </div>
