@@ -35,7 +35,6 @@ import {
   SearchPriority,
 } from "@/components/ui/SearchPriority";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { LiveCompanyCard, type CardPerson } from "@/components/market-intel/LiveCompanyCard";
@@ -495,7 +494,7 @@ export function LiveCompanyGrid({
               <span>Latest intelligence</span>
               {group === "customer" && <span>People</span>}
               {isAdmin && <span>Tracking</span>}
-              <span className="inline-flex items-center gap-1 whitespace-nowrap">Last checked <InfoHint text="Time since the latest successful posts, news, or website check for this company. Sources are checked separately during the daily cycle, so companies can show different times. A check does not necessarily mean new content was found. Several days old means no source has completed a successful check recently, even though tracking is still active." /></span>
+              <span>Last checked</span>
             </div>
             <div className="mi-list-stagger divide-y divide-border-light">
               {listRows.map(row => {
