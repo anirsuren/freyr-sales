@@ -67,6 +67,7 @@ export type FilterGroup = {
 const LEFT_W = 168;
 const PANEL_W = 430;
 const PANEL_H = 300;
+const FOOTER_H = 44;
 
 export function FilterMenu({
   groups,
@@ -86,7 +87,7 @@ export function FilterMenu({
   const [layer, setLayer] = useState<string | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState<{ top: number; left: number } | null>(null);
+  const [box, setBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
   const active = groups.reduce((n, g) => n + g.values.length, 0);
   const chosenGroups = groups.filter((g) => g.values.length > 0).length;
@@ -101,7 +102,7 @@ export function FilterMenu({
       const node = buttonRef.current;
       if (!node) return;
       const r = node.getBoundingClientRect();
-      const width = PANEL_W;
+      const width = Math.min(PANEL_W, window.innerWidth - 16);
       /* CENTRED ON THE BUTTON THAT OPENED IT (Anir, Aug 24: "this is ugly...
          it's too much to the right. The entire thing should be centred —
          centred around the original filter button").
@@ -113,12 +114,19 @@ export function FilterMenu({
          Still clamped to the viewport, so a Filter button near the right edge
          gets a panel that stops at the edge rather than one that hangs off it. */
       const centred = r.left + r.width / 2 - width / 2;
+      const below = window.innerHeight - r.bottom - 14;
+      const above = r.top - 14;
+      const opensAbove = below < PANEL_H + FOOTER_H && above > below;
+      const available = opensAbove ? above : below;
+      const height = Math.min(PANEL_H, Math.max(100, available - FOOTER_H));
       setBox({
-        top: r.bottom + 6,
+        top: opensAbove ? Math.max(8, r.top - height - FOOTER_H - 6) : r.bottom + 6,
         left: Math.min(
           Math.max(8, centred),
           Math.max(8, window.innerWidth - width - 8)
         ),
+        width,
+        height,
       });
     };
     place();
@@ -204,7 +212,7 @@ export function FilterMenu({
             ref={panelRef}
             role="dialog"
             aria-label={ariaLabel}
-            style={{ top: box.top, left: box.left, width: PANEL_W }}
+            style={{ top: box.top, left: box.left, width: box.width }}
             className="menu-in fixed z-[130] overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
           >
             {/* CATEGORIES LEFT, THEIR OPTIONS RIGHT (Saras, Aug 24 call,
@@ -219,7 +227,7 @@ export function FilterMenu({
                 columns are on screen at once now; hovering a category swaps
                 the right-hand pane, clicking still works for touch and for
                 the keyboard, and nothing is ever more than one move away. */}
-            <div className="flex" style={{ height: PANEL_H }}>
+            <div className="flex" style={{ height: box.height }}>
               <div
                 /* A REAL EDGE BETWEEN THE PANES, and a rule between each
                    group (Anir, Aug 26: "I'm not able to really tell the
