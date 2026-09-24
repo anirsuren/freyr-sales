@@ -148,6 +148,7 @@ export function NeededByTimeline({
   const visible = (ms: number) => position(ms) >= 0 && position(ms) <= 1;
   const requestedSide = position(asked) < 0 ? "left" : position(asked) > 1 ? "right" : null;
   const neededSide = position(due) < 0 ? "left" : position(due) > 1 ? "right" : null;
+  const todaySide = position(today) < 0 ? "left" : position(today) > 1 ? "right" : null;
   const offscreenCount = Number(Boolean(requestedSide)) + Number(Boolean(neededSide));
 
   /**
@@ -410,11 +411,9 @@ export function NeededByTimeline({
           </span>
         </span>}
 
-        {/* TODAY. The one mark here that is not a plan, so it is always drawn.
-            It hugs whichever end it sits at, for the same reason the captions
-            do: centred on a marker at 0% or 100%, half the pill would hang
-            outside the card. */}
-        {visible(today) && <div
+        {/* Keep Today at the nearest edge while zoomed away from it. The arrow
+            makes clear that its real date lies outside the visible window. */}
+        <div
           className={cn(
             "pointer-events-none absolute z-20 flex flex-col items-center",
             atStart ? "items-start" : atEnd ? "items-end" : "-translate-x-1/2"
@@ -425,16 +424,18 @@ export function NeededByTimeline({
             top: 0,
           }}
         >
-          <span className="block whitespace-nowrap rounded-full bg-blue-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.04em] text-white">
+          <span aria-label={todaySide ? `Today is ${todaySide} of the visible dates` : undefined} className="inline-flex items-center gap-0.5 whitespace-nowrap rounded-full bg-blue-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.04em] text-white">
+            {todaySide === "left" && <ChevronLeft size={10} strokeWidth={2.5} aria-hidden="true" />}
             Today
+            {todaySide === "right" && <ChevronRight size={10} strokeWidth={2.5} aria-hidden="true" />}
           </span>
           {/* No glow: it smeared into the rail underneath and was half of why
               this read as smudged rather than drawn. */}
-          <span
+          {!todaySide && <span
             className={cn("block w-px bg-blue-primary/70", atStart && "ml-[11px]", atEnd && "mr-[11px]")}
             style={{ height: RAIL_TOP - 17 }}
-          />
-        </div>}
+          />}
+        </div>
         </div>
       </div>
     </div>
