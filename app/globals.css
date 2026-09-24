@@ -971,6 +971,18 @@ select:focus-visible {
   }
 }
 
+/* A brief layout change keeps the Market Intel table/tile switch from snapping. */
+@keyframes marketLayoutEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.market-layout-enter {
+  animation: marketLayoutEnter 180ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .market-layout-enter { animation: none; }
+}
+
 /* Staggered list/grid entrance — add `stagger` to a container and its direct
    children (cards, rows) rise in one after another, like the Offerings grid. */
 .stagger > * {

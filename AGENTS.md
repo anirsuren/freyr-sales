@@ -1753,3 +1753,7 @@ Mock submissions and presentations spawned from generated demo requests now rece
 ### Sep 24: Competitor-mention logos
 
 The Customer Intel details rail now shows each mentioned competitor's existing Market Intel logo beside its name and count. It resolves the current tracked-company logo first and then the collected feed summary; where neither has a logo, it uses the standard company mark. Mention names still come from the built-in competitor watch plus companies added through Manage Competitors, while counts are derived from matches in collected posts and articles. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.
+
+### Sep 24: Thought Leadership filter and Market Intel view transition
+
+Thought Leadership now groups Firm, Topic, and Type under the shared Filter menu, with multi-selection, a selected-count badge, and Clear all. Search, sort, and the table/tile switch stay in the toolbar. Switching table and tile on either Thought Leadership or M&A now has a brief entrance animation, disabled for reduced-motion users. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.

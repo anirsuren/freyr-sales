@@ -272,7 +272,7 @@ export function MnaTracker({
             : "No deals match that search and filter."}
         </Card>
       ) : mnaLayout === "table" ? (
-        <div className="overflow-x-auto rounded-2xl border border-border-light bg-white">
+        <div key="mna-table" className="market-layout-enter overflow-x-auto rounded-2xl border border-border-light bg-white">
           <div className="min-w-[1060px]">
             <div className="grid grid-cols-[minmax(300px,1.5fr)_minmax(150px,1fr)_145px_115px_135px] gap-4 border-b border-border-light bg-surface/80 px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary">
               <span>Deal</span><span>Division</span><span>Status</span><span>Value</span><span>Announced</span>
@@ -301,7 +301,7 @@ export function MnaTracker({
           </div>
         </div>
       ) : (
-        <div className="space-y-3 stagger">
+        <div key="mna-tile" className="market-layout-enter space-y-3 stagger">
           {shown.map((deal, index) => {
             const meta = STATUS_META[deal.status];
             const divisionMeta = DIVISIONS.find((d) => d.key === deal.division)!;

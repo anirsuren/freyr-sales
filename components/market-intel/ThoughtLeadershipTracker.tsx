@@ -6,8 +6,6 @@ import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import {
   ArrowDownAZ,
-  BookOpenText,
-  Building2,
   CalendarClock,
   ExternalLink,
   FileText,
@@ -28,7 +26,8 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { ColorSelect, MultiColorSelect } from "@/components/ui/ColorSelect";
+import { ColorSelect } from "@/components/ui/ColorSelect";
+import { FilterMenu } from "@/components/ui/FilterMenu";
 import { PrioritySearchInput, SearchPriority } from "@/components/ui/SearchPriority";
 import type { ThoughtBoard, ThoughtItem } from "@/lib/marketIntelFeed";
 import { THOUGHT_FIRMS } from "@/lib/marketIntelThoughtSources";
@@ -104,47 +103,23 @@ export function ThoughtLeadershipTracker({ board, layout, onLayoutChange }: { bo
           {shown.length} of {items.length}
         </span>
         <span className="ml-auto flex flex-wrap items-center gap-2">
-          <MultiColorSelect
-            values={firms}
-            onChange={setFirms}
-            ariaLabel="Filter by firm"
-            minWidth={160}
-            allLabel="All firms"
-            allIcon={Building2}
-            options={(firmsSeen.length ? firmsSeen : THOUGHT_FIRMS.map((f) => f.name)).map((firm) => ({
-              value: firm,
-              label: firm,
-              color: "var(--ink-bright-blue)",
-              logoName: firm,
-            }))}
-          />
-          <MultiColorSelect
-            values={topics}
-            onChange={setTopics}
-            ariaLabel="Filter by topic"
-            minWidth={180}
-            allLabel="All topics"
-            allIcon={Layers}
-            options={(Object.keys(TOPIC_META) as ThoughtItem["topic"][]).map((topic) => ({
-              value: topic,
-              label: topic,
-              color: TOPIC_META[topic].color,
-              icon: TOPIC_META[topic].icon,
-            }))}
-          />
-          <MultiColorSelect
-            values={types}
-            onChange={setTypes}
-            ariaLabel="Filter by type"
-            minWidth={150}
-            allLabel="All types"
-            allIcon={BookOpenText}
-            options={(Object.keys(TYPE_META) as ThoughtItem["type"][]).map((type) => ({
-              value: type,
-              label: TYPE_META[type].label,
-              color: "var(--ink-violet)",
-              icon: TYPE_META[type].icon,
-            }))}
+          <FilterMenu
+            ariaLabel="Filter publications"
+            groups={[
+              { key: "firm", label: "Firm", values: firms, onChange: setFirms,
+                options: (firmsSeen.length ? firmsSeen : THOUGHT_FIRMS.map((firm) => firm.name)).map((firm) => ({
+                  value: firm, label: firm, logoName: firm,
+                })) },
+              { key: "topic", label: "Topic", values: topics, onChange: setTopics,
+                options: (Object.keys(TOPIC_META) as ThoughtItem["topic"][]).map((topic) => ({
+                  value: topic, label: topic, color: TOPIC_META[topic].color, icon: TOPIC_META[topic].icon,
+                })) },
+              { key: "type", label: "Type", values: types, onChange: setTypes,
+                options: (Object.keys(TYPE_META) as ThoughtItem["type"][]).map((type) => ({
+                  value: type, label: TYPE_META[type].label, color: "var(--ink-violet)", icon: TYPE_META[type].icon,
+                })) },
+            ]}
+            onClearAll={() => { setFirms([]); setTopics([]); setTypes([]); }}
           />
           <ColorSelect
             value={sort}
@@ -179,7 +154,7 @@ export function ThoughtLeadershipTracker({ board, layout, onLayoutChange }: { bo
             : "Nothing matches that search and filter."}
         </Card>
       ) : layout === "table" ? (
-        <div className="overflow-x-auto rounded-2xl border border-border-light bg-white">
+        <div key="thought-table" className="market-layout-enter overflow-x-auto rounded-2xl border border-border-light bg-white">
           <div className="min-w-[980px]">
             <div className="grid grid-cols-[170px_minmax(300px,1fr)_175px_110px_120px] gap-4 border-b border-border-light bg-surface/80 px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary">
               <span>Firm</span><span>Publication</span><span>Topic</span><span>Type</span><span>Published</span>
@@ -208,7 +183,7 @@ export function ThoughtLeadershipTracker({ board, layout, onLayoutChange }: { bo
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 stagger">
+        <div key="thought-tile" className="market-layout-enter grid grid-cols-1 gap-3 md:grid-cols-2 stagger">
           {shown.map((item, index) => {
             const topic = TOPIC_META[item.topic];
             const type = TYPE_META[item.type];
