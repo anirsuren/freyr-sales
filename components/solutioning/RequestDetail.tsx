@@ -973,6 +973,11 @@ export function RequestDetail({
                 title="What this is for"
                 description="The customer, and the opportunities and contacts this is for."
               />
+              {r.leadRef && <Link href={`/leads?lead=${encodeURIComponent(r.leadRef)}`} className="mt-4 ml-11 inline-flex max-w-[calc(100%-2.75rem)] items-center gap-2 rounded-lg border border-blue-subtle bg-blue-light/40 px-3 py-2 text-[12.5px] font-medium text-blue-primary hover:underline">
+                <Avatar name={r.leadName || r.leadRef} className="h-6 w-6 shrink-0 text-[8px]" />
+                <span className="truncate">From lead {r.leadRef}{r.leadName ? ` · ${r.leadName}` : ""}</span>
+                <ArrowUpRight size={13} className="shrink-0" />
+              </Link>}
               <div className="mt-4 ml-11 grid gap-4 rounded-xl border border-border-light bg-surface/35 p-4 sm:grid-cols-3">
                 <div className="min-w-0">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.07em] text-text-tertiary">Customer</p>

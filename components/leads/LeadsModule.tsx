@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -217,6 +217,26 @@ export function LeadsModule({
   const [confirmDelete, setConfirmDelete] = useState<Lead | null>(null);
   /** Which lead is folded open. Same mechanic as every other list here. */
   const [openRow, setOpenRow] = useState<string | null>(null);
+
+  useEffect(() => {
+    const leadRef = new URLSearchParams(window.location.search).get("lead");
+    const sourceLead = leadRef && initial.leads.find((lead) => lead.ref === leadRef);
+    if (!sourceLead) return;
+    setQuery(sourceLead.ref);
+    setOpenRow(sourceLead.id);
+    let innerFrame = 0;
+    const outerFrame = requestAnimationFrame(() => {
+      innerFrame = requestAnimationFrame(() => {
+        const row = [...document.querySelectorAll("[data-lead-row]")]
+          .find((element) => element.getAttribute("data-lead-row") === sourceLead.id);
+        row?.scrollIntoView({ block: "center" });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outerFrame);
+      cancelAnimationFrame(innerFrame);
+    };
+  }, [initial.leads]);
 
   const leads = state.leads;
   const open = leads.filter(isOpenLead);
@@ -1077,10 +1097,12 @@ export function LeadsModule({
           customers={customers}
           opportunities={[]}
           members={members}
-          prefillCustomerId={null}
+          prefillCustomerId={requestingFor.customerId ?? null}
           prefillOpportunityId={null}
           prefillCompany={requestingFor.company || null}
           prefillLead={requestingFor.ref || null}
+          prefillLeadName={requestingFor.name}
+          prefillLeadInterest={requestingFor.interest || null}
           onClose={() => setRequestingFor(null)}
           onCreate={async (input) => {
             try {

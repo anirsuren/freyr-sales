@@ -1880,6 +1880,8 @@ export function NewRequestDialog({
   prefillOpportunityId,
   prefillCompany,
   prefillLead,
+  prefillLeadName,
+  prefillLeadInterest,
   room,
   chromeless = false,
   onBack,
@@ -1895,6 +1897,10 @@ export function NewRequestDialog({
   prefillCompany: string | null;
   /** LEAD-0001, so the request records where it came from. */
   prefillLead: string | null;
+  /** Person on the lead, shown throughout the request flow. */
+  prefillLeadName?: string | null;
+  /** Existing lead context is shown, but never substitutes for the required brief. */
+  prefillLeadInterest?: string | null;
   /** Which room opened this. In Submissions and Presentations the dialog
    *  makes THE WORK ITSELF, in the room's own words — no kind chooser and
    *  no "request" language (Suren, Aug 27: "I'm creating a new submission.
@@ -1925,8 +1931,8 @@ export function NewRequestDialog({
    *
    * A lead usually has no account yet — that is what makes it a lead — so the
    * company arrives as a NAME rather than an id. If an account of that name
-   * already exists it is selected; if not, the picker stays empty and the lead
-   * is written into the details instead of being silently dropped.
+   * already exists it is selected; otherwise the company name is selected as
+   * a lead-only option, without creating a customer account.
    */
   const sourceOpportunity = prefillOpportunityId
     ? opportunities.find((o) => o.id === prefillOpportunityId)
@@ -1939,6 +1945,8 @@ export function NewRequestDialog({
         company: sourceOpportunity.label.toLowerCase().includes(sourceCompany.toLowerCase()) ? "" : sourceCompany,
         logoName: sourceCompany,
       }
+    : prefillLead
+      ? { label: "For this lead", name: prefillLeadName?.trim() || prefillLead, company: sourceCompany, logoName: "", avatarName: prefillLeadName?.trim() || undefined }
     : prefillCustomerId && sourceCompany
       ? { label: "For this customer", name: sourceCompany, company: "", logoName: sourceCompany }
       : null;
@@ -1947,11 +1955,11 @@ export function NewRequestDialog({
         (c) => c.name.trim().toLowerCase() === sourceCompany.toLowerCase()
       )?.id ?? "")
     : "";
-  // Imported opportunities can name an account without having a Customer record.
-  // Keep that name selectable in this request rather than losing the deal link.
-  const sourceCustomerId = prefillOpportunityId && sourceCompany && !matchedByName &&
+  // Leads and imported opportunities can name a company without a Customer
+  // record. Keep that name selectable without inventing an account.
+  const sourceCustomerId = (prefillOpportunityId || prefillLead) && sourceCompany && !matchedByName &&
     !customers.some((c) => c.id === prefillCustomerId)
-    ? `opportunity-customer:${prefillOpportunityId}`
+    ? `source-company:${prefillOpportunityId || prefillLead}`
     : "";
   const customerOptions = sourceCustomerId
     ? [{ id: sourceCustomerId, name: sourceCompany }, ...customers]
@@ -1972,7 +1980,7 @@ export function NewRequestDialog({
   const [meetingAt, setMeetingAt] = useState("");
   const [attendees, setAttendees] = useState<string[]>([]);
   const leadContext = prefillLead
-    ? `From lead ${prefillLead}${prefillCompany ? ` · ${prefillCompany}` : ""}.`
+    ? `From lead ${prefillLead}${prefillLeadName ? ` · ${prefillLeadName}` : ""}${prefillCompany ? ` · ${prefillCompany}` : ""}.`
     : "";
   const [details, setDetails] = useState("");
   const [saving, setSaving] = useState(false);
@@ -2614,7 +2622,7 @@ export function NewRequestDialog({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="block">
               <span className="text-[12px] font-semibold text-text-primary">
-                Customer <span className="text-error">*</span>
+                {prefillLead ? "Company / customer" : "Customer"} <span className="text-error">*</span>
               </span>
               <div className="mt-1.5">
                 {sourceOpportunity ? (
@@ -2673,6 +2681,7 @@ export function NewRequestDialog({
                 />
                 )}
               </div>
+              {prefillLead && customerId === sourceCustomerId && <p className="mt-1 text-[11px] text-text-secondary">From this lead; no customer account is created.</p>}
             </div>
             <div className="block">
               <span className="text-[12px] font-semibold text-text-primary">
@@ -2695,7 +2704,9 @@ export function NewRequestDialog({
                     customer
                       ? customerOpps.length
                         ? "Pick associated opportunities"
-                        : "No opportunities on this account"
+                        : customerId === sourceCustomerId
+                          ? "No opportunities linked to this company"
+                          : "No opportunities on this account"
                       : "Pick the customer first"
                   }
                   allIcon={ClipboardList}
@@ -2763,10 +2774,17 @@ export function NewRequestDialog({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="block">
               <span className="text-[12px] font-semibold text-text-primary">
-                Customer POC
-                <span className="ml-1 font-normal text-text-tertiary">Optional</span>
+                {prefillLead && customerId === sourceCustomerId && prefillLeadName ? "Lead contact" : "Customer POC"}
+                {!(prefillLead && customerId === sourceCustomerId && prefillLeadName) && <span className="ml-1 font-normal text-text-tertiary">Optional</span>}
               </span>
               <div className="mt-1.5 flex items-center gap-2">
+                {prefillLead && customerId === sourceCustomerId && prefillLeadName ? (
+                  <div className="flex h-10 items-center gap-2 rounded-lg border border-border-light bg-surface px-3 text-[13px] font-medium text-text-primary">
+                    <Avatar name={prefillLeadName} className="h-5 w-5 shrink-0 text-[7px]" />
+                    <span>{prefillLeadName}</span>
+                    <span className="text-[11px] font-normal text-text-tertiary">From this lead</span>
+                  </div>
+                ) : <>
                 <MultiColorSelect
                   values={contactIds}
                   onChange={setContactIds}
@@ -2801,6 +2819,7 @@ export function NewRequestDialog({
                     Clear
                   </button>
                 )}
+                </>}
               </div>
             </div>
             <div className="hidden sm:block" aria-hidden="true" />
@@ -2859,7 +2878,7 @@ export function NewRequestDialog({
               What does the Solutioning team need to know?{" "}
               <span className="text-error">*</span>
             </span>
-            {leadContext && <span className="mt-1 block text-[12px] text-text-secondary">{leadContext} Add the actual scope and expected outcome below.</span>}
+            {leadContext && <span className="mt-1 block text-[12px] text-text-secondary">{prefillLeadInterest ? `The lead asked about: ${prefillLeadInterest.trim()} ` : ""}Add the actual scope and expected outcome below.</span>}
             <textarea
               value={details}
               onChange={(e) => setDetails(e.target.value)}
@@ -3048,12 +3067,16 @@ export function NewRequestDialog({
                         : undefined,
                   title: title.trim(),
                   details: leadContext ? `${leadContext}\n${details.trim()}` : details.trim(),
+                  leadRef: prefillLead || undefined,
+                  leadName: prefillLeadName?.trim() || undefined,
                   customerId: customer.id === sourceCustomerId ? undefined : customer.id,
                   customer: customer.name,
                   opportunityIds: pickedDeals.map((o) => o.id),
                   opportunityLabels: pickedDeals.map((o) => o.label),
                   contactIds: pickedContacts.map((c) => c.id),
-                  contactNames: pickedContacts.map((c) => c.name),
+                  contactNames: prefillLead && customerId === sourceCustomerId && prefillLeadName
+                    ? [prefillLeadName.trim()]
+                    : pickedContacts.map((c) => c.name),
                   neededBy: neededBy || undefined,
                   meetingAt: meetingAt || undefined,
                   attendees: attendees.length ? attendees : undefined,
@@ -3109,7 +3132,7 @@ function FrameOrNot({
   chromeless: boolean;
   onClose: () => void;
   title: string;
-  context?: { label: string; name: string; company: string; logoName: string } | null;
+  context?: { label: string; name: string; company: string; logoName: string; avatarName?: string } | null;
   onBack?: () => void;
   stepBack?: () => void;
   children: React.ReactNode;
@@ -3124,7 +3147,9 @@ function FrameOrNot({
         title={title}
         titleAfter={context ? (
           <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-[12px] font-medium text-blue-primary" title={`${context.label}: ${context.name}${context.company ? ` · ${context.company}` : ""}`}>
-            <CompanyLogo name={context.logoName} className="h-6 w-6 rounded-md text-[8px]" />
+            {context.avatarName
+              ? <Avatar name={context.avatarName} className="h-6 w-6 shrink-0 text-[8px]" />
+              : <CompanyLogo name={context.logoName} className="h-6 w-6 rounded-md text-[8px]" />}
             <span className="shrink-0">{context.label}:</span>
             <span className="truncate font-semibold">{context.name}</span>
             {context.company && <span className="hidden shrink-0 text-text-secondary sm:inline">· {context.company}</span>}

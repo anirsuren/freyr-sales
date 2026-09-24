@@ -254,6 +254,9 @@ export type SolutionRequest = {
   subtype?: string;
   title: string;
   details?: string;
+  /** The lead this request was started from, if any. */
+  leadRef?: string;
+  leadName?: string;
   customerId?: string;
   /** Denormalised so a renamed or deleted account can never blank the row. */
   customer: string;
@@ -571,6 +574,8 @@ function normalizeRequest(v: unknown): SolutionRequest | null {
     subtype: str(r.subtype, 60) || undefined,
     title,
     details: str(r.details, 2000) || undefined,
+    leadRef: str(r.leadRef, 30) || undefined,
+    leadName: str(r.leadName, 120) || undefined,
     customerId: str(r.customerId, 60) || undefined,
     customer: str(r.customer, 120),
     opportunityIds: strList(r.opportunityIds, 60),
@@ -1150,6 +1155,8 @@ export async function createRequest(input: {
   subtype?: string;
   title: string;
   details?: string;
+  leadRef?: string;
+  leadName?: string;
   customerId?: string;
   customer: string;
   opportunityIds?: string[];
@@ -1202,6 +1209,8 @@ async function buildRecord(
       subtype: str(input.subtype, 60) || undefined,
       title,
       details: str(input.details, 2000) || undefined,
+      leadRef: str(input.leadRef, 30) || undefined,
+      leadName: str(input.leadName, 120) || undefined,
       customerId: str(input.customerId, 60) || undefined,
       customer,
       opportunityIds: strList(input.opportunityIds, 60),

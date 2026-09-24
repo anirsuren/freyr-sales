@@ -289,6 +289,8 @@ export async function POST(req: NextRequest) {
         subtype: body.subtype,
         title: String(body.title ?? ""),
         details: linkedRequest ? linkedRequest.details : body.details,
+        leadRef: linkedRequest?.leadRef ?? body.leadRef,
+        leadName: linkedRequest?.leadName ?? body.leadName,
         customerId: body.customerId,
         customer: String(body.customer ?? ""),
         opportunityIds: body.opportunityIds,
