@@ -243,6 +243,7 @@ export function Customer360({
   bandActions,
   bandEmpty = false,
   chromeless = false,
+  unboxed = false,
   forceKey,
   solutioningControls = false,
 }: {
@@ -288,6 +289,8 @@ export function Customer360({
    * in a panel.
    */
   chromeless?: boolean;
+  /** Keep this component's tabs, but let them sit directly on the page. */
+  unboxed?: boolean;
   /** The page is driving which band shows. */
   forceKey?: string;
   /** The opportunity page narrows its linked requests without leaving it. */
@@ -388,7 +391,7 @@ export function Customer360({
   return (
     <section
       className={
-        chromeless
+        chromeless || unboxed
           ? ""
           : "rounded-xl border border-border-light bg-white p-5 shadow-card"
       }
@@ -431,7 +434,7 @@ export function Customer360({
               row, hidden scrollbar, and the action pinned OUTSIDE the
               scroller so it stays put instead of scrolling away. */}
           {chromeless ? null : (
-          <div className="mt-3 flex items-end gap-4 border-b border-border-light">
+          <div className={cn("flex items-end gap-4 border-b border-border-light", !unboxed && "mt-3")}>
           <div className="flex min-w-0 flex-1">
           <div
             role="tablist"
@@ -813,7 +816,7 @@ export function Customer360({
                 })()}
               </div>
             ) : active.count === 0 ? (
-              <p className="mt-1 py-6 text-center text-[12.5px] text-text-secondary">
+              <p className={cn("mt-1 text-[12.5px] text-text-secondary", unboxed ? "py-5" : "py-6 text-center")}>
                 {bandEmpty
                   ? active.empty
                   : `Nothing on ${active.label.toLowerCase()} for ${company} yet.`}

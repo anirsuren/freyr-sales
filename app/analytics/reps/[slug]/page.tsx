@@ -167,7 +167,7 @@ export default async function RepPage({
       (await getCurrentUser()).role
     ).catch(() => []);
     return (
-      <div className="space-y-5">
+      <div className="space-y-4">
         <BackButton fallback="/team" label="Back to team" />
         <Card className="flex flex-wrap items-center gap-4 p-5">
           <Avatar name={member.name} className="h-16 w-16 text-[20px]" />
@@ -242,13 +242,14 @@ export default async function RepPage({
             company={member.name}
             emptyLine={`Nothing across the app carries ${member.name.split(" ")[0]}'s name yet.`}
             bands={person360}
+            unboxed
           />
         )}
-        {myOpen.length === 0 ? (
+        {myOpen.length === 0 && person360.length === 0 ? (
           <p className="text-[12.5px] text-text-tertiary">
             Deals, meetings and activity charts fill in here as {member.name.split(" ")[0]} logs real work.
           </p>
-        ) : (
+        ) : myOpen.length > 0 ? (
           /* A profile opened from the roster has to show the deals behind the
              tile, or the drill-down says less than the row it came from. */
           <Card className="overflow-hidden p-0">
@@ -288,7 +289,7 @@ export default async function RepPage({
               ))}
             </ul>
           </Card>
-        )}
+        ) : null}
       </div>
     );
   }
