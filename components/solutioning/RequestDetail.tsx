@@ -980,7 +980,7 @@ export function RequestDetail({
                 <span className="truncate">From lead {r.leadName || "this lead"}</span>
                 <ArrowUpRight size={13} className="shrink-0" />
               </Link>}
-              <div className="mt-4 ml-11 grid gap-4 rounded-xl border border-border-light bg-surface/35 p-4 sm:grid-cols-3">
+              <div className="mt-4 ml-11 grid gap-x-6 gap-y-5 rounded-xl border border-border-light bg-surface/35 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
                 <div className="min-w-0">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.07em] text-text-tertiary">Customer</p>
                   {r.customer.trim() ? (
@@ -1005,35 +1005,31 @@ export function RequestDetail({
                 <div className="min-w-0">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.07em] text-text-tertiary">Opportunities</p>
                   {r.opportunityLabels.length > 0 ? (
-                  /* THE DEAL IS ONE CLICK AWAY. It was a chip that named the
-                     deal and went nowhere (Anir, Sep 7: "how can I go to the
-                     deal from here? It's associated with it"). Ids and labels
-                     are parallel arrays, so a label without an id stays a
-                     plain chip rather than becoming a broken link. */
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="space-y-2">
                     {r.opportunityLabels.map((label, i) => {
-                      /* Linked only when names and ids line up one to one. */
                       const id =
                         r.opportunityIds?.length === r.opportunityLabels.length ? r.opportunityIds[i] : undefined;
                       const inner = (
                         <>
-                          <ListChecks size={12} strokeWidth={2} />
-                          {label}
-                          {id && <ArrowUpRight size={11} strokeWidth={2.4} className="opacity-70" />}
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-light text-blue-primary">
+                            <ListChecks size={12} strokeWidth={2} />
+                          </span>
+                          <span className="min-w-0 break-words leading-snug group-hover/opportunity:underline">{label}</span>
+                          {id && <ArrowUpRight size={12} className="mt-0.5 shrink-0 text-text-tertiary" />}
                         </>
                       );
                       return id ? (
                         <Link
-                          key={label}
+                          key={`${id}-${label}`}
                           href={`/opportunities/${id}`}
-                          className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[12px] font-medium text-blue-primary transition-colors hover:bg-blue-primary hover:text-white"
+                          className="group/opportunity flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary hover:text-blue-primary"
                         >
                           {inner}
                         </Link>
                       ) : (
                         <span
                           key={label}
-                          className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2.5 py-1 text-[12px] font-medium text-blue-primary"
+                          className="flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary"
                         >
                           {inner}
                         </span>
