@@ -45,6 +45,7 @@ import {
 } from "@/lib/leadsShared";
 import { repSlug } from "@/lib/team";
 import { tint } from "@/lib/tint";
+import { companyDestination } from "@/lib/companyDestination";
 
 const DAY = 86_400_000;
 const WEEK = DAY * 7;
@@ -69,7 +70,7 @@ function percentage(part: number, whole: number) {
   return whole ? Math.round((part / whole) * 100) : 0;
 }
 
-function LeadRowDetails({ lead, columns }: { lead: Lead; columns: number }) {
+function LeadRowDetails({ lead, columns, companyHref }: { lead: Lead; columns: number; companyHref: string }) {
   return (
     <tr className="bg-surface/50">
       <td colSpan={columns} className="px-5 py-4">
@@ -90,7 +91,11 @@ function LeadRowDetails({ lead, columns }: { lead: Lead; columns: number }) {
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Background</p>
-              <p className="mt-1 text-[12.5px] leading-5 text-text-primary">{[lead.title, lead.company, lead.country].filter(Boolean).join(" · ")}</p>
+              <p className="mt-1 text-[12.5px] leading-5 text-text-primary">
+                {lead.title && <>{lead.title} · </>}
+                <Link href={companyHref} className="font-semibold text-blue-primary hover:underline">{lead.company}</Link>
+                {lead.country && <> · {lead.country}</>}
+              </p>
               {lead.note ? <p className="mt-2 whitespace-pre-wrap text-[12px] leading-5 text-text-secondary">{lead.note}</p> : null}
               {lead.disqualifiedReason ? <p className="mt-2 text-[12px] leading-5 text-text-secondary">Reason: {lead.disqualifiedReason}</p> : null}
             </div>
@@ -110,7 +115,11 @@ function LeadRowDetails({ lead, columns }: { lead: Lead; columns: number }) {
   );
 }
 
-export function LeadAnalytics({ leads }: { leads: Lead[] }) {
+export function LeadAnalytics({ leads, customers }: { leads: Lead[]; customers: { id: string; name: string }[] }) {
+  const companyHref = (lead: Lead) => companyDestination(
+    lead.company,
+    customers.find((customer) => customer.id === lead.customerId || customer.name.trim().toLocaleLowerCase() === lead.company.trim().toLocaleLowerCase())?.id
+  );
   const [statusWorkspaceOpen, setStatusWorkspaceOpen] = useState(false);
   const [statusWorkspaceFilter, setStatusWorkspaceFilter] = useState<
     LeadStatus | "all"
@@ -639,18 +648,11 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                             </span>
                           </td>
                           <td>
-                            {lead.customerId ? (
-                              <Link href={`/customers/${lead.customerId}`} className="group/company flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary hover:text-blue-primary">
-                                <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
-                                <span className="min-w-0 truncate group-hover/company:underline">{lead.company}</span>
-                                <ArrowUpRight size={13} className="shrink-0 opacity-0 transition-opacity group-hover/company:opacity-100" aria-hidden="true" />
-                              </Link>
-                            ) : (
-                              <span className="flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary">
-                                <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
-                                <span className="min-w-0 truncate">{lead.company}</span>
-                              </span>
-                            )}
+                            <Link href={companyHref(lead)} className="group/company flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary hover:text-blue-primary">
+                              <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
+                              <span className="min-w-0 truncate group-hover/company:underline">{lead.company}</span>
+                              <ArrowUpRight size={13} className="shrink-0 opacity-0 transition-opacity group-hover/company:opacity-100" aria-hidden="true" />
+                            </Link>
                           </td>
                           <td>
                             <span className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: tint(statusColor, 9), color: statusColor }}>
@@ -687,7 +689,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                             <LocalTime value={lead.updatedAt || lead.createdAt} />
                           </td>
                         </tr>
-                        {expandedLeadId === lead.id && <LeadRowDetails lead={lead} columns={7} />}
+                        {expandedLeadId === lead.id && <LeadRowDetails lead={lead} columns={7} companyHref={companyHref(lead)} />}
                         </Fragment>
                       );
                     })}
@@ -879,21 +881,14 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                         </span>
                       </td>
                       <td>
-                        {lead.customerId ? (
-                          <Link
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            href={`/customers/${lead.customerId}`} className="group/company flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary hover:text-blue-primary">
-                            <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
-                            <span className="min-w-0 truncate group-hover/company:underline">{lead.company}</span>
-                            <ArrowUpRight size={13} className="shrink-0 opacity-0 transition-opacity group-hover/company:opacity-100" aria-hidden="true" />
-                          </Link>
-                        ) : (
-                          <span className="flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary">
-                            <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
-                            <span className="min-w-0 truncate">{lead.company}</span>
-                          </span>
-                        )}
+                        <Link
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          href={companyHref(lead)} className="group/company flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary hover:text-blue-primary">
+                          <CompanyLogo name={lead.company} className="h-7 w-7 shrink-0 text-[8px]" />
+                          <span className="min-w-0 truncate group-hover/company:underline">{lead.company}</span>
+                          <ArrowUpRight size={13} className="shrink-0 opacity-0 transition-opacity group-hover/company:opacity-100" aria-hidden="true" />
+                        </Link>
                       </td>
                       <td>
                         {(() => {
@@ -953,7 +948,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                         <LocalTime value={lead.updatedAt || lead.createdAt} />
                       </td>
                     </tr>
-                    {expandedLeadId === lead.id && <LeadRowDetails lead={lead} columns={8} />}
+                    {expandedLeadId === lead.id && <LeadRowDetails lead={lead} columns={8} companyHref={companyHref(lead)} />}
                     </Fragment>
                   );
                 })}

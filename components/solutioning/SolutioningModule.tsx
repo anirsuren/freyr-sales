@@ -75,6 +75,7 @@ import { KIND_META, KindChip, STATUS_META, StatusPill } from "./bits";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { repSlug } from "@/lib/team";
+import { companyDestination } from "@/lib/companyDestination";
 import { formatFromFilename, type OfferingMaterial } from "@/lib/offeringMaterials";
 
 /**
@@ -1329,9 +1330,9 @@ function RequestRow({
         )}
       </td>
       <td className="px-4 py-3.5">
-        {r.customerId ? (
+        {r.customer.trim() ? (
           <Link
-            href={`/customers/${r.customerId}`}
+            href={companyDestination(r.customer, r.customerId)}
             onClick={(event) => event.stopPropagation()}
             className="group/customer inline-flex min-w-0 items-center gap-1.5"
           >
@@ -1596,8 +1597,8 @@ function RequestPanel({
         <div className="mt-3 grid grid-cols-1 gap-x-5 gap-y-3 rounded-lg border border-border-light bg-surface/45 px-3.5 py-3 sm:grid-cols-3">
           <div className="min-w-0">
             <span className="block text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Customer</span>
-            {r.customerId ? (
-              <Link href={`/customers/${r.customerId}`} className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary hover:text-blue-primary hover:underline">
+            {r.customer.trim() ? (
+              <Link href={companyDestination(r.customer, r.customerId)} className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary hover:text-blue-primary hover:underline">
                 <CompanyLogo name={r.customer} className="h-[18px] w-[18px] shrink-0 text-[6px]" />
                 <span className="truncate">{r.customer}</span>
               </Link>

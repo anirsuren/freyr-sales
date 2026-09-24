@@ -72,6 +72,7 @@ import {
 } from "@/lib/solutioning";
 import { DateText } from "@/components/ui/DateText";
 import { repSlug } from "@/lib/team";
+import { companyDestination } from "@/lib/companyDestination";
 import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 
 /* Priority is the one place a red/amber/green scale IS the meaning — it is a
@@ -982,11 +983,11 @@ export function RequestDetail({
               <div className="mt-4 ml-11 grid gap-4 rounded-xl border border-border-light bg-surface/35 p-4 sm:grid-cols-3">
                 <div className="min-w-0">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.07em] text-text-tertiary">Customer</p>
-                  {r.customerId ? (
+                  {r.customer.trim() ? (
                     <Link
                       target="_blank"
                       rel="noopener noreferrer"
-                      href={`/customers/${r.customerId}`}
+                      href={companyDestination(r.customer, r.customerId)}
                       className="group/customer flex w-fit max-w-full items-center gap-2 text-[13px] font-semibold text-text-primary"
                     >
                       <CompanyLogo name={r.customer} className="h-5 w-5 shrink-0 text-[7px]" />

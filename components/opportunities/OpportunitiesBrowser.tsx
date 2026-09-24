@@ -76,6 +76,7 @@ import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { companyDestination } from "@/lib/companyDestination";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatTile } from "@/components/ui/StatTile";
 import { useStickyValue } from "@/lib/useStickyValue";
@@ -1553,31 +1554,19 @@ export function OpportunitiesBrowser({
                             was a grey subtitle under the deal name, so the one
                             thing you scan a pipeline by could not be scanned. */}
                         <td className="px-4 py-3.5">
-                          {linkedCustomerId ? (
-                            <Link
-                              href={`/customers/${linkedCustomerId}`}
-                              onClick={(event) => event.stopPropagation()}
-                              className="group/customer inline-flex max-w-full min-w-0 items-center gap-2.5"
-                            >
-                              <CompanyLogo
-                                name={o.customer}
-                                className="h-8 w-8 shrink-0 text-[10px]"
-                              />
-                              <span className="min-w-0 truncate text-[13px] font-semibold text-text-primary transition-colors group-hover/customer:text-blue-primary group-hover/customer:underline">
-                                {o.customer}
-                              </span>
-                            </Link>
-                          ) : (
-                            <span className="flex min-w-0 items-center gap-2.5">
+                          <Link
+                            href={companyDestination(o.customer, linkedCustomerId)}
+                            onClick={(event) => event.stopPropagation()}
+                            className="group/customer inline-flex max-w-full min-w-0 items-center gap-2.5"
+                          >
                             <CompanyLogo
                               name={o.customer}
                               className="h-8 w-8 shrink-0 text-[10px]"
                             />
-                            <span className="min-w-0 truncate text-[13px] font-semibold text-text-primary">
+                            <span className="min-w-0 truncate text-[13px] font-semibold text-text-primary transition-colors group-hover/customer:text-blue-primary group-hover/customer:underline">
                               {o.customer}
                             </span>
-                            </span>
-                          )}
+                          </Link>
                         </td>
                         <td className="px-4 py-3.5">
                           <span className="block min-w-0">

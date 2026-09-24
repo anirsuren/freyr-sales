@@ -35,6 +35,7 @@ import type { AccrualPlan } from "@/lib/revenueAccrualsShared";
 import { BAND_ICON_MAP, Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/components/customers/Customer360";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { companyDestination } from "@/lib/companyDestination";
 import { StatTile } from "@/components/ui/StatTile";
 import {
   effectiveRevenueType,
@@ -402,19 +403,15 @@ export function OpportunityDetail({
               {deal.name}
             </h1>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-text-secondary">
-              {customerId ? (
-                <Link
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href={`/customers/${customerId}`}
-                  className="inline-flex items-center gap-1 font-semibold text-text-primary hover:text-blue-primary"
-                >
-                  {deal.customer}
-                  <ArrowUpRight size={12} strokeWidth={2.2} />
-                </Link>
-              ) : (
-                <span className="font-semibold text-text-primary">{deal.customer}</span>
-              )}
+              <Link
+                target="_blank"
+                rel="noopener noreferrer"
+                href={companyDestination(deal.customer, customerId)}
+                className="inline-flex items-center gap-1 font-semibold text-text-primary hover:text-blue-primary hover:underline"
+              >
+                {deal.customer}
+                <ArrowUpRight size={12} strokeWidth={2.2} />
+              </Link>
               <span
                 className="rounded-full px-2 py-0.5 text-[11px] font-bold"
                 style={{

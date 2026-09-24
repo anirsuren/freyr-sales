@@ -104,6 +104,7 @@ import { LeadPersonInsights } from "@/components/leads/LeadPersonInsights";
 import { LeadJourney } from "@/components/leads/LeadJourney";
 import { LeadLinkedInProfile } from "@/components/leads/LeadLinkedInProfile";
 import { repSlug } from "@/lib/team";
+import { companyDestination } from "@/lib/companyDestination";
 
 type CustomerOption = { id: string; name: string };
 
@@ -533,7 +534,7 @@ export function LeadsModule({
         />
       </div>
 
-      <LeadAnalytics leads={leads} />
+      <LeadAnalytics leads={leads} customers={customers} />
 
       {/* The toolbar needs air under the stat tiles (Anir, Aug 26: "the search
           bar is touching the cards"). Every other list page spaces this row;
@@ -752,7 +753,7 @@ export function LeadsModule({
                 const isStale = isOpenLead(lead) && age >= 21;
                 const open = openRow === lead.id;
                 const linkedCustomer = customers.find(
-                  (customer) => customer.name.toLowerCase() === lead.company.trim().toLowerCase()
+                  (customer) => customer.id === lead.customerId || customer.name.trim().toLowerCase() === lead.company.trim().toLowerCase()
                 );
                 return (
                   <Fragment key={lead.id}>
@@ -802,23 +803,14 @@ export function LeadsModule({
                         </span>
                       </td>
                       <td className="px-4 py-2.5">
-                        {linkedCustomer ? (
-                          <Link
-                            href={`/customers/${linkedCustomer.id}`}
-                            onClick={(event) => event.stopPropagation()}
-                            className="group/customer inline-flex max-w-full items-center gap-2 text-[12.5px] text-text-secondary"
-                          >
-                            <CompanyLogo name={lead.company} className="h-6 w-6 shrink-0" />
-                            <span className="truncate transition-colors group-hover/customer:text-blue-primary group-hover/customer:underline">
-                              {lead.company || "—"}
-                            </span>
-                          </Link>
-                        ) : (
-                          <span className="flex items-center gap-2 text-[12.5px] text-text-secondary">
-                            <CompanyLogo name={lead.company} className="h-6 w-6 shrink-0" />
-                            <span className="truncate">{lead.company || "—"}</span>
-                          </span>
-                        )}
+                        <Link
+                          href={companyDestination(lead.company, linkedCustomer?.id)}
+                          onClick={(event) => event.stopPropagation()}
+                          className="group/customer inline-flex max-w-full items-center gap-2 text-[12.5px] text-text-secondary hover:text-blue-primary"
+                        >
+                          <CompanyLogo name={lead.company} className="h-6 w-6 shrink-0" />
+                          <span className="truncate group-hover/customer:underline">{lead.company || "—"}</span>
+                        </Link>
                       </td>
                       <td className="px-4 py-2.5">
                         <span
