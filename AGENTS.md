@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Market Intel source links:** The publisher/source name above each Latest intelligence headline in the Customer and Competitor tables now opens the same article URL as the headline. Names without a valid URL remain plain text. Typecheck, focused lint, diff check, and local Mock customer-table accessibility inspection pass; source and headline links resolve to matching URLs. Local only, not deployed.
+
 - **Sep 24 Market Intel activity mix:** Customer and competitor table rows now stack Posts, News, and Website vertically in one Activity mix column, including pending-row placeholders. The narrower column gives the headline more room. Typecheck, focused lint, diff check, and local Mock customer-table visual inspection pass. Local only, not deployed.
 
 - **Sep 24 compact Intel view switch:** Customer and competitor lists again offer Table and Tile views through an icon-only dropdown on the search/filter row; Table remains their default and each choice is remembered per member and section. Market Intel's Thought Leadership and M&A trackers also offer the same compact dropdown and now have actual table layouts alongside their existing tiles; Market Intel keeps Tile as its default. The misleading Signals count stays absent from company tiles. Typecheck and diff check pass, focused lint has only an existing ColorSelect hook-dependency warning, and all three sections and both Market tracker tables were inspected in local Mock mode. Local only, not deployed.

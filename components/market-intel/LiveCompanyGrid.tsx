@@ -494,6 +494,7 @@ export function LiveCompanyGrid({
 
                 const story = card.stories[0] ?? null;
                 const storyHref = safeHref(story?.url);
+                const storyOutlet = story ? outletName(story.source, story.url) : "";
                 const count = (value: number) => card.countsKnown === false ? "—" : value;
                 return (
                   <div key={card.id} className="group/row relative grid min-h-[118px] items-center gap-5 px-5 py-4 transition-[background-color,box-shadow] duration-200 hover:bg-[rgba(0,113,227,0.025)] hover:shadow-[inset_3px_0_0_var(--blue-primary)]" style={{ gridTemplateColumns: listColumns }}>
@@ -517,7 +518,13 @@ export function LiveCompanyGrid({
                     </div>
                     <div className="min-w-0">
                       {story ? <>
-                        <p className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary">{outletName(story.source, story.url)}</p>
+                        {storyHref ? (
+                          <a href={storyHref} target="_blank" rel="noreferrer" aria-label={`Open ${storyOutlet} source`} className="mb-1 inline-block text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary transition-colors hover:text-blue-primary hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+                            {storyOutlet}
+                          </a>
+                        ) : (
+                          <p className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary">{storyOutlet}</p>
+                        )}
                         {storyHref ? <a href={storyHref} target="_blank" rel="noreferrer" className="group/story block overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary transition-colors hover:text-blue-primary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}<ArrowUpRight size={12} className="ml-1 inline-block align-text-top opacity-0 transition-opacity group-hover/story:opacity-100" /></a> : <p className="overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</p>}
                       </> : <p className="text-[12px] leading-relaxed text-text-tertiary">No recent headline in this window. Activity tracking is still active.</p>}
                     </div>
