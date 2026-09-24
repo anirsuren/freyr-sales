@@ -83,6 +83,7 @@ function LeadRowDetails({ lead, columns, companyHref }: { lead: Lead; columns: n
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Contact</p>
               <div className="mt-1 flex flex-col gap-1 text-[12.5px]">
+                {lead.name ? <Link href={lead.contactId ? `/contacts/${lead.contactId}` : `/leads/${lead.id}/contact`} className="font-semibold text-blue-primary hover:underline">Open {lead.name}&apos;s contact record</Link> : null}
                 {lead.email ? <a href={`mailto:${lead.email}`} className="text-blue-primary hover:underline">{lead.email}</a> : null}
                 {lead.phone ? <a href={`tel:${lead.phone}`} className="text-blue-primary hover:underline">{lead.phone}</a> : null}
                 {lead.linkedinUrl ? <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-primary hover:underline">LinkedIn profile ↗</a> : null}

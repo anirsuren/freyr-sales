@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
-import { getDataMode } from "@/lib/dataMode";
 import {
   addOpportunity,
   commitOpportunitiesChange,
@@ -267,6 +266,15 @@ export async function POST(req: NextRequest) {
      turn (settleMetGoals reads the deal it just wrote). */
   return commitOpportunitiesChange(async () => {
   try {
+    if (op === "add-shell") {
+      const refusal = await moduleCreateRefusal("/opportunities");
+      if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      const draft = body(raw);
+      if (!draft.name?.trim() || !draft.customer?.trim()) return NextResponse.json({ error: "Give the deal a name and customer." }, { status: 400 });
+      const account = await ensureCustomerAccount(draft.customer, draft.customerId, me.name);
+      const created = await addOpportunity({ name: draft.name, customer: account.company_name, customerId: account.id, owner: me.name });
+      return NextResponse.json({ ok: true, opportunity: created });
+    }
     if (op === "add") {
       /* MAKING A NEW ONE IS THE OWNER'S RIGHT, not the member's (Suren, Aug 29:
          "owner can create, member can edit"). The gate at the top of this

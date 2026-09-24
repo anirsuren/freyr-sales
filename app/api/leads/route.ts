@@ -11,6 +11,7 @@ import {
 import { scrapeLeadLinkedInPosts, scrapeLeadLinkedInProfile } from "@/lib/apify";
 import { leadLinkedInUrl, normalizeLeadLinkedInProfile } from "@/lib/leadLinkedIn";
 import { ensureCustomerAccount } from "@/lib/ensureCustomerAccount";
+import { ensureLeadContact } from "@/lib/ensureLeadContact";
 import {
   canOpenModule,
   moduleCreateRefusal,
@@ -96,7 +97,8 @@ export async function POST(req: NextRequest) {
       const input = body.lead ?? {};
       const company = String(input.company ?? "").trim();
       const account = company ? await ensureCustomerAccount(company, input.customerId, me.name) : null;
-      const lead = await saveLead({ ...input, ...(account ? { company: account.company_name, customerId: account.id } : {}) }, me.name);
+      const contact = account ? await ensureLeadContact(account.id, input) : null;
+      const lead = await saveLead({ ...input, ...(account ? { company: account.company_name, customerId: account.id, contactId: contact?.id } : {}) }, me.name);
       return NextResponse.json({ ok: true, lead, state: await readLeads() });
     }
     if (op === "enrich-linkedin") {

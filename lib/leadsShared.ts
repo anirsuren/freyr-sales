@@ -81,9 +81,10 @@ export type Lead = {
   /** The person who came in. */
   name: string;
   company: string;
-  /** Set once the company is matched to a real account. A lead does not need
-   *  one — most arrive before anybody has created the customer. */
+  /** New leads link a Customer; older imported leads may still lack this ID. */
   customerId?: string;
+  /** The person, saved as a real Contact on the linked account. */
+  contactId?: string;
   title?: string;
   email?: string;
   phone?: string;

@@ -1882,6 +1882,7 @@ export function NewRequestDialog({
   prefillCompany,
   prefillLead,
   prefillLeadName,
+  prefillContactId,
   prefillLeadInterest,
   room,
   chromeless = false,
@@ -1900,6 +1901,7 @@ export function NewRequestDialog({
   prefillLead: string | null;
   /** Person on the lead, shown throughout the request flow. */
   prefillLeadName?: string | null;
+  prefillContactId?: string | null;
   /** Existing lead context is shown, but never substitutes for the required brief. */
   prefillLeadInterest?: string | null;
   /** Which room opened this. In Submissions and Presentations the dialog
@@ -1961,8 +1963,9 @@ export function NewRequestDialog({
     !customers.some((c) => c.id === prefillCustomerId)
     ? `source-company:${prefillOpportunityId || prefillLead}`
     : "";
+  const [resolvedSourceAccount, setResolvedSourceAccount] = useState<CustomerOption | null>(null);
   const customerOptions = sourceCustomerId
-    ? [{ id: sourceCustomerId, name: sourceCompany }, ...customers]
+    ? [{ id: sourceCustomerId, name: sourceCompany }, ...(resolvedSourceAccount ? [resolvedSourceAccount] : []), ...customers]
     : customers;
   const [customerId, setCustomerId] = useState(
     (prefillCustomerId && customers.some((c) => c.id === prefillCustomerId)
@@ -1972,7 +1975,7 @@ export function NewRequestDialog({
   const [oppIds, setOppIds] = useState<string[]>(
     prefillOpportunityId ? [prefillOpportunityId] : []
   );
-  const [contactIds, setContactIds] = useState<string[]>([]);
+  const [contactIds, setContactIds] = useState<string[]>(prefillContactId ? [prefillContactId] : []);
   const [contacts, setContacts] = useState<
     { id: string; name: string; title: string | null }[]
   >([]);
@@ -2086,9 +2089,9 @@ export function NewRequestDialog({
   /* Contacts belong to the chosen account, so they load when it is chosen —
      "leads new list is not required" (Suren): these ARE the leads. */
   useEffect(() => {
-    setContactIds([]);
+    setContactIds(prefillContactId && (customerId === prefillCustomerId || customerId === matchedByName) ? [prefillContactId] : []);
     setContacts([]);
-    if (!customerId || customerId === sourceCustomerId) return;
+    if (!customerId || customerId === sourceCustomerId || customerId === resolvedSourceAccount?.id) return;
     let cancelled = false;
     fetch(`/api/solutioning?contactsFor=${encodeURIComponent(customerId)}`)
       .then((r) => r.json())
@@ -2099,7 +2102,7 @@ export function NewRequestDialog({
     return () => {
       cancelled = true;
     };
-  }, [customerId, sourceCustomerId]);
+  }, [customerId, sourceCustomerId, resolvedSourceAccount?.id, prefillContactId, prefillCustomerId, matchedByName]);
 
   const customerOpps = [...opportunities, ...newOpps].filter(
     (o) =>
@@ -2113,6 +2116,19 @@ export function NewRequestDialog({
     setSubBusy(true);
     setSubError(null);
     try {
+      let realCustomerId = customerId;
+      if (customerId === sourceCustomerId) {
+        const resolved = await fetch("/api/companies/resolve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: customer.name }),
+        });
+        const result = await resolved.json().catch(() => ({}));
+        if (!resolved.ok || !result.id) throw new Error(result.error || "Could not create the customer account.");
+        realCustomerId = result.id;
+        setResolvedSourceAccount({ id: realCustomerId, name: customer.name });
+        setCustomerId(realCustomerId);
+      }
       if (sub === "opportunity") {
         const res = await fetch("/api/opportunities", {
           method: "POST",
@@ -2121,7 +2137,7 @@ export function NewRequestDialog({
             op: "add",
             name: subName.trim(),
             customer: customer.name,
-            ...(customerId ? { customerId } : {}),
+            customerId: realCustomerId,
             /* `estimatedTcv` is the mandatory money field, not the legacy
                `value` column this used to send — the route validates the
                former and never saw the latter. */
@@ -2147,13 +2163,13 @@ export function NewRequestDialog({
             id: made.id,
             label: made.name || subName.trim(),
             customer: customer.name,
-            customerId: customerId || null,
+            customerId: realCustomerId,
           },
         ]);
         setOppIds((cur) => [...cur, made.id]);
       } else {
         const res = await fetch(
-          `/api/customers/${encodeURIComponent(customerId)}/contacts`,
+          `/api/customers/${encodeURIComponent(realCustomerId)}/contacts`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -2184,8 +2200,8 @@ export function NewRequestDialog({
       setSubName("");
       setSubExtra("");
       setSub(null);
-    } catch {
-      setSubError("That did not save.");
+    } catch (error) {
+      setSubError(error instanceof Error ? error.message : "That did not save.");
       setSubBusy(false);
     }
   }
@@ -2670,7 +2686,7 @@ export function NewRequestDialog({
                         /* A picker names records, and the name is often not
                            enough to be sure (Anir, Sep 7). The arrow opens
                            the account in a new tab; the form stays put. */
-                        href: c.id === sourceCustomerId ? undefined : `/customers/${c.id}`,
+                        href: c.id === sourceCustomerId ? `/companies/${encodeURIComponent(c.name)}` : `/customers/${c.id}`,
                         description: deals
                           ? `${deals} ${deals === 1 ? "deal" : "deals"}`
                           : "no deals",
@@ -2681,7 +2697,7 @@ export function NewRequestDialog({
                 />
                 )}
               </div>
-              {prefillLead && customerId === sourceCustomerId && <p className="mt-1 text-[11px] text-text-secondary">From this lead; no customer account is created.</p>}
+              {prefillLead && customerId === sourceCustomerId && <p className="mt-1 text-[11px] text-text-secondary">Saving this request will link a customer account and contact for this lead.</p>}
             </div>
             <div className="block">
               <span className="text-[12px] font-semibold text-text-primary">

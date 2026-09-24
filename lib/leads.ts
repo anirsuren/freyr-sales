@@ -1,5 +1,6 @@
 import "server-only";
 import { leadLinkedInUrl, normalizeLeadLinkedInProfile } from "./leadLinkedIn";
+import { ensureLeadContact } from "./ensureLeadContact";
 
 import { getDataMode } from "./dataMode";
 import { mockFillLeads, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
@@ -75,6 +76,7 @@ function normalizeLead(v: unknown): Lead | null {
     name,
     company,
     customerId: str(r.customerId, 60) || undefined,
+    contactId: str(r.contactId, 60) || undefined,
     title: str(r.title, 120) || undefined,
     email: str(r.email, 200) || undefined,
     phone: str(r.phone, 60) || undefined,
@@ -285,6 +287,7 @@ export type LeadInput = {
   name?: string;
   company?: string;
   customerId?: string;
+  contactId?: string;
   title?: string;
   email?: string;
   phone?: string;
@@ -340,9 +343,13 @@ export async function linkLeadsToCustomer(companyName: string, customerId: strin
     const state = await readRow();
     let changed = false;
     for (const lead of state.leads) {
-      if (lead.company.trim().toLocaleLowerCase() === companyName.trim().toLocaleLowerCase() && lead.customerId !== customerId) {
-        lead.customerId = customerId;
-        changed = true;
+      if (lead.company.trim().toLocaleLowerCase() === companyName.trim().toLocaleLowerCase()) {
+        const contact = await ensureLeadContact(customerId, lead);
+        if (lead.customerId !== customerId || lead.contactId !== contact?.id) {
+          lead.customerId = customerId;
+          lead.contactId = contact?.id;
+          changed = true;
+        }
       }
     }
     if (changed) await writeRow(state);

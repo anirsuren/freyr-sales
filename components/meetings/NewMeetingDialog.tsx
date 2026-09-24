@@ -133,6 +133,7 @@ export function NewMeetingDialog({
     { id: string; label: string; customer: string }[]
   >([]);
   const [addingDeal, setAddingDeal] = useState(false);
+  const [createdCustomer, setCreatedCustomer] = useState<CustomerOption | null>(null);
 
   /**
    * ADD THE PERSON WITHOUT LEAVING (Anir, Aug 31: "instead of making the user
@@ -150,10 +151,8 @@ export function NewMeetingDialog({
    * happens on a new deal, so being sent to the Opportunities page to make one
    * — and losing this half-filled form — is the wrong order of work.
    *
-   * A deal needs an estimated TCV, a confidence level and a signing date
-   * (Suren, Sep 1), none of which belong in a meeting form. So this creates
-   * the SHELL — name and account — and the deal page collects the rest when
-   * somebody opens it. The toast says so rather than implying it is finished.
+   * This is an explicitly incomplete shell: the deal page collects value,
+   * confidence, and signing date after the meeting is saved.
    */
   async function addDeal(name: string) {
     if (!customerId || addingDeal) return;
@@ -163,12 +162,10 @@ export function NewMeetingDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          op: "add",
+          op: "add-shell",
           name: name.trim(),
-          customer: customers.find((c) => c.id === customerId)?.name ?? "",
-          customerId,
-          estimatedTcv: 0,
-          lines: [{ confidence: 0, estSignDate: "" }],
+          customer: customer?.name ?? "",
+          ...(customerId.startsWith(NAME_ID) ? {} : { customerId }),
         }),
       });
       const data = await res.json().catch(() => null);
@@ -178,7 +175,11 @@ export function NewMeetingDialog({
       }
       const o = data.opportunity as { id: string; name?: string };
       const label = o.name || name.trim();
-      const customerName = customers.find((c) => c.id === customerId)?.name ?? "";
+      const customerName = customer?.name ?? "";
+      if (data.opportunity.customerId && customerId.startsWith(NAME_ID)) {
+        setCreatedCustomer({ id: data.opportunity.customerId, name: customerName });
+        setCustomerId(data.opportunity.customerId);
+      }
       setAddedDeals((cur) => [...cur, { id: o.id, label, customer: customerName }]);
       setOpportunityIds((cur) => [...cur, o.id]);
       toast(`${label} started. Add its value and dates on the deal itself.`);
@@ -193,7 +194,20 @@ export function NewMeetingDialog({
     if (!customerId || addingContact) return;
     setAddingContact(true);
     try {
-      const res = await fetch(`/api/customers/${customerId}/contacts`, {
+      let realCustomerId = customerId;
+      if (customerId.startsWith(NAME_ID)) {
+        const resolved = await fetch("/api/companies/resolve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: customer?.name ?? customerId.slice(NAME_ID.length) }),
+        });
+        const result = await resolved.json().catch(() => ({}));
+        if (!resolved.ok || !result.id) throw new Error(result.error || "Could not create the customer account.");
+        realCustomerId = result.id;
+        setCreatedCustomer({ id: realCustomerId, name: customer?.name ?? customerId.slice(NAME_ID.length) });
+        setCustomerId(realCustomerId);
+      }
+      const res = await fetch(`/api/customers/${realCustomerId}/contacts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ full_name: name }),
@@ -253,12 +267,13 @@ export function NewMeetingDialog({
    * listed rows from the customers table.
    *
    * A deal naming its customer IS the account for this purpose. It is offered
-   * under a `name:` id, and the save sends the name rather than a made-up
-   * customer id, so nothing here invents a customer record.
+   * under a `name:` id until a contact, deal, or meeting save creates the
+   * linked Customer record.
    */
   const NAME_ID = "name:";
   const pickableCustomers = useMemo(() => {
     const candidates = [...customers];
+    if (createdCustomer) candidates.push(createdCustomer);
     const prefill = prefillCustomerName?.trim();
     if (
       prefill &&
@@ -287,7 +302,7 @@ export function NewMeetingDialog({
       }
     }
     return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [contacts, customerId, customers, opportunities, prefillCustomerName]);
+  }, [contacts, createdCustomer, customerId, customers, opportunities, prefillCustomerName]);
 
   const customer = pickableCustomers.find((c) => c.id === customerId);
   const customerAliasIds = useMemo(() => {

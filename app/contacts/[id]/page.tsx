@@ -22,6 +22,7 @@ import {
   Briefcase,
   UserRound,
   Star,
+  Pencil,
   type LucideIcon,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
@@ -223,6 +224,14 @@ export default async function ContactDetailPage({
             idiom (Suren, Jul 27: "just actually put the fucking email address
             and the call number… you have it correctly on the teams page"). */}
         <div className="flex flex-wrap justify-end gap-2 shrink-0">
+          {customer && (
+            <Link
+              href={`/customers/${customer.id}?tab=contacts&editContact=${encodeURIComponent(contact.id)}`}
+              className="inline-flex items-center gap-1.5 text-[12.5px] font-medium px-2.5 py-1.5 rounded-lg border border-border-light bg-white text-text-secondary hover:text-blue-primary hover:border-blue-subtle transition-colors"
+            >
+              <Pencil size={13} strokeWidth={2} /> Edit details
+            </Link>
+          )}
           {contact.phone && (
             <a
               href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`}

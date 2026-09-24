@@ -785,9 +785,7 @@ export function LeadsModule({
                             className="h-7 w-7 shrink-0 text-[9px]"
                           />
                           <span className="min-w-0">
-                            <span className="block truncate text-[13px] font-semibold text-text-primary">
-                              {lead.name || "—"}
-                            </span>
+                            {lead.name ? <Link href={lead.contactId ? `/contacts/${lead.contactId}` : `/leads/${lead.id}/contact`} onClick={(event) => event.stopPropagation()} className="block truncate text-[13px] font-semibold text-text-primary hover:text-blue-primary hover:underline">{lead.name}</Link> : <span className="block truncate text-[13px] font-semibold text-text-primary">—</span>}
                             {lead.title && (
                               <span className="block truncate text-[11.5px] text-text-secondary">
                                 {lead.title}
@@ -1026,6 +1024,15 @@ export function LeadsModule({
                                       </Link>
                                     </span>
                                   )}
+                                  {lead.name && (
+                                    <span className="flex min-w-0 flex-col">
+                                      <span className="flex h-4 shrink-0 items-center whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary">Contact record</span>
+                                      <Link href={lead.contactId ? `/contacts/${lead.contactId}` : `/leads/${lead.id}/contact`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-h-5 min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                        <Avatar name={lead.name} className="h-5 w-5 shrink-0 text-[7px]" />
+                                        <span className="truncate">Open {lead.name}</span>
+                                      </Link>
+                                    </span>
+                                  )}
                                   <span className="flex min-w-0 flex-col">
                                     <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><UserRound size={12} strokeWidth={2} aria-hidden="true" /> Owner</span>
                                     {lead.owner ? (
@@ -1096,6 +1103,7 @@ export function LeadsModule({
           prefillCompany={requestingFor.company || null}
           prefillLead={requestingFor.ref || null}
           prefillLeadName={requestingFor.name}
+          prefillContactId={requestingFor.contactId ?? null}
           prefillLeadInterest={requestingFor.interest || null}
           onClose={() => setRequestingFor(null)}
           onCreate={async (input) => {

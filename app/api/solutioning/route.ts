@@ -4,6 +4,8 @@ import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDb } from "@/lib/db";
 import { ensureCustomerAccount } from "@/lib/ensureCustomerAccount";
+import { ensureLeadContact } from "@/lib/ensureLeadContact";
+import { linkLeadsToCustomer, readLeads } from "@/lib/leads";
 import {
   addDocument,
   assignRequestOwner,
@@ -282,6 +284,12 @@ export async function POST(req: NextRequest) {
       const account = companyName
         ? await ensureCustomerAccount(companyName, body.customerId ?? linkedRequest?.customerId, me.name)
         : null;
+      const leadRef = String(linkedRequest?.leadRef ?? body.leadRef ?? "").trim();
+      const sourceLead = leadRef ? (await readLeads()).leads.find((lead) => lead.ref === leadRef && lead.company.trim().toLocaleLowerCase() === companyName.toLocaleLowerCase()) : null;
+      const leadContact = account && sourceLead ? await ensureLeadContact(account.id, sourceLead) : null;
+      if (account && sourceLead && !(await moduleWriteRefusal("/leads"))) await linkLeadsToCustomer(companyName, account.id);
+      const requestedContactIds = Array.isArray(body.contactIds) ? body.contactIds.filter((id: unknown): id is string => typeof id === "string") : [];
+      const requestedContactNames = Array.isArray(body.contactNames) ? body.contactNames.filter((name: unknown): name is string => typeof name === "string") : [];
       const request = await createRequest({
         type,
         priority: (["High", "Medium", "Low"] as const).find(
@@ -300,8 +308,8 @@ export async function POST(req: NextRequest) {
         customer: account?.company_name ?? "",
         opportunityIds: body.opportunityIds,
         opportunityLabels: body.opportunityLabels,
-        contactIds: body.contactIds,
-        contactNames: body.contactNames,
+        contactIds: leadContact && !requestedContactIds.includes(leadContact.id) ? [leadContact.id, ...requestedContactIds] : requestedContactIds,
+        contactNames: leadContact && !requestedContactIds.includes(leadContact.id) ? [leadContact.full_name, ...requestedContactNames.filter((name: string) => name !== leadContact.full_name)] : requestedContactNames,
         neededBy: linkedRequest ? linkedRequest.neededBy : body.neededBy,
         meetingAt: body.meetingAt,
         attendees: body.attendees,

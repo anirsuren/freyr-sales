@@ -8,7 +8,7 @@ import { formatPhoneNumber, phoneProblem, nationalDigitBudget, phoneDigits } fro
 import { splitPhone, joinPhone, countryOptions, dialOptions, dialOptionValue, dialTriggerLabel, dialCodeFromOption, countryFromDialOption, findCountry } from "@/lib/countries";
 import { contactPhoneDisplay } from "@/lib/contactPhoneDisplay";
 import { formatMoney as fmtMoney } from "@/lib/pipeline";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { DateEcho } from "@/components/ui/DateEcho";
 import { useRouter } from "next/navigation";
@@ -583,8 +583,9 @@ export function CustomerTabs({
   const [keyOverrides, setKeyOverrides] = useState<Record<string, boolean>>({});
   const [contactOverrides, setContactOverrides] = useState<Record<string, Contact>>({});
   const [keySaving, setKeySaving] = useState<string | null>(null);
-  const displayedContacts = contacts.map((contact) => contactOverrides[contact.id] ?? contact);
-  const isKeyContact = (contact: Contact, index: number) => keyOverrides[contact.id] ?? contact.is_key ?? index < 4;
+  const displayedContacts = useMemo(() => contacts.map((contact) => contactOverrides[contact.id] ?? contact), [contacts, contactOverrides]);
+  const contactDeepLinkHandled = useRef(false);
+  const isKeyContact = useCallback((contact: Contact, index: number) => keyOverrides[contact.id] ?? contact.is_key ?? index < 4, [keyOverrides]);
   const keyContacts = displayedContacts.filter((contact, index) => isKeyContact(contact, index));
   const filteredContacts = displayedContacts
     .map((contact, index) => ({ contact, index }))
@@ -920,7 +921,7 @@ export function CustomerTabs({
     });
   }
 
-  function editContact(contact: Contact) {
+  const editContact = useCallback((contact: Contact) => {
     setEditingContact(contact);
     setContactForm({
       fullName: contact.full_name,
@@ -938,7 +939,17 @@ export function CustomerTabs({
       linkedinUrl: contact.linkedin_url ?? "",
     });
     setContactModalOpen(true);
-  }
+  }, [displayedContacts, isKeyContact]);
+  useEffect(() => {
+    if (contactDeepLinkHandled.current) return;
+    const contactId = new URLSearchParams(window.location.search).get("editContact");
+    if (!contactId) return;
+    const linked = displayedContacts.find((contact) => contact.id === contactId);
+    if (!linked) return;
+    contactDeepLinkHandled.current = true;
+    setTab("contacts");
+    editContact(linked);
+  }, [displayedContacts, editContact]);
 
   async function toggleKeyContact(contact: Contact, index: number) {
     if (keySaving) return;
