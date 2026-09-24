@@ -743,11 +743,11 @@ export function LiveCompanyBriefing({
       </div>
 
       {briefing.tldr && (
-        <div className="rise-in mt-4 rounded-xl border border-blue-subtle bg-[rgba(0,113,227,0.04)] p-4">
+        <div className="rise-in mt-4">
           <p className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[color:var(--ink-bright-blue)]">
             <Sparkles size={11} strokeWidth={2.2} /> The rundown
           </p>
-          <p className="mt-1 text-[13.5px] leading-relaxed text-text-primary">
+          <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
             {briefing.tldr}
           </p>
         </div>

@@ -9,9 +9,19 @@
 const FILLER =
   /^(no (recent |new |current |relevant )?(news|items|posts|updates|information|data|activity)|unable to|there (is|are|was|were) no|not enough|insufficient|nothing (new|recent|to report))/i;
 
-export function usableRundown(text: string | null | undefined): string | null {
+export function usableRundown(text: string | null | undefined, maxLength = 360): string | null {
   const line = String(text ?? "").trim();
   if (!line) return null;
   if (FILLER.test(line) || /\bunable to provide\b/i.test(line)) return null;
+  // Older digests were cut at a word boundary and ended in an ellipsis. Keep
+  // only finished sentences rather than showing a statement that stops midway.
+  const cutOff = /(?:\.{3}|…)\s*$/.test(line) || line.length > maxLength;
+  if (cutOff) {
+    const withoutEllipsis = line.replace(/(?:\.{3}|…)\s*$/, "").trimEnd();
+    const limit = Math.min(withoutEllipsis.length, maxLength);
+    const complete = [...withoutEllipsis.slice(0, limit).matchAll(/[.!?](?=\s|$)/g)];
+    const last = complete.at(-1);
+    return last?.index === undefined ? null : withoutEllipsis.slice(0, last.index + 1).trim();
+  }
   return line;
 }

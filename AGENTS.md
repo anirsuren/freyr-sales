@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Complete Market Intel rundowns:** Company briefings now show the rundown directly on the white page in smaller type. Legacy or overlong rundowns that ended with an ellipsis display only complete sentences; new digests no longer append an ellipsis at a word limit. Missing-rundown backfill recognizes cutoffs with no complete sentence as missing. Typecheck and targeted rundown tests pass. Local only, not deployed.
+
 - **Sep 24 Market Intel company lists:** Customer and competitor Intel now use the list view only. The main and Manage lists show Division in its own column; the main list no longer has Intelligence Pulse, and Tracking appears only for admins. Typecheck, focused lint, and local Mock customer, competitor, and Manage-list inspection pass. Local only, not deployed.
 
 - **Sep 24 Manage companies tab label:** The first Manage customers/competitors scope chip reads “All” instead of “Everything.” Typecheck, focused lint, and diff check pass. Local only, not deployed.

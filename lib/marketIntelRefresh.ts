@@ -2014,7 +2014,7 @@ export async function runMissingRundowns(options?: {
   for (const entry of Object.values(feed.companies) as FeedCompany[]) {
     if (checked >= cap) break;
     if (onlyIds && !onlyIds.has(entry.id)) continue;
-    if (entry.tldr) continue;
+    if (usableRundown(entry.tldr)) continue;
     if ((entry.news?.length ?? 0) + (entry.posts?.length ?? 0) + (entry.site?.length ?? 0) === 0) continue;
     checked += 1;
     if (!entry.group) entry.group = registry.competitorIds.has(entry.id) ? "competitor" : "customer";
