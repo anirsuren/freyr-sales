@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlarmClock,
@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   Building2,
   CalendarDays,
+  ChevronDown,
   ChevronRight,
   CircleEllipsis,
   Clock3,
@@ -68,6 +69,47 @@ function percentage(part: number, whole: number) {
   return whole ? Math.round((part / whole) * 100) : 0;
 }
 
+function LeadRowDetails({ lead, columns }: { lead: Lead; columns: number }) {
+  return (
+    <tr className="bg-surface/50">
+      <td colSpan={columns} className="px-5 py-4">
+        <div className="rounded-xl border border-border-light bg-white p-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">What they asked about</p>
+              <p className="mt-1 whitespace-pre-wrap text-[12.5px] leading-5 text-text-primary">{lead.interest || "No request recorded"}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Contact</p>
+              <div className="mt-1 flex flex-col gap-1 text-[12.5px]">
+                {lead.email ? <a href={`mailto:${lead.email}`} className="text-blue-primary hover:underline">{lead.email}</a> : null}
+                {lead.phone ? <a href={`tel:${lead.phone}`} className="text-blue-primary hover:underline">{lead.phone}</a> : null}
+                {lead.linkedinUrl ? <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-primary hover:underline">LinkedIn profile ↗</a> : null}
+                {!lead.email && !lead.phone && !lead.linkedinUrl ? <span className="text-text-tertiary">No contact details</span> : null}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Background</p>
+              <p className="mt-1 text-[12.5px] leading-5 text-text-primary">{[lead.title, lead.company, lead.country].filter(Boolean).join(" · ")}</p>
+              {lead.note ? <p className="mt-2 whitespace-pre-wrap text-[12px] leading-5 text-text-secondary">{lead.note}</p> : null}
+              {lead.disqualifiedReason ? <p className="mt-2 text-[12px] leading-5 text-text-secondary">Reason: {lead.disqualifiedReason}</p> : null}
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Timeline</p>
+              <p className="mt-1 text-[12px] text-text-secondary">Came in <LocalTime value={lead.createdAt} /></p>
+              <p className="mt-1 text-[12px] text-text-secondary">Last moved <LocalTime value={lead.updatedAt || lead.createdAt} /></p>
+              <p className="mt-1 text-[12px] text-text-secondary">Owner: {lead.owner || "Unassigned"}</p>
+            </div>
+          </div>
+          <Link href={`/leads?lead=${encodeURIComponent(lead.ref)}`} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline">
+            Open full lead <ArrowUpRight size={13} aria-hidden="true" />
+          </Link>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export function LeadAnalytics({ leads }: { leads: Lead[] }) {
   const [statusWorkspaceOpen, setStatusWorkspaceOpen] = useState(false);
   const [statusWorkspaceFilter, setStatusWorkspaceFilter] = useState<
@@ -90,6 +132,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
     | "owner"
   >("newest");
   const [sourceQuery, setSourceQuery] = useState("");
+  const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
   const data = useMemo(() => {
     const dated = leads
       .map((lead) => ({ lead, time: Date.parse(lead.createdAt) }))
@@ -582,13 +625,16 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                       const SourceIcon = LEAD_SOURCE_ICONS[lead.source];
                       const statusColor = leadStatusColor(lead.status);
                       return (
-                        <tr key={lead.id} className="align-top transition-colors hover:bg-surface/60 [&>td]:px-4 [&>td]:py-3">
+                        <Fragment key={lead.id}>
+                        <tr onClick={(event) => { if (!(event.target as HTMLElement).closest("a, button")) setExpandedLeadId((id) => id === lead.id ? null : lead.id); }} className="cursor-pointer align-top transition-colors hover:bg-surface/60 [&>td]:px-4 [&>td]:py-3">
                           <td>
                             <span className="flex min-w-0 items-start gap-2.5">
                               <Avatar name={lead.name} initialsOnly className="h-8 w-8 shrink-0 text-[9px]" />
                               <span className="min-w-0">
-                                <span className="block truncate text-[12.5px] font-semibold text-text-primary">{lead.name}</span>
-                                <span className="mt-0.5 block truncate text-[11px] text-text-tertiary">{lead.title || lead.ref}</span>
+                                <button type="button" aria-expanded={expandedLeadId === lead.id} onClick={() => setExpandedLeadId((id) => id === lead.id ? null : lead.id)} className="flex max-w-full items-center gap-1 text-left text-[12.5px] font-semibold text-text-primary hover:text-blue-primary">
+                                  <span className="truncate">{lead.name}</span><ChevronDown size={13} className={`shrink-0 transition-transform ${expandedLeadId === lead.id ? "rotate-180" : ""}`} aria-hidden="true" />
+                                </button>
+                                {lead.title ? <span className="mt-0.5 block truncate text-[11px] text-text-tertiary">{lead.title}</span> : null}
                               </span>
                             </span>
                           </td>
@@ -641,6 +687,8 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                             <LocalTime value={lead.updatedAt || lead.createdAt} />
                           </td>
                         </tr>
+                        {expandedLeadId === lead.id && <LeadRowDetails lead={lead} columns={7} />}
+                        </Fragment>
                       );
                     })}
                   </tbody>
@@ -816,13 +864,16 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 {matchingSourceLeads.map((lead) => {
                   const statusColor = leadStatusColor(lead.status);
                   return (
-                    <tr key={lead.id} className="align-top transition-colors hover:bg-surface/60 [&>td]:px-4 [&>td]:py-3">
+                    <Fragment key={lead.id}>
+                    <tr onClick={(event) => { if (!(event.target as HTMLElement).closest("a, button")) setExpandedLeadId((id) => id === lead.id ? null : lead.id); }} className="cursor-pointer align-top transition-colors hover:bg-surface/60 [&>td]:px-4 [&>td]:py-3">
                       <td>
                         <span className="flex min-w-0 items-start gap-2.5">
                           <Avatar name={lead.name} initialsOnly className="h-8 w-8 shrink-0 text-[9px]" />
                           <span className="min-w-0">
-                            <span className="block truncate text-[12.5px] font-semibold text-text-primary">{lead.name}</span>
-                            <span className="mt-0.5 block truncate text-[11px] text-text-tertiary">{lead.title || lead.ref}</span>
+                            <button type="button" aria-expanded={expandedLeadId === lead.id} onClick={() => setExpandedLeadId((id) => id === lead.id ? null : lead.id)} className="flex max-w-full items-center gap-1 text-left text-[12.5px] font-semibold text-text-primary hover:text-blue-primary">
+                              <span className="truncate">{lead.name}</span><ChevronDown size={13} className={`shrink-0 transition-transform ${expandedLeadId === lead.id ? "rotate-180" : ""}`} aria-hidden="true" />
+                            </button>
+                            {lead.title ? <span className="mt-0.5 block truncate text-[11px] text-text-tertiary">{lead.title}</span> : null}
                           </span>
                         </span>
                       </td>
@@ -901,6 +952,8 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                         <LocalTime value={lead.updatedAt || lead.createdAt} />
                       </td>
                     </tr>
+                    {expandedLeadId === lead.id && <LeadRowDetails lead={lead} columns={8} />}
+                    </Fragment>
                   );
                 })}
               </tbody>

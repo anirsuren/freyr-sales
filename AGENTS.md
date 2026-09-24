@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Lead analytics row details:** Lead rows in the Source performance and status popups now expand in place by clicking the row or name chevron. Expanded content shows the full request, contact links, background, notes, and timeline, plus a link to the full lead. The lead ID remains only in the navigation URL, not the visible row. Typecheck and focused lint pass. Local only, per the user's release instruction.
+
 - **Sep 24 Lead intake popup copy:** Removed the redundant “Weekly lead intake ending on the newest lead in this workspace” subtitle from the expanded chart. Local only, per the user's release instruction.
 
 - **Sep 24 Filter menu viewport placement:** The shared Filter menu now opens above its button when there is too little room below, and limits its two scrollable panes to the available viewport height. This keeps the full Status/Source/Owner option list reachable near the bottom of the Leads page and on other pages using the same menu. Local only, per the user's release instruction.
