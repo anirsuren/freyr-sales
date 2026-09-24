@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Claim-review progress:** Removed the expand arrow and its second progress-breakdown popup from the claim verification dialog. The goal bar, verified amount, target, claim amount/status, and supporting claim details remain in the review dialog where the decision is made. Typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
+
 - **Sep 24 Lead phone display:** Saved international numbers now keep the dialling code separate from the national number, so a stored `+1 7326105957` displays as `+1 732 610 5957` in the lead and analytics details. National numbers still group as before while typing. Typecheck, focused lint, and phone-format regression checks pass. Local only, per the user's release instruction.
 
 - **Sep 24 Claim-review waiting contrast:** The verification dialog's waiting claim segment uses a deeper amber with a stronger hatch, and its amount label and legend use the same readable tone. This is scoped to the dialog so other performance charts keep their established status palette. Typecheck, focused lint, diff check, and local Mock-mode visual inspection pass. Local only, per the user's release instruction.
