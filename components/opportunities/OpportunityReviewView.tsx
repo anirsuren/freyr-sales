@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, CheckCircle2, CircleAlert, ExternalLink, Flag, Pencil, ShieldAlert, Target, UsersRound } from "lucide-react";
+import { ArrowRight, CalendarDays, CircleAlert, ExternalLink, Flag, Pencil, ShieldAlert, Target, UsersRound } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import type { OpportunityReview, OpportunityReviewPerson } from "@/lib/opportunitiesShared";
@@ -10,10 +10,10 @@ import { formatDayLabel } from "@/lib/utils";
 
 type ReviewSection = "decision" | "people" | "actions";
 
-const sections: { id: ReviewSection; label: string; description: string; icon: typeof Target }[] = [
-  { id: "decision", label: "Decision brief", description: "Why they buy and how we win", icon: Target },
-  { id: "people", label: "People & influence", description: "The decision circle", icon: UsersRound },
-  { id: "actions", label: "Next moves", description: "Owners and deadlines", icon: CheckCircle2 },
+const sections: { id: ReviewSection; label: string }[] = [
+  { id: "decision", label: "Decision brief" },
+  { id: "people", label: "People & influence" },
+  { id: "actions", label: "Next moves" },
 ];
 
 const sentimentStyle: Record<OpportunityReviewPerson["sentiment"], string> = {
@@ -52,13 +52,13 @@ export function OpportunityReviewView({ review, mayEdit, dealId }: { review?: Op
   const obstacles = data?.obstacles.filter(Boolean) ?? [];
 
   return <div className="pb-12">
-    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border-light pb-4">
+    <div className="flex flex-wrap items-start justify-between gap-3">
       <div><h2 className="text-[19px] font-semibold tracking-tight text-text-primary">Opportunity review</h2><p className="mt-1 text-[12.5px] text-text-secondary">The decision, the people shaping it, and what happens next</p></div>
       {mayEdit && <Link href={`/opportunities/${dealId}/review/edit`} className="inline-flex items-center gap-2 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:bg-surface-secondary"><Pencil size={14} /> Edit review</Link>}
     </div>
 
-    <div role="tablist" aria-label="Opportunity review sections" className="mt-4 flex max-w-full overflow-x-auto border-b border-border-light">
-      {sections.map(({ id, label, description, icon: Icon }) => <button key={id} type="button" role="tab" id={`review-tab-${id}`} aria-selected={section === id} aria-controls={`review-panel-${id}`} onClick={() => setSection(id)} className={`group flex min-w-[185px] flex-1 items-center gap-3 border-b-[3px] px-4 py-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-primary ${section === id ? "border-blue-primary bg-white text-text-primary" : "border-transparent text-text-secondary hover:bg-surface-secondary hover:text-text-primary"}`}><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${section === id ? "bg-blue-light text-blue-primary" : "bg-surface-secondary group-hover:bg-white"}`}><Icon size={17} /></span><span className="min-w-0"><span className="flex items-center gap-2 text-[13px] font-semibold whitespace-nowrap">{label}{id === "people" && people.length > 0 && <span className="text-[11px] font-medium text-text-secondary">{people.length}</span>}{id === "actions" && !!data?.actions.length && <span className="text-[11px] font-medium text-text-secondary">{data.actions.length}</span>}</span><span className="mt-0.5 block text-[11.5px] font-normal text-text-secondary whitespace-nowrap">{description}</span></span></button>)}
+    <div role="tablist" aria-label="Opportunity review sections" className="mt-5 flex max-w-full flex-nowrap gap-5 overflow-x-auto overflow-y-hidden border-b border-border-light [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {sections.map(({ id, label }) => <button key={id} type="button" role="tab" id={`review-tab-${id}`} aria-selected={section === id} aria-controls={`review-panel-${id}`} onClick={() => setSection(id)} className={`-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 pb-3 text-[14px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-primary ${section === id ? "border-blue-primary font-semibold text-blue-primary" : "border-transparent font-medium text-text-secondary hover:text-text-primary"}`}>{label}{id === "people" && people.length > 0 && <b className="tnum font-semibold">{people.length}</b>}{id === "actions" && !!data?.actions.length && <b className="tnum font-semibold">{data.actions.length}</b>}</button>)}
     </div>
 
     {section === "decision" && <div role="tabpanel" id="review-panel-decision" aria-labelledby="review-tab-decision" className="mt-4 space-y-4">
