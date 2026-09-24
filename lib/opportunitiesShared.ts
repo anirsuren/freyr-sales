@@ -301,6 +301,29 @@ export type OpportunityGoalLink = {
   actualId?: string;
 };
 
+export type OpportunityReviewPerson = {
+  id: string;
+  contactId?: string;
+  seniority: "senior" | "manager";
+  function: "business" | "it" | "other";
+  name: string;
+  title: string;
+  role: string;
+  linkedin: string;
+  sentiment: "Positive" | "Neutral" | "Distractor" | "Unknown";
+};
+
+export type OpportunityReview = {
+  compellingEvent: string;
+  nextStep: { date: string; objective: string; stakeholderName: string; stakeholderTitle: string };
+  obstacles: [string, string];
+  competitors: string[];
+  strategy: string;
+  people: OpportunityReviewPerson[];
+  thirdParties: { id: string; company: string; role: string; sentiment: OpportunityReviewPerson["sentiment"] }[];
+  actions: { id: string; action: string; owner: string; deadline: string }[];
+};
+
 export type Opportunity = {
   id: string;
   /** Freyr's own reference, e.g. DO_0026765. Optional: most rows lack one. */
@@ -378,6 +401,7 @@ export type Opportunity = {
   estSignDate?: string;
   owner?: string;
   nextSteps?: string;
+  review?: OpportunityReview;
   /**
    * Which goals this deal is expected to feed.
    *

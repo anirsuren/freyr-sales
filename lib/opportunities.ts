@@ -1,7 +1,9 @@
 import { isCurrencyCode, type CurrencyCode } from "./currency";
+import { ensureLeadContact } from "./ensureLeadContact";
 import type {
   OpportunityActivity,
   OpportunityGoalLink,
+  OpportunityReview,
 } from "./opportunitiesShared";
 import { getDataMode } from "./dataMode";
 import { SEED_OPPORTUNITIES } from "./pipelineSeed";
@@ -47,6 +49,42 @@ function activeRowId(): string {
   } catch {
     return ROW_ID;
   }
+}
+
+function normalizeReview(raw: unknown): OpportunityReview | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const value = raw as Record<string, unknown>;
+  const text = (v: unknown, max = 500) => str(v, max);
+  const sentiment = (v: unknown): OpportunityReview["people"][number]["sentiment"] =>
+    v === "Positive" || v === "Neutral" || v === "Distractor" ? v : "Unknown";
+  const next = value.nextStep && typeof value.nextStep === "object" ? value.nextStep as Record<string, unknown> : {};
+  const obstacles = Array.isArray(value.obstacles) ? value.obstacles : [];
+  return {
+    compellingEvent: text(value.compellingEvent, 3000),
+    nextStep: { date: day(next.date) || "", objective: text(next.objective, 1000), stakeholderName: text(next.stakeholderName, 120), stakeholderTitle: text(next.stakeholderTitle, 120) },
+    obstacles: [text(obstacles[0], 1000), text(obstacles[1], 1000)],
+    competitors: (Array.isArray(value.competitors) ? value.competitors : []).slice(0, 30).map((v) => text(v, 160)).filter(Boolean),
+    strategy: text(value.strategy, 3000),
+    people: (Array.isArray(value.people) ? value.people : []).slice(0, 100).flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const p = item as Record<string, unknown>;
+      const name = text(p.name, 120);
+      if (!name) return [];
+      return [{ id: text(p.id, 60) || uid(), contactId: text(p.contactId, 60) || undefined, seniority: p.seniority === "manager" ? "manager" as const : "senior" as const, function: p.function === "it" || p.function === "other" ? p.function : "business" as const, name, title: text(p.title, 160), role: text(p.role, 80), linkedin: text(p.linkedin, 500), sentiment: sentiment(p.sentiment) }];
+    }),
+    thirdParties: (Array.isArray(value.thirdParties) ? value.thirdParties : []).slice(0, 50).flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const p = item as Record<string, unknown>;
+      const company = text(p.company, 160);
+      return company ? [{ id: text(p.id, 60) || uid(), company, role: text(p.role, 500), sentiment: sentiment(p.sentiment) }] : [];
+    }),
+    actions: (Array.isArray(value.actions) ? value.actions : []).slice(0, 100).flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const p = item as Record<string, unknown>;
+      const action = text(p.action, 1000);
+      return action ? [{ id: text(p.id, 60) || uid(), action, owner: text(p.owner, 120), deadline: day(p.deadline) || "" }] : [];
+    }),
+  };
 }
 
 function hasDatabase(): boolean {
@@ -280,6 +318,7 @@ function normalizeOne(raw: unknown): Opportunity | null {
     estSignDate: day(r.estSignDate),
     owner: str(r.owner, 120) || undefined,
     nextSteps: str(r.nextSteps, 600) || undefined,
+    review: normalizeReview(r.review),
     // The goal table is the source of truth once it exists: goalIds derive
     // from its rows so pacing keeps reading the field it always has.
     ...(() => {
@@ -645,6 +684,7 @@ export type OpportunityInput = {
   estSignDate?: string;
   owner?: string;
   nextSteps?: string;
+  review?: unknown;
   goalIds?: string[];
   goalLinks?: unknown[];
   activities?: unknown[];
@@ -731,6 +771,29 @@ export async function updateOpportunity(
     updatedAt: new Date().toISOString(),
   });
   if (!merged) throw new Error("That opportunity could not be saved.");
+  if (patch.review && typeof patch.review === "object" && !Array.isArray(patch.review)) {
+    const rawActions = (patch.review as Record<string, unknown>).actions;
+    if (Array.isArray(rawActions) && rawActions.some((item) => {
+      if (!item || typeof item !== "object") return true;
+      const action = item as Record<string, unknown>;
+      return !str(action.action, 1000) || !str(action.owner, 120) || !day(action.deadline);
+    })) throw new Error("Every review action needs a description, owner, and deadline.");
+  }
+  if (patch.review !== undefined && merged.review?.actions.some((action) => !action.owner || !action.deadline)) {
+    throw new Error("Every review action needs an owner and deadline.");
+  }
+  if (patch.review !== undefined && merged.review && merged.customerId) {
+    for (const person of merged.review.people) {
+      const previous = state.opportunities[idx].review?.people.find((item) => item.id === person.id);
+      const contact = await ensureLeadContact(merged.customerId, {
+        name: person.name,
+        contactId: previous?.name === person.name ? previous.contactId : undefined,
+        title: person.title,
+        linkedinUrl: person.linkedin,
+      });
+      person.contactId = contact?.id;
+    }
+  }
   /* ONE OFFERING PER OPPORTUNITY MEANS ONE CONFIDENCE. The list reads the
      line's confidence and revenue type, the overview writes the deal's; on a
      one-line deal a value saved here is copied onto the line, so the two

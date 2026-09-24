@@ -4,15 +4,15 @@ import { useState, useEffect } from "react";
 import { fmtMoney, type CurrencyCode } from "@/lib/currency";
 import Link from "next/link";
 import {
-  CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, GitCompareArrows, Package, Pencil, Plus, Target } from "lucide-react";
+  CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, GitCompareArrows, Pencil, Plus, Target } from "lucide-react";
 import { SmartBack, sectionLabelFor, useBackTrail } from "@/components/ui/BackButton";
-import { InfoHint } from "@/components/ui/InfoHint";
 import { useRouter, useSearchParams } from "next/navigation";
 import { EditDealDialog } from "./EditDealDialog";
 /* THE OVERVIEW TAB IS THE EDIT FORM (Suren, Sep 1: "This overview can be the
    edit deal, actually, and within the overview, let them edit if you want").
    The same component the /edit page renders, so the two cannot drift. */
 import { DealOverviewEditor } from "./DealOverviewEditor";
+import { OpportunityReviewTab } from "./OpportunityReviewTab";
 import type { DealTeam } from "./DealPeople";
 import { AddToBandButton } from "./AddToBandButton";
 import { NewContractDialog } from "./NewContractDialog";
@@ -32,7 +32,7 @@ import {
   type DealOption,
 } from "@/components/accruals/AccrualPlanDialog";
 import type { AccrualPlan } from "@/lib/revenueAccrualsShared";
-import { BAND_ICON_MAP, Customer360 } from "@/components/customers/Customer360";
+import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/components/customers/Customer360";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { companyDestination } from "@/lib/companyDestination";
@@ -41,9 +41,9 @@ import {
   effectiveRevenueType,
   estimatedAcvOf,
   estimatedTcvOf,
-  weightedValue,
   signDateOf,
   type Opportunity,
+  type OpportunityReview,
   statusColor,
 } from "@/lib/opportunitiesShared";
 import { cn, formatDayLabel } from "@/lib/utils";
@@ -217,6 +217,22 @@ export function OpportunityDetail({
       return null;
     } catch {
       return "That didn't save.";
+    }
+  }
+
+  async function saveReview(review: OpportunityReview): Promise<{ error: string | null; review?: OpportunityReview }> {
+    try {
+      const res = await fetch("/api/opportunities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "update", id: deal.id, review }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) return { error: data?.error || "That didn't save." };
+      router.refresh();
+      return { error: null, review: data?.opportunity?.review };
+    } catch {
+      return { error: "That didn't save." };
     }
   }
 
@@ -631,6 +647,19 @@ export function OpportunityDetail({
         >
           Overview
         </button>
+        <button
+          role="tab"
+          aria-selected={tab === "review"}
+          onClick={() => setTab("review")}
+          className={cn(
+            "-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 pb-3 text-[14px] transition-colors",
+            tab === "review"
+              ? "border-blue-primary font-semibold text-blue-primary"
+              : "border-transparent font-medium text-text-secondary hover:text-text-primary"
+          )}
+        >
+          Opportunity review
+        </button>
         {shownBands.map((b) => (
           <button
             key={b.key}
@@ -719,6 +748,8 @@ export function OpportunityDetail({
             onSave={saveField}
           >
           </DealOverviewEditor>
+        ) : tab === "review" ? (
+          <OpportunityReviewTab review={deal.review} mayEdit={verdict.mayEdit} onSave={saveReview} />
         ) : (
           <Customer360
             chromeless

@@ -77,6 +77,7 @@ function body(raw: Record<string, unknown>): OpportunityInput {
     estSignDate: s(raw.estSignDate),
     owner: s(raw.owner),
     nextSteps: s(raw.nextSteps),
+    review: raw.review && typeof raw.review === "object" && !Array.isArray(raw.review) ? raw.review : undefined,
     goalIds: list(raw.goalIds),
     // Shape-checked in lib/opportunities (normalizeGoalLinks /
     // normalizeActivities), same deal as the offering rows above.
@@ -418,6 +419,10 @@ export async function POST(req: NextRequest) {
       const patch = body(raw);
       if (patch.customer?.trim()) {
         const account = await ensureCustomerAccount(patch.customer, patch.customerId, me.name);
+        patch.customer = account.company_name;
+        patch.customerId = account.id;
+      } else if (patch.review !== undefined && target.customer?.trim()) {
+        const account = await ensureCustomerAccount(target.customer, target.customerId, me.name);
         patch.customer = account.company_name;
         patch.customerId = account.id;
       }
