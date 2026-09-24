@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Market Intel follow-ups:** Expanded the frozen Mock competitor list from eight to twenty companies using collected source records, and migrated existing Mock tracking/bookmarks so all twenty appear while retaining prior user choices. Customer and competitor empty-list guidance sits closer to the top; the Thought Leadership explanatory paragraph is gone; the Manage customers help icon aligns with its heading; and the people-tracking popup is wider with a name/email search. M&A and Thought Leadership now persist Table/Tile choices independently, preventing a switch on one board from changing the other. Browser checks confirmed 20/20 Mock competitors and that the M&A Table view remains selected after switching trackers. Local only, not deployed.
+
 - **Sep 24 Last checked header:** Removed the question-mark hint from the Customer and Competitor Intel list header, leaving the column label and freshness values intact. Local only, not deployed.
 
 - **Sep 24 colored filter choices and quiet view switch:** Shared filter menus now show colored icon chips and matching selected checks for options with semantic colors. Customer and Competitor Intel and materials division choices display MPR, MDV, and CON chips that match their table badges. Icon-only view switches no longer show a hover tooltip while retaining their accessible label and labeled dropdown choices. The local Mock company list was visually inspected; typecheck, focused lint, and diff check pass. Local only, not deployed.

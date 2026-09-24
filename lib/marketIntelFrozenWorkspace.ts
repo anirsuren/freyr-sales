@@ -5,6 +5,7 @@ import type { MarketIntelTracking } from "./marketIntelTracking";
 /**
  * A dated, committed copy of public Market Intelligence material. Mock mode
  * reads this file only; it never refreshes from the live workspace at runtime.
+ * The Sep 24 review capture includes 20 competitors with collected material.
  */
 const frozen = snapshot as unknown as {
   capturedAt: string;

@@ -39,7 +39,14 @@ export type MarketIntelBookmarks = {
 };
 
 const EMPTY: MarketIntelBookmarks = { companyIds: [], starredIds: [], updatedAt: "" };
-const MOCK_BOOKMARK_VERSION = 20260921;
+const MOCK_BOOKMARK_VERSION = 2026092403;
+// Newly frozen competitors appear on an existing Mock member's page without
+// reselecting any of the original companies they deliberately removed.
+const MOCK_NEW_COMPETITORS = [
+  "tcs", "icon-plc", "ul-solutions", "nsf-international", "glemser", "ennov",
+  "extedo", "generis", "phlexglobal", "qserve", "obelis", "sgs",
+];
+const RETIRED_MOCK_COMPETITORS = new Set(["calyx", "lorenz", "sgk", "propharma-group"]);
 
 export function emptyBookmarks(): MarketIntelBookmarks {
   return { ...EMPTY };
@@ -92,7 +99,14 @@ export async function readMarketIntelBookmarks(
   if (error) throw new Error(error.message);
   if (getDataMode() === "mock" && data?.catalog?.demoVersion !== MOCK_BOOKMARK_VERSION) {
     const tracking = await (await import("./marketIntelTracking")).readMarketIntelTracking();
-    return writeBookmarks(scope, [...new Set([...ids(data?.catalog?.companyIds), ...tracking.companies.map(c=>c.id)])], [...new Set([...ids(data?.catalog?.starredIds), ...tracking.companies.slice(0,4).map(c=>c.id)])], Array.isArray(data?.catalog?.personIds) ? trackedPersonIds(data.catalog.personIds) : undefined);
+    const expandingSnapshot = [20260921, 20260924, 2026092401, 2026092402].includes(data?.catalog?.demoVersion);
+    const additions = expandingSnapshot
+      ? MOCK_NEW_COMPETITORS.filter(id => tracking.companies.some(company => company.id === id))
+      : tracking.companies.map(company => company.id);
+    const stars = expandingSnapshot
+      ? ids(data?.catalog?.starredIds).filter(id => !RETIRED_MOCK_COMPETITORS.has(id))
+      : [...new Set([...ids(data?.catalog?.starredIds), ...tracking.companies.slice(0,4).map(company => company.id)])];
+    return writeBookmarks(scope, [...new Set([...ids(data?.catalog?.companyIds).filter(id => !RETIRED_MOCK_COMPETITORS.has(id)), ...additions])], stars, Array.isArray(data?.catalog?.personIds) ? trackedPersonIds(data.catalog.personIds) : undefined);
   }
   const catalog = data?.catalog as
     | { companyIds?: unknown; starredIds?: unknown; personIds?: unknown; updatedAt?: unknown }

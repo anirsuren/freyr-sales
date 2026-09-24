@@ -264,11 +264,6 @@ export function ThoughtLeadershipTracker({ board, layout, onLayoutChange }: { bo
         </div>
       )}
 
-      <p className="mt-4 text-[11px] text-text-tertiary">
-        Reports, studies and outlooks are read from each firm&apos;s own website
-        and sorted by topic and type automatically. Every card links to the
-        firm&apos;s page. Refreshes once a day.
-      </p>
     </div>
   );
 }

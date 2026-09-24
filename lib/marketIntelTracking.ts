@@ -311,7 +311,8 @@ export function bustMarketIntelTrackingCache(): void {
 }
 
 /** The review workspace is a committed snapshot of real public material. */
-const MOCK_SNAPSHOT_VERSION = 20260921;
+const MOCK_SNAPSHOT_VERSION = 2026092402;
+const RETIRED_MOCK_COMPETITORS = new Set(["calyx", "lorenz", "sgk", "propharma-group"]);
 function showroomTracking(): MarketIntelTracking {
   return structuredClone(FROZEN_WORKSPACE_TRACKING);
 }
@@ -340,12 +341,15 @@ export async function readMarketIntelTracking(options?: {
   let tracking = normalize(data?.catalog);
   /* Replace the retired invented showroom rows once, preserve companies a
      reviewer added themselves, and keep deleted snapshot seeds deleted. */
-  if (getDataMode() === "mock" && tracking.demoVersion !== MOCK_SNAPSHOT_VERSION) {
+  const missingSnapshotCompany = getDataMode() === "mock" && FROZEN_WORKSPACE_TRACKING.companies.some(
+    company => !(tracking.removedSeeds ?? []).includes(company.id) && !tracking.companies.some(saved => saved.id === company.id),
+  );
+  if (getDataMode() === "mock" && (tracking.demoVersion !== MOCK_SNAPSHOT_VERSION || missingSnapshotCompany)) {
     const snapshot = showroomTracking();
     const snapshotIds = new Set(snapshot.companies.map((company) => company.id));
     const removed = new Set(tracking.removedSeeds ?? []);
     const keptCompanies = tracking.companies.filter(
-      (company) => !company.id.startsWith("mockgen-") && !snapshotIds.has(company.id),
+      (company) => !company.id.startsWith("mockgen-") && !snapshotIds.has(company.id) && !RETIRED_MOCK_COMPETITORS.has(company.id),
     );
     const keptPeople = tracking.people.filter(
       (person) => !person.id.startsWith("mockgen-") && !snapshotIds.has(person.companyId),

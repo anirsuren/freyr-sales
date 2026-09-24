@@ -20,6 +20,7 @@ import {
   Newspaper,
   Radio,
   Repeat2,
+  Search,
   Star,
   Tag,
   ThumbsUp,
@@ -208,8 +209,13 @@ function TrackedPeoplePreview({ companyId, companyName, people }: { companyId: s
 
 function PeoplePopup({ panel, onClose }: { panel: PeoplePanel | null; onClose: () => void }) {
   const tracked = panel?.kind === "tracked";
+  const [query, setQuery] = useState("");
+  useEffect(() => { setQuery(""); }, [panel?.companyName, panel?.kind]);
+  const matchingPeople = panel?.kind === "tracking"
+    ? panel.people.filter(person => `${person.name} ${person.email ?? ""}`.toLowerCase().includes(query.trim().toLowerCase()))
+    : [];
   return (
-    <Modal open={panel !== null} onClose={onClose} size={tracked ? "workflow" : "default"} dialogClassName={tracked ? "!max-w-[min(900px,calc(100vw-2rem))]" : undefined} title={panel ? `${tracked ? "People being tracked at" : "People tracking"} ${panel.companyName}` : "People"}>
+    <Modal open={panel !== null} onClose={onClose} size="workflow" dialogClassName={tracked ? "!max-w-[min(900px,calc(100vw-2rem))]" : "!max-w-[min(760px,calc(100vw-2rem))]"} title={panel ? `${tracked ? "People being tracked at" : "People tracking"} ${panel.companyName}` : "People"}>
       {panel?.kind === "tracked" && panel.people.length > 0 ? (
         <TrackedPeoplePreview companyId={panel.companyId} companyName={panel.companyName} people={panel.people} />
       ) : panel?.kind === "tracking" && panel.people.length > 0 ? (
@@ -217,7 +223,11 @@ function PeoplePopup({ panel, onClose }: { panel: PeoplePanel | null; onClose: (
           <p className="mb-3 text-[12.5px] leading-relaxed text-text-secondary">
             {panel.people.length} {panel.people.length === 1 ? "person has" : "people have"} this company on their Market Intel list.
           </p>
-          {panel.people.map(person => (
+          <label className="mb-3 flex h-11 items-center gap-2 rounded-xl border border-border-light bg-white px-3.5 focus-within:border-blue-primary focus-within:shadow-input-focus">
+            <Search size={16} className="shrink-0 text-text-tertiary" aria-hidden="true" />
+            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search people tracking this company…" aria-label="Search people tracking this company" className="min-w-0 flex-1 bg-transparent text-[13px] text-text-primary outline-none placeholder:text-text-tertiary" />
+          </label>
+          {matchingPeople.map(person => (
             <div key={person.id} className="flex items-center gap-3 rounded-xl border border-border-light bg-white p-3">
               <Avatar name={person.name} className="h-10 w-10 shrink-0 text-[12px]" />
               <div className="min-w-0 flex-1">
@@ -226,6 +236,7 @@ function PeoplePopup({ panel, onClose }: { panel: PeoplePanel | null; onClose: (
               </div>
             </div>
           ))}
+          {matchingPeople.length === 0 && <p className="rounded-xl border border-dashed border-border-light px-4 py-6 text-center text-[12.5px] text-text-secondary">No people match that search.</p>}
         </div>
       ) : panel?.kind === "tracking" && panel.activeByDefault ? (
         <div className="rounded-xl border border-border-light bg-surface p-5 text-center">

@@ -1,7 +1,7 @@
 {
   "capturedAt": "2026-09-14T11:04:33.450Z",
   "tracking": {
-    "demoVersion": 20260921,
+    "demoVersion": 2026092402,
     "companies": [
       {
         "id": "takeda",
@@ -315,6 +315,22 @@
         "activeByDefault": true
       },
       {
+        "id": "tcs",
+        "name": "TCS",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "",
+        "website": "https://tcs.com",
+        "linkedinUrl": "https://www.linkedin.com/company/tata-consultancy-services",
+        "competitors": [],
+        "keywords": [],
+        "note": "",
+        "addedAt": "2026-08-11T00:00:00.000Z",
+        "divisions": [],
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
         "id": "certara",
         "name": "Certara",
         "group": "competitor",
@@ -327,6 +343,62 @@
         "note": "",
         "addedAt": "2026-08-11T00:00:00.000Z",
         "divisions": [],
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
+        "id": "icon-plc",
+        "name": "ICON plc",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "Dublin, Ireland",
+        "website": "https://iconplc.com",
+        "linkedinUrl": "https://www.linkedin.com/company/icon-plc-2",
+        "competitors": [],
+        "keywords": [],
+        "note": "Saras Verma's competitor lists, Sep 11: MPR 2026 analysis (market rank Leading); MPR LBL (AMR); MPR CAV (EUA).",
+        "addedAt": "2026-08-11T00:00:00.000Z",
+        "divisions": [
+          "MPR"
+        ],
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/icon-plc-708f92e721eb6d67.png",
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
+        "id": "ul-solutions",
+        "name": "UL Solutions",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "",
+        "website": "https://ul.com",
+        "linkedinUrl": "https://www.linkedin.com/company/ulsolutions",
+        "competitors": [],
+        "keywords": [],
+        "note": "Saras Verma's competitor lists, Sep 11: CON CSRA (Chemicals). Listed as \"UL Prospector\".",
+        "addedAt": "2026-08-11T00:00:00.000Z",
+        "divisions": [
+          "CON"
+        ],
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/ul-solutions-8d5c870b27942110.png",
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
+        "id": "nsf-international",
+        "name": "NSF",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "",
+        "website": "https://nsf.org",
+        "linkedinUrl": "https://www.linkedin.com/company/nsf-international",
+        "competitors": [],
+        "keywords": [],
+        "note": "Saras Verma's competitor lists, Sep 11: CON FDS (Food & Dietary Supplements). Listed as \"NSF International\".",
+        "addedAt": "2026-08-11T00:00:00.000Z",
+        "divisions": [
+          "CON"
+        ],
         "seed": true,
         "activeByDefault": true
       },
@@ -350,6 +422,87 @@
         "activeByDefault": true
       },
       {
+        "id": "ennov",
+        "name": "Ennov",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "",
+        "website": "https://ennov.com",
+        "linkedinUrl": "https://www.linkedin.com/company/ennov",
+        "competitors": [],
+        "keywords": [],
+        "note": "Saras Verma's competitor lists, Sep 11: GRI top competitor.",
+        "addedAt": "2026-08-11T00:00:00.000Z",
+        "divisions": [],
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
+        "id": "extedo",
+        "name": "EXTEDO",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "",
+        "website": "https://extedo.com",
+        "linkedinUrl": "https://www.linkedin.com/company/extedo",
+        "competitors": [],
+        "keywords": [],
+        "note": "",
+        "addedAt": "2026-08-11T00:00:00.000Z",
+        "divisions": [],
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
+        "id": "generis",
+        "name": "Generis",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "",
+        "website": "https://generiscorp.com",
+        "linkedinUrl": "https://www.linkedin.com/company/generis-enterprise-technology",
+        "competitors": [],
+        "keywords": [],
+        "note": "",
+        "addedAt": "2026-08-11T00:00:00.000Z",
+        "divisions": [],
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
+        "id": "phlexglobal",
+        "name": "Phlexglobal",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "",
+        "website": "https://phlexglobal.com",
+        "linkedinUrl": "https://www.linkedin.com/company/phlexglobaltmf",
+        "competitors": [],
+        "keywords": [],
+        "note": "",
+        "addedAt": "2026-08-11T00:00:00.000Z",
+        "divisions": [],
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/phlexglobal-bc20672dd6947548.png",
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
+        "id": "glemser",
+        "name": "Glemser Technologies",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "",
+        "website": "https://glemser.com",
+        "linkedinUrl": "https://www.linkedin.com/company/glemser-technologies",
+        "competitors": [],
+        "keywords": [],
+        "note": "",
+        "addedAt": "2026-08-11T00:00:00.000Z",
+        "divisions": [],
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
         "id": "rimsys",
         "name": "Rimsys",
         "group": "competitor",
@@ -364,6 +517,65 @@
         "divisions": [
           "MDV"
         ],
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
+        "id": "sgs",
+        "name": "SGS",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "Geneva, Switzerland",
+        "website": "https://sgs.com",
+        "linkedinUrl": "",
+        "competitors": [],
+        "keywords": [],
+        "note": "Saras Verma's competitor lists, Sep 11: MPR 2026 analysis (market rank Leading); CON COS (Cosmetics).",
+        "addedAt": "2026-09-11T12:58:42.360Z",
+        "divisions": [
+          "MPR",
+          "CON"
+        ],
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/sgs-940aa553532bec70.png",
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
+        "id": "qserve",
+        "name": "Qserve",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "",
+        "website": "https://qservegroup.com",
+        "linkedinUrl": "https://www.linkedin.com/company/qserve-group",
+        "competitors": [],
+        "keywords": [],
+        "note": "Saras Verma's competitor lists, Sep 11: MDV competition data (global; competition High).",
+        "addedAt": "2026-09-11T12:58:42.360Z",
+        "divisions": [
+          "MDV"
+        ],
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/qserve-dd2a89d5d0bf31ad.webp",
+        "seed": true,
+        "activeByDefault": true
+      },
+      {
+        "id": "obelis",
+        "name": "Obelis",
+        "group": "competitor",
+        "industry": "Life sciences",
+        "hq": "",
+        "website": "https://obelis.net",
+        "linkedinUrl": "https://www.linkedin.com/company/obelis-s-a-",
+        "competitors": [],
+        "keywords": [],
+        "note": "Saras Verma's competitor lists, Sep 11: MDV competition data (global; competition Very High); CON COS (Cosmetics). Listed as \"Obelis s.a.\".",
+        "addedAt": "2026-09-11T12:58:42.360Z",
+        "divisions": [
+          "MDV",
+          "CON"
+        ],
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/obelis-aa5e99bceb86ab3a.webp",
         "seed": true,
         "activeByDefault": true
       }
@@ -847,11 +1059,31 @@
       "emergo": [
         "MDV"
       ],
+      "icon-plc": [
+        "MPR"
+      ],
+      "ul-solutions": [
+        "CON"
+      ],
+      "nsf-international": [
+        "CON"
+      ],
       "arisglobal": [
         "MPR"
       ],
       "rimsys": [
         "MDV"
+      ],
+      "sgs": [
+        "MPR",
+        "CON"
+      ],
+      "qserve": [
+        "MDV"
+      ],
+      "obelis": [
+        "MDV",
+        "CON"
       ]
     },
     "removedSeeds": []
@@ -8399,6 +8631,408 @@
         }
       ]
     },
+    "tcs": {
+      "id": "tcs",
+      "name": "TCS",
+      "slug": "tata-consultancy-services",
+      "group": "competitor",
+      "logoUrl": null,
+      "author": {
+        "name": "Tata Consultancy Services",
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/people/84a39d99686024a28252cb37.jpg",
+        "followerCount": 19527519
+      },
+      "tldr": "TCS launched TCS ADD AgentHub, an enterprise-ready agentic AI platform for life sciences R&D embedded in clinical development and pharmacovigilance workflows. TCS reports the platform has demonstrated up to 40% efficiency gains in clinical data management, up to 30% reduction in clinical study build effort, up to 30% cost savings in safety case processing…",
+      "fetchedAt": "2026-09-14T10:11:47.711Z",
+      "newsAt": "2026-09-12T08:37:58.555Z",
+      "siteAt": "2026-09-13T23:44:21.052Z",
+      "posts": [
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7503703968494092288/",
+          "text": "AI is reshaping the future of enterprise technology.\nAs businesses look to unlock greater value from AI, the role of technology services continues to evolve, creating new possibilities for how enterprises operate and engage with their customers.\n\nOur aspiration to become the world’s largest AI-led technology services company is rooted in helping businesses navigate this rapidly evolving landscape.\n\nWe’re pleased to be featured in Avasant’s Salesforce Services 2026 RadarView™, which highlights the evolving Salesforce services landscape.\n\nExplore the report:\nhttps://lnkd.in/d3j8fTct",
+          "date": "2026-09-10T06:40:38.167Z",
+          "reactions": 138,
+          "comments": 15,
+          "reposts": 8,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/tata-consultancy-services-india_tcsengineeringautonomy-aiinmanufacturing-ugcPost-7503372199836422145-QdRc?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3pRuYBBuqNpp74yJeq3v6aNk02NNzXS0Y",
+          "text": "Tata Consultancy Services has officially launched India’s first ‘Lights-Out’ Factory Lab in Pune to advance AI-first, autonomous manufacturing.\n\nImagine an industrial ecosystem where operations seamlessly continue with minimal human intervention—driven by the convergence of AI, robotics, and digital twins.\n\nKey highlights of what this means for industry transformation:\n\nSelf-Optimizing Plants: Leveraging TCS's Human+AI Service Autonomy Model to simulate, test, and run intelligent plant operations that can self-regulate and adapt in real time.\n\nIT & OT Convergence: Bridging legacy operational tech with cutting-edge artificial intelligence, predictive robotics, and cyber-physical systems.\n\nEfficiency & Sustainability: Reducing operational friction, minimizing downtime, and driving sustainable manufacturing through optimized resource and energy management.\n\nAs global supply chains face growing complexity and demands for higher precision, moving from automated to truly autonomous operations isn't just an upgrade—it’s the new baseline for competitiveness.\n\n#TCSengineeringAutonomy #AIinManufacturing #SmartManufacturing #Robotics #DigitalTwin #Automation #TCS\n\nSreenivasa Chakravarti",
+          "date": "2026-09-09T09:37:32.228Z",
+          "reactions": 782,
+          "comments": 18,
+          "reposts": 63,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/tata-consultancy-services-india_tcsengineeringautonomy-aiinmanufacturing-ugcPost-7503372199836422145-QdRc?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3rLu4BsKZIeL6Xl99NtmM1v-oxqBEmYLw",
+          "text": "Tata Consultancy Services has officially launched India’s first ‘Lights-Out’ Factory Lab in Pune to advance AI-first, autonomous manufacturing.\n\nImagine an industrial ecosystem where operations seamlessly continue with minimal human intervention—driven by the convergence of AI, robotics, and digital twins.\n\nKey highlights of what this means for industry transformation:\n\nSelf-Optimizing Plants: Leveraging TCS's Human+AI Service Autonomy Model to simulate, test, and run intelligent plant operations that can self-regulate and adapt in real time.\n\nIT & OT Convergence: Bridging legacy operational tech with cutting-edge artificial intelligence, predictive robotics, and cyber-physical systems.\n\nEfficiency & Sustainability: Reducing operational friction, minimizing downtime, and driving sustainable manufacturing through optimized resource and energy management.\n\nAs global supply chains face growing complexity and demands for higher precision, moving from automated to truly autonomous operations isn't just an upgrade—it’s the new baseline for competitiveness.\n\n#TCSengineeringAutonomy #AIinManufacturing #SmartManufacturing #Robotics #DigitalTwin #Automation #TCS\n\nSreenivasa Chakravarti",
+          "date": "2026-09-09T09:37:32.228Z",
+          "reactions": 847,
+          "comments": 18,
+          "reposts": 67,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7503386099227201536/",
+          "text": "Tata Consultancy Services has officially launched India’s first ‘Lights-Out’ Factory Lab in Pune to advance AI-first, autonomous manufacturing.\n\nImagine an industrial ecosystem where operations seamlessly continue with minimal human intervention—driven by the convergence of AI, robotics, and digital twins.\n\nKey highlights of what this means for industry transformation:\n\nSelf-Optimizing Plants: Leveraging TCS's Human+AI Service Autonomy Model to simulate, test, and run intelligent plant operations that can self-regulate and adapt in real time.\n\nIT & OT Convergence: Bridging legacy operational tech with cutting-edge artificial intelligence, predictive robotics, and cyber-physical systems.\n\nEfficiency & Sustainability: Reducing operational friction, minimizing downtime, and driving sustainable manufacturing through optimized resource and energy management.\n\nAs global supply chains face growing complexity and demands for higher precision, moving from automated to truly autonomous operations isn't just an upgrade—it’s the new baseline for competitiveness.\n\n#TCSengineeringAutonomy #AIinManufacturing #SmartManufacturing #Robotics #DigitalTwin #Automation #TCS\n\nSreenivasa Chakravarti",
+          "date": "2026-09-09T09:37:32.228Z",
+          "reactions": 1206,
+          "comments": 34,
+          "reposts": 89,
+          "mediaType": "image",
+          "label": {
+            "v": 3,
+            "signals": [
+              "product_service"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7503022147410345984/",
+          "text": "A message sent. A document understood. The confidence to use an unfamiliar tool.\n\nAt its heart, #literacy is simply the freedom to participate. It is rarely just about words, it is about what they make possible in everyday life. Across different languages and borders, that pursuit belongs entirely to the learner.\n\nFor over two decades, we have tried to play a part in that journey, meeting people where they are: whether on paper, on a screen, or alongside new technologies. It is built one classroom, one mentor, and one lesson at a time. Each one Empowers one. \n\nMore details here: https://lnkd.in/dBnYDpHd\n\n#InternationalLiteracyDay",
+          "date": "2026-09-08T09:31:19.353Z",
+          "reactions": 224,
+          "comments": 10,
+          "reposts": 16,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7502054141922271232/",
+          "text": "Together with the Government of Telangana, we’re taking AI-ready infrastructure to scale in Hyderabad through HyperVault, enabling the AI ambitions of businesses globally.\n\nThe purpose-built campus will support frontier AI companies and hyperscalers with high-density, liquid-cooled compute infrastructure on a global scale. This reinforces Telangana’s position as a strategic hub for artificial intelligence and advanced digital infrastructure.\n\nA landmark step forward, made possible through a shared vision for technology, innovation and growth.\n\nMore details here: https://lnkd.in/deRN_YQv\nHyperVault AI Data Center",
+          "date": "2026-09-05T17:24:48.860Z",
+          "reactions": 471,
+          "comments": 8,
+          "reposts": 14,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "expansion",
+            "relevant": false,
+            "industries": []
+          }
+        }
+      ],
+      "news": [
+        {
+          "title": "What TCS's APEX told us about scaling AI",
+          "source": "TechMarketView",
+          "url": "https://www.techmarketview.com/ukhotviews/archive/2026/09/14/what-tcss-apex-told-us-about-scaling-ai",
+          "published": "2026-09-14T00:00:00.000Z",
+          "publisherUrl": "https://www.techmarketview.com/ukhotviews/archive/2026/09/14/what-tcss-apex-told-us-about-scaling-ai",
+          "label": {
+            "v": 3,
+            "why": "TCS positions itself as an AI transformation leader; counter their $2.6bn revenue claim and autonomy maturity model with Freyr's regulatory-specific AI advantages.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "TCS launches India’s first AI-powered ‘lights-out’ factory in Pune",
+          "source": "Moneycontrol",
+          "url": "https://www.moneycontrol.com/news/business/companies/tcs-launches-india-s-first-ai-powered-lights-out-factory-in-pune-14025990.html/amp",
+          "published": "2026-09-09T00:00:00.000Z",
+          "summary": "Tata Consultancy Services launched the TCS Industrial Autonomy & Engineering Lab, a lights-out factory at its Pune campus.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "product_service"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "TCS opens India’s first fully automated factory lab in Pune",
+          "source": "ScanX Trade",
+          "url": "https://scanx.trade/stock-market-news/companies/tcs-opens-india-s-first-fully-automated-factory-lab-pune/50480078",
+          "published": "2026-09-09T00:00:00.000Z",
+          "summary": "TCS launched an AI-enabled fully automated factory lab in Pune and also confirmed a Rs 122.6 crore work order from the Odisha government for OSWAS 3.0.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "product_service"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "TCS wins ₹122.6 crore Odisha government bid for OSWAS 3.0",
+          "source": "Mint",
+          "url": "https://www.livemint.com/ai/tcs-bags-rs-122-6-crore-odisha-govt-deal-ai-automation-analytics-security-what-oswas-3-0-will-change-what-we-know/amp-11788864314363.html",
+          "published": "2026-09-08T00:00:00.000Z",
+          "summary": "TCS said in a regulatory filing that it secured a ₹122.6 crore contract to implement the next phase of Odisha’s State Workflow Automation System, extending its partnership with the state by about six years.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "TCS wins ₹122.6 crore Odisha government work order for OSWAS 3.0",
+          "source": "Hdfc Sky",
+          "url": "https://hdfcsky.com/news/tcs-wins-rs-122-6-crore-odisha-government-bid-shares-rise-0-10-percent",
+          "published": "2026-09-08T00:00:00.000Z",
+          "summary": "The report says TCS won a ₹122.6 crore Odisha government order to upgrade the state’s digital governance platform with its DigiGOV-based OSWAS 3.0 implementation.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "TCS secures ₹122.6 crore work order from Government of Odisha for OSWAS 3.0",
+          "source": "ScanX",
+          "url": "https://scanx.trade/stock-market-news/companies/tata-consultancy-services-wins-rs-122-6-crore-work-order-government/50393891",
+          "published": "2026-09-08T00:00:00.000Z",
+          "summary": "ScanX reports that TCS confirmed a ₹122.6 crore work order from the Odisha government for the AI-enabled OSWAS 3.0 digital governance platform.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Telangana High Court quashes ₹52.39 crore VAT demand on TCS’s customised software services",
+          "source": "LiveLaw",
+          "url": "https://www.livelawbiz.com/amp/vat/high-court/telangana-high-court-quashes-5239-crore-vat-demand-on-tcs-customised-software-services-549043",
+          "published": "2026-09-08T00:00:00.000Z",
+          "summary": "The Telangana High Court set aside a ₹52.39 crore VAT demand on TCS, ruling that its customised software development services did not amount to a sale or transfer of property in goods.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "TCS names Soumen Roy to head new GCC business as enterprise AI investments surge",
+          "source": "People Matters",
+          "url": "https://www.peoplematters.in/amp/news/leadership/tcs-names-soumen-roy-to-head-new-gcc-business-as-enterprise-ai-investments-surge-51953",
+          "published": "2026-09-08T00:00:00.000Z",
+          "summary": "TCS launched a new Global Value & Innovation Centres business unit and appointed Soumen Roy to lead it.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "corporate_structure"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Why TCS' HyperVault Chose Hyderabad For Its 1GW AI Campus",
+          "source": "Data Centre Magazine",
+          "url": "https://datacentremagazine.com/news/why-tcs-hypervault-chose-hyderabad-for-its-1gw-ai-campus",
+          "published": "2026-09-07T10:30:00.000Z",
+          "publisherUrl": "https://datacentremagazine.com/news/why-tcs-hypervault-chose-hyderabad-for-its-1gw-ai-campus",
+          "label": {
+            "v": 3,
+            "why": "TCS subsidiary HyperVault is shifting TCS toward capital-intensive infrastructure ownership; monitor if this changes their services-only positioning versus Freyr.",
+            "signals": [
+              "corporate_structure"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "HyperVault to build a 1 GW AI data centre campus in Hyderabad with up to ₹70,000 crore investment",
+          "source": "HDFC Sky",
+          "url": "https://hdfcsky.com/news/tcs-subsidiary-hypervault-to-invest-rs-70000-cr-to-develop-hyderabad-ai-data-centre",
+          "published": "2026-09-07T00:00:00.000Z",
+          "summary": "TCS subsidiary HyperVault said it secured 264 acres in Hyderabad for a large-scale AI data centre campus intended to serve frontier AI companies and hyperscalers.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "HyperVault plans ₹70,000 crore AI campus in Hyderabad",
+          "source": "ScanX",
+          "url": "https://scanx.trade/stock-market-news/markets/stocks-watch-today-september-7-2026-brigade-enterprises-lupin/50290549",
+          "published": "2026-09-07T00:00:00.000Z",
+          "summary": "A stock-watch roundup reported that TCS announced a massive AI campus investment in Telangana through its HyperVault subsidiary.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "TCS subsidiary HyperVault to invest ₹70,000 crore in Hyderabad AI data centre campus",
+          "source": "DailyHunt/Upstox",
+          "url": "https://m.dailyhunt.in/news/india/english/upstox-epaper-upstox/stocks+to+watch+september+7+tata+motors+tcs+oillinked+stocks+sbi+ifci+lupin+nmdc+hul+indusind+bank-newsid-n725975607",
+          "published": "2026-09-07T00:00:00.000Z",
+          "summary": "A market-news item said HyperVault will develop a large AI data centre campus in Hyderabad after securing 264 acres of land.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        }
+      ],
+      "site": [
+        {
+          "title": "Everest Group Names TCS a Leader in Sustainable Value Chain Services",
+          "source": "tcs.com",
+          "url": "https://www.tcs.com/who-we-are/newsroom/analyst-reports/tcs-named-leader-sustainable-value-chain-services",
+          "published": "2026-09-10",
+          "label": {
+            "v": 3,
+            "signals": [
+              "industry_recognition"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Utility Retail and Energy Transition: Accelerating Enterprise Energy",
+          "source": "tcs.com",
+          "url": "https://www.tcs.com/insights/blogs/utility-retail-energy-transition-accelerating-enterprise-energy",
+          "published": "2026-09-10",
+          "label": {
+            "v": 3,
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Deepfakes and Synthetic Fraud: The Next Challenge in Insurance",
+          "source": "tcs.com",
+          "url": "https://www.tcs.com/insights/blogs/deepfakes-synthetic-fraud-next-challenge-industry",
+          "published": "2026-09-10",
+          "label": {
+            "v": 3,
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Data Anonymization for Large Language Model (LLM) Training",
+          "source": "tcs.com",
+          "url": "https://www.tcs.com/insights/blogs/data-anonymization-large-language-model-training",
+          "published": "2026-09-09",
+          "label": {
+            "v": 3,
+            "why": "TCS publishes on LLM data anonymization for regulated sectors; Freyr can differentiate by emphasizing compliance-specific privacy frameworks beyond generic LLM…",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Agentic Supply Chains: Transforming Operations with Multi-Agent AI",
+          "source": "tcs.com",
+          "url": "https://www.tcs.com/insights/blogs/agentic-supply-chains-transforming-operations-multi-agent-ai",
+          "published": "2026-09-09",
+          "label": {
+            "v": 3,
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "TCS wins Rs 122 crore bid to build AI-enabled digital governance platform for Odisha Government",
+          "source": "Tcs",
+          "url": "https://www.tcs.com/who-we-are/newsroom/press-release/tcs-wins-122-crore-bid-build-ai-enabled-digital-governance-platform-odisha-government",
+          "published": "2026-09-08T00:00:00.000Z",
+          "summary": "TCS said it won a Rs 122.6 crore bid to implement the next phase of Odisha State Workflow Automation System 3.0, extending its work with the Government of Odisha for around six more years.",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        }
+      ]
+    },
     "certara": {
       "id": "certara",
       "name": "Certara",
@@ -8852,6 +9486,1188 @@
             "relevant": true,
             "industries": [
               "MPR"
+            ]
+          }
+        }
+      ]
+    },
+    "icon-plc": {
+      "id": "icon-plc",
+      "name": "ICON plc",
+      "slug": null,
+      "group": "competitor",
+      "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/icon-plc-708f92e721eb6d67.png",
+      "author": null,
+      "tldr": "ICON is deploying AI agents across clinical trial workflows via partnerships with Anthropic and Microsoft, with agents in production for statistical code generation and site contracting delivering 30% cycle reduction. The company achieved strong Q2 2026 bookings ($3.12bn net wins, $23.4bn backlog) but faces margin compression to 15.9% adjusted EBITDA.",
+      "fetchedAt": "2026-09-10T13:54:46.382Z",
+      "newsAt": "2026-09-12T08:38:24.839Z",
+      "siteAt": "2026-09-14T00:16:38.004Z",
+      "posts": [],
+      "news": [
+        {
+          "title": "ICON taps Anthropic and Microsoft as it puts clinical-trial agents into production",
+          "source": "R&D World",
+          "url": "https://news.google.com/rss/articles/CBMiswFBVV95cUxQQlVXSGU5cVY2QVo4bUdmaklJcVJpalN5ZGJ0eUFVTm1IazNobHBhWUR0WThWclFhUWk5ck5KYkdMdnhHa1hMdkJMY2tnSUxXTVpkQnFoMjRLZjFKV0ZiQnVtMUthMk54cFZ3empjSjI4ZnhwNnNVTHFOSkkzSElzR1V1R2RQbm9ZWWVVYVNlNUE0bEJxT2dHZHZRRVhRSlZ0OENScjBnTnZLbVV6WDJmcThIQQ?oc=5",
+          "published": "2026-09-09T18:46:13.000Z",
+          "summary": "ICON is developing AI agents through partnerships with Anthropic and Microsoft to reduce administrative burden on clinical research associates, reporting approximately 30% shorter cycle times in two clinical-trial workflows.",
+          "label": {
+            "v": 3,
+            "why": "ICON's AI agents with Anthropic/Microsoft claim 30% cycle-time reduction; Freyr must demonstrate comparable automation ROI or risk losing operational-efficiency…",
+            "signals": [
+              "product_service",
+              "partnerships"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "ICON selects Microsoft as a preferred technology partner to power AI-enabled clinical development",
+          "source": "Business Wire",
+          "url": "https://finance.yahoo.com/quote/ICLR/press-releases/",
+          "published": "2026-09-04T00:00:00.000Z",
+          "summary": "ICON announced Microsoft as a preferred technology partner for AI-enabled clinical development.",
+          "label": {
+            "v": 3,
+            "why": "ICON's Microsoft partnership for AI-enabled clinical development signals deep vendor lock-in; Freyr's independence in regulatory AI may differentiate if clients fear…",
+            "signals": [
+              "partnerships"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Icon plc stock holds steady as Q2 2026 results support full-year guidance",
+          "source": "Ad Hoc News",
+          "url": "https://news.google.com/rss/articles/CBMizAFBVV95cUxQWThSRTlfanM5bHlHeWZYZVBXZWljTTloMWs3anhHOEdiN19ub1UyRVFhTHlQMnZkSm1IRW8tQ0dRb1hQTlBlSkJxQmFUc1NrSUEtRUlTOFdLRlZIWW5FRW5OZUprbUZYZHJZanB6OWc2aXJTTnFfMnVTQXozZU9ManNmQmVDRnlJRGktZnpDV25PblZ0ZHRQcHQ0SV9HUmVkcW1kX1FCVk5xNE9UV2o3NXc1MTN0bHp6eTBIb3VCelBtamdqLXlESG9uVVY?oc=5",
+          "published": "2026-09-01T12:09:33.000Z",
+          "summary": "ICON plc stock trades in the mid-$160s range backed by solid Q2 2026 revenue growth and reiterated full-year guidance on sales and earnings.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "corporate_structure"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Medable and ICON exceed patient eConsent adoption goals for menopause study",
+          "source": "Business Wire",
+          "url": "https://www.businesswire.com/news/home/20260901650127/en/Medable-and-ICON-Exceed-Patient-eConsent-Adoption-Goals-for-Womens-Health-Study-on-Menopause",
+          "published": "2026-09-01T00:00:00.000Z",
+          "summary": "ICON-managed U.S. women’s health study on menopause saw more than 85% of participants consent electronically using Medable’s Total Consent solution, beating adoption targets.",
+          "label": {
+            "v": 3,
+            "why": "ICON's eConsent integration with Medable achieved >85% adoption; Freyr should assess whether patient-tech partnerships create switching costs in trial-operations modules.",
+            "signals": [
+              "product_service",
+              "partnerships"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Medable says eConsent adoption in ICON-managed women’s health study exceeded 85%",
+          "source": "Finance Yahoo / Business Wire",
+          "url": "https://finance.yahoo.com/healthcare/articles/medable-icon-exceed-patient-econsent-110000605.html",
+          "published": "2026-09-01T00:00:00.000Z",
+          "summary": "Medable announced that in a U.S. women’s health menopause study managed by ICON plc, more than 85% of participants used its eConsent technology, with 1,044 of 1,222 consenting electronically.",
+          "label": {
+            "v": 3,
+            "why": "ICON's eConsent adoption success with Medable is a case study in seamless integration; Freyr's regulatory-documentation workflow must compete on deployment speed and…",
+            "signals": [
+              "product_service",
+              "partnerships"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Wellington Management Group LLP Sells 592,983 Shares of Icon Plc",
+          "source": "MarketBeat",
+          "url": "https://www.marketbeat.com/instant-alerts/filing-wellington-management-group-llp-sells-592983-shares-of-icon-plc-iclr-2026-08-30/",
+          "published": "2026-08-30T00:00:00.000Z",
+          "summary": "MarketBeat reports that Wellington Management Group LLP reduced its ICON plc stake by 10% in the second quarter after selling 592,983 shares.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "ICON plc releases 2025 ICON Cares Report",
+          "source": "Yahoo Finance",
+          "url": "https://finance.yahoo.com/quote/ICLR/",
+          "published": "2026-08-25T00:00:00.000Z",
+          "summary": "ICON plc published its 2025 ICON Cares Report, highlighting progress in patient impact, innovation, and sustainability.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "ICON PLC CFO receives new RSUs and options, sells shares for taxes via sell-to-cover transactions",
+          "source": "INDmoney",
+          "url": "https://www.indmoney.com/us-stocks/icon-public-limited-company-share-price-iclr",
+          "published": "2026-08-22T00:00:00.000Z",
+          "summary": "The company’s CFO received new equity awards and sold shares to cover taxes in a routine compensation-related transaction.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "ICON Releases 2025 ICON Cares Report, Highlighting Progress in Patient Impact, Innovation and Sustainability",
+          "source": "BioSpace",
+          "url": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxNT3p4RGEyMHNNaUxoU1NnUGtma0FMeVY4OUFmVHlMSWxXalM3bFY5YTdGM0FNUFQ2bThuSkdqaEFvYnBpdlhGRWQ1dnpmX3pIM2xuTkp0T2hjU0RrLUxWclRhR3NXSV9FbEtOdF90TFpTMzBncDRnaXVwV3BsQURtVmRoWW1QdGI5NmtzOHNGT3dnUno5UW9jX3o4c2YydDFtekNGVmhmRS1NdXVQRUE0dEZ6c0tKWVQzWmZYSlZ0d25jUU0wSWxaWTFhNVdqUFdQdFJvTlBnQWJGelhoRnNN?oc=5",
+          "published": "2026-08-20T14:22:11.000Z",
+          "summary": "ICON achieved EcoVadis Platinum Medal status (87/100, top 1%), improved renewable electricity to 97.05% of global consumption, surpassed its 2030 energy reduction target ahead of schedule, and supported 1,370 clinical studies involving 411,400 patients in 2025. The Orbis platform received AI Project of the Year award at Analytics & AI Awards 2025.",
+          "label": {
+            "v": 3,
+            "why": "ICON publicizes ESG and patient-impact credentials; Freyr can differentiate on regulatory expertise depth versus their broader clinical-innovation positioning.",
+            "signals": [
+              "industry_recognition"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "ICON plc (ICLR) posts top-1% ESG score and 73% emissions cut",
+          "source": "Stock Titan",
+          "url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxNNldDSEdXTDFNQWd6ZXE2Z0NFeUlOX1NPeFpvLUkxNnExdjBGbEktMzlnbEV6R2JvdUlWVU03SGJPX1BweVNKZ1hONjNtZEJXUmVCbmgtLUhrczJxcG4tMWYtNVRmNVItaGh4S3BTOFVDU1gtQkg3Z0E4TWV6QUV2T0JQLXpiM2hCTkRoeFl5NzBBcVhvbjEwbFZCMFN6d2Vha0pUalFjOA?oc=5",
+          "published": "2026-08-20T12:47:35.000Z",
+          "label": {
+            "v": 3,
+            "signals": [
+              "industry_recognition"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "ICON Releases 2025 ICON Cares Report, Highlighting Progress in Clinical Studies",
+          "source": "ICON investor relations",
+          "url": "https://investor.iconplc.com/node/18636/pdf",
+          "published": "2026-08-20T00:00:00.000Z",
+          "summary": "ICON said its 2025 ICON Cares report highlights support for more than 1,370 clinical studies involving over 411,400 patients.",
+          "label": {
+            "v": 3,
+            "why": "ICON highlights support for 1,370+ clinical studies; underscores their scale advantage in trial operations that Freyr can counter with regulatory-affairs focus.",
+            "signals": [
+              "industry_recognition"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "ICON Releases 2025 ICON Cares Report Highlighting Progress in Patient Impact, Innovation and Sustainability",
+          "source": "GuruFocus",
+          "url": "https://www.gurufocus.com/news/9045356/icon-releases-2025-icon-cares-report-highlighting-progress-in-patient-impact-innovation-and-sustainability",
+          "published": "2026-08-20T00:00:00.000Z",
+          "summary": "ICON plc said it released its 2025 ICON Cares report, outlining ESG priorities and clinical innovation efforts.",
+          "label": {
+            "v": 3,
+            "why": "ICON markets clinical innovation and ESG; Freyr's regulatory-affairs value proposition can position as complementary depth over their broader advisory reach.",
+            "signals": [
+              "industry_recognition"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ],
+            "isCompanyNews": true
+          }
+        }
+      ],
+      "site": [
+        {
+          "title": "Senior HR Advisor job in China, Shanghai - ICON Plc Careers",
+          "source": "Iconplc",
+          "url": "https://careers.iconplc.com/job/senior-hr-advisor-in-china-shanghai-jid-53690",
+          "published": "2026-09-11T00:00:00.000Z",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "title": "HRSS Manager job in India, Chennai - ICON Plc Careers",
+          "source": "Iconplc",
+          "url": "https://careers.iconplc.com/job/hrss-manager-in-india-chennai-jid-53619",
+          "published": "2026-09-09T00:00:00.000Z",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "title": "Why augmentation, not automation, is the better approach ...",
+          "source": "Iconplc",
+          "url": "https://www.iconplc.com/insights/blog/2026/09/03/why-augmentation-not-automation-better-approach-intelligent-medical",
+          "published": "2026-09-03T00:00:00.000Z",
+          "label": {
+            "v": 2,
+            "why": "ICON positions augmentation over automation in regulatory/quality processes; signals their service model and philosophy to prospects.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": []
+          }
+        },
+        {
+          "title": "Getting COA strategy right from the start: Early endpoint decisions ...",
+          "source": "Iconplc",
+          "url": "https://www.iconplc.com/news-events/events/webinars/getting-coa-strategy-right-start",
+          "published": "2026-09-02T00:00:00.000Z",
+          "label": {
+            "v": 2,
+            "why": "ICON advising on COA strategy and early endpoint decisions; commentary on regulatory pathway planning for clinical trials.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "title": "Regulatory Liaison job in Belgium, Mechelen - ICON Plc Careers",
+          "source": "Iconplc",
+          "url": "https://careers.iconplc.com/job/regulatory-liaison-in-belgium-mechelen-jid-53353",
+          "published": "2026-08-31T00:00:00.000Z",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "title": "Historic Stock Lookup - ICON Plc Investor Relations",
+          "source": "Iconplc",
+          "url": "https://investor.iconplc.com/stock-information/historic-stock-lookup/",
+          "published": "2026-08-31T00:00:00.000Z",
+          "summary": "This result is an investor stock-lookup page and does not contain a real company update.",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        }
+      ]
+    },
+    "ul-solutions": {
+      "id": "ul-solutions",
+      "name": "UL Solutions",
+      "slug": "ulsolutions",
+      "group": "competitor",
+      "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/ul-solutions-8d5c870b27942110.png",
+      "author": {
+        "name": "UL Solutions",
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C560BAQF6aPtfKvMrgQ/company-logo_400_400/company-logo_400_400/0/1656335537218/ul__logo?e=1787788800&v=beta&t=_MUNaHcCup-jrcgq8yIDB5BKNR_zCyk6CX0jhcWdmao",
+        "followerCount": 425608
+      },
+      "tldr": "UL Solutions expanded its Italy retail center with pre-market services and supply chain software, and tested ProLogium's all-solid-state battery under China's GB/T 43568-2026 standard. UL flagged safety concerns with US plug-in solar systems.",
+      "fetchedAt": "2026-09-10T13:55:13.929Z",
+      "newsAt": "2026-09-12T08:38:27.486Z",
+      "siteAt": "2026-09-13T18:14:40.543Z",
+      "posts": [
+        {
+          "url": "https://www.linkedin.com/posts/ulsolutions_complianceprofessionals-medicaldevicecompliance-activity-7492960521575542785-fJwN?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAGxcbnoBx2eag7WkDYNviF1icq8Gn0V7n38",
+          "text": "IEC 80601-2-52 is a major update to medical bed safety standards. It’s crucial for manufacturers to understand the changes now and plan a seamless transition. \n\nWe’ve developed a comprehensive whitepaper that outlines the standard’s key changes, including: \n\n•\tExpanded Application Environments, including mental-health facilities \n•\tNew scope, including electric and non-electric medical beds \n•\tExtra requirements to protect patients and caregivers \n•\tChanges to testing procedures and timelines \n•\tUpdates to previous exemptions on alarms \n•\tAnd much more \n\nIf you’re responsible for medical bed compliance, this is a must-read resource. Download now: https://s.ul.com/3TKCImk\n\n#ComplianceProfessionals #MedicalDeviceCompliance #IEC80601252 #RegulatoryCompliance",
+          "date": "2026-08-11T15:10:00.818Z",
+          "reactions": null,
+          "comments": null,
+          "reposts": null,
+          "label": {
+            "v": 2,
+            "why": "IEC 80601-2-52 update requires manufacturers to redesign medical beds, retesting and new compliance documentation; regulatory strategy and submissions support needed.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "product",
+            "relevant": true,
+            "industries": [
+              "MDV"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/ulsolutions_bess-energystoragesystems-compliance-activity-7492673636303028224-g-os?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAGxcbnoBx2eag7WkDYNviF1icq8Gn0V7n38",
+          "text": "Bringing your energy storage systems (ESS) online just got easier and safer. \n\nAs global deployment of battery energy storage systems (BESS) accelerates, so do safety expectations. With the 2026 updates to National Fire Protection Association (NFPA) 855, along with increasing focus on NFPA 68 and NFPA 69, the path to approval is becoming more complex. \n\nFor manufacturers, system integrators and developers, this often means: \n\n•\tLonger AHJ review cycles \n•\tIncreased resubmissions \n•\tGreater regulatory uncertainty  \n\nUL Solutions can help. Our ESS Safety Assessments and NFPA compliance services empower you to: \n\n•\tStrengthen safety documentation aligned with NFPA requirements \n•\tIdentify gaps early and reduce costly rework \n•\tTranslate complex engineering data into AHJ-ready submissions \n•\tImprove the likelihood of faster, smoother approvals  \n\nFrom documentation readiness reviews to fire and explosion hazard assessments and system-level evaluations, we provide the technical clarity you need to move projects forward with greater confidence.  \n\nAs ESS technologies scale, aligning safety, compliance and speed to market is critical. We help you bridge the gap between evolving standards and real-world deployment with trusted third-party insights. \n\nLearn more: https://s.ul.com/4xSvM6d\n\n#BESS #EnergyStorageSystems #Compliance",
+          "date": "2026-08-10T20:10:02.039Z",
+          "reactions": 27,
+          "comments": null,
+          "reposts": 1,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "product",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/ulsolutions_solarenergy-energysafety-renewableenergy-activity-7492646748595679232-fNMq?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAGxcbnoBx2eag7WkDYNviF1icq8Gn0V7n38",
+          "text": "Featured in The New York Times, UL Solutions is helping advance the conversation around the safe adoption of plug-in solar technology.\n\nKen Boyce, vice president of principal engineering at UL Solutions, discusses the importance of product certification as states consider the legalization of plug-in solar systems. Boyce notes that consumers should avoid uncertified products because they could pose risks such as electrical shocks, equipment damage or fires.\n\nRead the article: https://s.ul.com/3TSGees \n\n#SolarEnergy #EnergySafety #RenewableEnergy #ULSolutions",
+          "date": "2026-08-10T18:23:11.510Z",
+          "reactions": 10,
+          "comments": null,
+          "reposts": 1,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "commentary",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/ulsolutions_gxp-lifesciences-workforcequalification-activity-7492630849218301952-7oEv?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAGxcbnoBx2eag7WkDYNviF1icq8Gn0V7n38",
+          "text": "In regulated life sciences, a completed course provides evidence.\n\nTraining records prove that employees, contractors, suppliers and clinical teams are qualified to perform work that affects product quality, patient safety and regulatory compliance.\n\nULTRUS® ComplianceWire® is more than another learning management system (LMS). It’s a purpose-built platform for compliance-critical workforce qualification.\n\nExplore how our platform can help: https://s.ul.com/3Tz4GRT \n\n#GxP #LifeSciences #WorkforceQualification #ComplianceTraining #Pharma #Biotech #MedTech #QualityManagement #FDACompliance #LearningManagementSystem",
+          "date": "2026-08-10T17:20:00.803Z",
+          "reactions": 12,
+          "comments": 1,
+          "reposts": 7,
+          "label": {
+            "v": 2,
+            "why": "UL Solutions offers GxP training platform for pharma/biotech/medtech; competes with Freyr's quality and compliance workforce solutions.",
+            "tags": [],
+            "signal": "product",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/ulsolutions_smartlighting-iot-cybersecurity-activity-7492614492774871040-lpio?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAGxcbnoBx2eag7WkDYNviF1icq8Gn0V7n38",
+          "text": "Connected Lighting: secure, interoperable and intelligent\n\nFrom cybersecurity to performance validation, UL Solutions supports your navigation through the complexities of smart lighting systems.\n\nLearn more: https://s.ul.com/4bu6BOD\n\n#SmartLighting #IoT #Cybersecurity #Lighting #LED #LightingDesign",
+          "date": "2026-08-10T16:15:01.123Z",
+          "reactions": 10,
+          "comments": null,
+          "reposts": 2,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "product",
+            "relevant": false,
+            "industries": []
+          }
+        }
+      ],
+      "news": [
+        {
+          "title": "UL Solutions shares sold by Baird Financial Group Inc.",
+          "source": "MarketBeat",
+          "url": "https://www.marketbeat.com/instant-alerts/filing-ul-solutions-inc-uls-shares-sold-by-baird-financial-group-inc-2026-09-11/",
+          "published": "2026-09-11T00:00:00.000Z",
+          "summary": "Baird Financial Group reduced its UL Solutions stake by 11.7% in the second quarter, according to a SEC filing reported by MarketBeat.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Tidal Investments LLC sells 78,826 shares of UL Solutions Inc.",
+          "source": "MarketBeat",
+          "url": "https://www.marketbeat.com/instant-alerts/filing-tidal-investments-llc-sells-78826-shares-of-ul-solutions-inc-uls-2026-09-11/",
+          "published": "2026-09-11T00:00:00.000Z",
+          "summary": "Tidal Investments cut its UL Solutions position by 32% in the second quarter, selling 78,826 shares, according to a MarketBeat report based on SEC filings.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "UL Solutions Q&A: Embedding Sustainability In to Strategy",
+          "source": "Sustainability Magazine",
+          "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxPMzdnZ05rN09oLXV5Sm02VTJqT3JjN3E5dHBKNTlmeFFBM1JHdXhTY0Frcm50c19sMGV2X0JheFZoaW9IUEQ2cEl2YnZuNmZoYzVPN3ZXUGFRUWF0R1NSaW9zd0dYdDc2RTNscURvdmxJRHFHcmZIcW1BSjdoMVU3NDdjUzNuWUdjX3lfV1Q5U1dsYkFNenc?oc=5",
+          "published": "2026-09-10T08:48:03.000Z",
+          "label": {
+            "v": 3,
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "UL Solutions at Jefferies Global Industrials Conference 2026: growth and margins",
+          "source": "Investing",
+          "url": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxQb1ZHR3NudV9UaFlDbzRjaTBxc1FBRXVXenJsTEhrZ09CeGMyazZ3SlFEQWpfd1I0SXFrbm04OW81aXRRbmpMblA2T0R6S1JyMWJac2FRNzJ1R0lmVmV1NnU1QzhIUXViSzBuYnFZY1dqS3dyeUdWVUt3WnJFVFhEbHE2V2lUM2hXc2tTSWZzS1RtXzJuajZnTHpUSjVvQjhOWjdVNjJZN2RYUVBWUHkxeV9GTjRtaU9kLXM1V3VKZy1BX1VIekF3RUZINXQxV0Jl?oc=5",
+          "published": "2026-09-09T15:29:52.000Z",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "UL Solutions highlights growth and margins at Jefferies Global Industrials Conference 2026",
+          "source": "Investing",
+          "url": "https://fr.investing.com/news/transcripts/ul-solutions-a-la-conference-jefferies-global-industrials-2026--croissance-et-marges-93CH-3589187",
+          "published": "2026-09-09T00:00:00.000Z",
+          "summary": "UL Solutions said its 2025 revenue reached $3.1 billion, reaffirmed a 27% adjusted EBITDA margin target for 2026, and pointed to industrial testing and certification as the main growth driver.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "How Software Sale Gain Will Impact UL Solutions Stock (ULS) Investors",
+          "source": "Simplywall",
+          "url": "https://news.google.com/rss/articles/CBMi2wFBVV95cUxPdTFJVUpleVY4RmdjWG9hWkNqUFZXclBTSUEtV3hSYkF4TTlFQWtmTGx4UmVwQXI2R3J1X2tBOUFpOVBpMHRqbi0xZmRNNGtremFSeEFxMDlXd0xSWkM0VGYxZlNzV3J2UmxZaDZ2NEowZEZnNUN5MXJJUzExVFZ0UjJNNy1uYTJRTXVWZnlTdFk4bVhVWXkzUDJiT0RGeGM0VHhXZE1LZ28zLWJCWF9zUjhOWkM0eVBvU2xzTFpraTE4a2JEOHRmMGQ0MUk3ZkRSV3U3cmJyM1V3a0HSAdsBQVVfeXFMT3UxSVVKZXlWOEZnY1hvYVpDalBWV3JQU0lBLVd4UmJBeE05RUFrZkxseFJlcEFyNkdydV9rQTlBaTlQaTB0am4tMWZkTTRra3phUnhBcTA5V3dMUlpDNFRmMWZTc1dydlJsWWg2djRKMGRGZzVDeTFySVMxMVRWdFIyTTctbmEyUU11VmZ5U3RZOG1YVVl5M1AyYk9ERnhjNFR4V2RNS2dvMy1iQlhfc1I4TlpDNHlQb1Nsc0xaa2kxOGtiRDh0ZjBkNDFJN2ZEUld1N3JicjNVd2tB?oc=5",
+          "published": "2026-09-08T16:42:51.000Z",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "UL Solutions expands capabilities in Italy to create a European Retail Center of Excellence",
+          "source": "Business Wire / Ritzau",
+          "url": "https://via.ritzau.dk/pressemeddelelse/15113243/ul-solutions-expands-capabilities-in-italy-to-create-european-retail-center-of-excellence-supporting-customers-from-product-concept-to-market?publisherId=90456&lang=en",
+          "published": "2026-09-08T00:00:00.000Z",
+          "summary": "UL Solutions said it expanded its Northern Italy site into a European Retail Center of Excellence to support retailers, brands, and manufacturers from product concept through market launch.",
+          "label": {
+            "v": 3,
+            "why": "UL's new European Retail CoE positions them as the go-to testing partner for CPG launches; highlight Freyr's faster local compliance routing in EMEA.",
+            "signals": [
+              "geographic_segment"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV",
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "UL Solutions’ (ULS) Blowout Profit Number Comes With A Catch",
+          "source": "Yahoo Finance",
+          "url": "https://news.google.com/rss/articles/CBMinAFBVV95cUxNY2g2VGtxbzYyVXc1Vnpscm1naDcyTTRUVldULWpUdWFzZTA1Y0pCUXR5RDczUW9qbEFtSjdNcFdZNXRCeHJCN1hZS0d3WGRMbnRjTTRqX0Y1N09aSGI5b1hyZjhWMTFtNHBvUHg3ZnJtMHl5bDhMRHppY2QwSGVDVThLT3NtS3lab3M0eVJKQVNMbVJhSWpwcmE3YVI?oc=5",
+          "published": "2026-09-07T06:27:00.000Z",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Public Employees Retirement System of Ohio Buys New Shares in UL Solutions Inc. $ULS",
+          "source": "MarketBeat",
+          "url": "https://news.google.com/rss/articles/CBMi2wFBVV95cUxQbUN6ejlsOUlNSmFQUnhPSVlsc0pFZ2RoX3VhbVFWRTQ0QkoyZGtaMkgtbE56Xzh0YzhfUUF2S2hhbGlsZ3RTc25DZGh3QUhIRHgwR0ZNaWRrZGx6ejdBdGN6TnMtSE9VTjJfN1dqcWhXM0FWNjJmeVplNFRnOFZyT3V2OXhpUlBKNDdINDctQ1laQWkwZVp4MG1LY1JibHBzRUpvWHZYUGQyYkVsQmsyT2EzajI1U2hYY21iUVBwWnRTYkxGa1FRXzllcDc4ekY4ckFpUER3TDBEaGs?oc=5",
+          "published": "2026-09-06T09:18:43.000Z",
+          "summary": "Public Employees Retirement System of Ohio purchased 23,838 shares of UL Solutions in the 2nd quarter, establishing a new position in the company.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "UL Solutions (ULS) Could Be 25% Undervalued On Its Retail Services Expansion",
+          "source": "Simplywall",
+          "url": "https://news.google.com/rss/articles/CBMi1gFBVV95cUxNbm5sXy1HUU5hX1NKMnZlNm9WSS0xbGVjNW1aUG15Y01lR0UwRDdKbGVZN0lXbExMTWQ3b2xCeUc2NmZMY1I4MUh0d2JRckFPR2hnSUhvVmlwdE9uR3cyMmdfdUI1NDdsTFZGT1hUMWdfVGZndmxMWDJ3NFo1bzdrRTB6d1FFV09CdTF2UjN0d3J3UkVXOTl1WnJhdG5KcTRTT201aWhiRXRucnFwNjV2SVVRYXpuVjdSM1dWVnZ0Y0RwOGtxSDFCSnp4dzFvbmFuaUV3M3Vn0gHbAUFVX3lxTFBRWTFsWDllSEY1NkJTdG5RX1c4d2F1ZDNKUV9zT00zaTNqZm10WGZKcktjU0FNOS1XMXFhUVNRcG1FVmNDSjduOUljTVJjdC1kVTVBclo4UDBaWGF5UDZiWVZCYklpbVBZTG03VEM2ak9TUE9NaFM3YVRoOXN0U29tUzJyVXpNRWlFMlhBS3hTZzBTRW9oVi1ZRDRCQUNaUlJsbTBEMUwzd0hXSkFfRWttS0dKbEc3emswWTFOQTR1c0hiSjBOaWhfdHFvTXZPQmNUUDljVmV2RmNZZw?oc=5",
+          "published": "2026-09-06T04:22:34.000Z",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "UL Solutions Inc. $ULS Shares Purchased by Wellington Management Group LLP",
+          "source": "MarketBeat",
+          "url": "https://news.google.com/rss/articles/CBMizgFBVV95cUxPMXRwd3gyNU45dHQwVkFnczFGcUk5b2F1S0x3Nmt6OF9tbWFVektkemptMnVWRThEU0dPRTByOU5pM1l0ZzBCQ1BuQVlpSGNuX3hmTXFqM29Xby1tSWhyVDVvaENINTV6WkdCd2JYUnJDOFU3X3hJbDVBS1ptSDNxdUczcEx5aVZUclVsNjVqcGJLcTJQQmE3RHRWY3oxUjVtOERuekN0QWctZzBQUDRORnlHUHBNd3ZZdXZGRGstdXExTm1jcllmT2hyejA3UQ?oc=5",
+          "published": "2026-09-05T09:01:57.000Z",
+          "summary": "Wellington Management Group LLP increased its UL Solutions holdings by 11.4% in the 2nd quarter, owning 284,208 shares of the company.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "UL Solutions CEO Jennifer F. Scanlon Sells 12,500 Shares via Rule 10b5-1 Plan",
+          "source": "Kalkine Media",
+          "url": "https://news.google.com/rss/articles/CBMivwFBVV95cUxQZWJvRmlpcF9EUDdXbTc2QTZDMEV5NzljMEtwTXhxZVlmYUpsTFJkN1VvcTVKRFRjSTYyTWFsSkV0OTlCUWc5N0tfeWdNRTU5cXZHUDI3aWtQOUFTNHZ0OVVlQ2FzbUN4dF9sUFNmakdjaWhMNXN0VFA5dF9rdF80Qi1STTg1NE1jTURKWmJaY1pXWFNNNUlFU0Q0cWtyWFpGQnVvcV9ZVVBUeDI1dF9tWUtEY0lQbWxsMDBuZTNwVQ?oc=5",
+          "published": "2026-09-04T03:06:04.000Z",
+          "summary": "UL Solutions CEO Jennifer F. Scanlon sold 12,500 shares via a Rule 10b5-1 plan, a pre-planned trading arrangement.",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        }
+      ],
+      "site": [
+        {
+          "title": "Cyber Resilience Act Readiness: What Manufacturers Need to Know About New Reporting Requirements in the EU",
+          "source": "Ul",
+          "url": "https://www.ul.com/news/cyber-resilience-act-readiness-what-manufacturers-need-know-about-new-reporting-requirements",
+          "published": "2026-09-10T00:00:00.000Z",
+          "summary": "On September 9, 2026, UL Solutions published guidance on new EU Cyber Resilience Act reporting requirements for manufacturers of connected products.",
+          "label": {
+            "v": 2,
+            "why": "UL published guidance on EU CRA compliance for connected products; companies need regulatory strategy for new cybersecurity reporting obligations.",
+            "tags": [],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MDV",
+              "CON"
+            ]
+          }
+        },
+        {
+          "title": "New Installation at Chicago History Museum Highlights Origins of Safety Science and the Enduring Impact of Underwriters Laboratories",
+          "source": "Ul",
+          "url": "https://www.ul.com/news/new-installation-chicago-history-museum-highlights-origins-safety-science-and-enduring-impact",
+          "published": "2026-09-04T00:00:00.000Z",
+          "summary": "On September 4, 2026, UL Solutions was cited in a Chicago History Museum exhibit installation about the origins of safety science and the history of the UL Mark.",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "events",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "title": "Behind the UL Mark: A Day in the Life of a UL Solutions Field Engineer",
+          "source": "ul.com",
+          "url": "https://www.ul.com/news/behind-ul-mark-day-life-ul-solutions-field-engineer",
+          "published": "2026-09-03T04:00:00.000Z",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "UL Solutions CEO Shares Insights on Safety and Innovation on CNBC’s ‘Mad Money’",
+          "source": "Ul",
+          "url": "https://www.ul.com/news/ul-solutions-ceo-shares-insights-safety-and-innovation-cnbcs-mad-money",
+          "published": "2026-08-31T00:00:00.000Z",
+          "summary": "On September 1, 2026, UL Solutions CEO Jennifer Scanlon appeared on CNBC’s Mad Money to discuss how safety science, testing, and certification support innovation.",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "events",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "title": "Helping Retailers, Brands and Manufacturers Keep Pace with Europe’s Changing Market Demands",
+          "source": "ul.com",
+          "url": "https://www.ul.com/news/helping-retailers-brands-and-manufacturers-keep-pace-europes-changing-market-demands",
+          "published": "2026-08-26T04:00:00.000Z",
+          "label": {
+            "v": 3,
+            "why": "Europe market focus signals UL's regulatory-compliance push; highlight Freyr's deeper pharma/device regulatory expertise there.",
+            "signals": [
+              "geographic_segment"
+            ],
+            "relevant": true,
+            "industries": [
+              "MDV",
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "The Retail Software Platform Helping Teams See the Bigger Picture",
+          "source": "ul.com",
+          "url": "https://www.ul.com/news/retail-software-platform-helping-teams-see-bigger-picture",
+          "published": "2026-08-25T04:00:00.000Z",
+          "label": {
+            "v": 3,
+            "why": "Retail platform for supply-chain visibility competes for quality/risk workflows; position Freyr's regulated-industry specificity.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "MDV",
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        }
+      ]
+    },
+    "nsf-international": {
+      "id": "nsf-international",
+      "name": "NSF",
+      "slug": "nsf-international",
+      "group": "competitor",
+      "logoUrl": null,
+      "author": {
+        "name": "NSF",
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/people/28e7e460546296c1f4a047ce.jpg",
+        "followerCount": 271412
+      },
+      "tldr": "NSF certifies supplements, water systems, and food-contact materials. Recent certifications include Shell MDS (PFAS/MOAH-free lubricants in Asia-Pacific), Complete Home Filtration (Australian first for CHF6000 systems under NSF/ANSI 42), CELSIUS energy drinks (NSF Certified for Sport), and dietary supplement manufacturers including Cata-Kor and Zeon…",
+      "fetchedAt": "2026-09-12T23:03:49.044Z",
+      "newsAt": "2026-09-13T13:50:06.703Z",
+      "siteAt": "2026-09-13T18:35:18.019Z",
+      "posts": [
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7503912749110829056/",
+          "text": "It's Organic Month in the United States and Canada, and we're celebrating by sharing how you can shop organic, and by introducing you to the people behind our organic certification. \n\nAt QAI, an NSF Company, with over 35 years of organic expertise, we recognize the important role that organic farming plays in supporting healthier communities and a healthier planet. Throughout the month, team members from QAI, will share their perspectives on what the organic label means to them and why people choose certified organic products. \n\nFollow along throughout Organic Month to hear more about organic certification, and insights and perspectives from the team. \n\nLearn more about our organic certification services at:  https://lnkd.in/eSCXVPw9",
+          "date": "2026-09-10T20:30:15.345Z",
+          "reactions": 26,
+          "comments": 1,
+          "reposts": 11,
+          "mediaType": "image",
+          "label": {
+            "v": 3,
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7503814995504267264/",
+          "text": "We're pleased to welcome Nicole Parent Haughey to the NSF Board of Directors. \n\nHaughey brings more than three decades of leadership experience as an investor, operator, corporate executive and public company board director, with deep expertise in strategy, governance, mergers and acquisitions, talent development and value creation. Her leadership experience across a range of industries will be an asset as NSF continues to innovate and expand its impact around the world. \n\n\"I am honored to join the NSF Board of Directors at a time when organizations around the world are placing greater importance on quality, safety, sustainability and trust,\" said Haughey. \"NSF has built an extraordinary reputation for protecting and advancing human health and helping organizations meet evolving challenges. I look forward to working with my fellow directors and the NSF senior leadership team to support NSF's mission and continued growth.\"  \n\nPlease join us in welcoming Nicole Parent Haughey to NSF. \n\nRead the full announcement: https://lnkd.in/g8imbNFW",
+          "date": "2026-09-10T14:01:49.069Z",
+          "reactions": 82,
+          "comments": 8,
+          "reposts": 1,
+          "mediaType": "image",
+          "label": {
+            "v": 3,
+            "why": "Board appointment signals NSF's strategic direction; track her mandate for insights into their competitive priorities.",
+            "signals": [
+              "corporate_structure"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7503471134122807296/",
+          "text": "The future of food safety isn't just about compliance. It's about leading change.\n\nNSF recognizes Shell MDS Malaysia as the first manufacturer in Asia Pacific to earn dual certification to NSF 537: PFAS-Free Products and NSF 538: MOAH-Free Certification. The certification demonstrates a commitment to eliminating PFAS and MOAH from food-contact applications and helping customers meet evolving safety and regulatory expectations.\n\nAs concerns around chemical exposure continue to drive industry innovation, NSF remains committed to setting trusted standards that help organizations raise the bar for safety, quality and consumer confidence worldwide.\n\n🔗Read more about this milestone and what it means for the future of safer food-contact applications: https://lnkd.in/e4tvSr3Y\n\n#FoodSafety #PFAS #ConsumerProtection #ProductCertification #APAC #NSF",
+          "date": "2026-09-09T15:15:26.127Z",
+          "reactions": 40,
+          "comments": null,
+          "reposts": 3,
+          "mediaType": "image",
+          "label": {
+            "v": 2,
+            "tags": [
+              "award"
+            ],
+            "signal": "other",
+            "relevant": true,
+            "industries": [
+              "CON"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7503097615425736704/",
+          "text": "Credibility comes from transparency, evidence-based innovation and a commitment to excellence.\n\nIn this exclusive client testimonial, Samsung Electronics discusses how rigorous safety standards, independent third-party certification and continuous innovation play a critical role in delivering high-quality water purification solutions.\n\nFrom meeting NSF standards to addressing emerging contaminants such as PFAS and microplastics, Samsung Electronics' commitment to advancing water filtration technology reflects a shared vision with NSF: helping consumers access clean, safe drinking water with confidence.\n\n🎥 Watch the full conversation below.\n\nLearn more about NSF/ANSI 42, 53 and 401 standards and how they help verify water filtration performance: https://lnkd.in/eXhd3WGR \n\n#NSF #SamsungElectronics #PoweredByScience #ConsumerTrust #WaterSafety",
+          "date": "2026-09-08T14:31:12.330Z",
+          "reactions": 22,
+          "comments": null,
+          "reposts": 1,
+          "mediaType": "video",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": true,
+            "industries": [
+              "CON"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7501338824439001089/",
+          "text": "What do evolving PFAS and MOSH/MOAH requirements mean for the future of the food industry? \n\nAt the grand opening of the FUCHS Group's Americas Technology Center, NSF's Sam Cole, director of Food Contact Evaluation, shared insights on how evolving regulations, food safety expectations and sustainability goals are reshaping the food-grade lubricant and food-contact materials landscape.  \n\nAmong the trends highlighted: \n\n✅ Global food-grade lubricant markets are projected to grow at a compound annual growth rate (CAGR) of 2.6% to 7.5%.  \n\n✅ Stricter food safety regulations are increasing demand for certified food-grade lubricants and food-contact materials. \n\n✅ Food processors are increasingly requesting PFAS-free and MOAH-free test reports and self-declarations to support compliance and reduce risk. \n\nSam also highlighted evolving regulations around PFAS and MOAH. Expanding PFAS restrictions and heightened European scrutiny of MOAH contamination are prompting manufacturers and food processors to review materials, strengthen supplier oversight and seek verified alternatives. \n\nTo help organizations navigate these changes, NSF offers science-based certification programs, including: \n\n✅️ NSF P537 PFAS-Free Certification, which verifies products contain no intentionally added PFAS and meet stringent testing requirements. \n\n✅️ NSF P538 MOAH-Free Certification, which helps demonstrate products contain less than 100 ppm MOAH and supports compliance efforts amid growing market and regulatory scrutiny.  \n\n✅️ NSF P525 Safe Food Packaging Certification, which helps manufacturers demonstrate regulatory compliance, material safety and food-contact suitability. \n\nOrganizations that stay ahead of emerging PFAS and MOSH/MOAH challenges can strengthen customer confidence, support compliance objectives and differentiate themselves in an increasingly complex marketplace. \n\n#NSF #PFAS #MOAH #MOSH #FoodGradeLubricants #FoodPackaging",
+          "date": "2026-09-03T18:02:23.882Z",
+          "reactions": 35,
+          "comments": null,
+          "reposts": 6,
+          "mediaType": "image",
+          "label": {
+            "v": 2,
+            "why": "NSF presented on evolving PFAS/MOSH/MOAH food-contact regulations; expertise suggests regulatory horizon scanning opportunity for clients.",
+            "tags": [],
+            "signal": "events",
+            "relevant": true,
+            "industries": [
+              "CON"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/nsf_nsfcertified-sustainability-innovation-activity-7500915449409478656-UFP7?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG2LERYBIoXio97EV8EM9FeuRgUMP5uRBC4",
+          "text": "What does credible sustainability look like in practice?\n \nNSF Certified Compact Product helps brands independently validate compact design claims—supporting greater transparency, trust and environmental responsibility.\n \n\"NSF Certified Compact Product gives companies a science-backed way to substantiate their compact-design claims, backed by a rigorous, defined standard,\" says Jessica Evans, director of Food Advisory at NSF.\n \nIt's one more way we're helping organizations innovate responsibly while advancing confidence in sustainability claims.\n \n➡️ Learn more: https://lnkd.in/euWzdPch \n \n#NSFCertified #Sustainability #Innovation",
+          "date": "2026-09-02T14:00:03.409Z",
+          "reactions": 20,
+          "comments": 1,
+          "reposts": 4,
+          "label": {
+            "v": 2,
+            "tags": [
+              "award"
+            ],
+            "signal": "other",
+            "relevant": true,
+            "industries": [
+              "CON"
+            ]
+          }
+        }
+      ],
+      "news": [
+        {
+          "title": "Informed Sport vs. NSF: Which Sport Supplement Certification Powers Your Safety?",
+          "source": "ProLabs",
+          "url": "https://ftp.prolabs.com/informed-sport-vs-nsf-which-sport-supplement-certification-powers-your-safety",
+          "published": "2026-09-13",
+          "summary": "Article compares NSF International and Informed Sport supplement certifications, noting NSF's foundational focus on food safety and WADA anti-doping compliance versus Informed Sport's emphasis on sport-specific contamination risks and frequent testing cycles.",
+          "publisherUrl": "https://ftp.prolabs.com/informed-sport-vs-nsf-which-sport-supplement-certification-powers-your-safety",
+          "label": {
+            "v": 3,
+            "why": "NSF publishes certification comparison content; Freyr can counter with deeper regulatory gap analysis between Informed Sport and NSF frameworks.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "NSF awards first PFAS- and MOAH-free certification in APAC to Shell MDS Malaysia",
+          "source": "Indovizka",
+          "url": "https://indovizka.com/news/detail/22697/nsf-awards-first-pfas-and-moahfree-certification-in-apac-to-shell-mds-malaysia",
+          "published": "2026-09-11T00:00:00.000Z",
+          "summary": "NSF announced Shell MDS (Malaysia) as the first manufacturer in Asia Pacific to earn dual certification to NSF 537 PFAS-Free Products and NSF 538 MOAH-Free Certification for Nonfood Compounds and Food Equipment Materials.",
+          "label": {
+            "v": 3,
+            "why": "NSF's dual PFAS/MOAH certifications for food-contact materials directly compete with Freyr's compliance and certification advisory.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "NSF Awards First PFAS and MOAH-Free Certification in APAC to Shell MDS Malaysia",
+          "source": "Wahanariau",
+          "url": "https://wahanariau.com/amp/50013/nsf-awards-first-pfas-and-moahfree-certification-in-apac-to-shell-mds-malaysia",
+          "published": "2026-09-10T15:40:02.000Z",
+          "summary": "NSF awards Shell MDS Malaysia the first dual PFAS-free and MOAH-free certification (NSF 537/538) in Asia Pacific for food contact materials, certifying seven Shell products for compliance with emerging regulations.",
+          "publisherUrl": "https://wahanariau.com/amp/50013/nsf-awards-first-pfas-and-moahfree-certification-in-apac-to-shell-mds-malaysia",
+          "label": {
+            "v": 3,
+            "why": "NSF (competitor) awarded first PFAS/MOAH-free dual certification in APAC to Shell MDS; shows NSF's certification reach in food-contact materials.",
+            "signals": [
+              "clientele"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "NSF Welcomes Nicole Parent Haughey to Board of Directors",
+          "source": "Business Wire",
+          "url": "https://www.businesswire.com/news/home/20260910922922/en/NSF-Welcomes-Nicole-Parent-Haughey-to-Board-of-Directors",
+          "published": "2026-09-10T14:10:00.000Z",
+          "publisherUrl": "https://www.businesswire.com/news/home/20260910922922/en/NSF-Welcomes-Nicole-Parent-Haughey-to-Board-of-Directors",
+          "label": {
+            "v": 3,
+            "why": "Board appointment signals NSF's governance and strategic priorities; competitor leadership changes warrant monitoring.",
+            "signals": [
+              "corporate_structure"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "NSF Awards First PFAS and MOAH-Free Certification in APAC to Shell MDS Malaysia",
+          "source": "Koreabizwire",
+          "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxOWnd6TWVyYy1vVFJnMml4NDBMT2ZIZTl2SDh6R29pQlFlUGNqdXQyUTM1ZUFheHBQMS1iVVVLMzYxNndyX2U0Zm1mbXM2dmFLZXFBRExnY2dBTExPdFFUYmdQSjV0RFFMQndQWW5McWVxUWJxYjU0RjVHeV9DODBTVGVfUUJ2QWp2MnNydG8tdmwtaDNlM1Z6TkEwTzVtZ1RYSU0zNV95VFJSQzBPOVFj?oc=5",
+          "published": "2026-09-10T00:17:44.000Z",
+          "label": {
+            "v": 3,
+            "why": "NSF certification for PFAS/MOAH-free materials affects consumer product compliance, but this is NSF's certification service not competitor intelligence.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "NSF Awards First PFAS and MOAH-Free Certification in APAC to Shell MDS Malaysia",
+          "source": "Koreabizwire",
+          "url": "http://koreabizwire.com/nsf-awards-first-pfas-and-moah-free-certification-in-apac-to-shell-mds-malaysia/358887",
+          "published": "2026-09-10T00:17:44.000Z",
+          "publisherUrl": "http://koreabizwire.com/nsf-awards-first-pfas-and-moah-free-certification-in-apac-to-shell-mds-malaysia/358887",
+          "label": {
+            "v": 3,
+            "why": "Duplicate of item 3; NSF certification service for consumer products.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "NSF Welcomes Nicole Parent Haughey to Board of Directors",
+          "source": "Yahoo Finance",
+          "url": "https://finance.yahoo.com/healthcare/articles/nsf-welcomes-nicole-parent-haughey-141000151.html",
+          "published": "2026-09-10T00:00:00.000Z",
+          "summary": "NSF announced the appointment of Nicole Parent Haughey to its Board of Directors.",
+          "label": {
+            "v": 3,
+            "why": "Same board appointment as item 1; NSF leadership change to track.",
+            "signals": [
+              "corporate_structure"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "台水推NSF國際認證把關飲水安全",
+          "source": "中央社",
+          "url": "https://www.cna.com.tw/news/afe/202609090123.aspx",
+          "published": "2026-09-09T00:00:00.000Z",
+          "summary": "Taiwan Water Corp. said it is expanding NSF International certification for water-treatment chemicals, with three suppliers certified so far and NSF certification set to become a required bidding qualification for ferric chloride next year.",
+          "label": {
+            "v": 3,
+            "why": "Taiwan Water expanding NSF certification use; NSF certification service for consumer/water safety, not competitor intelligence.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Complete Home Filtration Achieves Australia-First NSF/ANSI 42 Certification",
+          "source": "Yahoo Finance",
+          "url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxOZnNpem11dmFpM0Vwelp5NTBzOFlZTTV4WUp5bDF6cmpDUUQwUUZxTHkybXR5Y3Z2VGxReDJXWFJnYzJJYVdvMTNTUE5pYkZqUkZZa2tyOVJUZHJzRUZwRm9uYmlvRHR2aWlubmJtaTNYaUtMaWpEeG40c3JfbUhHT1pMUEFlV0RFT1hEblFMd0RHM0F4OHZ4Q1Ixbl9nZDZlRmRvd0tyWQ?oc=5",
+          "published": "2026-09-08T06:16:00.000Z",
+          "summary": "Complete Home Filtration achieves NSF/ANSI 42 certification in Australia for its CHF6000 whole-home systems across material safety, structural integrity, and chlorine-reduction performance—marking an Australian first for complete-system certification.",
+          "label": {
+            "v": 3,
+            "why": "Company achieving NSF/ANSI certification; NSF certification service for consumer products, not competitor intelligence.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Complete Home Filtration Achieves Australia-First NSF/ANSI 42 Certification",
+          "source": "PR Newswire",
+          "url": "https://www.prnewswire.com/apac/news-releases/complete-home-filtration-achieves-australia-first-nsfansi-42-certification-302871954.html",
+          "published": "2026-09-08T06:16:00.000Z",
+          "summary": "Complete Home Filtration achieved NSF/ANSI 42 certification for specified CHF6000 system configurations, marking Australia's first complete-system certification covering material safety, structural integrity, and chlorine-reduction performance.",
+          "publisherUrl": "https://www.prnewswire.com/apac/news-releases/complete-home-filtration-achieves-australia-first-nsfansi-42-certification-302871954.html",
+          "label": {
+            "v": 3,
+            "why": "Complete Home Filtration's NSF/ANSI 42 certification is a customer achievement, not NSF news; shows NSF certifies assembled systems, not just components.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Complete Home Filtration achieves Australia-first NSF/ANSI 42 certification for CHF6000 system configuration",
+          "source": "Finance Yahoo / PRNewswire",
+          "url": "https://finance.yahoo.com/healthcare/articles/complete-home-filtration-achieves-australia-061600022.html",
+          "published": "2026-09-08T00:00:00.000Z",
+          "summary": "Australian water filtration company Complete Home Filtration said it received NSF/ANSI 42 certification for a specified CHF6000 configuration, which it called an Australian first for complete-system certification across material safety, structural integrity, and chlorine-reduction performance.",
+          "label": {
+            "v": 3,
+            "why": "Duplicate of item 0; Complete Home Filtration customer news, not NSF corporate activity.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Sami-Sabinsa opens new Hassan Unit-2 manufacturing facility with NSF cGMP certification",
+          "source": "Nutritional Outlook",
+          "url": "https://www.nutritionaloutlook.com/",
+          "published": "2026-09-07T00:00:00.000Z",
+          "summary": "Sami-Sabinsa marked the opening of its new Hassan Unit-2 manufacturing facility, which the company said is NSF cGMP certified.",
+          "label": {
+            "v": 3,
+            "why": "Sami-Sabinsa's NSF cGMP certification is a facility achievement, not NSF company news.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        }
+      ],
+      "site": [
+        {
+          "title": "NSF Welcomes Nicole Parent Haughey to Board of Directors",
+          "source": "Nsf",
+          "url": "https://www.nsf.org/news/nsf-welcomes-nicole-parent-haughey-to-board-of-directors",
+          "published": "2026-09-10T00:00:00.000Z",
+          "summary": "NSF said it welcomed Nicole Parent Haughey to its Board of Directors on September 1, 2026.",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": true,
+            "industries": [
+              "MDV",
+              "CON"
+            ]
+          }
+        },
+        {
+          "title": "Information Systems Security Association (ISSA) Welcomes ...",
+          "source": "Nsf",
+          "url": "https://www.nsf.org/news/information-systems-security-association-welcomes-nsfs-brian-schultz-2026-hall-fame",
+          "published": "2026-09-10T00:00:00.000Z",
+          "summary": "NSF’s Brian Schultz was recognized by ISSA with a 2026 Hall of Fame honor.",
+          "label": {
+            "v": 2,
+            "tags": [
+              "award"
+            ],
+            "signal": "other",
+            "relevant": true,
+            "industries": [
+              "MDV",
+              "CON"
+            ]
+          }
+        },
+        {
+          "title": "Nearly All European Drinking Water Product Manufacturers Are…",
+          "source": "Nsf",
+          "url": "https://www.nsf.org/news/nearly-all-european-drinking-water-product-manufacturers-are-confident-they-understand-the-eus-new-hygiene-rules-but-only-7-have-completed-a-gap-assessment",
+          "published": "2026-09-10T00:00:00.000Z",
+          "summary": "NSF published research on European drinking water product manufacturers, reporting that 88% expect testing and audit capacity to delay readiness and 30% do not plan to select an external partner until 2027.",
+          "label": {
+            "v": 2,
+            "why": "NSF published research on European drinking water manufacturers' testing delays and compliance readiness; signals regulatory advice role for water product clients.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "Issue Papers are due on Friday!",
+          "source": "Nsf",
+          "url": "https://standards.nsf.org/discussion/issue-papers-are-due-on-friday",
+          "published": "2026-09-01T00:00:00.000Z",
+          "summary": "Standards committee notice reminding participants that issue and information papers are due by Friday, August 28, for inclusion in the 2026 RWF JC meeting agenda and packet.",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "events",
+            "relevant": true,
+            "industries": []
+          }
+        },
+        {
+          "title": "Consumer Confidence Reports",
+          "source": "Nsf",
+          "url": "https://www.nsf.org/consumer-resources/articles/consumer-confidence-reports",
+          "published": "2026-08-25T00:00:00.000Z",
+          "summary": "An article explains the EPA requirement for community water systems to provide annual consumer confidence reports about drinking water quality.",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "title": "NSF Launches Independent Certification Standard for ...",
+          "source": "Nsf",
+          "url": "https://www.nsf.org/news/nsf-launches-independent-certification-standard-for-compact-products",
+          "published": "2026-08-25T00:00:00.000Z",
+          "summary": "NSF announced a new third-party certification standard for compact products to verify reduced materials and shipping impacts while maintaining safety and performance.",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": true,
+            "industries": [
+              "MDV",
+              "CON"
             ]
           }
         }
@@ -9317,6 +11133,1008 @@
         }
       ]
     },
+    "ennov": {
+      "id": "ennov",
+      "name": "Ennov",
+      "slug": "ennov",
+      "group": "competitor",
+      "logoUrl": null,
+      "author": {
+        "name": "Ennov",
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/people/0f448fdd199853586c94563e.jpg",
+        "followerCount": 19921
+      },
+      "tldr": "Ennov appointed a new CEO to lead the company forward after 25+ years and 650+ customers. The company is actively promoting its PMS platform and discussing AI's role in regulatory affairs.",
+      "fetchedAt": "2026-09-10T21:04:57.572Z",
+      "newsAt": "2026-09-12T08:38:39.981Z",
+      "siteAt": "2026-09-13T18:17:36.786Z",
+      "posts": [
+        {
+          "url": "https://www.linkedin.com/posts/ennov_25-years-of-ennov-more-than-650-customers-activity-7503445863252357120-q2CG?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3crRQB7bstjB9H7x9jfVuqm-1mV6DaAhs",
+          "text": "25+ years of Ennov. More than 650 customers. And now, a new CEO to lead our next chapter.\n\nDr. Oxana Karpenko Pickeral joins Ennov as Chief Executive Officer, bringing extensive experience at the intersection of life sciences, healthcare, and technology.\n\nFor us, this next chapter is about building on what already makes Ennov different: innovative products, close customer relationships, and one unified platform connecting teams, data, and regulated workflows.\n\nOur founder Olivier Pâris now joins Ennov’s Board and will continue supporting the company as a Strategic Advisor.\n\nWelcome to Ennov, Oxana. And thank you, Olivier, for getting us here.\n\nRead the full announcement on our website: https://lnkd.in/eDWVr4dB",
+          "date": "2026-09-09T19:16:28.241Z",
+          "reactions": 65,
+          "comments": 5,
+          "reposts": 8,
+          "label": {
+            "v": 2,
+            "why": "New CEO brings experience in life sciences and healthcare; founder transitions to strategic advisor role, signaling potential shifts in regulatory strategy and platform p",
+            "tags": [],
+            "signal": "leadership",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/ennov_25-years-of-ennov-more-than-650-customers-activity-7503445863252357120-q2CG?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3t9ssB4HWWm3QpdYF_EM_Oj8G_ecoDvWs",
+          "text": "25+ years of Ennov. More than 650 customers. And now, a new CEO to lead our next chapter.\n\nDr. Oxana Karpenko Pickeral joins Ennov as Chief Executive Officer, bringing extensive experience at the intersection of life sciences, healthcare, and technology.\n\nFor us, this next chapter is about building on what already makes Ennov different: innovative products, close customer relationships, and one unified platform connecting teams, data, and regulated workflows.\n\nOur founder Olivier Pâris now joins Ennov’s Board and will continue supporting the company as a Strategic Advisor.\n\nWelcome to Ennov, Oxana. And thank you, Olivier, for getting us here.\n\nRead the full announcement on our website: https://lnkd.in/eDWVr4dB",
+          "date": "2026-09-09T19:16:28.241Z",
+          "reactions": 98,
+          "comments": 7,
+          "reposts": 11,
+          "label": {
+            "v": 2,
+            "why": "New CEO brings life-sciences expertise; founder transitions to board/advisory, signaling strategic direction shift for regulatory platform vendor.",
+            "tags": [],
+            "signal": "leadership",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/ennov_pms-is-live-so-what-comes-next-for-regulatory-activity-7503365398030020608-93p3?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3crRQB7bstjB9H7x9jfVuqm-1mV6DaAhs",
+          "text": "PMS is live. So what comes next for Regulatory teams?\n\nAt the Global Pharmaceutical Regulatory Affairs Summit in Brussels, Pierre Stanislawski, Ennov’s Product Director, Regulatory, will look beyond the milestone itself and focus on what PMS means in practice.\n\nJoin Pierre on September 28 for a practical discussion on what Regulatory teams should be preparing for now.\n\nAnd if you cannot make it to GPRAS, our IDMP Content Hub brings together practical resources on PMS, IDMP implementation, timelines, data readiness, and more. Explore the IDMP Content Hub: ⁠https://lnkd.in/gzbjvkpm",
+          "date": "2026-09-09T08:15:16.678Z",
+          "reactions": 14,
+          "comments": 1,
+          "reposts": 2,
+          "label": {
+            "v": 2,
+            "why": "Ennov presenting on PMS and IDMP implementation at GPRAS; demonstrating regulatory expertise that directly competes with Freyr's advisory services to pharma teams.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "events",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/ennov_pms-is-live-so-what-comes-next-for-regulatory-activity-7503365398030020608-93p3?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3t9ssB4HWWm3QpdYF_EM_Oj8G_ecoDvWs",
+          "text": "PMS is live. So what comes next for Regulatory teams?\n\nAt the Global Pharmaceutical Regulatory Affairs Summit in Brussels, Pierre Stanislawski, Ennov’s Product Director, Regulatory, will look beyond the milestone itself and focus on what PMS means in practice.\n\nJoin Pierre on September 28 for a practical discussion on what Regulatory teams should be preparing for now.\n\nAnd if you cannot make it to GPRAS, our IDMP Content Hub brings together practical resources on PMS, IDMP implementation, timelines, data readiness, and more. Explore the IDMP Content Hub: ⁠https://lnkd.in/gzbjvkpm",
+          "date": "2026-09-09T08:15:16.678Z",
+          "reactions": 18,
+          "comments": 1,
+          "reposts": 2,
+          "label": {
+            "v": 2,
+            "why": "Ennov presenting on PMS/IDMP implementation at GPRAS; identifies customers needing regulatory operations support as they prepare for new requirements.",
+            "tags": [],
+            "signal": "events",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/ennov_35-years-of-regulatory-benchmarking-one-activity-7503076373142458368-zylD?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3crRQB7bstjB9H7x9jfVuqm-1mV6DaAhs",
+          "text": "35 years of regulatory benchmarking. One conversation about what AI actually means for the industry.\n\nSteve Gens MSOD has studied how life sciences organizations manage regulatory operations across companies of every size and multiple survey cycles. On the Ennovation podcast, he shares what the data shows about AI adoption, where real value is emerging, and what leaders should be prioritizing now.\n\nListen to the full episode: https://lnkd.in/e4bphAdm",
+          "date": "2026-09-08T13:06:47.775Z",
+          "reactions": 8,
+          "comments": null,
+          "reposts": null,
+          "label": {
+            "v": 2,
+            "why": "Ennov sharing benchmarking data on AI adoption in regulatory operations; positioning itself as an industry thought leader on where compliance automation delivers value.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/ennov_35-years-of-regulatory-benchmarking-one-activity-7503076373142458368-zylD?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3t9ssB4HWWm3QpdYF_EM_Oj8G_ecoDvWs",
+          "text": "35 years of regulatory benchmarking. One conversation about what AI actually means for the industry.\n\nSteve Gens MSOD has studied how life sciences organizations manage regulatory operations across companies of every size and multiple survey cycles. On the Ennovation podcast, he shares what the data shows about AI adoption, where real value is emerging, and what leaders should be prioritizing now.\n\nListen to the full episode: https://lnkd.in/e4bphAdm",
+          "date": "2026-09-08T13:06:47.775Z",
+          "reactions": 8,
+          "comments": null,
+          "reposts": 1,
+          "label": {
+            "v": 2,
+            "why": "Benchmarking data on AI adoption in regulatory operations; reveals how competitors are investing in AI capabilities for lifecycle management.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        }
+      ],
+      "news": [
+        {
+          "title": "Ardian, Sagemount, Eir, Thoma Bravo back life sciences software ...",
+          "source": "PE Hub",
+          "url": "https://www.pehub.com/ardian-sagemount-eir-thoma-bravo-back-life-sciences-software-1315-capital-eyes-value-creation-potential-in-argonauts-diagnostics-division/",
+          "published": "2026-09-12T08:38:32.657Z",
+          "summary": "A private-equity-backed investment is expected to support Ennov's expansion, with emphasis on AI innovation, global go-to-market acceleration, and product scaling.",
+          "label": {
+            "v": 3,
+            "why": "PE backing signals major product investment and go-to-market push; watch for aggressive pricing or bundling moves to defend installed base.",
+            "signals": [
+              "corporate_structure"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Ennov Appoints Oxana Pickeral as Chief Executive Officer",
+          "source": "STT Info",
+          "url": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxNM25kX0xKcTYycGFRR1BpdUdnOWpyQmxwLXh0b0xLbFg1N0htSHREMll0TEhxUk9rSDYzYWVXbE9RX2xBWGJXc05qUktUR2hTTVBlejhqWmpzT1NTSkdQcVNvRGstZVpSWFB5cnBvNW1qZjhFZUV2R2lzTDVwa2RhdV9YSTNXUDZRZkFWNTJSQU9GMENmWXhQWk55RV9rbzVjeDN0a29acmd3azhzdzdqWlhocndyNnVB?oc=5",
+          "published": "2026-09-09T14:00:00.000Z",
+          "label": {
+            "v": 3,
+            "why": "CEO appointment signals strategic direction change; new leadership often reshapes sales, GTM, and product strategy within 12 months.",
+            "signals": [
+              "corporate_structure"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ],
+            "isCompanyNews": true
+          }
+        }
+      ],
+      "site": [
+        {
+          "title": "Ennov Appoints Oxana Pickeral as Chief Executive Officer",
+          "source": "ennov.com",
+          "url": "https://en.ennov.com/news/announcement/ennov-appoints-oxana-pickeral-as-chief-executive-officer/",
+          "published": "2026-09-09T13:12:11.000Z",
+          "label": {
+            "v": 3,
+            "why": "Official announcement of new CEO; critical leadership change for a direct competitor in life-sciences regulatory software.",
+            "signals": [
+              "corporate_structure"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Ennov Welcomes Strategic Growth Investment from Bregal Sagemount and Ardian Growth",
+          "source": "ennov.com",
+          "url": "https://en.ennov.com/news/announcement/ennov-bregal-sagemount-ardian-growth-investment/",
+          "published": "2026-09-09",
+          "label": {
+            "v": 3,
+            "why": "PE investment from Bregal Sagemount and Ardian Growth signals growth capital and strategic acceleration—monitor product and go-to-market moves.",
+            "signals": [
+              "corporate_structure"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Biotech QMS Software: Scale Quality Operations",
+          "source": "Ennov",
+          "url": "https://en.ennov.com/blog/regulatory-alert-sept-2026/",
+          "published": "2026-08-21T00:00:00.000Z",
+          "summary": "Ennov published a regulatory alert summarizing new EMA and FDA eCTD 4.0 timelines and package updates, including the EMA’s revised mandatory date for new CAP MAA submissions in 2028.",
+          "label": {
+            "v": 2,
+            "why": "Ennov's regulatory alert on EMA/FDA eCTD 4.0 timelines and 2028 CAP MAA mandate positions them as compliance advisor; Freyr can differentiate on implementation strategy.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "title": "Change Control, Simplified: Key Takeaways from Our Webinar",
+          "source": "Ennov",
+          "url": "https://en.ennov.com/blog/change-control-simplified-key-takeaways-from-our-webinar/",
+          "published": "2026-08-13T00:00:00.000Z",
+          "summary": "Ennov posted a blog article on August 13, 2026 about change control and key takeaways from its webinar.",
+          "label": {
+            "v": 2,
+            "why": "Ennov educates on change control via webinar; Freyr should understand what change management gaps Ennov targets to position competing solutions.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "events",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "5 Common Packaging Artwork Management Challenges in Life Sciences",
+          "source": "ennov.com",
+          "url": "https://en.ennov.com/blog/packaging-artwork-management-challenges/",
+          "published": "2026-08-13",
+          "label": {
+            "v": 3,
+            "why": "Ennov positions packaging artwork as a regulatory pain point; highlight Freyr's end-to-end submission readiness to counter their workflow-only angle.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "How to Build a Compliant Artwork Approval Workflow",
+          "source": "ennov.com",
+          "url": "https://en.ennov.com/blog/how-to-build-a-compliant-artwork-approval-workflow/",
+          "published": "2026-08-13",
+          "label": {
+            "v": 3,
+            "why": "Artwork approval workflow content targets a known compliance friction; emphasize Freyr's integrated regulatory strategy vs. isolated QMS tools.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ],
+            "isCompanyNews": true
+          }
+        }
+      ]
+    },
+    "extedo": {
+      "id": "extedo",
+      "name": "EXTEDO",
+      "slug": "extedo",
+      "group": "competitor",
+      "logoUrl": null,
+      "author": {
+        "name": "EXTEDO",
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/people/0c9868a83b56a5bfdd62d6b3.jpg",
+        "followerCount": 10581
+      },
+      "tldr": "EXTEDO is partnering with Egypt's EDA and DAF on Phase II of the eCTD project to advance digital transformation of the Egyptian regulatory system.",
+      "fetchedAt": "2026-09-10T21:05:58.444Z",
+      "newsAt": "2026-09-12T08:38:45.840Z",
+      "siteAt": "2026-09-13T18:33:34.177Z",
+      "posts": [
+        {
+          "url": "https://www.linkedin.com/posts/extedo_ema-announces-user-acceptance-testing-uat-activity-7502625278096052224-EVvK?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3gML0Bm61OdBVzSziPtfQMs9redeqI0mE",
+          "text": "EMA announces User Acceptance Testing (UAT) for electronic product information (ePI)!   \n\nThe European Medicines Agency (EMA) is officially inviting pharmaceutical companies to participate in the upcoming UAT for core ePI functionalities within the product lifecycle management (PLM) Portal. The PLM Portal’s ePI functionality is based on the EU ePI Common Standard, utilizing structured data via HL7 FHIR.   \n\nThe announced UAT aims to validate key business scenarios and evaluate overall usability. Participating companies will be asked to provide feedback on:   \n- Test results for available functionalities \n- User experience of ePI tooling at the PLM portal   \n- Available guidance and training materials   \n\nDeadline to register: 18 September 2026    \n\nInterested companies can sign up via the EMA survey here: https://lnkd.in/es4KGyvX\n\nThis is a valuable opportunity for the industry to get hands-on experience and contribute to shaping the future of ePI while understanding the underlying processes on a deeper level.   \n\nNeed support navigating the ePI transition? \nMoving to structured ePI and adapting to HL7 FHIR standards within the PLM portal can be a complex process. If your team needs guidance on ePI management, technical implementation, or preparing your regulatory workflows, EXTEDO, together with the other cormeo brands, medicines.ie, Rote Liste and Docuvera, are happy to help. \n\nFeel free to reach out to discuss how we can support your ePI journey!",
+          "date": "2026-09-07T07:14:18.335Z",
+          "reactions": 19,
+          "comments": null,
+          "reposts": 4,
+          "label": {
+            "v": 2,
+            "why": "EMA's ePI UAT invitation requires companies to validate structured data submissions; organizations need guidance on HL7 FHIR compliance and PLM Portal readiness.",
+            "tags": [],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/extedo_ema-announces-user-acceptance-testing-uat-activity-7502625278096052224-EVvK?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3KhLwBcEtZin6fHenK-KRhiq0gZe0T-rw",
+          "text": "EMA announces User Acceptance Testing (UAT) for electronic product information (ePI)!   \n\nThe European Medicines Agency (EMA) is officially inviting pharmaceutical companies to participate in the upcoming UAT for core ePI functionalities within the product lifecycle management (PLM) Portal. The PLM Portal’s ePI functionality is based on the EU ePI Common Standard, utilizing structured data via HL7 FHIR.   \n\nThe announced UAT aims to validate key business scenarios and evaluate overall usability. Participating companies will be asked to provide feedback on:   \n- Test results for available functionalities \n- User experience of ePI tooling at the PLM portal   \n- Available guidance and training materials   \n\nDeadline to register: 18 September 2026    \n\nInterested companies can sign up via the EMA survey here: https://lnkd.in/es4KGyvX\n\nThis is a valuable opportunity for the industry to get hands-on experience and contribute to shaping the future of ePI while understanding the underlying processes on a deeper level.   \n\nNeed support navigating the ePI transition? \nMoving to structured ePI and adapting to HL7 FHIR standards within the PLM portal can be a complex process. If your team needs guidance on ePI management, technical implementation, or preparing your regulatory workflows, EXTEDO, together with the other cormeo brands, medicines.ie, Rote Liste and Docuvera, are happy to help. \n\nFeel free to reach out to discuss how we can support your ePI journey!",
+          "date": "2026-09-07T07:14:18.335Z",
+          "reactions": 16,
+          "comments": null,
+          "reposts": 2,
+          "label": {
+            "v": 2,
+            "why": "EMA's ePI UAT invitation requires companies to validate structured data submissions; organizations need guidance on HL7 FHIR compliance and PLM Portal readiness.",
+            "tags": [],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/extedo_ema-announces-user-acceptance-testing-uat-activity-7502625278096052224-EVvK?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3xPckBK_mktKbXbHv_YqmrxQ3eils4IG8",
+          "text": "EMA announces User Acceptance Testing (UAT) for electronic product information (ePI)!   \n\nThe European Medicines Agency (EMA) is officially inviting pharmaceutical companies to participate in the upcoming UAT for core ePI functionalities within the product lifecycle management (PLM) Portal. The PLM Portal’s ePI functionality is based on the EU ePI Common Standard, utilizing structured data via HL7 FHIR.   \n\nThe announced UAT aims to validate key business scenarios and evaluate overall usability. Participating companies will be asked to provide feedback on:   \n- Test results for available functionalities \n- User experience of ePI tooling at the PLM portal   \n- Available guidance and training materials   \n\nDeadline to register: 18 September 2026    \n\nInterested companies can sign up via the EMA survey here: https://lnkd.in/es4KGyvX\n\nThis is a valuable opportunity for the industry to get hands-on experience and contribute to shaping the future of ePI while understanding the underlying processes on a deeper level.   \n\nNeed support navigating the ePI transition? \nMoving to structured ePI and adapting to HL7 FHIR standards within the PLM portal can be a complex process. If your team needs guidance on ePI management, technical implementation, or preparing your regulatory workflows, EXTEDO, together with the other cormeo brands, medicines.ie, Rote Liste and Docuvera, are happy to help. \n\nFeel free to reach out to discuss how we can support your ePI journey!",
+          "date": "2026-09-07T07:14:18.335Z",
+          "reactions": 20,
+          "comments": null,
+          "reposts": 4,
+          "label": {
+            "v": 2,
+            "why": "EMA's ePI UAT launch requires companies to implement structured HL7 FHIR data; regulatory submissions teams need guidance on technical compliance and process integration.",
+            "tags": [],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/extedo_egyptiandrugauthority-egyptiandrugauthoritymediacenter-activity-7501295215253577729-bSf8?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3gML0Bm61OdBVzSziPtfQMs9redeqI0mE",
+          "text": "Continuing the path forward: The next major step towards digital regulatory transformation in Egypt\n\nWith the release of the public consultation for the \"EG Module 1 eCTD Specification,\" the Egyptian Drug Authority (EDA) impressively demonstrates its pioneering role in modernizing regulatory submissions and drug regulation. We are incredibly proud to have contributed together with our valuable partner DAF for digital solutions to this important step by the EDA. It is inspiring to see the dedication with which the EDA is driving technological innovation forward to make processes more efficient and standardized.\n\nOur sincere congratulations to the entire team at the EDA for this visionary work! We are very much looking forward to taking the next steps together and continuing to support them as a reliable partner on their ongoing journey of digital transformation.\n\nFor more details about the draft and the consultation, please have a look at the EDA's original post below. \n \n#eCTD #Egypt #EgyptianDrugAuthority",
+          "date": "2026-09-03T15:09:06.642Z",
+          "reactions": 5,
+          "comments": null,
+          "reposts": null,
+          "label": {
+            "v": 2,
+            "why": "Egypt's Module 1 eCTD specification modernizes regulatory submissions; pharma companies need expertise navigating new Egyptian submission requirements and digital standar",
+            "tags": [],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/extedo_egyptiandrugauthority-egyptiandrugauthoritymediacenter-activity-7501295215253577729-bSf8?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3KhLwBcEtZin6fHenK-KRhiq0gZe0T-rw",
+          "text": "Continuing the path forward: The next major step towards digital regulatory transformation in Egypt\n\nWith the release of the public consultation for the \"EG Module 1 eCTD Specification,\" the Egyptian Drug Authority (EDA) impressively demonstrates its pioneering role in modernizing regulatory submissions and drug regulation. We are incredibly proud to have contributed together with our valuable partner DAF for digital solutions to this important step by the EDA. It is inspiring to see the dedication with which the EDA is driving technological innovation forward to make processes more efficient and standardized.\n\nOur sincere congratulations to the entire team at the EDA for this visionary work! We are very much looking forward to taking the next steps together and continuing to support them as a reliable partner on their ongoing journey of digital transformation.\n\nFor more details about the draft and the consultation, please have a look at the EDA's original post below. \n \n#eCTD #Egypt #EgyptianDrugAuthority",
+          "date": "2026-09-03T15:09:06.642Z",
+          "reactions": 4,
+          "comments": null,
+          "reposts": null,
+          "label": {
+            "v": 2,
+            "why": "Egypt's Module 1 eCTD specification modernizes regulatory submissions; pharma companies need expertise navigating new Egyptian submission requirements and digital standar",
+            "tags": [],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/extedo_egyptiandrugauthority-egyptiandrugauthoritymediacenter-activity-7501295215253577729-bSf8?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG2ui6gBH8YGYGvQOpWW2fOPEJPwBx1jya8",
+          "text": "Continuing the path forward: The next major step towards digital regulatory transformation in Egypt\n\nWith the release of the public consultation for the \"EG Module 1 eCTD Specification,\" the Egyptian Drug Authority (EDA) impressively demonstrates its pioneering role in modernizing regulatory submissions and drug regulation. We are incredibly proud to have contributed together with our valuable partner DAF for digital solutions to this important step by the EDA. It is inspiring to see the dedication with which the EDA is driving technological innovation forward to make processes more efficient and standardized.\n\nOur sincere congratulations to the entire team at the EDA for this visionary work! We are very much looking forward to taking the next steps together and continuing to support them as a reliable partner on their ongoing journey of digital transformation.\n\nFor more details about the draft and the consultation, please have a look at the EDA's original post below. \n \n#eCTD #Egypt #EgyptianDrugAuthority",
+          "date": "2026-09-03T15:09:06.642Z",
+          "reactions": 3,
+          "comments": null,
+          "reposts": null,
+          "label": {
+            "v": 2,
+            "why": "Egypt's Module 1 eCTD specification modernizes regulatory submissions; pharma companies need expertise navigating new Egyptian submission requirements and digital standar",
+            "tags": [],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        }
+      ],
+      "news": [
+        {
+          "title": "The EDA Launches Phase II of the Electronic Common Technical Document (eCTD) Project to Advance Digital Transformation and Enhance the Regulatory System in Cooperation with DAF and EXTEDO",
+          "source": "هيئة الدواء المصرية",
+          "url": "https://news.google.com/rss/articles/CBMi0AJBVV95cUxPTEJwbTg4RC1yN2Zpb1lfQUFpMjdjRnZFek1YUkxzZmF1S2dWcW9NU0NENlJIMVd5VFVOazFRUENNbENvLUllRC0xSkdLcW9YenhSUUx6RldjVE40eWJjaDRfZ3hGeFp6SzZkS0h5RjJCYktPMnd6czVkWktabmxJVjFEV21lS3VUaWt1MDZsR0p2V0pjZWFqVkpkTTFsby03Y2dnR3pBRGJlV3RvWlZsUmVyZm9GUWdEVHdLRkZ6YkRBbWdTRWRSbi05VE9TTDd3UDViTGV1UmkteV9BZ0QwQmh5SlFBc3Y0dzhNcWFkS2I3aGQ1ZXNQcWVuMXVyRVI1YVRBbkhJMGZmU3BwRTFrV19sd1QyX0t6YWViajBsaGlXMGVzZjdUTjh0Q1dIRndwSnI4U0wtZUQ5SmFHakhVVGVvVDdJOUNreHZsYkd1Mmg?oc=5",
+          "published": "2026-06-17T12:23:44.000Z",
+          "summary": "The Egyptian Drug Authority launched Phase II of the eCTD project with EXTEDO and DAF, with a Regulatory Process Management System targeted for February 2027 and full eCTD implementation by Q1 2028.",
+          "label": {
+            "v": 3,
+            "why": "EXTEDO deployed their RPMS in Egypt with regulatory authority backing; Freyr must address emerging-market authority partnerships as competitive risk.",
+            "signals": [
+              "product_service",
+              "partnerships",
+              "geographic_segment"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ],
+            "isCompanyNews": true
+          }
+        }
+      ],
+      "site": [
+        {
+          "title": "The Sticky Note of Regulatory Compliance: Why STFs Still Matter",
+          "source": "Extedo",
+          "url": "https://www.extedo.com/blog/the-sticky-note-of-regulatory-compliance-why-stfs-still-matter",
+          "published": "2026-08-20T00:00:00.000Z",
+          "summary": "EXTEDO published an English blog post explaining the role of STF XML files in clinical and non-clinical study folder structures and their compliance relevance.",
+          "label": {
+            "v": 2,
+            "why": "EXTEDO shares STF XML compliance guidance; potential clients need practical implementation support beyond general education.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "title": "Ukraine Announces Pharmaceutical Regulatory Reform Effective 01 January 2027",
+          "source": "Extedo",
+          "url": "https://www.extedo.com/blog/ukraine-announces-pharmaceutical-regulatory-reform-effective-01-january-2027",
+          "published": "2026-08-12T00:00:00.000Z",
+          "summary": "EXTEDO published a blog post saying Ukraine will implement a major pharmaceutical regulatory reform on 1 January 2027, including a new Medicines Law and a Ukrainian Pharmaceutical Agency.",
+          "label": {
+            "v": 2,
+            "why": "Ukraine's 2027 pharma law and new agency create urgent compliance work for companies with Ukrainian operations; Freyr can guide transition.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "title": "EMA Updates the eCTD v4 Timeline: What has Changed and What It Means for Regulatory Affairs",
+          "source": "extedo.com",
+          "url": "https://www.extedo.com/blog/ema-updates-the-ectd-v4-timeline-what-has-changed-and-what-it-means-for-regulatory-affairs",
+          "published": "2026-07-27T09:23:31.000Z",
+          "label": {
+            "v": 3,
+            "why": "EXTEDO owns eCTD v4 timeline narrative; Freyr should publish competing perspective on EMA timeline impact and implementation challenges.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Why Can’t We View eCTD v4 Dossiers in a Browser? – Understanding the Technical Shift",
+          "source": "extedo.com",
+          "url": "https://www.extedo.com/blog/why-cant-we-view-ectd-v4-dossiers-in-a-browser-understanding-the-technical-shift",
+          "published": "2026-07-09T13:10:15.000Z",
+          "label": {
+            "v": 3,
+            "why": "EXTEDO explains technical eCTD shifts to clients; Freyr's technical content must address same audience pain points to stay visible.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Introduction of ePI – The Future of Medicines Information",
+          "source": "extedo.com",
+          "url": "https://www.extedo.com/blog/introduction-of-epi-the-future-of-medicines-information",
+          "published": "2026-07-06T12:36:04.000Z",
+          "label": {
+            "v": 3,
+            "why": "EXTEDO positions ePI as future state; Freyr should clarify how ePI adoption affects current regulatory strategy and dossier workflows.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Egyptian Drug Authority and EXTEDO Launch Phase II of Egypt’s Pharmaceutical Digital Transformation",
+          "source": "extedo.com",
+          "url": "https://www.extedo.com/blog/egyptian-drug-authority-and-extedo-launch-phase-ii-of-egypts-pharmaceutical-digital-transformation",
+          "published": "2026-07-03T09:38:22.000Z",
+          "label": {
+            "v": 3,
+            "why": "EXTEDO-DAF partnership extends their footprint in MENA; Freyr's absence from Egypt regulatory digital transformation is a market-entry gap.",
+            "signals": [
+              "product_service",
+              "partnerships",
+              "geographic_segment"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ],
+            "isCompanyNews": true
+          }
+        }
+      ]
+    },
+    "generis": {
+      "id": "generis",
+      "name": "Generis",
+      "slug": "generis",
+      "group": "competitor",
+      "logoUrl": null,
+      "author": {
+        "name": "Generis",
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/people/a4698ea75f0701b7f2b9407d.jpg",
+        "followerCount": 3102
+      },
+      "tldr": "Generis published a whitepaper on fragmented systems in regulated industries and manages a CARA Management Centre. No recent news items or LinkedIn activity available.",
+      "fetchedAt": "2026-09-10T21:06:21.984Z",
+      "newsAt": "2026-09-12T08:38:47.908Z",
+      "siteAt": "2026-09-13T18:37:47.667Z",
+      "posts": [
+        {
+          "url": "https://www.linkedin.com/posts/generis_reluctance-vs-resistance-why-reluctance-activity-7503905418105225216-NH_a?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3xPckBK_mktKbXbHv_YqmrxQ3eils4IG8",
+          "text": "Reluctance can be more dangerous than resistance.\n\nResistance openly opposes the idea. Reluctance agrees with it, but quietly asks whether tithing can really work at home.\n\nThat is what makes reluctance among church staff so easy to miss.\n\nThe belief may be present. But when it never becomes personal practice, it can get in the way of leading others toward generosity.",
+          "date": "2026-09-10T20:01:07.497Z",
+          "reactions": 2,
+          "comments": null,
+          "reposts": null,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/jonathan-bennett-23a38220_what-ready-actually-means-activity-7501717446698057730-OROI?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3xPckBK_mktKbXbHv_YqmrxQ3eils4IG8",
+          "text": "Pastors often quote, “God loves a cheerful giver.” But what if cheerful means more than we typically think? In a recent Generis podcast, Jim Sheppard unpacks what it means to cultivate people who are not simply willing to give, but ready, eager, and joyful in their generosity. That kind of readiness doesn’t happen during a giving moment—it’s formed over time.\n \nAs you prepare for the year-end giving season ahead, I’d encourage you to take a few minutes to listen in and download our free workbook, Beyond the Generosity Gap. It’s designed to help you continue building a culture of generosity in your church. Podcast and workbook here: \n\nhttps://lnkd.in/eD_c2qTT",
+          "date": "2026-09-05T00:52:39.371Z",
+          "reactions": 5,
+          "comments": null,
+          "reposts": 1,
+          "label": {
+            "v": 2,
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/generis_if-generosity-is-discipleship-the-practices-activity-7501738506147360769-bkyw?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG2fuHwBu11CZpdb2tGllfh3pXnVHr_f_OU",
+          "text": "If generosity is discipleship, the practices surrounding it must support that formation, not reduce giving to a financial transaction.",
+          "date": "2026-09-04T20:30:35.427Z",
+          "reactions": 1,
+          "comments": 1,
+          "reposts": null,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/generis_if-generosity-is-discipleship-the-practices-activity-7501738506147360769-bkyw?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3xPckBK_mktKbXbHv_YqmrxQ3eils4IG8",
+          "text": "If generosity is discipleship, the practices surrounding it must support that formation, not reduce giving to a financial transaction.",
+          "date": "2026-09-04T20:30:35.427Z",
+          "reactions": 2,
+          "comments": 1,
+          "reposts": 1,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/johnsullivansolutions_this-one-just-happens-to-speak-for-itself-activity-7501315530906058752-a04t?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG2fuHwBu11CZpdb2tGllfh3pXnVHr_f_OU",
+          "text": "This one just happens to speak for itself...\n\nThank you for a great partnership, Steve McSwain.\nAnother big win at Generis.",
+          "date": "2026-09-03T20:26:11.214Z",
+          "reactions": 14,
+          "comments": 2,
+          "reposts": 2,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/posts/johnsullivansolutions_this-one-just-happens-to-speak-for-itself-activity-7501315530906058752-a04t?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAG3xPckBK_mktKbXbHv_YqmrxQ3eils4IG8",
+          "text": "This one just happens to speak for itself...\n\nThank you for a great partnership, Steve McSwain.\nAnother big win at Generis.",
+          "date": "2026-09-03T20:26:11.214Z",
+          "reactions": 19,
+          "comments": 3,
+          "reposts": 2,
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        }
+      ],
+      "news": [],
+      "site": [
+        {
+          "title": "Cara Lims",
+          "source": "Generiscorp",
+          "url": "https://www.caralifesciences.generiscorp.com/cara-lims/",
+          "published": "2026-08-18T00:00:00.000Z",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "title": "Top 3 Global Automotive Manufacturer Selects CARA as eDMS.",
+          "source": "Generiscorp",
+          "url": "https://www.generiscorp.com/resources/global-automotive-cara-press-release/",
+          "published": "2026-08-14T00:00:00.000Z",
+          "summary": "Generis announced that a top 3 global automotive manufacturer with 400,000 users worldwide selected CARA as its global electronic document management system, replacing legacy content management technology as part of a broader digital transformation.",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": false,
+            "industries": []
+          }
+        },
+        {
+          "title": "CARA Management Centre",
+          "source": "generiscorp.com",
+          "url": "https://www.generiscorp.com/resources/cara-management-centre",
+          "published": "2026-08-05T15:08:09.000Z",
+          "label": {
+            "v": 3,
+            "why": "Generis promoting regulatory management resources; emphasizes their platform role in compliance workflows.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV",
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Whitepaper: The Hidden Cost of Fragmented Systems in Regulated Industries",
+          "source": "generiscorp.com",
+          "url": "https://www.generiscorp.com/resources/the-hidden-cost-of-fragmented-systems-in-regulated-industries",
+          "published": "2026-07-02T10:51:09.000Z",
+          "label": {
+            "v": 3,
+            "why": "Generis publishing on system fragmentation in regulated industries; positions their LIMS as integration solution.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV",
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "The Hidden Cost of Fragmented Systems: A Financial Services Whitepaper",
+          "source": "generiscorp.com",
+          "url": "https://www.generiscorp.com/resources/the-hidden-cost-of-fragmented-systems-in-finance",
+          "published": "2026-06-16T15:42:16.000Z",
+          "label": {
+            "v": 3,
+            "why": "Generis whitepaper on financial services fragmentation; outside life sciences scope but shows broad regulatory platform messaging.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        }
+      ]
+    },
+    "phlexglobal": {
+      "id": "phlexglobal",
+      "name": "Phlexglobal",
+      "slug": null,
+      "group": "competitor",
+      "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/phlexglobal-bc20672dd6947548.png",
+      "author": null,
+      "tldr": "Phlexglobal is publishing a blog series on TMF roles and responsibilities, covering TMF Program Lead, Study Owner, Senior Study Owner, TMF Administrator, and resource planning across different organizational levels.",
+      "fetchedAt": "2026-09-10T21:06:37.294Z",
+      "newsAt": "2026-09-12T08:38:53.952Z",
+      "siteAt": "2026-09-13T18:47:59.110Z",
+      "posts": [],
+      "news": [],
+      "site": [
+        {
+          "title": "A Day in the Life: TMF Team – What Type of TMF Resource Do You Actually Need?",
+          "source": "Phlexglobal",
+          "url": "https://www.phlexglobal.com/blog/a-day-in-the-life-tmf-team",
+          "published": "2026-09-07T00:00:00.000Z",
+          "summary": "Phlexglobal published a blog post titled \"A Day in the Life: TMF Team – What Type of TMF Resource Do You Actually Need?\" on September 7, 2026, outlining different TMF roles and the value each contributes.",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": true,
+            "industries": []
+          }
+        },
+        {
+          "title": "A Day in the Life: TMF Program Lead - The Hidden Cost of Managing Studies One at a Time",
+          "source": "Phlexglobal",
+          "url": "https://www.phlexglobal.com/blog/a-day-in-the-life-tmf-program-lead",
+          "published": "2026-09-01T00:00:00.000Z",
+          "summary": "Phlexglobal published a blog post describing the TMF Program Lead role and the value of portfolio-level oversight in spotting risks earlier.",
+          "label": {
+            "v": 2,
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "other",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "A Day in the Life: Senior TMF Study Owner - Phlexglobal",
+          "source": "Phlexglobal",
+          "url": "https://www.phlexglobal.com/blog/a-day-in-the-life-senior-tmf-study-owner",
+          "published": "2026-08-21T00:00:00.000Z",
+          "summary": "Phlexglobal published a blog post about the Senior TMF Study Owner role and its impact on TMF health and team confidence.",
+          "label": {
+            "v": 2,
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "other",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "A Day in the Life: TMF Study Owner",
+          "source": "Phlexglobal",
+          "url": "https://www.phlexglobal.com/blog/a-day-in-the-life-tmf-study-owner-your-tmf-doesnt-need-monitoring.-it-needs-ownership",
+          "published": "2026-08-17T00:00:00.000Z",
+          "summary": "Phlexglobal published a blog post about the TMF Study Owner role and its focus on TMF health, consistency, compliance, and inspection readiness.",
+          "label": {
+            "v": 2,
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "other",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "Closing Thoughts -- The Work...",
+          "source": "Phlexglobal",
+          "url": "https://www.phlexglobal.com/blog/a-day-in-the-life-tmf-administrator-whos-managing-the-work-that-keeps-your-tmf-running",
+          "published": "2026-08-13T00:00:00.000Z",
+          "summary": "Phlexglobal published a blog post about the TMF Administrator role and the ongoing work of maintaining expected documents across a study.",
+          "label": {
+            "v": 2,
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "other",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        }
+      ]
+    },
+    "glemser": {
+      "id": "glemser",
+      "name": "Glemser Technologies",
+      "slug": "glemser-technologies",
+      "group": "competitor",
+      "logoUrl": null,
+      "author": {
+        "name": "Glemser",
+        "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/people/1d90a144ed8f91dd749ade51.jpg",
+        "followerCount": 1969
+      },
+      "tldr": "Glemser published a blog post on AI in QMS, arguing that QMS should remain the validated source of truth for regulated quality processes. No news items available.",
+      "fetchedAt": "2026-09-12T22:26:36.675Z",
+      "newsAt": "2026-09-13T12:16:20.668Z",
+      "siteAt": "2026-09-13T20:34:21.629Z",
+      "posts": [
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7499207274674929665/",
+          "text": "This is a valuable opportunity to experience the ePI submission process firsthand and better understand what the future operational workflow looks like.\n\nFor organizations interested in participating with their own ePI FHIR content, Glemser is ready to help.\n\nWe can generate EMA-aligned ePI FHIR output from your existing product information and make participation lightweight and low-friction, without requiring a major technology project or significant upfront investment.\n\nIf your regulatory team is considering participating in the EMA UAT and would like to use your own product information, we’d be happy to discuss how we can support you.\n\n#ePI #FHIR #RegulatoryAffairs #Pharma #EMA #DigitalRegulatory",
+          "date": "2026-08-28T20:52:22.816Z",
+          "reactions": 6,
+          "comments": null,
+          "reposts": null,
+          "label": {
+            "v": 2,
+            "why": "Glemser is positioning itself as an ePI FHIR submission expert; ask if clients need regulatory content transformation for EMA compliance.",
+            "tags": [],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7498726230276440064/",
+          "text": "Six weeks ago, we announced our partnership with alliantConsulting. \n\nWe've shared a lot since then: about where regulatory content operations are heading, about what makes transformation programs succeed or stall, about how our platform performs in global labeling, clinical, and CMC, and about the methodology alliantConsulting brings to the people side of these programs.\n\nIf you've been reading along and any of it resonated, whether it's the ePI pressure, and we'd like to talk.\n\nNot a demo or a sales call. A conversation about where you are and whether what we do is relevant to it.\n\nWe're Glemser. We've been inside regulated life sciences for nearly 40 years. We're better than we've ever been, and we now show up to every program with alliantConsulting alongside us.\n\nJoy Taylor and Sondra Leibner bring the kind of change management expertise that regulatory content programs rarely get. The kind that starts before configuration begins and stays until the operating model is actually running.\n\nIf you're a regulatory leader thinking about what the next 12–18 months need to look like for your content operations, reach out. We'll have a real conversation.",
+          "date": "2026-08-27T13:00:52.894Z",
+          "reactions": 10,
+          "comments": 3,
+          "reposts": 1,
+          "label": {
+            "v": 2,
+            "why": "Partnership with alliantConsulting on regulatory content operations and transformation programs; competitor offering overlaps Freyr's core services.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "competitor",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7498001367849103360/",
+          "text": "The EMA's electronic Product Information mandate is no longer a future consideration.\n\nThe UAT and voluntary submissions begin later this year. Health authorities globally are moving toward structured, machine-readable regulatory content as the expected standard, not an optional format.\n\nFor most pharma organizations, the honest question is whether their content foundation can get them there without rebuilding everything from scratch every time the standard evolves or countries adopt their own version of the standard.\n\nThat's the architectural question underneath the ePI conversation. And it's the reason we think about structured content as an agency-neutral foundation, not a format-specific solution.\n\nHere's what that means:\n\nIf your content is governed as structured components, not assembled per document and per market from Word files, then generating an ePI output is a publishing step, not a conversion project. The same approved source content that generates your SmPC already has the structure needed for FHIR-aligned output. You add a configured publishing template. You don't rebuild your content model.\n\nSome structured content approaches depend on a separate conversion partner to generate the health authority submission. The file leaves the platform, goes somewhere else, gets converted, comes back, and gets checked again. That's another handoff, another QC cycle, and another place for things to drift.\n\nComplianceAuthor AI publishes natively. Content is authored, governed, and rendered into submission-ready output all within the same platform. No file transfer. No conversion step. No additional QC on the back end. What gets submitted is what was authored and approved, first time.\n\nGlemser has participated in EMA ePI/FHIR pilot activity. We're in another pilot before voluntary submissions open. We're not figuring this out speculatively, we're doing it in production.\n\nIf your team is working through ePI readiness planning right now, we'd welcome the conversation.",
+          "date": "2026-08-25T13:00:32.224Z",
+          "reactions": 9,
+          "comments": 1,
+          "reposts": null,
+          "mediaType": "image",
+          "label": {
+            "v": 2,
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7496189477594267648/",
+          "text": "Most implementation programs measure success at go-live.\n\nDid the system go live on time? Did it pass validation? Did the team complete training?\n\nThose are the wrong measures. They're necessary, but they're not sufficient.\n\nThe outcomes that matter in a regulated content program show up six months later:\n\nAre authors actually working inside the platform, or have they found workarounds? Is content being reused, or are people still copying and pasting? When a labeling change comes in, does the team feel confident or anxious about the process? Is leadership still visibly engaged, or has the program faded into the background?\n\nThese are adoption measures. And they're the measures that determine whether the platform investment translates into real submission acceleration, real cost reduction, and real readiness for where regulatory content is heading: ePI, FHIR, IDMP, and whatever comes next.\n\nOur Sustain methodology, led by alliantConsulting, is designed specifically to track and reinforce these outcomes after go-live. Adoption is monitored. Gaps are identified. Reinforcement is built in before the operating model has a chance to erode.\n\nBecause the goal isn't just a successful go-live.  The goal is a team that's working differently, and getting better at it over time.",
+          "date": "2026-08-20T13:00:43.924Z",
+          "reactions": 6,
+          "comments": 1,
+          "reposts": null,
+          "mediaType": "image",
+          "label": {
+            "v": 2,
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        },
+        {
+          "url": "https://www.linkedin.com/feed/update/urn:li:activity:7495464810109710336/",
+          "text": "Before we configure a single template or map a single workflow, we ask clients one question:\n\nWho is accountable for this operating model six months after go-live?\nNot who owns the project. Not who is the executive sponsor. Who specifically is accountable for whether the regulatory team is actually working differently, and what metrics are they being measured against?\nIf that question produces a long silence, we know where the risk in the program is.\n\nA structured content platform is not self-sustaining. It's a new way of working that needs someone to own it, champion it, and continuously improve it after the implementation team is gone. That means role clarity, governance design, training paths, and leadership visibility, all built into the program, not added at the end into the program, not added at the end.\nThis is what separates a platform deployment from an operating model transformation.\n\nTogether with alliantConsulting, our programs are designed around this question from the start. By the time we reach go-live, the answer to that question is clear, documented, and owned.\n\nWe've run this across global labeling, clinical labeling, and CMC programs. In every case, the clients who have the clearest answer to that question before go-live have the most durable outcomes after it.\n\nIf you're evaluating a regulatory content program and haven't had this conversation yet, that's where we'd start.",
+          "date": "2026-08-18T13:01:09.732Z",
+          "reactions": 7,
+          "comments": 4,
+          "reposts": 1,
+          "mediaType": "image",
+          "label": {
+            "v": 2,
+            "why": "Glemser positions structured content platforms as requiring post-launch governance; opportunity to discuss Freyr's change management and compliance support.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV"
+            ]
+          }
+        }
+      ],
+      "news": [],
+      "site": [
+        {
+          "title": "AI in QMS: Why Structure Must Come Before Speed",
+          "source": "Glemser",
+          "url": "https://glemser.com/blog/ai-in-qms-why-structure-must-come-before-speed",
+          "published": "2026-08-20T00:00:00.000Z",
+          "summary": "Glemser published a blog post arguing that QMS should remain the validated source of truth for regulated quality processes.",
+          "label": {
+            "v": 2,
+            "why": "Glemser argues QMS should remain validated source of truth in regulated quality processes; positioning on AI adoption approach to compliance.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MPR",
+              "MDV",
+              "CON"
+            ]
+          }
+        }
+      ]
+    },
     "rimsys": {
       "id": "rimsys",
       "name": "Rimsys",
@@ -9690,6 +12508,553 @@
             "relevant": true,
             "industries": [
               "MDV"
+            ]
+          }
+        }
+      ]
+    },
+    "sgs": {
+      "id": "sgs",
+      "name": "SGS",
+      "slug": null,
+      "group": "competitor",
+      "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/sgs-940aa553532bec70.png",
+      "author": null,
+      "tldr": "SGS is publishing regulatory guidance on EU chemical contaminant limits for food processing, new toy safety rules for Montenegro, and digital compliance solutions for textile manufacturers.",
+      "fetchedAt": "2026-09-11T20:55:52.130Z",
+      "newsAt": "2026-09-12T12:13:28.155Z",
+      "siteAt": "2026-09-14T10:44:58.726Z",
+      "posts": [],
+      "news": [
+        {
+          "title": "SGS workers begin picketing as Prince Rupert labour dispute escalates",
+          "source": "The Northern View",
+          "url": "https://news.google.com/rss/articles/CBMirgFBVV95cUxPcWxQYkVhM2VEN0NmYWVhWFJORmNzVDBJZ2pDMFYyTkw5TUh0aEF6bXRvNW9Kd21pT09mNHY2eFNIMFZ6dDV0NURwYVF0WHZwdHY0WGx1UFV4NXZrSGZuR3RWXzZhMlpTZmx3MVI4SVBnWklXX1BLMDFYTld2ajVrRVEzbkw2RkZodWx1NTNtZ0Nhd200dDM4UUdWWjhhS0hrZk44Q0kwYTBHY0VnUHc?oc=5",
+          "published": "2026-09-11T17:44:19.000Z",
+          "publisherUrl": "https://thenorthernview.com",
+          "label": {
+            "v": 3,
+            "signals": [
+              "corporate_structure"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "SGS launches white paper on new EU requirements for 3-MCPD, 3-MCPDE and glycidyl esters",
+          "source": "Cincinnati Enquirer",
+          "url": "https://news.google.com/rss/articles/CBMi2AFBVV95cUxNeEhSRG9CRmxLbUNvUTd6bmluMXhPcDJiMmVNVDU0RGt2OEVrenZGVlF1N0RfNjJaMC1rSzFCWlNKcmFXUWFpQm5YOFl6bVE3NGRETklzbk8yZEtrTXFhSWpwbkREekh2R01wTFFvd3l4NlprdHBNc01fSzhrWk1paE5uM2NWcjB6RDgxUjluM2NPeWNHNjJ0blZWeG40eERFY0Q1Z1UzUTd6OVJSR3Y4NzZ2WGRNU0RyMC15bHlYTFF6d1haeFhSdUlJTDUzTHZQeG5UT3h5Z1I?oc=5",
+          "published": "2026-09-11T15:11:51.000Z",
+          "summary": "SGS published a white paper examining EU Regulation 2026/1825, which introduces new and revised maximum levels for 3-MCPD, 3-MCPDE, and glycidyl esters in food products. The paper outlines implications for manufacturers, importers, retailers, and testing laboratories.",
+          "publisherUrl": "https://www.cincinnati.com",
+          "label": {
+            "v": 3,
+            "why": "SGS published EU food compliance guidance; position Freyr's regulatory expertise against their testing-lab perspective to food manufacturers.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "SGS launches white paper on new EU requirements for 3-MCPD, 3-MCPDE and glycidyl esters",
+          "source": "The National Law Review",
+          "url": "https://news.google.com/rss/articles/CBMisgFBVV95cUxPeTFGVmwtWFZCNkc4VmdNVDlkZGJWaFBKSS02ci1pNjB5a19uYldLc0RmdEFoM1ctZTVaa1lQTHhqNlpvMGtMdzI0VHQyZzRaUjFqYVlkUGQ3UDZCcnFTdmpLUXlFVUx2dmJVQmhSdjhWRTZFNUJ4ZjFuTVdYem8yU1h4OVZ0N1NTZ25vUFFBUTVFcFZIZnMwR2pzVHlIR241aFg1dGhPUV80M3FqUGRVU2J3?oc=5",
+          "published": "2026-09-11T10:51:47.000Z",
+          "summary": "SGS published a white paper on EU Regulation 2026/1825 addressing new and revised maximum levels for 3-MCPD, 3-MCPDE and glycidyl esters in food products. The guidance covers implications for supply chain stakeholders and includes stricter limits for baby, infant and young children products.",
+          "publisherUrl": "https://natlawreview.com",
+          "label": {
+            "v": 3,
+            "why": "Syndicated white paper on EU food regulation; same content as i:6, reinforces SGS visibility in food compliance space.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "SGS launches white paper on EU requirements for 3-MCPD, 3-MCPDE and glycidyl esters_ringier industry sourcing",
+          "source": "荣格工业传媒",
+          "url": "https://news.google.com/rss/articles/CBMiwAFBVV95cUxNYTA4ZzdCWVdyTTkwQkdiQkUybWdaTXBkdUpaejJXR2dMVUYyWXhwenJOQ1I4UUVRUnFaN3laZ1dVQnNGWF9kdEhzUGVBZ24tQzZmOG16TkV3MUd4RHNEMnVocURBWTVOZGl6b2IwTG5yZEFiNm9ncUtkZkt3Qlk3c2lFbjlUODlab2xwWnplYkROV1NkazFqYndER2VPZXd3X01TUXZpYlNRVUcxZEl3aGJ6bjFhT2l5YjZnUW5kR0E?oc=5",
+          "published": "2026-09-11T10:11:10.000Z",
+          "summary": "SGS published a white paper on EU Regulation 2026/1825 establishing new and revised maximum levels for 3-MCPD, 3-MCPDE and glycidyl esters contaminants. The paper examines implications for manufacturers, importers, retailers and labs, including new compound food requirements and stricter limits for products intended for infants.",
+          "publisherUrl": "https://www.industrysourcing.com",
+          "label": {
+            "v": 3,
+            "why": "Chinese industry media syndication of SGS food compliance white paper; shows their reach into Asia-Pacific consumer-products market.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "SGS Publishes SafeGuardS on Montenegro’s New Toy Safety Regulations",
+          "source": "Agility Newsroom",
+          "url": "https://news.google.com/rss/articles/CBMihgFBVV95cUxPM2QwMFlWLTVacVdDczM4emVVSnFreWNFOFpfY2VScC03aU1HaE9xb3lCdTNxUXdTRzZpOW1mZWQtaFRiazRnWXdnMEt2NXAzYllicEx5V1ZHWFBENjd4cTkzVi14dDIySUd5QTI1dHdEU29aX1U3elVNLVpDR2FSRTNfcnhwZw?oc=5",
+          "published": "2026-09-10T09:36:00.000Z",
+          "summary": "SGS published SafeGuardS 119.26 reporting on Montenegro's new toy safety regulations that transpose EU Directive 2009/48/EC into national law. The regulations, effective August 13, 2026, require CE conformity marking, hazard assessments, technical documentation and declarations of conformity for compliant toys.",
+          "publisherUrl": "https://agilitypr.news",
+          "label": {
+            "v": 3,
+            "why": "SGS publishing toy-safety guidance positions them as a regulatory resource; emphasize Freyr's superior depth in consumer-products compliance.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "SGS hosts webinar on digital solutions for chemical management in the softlines industry",
+          "source": "Agility Newsroom",
+          "url": "https://news.google.com/rss/articles/CBMie0FVX3lxTE9YdTJCenFHZklLNFU3aGdSQWVvZEdnbWxfcURNeVJBUkhkWW1lOG5WREpzdDdzOXdFZjhpb2FkaUQyNXZfTzNWZVQwazVzTWNrN0N6VUhjV3NkR2JyeHUyYTdtdVNlcUM1NFhvcnVuSTBodExUM3FKMzNnYw?oc=5",
+          "published": "2026-09-07T10:55:00.000Z",
+          "summary": "SGS is hosting a webinar on September 24, 2026 titled 'Better Chemical Management Through Digital Innovation' to address growing complexity in chemical compliance across softlines brands, manufacturers, and formulators managing dispersed safety data and supply chain visibility.",
+          "publisherUrl": "https://agilitypr.news",
+          "label": {
+            "v": 3,
+            "why": "SGS is promoting digital chemical management solutions for softlines; Freyr should understand their compliance messaging to differentiate on regulatory depth.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Building Trust Across Global Supply Chains: Five JUSDA Hubs Complete SGS Multi-Standard Audits",
+          "source": "jusdaglobal.com",
+          "url": "https://news.google.com/rss/articles/CBMi0gFBVV95cUxNM3RnT0FqX0lYZGZGQVdGaFpMY3poWHlRNnJtdll1RXdwako3THJKVU5NMm5DME1jZ2o3d0tlcThMcy1zaUJVR0YtR0FwWEs1eEotWjhBXzFYd3o2OXg1d1VmMG5vQ2FpdjJMeGNqNGZ2ZC01ekg1U2Y4YW9oaFN2NTF6TVpqOXE2bTdPUHlnTDlENmFYNU0yMVBmR2xzTWJ6cE5naGVqZGZpbzI0cWhXNVJiXzkyNFA2NE44UEliTDhyREFUNHlvN0hoT2hBb3RTeGc?oc=5",
+          "published": "2026-09-07T01:31:58.000Z",
+          "summary": "Five JUSDA logistics hubs in China (Shenzhen, Chengdu, Taiyuan, Tianjin, Zhengzhou) completed SGS multi-standard audits to build trust across increasingly complex global supply chains.",
+          "publisherUrl": "https://www.jusdaglobal.com",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Syrma SGS Elemaster opens a state-of-the-art facility in Bengaluru for the production of high-reliability electronics",
+          "source": "Elemaster Group",
+          "url": "https://news.google.com/rss/articles/CBMi4AFBVV95cUxPc25lSk13RllCMmI0TjNrYUdSNm1xWURuVUFyTWRNYTF4dkZsQngySlBHSk5WbzFaM19WOEdSTFp3NHRYS3pUMVU2TEVDUm83SGgxczZucDVtU3RWcTJiWFdWYWV6RDZodEJVWllJV2M5NjBMR3A4WmNsYlJKb0VXS2Y4cHZCZGVvdFpicUx6NFpJRTdpX2tWSFZKSGdOdU90WV9GZjJyUDBFOWRqY3dVZC1wcFR5Zy1ZNGVzQTFEaVA2YlIxSlozR1N4NWYyRkthM1JYNEhRRnhWN04xSlV5RA?oc=5",
+          "published": "2026-09-03T15:39:29.000Z",
+          "publisherUrl": "https://www.elemaster.com",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Syrma SGS Elemaster Inaugurates High-Reliability Electronics Manufacturing Facility in Bengaluru",
+          "source": "Elemaster Group",
+          "url": "https://news.google.com/rss/articles/CBMiiwJBVV95cUxPcklyVU51VzJlU2N3dThpeEVOVFp4NnVwMml4RHFUWC1aRXV6VnlDdHNqX3pEN0YzYVAzVmNaV3FmeENFOHc2N3QzQlBKYkl0OUljQnY0bHpSc0F5bHhwcm5GSVlhT2F1bjBKRVBrWnBuRVFVYVVSSkxRUWFZWFhQVEsxaE1vZnJaaDRUYnlyMTBURWhLNGVRN2ZhYldRS241VE9JckdiUFJobnV0SndEQVdVVHZIRVJNa0NFTGJ6LVI5Vk1Ma3BTcnBvUUdlYWp6U1V1bmt0Rlo4VTA5RUprMGVxNmlCRFQteWJUSEtBYTFJbGE4WUhvX3QwbVRQSVg3VkVWZ1dad3FCOVk?oc=5",
+          "published": "2026-09-02T07:00:00.000Z",
+          "publisherUrl": "https://www.elemaster.com",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Grand inauguration of the Syrma SGS Elemaster JV Plant in Bengaluru",
+          "source": "Elemaster Group",
+          "url": "https://news.google.com/rss/articles/CBMingFBVV95cUxQMUw1eWVfdjZWWTctaGRtZHJNQW90QVF1UmRJVnRNblJOMGhSWDBtdURtTlB5RGE4QW5BU2NsRmdzNnR6S1pVYzlfNVZmWWE4NzZDc1dRcXhyeFpRMDJiQmJZSTRoTzJWVG4wS21XSWdkcDRKTlZCY0dEX1dyVDNXdlpjSS04UnFNdThZcUJQZnVIYUl3ekt3dFdhZjd2QQ?oc=5",
+          "published": "2026-08-25T14:23:53.000Z",
+          "publisherUrl": "https://www.elemaster.com",
+          "label": {
+            "v": 3,
+            "signals": [
+              "others"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Allonnia and SGS Launch Global D-Solve™ Pilot Program to Accelerate Critical Mineral Production",
+          "source": "SynBioBeta",
+          "url": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxOdjdYak9zZUFxYUR5bTEzOW1pTl9mellRRGo2eklDVWVQaWpGUmI2X3RyRGZTcEpjVW5MS0xzZTRlOUw3ZXRnS2JZd1p3blc0WGZlZ2IwMmdXNkRvd3Vickk0VE5pZnY4bXJKMERBTm5QWFMxQmNpYl8yMUgwdmVnRGRKdnhFdTRMWlQ1OTlOU1hWd0FMazkwb0JabTI2TWlWaTRwY3BYaG13MTZSbjBveUthZjd1Y1phYkgwb2FYN2pSM3VwOVA3emdYWUt3V2x2?oc=5",
+          "published": "2026-08-25T00:00:00.000Z",
+          "publisherUrl": "https://www.synbiobeta.com",
+          "label": {
+            "v": 3,
+            "why": "SGS partnered on critical minerals, but outside regulated life sciences where Freyr competes.",
+            "signals": [
+              "partnerships"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "CBAM Cost Reduction Webinar with SGS",
+          "source": "carboneer",
+          "url": "https://news.google.com/rss/articles/CBMidkFVX3lxTFAzb042cFg1RFlqNERGcUMwY3Zja2RibnNUNzJZc25aaXZNYnZ4OGtyR3lsWHF4YmNnZ1dlMHoxVVcyOVkwdldyczhVeEtmMDRaUUFKaFViQ29CdUJaNU9McU9qT21tamFRc1lubVdkM3JkVFNLOUE?oc=5",
+          "published": "2026-08-12T15:05:10.000Z",
+          "publisherUrl": "https://carboneer.earth",
+          "label": {
+            "v": 3,
+            "why": "SGS hosted a webinar on CBAM cost reduction, but environmental compliance is outside Freyr's core regulatory remit.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": false,
+            "industries": [],
+            "isCompanyNews": true
+          }
+        }
+      ],
+      "site": [
+        {
+          "title": "Mycotoxin Monitoring in Maize Across Europe",
+          "source": "sgs.com",
+          "url": "https://www.sgs.com/en/news/2026/09/mycotoxin-monitoring-in-maize-across-europe",
+          "published": "2026-09-14",
+          "label": {
+            "v": 3,
+            "why": "SGS publishes monitoring data on food safety; position their testing credibility against Freyr's regulatory intelligence on mycotoxin compliance.",
+            "signals": [
+              "thought_leadership"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "New EU Requirements for 3-MCPD, 3-MCPDE and Glycidyl Esters in Food",
+          "source": "sgs.com",
+          "url": "https://www.sgs.com/en/news/2026/09/new-eu-requirements-for-3-mcpd-3-mcpde-and-glycidyl-esters-in-food",
+          "published": "2026-09-10",
+          "label": {
+            "v": 3,
+            "why": "SGS is advising on new EU food contaminant limits; position Freyr's regulatory expertise on this same 2026 requirement.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Prepare Solar Product Exports for Egypt with Product Conformity Inspection Services",
+          "source": "sgs.com",
+          "url": "https://www.sgs.com/en/news/2026/09/pca-2026-q3-prepare-solar-product-exports-for-egypt-with-product-conformity-inspection-services",
+          "published": "2026-09-09",
+          "label": {
+            "v": 3,
+            "why": "SGS offering solar export compliance to Egypt; highlight Freyr's broader regulatory navigation for emerging markets.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "ISO Updates Standard for Measuring Certain Elements in Toys",
+          "source": "sgs.com",
+          "url": "https://www.sgs.com/en/news/2026/09/safeguards-12326-iso-updates-standard-for-measuring-certain-elements-in-toys",
+          "published": "2026-09-09",
+          "label": {
+            "v": 3,
+            "why": "SGS tracking new ISO toy-testing standard; Freyr can reference equivalent updates in medical device or pharma standards tracking.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "PCA CI 71 Expanded Scope and New Requirements for Imports into Ivory Coast",
+          "source": "sgs.com",
+          "url": "https://www.sgs.com/en/news/2026/09/pca-2026-q3-pca-ci-71-expanded-scope-and-new-requirements-for-imports-into-ivory-coast",
+          "published": "2026-09-09",
+          "label": {
+            "v": 3,
+            "why": "SGS advising on Ivory Coast import rule expansion; Freyr's regulatory-affairs depth for African market entries is a counter-claim.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        },
+        {
+          "title": "Export to Algeria with Confidence Through Pre-Export Conformity Assessment",
+          "source": "sgs.com",
+          "url": "https://www.sgs.com/en/news/2026/09/pca-2026-q3-export-to-algeria-with-confidence-through-pre-export-conformity-assessment",
+          "published": "2026-09-09",
+          "label": {
+            "v": 3,
+            "why": "SGS promoting pre-export compliance for Algeria; Freyr can highlight superior regulatory-affairs knowledge on MENA borders.",
+            "signals": [
+              "product_service"
+            ],
+            "relevant": true,
+            "industries": [
+              "CON"
+            ],
+            "isCompanyNews": true
+          }
+        }
+      ]
+    },
+    "qserve": {
+      "id": "qserve",
+      "name": "Qserve",
+      "slug": null,
+      "group": "competitor",
+      "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/qserve-dd2a89d5d0bf31ad.webp",
+      "author": null,
+      "tldr": "Qserve is actively positioning regulatory expertise at industry conferences in 2026-2027. Team members including Daphne Smit, Malou van Loon, and Gert Bos are scheduled to present on submission processes, regulatory challenges, and global medical device regulations at events in Amsterdam, Shanghai, and Prague.",
+      "fetchedAt": "2026-09-11T20:57:21.285Z",
+      "newsAt": "2026-09-12T12:30:36.816Z",
+      "siteAt": "2026-09-11T19:06:00.921Z",
+      "posts": [],
+      "news": [],
+      "site": [
+        {
+          "title": "Meet & Greet Qserve's CRO Expert at EUCROF27",
+          "source": "Qservegroup",
+          "url": "https://qservegroup.com/events/meet-greet-our-qserve-cro-expert-at-eucrof27",
+          "published": "2026-08-17T00:00:00.000Z",
+          "summary": "Qserve announced that Daphne Smit will host a special session on submission processes in medical device studies at EUCROF27 in Prague on 14–16 February 2027.",
+          "label": {
+            "v": 2,
+            "why": "Qserve expertise in medical device submission processes suggests they're winning clients needing regulatory submissions support; understand their positioning.",
+            "tags": [],
+            "signal": "events",
+            "relevant": true,
+            "industries": [
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "Meet & Greet Qserve CRO Experts at CRO Summit Europe 2026",
+          "source": "Qservegroup",
+          "url": "https://qservegroup.com/events/meet-greet-qserve-cro-experts-at-cro-summit-europe-2026",
+          "published": "2026-08-17T00:00:00.000Z",
+          "summary": "Qserve announced that Daphne Smit and Malou van Loon will attend CRO Summit Europe 2026 in Amsterdam on 15–16 September 2026 to discuss regulatory challenges and share insights.",
+          "label": {
+            "v": 2,
+            "why": "Qserve discussing regulatory challenges at a CRO summit indicates active market engagement; learn what challenges they're highlighting to prospects.",
+            "tags": [],
+            "signal": "events",
+            "relevant": true,
+            "industries": [
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "the Medtec China 2026 Extension Forum",
+          "source": "Qservegroup",
+          "url": "https://qservegroup.com/events/meet-greet-qserve-experts-at-the-medtec-china-2026-extension-forum",
+          "published": "2026-08-14T00:00:00.000Z",
+          "summary": "Qserve said Gert Bos will present at the Medtec China 2026 Extension Forum in Shanghai on 4 September 2026, focused on international exchange on medical device regulations.",
+          "label": {
+            "v": 2,
+            "why": "Qserve presence at Shanghai medtech forum signals their push into Asia-Pacific medical device regulatory services; note geographic expansion.",
+            "tags": [],
+            "signal": "events",
+            "relevant": true,
+            "industries": [
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "Meet & Greet Qserve Experts at MDTA's AI for MedTech Event",
+          "source": "Qservegroup",
+          "url": "https://qservegroup.com/events/meet-greet-qserve-experts-at-the-2026-iimd-innovation-convention",
+          "published": "2026-08-14T00:00:00.000Z",
+          "summary": "Qserve said Gert Bos will present on global regulations at MDTA's AI for Medtech event in Shanghai on 2 September 2026.",
+          "label": {
+            "v": 2,
+            "why": "Qserve presenting on global medtech regulations in Shanghai shows they're targeting AI/medtech clients needing international regulatory expertise.",
+            "tags": [],
+            "signal": "events",
+            "relevant": true,
+            "industries": [
+              "MDV"
+            ]
+          }
+        }
+      ]
+    },
+    "obelis": {
+      "id": "obelis",
+      "name": "Obelis",
+      "slug": null,
+      "group": "competitor",
+      "logoUrl": "https://ebyoefeikqxxxxifgjxk.supabase.co/storage/v1/object/public/market-intel-photos/logos/obelis-aa5e99bceb86ab3a.webp",
+      "author": null,
+      "tldr": "Obelis is publishing regulatory guidance on upcoming compliance deadlines: Health Canada cosmetic notification changes (2026), EUDAMED legacy device registration (27 Nov 2026), and swissdamed registration (1 July 2026). Also released case study on UK cosmetic compliance support.",
+      "fetchedAt": "2026-09-11T20:57:56.616Z",
+      "newsAt": "2026-09-12T12:31:11.126Z",
+      "siteAt": "2026-09-11T19:06:29.439Z",
+      "posts": [],
+      "news": [],
+      "site": [
+        {
+          "title": "Health Canada Cosmetic Notification Form: 2026 Updates",
+          "source": "Obelis",
+          "url": "https://www.obelis.net/news/health-canada-cosmetic-notification-update-2026/",
+          "published": "2026-09-10T00:00:00.000Z",
+          "summary": "Obelis published an update on 2026 requirements for Health Canada cosmetic notification forms, including new disclosure rules for manufacturer or importer addresses.",
+          "label": {
+            "v": 2,
+            "why": "Health Canada cosmetic notification form changes create compliance work for companies; Obelis is positioning expertise in new disclosure rules.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "CON"
+            ]
+          }
+        },
+        {
+          "title": "EUDAMED Legacy Device Registration Deadline: 27 November 2026",
+          "source": "Obelis",
+          "url": "https://www.obelis.net/events/eudamed-legacy-device-registration-deadline-2026/",
+          "published": "2026-09-04T00:00:00.000Z",
+          "summary": "Obelis added an events page about the EUDAMED legacy device registration deadline and related compliance timing for industry stakeholders.",
+          "label": {
+            "v": 2,
+            "why": "EUDAMED legacy device registration deadline drives urgent compliance planning; companies need support navigating the November 2026 deadline.",
+            "tags": [],
+            "signal": "events",
+            "relevant": true,
+            "industries": [
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "swissdamed Registration Deadline: What Changes on 1 July 2026?",
+          "source": "Obelis",
+          "url": "https://www.obelis.net/events/swissdamed-registration-deadline-2026/",
+          "published": "2026-09-04T00:00:00.000Z",
+          "summary": "Obelis posted an events update on swissdamed registration requirements for medical devices and IVDs on the Swiss market starting 1 July 2026.",
+          "label": {
+            "v": 2,
+            "why": "Swiss swissdamed registration launch on 1 July 2026 requires device and IVD registration strategy; new market compliance obligations ahead.",
+            "tags": [],
+            "signal": "events",
+            "relevant": true,
+            "industries": [
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "EUDAMED Legacy Device Deadline: What to Know",
+          "source": "Obelis",
+          "url": "https://www.obelis.net/news/eudamed-28-november-2026-legacy-device-registration/",
+          "published": "2026-08-31T00:00:00.000Z",
+          "summary": "Obelis published an explanatory update on the upcoming legacy device registration deadline in EUDAMED and what companies need to prepare for.",
+          "label": {
+            "v": 2,
+            "why": "Obelis is providing guidance on EUDAMED legacy device registration; companies need clarity on deadline preparation and compliance requirements.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "EUDAMED Legacy Device Registration: 4 Mistakes to Avoid",
+          "source": "Obelis",
+          "url": "https://www.obelis.net/news/eudamed-legacy-device-registration-mistakes/",
+          "published": "2026-08-27T00:00:00.000Z",
+          "summary": "Obelis posted guidance on common mistakes to avoid when registering legacy devices in EUDAMED, noting the module became mandatory from 28 May 2026.",
+          "label": {
+            "v": 2,
+            "why": "Mandatory EUDAMED module compliance since May 2026 creates ongoing registration support needs; Obelis highlights common pitfalls in legacy device submissions.",
+            "tags": [
+              "thought-leadership"
+            ],
+            "signal": "commentary",
+            "relevant": true,
+            "industries": [
+              "MDV"
+            ]
+          }
+        },
+        {
+          "title": "REVE LTD. UK Cosmetic Compliance Success",
+          "source": "Obelis",
+          "url": "https://www.obelis.net/news/from-regulatory-uncertainty-to-a-successful-uk-product-launch/",
+          "published": "2026-08-24T00:00:00.000Z",
+          "summary": "Obelis published a case-study style update describing how it supported REVE LTD. in achieving UK cosmetic compliance and a product launch.",
+          "label": {
+            "v": 2,
+            "tags": [],
+            "signal": "other",
+            "relevant": true,
+            "industries": [
+              "CON"
             ]
           }
         }

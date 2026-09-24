@@ -77,7 +77,10 @@ export function MnaTracker({
   thought?: ThoughtBoard | null;
 }) {
   const [tracker, pickTracker] = useStoredView<Tracker>("freyr.mi.tracker", "mna", TRACKERS);
-  const [layout, setLayout] = useStoredView<"table" | "tile">("freyr.mi.market.layout", "tile", ["table", "tile"]);
+  // Keep the existing M&A preference key so an already chosen view survives
+  // this split; Thought Leadership gets its own independent choice.
+  const [mnaLayout, setMnaLayout] = useStoredView<"table" | "tile">("freyr.mi.market.layout", "tile", ["table", "tile"]);
+  const [thoughtLayout, setThoughtLayout] = useStoredView<"table" | "tile">("freyr.mi.market.thought.layout", "tile", ["table", "tile"]);
   // MULTISELECT (Anir, Aug 18: "multiselect. wherever this applies") — pick
   // several statuses, divisions, sizes or sources at once; empty = all. Time
   // stays single: two overlapping windows are one window.
@@ -205,7 +208,7 @@ export function MnaTracker({
       </div>
 
       {tracker === "thought" ? (
-        <ThoughtLeadershipTracker board={thought} layout={layout} onLayoutChange={setLayout} />
+        <ThoughtLeadershipTracker board={thought} layout={thoughtLayout} onLayoutChange={setThoughtLayout} />
       ) : (
       <>
       <SearchPriority
@@ -289,9 +292,9 @@ export function MnaTracker({
             }))}
           />
           <ColorSelect
-            value={layout}
-            onChange={(value) => setLayout(value as "table" | "tile")}
-            ariaLabel={`Market Intel view: ${layout === "table" ? "Table" : "Tile"}`}
+            value={mnaLayout}
+            onChange={(value) => setMnaLayout(value as "table" | "tile")}
+            ariaLabel={`Market Intel view: ${mnaLayout === "table" ? "Table" : "Tile"}`}
             iconOnly
             options={[
               { value: "table", label: "Table view", color: "var(--ink-bright-blue)", icon: List },
@@ -307,7 +310,7 @@ export function MnaTracker({
             ? "The tracker fills with real deals on the next refresh."
             : "No deals match that search and filter."}
         </Card>
-      ) : layout === "table" ? (
+      ) : mnaLayout === "table" ? (
         <div className="overflow-x-auto rounded-2xl border border-border-light bg-white">
           <div className="min-w-[1060px]">
             <div className="grid grid-cols-[minmax(300px,1.5fr)_minmax(150px,1fr)_145px_115px_135px] gap-4 border-b border-border-light bg-surface/80 px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary">

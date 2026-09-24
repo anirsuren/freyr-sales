@@ -32,6 +32,18 @@ const COMPANY_IDS = [
   "rimsys",
   "emergo",
   "intertek",
+  "tcs",
+  "icon-plc",
+  "ul-solutions",
+  "nsf-international",
+  "glemser",
+  "ennov",
+  "extedo",
+  "generis",
+  "phlexglobal",
+  "qserve",
+  "obelis",
+  "sgs",
 ];
 
 // Known dead pages found during the snapshot's link audit. Bot-blocked pages
@@ -171,7 +183,7 @@ const capturedAt = meta?.updatedAt || new Date().toISOString();
 const snapshot = {
   capturedAt,
   tracking: {
-    demoVersion: 20260921,
+    demoVersion: 2026092402,
     companies,
     people,
     divisions: Object.fromEntries(companies.filter((company) => company.divisions.length).map((company) => [company.id, company.divisions])),

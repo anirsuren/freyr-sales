@@ -377,8 +377,10 @@ export function ManageCompaniesPanel({
           >
             {group === "competitor" ? <Swords size={17} strokeWidth={2.2} /> : <Building2 size={17} strokeWidth={2.2} />}
           </span>
-          <h1 className="flex min-h-9 items-center text-[22px] font-bold leading-none tracking-[-0.02em] text-text-primary">{words.button}</h1>
-          <InfoHint className="h-9 shrink-0 justify-center leading-none" text="Choose the companies you want to track, then Save changes. Star your favourites to find them quickly. To add a company that is not listed, use Track a company." />
+          <h1 className="inline-flex min-h-9 items-center gap-2 text-[22px] font-bold leading-none tracking-[-0.02em] text-text-primary">
+            <span>{words.button}</span>
+            <InfoHint className="shrink-0" text="Choose the companies you want to track, then Save changes. Star your favourites to find them quickly. To add a company that is not listed, use Track a company." />
+          </h1>
           </div>
           {canWrite && (
             <span className="ml-auto">

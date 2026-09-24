@@ -131,7 +131,7 @@ export function LiveMarketIntelDashboard({
 
 
   const emptyState = (
-        <section className="rise-in flex min-h-[min(560px,calc(100vh-15rem))] flex-col items-center justify-center rounded-2xl border border-dashed border-border-light bg-white px-6 py-14 text-center">
+        <section className="rise-in flex min-h-[280px] flex-col items-center justify-start rounded-2xl border border-dashed border-border-light bg-white px-6 pb-10 pt-10 text-center">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(0,113,227,0.08)] text-[color:var(--ink-bright-blue)]">
             <ListChecks size={22} strokeWidth={2} />
           </span>
