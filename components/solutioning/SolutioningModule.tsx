@@ -1946,7 +1946,7 @@ export function NewRequestDialog({
         logoName: sourceCompany,
       }
     : prefillLead
-      ? { label: "For this lead", name: prefillLeadName?.trim() || prefillLead, company: sourceCompany, logoName: "", avatarName: prefillLeadName?.trim() || undefined }
+      ? { label: "For this lead", name: prefillLeadName?.trim() || "This lead", company: sourceCompany, logoName: "", avatarName: prefillLeadName?.trim() || undefined }
     : prefillCustomerId && sourceCompany
       ? { label: "For this customer", name: sourceCompany, company: "", logoName: sourceCompany }
       : null;
@@ -1980,7 +1980,7 @@ export function NewRequestDialog({
   const [meetingAt, setMeetingAt] = useState("");
   const [attendees, setAttendees] = useState<string[]>([]);
   const leadContext = prefillLead
-    ? `From lead ${prefillLead}${prefillLeadName ? ` · ${prefillLeadName}` : ""}${prefillCompany ? ` · ${prefillCompany}` : ""}.`
+    ? `For ${prefillLeadName?.trim() || "this lead"}${sourceCompany ? ` at ${sourceCompany}` : ""}.`
     : "";
   const [details, setDetails] = useState("");
   const [saving, setSaving] = useState(false);
@@ -2832,9 +2832,7 @@ export function NewRequestDialog({
                   <p className="text-[13px] font-semibold text-text-primary">
                     Attending from Freyr<OptionalMark />
                   </p>
-                  <p className="mt-0.5 text-[12px] text-text-secondary">
-                    {attendees.length ? `${attendees.length} ${attendees.length === 1 ? "person" : "people"} added` : "Add the teammates who will join the meeting."}
-                  </p>
+                  <p className="mt-0.5 text-[12px] text-text-secondary">Add the teammates who will join the meeting.</p>
                 </div>
                 <MultiColorSelect
                   values={attendees}
@@ -2852,9 +2850,11 @@ export function NewRequestDialog({
                   }))}
                 />
               </div>
-              {attendees.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-border-light pt-4">
-                  {attendees.map((name) => (
+              <div className="mt-4 flex min-h-28 flex-wrap items-center justify-center gap-2 rounded-lg border border-dashed border-border-light bg-surface/45 p-4 text-center">
+                {attendees.length === 0 ? (
+                  <p className="text-[12.5px] text-text-secondary">No one added yet</p>
+                ) : (
+                  attendees.map((name) => (
                     <span key={name} className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 py-1 pl-1 pr-2 text-[12.5px] font-medium text-text-primary">
                       <Avatar name={name} className="h-6 w-6 shrink-0 text-[8px]" />
                       {name}
@@ -2867,9 +2867,9 @@ export function NewRequestDialog({
                         <X size={13} aria-hidden="true" />
                       </button>
                     </span>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </div>
           )}
 
@@ -2878,7 +2878,7 @@ export function NewRequestDialog({
               What does the Solutioning team need to know?{" "}
               <span className="text-error">*</span>
             </span>
-            {leadContext && <span className="mt-1 block text-[12px] text-text-secondary">{prefillLeadInterest ? `The lead asked about: ${prefillLeadInterest.trim()} ` : ""}Add the actual scope and expected outcome below.</span>}
+            {leadContext && <span className="mt-1 block text-[12px] text-text-secondary">{leadContext} {prefillLeadInterest ? `They asked about: ${prefillLeadInterest.trim()} ` : ""}Add the actual scope and expected outcome below.</span>}
             <textarea
               value={details}
               onChange={(e) => setDetails(e.target.value)}
@@ -3066,7 +3066,7 @@ export function NewRequestDialog({
                         ? presType.trim() || undefined
                         : undefined,
                   title: title.trim(),
-                  details: leadContext ? `${leadContext}\n${details.trim()}` : details.trim(),
+                  details: details.trim(),
                   leadRef: prefillLead || undefined,
                   leadName: prefillLeadName?.trim() || undefined,
                   customerId: customer.id === sourceCustomerId ? undefined : customer.id,

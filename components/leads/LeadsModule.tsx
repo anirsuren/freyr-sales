@@ -19,6 +19,7 @@ import {
   Megaphone,
   MessageCircle,
   Pencil,
+  Loader2,
   Clock3,
   Phone,
   RadioTower,
@@ -396,8 +397,6 @@ export function LeadsModule({
         toast(data.error || "The LinkedIn profile could not be read.", "error");
         const fresh = await fetch("/api/leads").then((response) => response.json());
         if (fresh.state) setState(fresh.state);
-      } else {
-        toast("LinkedIn profile facts saved to the lead.");
       }
     } catch {
       toast("The LinkedIn profile could not be read. The link is still saved.", "error");
@@ -456,7 +455,10 @@ export function LeadsModule({
     );
     if (ok) {
       setEditing(null);
-      if (typeof ok === "object" && nextUrl && priorUrl !== nextUrl) void enrichLead(ok.id);
+      if (typeof ok === "object" && nextUrl && priorUrl !== nextUrl) {
+        setOpenRow(ok.id);
+        void enrichLead(ok.id);
+      }
     }
   }
 
@@ -790,10 +792,10 @@ export function LeadsModule({
                                 {lead.title}
                               </span>
                             )}
-                            {lead.linkedinUrl && (
-                              <span className="mt-0.5 flex items-center gap-1 text-[10.5px] font-medium text-blue-primary">
-                                <LinkedInIcon size={11} aria-hidden="true" />
-                                {enrichingId === lead.id ? "Reading profile…" : lead.linkedinStatus === "ready" ? "LinkedIn saved" : lead.linkedinStatus === "unavailable" ? "Lookup unavailable" : "LinkedIn linked"}
+                            {lead.linkedinUrl && enrichingId === lead.id && (
+                              <span role="status" className="mt-0.5 flex items-center gap-1 text-[10.5px] font-medium text-blue-primary">
+                                <Loader2 size={11} className="animate-spin" aria-hidden="true" />
+                                Getting LinkedIn details…
                               </span>
                             )}
                           </span>

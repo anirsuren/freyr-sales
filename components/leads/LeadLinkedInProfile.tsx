@@ -102,7 +102,7 @@ export function LeadLinkedInProfile({ lead, refreshing, canWrite, onRefresh }: {
         <div className="flex min-w-0 items-start gap-2.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-light text-blue-primary"><LinkedInIcon size={17} /></span>
           <div className="min-w-0"><p className="text-[12.5px] font-semibold text-text-primary">LinkedIn profile</p>
-            <p className="text-[11px] text-text-tertiary">{refreshing ? "Reading profile…" : profile ? `Checked ${day(profile.fetchedAt) || "recently"}` : lead.linkedinStatus === "unavailable" ? "Lookup unavailable; link saved" : "No profile facts saved yet"}</p>
+            <p role={refreshing ? "status" : undefined} className="text-[11px] text-text-tertiary">{refreshing ? "Getting public profile details. This may take a moment…" : profile ? `Checked ${day(profile.fetchedAt) || "recently"}` : lead.linkedinStatus === "unavailable" ? "Profile details unavailable. You can retry." : "Profile details not loaded yet"}</p>
           </div>
         </div>
         {canWrite && <button type="button" disabled={refreshing} onClick={(event) => { event.stopPropagation(); onRefresh(); }} className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-primary disabled:opacity-50"><RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />{profile ? "Refresh" : "Retry"}</button>}
