@@ -363,6 +363,7 @@ export function RequestDetail({
   } | null>(null);
   const [addingContributorTo, setAddingContributorTo] = useState<string | null>(null);
   const [contributorQuery, setContributorQuery] = useState("");
+  const [selectedContributors, setSelectedContributors] = useState<string[]>([]);
   const [cancelReason, setCancelReason] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -1180,6 +1181,7 @@ export function RequestDetail({
                               disabled={busy}
                               onClick={() => {
                                 setContributorQuery("");
+                                setSelectedContributors([]);
                                 setAddingContributorTo(division);
                               }}
                               className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-2.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
@@ -2078,6 +2080,7 @@ export function RequestDetail({
         onClose={() => {
           setAddingContributorTo(null);
           setContributorQuery("");
+          setSelectedContributors([]);
         }}
         title="Add a contributor"
         size="workflow"
@@ -2106,10 +2109,13 @@ export function RequestDetail({
           const shown = eligible.filter(
             (name) => !query || name.toLowerCase().includes(query)
           );
+          const selectedEligible = selectedContributors.filter((name) =>
+            eligible.some((person) => samePerson(person, name))
+          );
           return (
             <div className="flex min-h-0 flex-1 flex-col">
               <p className="text-[13px] leading-relaxed text-text-secondary">
-                Choose someone to support <b className="text-text-primary">{division ?? "this division"}</b>.
+                Choose people to support <b className="text-text-primary">{division ?? "this division"}</b>.
                 People who already have a role here are hidden.
               </p>
               <div className="relative mt-5 shrink-0">
@@ -2140,25 +2146,20 @@ export function RequestDetail({
                   <button
                     key={name}
                     type="button"
+                    role="checkbox"
+                    aria-checked={selectedContributors.includes(name)}
                     disabled={busy}
-                    onClick={() => {
-                      if (!division) return;
-                      void post({
-                        op: "set-workstream",
-                        division,
-                        contributors: [...contributors, name],
-                      });
-                      setAddingContributorTo(null);
-                      setContributorQuery("");
-                    }}
-                    className="group flex w-full cursor-pointer items-center gap-3 rounded-lg bg-white px-3 py-2.5 text-left transition-colors hover:bg-blue-light disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => setSelectedContributors((current) =>
+                      current.includes(name) ? current.filter((person) => person !== name) : [...current, name]
+                    )}
+                    className={cn("group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-blue-light disabled:cursor-not-allowed disabled:opacity-50", selectedContributors.includes(name) ? "bg-blue-light" : "bg-white")}
                   >
+                    <span aria-hidden="true" className={cn("grid h-5 w-5 shrink-0 place-items-center rounded-md border", selectedContributors.includes(name) ? "border-blue-primary bg-blue-primary text-white" : "border-border bg-white")}>
+                      {selectedContributors.includes(name) && <Check size={13} strokeWidth={3} />}
+                    </span>
                     <Avatar name={name} className="h-8 w-8 shrink-0 text-[10px]" />
                     <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-text-primary group-hover:text-blue-primary">
                       {name}
-                    </span>
-                    <span className="inline-flex h-7 items-center gap-1 rounded-lg border border-blue-subtle bg-white px-2 text-[11.5px] font-semibold text-blue-primary">
-                      <Plus size={12} strokeWidth={2.5} /> Add
                     </span>
                   </button>
                 ))}
@@ -2171,6 +2172,23 @@ export function RequestDetail({
                     </p>
                   </div>
                 )}
+              </div>
+              <div className="mt-4 flex shrink-0 items-center justify-between gap-3 border-t border-border-light pt-4">
+                <span className="text-[12px] text-text-secondary">{selectedEligible.length ? `${selectedEligible.length} selected` : "Select one or more people"}</span>
+                <Button
+                  disabled={busy || !division || selectedEligible.length === 0}
+                  onClick={async () => {
+                    if (!division || selectedEligible.length === 0) return;
+                    const saved = await post({ op: "set-workstream", division, contributors: [...contributors, ...selectedEligible] });
+                    if (saved) {
+                      setAddingContributorTo(null);
+                      setContributorQuery("");
+                      setSelectedContributors([]);
+                    }
+                  }}
+                >
+                  {selectedEligible.length ? `Add ${selectedEligible.length} ${selectedEligible.length === 1 ? "contributor" : "contributors"}` : "Add contributors"}
+                </Button>
               </div>
             </div>
           );

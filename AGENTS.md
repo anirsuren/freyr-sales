@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Multiple Solutioning contributors:** Add a contributor now supports checking multiple eligible people, searching while selections persist, and adding the selected people in one `set-workstream` update. The dialog stays open if saving fails and clears its selections when dismissed or saved. The server already accepts contributor arrays and deduplicates them. Typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
+
 - **Sep 24 Change owner alignment:** The transfer arrow in the Solutioning Change owner dialog is aligned with the owner avatar/name row rather than centered against the two-line header plus avatar block. Local only, per the user's release instruction.
 
 - **Sep 24 Solutioning timeline Today marker:** Zooming or panning the Needed By timeline no longer hides Today when its date leaves the visible range. A pinned Today pill stays at the nearest edge with a directional arrow; the rail line is shown only when Today is actually within the viewport. Typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
