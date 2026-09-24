@@ -75,6 +75,21 @@ export function LeadPersonInsights({
         </div>
       </div>
 
+      {missingChecks.length > 0 && (
+        <div className="mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[rgba(194,65,12,0.18)] bg-[rgba(194,65,12,0.05)] px-3 py-2.5">
+          <p className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-[color:var(--ink-orange)]">
+            <AlertCircle size={13} className="shrink-0" />
+            Missing: {missingChecks.map(check => check.label).join(" · ")}
+          </p>
+          {onEdit && (
+            <button type="button" onClick={event => { event.stopPropagation(); onEdit(); }}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-blue-primary hover:bg-blue-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+              <Pencil size={12} /> Edit lead
+            </button>
+          )}
+        </div>
+      )}
+
       {open && (
         <div className="mx-4 border-t border-border-light py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -92,29 +107,14 @@ export function LeadPersonInsights({
         </div>
       )}
 
-      <footer className="mt-auto border-t border-border-light px-4 py-3">
-        {missingChecks.length > 0 ? (
-          <>
-            <div className="flex items-center justify-between gap-2">
-              <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[color:var(--ink-orange)]">
-                <AlertCircle size={13} className="shrink-0" />
-                Missing: {missingChecks.map(check => check.label).join(" · ")}
-              </p>
-              {onEdit && (
-                <button type="button" onClick={event => { event.stopPropagation(); onEdit(); }}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-blue-primary hover:bg-blue-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
-                  <Pencil size={12} /> Edit lead
-                </button>
-              )}
-            </div>
-          </>
-        ) : (
+      {missingChecks.length === 0 && (
+        <footer className="border-t border-border-light px-4 py-3">
           <p className="flex items-center gap-2 text-[11px] text-text-secondary">
             <CheckCircle2 size={14} className="shrink-0 text-[#15803D]" />
             Contact and qualification details complete
           </p>
-        )}
-      </footer>
+        </footer>
+      )}
     </section>
   );
 }

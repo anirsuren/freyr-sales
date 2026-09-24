@@ -1761,3 +1761,7 @@ Thought Leadership now groups Firm, Topic, and Type under the shared Filter menu
 ### Sep 24: Lead LinkedIn sales-first presentation
 
 The deployed Sep 24 screenshot still showed the older inline LinkedIn post list; the local lead row already opens a compact profile card and keeps full facts in a popup. The popup now leads with identity and current role, a short bio, and one recent public post. Career history, skills, audience counts, and the full post archive remain available behind collapsed sections, so long histories do not overwhelm the lead's request and follow-up. The inline card no longer lists counts of roles, schools, and posts. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.
+
+### Sep 24: Lead follow-up missing-detail placement
+
+The missing qualification details and Edit lead action now appear directly below the recommended follow-up in the lead's expanded card. The old bottom footer was pushed below the long contact/LinkedIn column and often out of view. A completed-details message remains in a footer when nothing is missing. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.
