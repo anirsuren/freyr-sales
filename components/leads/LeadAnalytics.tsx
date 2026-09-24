@@ -84,10 +84,10 @@ function LeadRowDetails({ lead, columns, companyHref }: { lead: Lead; columns: n
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Contact</p>
               <div className="mt-1 flex flex-col gap-1 text-[12.5px]">
-                {lead.name ? <Link href={lead.contactId ? `/contacts/${lead.contactId}` : `/leads/${lead.id}/contact`} className="font-semibold text-blue-primary hover:underline">Open {lead.name}&apos;s contact record</Link> : null}
-                {lead.email ? <a href={`mailto:${lead.email}`} className="text-blue-primary hover:underline">{lead.email}</a> : null}
-                {lead.phone ? <a href={`tel:${lead.phone}`} className="text-blue-primary hover:underline">{formatPhoneNumber(lead.phone)}</a> : null}
-                {lead.linkedinUrl ? <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-primary hover:underline">LinkedIn profile ↗</a> : null}
+                {lead.name ? <Link href={lead.contactId ? `/contacts/${lead.contactId}` : `/leads/${lead.id}/contact`} className="w-fit font-semibold text-text-primary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{lead.name} <ArrowUpRight size={12} className="inline text-text-tertiary" aria-hidden="true" /></Link> : null}
+                {lead.email ? <a href={`mailto:${lead.email}`} className="w-fit text-text-secondary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{lead.email}</a> : null}
+                {lead.phone ? <a href={`tel:${lead.phone}`} className="w-fit text-text-secondary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{formatPhoneNumber(lead.phone)}</a> : null}
+                {lead.linkedinUrl ? <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" className="w-fit text-text-secondary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">LinkedIn profile <ArrowUpRight size={12} className="inline text-text-tertiary" aria-hidden="true" /></a> : null}
                 {!lead.email && !lead.phone && !lead.linkedinUrl ? <span className="text-text-tertiary">No contact details</span> : null}
               </div>
             </div>
@@ -95,7 +95,7 @@ function LeadRowDetails({ lead, columns, companyHref }: { lead: Lead; columns: n
               <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Background</p>
               <p className="mt-1 text-[12.5px] leading-5 text-text-primary">
                 {lead.title && <>{lead.title} · </>}
-                <Link href={companyHref} className="font-semibold text-blue-primary hover:underline">{lead.company}</Link>
+                <Link href={companyHref} className="font-semibold text-text-primary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{lead.company}</Link>
                 {lead.country && <> · {lead.country}</>}
               </p>
               {lead.note ? <p className="mt-2 whitespace-pre-wrap text-[12px] leading-5 text-text-secondary">{lead.note}</p> : null}
@@ -105,7 +105,7 @@ function LeadRowDetails({ lead, columns, companyHref }: { lead: Lead; columns: n
               <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Timeline</p>
               <p className="mt-1 text-[12px] text-text-secondary">Came in <LocalTime value={lead.createdAt} /></p>
               <p className="mt-1 text-[12px] text-text-secondary">Last moved <LocalTime value={lead.updatedAt || lead.createdAt} /></p>
-              <p className="mt-1 text-[12px] text-text-secondary">Owner: {lead.owner || "Unassigned"}</p>
+              <p className="mt-1 text-[12px] text-text-secondary">Owner: {lead.owner ? <Link href={`/analytics/reps/${repSlug(lead.owner)}`} className="text-text-secondary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{lead.owner}</Link> : "Unassigned"}</p>
             </div>
           </div>
           <Link href={`/leads?lead=${encodeURIComponent(lead.ref)}`} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline">
