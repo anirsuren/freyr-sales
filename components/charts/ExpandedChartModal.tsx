@@ -189,6 +189,8 @@ export function ExpandedChartControl({
                         label: `${entry.label} · ${entry.records.length} ${entry.records.length === 1 ? "lead" : "leads"}`,
                         color: "#0071E3",
                         icon: CalendarDays,
+                        faces: entry.records.map((record) => record.avatar || record.label),
+                        searchText: entry.records.map((record) => record.label).join(" "),
                       }))}
                       onChange={(value) => { setSelectedPoint(Number(value)); setPointQuery(""); }}
                       ariaLabel="Week starting"

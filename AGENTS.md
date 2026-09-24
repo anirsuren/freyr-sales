@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 24 Lead week dropdown faces:** Each week option in the expanded intake chart now shows up to five lead avatars plus an overflow count, using the existing picker face-stack style. Week search also finds a week by a lead's name. Verified visually in local Mock mode with the dropdown open; typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
+
 - **Sep 24 Lead trend chart detail search and faces:** The expanded 12-week lead chart now has a search field above the right-hand list for filtering the selected week's leads. The week header shows up to five lead avatars, an overflow count, and the total; each listed lead links to its record. Verified in local Mock mode by searching a selected week, plus typecheck, focused lint, and diff check. Local only, per the user's release instruction.
 
 - **Sep 24 Customer link access feedback:** A lead's linked customer record could send a user without Customers access to Offerings with no explanation. The customer detail route now shows a clear access-required state for that account, before reading customer data; authorized users still open the full record. Typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
