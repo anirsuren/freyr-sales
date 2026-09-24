@@ -178,7 +178,8 @@ export const SIGNAL_GUIDE: Record<SignalGroup, Partial<Record<SignalId, string[]
     ],
     events: [
       "speaking or exhibiting at external DIA, RAPS, TOPRA, or similar events",
-      "organizing events related to regulatory",
+      "organizing or reporting on the company's own named summit, conference, webinar, symposium, congress, or forum, including patient-advocacy events",
+      "participating in an external event relevant to the company or its customers",
     ],
     thought_leadership: [
       "publishing articles, whitepapers or thought leadership content on regulatory",
@@ -453,6 +454,13 @@ const FALLBACK_RULES: Record<SignalGroup, { id: SignalId; pattern: RegExp }[]> =
 
 export function fallbackSignals(text: string, group: SignalGroup): SignalId[] {
   return tidySignals(FALLBACK_RULES[group].filter((rule) => rule.pattern.test(text)).map((rule) => rule.id));
+}
+
+/** Explicit participation in a named event in the company's own post.
+ * This rescues clear events from old "Others" labels without another model
+ * call; merely discussing events in general does not qualify. */
+export function isCompanyEventPost(text: string): boolean {
+  return /\b(?:at|host(?:ed|ing)?|join(?:ed|ing)?|attend(?:ed|ing)?|speak(?:s|ing)?|present(?:ed|ing)?|organi[sz](?:ed|ing)|conven(?:ed|ing))\b.{0,120}\b(?:summit|conference|congress|webinar|symposium|expo|forum)\b/i.test(text);
 }
 
 /** A concrete customer security incident in a verified article. A generic

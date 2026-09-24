@@ -5,6 +5,7 @@ import { SIGNAL_META } from "./marketIntelMock";
 import { COMPETITOR_SOURCES } from "./marketIntelSources";
 import {
   fallbackSignals,
+  isCompanyEventPost,
   isDataSecurityIncident,
   isLabeled,
   labelSignals,
@@ -1210,6 +1211,13 @@ export function deriveSignals(
       if (kinds[0] !== "others") why = signalWhy(group, kinds[0]);
     }
     if (group === "customer") {
+      // A dated company post describing its own summit is an event even if
+      // an older model response stored only "Others". This uses the post
+      // text already in the feed and adds no classification call.
+      if ("date" in item && kinds.length === 1 && kinds[0] === "others" && isCompanyEventPost(text)) {
+        kinds = ["events"];
+        why = signalWhy(group, "events");
+      }
       // The compliance category covers official authority action and actual
       // customer security incidents. Old labels put Amgen breach reporting
       // under Corporate Structure; correct that immediately on read.
