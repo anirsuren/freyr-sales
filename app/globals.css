@@ -2360,13 +2360,6 @@ tr.mi-collecting-row {
 [data-agent-dock-clearance][data-agent-dock-collision] {
   padding-right: 92px !important;
 }
-/* Keep the assistant launcher beside the open Market Intel details rail,
-   rather than on top of its tracked people and filters. */
-@media (min-width: 1024px) {
-  body:has([data-market-intel-details-open="true"][data-market-intel-details-side="right"]) [data-agent-dock-launcher] {
-    right: 356px;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   tr.mi-collecting-row { animation: none; background-image: none; }
   [data-agent-dock-clearance] { transition: none; }
