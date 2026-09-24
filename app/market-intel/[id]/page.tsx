@@ -150,6 +150,12 @@ export default async function MarketIntelCompanyPage({
           posts: peopleFeeds[p.id]?.posts ?? [],
         }))
       );
+      const competitorLogos = Object.fromEntries(
+        freyrCompetitorNames(tracking.companies).map((competitor) => {
+          const tracked = tracking.companies.find((company) => company.id === competitor.id);
+          return [competitor.name, tracked?.logoUrl || intel?.companies[competitor.id]?.logoUrl || null];
+        })
+      );
       return (
         <>
           <MiSectionMarker section={isCompetitor ? "competitors" : "customers"} />
@@ -157,6 +163,7 @@ export default async function MarketIntelCompanyPage({
           <LiveCompanyBriefing
             collection={trackedConfig?.onboarding}
             briefing={{ ...briefing, logoUrl: trackedConfig?.logoUrl || briefing.logoUrl || null }}
+            competitorLogos={competitorLogos}
             refreshUpdatedAt={intel?.meta.updatedAt ?? null}
             extraPeople={isCompetitor ? [] : extraPeople}
             availablePeople={isCompetitor ? [] : availablePeople}

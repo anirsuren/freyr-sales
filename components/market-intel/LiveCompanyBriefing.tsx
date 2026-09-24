@@ -134,6 +134,7 @@ function siteSourceLabel(url: string, fallback: string): string {
 
 export function LiveCompanyBriefing({
   briefing,
+  competitorLogos = {},
   refreshUpdatedAt = null,
   collection,
   extraPeople = [],
@@ -148,6 +149,7 @@ export function LiveCompanyBriefing({
   starred = false,
 }: {
   briefing: LiveBriefing;
+  competitorLogos?: Record<string, string | null>;
   collection?: TrackedCompany["onboarding"];
   refreshUpdatedAt?: string | null;
   extraPeople?: TrackedPerson[];
@@ -1119,9 +1121,10 @@ export function LiveCompanyBriefing({
                     }}
                     aria-pressed={selectedCompetitor === mention.name}
                     aria-label={`${selectedCompetitor === mention.name ? "Clear" : "Show"} mentions of ${mention.name}`}
-                    className={cn("flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors", selectedCompetitor === mention.name ? "border-[color:var(--ink-magenta)] bg-[rgba(180,49,143,0.16)] text-[color:var(--ink-magenta)]" : "border-transparent bg-[rgba(180,49,143,0.10)] text-[color:var(--ink-magenta)] hover:bg-[rgba(180,49,143,0.16)]")}
+                    className={cn("flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 text-[12px] font-semibold transition-colors", selectedCompetitor === mention.name ? "border-[color:var(--ink-magenta)] bg-[rgba(180,49,143,0.16)] text-[color:var(--ink-magenta)]" : "border-transparent bg-[rgba(180,49,143,0.10)] text-[color:var(--ink-magenta)] hover:bg-[rgba(180,49,143,0.16)]")}
                   >
                     {selectedCompetitor === mention.name && <Check size={12} strokeWidth={2.5} />}
+                    <MiLogo name={mention.name} logoUrl={competitorLogos[mention.name]} className="h-5 w-5 shrink-0 rounded-full" />
                     {mention.name}
                     <span className="tnum font-bold">{mention.count}</span>
                   </button>

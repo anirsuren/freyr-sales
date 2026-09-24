@@ -1749,3 +1749,7 @@ The Customer and Competitor Intel main-page Activity mix now shows only Posts, N
 ### Sep 24: Mock Solutioning handoff documents
 
 Mock submissions and presentations spawned from generated demo requests now receive a clearly labeled sample working document and final deliverable. Existing demo handoffs are filled once when read; a saved marker prevents removed sample files from reappearing. Live records and handoffs from manually created mock requests are unchanged. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.
+
+### Sep 24: Competitor-mention logos
+
+The Customer Intel details rail now shows each mentioned competitor's existing Market Intel logo beside its name and count. It resolves the current tracked-company logo first and then the collected feed summary; where neither has a logo, it uses the standard company mark. Mention names still come from the built-in competitor watch plus companies added through Manage Competitors, while counts are derived from matches in collected posts and articles. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.
