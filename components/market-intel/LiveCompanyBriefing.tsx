@@ -24,6 +24,8 @@ import {
   Newspaper,
   PanelRightClose,
   PanelRightOpen,
+  PanelLeftClose,
+  PanelLeftOpen,
   Radar,
   Repeat2,
   Sparkles,
@@ -172,6 +174,7 @@ export function LiveCompanyBriefing({
   const [relevantOnly, setRelevantOnly] = useState(isCompetitor);
   const [detailsView, setDetailsView] = useStoredView("freyr.mi.details", "open", ["open", "closed"] as const);
   const detailsOpen = detailsView === "open";
+  const [detailsSide] = useStoredView("freyr.mi.details.side", "right", ["right", "left"] as const);
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
     "freyr.mi.news.view",
     "rows",
@@ -680,7 +683,7 @@ export function LiveCompanyBriefing({
   };
 
   return (
-    <div data-market-intel-details-open={detailsOpen}>
+    <div data-market-intel-details-open={detailsOpen} data-market-intel-details-side={detailsSide}>
       {/* A briefing left open must keep pulling fresh server data. */}
       <AutoFresh />
       <ConfirmDialog
@@ -813,9 +816,11 @@ export function LiveCompanyBriefing({
 
       <div className={cn(
         "mt-5 grid items-start gap-4 motion-safe:transition-[grid-template-columns] motion-safe:duration-300 motion-safe:ease-in-out",
-        detailsOpen ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]" : "grid-cols-[minmax(0,1fr)_40px]"
+        detailsOpen
+          ? detailsSide === "left" ? "grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)]" : "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]"
+          : detailsSide === "left" ? "grid-cols-[minmax(0,1fr)_40px] lg:grid-cols-[40px_minmax(0,1fr)]" : "grid-cols-[minmax(0,1fr)_40px]"
       )}>
-        <div className="min-w-0">
+        <div className={cn("min-w-0", detailsSide === "left" && "lg:order-2")}>
           {/* THE SECONDARY BAR: SOURCES (Saras, Sep 11), under the Signals
               bar: where an item came from. Thought leadership and awards are
               signals now, so they are not sources any more. */}
@@ -995,7 +1000,7 @@ export function LiveCompanyBriefing({
         </div>
 
         {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4). */}
-        <div className="sticky top-3 min-w-0 self-start">
+        <div className={cn("sticky top-3 min-w-0 self-start", detailsSide === "left" && "lg:order-1")}>
           {!detailsOpen && (
             <button
               type="button"
@@ -1003,9 +1008,9 @@ export function LiveCompanyBriefing({
               aria-expanded={false}
               aria-controls="company-details-panel"
               onClick={() => setDetailsView("open")}
-              className="flex w-10 cursor-pointer flex-col items-center gap-3 rounded-l-xl border border-r-0 border-border-light bg-white py-4 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
+              className={cn("flex w-10 cursor-pointer flex-col items-center gap-3 border border-border-light bg-white py-4 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary", detailsSide === "left" ? "lg:rounded-r-xl lg:border-l-0" : "rounded-l-xl border-r-0")}
             >
-              <PanelRightOpen size={16} className="shrink-0" />
+              {detailsSide === "left" ? <PanelLeftOpen size={16} className="shrink-0" /> : <PanelRightOpen size={16} className="shrink-0" />}
               <span className="whitespace-nowrap [writing-mode:vertical-rl]">Company details</span>
             </button>
           )}
@@ -1015,7 +1020,8 @@ export function LiveCompanyBriefing({
             aria-hidden={!detailsOpen}
             inert={!detailsOpen}
             className={cn(
-              "flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm motion-safe:transition-[opacity,transform] motion-safe:duration-200 motion-safe:ease-out",
+              "flex min-w-0 flex-col overflow-hidden rounded-2xl border shadow-sm motion-safe:transition-[opacity,transform] motion-safe:duration-200 motion-safe:ease-out",
+              detailsSide === "left" ? "border-blue-subtle bg-[rgba(0,113,227,0.035)]" : "border-border-light bg-white",
               detailsOpen
                 ? cn(
                     dataMode === "mock"
@@ -1029,9 +1035,9 @@ export function LiveCompanyBriefing({
           {/* Keep the rail control outside its scrolling body. Previously the
               header disappeared as soon as someone scrolled down to the last
               cards, making the panel look impossible to close. */}
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-light bg-white px-4 py-3">
+          <div className={cn("flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3", detailsSide === "left" ? "border-blue-subtle bg-blue-light/70" : "border-border-light bg-white")}>
             <h2 className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Company details</h2>
-            <button type="button" onClick={() => setDetailsView("closed")} aria-label="Hide company details" aria-expanded={true} aria-controls="company-details-panel" className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light"><PanelRightClose size={14} className="shrink-0" />Hide</button>
+            <button type="button" onClick={() => setDetailsView("closed")} aria-label="Hide company details" aria-expanded={true} aria-controls="company-details-panel" className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light">{detailsSide === "left" ? <PanelLeftClose size={14} className="shrink-0" /> : <PanelRightClose size={14} className="shrink-0" />}Hide</button>
           </div>
           {/* The panel hugs quiet content, while busy content scrolls inside the
               viewport. Extra bottom room keeps the last card clear of chat. */}

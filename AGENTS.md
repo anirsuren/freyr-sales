@@ -1669,3 +1669,7 @@ The opportunity Revenue Accrual Project currency picker shows each currency's sy
 ### Sep 23: Filter accrual schedules whose months do not add up
 
 The Est. Accrual Revenue toolbar's existing Filter → Show menu includes “Months don't add up” with a count of scheduled deals whose monthly total differs from their contract value. Selecting it narrows the table, chart, and export together; it persists in the URL and switches directly to other Show choices. Plans without any months stay under “Need a plan.” Verified in the local Mock-mode browser with seven matching schedules and direct filter switching; typecheck passes and focused lint has only existing warnings. Completed locally, not deployed.
+
+### Sep 24: Optional Market Intel details placement
+
+Profile settings now offer a right-side company details panel (the existing default) or a highlighted, sticky left-side panel on Market Intel company briefings. Hide and Show remain available in both layouts, and panel visibility remains remembered independently of its position. The floating Agent launcher shifts only for an open right-side panel. Verified both positions and Hide in the local Mock-mode browser; restored the original right-side choice and hidden state afterward. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.

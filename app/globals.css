@@ -2363,7 +2363,7 @@ tr.mi-collecting-row {
 /* Keep the assistant launcher beside the open Market Intel details rail,
    rather than on top of its tracked people and filters. */
 @media (min-width: 1024px) {
-  body:has([data-market-intel-details-open="true"]) [data-agent-dock-launcher] {
+  body:has([data-market-intel-details-open="true"][data-market-intel-details-side="right"]) [data-agent-dock-launcher] {
     right: 356px;
   }
 }
