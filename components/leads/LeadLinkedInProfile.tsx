@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Award, BriefcaseBusiness, Building2, ExternalLink, GraduationCap, MapPin, MessageCircle, RefreshCw, Repeat2, Sparkles, ThumbsUp, Users } from "lucide-react";
+import { Award, BriefcaseBusiness, Building2, ExternalLink, GraduationCap, MapPin, MessageCircle, RefreshCw, Repeat2, ThumbsUp, Users } from "lucide-react";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { Modal } from "@/components/ui/Modal";
 import type { Lead, LeadLinkedInProfile } from "@/lib/leadsShared";
@@ -92,7 +92,7 @@ function ProfileDetails({ profile, url }: { profile: LeadLinkedInProfile; url: s
   </div>;
 }
 
-export function LeadLinkedInProfile({ lead, refreshing, canWrite, onRefresh, onAsk }: { lead: Lead; refreshing: boolean; canWrite: boolean; onRefresh: () => void; onAsk: () => void }) {
+export function LeadLinkedInProfile({ lead, refreshing, canWrite, onRefresh }: { lead: Lead; refreshing: boolean; canWrite: boolean; onRefresh: () => void }) {
   const [open, setOpen] = useState(false);
   if (!lead.linkedinUrl) return null;
   const profile = lead.linkedinProfile;
@@ -105,10 +105,7 @@ export function LeadLinkedInProfile({ lead, refreshing, canWrite, onRefresh, onA
             <p className="text-[11px] text-text-tertiary">{refreshing ? "Reading profile…" : profile ? `Checked ${day(profile.fetchedAt) || "recently"}` : lead.linkedinStatus === "unavailable" ? "Lookup unavailable; link saved" : "No profile facts saved yet"}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {canWrite && <button type="button" disabled={refreshing} onClick={(event) => { event.stopPropagation(); onRefresh(); }} className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-primary disabled:opacity-50"><RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />{profile ? "Refresh" : "Retry"}</button>}
-          <button type="button" onClick={(event) => { event.stopPropagation(); onAsk(); }} className="inline-flex items-center gap-1 rounded-md bg-blue-light px-2 py-1 text-[11px] font-semibold text-blue-primary"><Sparkles size={12} />Ask AI</button>
-        </div>
+        {canWrite && <button type="button" disabled={refreshing} onClick={(event) => { event.stopPropagation(); onRefresh(); }} className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-primary disabled:opacity-50"><RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />{profile ? "Refresh" : "Retry"}</button>}
       </div>
       {profile && <div className="mt-3 border-t border-border-light pt-3">
         {profile.headline && <p className="line-clamp-2 text-[12.5px] font-semibold leading-5 text-text-primary">{profile.headline}</p>}

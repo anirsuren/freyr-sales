@@ -62,7 +62,6 @@ import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn, todayISO } from "@/lib/utils";
-import { askFreyrAgent } from "@/lib/agentEvents";
 import { leadLinkedInUrl } from "@/lib/leadLinkedIn";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { PinnableTable } from "@/components/ui/PinnableTable";
@@ -1029,7 +1028,6 @@ export function LeadsModule({
                                   refreshing={enrichingId === lead.id}
                                   canWrite={canWrite}
                                   onRefresh={() => void enrichLead(lead.id)}
-                                  onAsk={() => askFreyrAgent({ prompt: `Tell me about lead ${lead.ref}, ${lead.name} at ${lead.company}. Use the saved lead record and LinkedIn profile snapshot, state when it was fetched, distinguish entered lead facts from unverified public-profile claims, and identify what remains unknown.` })}
                                 />}
 
                                 {lead.note && (
