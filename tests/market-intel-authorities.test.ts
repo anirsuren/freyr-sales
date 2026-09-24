@@ -3,6 +3,7 @@ import test from "node:test";
 import { healthAuthorityName, isCompanyAuthorityNotice } from "../lib/marketIntelAuthorities";
 import { deriveSignals, type FeedCompany, type FeedNews } from "../lib/marketIntelFeed";
 import { CUSTOMER_SIGNALS, COMPETITOR_SIGNALS } from "../lib/marketIntelSignals";
+import { isDataSecurityIncident } from "../lib/marketIntelSignals";
 
 const noticeUrl = "https://api.fda.gov/drug/enforcement.json?search=recall_number%3A%22D-0615-2026%22";
 const news = (url: string, provenance?: "health_authority"): FeedNews => ({
@@ -37,4 +38,25 @@ test("a news article carrying an old compliance label is not shown as an authori
   };
   assert.equal(deriveSignals(base, []).signals[0].kinds.includes("compliance_enforcement"), false);
   assert.equal(deriveSignals({ ...base, news: [news(noticeUrl, "health_authority")] }, []).signals[0].kinds[0], "compliance_enforcement");
+});
+
+test("reported customer breaches move from old corporate labels to compliance", () => {
+  const titles = [
+    "Amgen says patient health data, IP stolen in cybersecurity breach",
+    "AmGen Announces Cyberattack and Data Breach Involving Patient Data",
+  ];
+  const company: FeedCompany = {
+    id: "amgen", name: "Amgen", slug: null, author: null, posts: [], site: [],
+    news: titles.map((title, index) => ({
+      ...news(`https://news.example.com/breach-${index}`), title,
+      label: { signals: ["corporate_structure"], relevant: true, industries: [], isCompanyNews: true, v: 3 },
+    })),
+    fetchedAt: "2026-08-03T12:00:00.000Z", group: "customer",
+  };
+  assert.equal(isDataSecurityIncident("Amgen unveils a cybersecurity platform"), false);
+  assert.equal(deriveSignals(company, []).signals.length, 2);
+  for (const signal of deriveSignals(company, []).signals) {
+    assert.deepEqual(signal.kinds, ["compliance_enforcement"]);
+    assert.match(signal.why, /data breach/i);
+  }
 });

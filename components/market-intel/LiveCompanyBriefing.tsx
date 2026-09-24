@@ -306,6 +306,7 @@ export function LiveCompanyBriefing({
     })),
     ...briefing.news.map<Item>((n) => ({
       key: n.url,
+      storyCluster: n.storyCluster,
       kind: n.provenance === "health_authority" ? "authority" : "news",
       title: n.title || titleFromUrl(n.url),
       body: n.summary ?? null,
@@ -318,6 +319,7 @@ export function LiveCompanyBriefing({
     })),
     ...(briefing.site ?? []).map<Item>((n) => ({
       key: n.url,
+      storyCluster: n.storyCluster,
       kind: "site",
       title: n.title || titleFromUrl(n.url),
       body: n.summary ?? null,

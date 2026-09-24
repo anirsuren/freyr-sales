@@ -35,6 +35,7 @@ import {
   classifyItems,
   classifyMna,
   classifyUsage,
+  clusterCompanyNews,
   digestCompany,
   type ClassifyInput,
 } from "./marketIntelSummarize";
@@ -531,6 +532,7 @@ async function applyLabels(entry: FeedCompany, budget: LabelBudget): Promise<num
     entry.news = acceptedNews;
     entry.tldr = null; // Rebuild the briefing without rejected search matches.
   }
+  await clusterCompanyNews(entry.name, [...entry.news, ...(entry.site ?? [])]);
   return labeled;
 }
 
@@ -1105,6 +1107,7 @@ export async function runMarketIntelRefresh(options?: {
         ...(existing?.logoCheckedAt ? { logoCheckedAt: existing.logoCheckedAt } : {}),
         ...(existing?.site ? { site: existing.site } : {}),
         ...(existing?.siteAt ? { siteAt: existing.siteAt } : {}),
+        ...(existing?.authorityAt ? { authorityAt: existing.authorityAt } : {}),
         ...(postsResult.failed ? { postsFailedAt: new Date().toISOString() } : {}),
       };
       if (newsResult.news.length > 0) entry.tldr = null; // fresh rundown
@@ -1171,6 +1174,22 @@ export async function runMarketIntelRefresh(options?: {
       feed.updatedAt = new Date().toISOString();
       peopleRefreshed += 1;
       await saveFeedPerson(feed, person.id);
+    }
+
+    // Earlier archives only had word-overlap grouping. Backfill their AI
+    // event identities after the scheduled boards, companies and people have
+    // had their turn; this never adds work to a page view.
+    {
+      const clusterDeadline = Date.now() + 60_000;
+      for (const source of sources) {
+        if (Date.now() >= clusterDeadline || runExpired()) break;
+        const entry: FeedCompany | undefined = feed.companies[source.id];
+        if (!entry || (entry.news.every(item => item.storyCluster) && (entry.site ?? []).every(item => item.storyCluster))) continue;
+        const items = [...entry.news, ...(entry.site ?? [])];
+        const before = items.filter(item => item.storyCluster).length;
+        await clusterCompanyNews(entry.name, items);
+        if (items.filter(item => item.storyCluster).length > before) await saveFeedCompany(feed, source.id);
+      }
     }
   } finally {
     try {

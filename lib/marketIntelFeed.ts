@@ -5,6 +5,7 @@ import { SIGNAL_META } from "./marketIntelMock";
 import { COMPETITOR_SOURCES } from "./marketIntelSources";
 import {
   fallbackSignals,
+  isDataSecurityIncident,
   isLabeled,
   labelSignals,
   signalWhy,
@@ -39,6 +40,8 @@ export type FeedPost = {
 };
 
 export type FeedNews = {
+  /** Stable identity for the concrete event, assigned once during collection. */
+  storyCluster?: string;
   /** Verified final URL on an official health-authority website. */
   provenance?: "health_authority";
   /** Extracted source evidence for identity validation, not an AI summary. */
@@ -1207,11 +1210,14 @@ export function deriveSignals(
       if (kinds[0] !== "others") why = signalWhy(group, kinds[0]);
     }
     if (group === "customer") {
-      // The compliance category is reserved for notices actually published by
-      // a health authority, never an article or a customer's own release.
+      // The compliance category covers official authority action and actual
+      // customer security incidents. Old labels put Amgen breach reporting
+      // under Corporate Structure; correct that immediately on read.
       kinds = kinds.filter(kind => kind !== "compliance_enforcement");
-      if ("provenance" in item && item.provenance === "health_authority") {
-        kinds = ["compliance_enforcement", ...kinds.filter(kind => kind !== "others")];
+      const authority = "provenance" in item && item.provenance === "health_authority";
+      const breach = "published" in item && isDataSecurityIncident(title) && item.label?.isCompanyNews !== false;
+      if (authority || breach) {
+        kinds = ["compliance_enforcement"];
         why = signalWhy(group, "compliance_enforcement");
       }
       const competitors = others.filter((other) => other.found(text)).map((other) => other.name);

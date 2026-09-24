@@ -153,12 +153,13 @@ export const SIGNAL_GUIDE: Record<SignalGroup, Partial<Record<SignalId, string[]
       "contractor or consultant hiring for regulatory roles",
     ],
     compliance_enforcement: [
-      "official health-authority notices only: FDA Warning Letter or Form 483 observations",
+      "FDA Warning Letter or Form 483 observations",
       "EMA, MHRA, or other health-authority inspection findings",
       "product recall of any class or field safety notice",
       "import alert or import ban",
       "consent decree",
       "data integrity findings",
+      "confirmed customer cybersecurity incident, patient-data breach, privacy breach, or data leak, including credible reporting before an authority notice",
       "certification lapse or failed audit (ISO 13485, MDSAP, GMP)",
     ],
     technology: [
@@ -254,7 +255,7 @@ const SIGNAL_WHY: Record<SignalGroup, Partial<Record<SignalId, string>>> = {
     market_expansion: "New markets and sites mean new registrations and site variations, starting now.",
     corporate_structure: "Deals and restructures move marketing authorisations between companies, often on a deadline.",
     ra_qa_team: "A change in the RA/QA team resets priorities and vendors. Be in the conversation early.",
-    compliance_enforcement: "An official authority action may create urgent remediation, quality and regulatory work. Check the notice and its scope.",
+    compliance_enforcement: "An authority action or reported data breach may create urgent remediation and regulatory work. Check the source and its scope.",
     technology: "A systems change reopens how their regulatory work gets done, and who helps them do it.",
     financial_operational: "Budgets, pipeline and capacity decide how much regulatory work they buy this year.",
     events: "Their people will be in a room Freyr can also be in. Plan the meeting before the event.",
@@ -452,4 +453,10 @@ const FALLBACK_RULES: Record<SignalGroup, { id: SignalId; pattern: RegExp }[]> =
 
 export function fallbackSignals(text: string, group: SignalGroup): SignalId[] {
   return tidySignals(FALLBACK_RULES[group].filter((rule) => rule.pattern.test(text)).map((rule) => rule.id));
+}
+
+/** A concrete customer security incident in a verified article. A generic
+ * cybersecurity product, forecast or advice piece does not qualify. */
+export function isDataSecurityIncident(title: string): boolean {
+  return /(?:cyber(?:security)?[ -]?(?:attack|breach|incident)|security[ -]?(?:breach|incident)|ransomware|data[ -]?(?:breach|leak|theft|stolen|expos|security incident)|privacy[ -]?breach|patient (?:data|records|information).{0,40}(?:stolen|expos|breach|compromis)|(?:stolen|expos|compromis).{0,40}(?:patient|personal|health) (?:data|records|information))/i.test(title);
 }

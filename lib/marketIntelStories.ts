@@ -10,11 +10,10 @@
  * link. Neither is caught by an exact-match key, so this groups by what the
  * words say rather than by the link.
  *
- * Pure, deterministic, and cheap enough to run on every render: normalise
- * the words, drop the ones that carry no meaning, and call two items the same
- * story when their word sets mostly overlap or one is contained in the other.
- * A wrong merge hides a story, a missed merge shows a repeat, so the
- * thresholds lean towards keeping items apart.
+ * Collection now saves an AI-assigned event identity for candidate news pairs.
+ * On the page, those identities decide news grouping without a model call.
+ * For older items and posts without an identity, the deterministic word rules
+ * below provide a cheap fallback and lean towards keeping stories apart.
  */
 
 const STOP = new Set(
@@ -64,6 +63,8 @@ export type StoryInput = {
   /** Longer text when there is one; posts use their body. */
   body?: string | null;
   date: string | null;
+  /** One-time AI event identity saved with collected articles. */
+  storyCluster?: string;
 };
 
 /**
@@ -71,6 +72,7 @@ export type StoryInput = {
  * whose opening lines are the other post's opening lines (a repost).
  */
 export function sameStory(a: StoryInput, b: StoryInput): boolean {
+  if (a.storyCluster && b.storyCluster) return a.storyCluster === b.storyCluster;
   const ta = storyTokens(a.title);
   const tb = storyTokens(b.title);
   const t = overlap(ta, tb);
@@ -91,6 +93,43 @@ export function sameStory(a: StoryInput, b: StoryInput): boolean {
     if (ba.size >= 12 && bb.size >= 12 && o.jaccard >= 0.7) return true;
   }
   return false;
+}
+
+/** A deliberately broad, cheap shortlist for the one-time AI event check.
+ * False candidates cost a few model tokens; missed candidates leave duplicate
+ * cards, so synonyms and summaries help find differently worded headlines. */
+export function storyCandidateComponents<T extends StoryInput>(items: T[], companyName: string): T[][] {
+  const companyWords = storyTokens(companyName);
+  const canonical = (word: string) => {
+    if (/^(cyber|hack|ransomware|phishing)/.test(word)) return "cyber";
+    if (/^(breach|compromis|leak|stolen|theft|expos)/.test(word)) return "breach";
+    if (/^(patient|personal|healthcare)/.test(word)) return "patient";
+    return word;
+  };
+  const tokens = items.map(item => new Set(
+    [...storyTokens(`${item.title} ${item.body?.slice(0, 220) ?? ""}`)]
+      .filter(word => !companyWords.has(word))
+      .map(canonical)
+  ));
+  const parent = items.map((_, index) => index);
+  const root = (index: number): number => parent[index] === index ? index : (parent[index] = root(parent[index]));
+  for (let a = 0; a < items.length; a++) for (let b = a + 1; b < items.length; b++) {
+    const left = Date.parse(items[a].date ?? "");
+    const right = Date.parse(items[b].date ?? "");
+    if (!Number.isFinite(left) || !Number.isFinite(right) || Math.abs(left - right) > 7 * 86_400_000) continue;
+    const related = overlap(tokens[a], tokens[b]);
+    const security = tokens[a].has("cyber") && tokens[b].has("cyber") && tokens[a].has("breach") && tokens[b].has("breach");
+    const shared = [...tokens[a]].filter(word => tokens[b].has(word)).length;
+    if (!security && shared < 2) continue;
+    if (!security && related.containment < 0.28 && related.jaccard < 0.22) continue;
+    parent[root(b)] = root(a);
+  }
+  const groups = new Map<number, T[]>();
+  items.forEach((item, index) => {
+    const key = root(index);
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  });
+  return [...groups.values()].filter(group => group.length > 1);
 }
 
 export type StoryGroup<T extends StoryInput> = { lead: T; others: T[] };

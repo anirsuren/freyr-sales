@@ -412,6 +412,7 @@ export function dedupeCompanyNews(items: FeedNews[]): FeedNews[] {
     } else {
       prior.label ??= item.label;
     }
+    prior.storyCluster ??= item.storyCluster;
     prior.summary??=item.summary;prior.excerpt??=item.excerpt;
     const legacyEncoded=!!prior.articleText&&prior.articleText.includes('kAm')&&prior.articleText.includes('k^Am');
     if(item.articleText&&(!prior.articleText||legacyEncoded||(item.articleTextPartial===false&&(prior.articleTextPartial||item.articleText.length>prior.articleText.length)))){
