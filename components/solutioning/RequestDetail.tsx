@@ -980,7 +980,7 @@ export function RequestDetail({
                 <span className="truncate">From lead {r.leadName || "this lead"}</span>
                 <ArrowUpRight size={13} className="shrink-0" />
               </Link>}
-              <div className="mt-4 ml-11 grid gap-x-6 gap-y-5 rounded-xl border border-border-light bg-surface/35 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
+              <div className="mt-4 ml-11 grid gap-x-6 gap-y-5 rounded-xl border border-border-light bg-surface/35 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
                 <div className="min-w-0">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.07em] text-text-tertiary">Customer</p>
                   {r.customer.trim() ? (
@@ -1051,21 +1051,21 @@ export function RequestDetail({
                         r.contactIds.length === r.contactNames.length ? r.contactIds[i] : undefined;
                       const inner = (
                         <>
-                          <Avatar name={name} className="h-[16px] w-[16px] text-[6px]" />
-                          {name}
-                          {contactId && <ArrowUpRight size={11} className="opacity-60" />}
+                          <Avatar name={name} className="h-5 w-5 shrink-0 text-[7px]" />
+                          <span className="min-w-0 break-words leading-snug group-hover/contact:underline">{name}</span>
+                          {contactId && <ArrowUpRight size={12} className="mt-0.5 shrink-0 text-text-tertiary" />}
                         </>
                       );
                       return contactId ? (
                         <Link
                           key={`${contactId}-${name}`}
                           href={`/contacts/${contactId}`}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-primary transition-colors hover:bg-blue-light hover:text-blue-primary"
+                          className="group/contact flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary hover:text-blue-primary"
                         >
                           {inner}
                         </Link>
                       ) : (
-                        <span key={name} className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-primary">
+                        <span key={name} className="flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary">
                           {inner}
                         </span>
                       );

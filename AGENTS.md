@@ -196,7 +196,7 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
-- **Sep 24 Solutioning linked opportunity layout:** “What this is for” gives the opportunity column more room and renders each deal as a plain linked record with an icon and natural text wrapping. The oversized blue pill no longer dominates the customer and contact links. Verified with typecheck, focused lint, diff check, and local Mock-mode visual inspection. Local only, per the user's release instruction.
+- **Sep 24 Solutioning linked record layout:** “What this is for” gives the opportunity column more room and renders each deal as a plain linked record with an icon and natural text wrapping. Contact links use the same restrained treatment, and the columns stack before they get cramped at narrower widths. The oversized opportunity pill shown in an older build is gone locally. Verified with typecheck, focused lint, diff check, and local Mock-mode visual inspection. Local only, per the user's release instruction.
 
 - **Sep 24 Solutioning zoomed date alignment:** When Requested and Needed move off opposite sides of the visible timeline, their edge badges now share one row and use compact month/day labels, with full dates available as tooltips and accessible labels. Same-edge badges still stack. When the needed date is today and both sit beyond the window, one “Needed today” badge replaces the redundant floating Today pill. The extra blank space under zoomed rails is reduced. Verified on Mock request REQ-F0203 at 1.6× zoom; typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
 
