@@ -192,6 +192,7 @@ export function LiveMarketIntelDashboard({
           watch={watch}
           trackingPeople={trackingPeople}
           starred={viewer.starredIds}
+          companyDirectory={Object.fromEntries(tracking.companies.map(company => [company.id, { name: company.name, logoUrl: company.logoUrl }]))}
         />
       </MiTabs>
     </>

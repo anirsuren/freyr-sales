@@ -7,6 +7,7 @@ import {
   fallbackSignals,
   isCompanyEventPost,
   isDataSecurityIncident,
+  isStockMarketOnly,
   isLabeled,
   labelSignals,
   signalWhy,
@@ -1211,6 +1212,15 @@ export function deriveSignals(
       if (kinds[0] !== "others") why = signalWhy(group, kinds[0]);
     }
     if (group === "customer") {
+      // Old model labels can call every share-price fluctuation a financial
+      // update. These are market reactions, not company operations. Keep any
+      // other substantive signal the item carries and put pure price moves in
+      // Others without buying another classification pass.
+      if ("published" in item && isStockMarketOnly(title)) {
+        kinds = kinds.filter(kind => kind !== "financial_operational");
+        if (!kinds.length) kinds = ["others"];
+        why = kinds[0] === "others" ? "" : signalWhy(group, kinds[0]);
+      }
       // A dated company post describing its own summit is an event even if
       // an older model response stored only "Others". This uses the post
       // text already in the feed and adds no classification call.

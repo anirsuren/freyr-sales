@@ -175,6 +175,7 @@ export const SIGNAL_GUIDE: Record<SignalGroup, Partial<Record<SignalId, string[]
       "guidance change or margin pressure",
       "manufacturing capacity expansion",
       "supply chain disruption affecting registered products",
+      "exclude stock-price movements, analyst ratings, trading volume, and price targets unless the item reports a substantive company financial or operational change",
     ],
     events: [
       "speaking or exhibiting at external DIA, RAPS, TOPRA, or similar events",
@@ -461,6 +462,15 @@ export function fallbackSignals(text: string, group: SignalGroup): SignalId[] {
  * call; merely discussing events in general does not qualify. */
 export function isCompanyEventPost(text: string): boolean {
   return /\b(?:at|host(?:ed|ing)?|join(?:ed|ing)?|attend(?:ed|ing)?|speak(?:s|ing)?|present(?:ed|ing)?|organi[sz](?:ed|ing)|conven(?:ed|ing))\b.{0,120}\b(?:summit|conference|congress|webinar|symposium|expo|forum)\b/i.test(text);
+}
+
+/** Market commentary is not an operating or financial change at the company.
+ * A headline with actual earnings, revenue, guidance, spending or capacity
+ * news still belongs in the financial/operational signal. */
+export function isStockMarketOnly(title: string): boolean {
+  const marketMove = /\b(?:stock|share price|shares|analyst|price target|trading volume|market cap|stock price|rating)\b.{0,100}\b(?:up|down|rise|rises|rose|fall|falls|fell|drop|drops|dropped|surge|surges|surged|gain|gains|gained|jump|jumps|climb|climbs|slip|slips|slump|slumps|cut|cuts|trim|trims|upgrade|downgrade|hold|buy|sell|target|volume)|\b(?:is|was|are|were) (?:up|down) \d+(?:\.\d+)?%/i;
+  if (!marketMove.test(title)) return false;
+  return !/\b(?:reports?|posts?|announces?|raises?|cuts?)\b.{0,50}\b(?:earnings|revenue|profit|loss|guidance|forecast|r&d spending|capacity|manufacturing|quarterly results|annual results)\b/i.test(title);
 }
 
 /** A concrete customer security incident in a verified article. A generic

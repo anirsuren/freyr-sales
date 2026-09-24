@@ -27,10 +27,19 @@ export async function GET(req: NextRequest) {
     const ctx = await context(req);
     if (!ctx) return NextResponse.json({error:"Not available on this account."},{status:403});
     const companyId = req.nextUrl.searchParams.get("companyId");
-    if (!companyId) return NextResponse.json({error:"Company required."},{status:400});
-    const {data,error} = await ctx.db.from("offering_catalog_state").select("catalog").like("id", `${ctx.prefix}%`).eq("catalog->>companyId", companyId);
-    if (error) throw error;
-    return NextResponse.json({ articles: (data ?? []).map(row => row.catalog) }, {headers:{"Cache-Control":"no-store"}});
+    if (companyId && companyId.length > 200) return NextResponse.json({error:"Invalid company."},{status:400});
+    const articles: unknown[] = [];
+    // The account-wide view must include every saved item. Supabase limits a
+    // single response, so walk the current user's rows in stable pages.
+    for (let offset = 0; ; offset += 500) {
+      let query = ctx.db.from("offering_catalog_state").select("catalog").like("id", `${ctx.prefix}%`);
+      if (companyId) query = query.eq("catalog->>companyId", companyId);
+      const {data,error} = await query.order("id").range(offset, offset + 499);
+      if (error) throw error;
+      articles.push(...(data ?? []).map(row => row.catalog));
+      if ((data?.length ?? 0) < 500) break;
+    }
+    return NextResponse.json({ articles }, {headers:{"Cache-Control":"no-store"}});
   } catch { return NextResponse.json({error:"Could not load saved articles."},{status:503}); }
 }
 export async function PUT(req: NextRequest) {
@@ -47,8 +56,8 @@ export async function PUT(req: NextRequest) {
       const {error} = await ctx.db.from("offering_catalog_state").delete().eq("id",id);
       if (error) throw error;
     } else {
-      if (typeof body.title !== "string" || !body.title.trim() || !["company","people","news","site"].includes(body.kind)) return NextResponse.json({error:"Invalid item."},{status:400});
-      const catalog = {companyId:body.companyId,url:body.url,title:body.title.slice(0,1000),kind:body.kind,sourceLabel:typeof body.sourceLabel === "string" ? body.sourceLabel.slice(0,300) : "",body:typeof body.body === "string" ? body.body.slice(0,12000) : null,date:typeof body.date === "string" && Number.isFinite(Date.parse(body.date)) ? body.date : null};
+      if (typeof body.title !== "string" || !body.title.trim() || !["company","people","news","authority","site"].includes(body.kind)) return NextResponse.json({error:"Invalid item."},{status:400});
+      const catalog = {companyId:body.companyId,companyName:typeof body.companyName === "string" ? body.companyName.slice(0,200) : "",url:body.url,title:body.title.slice(0,1000),kind:body.kind,sourceLabel:typeof body.sourceLabel === "string" ? body.sourceLabel.slice(0,300) : "",body:typeof body.body === "string" ? body.body.slice(0,12000) : null,date:typeof body.date === "string" && Number.isFinite(Date.parse(body.date)) ? body.date : null};
       const {error} = await ctx.db.from("offering_catalog_state").upsert({id,catalog,updated_at:new Date().toISOString()},{onConflict:"id"});
       if (error) throw error;
     }

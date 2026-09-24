@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useStoredView } from "@/lib/useStoredView";
 import { MiLogo } from "./MiLogo";
 import { DivisionChips } from "./DivisionChips";
+import { BookmarkedItems } from "./BookmarkedItems";
 
 import { type ReactNode, useEffect, useState } from "react";
 import { useCollectionStatusRefresh } from "./useCollectionStatusRefresh";
@@ -21,6 +22,7 @@ import {
   Newspaper,
   Radar,
   Radio,
+  Bookmark,
   Star,
   Tag,
   Users,
@@ -203,6 +205,7 @@ export function LiveCompanyGrid({
   watch,
   trackingPeople = {},
   starred = [],
+  companyDirectory = {},
   isAdmin = false,
   cardsByRange,
   catalogueTotal,
@@ -223,6 +226,7 @@ export function LiveCompanyGrid({
   trackingPeople?: Record<string, TrackingPerson[]>;
   /** This person's favourites, from the server. */
   starred?: string[];
+  companyDirectory?: Record<string, { name: string; logoUrl?: string | null }>;
   isAdmin?: boolean;
   addedAt?: Record<string,string>;
   cardsByRange?: Record<string, CompanyCard[]>;
@@ -236,11 +240,12 @@ export function LiveCompanyGrid({
   const [sort, setSort] = useStoredView<Sort>(`freyr.mi.${viewerId}.${group}.list.sort`, "az", ["active", "az", "za", "signals", "people"]);
   const [divisionFilter, setDivisionFilter] = useState<string[]>([]);
   const [starredOnly, setStarredOnly] = useState(false);
+  const [view, setView] = useState<"companies" | "bookmarks">("companies");
   const [stars, setStars] = useState<Set<string>>(new Set(starred));
   const stateOf = (id: string): WatchState => watch[id] ?? { followers: 0 };
 
   useCollectionStatusRefresh(pending);
-  useEffect(()=>{const added=()=>{setQuery("");setDivisionFilter([]);setStarredOnly(false);};window.addEventListener("mi-company-added",added);return ()=>window.removeEventListener("mi-company-added",added);},[]);
+  useEffect(()=>{const added=()=>{setQuery("");setDivisionFilter([]);setStarredOnly(false);setView("companies");};window.addEventListener("mi-company-added",added);return ()=>window.removeEventListener("mi-company-added",added);},[]);
   useEffect(() => setStars(new Set(starred)), [starred]);
 
   /* THE STAR IS A FAVOURITE, not the list itself: every card here is already
@@ -343,36 +348,48 @@ export function LiveCompanyGrid({
           value={query}
           onChange={setQuery}
           placeholder={
-            group === "competitor"
+            view === "bookmarks" ? "Search bookmarked items or companies…" : group === "competitor"
               ? "Search competitors…"
               : "Search customers or people…"
           }
           ariaLabel={
-            group === "competitor"
+            view === "bookmarks" ? "Search bookmarked items" : group === "competitor"
               ? "Search competitors"
               : "Search customers"
           }
         />
-        <span className="px-1 text-[12px] font-medium text-text-secondary tnum">
-          {visible} of {total}
-        </span>
+        {view === "companies" && <span className="px-1 text-[12px] font-medium text-text-secondary tnum">{visible} of {total}</span>}
         {/* STARRED: a favourite inside my own list, not the list itself. */}
         <button
           type="button"
-          onClick={() => setStarredOnly((v) => !v)}
-          aria-pressed={starredOnly}
-          title="Only the companies you starred"
+          onClick={() => { setView("companies"); setStarredOnly((v) => view === "companies" ? !v : true); }}
+          aria-pressed={view === "companies" && starredOnly}
+          title={group === "competitor" ? "Only the competitors you starred" : "Only the companies you starred"}
           className={cn(
             "flex h-[34px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors",
-            starredOnly
+            view === "companies" && starredOnly
               ? "border-transparent bg-[#B45309] text-white"
               : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
           )}
         >
-          <Star size={13} strokeWidth={2.2} fill={starredOnly ? "currentColor" : "none"} />
-          Starred
-          <span className={cn("tnum", starredOnly ? "opacity-85" : "text-text-tertiary")}>{starCount}</span>
+          <Star size={13} strokeWidth={2.2} fill={view === "companies" && starredOnly ? "currentColor" : "none"} />
+          {group === "competitor" ? "Starred competitors" : "Starred companies"}
+          <span className={cn("tnum", view === "companies" && starredOnly ? "opacity-85" : "text-text-tertiary")}>{starCount}</span>
         </button>
+        {group === "customer" && <button
+          type="button"
+          onClick={() => setView(current => current === "bookmarks" ? "companies" : "bookmarks")}
+          aria-pressed={view === "bookmarks"}
+          title="Saved posts and articles from all companies"
+          className={cn(
+            "flex h-[34px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors",
+            view === "bookmarks" ? "border-amber-300 bg-amber-100 text-amber-800" : "border-border-light bg-white text-text-secondary hover:border-amber-300 hover:text-amber-700"
+          )}
+        >
+          <Bookmark size={13} strokeWidth={2.2} fill={view === "bookmarks" ? "currentColor" : "none"} />
+          Bookmarked items
+        </button>}
+        {view === "companies" && <>
         <MultiColorSelect
           values={divisionFilter}
           onChange={setDivisionFilter}
@@ -415,8 +432,9 @@ export function LiveCompanyGrid({
             ...(group === "customer" ? [{ value: "people", label: "By people tracked", color: "var(--ink-teal-deep)" }] : []),
           ]}
         />
+        </>}
       </SearchPriority>
-      {catalogueTotal !== undefined && (
+      {view === "companies" && catalogueTotal !== undefined && (
         <p className="mb-4 text-[12px] text-text-secondary tnum">
           {catalogueTotal}{" "}
           {group === "competitor"
@@ -426,7 +444,7 @@ export function LiveCompanyGrid({
         </p>
       )}
 
-      {total === 0 && emptyState ? emptyState : visible === 0 ? (
+      {view === "bookmarks" ? <BookmarkedItems query={query} companies={companyDirectory} /> : total === 0 && emptyState ? emptyState : visible === 0 ? (
         <div className="rounded-xl border border-dashed border-border-light bg-white p-10 text-center text-[13px] text-text-secondary">
           {starredOnly && starCount === 0
             ? "Nothing starred yet. Press the star on any card to mark a favourite."
