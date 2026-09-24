@@ -460,10 +460,10 @@ export function LiveCompanyBriefing({
         <span
           key={kind}
           title={meta.label}
-          className="inline-flex w-max shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold leading-4"
+          className="inline-flex w-max shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold leading-4"
           style={{ color: meta.color, background: tint(meta.color, 8) }}
         >
-          <SIcon size={12} strokeWidth={2} className="shrink-0" /> {meta.label}
+          <SIcon size={11} strokeWidth={2} className="shrink-0" /> {meta.label}
         </span>
       );
     });
@@ -484,18 +484,18 @@ export function LiveCompanyBriefing({
     if (item.kind === "site") return "Company website";
     return "News article";
   };
-  const othersLine = (group: StoryGroup<Item>) => {
+  const othersLine = (group: StoryGroup<Item>, inHeader = false) => {
     if (!group.others.length) return null;
     const expanded = !!expandedSources[group.lead.key];
     const panelId = `other-sources-${encodeURIComponent(group.lead.key)}`;
     return (
-      <div className="mt-2.5">
+      <div className={cn(inHeader ? "relative ml-auto shrink-0" : "mt-2.5")}>
         <button
           type="button"
           aria-expanded={expanded}
           aria-controls={panelId}
           onClick={() => setExpandedSources(previous => ({ ...previous, [group.lead.key]: !expanded }))}
-          className="inline-flex items-center gap-1.5 rounded py-1 text-[11px] font-medium text-text-secondary transition-colors hover:text-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+          className={cn("inline-flex cursor-pointer items-center gap-1 rounded text-[10px] font-semibold text-text-secondary transition-colors hover:text-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary", inHeader ? "rounded-full border border-border-light bg-white px-2 py-0.5 leading-4" : "py-1")}
         >
           <Newspaper size={12} className="shrink-0" />
           <span>{group.others.length} other {group.others.length === 1 ? "source" : "sources"}</span>
@@ -503,12 +503,12 @@ export function LiveCompanyBriefing({
         </button>
         <div
           id={panelId}
-          className={cn("grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none", expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}
+          className={cn("grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none", inHeader && "absolute right-0 top-full z-30 mt-2 w-[min(22rem,80vw)] rounded-xl border border-border-light bg-white p-2 shadow-xl", expanded ? "grid-rows-[1fr] opacity-100" : inHeader ? "hidden" : "pointer-events-none grid-rows-[0fr] opacity-0")}
           aria-hidden={!expanded}
           inert={!expanded}
         >
-          <div className="min-h-0 overflow-hidden">
-            <ul className="my-1.5 space-y-1.5 border-l border-border-light pl-3">
+          <div className={cn("min-h-0 overflow-hidden", inHeader && "max-h-64 overflow-y-auto")}>
+            <ul className={cn("my-1.5 space-y-1.5", !inHeader && "border-l border-border-light pl-3")}>
               {group.others.map((source, index) => (
                 <li key={`${source.key}-${index}`}>
                   <a
@@ -545,14 +545,14 @@ export function LiveCompanyBriefing({
   const sourceTypeChip = (item: Item) => {
     const meta = sourceType(item);
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
-        <meta.Icon size={10.5} strokeWidth={2.2} /> {meta.label}
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-blue-primary">
+        <meta.Icon size={10} strokeWidth={2.2} /> {meta.label}
       </span>
     );
   };
   const cardStyle = (item: Item) =>
     leadKind(item) !== "others" ? { borderLeftColor: SIGNAL_META[leadKind(item)].color } : undefined;
-  const cardClass = (item: Item) => cn("group/story relative flex h-full flex-col p-4", leadKind(item) !== "others" && "border-l-[3px]");
+  const cardClass = (item: Item) => cn("group/story relative flex h-full flex-col p-4", leadKind(item) !== "others" && "border-l-[3px]", expandedSources[item.key] && "z-20");
 
   const postCard = (group: StoryGroup<Item>, key: string) => {
     const item = group.lead;
@@ -568,7 +568,7 @@ export function LiveCompanyBriefing({
     return (
       <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
         {storyActions(group)}
-        <p className="mb-2 flex flex-wrap items-center gap-2 pr-28">{sourceTypeChip(item)}{signalChips(item)}</p>
+        <div className="mb-2 flex flex-wrap items-center gap-1.5 pr-28">{signalChips(item)}{sourceTypeChip(item)}{othersLine(group, true)}</div>
         <div className="flex items-start gap-3">
           {post.by ? (
             <Avatar
@@ -619,7 +619,6 @@ export function LiveCompanyBriefing({
               </button>
             )}
             {item.signal?.why && whyLine(item.signal)}
-            {othersLine(group)}
           </div>
         </div>
         <div className="mt-auto flex items-end justify-between gap-4 pt-3">
@@ -641,26 +640,27 @@ export function LiveCompanyBriefing({
     return (
       <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
         {storyActions(group)}
-        <p className="flex flex-wrap items-center gap-2 pr-28">
-          {sourceTypeChip(item)}
+        <div className="flex flex-wrap items-center gap-1.5 pr-28">
           {signalChips(item)}
+          {sourceTypeChip(item)}
           {own ? (
             /* Source identity stays neutral blue. "Published by them" still
                states the meaningful provenance difference in plain text. */
             <>
-              <span className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
-                <Globe2 size={10.5} strokeWidth={2.2} /> {siteSourceLabel(article.url, article.source)}
+              <span className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-blue-primary">
+                <Globe2 size={10} strokeWidth={2.2} /> Website: {siteSourceLabel(article.url, article.source)}
               </span>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
                 Published by them
               </span>
             </>
           ) : (
-            <span title={article.source} className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
-              <Newspaper size={10.5} strokeWidth={2.2} /> {outletName(article.source, article.url)}
+            <span title={article.source} className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-blue-primary">
+              <Newspaper size={10} strokeWidth={2.2} /> Source of news article: {outletName(article.source, article.url)}
             </span>
           )}
-        </p>
+          {othersLine(group, true)}
+        </div>
         <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
           <a
             href={safeHref(article.url) as string}
@@ -680,7 +680,6 @@ export function LiveCompanyBriefing({
           </div>
         )}
         {item.signal?.why && whyLine(item.signal)}
-        {othersLine(group)}
         <time className="mt-auto block whitespace-nowrap pt-3 text-right text-[11.5px] text-text-tertiary" suppressHydrationWarning>{fmtDate(item.date)}</time>
       </Card>
     );

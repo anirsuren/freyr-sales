@@ -91,7 +91,7 @@ export const SIGNAL_META: Record<SignalId, { label: string; color: string; icon:
   corporate_structure: { label: "Corporate Structure Changes", color: "var(--ink-orange)", icon: Building2 },
   ra_qa_team: { label: "RA/QA Team Changes", color: "var(--ink-violet-soft)", icon: UserCog },
   technology: { label: "Technology Changes", color: "#0891B2", icon: Cpu },
-  financial_operational: { label: "Financial/ Operational Updates", color: "#4F46E5", icon: Landmark },
+  financial_operational: { label: "Financial or operational updates", color: "#4F46E5", icon: Landmark },
   events: { label: "Events", color: "var(--ink-violet)", icon: Calendar },
   thought_leadership: { label: "Thought Leadership", color: "#0F6E56", icon: BookOpenText },
   competitor_mentions: { label: "Competitor Mentions", color: "var(--ink-magenta)", icon: Swords },
