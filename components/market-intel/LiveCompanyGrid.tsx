@@ -20,7 +20,6 @@ import {
   Sun,
   Layers,
   Newspaper,
-  Radar,
   Radio,
   Bookmark,
   Star,
@@ -63,7 +62,7 @@ import { cn } from "@/lib/utils";
  */
 
 type Range = "1" | "7" | "30" | "90";
-type Sort = "active" | "az" | "za" | "signals" | "people";
+type Sort = "active" | "az" | "za" | "people";
 const UNTAGGED = "__untagged__";
 
 function ActivityMetric({
@@ -75,13 +74,12 @@ function ActivityMetric({
   icon: ReactNode;
   label: string;
   value: number | string;
-  tone: "blue" | "teal" | "orange" | "violet";
+  tone: "blue" | "teal" | "orange";
 }) {
   const styles = {
     blue: "bg-[rgba(0,113,227,0.07)] text-[color:var(--ink-bright-blue)]",
     teal: "bg-[rgba(15,118,110,0.08)] text-[color:var(--ink-teal-deep)]",
     orange: "bg-[rgba(194,65,12,0.08)] text-[color:var(--ink-orange)]",
-    violet: "bg-[rgba(124,58,237,0.08)] text-[color:var(--ink-violet-soft)]",
   } as const;
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1.5", styles[tone])}>
@@ -226,7 +224,7 @@ export function LiveCompanyGrid({
   trackingPeople?: Record<string, TrackingPerson[]>;
   /** This person's favourites, from the server. */
   starred?: string[];
-  companyDirectory?: Record<string, { name: string; logoUrl?: string | null }>;
+  companyDirectory?: Record<string, { name: string; logoUrl?: string | null; group?: "customer" | "competitor" }>;
   isAdmin?: boolean;
   addedAt?: Record<string,string>;
   cardsByRange?: Record<string, CompanyCard[]>;
@@ -237,7 +235,7 @@ export function LiveCompanyGrid({
   const [peoplePanel, setPeoplePanel] = useState<PeoplePanel | null>(null);
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<Range>("90");
-  const [sort, setSort] = useStoredView<Sort>(`freyr.mi.${viewerId}.${group}.list.sort`, "az", ["active", "az", "za", "signals", "people"]);
+  const [sort, setSort] = useStoredView<Sort>(`freyr.mi.${viewerId}.${group}.list.sort`, "az", ["active", "az", "za", "people"]);
   const [divisionFilter, setDivisionFilter] = useState<string[]>([]);
   const [starredOnly, setStarredOnly] = useState(false);
   const [view, setView] = useState<"companies" | "bookmarks">("companies");
@@ -301,7 +299,6 @@ export function LiveCompanyGrid({
     .sort((a, b) =>
       sort === "az" ? a.name.localeCompare(b.name)
         : sort === "za" ? b.name.localeCompare(a.name)
-        : sort === "signals" ? b.signalTotal - a.signalTotal || a.name.localeCompare(b.name)
         : sort === "people" ? (people[b.id]?.length ?? 0) - (people[a.id]?.length ?? 0) || a.name.localeCompare(b.name)
         : b.itemsInWindow - a.itemsInWindow || a.name.localeCompare(b.name)
     );
@@ -316,8 +313,7 @@ export function LiveCompanyGrid({
   ].sort((a, b) => {
     if (sort === "az") return a.name.localeCompare(b.name);
     if (sort === "za") return b.name.localeCompare(a.name);
-    const score = (row: typeof a) => sort === "people" ? people[row.id]?.length ?? 0
-      : sort === "signals" ? row.card?.signalTotal ?? -1 : row.card?.itemsInWindow ?? -1;
+    const score = (row: typeof a) => sort === "people" ? people[row.id]?.length ?? 0 : row.card?.itemsInWindow ?? -1;
     return score(b) - score(a) || a.name.localeCompare(b.name);
   });
 
@@ -376,11 +372,11 @@ export function LiveCompanyGrid({
           {group === "competitor" ? "Starred competitors" : "Starred companies"}
           <span className={cn("tnum", view === "companies" && starredOnly ? "opacity-85" : "text-text-tertiary")}>{starCount}</span>
         </button>
-        {group === "customer" && <button
+        <button
           type="button"
           onClick={() => setView(current => current === "bookmarks" ? "companies" : "bookmarks")}
           aria-pressed={view === "bookmarks"}
-          title="Saved posts and articles from all companies"
+          title={group === "customer" ? "Saved posts and articles from all customers" : "Saved posts and articles from all competitors"}
           className={cn(
             "flex h-[34px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors",
             view === "bookmarks" ? "border-amber-300 bg-amber-100 text-amber-800" : "border-border-light bg-white text-text-secondary hover:border-amber-300 hover:text-amber-700"
@@ -388,7 +384,7 @@ export function LiveCompanyGrid({
         >
           <Bookmark size={13} strokeWidth={2.2} fill={view === "bookmarks" ? "currentColor" : "none"} />
           Bookmarked items
-        </button>}
+        </button>
         {view === "companies" && <>
         <MultiColorSelect
           values={divisionFilter}
@@ -428,7 +424,6 @@ export function LiveCompanyGrid({
             { value: "active", label: "By most items", icon: ArrowDownWideNarrow, color: "var(--ink-bright-blue)" },
             { value: "az", label: "By name (A to Z)", icon: ArrowDownAZ, color: "var(--ink-magenta)" },
             { value: "za", label: "By name (Z to A)", icon: ArrowDownAZ, color: "var(--ink-magenta)" },
-            { value: "signals", label: "By most signals", color: "var(--ink-violet)" },
             ...(group === "customer" ? [{ value: "people", label: "By people tracked", color: "var(--ink-teal-deep)" }] : []),
           ]}
         />
@@ -444,7 +439,7 @@ export function LiveCompanyGrid({
         </p>
       )}
 
-      {view === "bookmarks" ? <BookmarkedItems query={query} companies={companyDirectory} /> : total === 0 && emptyState ? emptyState : visible === 0 ? (
+      {view === "bookmarks" ? <BookmarkedItems query={query} companies={companyDirectory} group={group} /> : total === 0 && emptyState ? emptyState : visible === 0 ? (
         <div className="rounded-xl border border-dashed border-border-light bg-white p-10 text-center text-[13px] text-text-secondary">
           {starredOnly && starCount === 0
             ? "Nothing starred yet. Press the star on any card to mark a favourite."
@@ -476,8 +471,8 @@ export function LiveCompanyGrid({
                       <span className="block min-w-0 text-[13.5px] font-semibold leading-snug text-text-primary">{row.name}</span>
                     </div>
                     <div>{(divisions[row.id] ?? []).length > 0 ? <DivisionChips divisions={divisions[row.id]} /> : <span className="text-[12px] text-text-tertiary">—</span>}</div>
-                    <div className="grid grid-cols-2 gap-1.5 opacity-55"><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /></div>
-                    <p className="text-[12px] leading-relaxed text-text-tertiary">The first verified posts, news, website updates, and signals will appear here.</p>
+                    <div className="grid grid-cols-2 gap-1.5 opacity-55"><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /></div>
+                    <p className="text-[12px] leading-relaxed text-text-tertiary">The first verified posts, news, and website updates will appear here.</p>
                     {group === "customer" && <PeopleSummary people={people[row.id]} companyName={row.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyName: row.name, people: people[row.id] ?? [] })} />}
                     {isAdmin && <TrackingSummary state={stateOf(row.id)} companyName={row.name} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: row.name, people: trackingPeople[row.id] ?? [], activeByDefault: stateOf(row.id).byDefault === true })} />}
                     <span className="whitespace-nowrap text-[11px] font-medium text-text-tertiary">Pending</span>
@@ -506,7 +501,6 @@ export function LiveCompanyGrid({
                       <ActivityMetric icon={<LinkedInIcon size={11} />} label="Posts" value={count(card.counts.posts)} tone="blue" />
                       <ActivityMetric icon={<Newspaper size={11} strokeWidth={2.2} />} label="News" value={count(card.counts.news)} tone="teal" />
                       <ActivityMetric icon={<Globe2 size={11} strokeWidth={2.2} />} label="Website" value={count(card.counts.site)} tone="orange" />
-                      <ActivityMetric icon={<Radar size={11} strokeWidth={2.2} />} label="Signals" value={count(card.signalTotal)} tone="violet" />
                     </div>
                     <div className="min-w-0">
                       {story ? <>

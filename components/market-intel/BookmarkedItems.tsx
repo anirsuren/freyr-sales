@@ -10,6 +10,7 @@ import { safeHref } from "@/lib/safeUrl";
 type SavedItem = {
   companyId: string;
   companyName?: string;
+  group?: "customer" | "competitor";
   url: string;
   title: string;
   kind: "company" | "people" | "news" | "authority" | "site";
@@ -37,9 +38,11 @@ function displayCompanyName(item: SavedItem, companies: Record<string, { name: s
 export function BookmarkedItems({
   query,
   companies,
+  group,
 }: {
   query: string;
-  companies: Record<string, { name: string; logoUrl?: string | null }>;
+  companies: Record<string, { name: string; logoUrl?: string | null; group?: "customer" | "competitor" }>;
+  group: "customer" | "competitor";
 }) {
   const { toast } = useToast();
   const [items, setItems] = useState<SavedItem[]>([]);
@@ -70,7 +73,8 @@ export function BookmarkedItems({
   }, [reload]);
 
   const search = query.trim().toLowerCase();
-  const shown = items
+  const groupItems = items.filter(item => (item.group ?? companies[item.companyId]?.group ?? "customer") === group);
+  const shown = groupItems
     .filter(item => !search || [item.title, item.body, displayCompanyName(item, companies), item.sourceLabel]
       .some(value => value?.toLowerCase().includes(search)))
     .sort((a, b) => (Date.parse(b.date ?? "") || 0) - (Date.parse(a.date ?? "") || 0) || a.title.localeCompare(b.title));
@@ -101,13 +105,13 @@ export function BookmarkedItems({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-light bg-amber-50/50 px-5 py-4">
         <div>
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary"><Bookmark size={17} className="fill-amber-500 text-amber-600" />Bookmarked items</h2>
-          <p className="mt-0.5 text-xs text-text-secondary">Your saved posts and articles from every company, newest first.</p>
+          <p className="mt-0.5 text-xs text-text-secondary">Your saved posts and articles from every {group === "competitor" ? "competitor" : "customer"}, newest first.</p>
         </div>
-        <span className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-700 tnum">{shown.length}{search ? ` of ${items.length}` : ""} saved</span>
+        <span className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-700 tnum">{shown.length}{search ? ` of ${groupItems.length}` : ""} saved</span>
       </div>
       {shown.length === 0 ? (
         <div className="px-6 py-16 text-center text-sm text-text-secondary">
-          {items.length === 0 ? "Nothing bookmarked yet. Save a post or article from a company briefing and it will appear here." : "No bookmarked items match your search."}
+          {groupItems.length === 0 ? `Nothing bookmarked yet. Save a post or article from a ${group} briefing and it will appear here.` : "No bookmarked items match your search."}
         </div>
       ) : (
         <div className="divide-y divide-border-light">

@@ -238,7 +238,7 @@ export function LiveCompanyBriefing({
       ? [...previous.filter(article => article.url !== item.url), item]
       : previous.filter(article => article.url !== item.url));
     try {
-      const response = await fetch("/api/market-intel/saved-articles", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: briefing.id, companyName: briefing.name, url: item.url, title: item.title, body: item.body, date: item.date, sourceLabel: item.sourceLabel, kind: item.kind, on }) });
+      const response = await fetch("/api/market-intel/saved-articles", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: briefing.id, companyName: briefing.name, group: briefing.group, url: item.url, title: item.title, body: item.body, date: item.date, sourceLabel: item.sourceLabel, kind: item.kind, on }) });
       if (!response.ok) throw new Error();
       toast(on ? "Item saved to your bookmarks." : "Item removed from your bookmarks.");
     } catch {

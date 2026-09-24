@@ -57,7 +57,7 @@ export async function PUT(req: NextRequest) {
       if (error) throw error;
     } else {
       if (typeof body.title !== "string" || !body.title.trim() || !["company","people","news","authority","site"].includes(body.kind)) return NextResponse.json({error:"Invalid item."},{status:400});
-      const catalog = {companyId:body.companyId,companyName:typeof body.companyName === "string" ? body.companyName.slice(0,200) : "",url:body.url,title:body.title.slice(0,1000),kind:body.kind,sourceLabel:typeof body.sourceLabel === "string" ? body.sourceLabel.slice(0,300) : "",body:typeof body.body === "string" ? body.body.slice(0,12000) : null,date:typeof body.date === "string" && Number.isFinite(Date.parse(body.date)) ? body.date : null};
+      const catalog = {companyId:body.companyId,companyName:typeof body.companyName === "string" ? body.companyName.slice(0,200) : "",group:body.group === "competitor" ? "competitor" : "customer",url:body.url,title:body.title.slice(0,1000),kind:body.kind,sourceLabel:typeof body.sourceLabel === "string" ? body.sourceLabel.slice(0,300) : "",body:typeof body.body === "string" ? body.body.slice(0,12000) : null,date:typeof body.date === "string" && Number.isFinite(Date.parse(body.date)) ? body.date : null};
       const {error} = await ctx.db.from("offering_catalog_state").upsert({id,catalog,updated_at:new Date().toISOString()},{onConflict:"id"});
       if (error) throw error;
     }
