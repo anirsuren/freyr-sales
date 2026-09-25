@@ -423,6 +423,7 @@ export async function readAgentWorkspace(
       return {
         id: g.id,
         name: g.name,
+        pickedForOrg: g.pickedForOrg,
         unit: g.unit,
         ...(g.unit === "currency"
           ? { currency: g.currency || BASE_CURRENCY }
@@ -434,7 +435,20 @@ export async function readAgentWorkspace(
         verifiedValue: verified,
         pendingValue: pending,
         sentBackValue: sentBack,
-        months,
+        months: query.trim() ? months.map(month => {
+          const monthIndex = fiscalMonthLabels(g.year).indexOf(month.month);
+          const range = fiscalRange(g.year, "month", monthIndex);
+          const groups = state.groups.map(group => {
+            const people = new Set([group.head, ...group.members]);
+            return {
+              name: group.name,
+              verified: familyValue(scoped, g, {people, verifiedOnly:true, range}),
+              pending: familyValue(scoped, g, {people, reportedOnly:true, range}),
+              sentBack: familyValue(scoped, g, {people, sentBackOnly:true, range}),
+            };
+          }).filter(group => group.verified !== 0 || group.pending !== 0 || group.sentBack !== 0);
+          return {...month, groups};
+        }) : months,
         omittedMonthsHaveZeroRecordedValues: true,
         percentMet:
           g.target > 0

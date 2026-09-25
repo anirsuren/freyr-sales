@@ -39,6 +39,7 @@ import {
   secureKnowledgePassagesForMember,
 } from "@/lib/materialAccess";
 import { agentModuleAccess, agentIdentityContext, readAgentWorkspace } from "@/lib/agentWorkspace";
+import { asksAboutGoalProgress } from "@/lib/agentQuestionIntent";
 import { canOpenModule } from "@/lib/moduleAccessServer";
 import { getDataMode } from "@/lib/dataMode";
 import {
@@ -430,16 +431,19 @@ export async function POST(req: NextRequest) {
   // pass. Previously it received the whole workspace, decided to call the same
   // reader, and then needed a second model pass to phrase the result.
   const recentLeadContext = history.slice(-3).some((turn) => /\bleads?\b/i.test(turn.text));
+  const goalFocusedQuestion = moduleAccess.goals && asksAboutGoalProgress(message);
   const requestedLeadStatus = LEAD_STATUSES.find((status) =>
     new RegExp(`\\b${status}\\b`, "i").test(message),
   );
   const leadStatusDetailQuestion =
     moduleAccess.leads &&
+    !goalFocusedQuestion &&
     !!requestedLeadStatus &&
     (/\bleads?\b/i.test(message) || recentLeadContext) &&
     /\b(who|which|show|list|names?|ones)\b/i.test(message);
   const leadSummaryQuestion =
     moduleAccess.leads &&
+    !goalFocusedQuestion &&
     (/\bleads?\b/i.test(message) || leadStatusDetailQuestion) &&
     /(how many|count|status|source|overview|breakdown|tell me about|new|contacted|qualifying|nurturing|converted|disqualified)/i.test(
       message,
@@ -528,7 +532,10 @@ export async function POST(req: NextRequest) {
           const raw = await readAgentWorkspace(actor, "goals", name, mine);
           try {
             const result = JSON.parse(raw);
-            return {requestedName:name,scope:result.scope,records:(result.records || result.rows || []).filter((row:{name?:string}) => row.name?.toLowerCase() === name.toLowerCase())};
+            const exact = (result.records || result.rows || []).filter((row:{name?:string}) => row.name?.toLowerCase() === name.toLowerCase());
+            const org = exact.filter((row:{pickedForOrg?:boolean}) => row.pickedForOrg);
+            const orgRequested = /\b(org|organization)\b/i.test(message);
+            return {requestedName:name,scope:result.scope,records:orgRequested && org.length === 1 ? org : exact, sameNameRecords:exact.length, selection:orgRequested && org.length === 1 ? "single organization-tracked goal" : exact.length > 1 ? "multiple goals share this name; distinguish by ID and scope" : "unique goal"};
           } catch { return {requestedName:name,unavailable:true}; }
         }));
         return matched.length ? JSON.stringify(matched) : "";
@@ -859,7 +866,7 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
         "\n\n"
       : "") +
     (namedGoalContext
-      ? "EXACT NAMED GOAL RECORDS (authoritative for these names, including monthly values; use these before other similarly named metrics):\n" + namedGoalContext + "\n\n"
+      ? "EXACT NAMED GOAL RECORDS (authoritative for these names, including monthly and group values; use these before other similarly named metrics). Goal names can repeat. For an organization question use the unique pickedForOrg record when selected; never substitute a same-named unpicked goal or its link. A dated milestone is cumulative, not automatically a monthly target:\n" + namedGoalContext + "\n\n"
       : "") +
     (offeringsOnly || !facts ? "" : "WORKSPACE BOOK (visible records, not necessarily owned by the current user):\n" + facts) +
     offeringFocus +

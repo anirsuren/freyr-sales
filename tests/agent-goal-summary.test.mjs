@@ -99,6 +99,21 @@ test("verified and pending values are separate and no pace is invented", async (
   assert.equal(summary.laggingScheduledCount, 0);
   assert.equal(g.actuals, undefined);
 });
+test("named organization goals expose their identity and monthly group values", async () => {
+  reset(
+    [goal("org", {name:"Marketing Qualified Leads (MQLs) Generated",pickedForOrg:true})],
+    [actual("j", "org", 7, {date:"2026-06-15"}), actual("k", "org", 3, {person:"Other",date:"2026-06-16",status:"reported"})],
+  );
+  state.groups = [{id:"growth",name:"Growth Accounts",head:"Rep",members:["Other"]}];
+  const result = JSON.parse(await readAgentWorkspace(actor,"goals","Marketing Qualified Leads (MQLs) Generated"));
+  const record = result.records[0];
+  assert.equal(record.pickedForOrg,true);
+  assert.equal(record.url,"/performance/goal/org");
+  assert.deepEqual(record.months.find(month=>month.month==="June"),{
+    month:"June",calendarYear:2026,verified:7,pending:3,sentBack:0,
+    groups:[{name:"Growth Accounts",verified:7,pending:3,sentBack:0}],
+  });
+});
 test("organization pacing uses only recorded due milestones", async () => {
   reset(
     [

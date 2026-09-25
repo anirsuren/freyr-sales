@@ -1865,3 +1865,7 @@ The Mock Agent falsely claimed that the Calyx Diagnostics Freya.Label deal had n
 ### Sep 25: Agent same-name deal links
 
 An empty-plan question from the older GRI. Lonza deal page was answered with the correct zero months and $0, but linked a separate Mock deal with the same name. The Agent now grounds page-specific opportunity answers in the exact permission-checked record ID from the current page path. The repeated side-chat question linked the correct `seed-opp-50` record. Typecheck, 19 focused workspace tests, lint and diff check pass. Completed locally, not deployed.
+
+### Sep 25: Agent monthly organization-goal grounding
+
+A June MQL goal question was first routed to Leads because the goal name contains “Leads,” then resolved to a same-named unselected goal. Goal-progress intent now takes priority, and named goal reads expose organization selection and permission-scoped monthly group values. A repeated Mock side-chat answer matched the organization goal page: 105 verified in June, no pending or sent-back values, groups 46/35/24, no monthly target, and a separate 300-lead cumulative milestone. Its link opened the exact goal page in the existing tab. Typecheck, 12 focused tests, focused lint, and diff check pass. Coverage cursor: `docs/agent-coverage-audit-2026-09-25.md`. Completed locally, not deployed.
