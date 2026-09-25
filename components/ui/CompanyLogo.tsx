@@ -42,6 +42,7 @@ function pick(name: string): [string, string] {
 // Every seeded account now has its own generated brand mark (Anir, Jul 8:
 // "everywhere there's a name of the company, you have the logo of the entity").
 const LOGOS: Record<string, string> = {
+  freyr: "/freyr-mark.png",
   "helix biologics": "/logos/helix-biologics.png",
   "bionex therapeutics": "/logos/bionex-therapeutics.png",
   "indavel pharma": "/logos/indavel-pharma.png",

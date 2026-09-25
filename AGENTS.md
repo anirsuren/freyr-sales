@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 25 Freyr relevance filter mark:** The Competitor Intel briefing's “Relevant to Freyr” choice now displays the existing Freyr brand mark in both its trigger and dropdown, using the shared company-logo picker support. The “All competitor updates” globe remains. Local only, not deployed.
+
 - **Sep 25 Market Intel post previews:** Company and person posts on a briefing now use their complete first line as the linked headline and the following lines as the body. The previous 160-character headline cap split words between the blue title and gray text, including after “Show the full post” was clicked. Search/list titles remain compact. Local only, not deployed.
 
 - **Sep 25 Market Intel tracking faces:** The Tracking count refers to workspace members who put a company on their list, not the company's employees. Its table cells now show up to five of those members' real profile photos or initials beneath the status and a `+N` badge for any more; the status names them “watchers” so the count cannot be mistaken for company headcount. The existing details popup still lists them. Local only, not deployed.

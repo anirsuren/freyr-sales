@@ -15,7 +15,6 @@ import {
   Check,
   ChevronDown,
   ExternalLink,
-  Filter,
   Globe2,
   History,
   LayoutGrid,
@@ -807,7 +806,7 @@ export function LiveCompanyBriefing({
             minWidth={165}
             dense
             options={[
-              { value: "relevant", label: "Relevant to Freyr", color: "var(--ink-teal-deep)", icon: Filter },
+              { value: "relevant", label: "Relevant to Freyr", color: "var(--ink-teal-deep)", logoName: "Freyr" },
               { value: "all", label: "All competitor updates", color: "var(--ink-bright-blue)", icon: Globe2 },
             ]}
           />
