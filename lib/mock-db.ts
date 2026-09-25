@@ -1252,6 +1252,51 @@ const SCHEMA_VERSION = 15;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 
+// Earlier Mock seeds copied the BioNex sample pitch into unrelated sessions.
+// Repair only untouched sample content so saved user edits and versions survive.
+function personalizeSamplePitches(data: MockStore): boolean {
+  const customers = new Map(data.customers.map((row) => [row.id, row]));
+  const contacts = new Map(data.contacts.map((row) => [row.id, row]));
+  let changed = false;
+  for (const session of data.pitchSessions) {
+    if (session.pitch_versions?.length) continue;
+    const sampleScript = session.pitch_5min_script === MOCK_PITCHES.pitch_5min_script ||
+      session.pitch_5min_script.includes("I'm not trying to sell you anything today. I'd just like 20 minutes");
+    const emailText = JSON.stringify(session.pitch_email);
+    const sampleEmail = emailText === JSON.stringify(MOCK_PITCHES.pitch_email) ||
+      (emailText.includes("We've supported 5,000+ regulatory submissions globally") && emailText.includes("Would a 20-minute call next week make sense"));
+    const callText = JSON.stringify(session.pitch_call_script);
+    const sampleCall = callText === JSON.stringify(MOCK_PITCHES.pitch_call_script) ||
+      (callText.includes("I had a specific thought about") && callText.includes("We've helped similar teams move submissions faster"));
+    if (!sampleScript && !sampleEmail && !sampleCall) continue;
+    const customer = customers.get(session.customer_id);
+    const contact = contacts.get(session.contact_id);
+    if (!customer || !contact) continue;
+    const pitch = buildAccountPitch({
+      company: customer.company_name,
+      contactName: contact.full_name,
+      contactTitle: contact.job_title || undefined,
+      service: session.recommended_services?.[0]?.service_name || "Regulatory Submission Services",
+      context: customer.enrichment_summary || session.additional_context || undefined,
+      repName: customer.owner || "Freyr team",
+    });
+    const nextEmail = JSON.stringify({ subject_lines: pitch.subject_lines, body: pitch.body });
+    if (sampleScript && session.pitch_5min_script !== pitch.pitch_5min_script) {
+      session.pitch_5min_script = pitch.pitch_5min_script;
+      changed = true;
+    }
+    if (sampleEmail && JSON.stringify(session.pitch_email) !== JSON.stringify(nextEmail)) {
+      session.pitch_email = nextEmail;
+      changed = true;
+    }
+    if (sampleCall && callText !== JSON.stringify(pitch.pitch_call_script)) {
+      session.pitch_call_script = pitch.pitch_call_script;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 function loadOrSeed(): MockStore {
   if (PERSIST) {
     try {
@@ -1299,6 +1344,7 @@ if (globalThis.__FREYR_MOCK_STORE__ !== store) {
   globalThis.__FREYR_MOCK_STORE__ = store;
   globalThis.__FREYR_MOCK_STORE_V__ = SCHEMA_VERSION;
 }
+if (personalizeSamplePitches(store)) persist();
 
 function inScope(
   record: ScopeColumns,

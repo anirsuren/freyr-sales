@@ -67,6 +67,27 @@ test("every mock customer has enough connected data to exercise each account tab
   }
 });
 
+test("mock pitch drafts address their linked account and contact", async () => {
+  const [customers, contacts, sessions] = await Promise.all([
+    mockDb.customers.list(),
+    mockDb.contacts.list(),
+    mockDb.pitchSessions.list(),
+  ]);
+  const customerById = new Map(customers.map((row) => [row.id, row]));
+  const contactById = new Map(contacts.map((row) => [row.id, row]));
+  for (const session of sessions) {
+    const company = customerById.get(session.customer_id)?.company_name;
+    const contact = contactById.get(session.contact_id)?.full_name;
+    assert.ok(company && contact, `${session.id}: linked account and contact`);
+    assert.ok(session.pitch_5min_script.includes(company), `${session.id}: script names ${company}`);
+    assert.ok(!session.pitch_5min_script.includes("BioNex") || company.startsWith("BioNex"), `${session.id}: no unrelated BioNex copy`);
+    assert.ok(JSON.stringify(session.pitch_email).includes(company), `${session.id}: email names ${company}`);
+    assert.ok(JSON.stringify(session.pitch_call_script).includes(company), `${session.id}: call names ${company}`);
+    assert.ok(!JSON.stringify(session.pitch_call_script).includes("Freyr from Freyr"), `${session.id}: no duplicate sender`);
+    assert.ok(!JSON.stringify(session.pitch_email).includes(`${company}'s stage`), `${session.id}: no awkward possessive`);
+  }
+});
+
 test("every mock offering has materials, owners, components, history, and opportunities", () => {
   const offerings = listOfferings();
   const opportunities = mockFillOpportunities();
