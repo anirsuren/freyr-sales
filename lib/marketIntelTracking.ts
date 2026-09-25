@@ -4,6 +4,7 @@ import { getDataMode } from "./dataMode";
 import { MI_COMPANIES } from "./marketIntelMock";
 import { COMPANY_SOURCES, COMPETITOR_SOURCES, type CompanySource } from "./marketIntelSources";
 import { FROZEN_WORKSPACE_TRACKING } from "./marketIntelFrozenWorkspace";
+import { marketIntelLogoUrl } from "./marketIntelLogo";
 import type { Division } from "./offeringMaterials";
 
 /**
@@ -291,7 +292,9 @@ function normalize(value: unknown): MarketIntelTracking {
     }
   }
   return {
-    companies: Array.isArray(raw.companies) ? raw.companies : [],
+    companies: Array.isArray(raw.companies)
+      ? raw.companies.map((company) => ({ ...company, logoUrl: marketIntelLogoUrl(company.name, company.logoUrl) ?? undefined }))
+      : [],
     people: Array.isArray(raw.people) ? raw.people : [],
     divisions,
     mockHiddenStories: raw.mockHiddenStories,

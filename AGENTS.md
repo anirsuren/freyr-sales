@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 25 Amplexor identity in Market Intel:** The collected Amplexor and ArisGlobal URLs had identical image hashes because Amplexor Life Sciences now uses its parent's ArisGlobal branding. Market Intel now shows an archived Amplexor Life Sciences mark for the Amplexor record, including table, tiles, briefing, management, confirmation, and watchlist surfaces, while ArisGlobal keeps its own logo. Local only, not deployed.
+
 - **Sep 25 Customer Intel story position dots:** Inactive table-ticker dots used an undefined `bg-border-strong` utility, leaving only the blue active marker visible. They now have explicit theme-aware border color and a larger dot size, while the active position remains blue. Typecheck, focused lint, and diff check pass. Local only, not deployed.
 
 - **Sep 25 Review editor save footer:** The separate opportunity review editor now follows the deal overview's sticky save pattern: it appears only after an edit, identifies the unsaved review, and uses the same compact Cancel/Save sizing and spacing. Form errors remain beside the controls. Typecheck, focused lint, and diff check pass. Local only, not deployed.

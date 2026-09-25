@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Search } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { MiLogo } from "./MiLogo";
 
 /**
  * THE WATCHLIST AS A TICKER (Anir, Aug 11: "a search bar and then a rotating
@@ -149,17 +149,7 @@ export function WatchlistMarquee({
     const logoUrl = logos[name.toLowerCase()];
     const body = (
       <>
-        {logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={logoUrl}
-            alt=""
-            className="h-[18px] w-[18px] shrink-0 rounded-[4px] object-contain"
-            draggable={false}
-          />
-        ) : (
-          <CompanyLogo name={name} className="h-[18px] w-[18px] shrink-0" />
-        )}
+        <MiLogo name={name} logoUrl={logoUrl} className="h-[18px] w-[18px] shrink-0 rounded-[4px]" />
         {name}
         {trackedId && (
           <ArrowUpRight
