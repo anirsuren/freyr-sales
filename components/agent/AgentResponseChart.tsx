@@ -18,7 +18,7 @@ type ChartSpec = {
 
 function exactValue(value: number, format: ChartSpec["format"], unit?: string) {
   if (format === "money")
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: unit && /^[A-Z]{3}$/.test(unit) ? unit : "USD", maximumFractionDigits: 0 }).format(value);
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: unit && /^[A-Z]{3}$/.test(unit) ? unit : "USD", maximumFractionDigits: 2 }).format(value);
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value) + (format === "percent" ? "%" : "");
 }
 
@@ -64,6 +64,10 @@ export function ChatChart({ spec }: { spec: ChartSpec }) {
   }));
   const total = series.reduce((sum, d) => sum + d.value, 0);
   const title = spec.title?.trim() || "Agent chart";
+  // Shared chart defaults abbreviate money with a dollar sign. For other
+  // currencies, keep the amount and ISO code instead of silently relabelling.
+  const chartFormat = spec.format === "money" && spec.unit && spec.unit !== "USD" ? "number" : spec.format || "number";
+  const chartUnit = spec.unit;
   if (spec.type === "goal-progress" && spec.goal) {
     const { verified, pending, sentBack = 0, target } = spec.goal;
     const format = spec.format || "number";
@@ -117,8 +121,8 @@ export function ChatChart({ spec }: { spec: ChartSpec }) {
       ? {
           kind: "bar",
           data: series,
-          format: spec.format || "number",
-          unit: spec.unit,
+          format: chartFormat,
+          unit: chartUnit,
         }
       : spec.type === "donut"
         ? {
@@ -126,15 +130,15 @@ export function ChatChart({ spec }: { spec: ChartSpec }) {
             segments: series,
             centerLabel: spec.center?.label ?? exactValue(total, spec.format, spec.unit),
             centerSub: spec.center?.sub,
-            format: spec.format || "number",
+            format: chartFormat,
           }
         : {
             kind: "area",
             label: title,
             color: series[0]?.color || VIZ_SERIES[0],
             data: series.map((d) => d.value),
-            format: spec.format || "number",
-            unit: spec.unit,
+            format: chartFormat,
+            unit: chartUnit,
             xLabels: series.map((d) => d.label),
           };
   return (
@@ -151,7 +155,7 @@ export function ChatChart({ spec }: { spec: ChartSpec }) {
         />
       </div>
       {spec.type === "bar" && (
-        <BarChart data={series} height={170} format={spec.format || "number"} unit={spec.unit} />
+        <BarChart data={series} height={170} format={chartFormat} unit={chartUnit} />
       )}
       {spec.type === "donut" && (
         <div className="flex items-center gap-5">
@@ -163,15 +167,15 @@ export function ChatChart({ spec }: { spec: ChartSpec }) {
             centerLabel={spec.center?.label ?? exactValue(total, spec.format, spec.unit)}
             centerSub={spec.center?.sub}
           />
-          <DonutLegend items={series} total={total} syncId={donutSync} format={spec.format || "number"} />
+          <DonutLegend items={series} total={total} syncId={donutSync} format={spec.format === "money" ? (value) => exactValue(value, "money", spec.unit) : chartFormat} />
         </div>
       )}
       {spec.type === "area" && (
         <AreaChart
           data={series.map((d) => d.value)}
           height={150}
-          format={spec.format || "number"}
-          unit={spec.unit}
+          format={chartFormat}
+          unit={chartUnit}
           xLabels={series.map((d) => d.label)}
           className="w-full"
         />
