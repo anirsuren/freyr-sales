@@ -60,6 +60,7 @@ export const AGENT_MODULES = {
   solutioning: "/solutioning",
   contracts: "/contracts",
   customers: "/customers",
+  contacts: "/contacts",
   goals: "/performance",
   reports: "/reports",
 } as const;
@@ -236,6 +237,48 @@ export async function readAgentWorkspace(
         customer:r.customer,owner:r.owner,attendees:r.attendees,presenters:r.presenters,
         opportunities:r.opportunityLabels,notes:r.notes,completedAt:r.completedAt,
         url:`/meetings/${encodeURIComponent(r.id)}`}));
+  } else if (key === "contacts") {
+    if (mineOnly) return "Contacts do not record a contact owner. Read the linked customer's team separately for account ownership; no personal contact list was inferred.";
+    const [customersAllowed, sessionsAllowed] = await Promise.all([
+      canOpenModule("/customers"), canOpenModule("/sessions"),
+    ]);
+    const db = getDb();
+    const [contacts, interactions, customers, sessions] = await Promise.all([
+      db.contacts.list(), db.interactions.list(),
+      customersAllowed ? db.customers.list() : Promise.resolve([]),
+      sessionsAllowed && customersAllowed ? db.pitchSessions.list() : Promise.resolve([]),
+    ]);
+    const customerById = new Map(customers.map(customer => [customer.id, customer]));
+    const deals = sessionsAllowed && customersAllowed
+      ? buildDeals(sessions, customers, contacts, interactions) : [];
+    rows = contacts.map(contact => {
+      const touches = interactions
+        .filter(interaction => interaction.contact_id === contact.id)
+        .sort((a,b) => b.created_at.localeCompare(a.created_at));
+      return {
+        id: contact.id, name: contact.full_name, title: contact.job_title,
+        role: contact.role_bucket, email: contact.email,
+        customer: customerById.get(contact.customer_id)?.company_name || null,
+        customerUrl: customersAllowed && customerById.has(contact.customer_id)
+          ? `/customers/${encodeURIComponent(contact.customer_id)}` : null,
+        url: `/contacts/${encodeURIComponent(contact.id)}`,
+        lastContactedAt: touches[0]?.created_at || null,
+        touches: touches.map(interaction => ({
+          id: interaction.id, outcome: interaction.outcome,
+          contactedAt: interaction.created_at,
+          followUpDate: interaction.follow_up_date,
+          notes: interaction.notes,
+          loggedBy: interaction.logged_by,
+        })),
+        linkedDeals: deals.filter(deal => deal.contactId === contact.id).map(deal => ({
+          stage: deal.stage, estimatedValue: deal.value, currency: "USD",
+          url: `/deals/${encodeURIComponent(deal.sessionId)}`,
+        })),
+      };
+    });
+    summary = {contactCount:contacts.length, customerAccess:customersAllowed,
+      dealAccess:sessionsAllowed && customersAllowed,
+      basis:"Contacts page's saved contact and interaction records. Each touch binds its own outcome, timestamp and follow-up date; do not align separate lists by position. Contact records have no owner. Linked deals are size-derived Pipeline estimates, not booked revenue. A null customer or empty linkedDeals when source access is denied is not evidence of absence."};
   } else if (key === "sessions") {
     if (mineOnly) return "Sessions do not record a session owner. A personal Sessions filter cannot be verified; no records were read.";
     const db = getDb();

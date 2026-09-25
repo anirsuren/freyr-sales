@@ -208,6 +208,28 @@ test("Sessions reader uses exact IDs and the page's outcome and review sources",
   });
   assert.match(await readAgentWorkspace(actor, "sessions", "", true), /do not record a session owner/);
 });
+test("Contacts reader keeps every outcome paired with its own follow-up date and exact links", async () => {
+  const result = JSON.parse(await readAgentWorkspace(actor, "contacts", "Arjun Duarte"));
+  assert.equal(result.records.length, 1);
+  const contact = result.records[0];
+  assert.equal(contact.url, "/contacts/contact-1");
+  assert.equal(contact.customerUrl, "/customers/owned");
+  assert.deepEqual(contact.touches.map(touch => [touch.id,touch.contactedAt,touch.followUpDate]), [
+    ["interaction-2","2026-06-17T10:00:00Z","2026-09-26"],
+    ["interaction-1","2026-06-16T10:00:00Z","2026-09-24"],
+  ]);
+  assert.equal(contact.linkedDeals[0].url, "/deals/session-008");
+  assert.match(await readAgentWorkspace(actor, "contacts", "", true), /do not record a contact owner/);
+  blockedSource = "/customers";
+  try {
+    const restricted = JSON.parse(await readAgentWorkspace(actor, "contacts", "Arjun Duarte"));
+    assert.equal(restricted.records[0].customerUrl, null);
+    assert.deepEqual(restricted.records[0].linkedDeals, []);
+  } finally { blockedSource = ""; }
+  blockedSource = "/contacts";
+  try { assert.match(await readAgentWorkspace(actor, "contacts", "Arjun Duarte"), /do not have access/); }
+  finally { blockedSource = ""; }
+});
 test("Tasks reader preserves review state, distinct follow-ups and exact destinations", async () => {
   const result = JSON.parse(await readAgentWorkspace(actor, "tasks", "Arjun Duarte"));
   assert.equal(result.matched, 3);
