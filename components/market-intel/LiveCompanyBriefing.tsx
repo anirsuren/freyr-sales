@@ -175,6 +175,9 @@ export function LiveCompanyBriefing({
   const isCompetitor = briefing.group === "competitor";
   const [source, setSource] = useState<Source>("all");
   const [selectedSignals, setSelectedSignals] = useState<SignalId[]>([]);
+  const [signalsOpen, setSignalsOpen] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const [selectedCompetitor, setSelectedCompetitor] = useState<string | null>(null);
   /* A COMPETITOR SHOWS WHAT CONCERNS US BY DEFAULT (Saras, Sep 10: "only if
      their posts are related to these industries should they show up here").
@@ -1037,19 +1040,22 @@ export function LiveCompanyBriefing({
               viewport. Extra bottom room keeps the last card clear of chat. */}
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 pb-24 [scrollbar-gutter:stable]">
           <Card className="p-4" aria-labelledby="signal-filter-title">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 id="signal-filter-title" className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
-                  <Radar size={14} strokeWidth={2} className="text-blue-primary" />
-                  Signals
-                </h2>
-                <p className="mt-1 text-[11.5px] leading-snug text-text-tertiary">
-                  {selectedSignals.length > 0 ? `${selectedSignals.length} selected` : "Showing every signal"}
-                </p>
-              </div>
+            <div className="flex items-start gap-2">
+              <button type="button" onClick={() => setSignalsOpen(!signalsOpen)} aria-expanded={signalsOpen} aria-controls="signal-filter-options" className="flex min-w-0 flex-1 cursor-pointer items-start justify-between gap-2 text-left focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">
+                <span className="min-w-0">
+                  <span id="signal-filter-title" className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
+                    <Radar size={14} strokeWidth={2} className="text-blue-primary" />
+                    Signals
+                  </span>
+                  <span className={cn("mt-1 block text-[11.5px] leading-snug", selectedSignals.length > 0 ? "font-medium text-blue-primary" : "text-text-tertiary")}>
+                    {selectedSignals.length > 0 ? selectedSignals.map(signal => SIGNAL_META[signal].label).join(", ") : "All signals"}
+                  </span>
+                </span>
+                <ChevronDown size={16} aria-hidden="true" className={cn("mt-0.5 shrink-0 text-text-secondary transition-transform", signalsOpen && "rotate-180")} />
+              </button>
               {selectedSignals.length > 0 && <button type="button" onClick={() => { setSelectedSignals([]); setSelectedCompetitor(null); }} className="shrink-0 cursor-pointer text-[11.5px] font-semibold text-blue-primary hover:underline">Clear</button>}
             </div>
-            <div className="mt-2.5 space-y-1">
+            <div id="signal-filter-options" hidden={!signalsOpen} className="mt-2.5 space-y-1">
               {signalsFor(briefing.group).map(signal => {
                 const meta = SIGNAL_META[signal];
                 const Icon = meta.icon;
@@ -1070,12 +1076,19 @@ export function LiveCompanyBriefing({
           </Card>
 
           <Card className="p-4" aria-labelledby="source-filter-title">
-            <h2 id="source-filter-title" className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
-              <Newspaper size={14} strokeWidth={2} className="text-blue-primary" />
-              Sources
-            </h2>
-            <p className="mt-1 text-[11.5px] leading-snug text-text-tertiary">Where these updates came from</p>
-            <div className="mt-2.5 space-y-1" role="group" aria-label="Sources">
+            <button type="button" onClick={() => setSourcesOpen(!sourcesOpen)} aria-expanded={sourcesOpen} aria-controls="source-filter-options" className="flex w-full cursor-pointer items-start justify-between gap-2 text-left focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">
+              <span className="min-w-0">
+                <span id="source-filter-title" className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
+                  <Newspaper size={14} strokeWidth={2} className="text-blue-primary" />
+                  Sources
+                </span>
+                <span className={cn("mt-1 block text-[11.5px] leading-snug", source === "all" ? "text-text-tertiary" : "font-medium text-blue-primary")}>
+                  {SOURCES.find(item => item.key === source)?.label ?? "All sources"}
+                </span>
+              </span>
+              <ChevronDown size={16} aria-hidden="true" className={cn("mt-0.5 shrink-0 text-text-secondary transition-transform", sourcesOpen && "rotate-180")} />
+            </button>
+            <div id="source-filter-options" hidden={!sourcesOpen} className="mt-2.5 space-y-1" role="group" aria-label="Sources">
               {SOURCES.map((item) => {
                 const Icon = item.icon;
                 const selected = source === item.key;
@@ -1143,18 +1156,28 @@ export function LiveCompanyBriefing({
           {/* NO PEOPLE ON A COMPETITOR (Saras, Sep 10). */}
           {!isCompetitor && (
             <Card className="p-4">
-              <h2 className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
-                <Users size={14} strokeWidth={2} className="text-blue-primary" />
-                People tracked
+              <div className="flex items-start gap-2">
+                <button type="button" onClick={() => setPeopleOpen(!peopleOpen)} aria-expanded={peopleOpen} aria-controls="tracked-people-options" className="flex min-w-0 flex-1 cursor-pointer items-start justify-between gap-2 text-left focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
+                      <Users size={14} strokeWidth={2} className="text-blue-primary" />
+                      People tracked
+                    </span>
+                    <span className={cn("mt-1 block text-[11.5px] leading-snug", extraPeople.length > 0 ? "font-medium text-blue-primary" : "text-text-tertiary")}>
+                      {extraPeople.length > 0 ? extraPeople.map(person => person.name).join(", ") : "Nobody tracked yet"}
+                    </span>
+                  </span>
+                  <ChevronDown size={16} aria-hidden="true" className={cn("mt-0.5 shrink-0 text-text-secondary transition-transform", peopleOpen && "rotate-180")} />
+                </button>
                 {canManagePeople && <TrackPersonButton companyId={briefing.id} companyName={briefing.name} availablePeople={availablePeople} />}
-              </h2>
-              {extraPeople.length === 0 ? (
+              </div>
+              <div id="tracked-people-options" hidden={!peopleOpen}>{extraPeople.length === 0 ? (
                 <p className="mt-2.5 text-[12px] leading-relaxed text-text-secondary">
                   Nobody yet.{canManagePeople ? " Add the senior people whose posts you want in this feed." : ""}
                 </p>
               ) : (
                 <TrackedPeopleList people={extraPeople} personPosts={railPosts} canManage={canManagePeople} />
-              )}
+              )}</div>
             </Card>
           )}
 

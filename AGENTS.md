@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 25 Market Intel details disclosures:** Signals, Sources, and People tracked in the Company details rail now open and close independently. Their compact headers always show the active signal names, chosen source, or tracked people, so selections remain visible when closed. Verified signal selection and collapse in the local CuraTeQ briefing; typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
+
 - **Sep 25 Market Intel story header spacing:** Article and post cards now place their save/open/remove controls in the header layout beside the source chips instead of absolutely over the text. Long titles begin below that row and cannot run underneath the controls. Verified visually on the local CuraTeQ briefing at the narrower side-panel width; typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
 
 - **Sep 24 Teammate Goals table spacing:** The profile's Goals table now uses shared proportional column widths across goal families, with matching header/body padding and a clear inset before goal icons. Missing targets say “Not set”; rows without a target no longer show a meaningless progress bar or dot placeholders. Typecheck, focused lint (existing unused-import warnings only), and diff check pass. Local only, per the user's release instruction.
