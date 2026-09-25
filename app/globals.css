@@ -542,6 +542,14 @@ select:focus-visible {
 }
 
 /* Skeleton shimmer */
+/* Agent-generated tables need the full reply width. Keep table rows compact
+   and let extra columns scroll inside the bubble instead of wrapping linked
+   record pills into tall, uneven rows. */
+.agent-reply-wrap:has(.agent-response-table) {
+  width: 100%;
+  max-width: 100%;
+}
+
 /* Market Intel card ticker: each story slides in from the right as the last
    one leaves, NYSE-style. Reduced motion renders it static. */
 @keyframes miTickerIn {

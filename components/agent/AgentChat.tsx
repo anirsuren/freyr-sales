@@ -381,8 +381,8 @@ function MarkdownText({
         j++;
       }
       blocks.push(
-        <div key={`tbl-${i}`} className="my-2 overflow-x-auto rounded-lg border border-border-light">
-          <table className="w-full border-collapse text-[12.5px]">
+        <div key={`tbl-${i}`} className="agent-response-table my-2 max-w-full overflow-x-auto rounded-lg border border-border-light">
+          <table className="w-max min-w-full border-collapse text-[12.5px]">
             <thead>
               <tr className="bg-surface/70">
                 {header.map((h, hi) => (
@@ -399,7 +399,7 @@ function MarkdownText({
               {rows.map((r, ri) => (
                 <tr key={ri} className="border-t border-border-light">
                   {r.map((c, ci) => (
-                    <td key={ci} className="px-3 py-2 align-middle">
+                    <td key={ci} className="whitespace-nowrap px-3 py-2 align-middle">
                       {renderInline(c, `td-${i}-${ri}-${ci}`, entities)}
                     </td>
                   ))}
@@ -1232,7 +1232,7 @@ export function AgentChat({
                         <span className="w-8 h-8 rounded-lg bg-blue-primary text-white flex items-center justify-center shrink-0 mt-0.5">
                           <Sparkles size={16} strokeWidth={1.9} />
                         </span>
-                        <div className="min-w-0 max-w-[calc(100%-44px)] sm:max-w-[82%]">
+                        <div className="agent-reply-wrap min-w-0 max-w-[calc(100%-44px)] sm:max-w-[82%]">
                           <p className="text-[12px] font-semibold text-text-tertiary mb-1">
                             {AGENT_NAME}
                             <span className="ml-2 font-normal tabular-nums">
