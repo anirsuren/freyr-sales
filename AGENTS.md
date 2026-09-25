@@ -1861,3 +1861,7 @@ In Mock mode, the Agent name index includes owners found on permitted opportunit
 ### Sep 25: Agent opportunity accrual grounding
 
 The Mock Agent falsely claimed that the Calyx Diagnostics Freya.Label deal had no monthly accrual schedule, though its deal page showed nine months totaling $320,000. The opportunity reader now joins authorized accrual plans to their deals, returns exact month amounts for named queries, and labels denied or failed accrual reads separately from a confirmed missing plan. A side-chat repeat matched the page, and opening that conversation in full chat retained the corrected answer. Typecheck, 18 focused workspace tests, lint, and diff check pass. The continuing coverage cursor is in `docs/agent-coverage-audit-2026-09-25.md`. Completed locally, not deployed.
+
+### Sep 25: Agent same-name deal links
+
+An empty-plan question from the older GRI. Lonza deal page was answered with the correct zero months and $0, but linked a separate Mock deal with the same name. The Agent now grounds page-specific opportunity answers in the exact permission-checked record ID from the current page path. The repeated side-chat question linked the correct `seed-opp-50` record. Typecheck, 19 focused workspace tests, lint and diff check pass. Completed locally, not deployed.

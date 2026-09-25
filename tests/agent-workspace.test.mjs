@@ -198,6 +198,22 @@ test("opportunity accruals distinguish denied and unavailable access from no pla
   assert.equal(r.records[0].accrual, undefined);
   accrualFails = false;
 });
+test("duplicate opportunity names can be narrowed by the page's record ID", async () => {
+  const original = mocks["./opportunities"].readOpportunities;
+  mocks["./opportunities"].readOpportunities = async () => ({opportunities:[
+    {id:"o1",name:"GRI. Lonza",customer:"Lonza",owner:"Rep",currency:"INR",value:40000000,offeringLabels:[]},
+    {id:"o2",name:"GRI. Lonza",customer:"Lonza",owner:"Rep",currency:"USD",value:24000,offeringLabels:[]},
+  ]});
+  try {
+    const byName = JSON.parse(await readAgentWorkspace(actor,"opportunities","GRI. Lonza"));
+    assert.equal(byName.records.length,2);
+    const byId = JSON.parse(await readAgentWorkspace(actor,"opportunities","o2"));
+    assert.deepEqual(byId.records.map(record=>record.id),["o2"]);
+    assert.deepEqual(byId.records[0].accrual,{recorded:false});
+  } finally {
+    mocks["./opportunities"].readOpportunities = original;
+  }
+});
 test("goal privacy honors effective viewer role even when signed actor is admin", async () => {
   viewerRole = "bd_member";
   const r = JSON.parse(await readAgentWorkspace(actor, "goals"));

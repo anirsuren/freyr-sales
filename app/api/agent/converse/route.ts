@@ -118,6 +118,24 @@ export async function POST(req: NextRequest) {
   const onPath = String(body.path || "").slice(0, 200);
   const onSubject = String(body.subject || "").slice(0, 120);
   const pageContext = String(body.pageContext || "").slice(0, 5000);
+  // Names are not unique in the Mock workspace. Ground a deal-page question
+  // in the exact, permission-checked record behind that page's path.
+  const opportunityPathMatch = onPath.match(/^\/(?:mock-mode\/)?opportunities\/([^/?#]+)(?:[/?#]|$)/);
+  const currentOpportunityContext = moduleAccess.opportunities && opportunityPathMatch
+    ? (() => {
+        try { return decodeURIComponent(opportunityPathMatch[1]); } catch { return ""; }
+      })()
+    : "";
+  let exactCurrentOpportunity: Record<string, unknown> | null = null;
+  if (currentOpportunityContext) {
+    try {
+      const result = JSON.parse(await readAgentWorkspace(actor, "opportunities", currentOpportunityContext)) as {records?: Array<Record<string, unknown>>};
+      // The workspace query is substring-based, so do not trust the first hit.
+      exactCurrentOpportunity = result.records?.find(record => record.id === currentOpportunityContext) ?? null;
+    } catch {
+      // A failed read is not evidence that the record or accrual plan is absent.
+    }
+  }
   /** The dock keeps one thread across navigation; this says the ground moved. */
   const pathChanged = body.pathChanged === true;
   // The destinations behind the words on screen. textContent drops every
@@ -820,6 +838,10 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
               : "")
           : "") +
         "\n"
+      : "") +
+    (exactCurrentOpportunity
+      ? "CURRENT OPPORTUNITY PAGE RECORD. The page path identifies an exact deal; names may repeat across records. When the question is about this deal, use this record's ID, URL, owner and accruals rather than a different same-named deal. If no exact record is returned, do not infer its details.\n" +
+        JSON.stringify(exactCurrentOpportunity) + "\n\n"
       : "") +
     (prefetchedLeadContext
       ? "PREFETCHED LEADS DATA (authoritative and complete for totals and breakdowns; answer directly from this data without another workspace read):\n" +
