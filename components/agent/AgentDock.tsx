@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Sparkles,
@@ -17,17 +17,8 @@ import { cn, POPOVER_SURFACE } from "@/lib/utils";
 import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { putConversations } from "@/lib/saveConversations";
 import { bucketByDay, clockTime, dayLabel, listStamp, sameDay } from "@/lib/chatTime";
-import {
-  injectEntities,
-  entityLink,
-  entitiesForAnswer,
-  useEntityIndex,
-  type Entity,
-} from "@/components/agent/EntityPills";
-import {
-  normalizeAgentLinks,
-  readableLinkLabel,
-} from "@/lib/agentAnswerPresentation";
+import { useEntityIndex, type Entity } from "@/components/agent/EntityPills";
+import { AgentResponseMarkdown } from "@/components/agent/AgentResponseMarkdown";
 import { useTypewriter, trimStreamingLink } from "@/components/agent/useTypewriter";
 import { readAgentResponse } from "@/lib/agentStreamClient";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
@@ -38,7 +29,6 @@ import {
   type AskAgentDetail,
 } from "@/lib/agentEvents";
 import { AGENT_DOCK_ACTIVE_KEY } from "@/lib/agentNavigationHandoff";
-import { ChatChart, parseChartSpec } from "@/components/agent/AgentResponseChart";
 
 // The dock and the full Agent page deliberately use the SAME account-backed
 // conversation model. A rep can start beside an offering, then continue that
@@ -226,130 +216,6 @@ function suggestionsFor(label: string, offeringsOnly = false): string[] {
   return ["What should I work on next?", "Summarize my pipeline", "Which deals have no recent activity?"];
 }
 
-// Minimal, safe markdown: links, **bold**, `code`, and line breaks. Content is
-// our own agent's reply, but we still build React nodes (no inner HTML). The
-// compact dock deliberately uses the same link rules as the full Agent page:
-// otherwise a material citation becomes visible Markdown such as
-// `[Success story](/offerings/...)` as soon as the conversation follows the
-// user onto a record page.
-export function renderRich(
-  text: string,
-  allEntities: Entity[] = [],
-  linkable = true,
-  entityContext: string[] = [],
-): ReactNode {
-  const entities = entitiesForAnswer(text, allEntities, entityContext);
-  const lines = normalizeAgentLinks(text).split("\n");
-  const blocks: ReactNode[] = [];
-  for (let li = 0; li < lines.length; li++) {
-    const line = lines[li];
-    const fence = line.trim().match(/^```(\w*)\s*$/);
-    if (fence) {
-      const body: string[] = [];
-      let end = li + 1;
-      while (end < lines.length && !/^```\s*$/.test(lines[end].trim())) {
-        body.push(lines[end]);
-        end++;
-      }
-      // The reply is revealed a few characters at a time. Hide an unfinished
-      // fence, including its JSON, until there is a complete chart to show.
-      if (end === lines.length) break;
-      if (fence[1] === "chart") {
-        const spec = parseChartSpec(body.join("\n"));
-        if (spec) blocks.push(<ChatChart key={`chart-${li}`} spec={spec} />);
-      } else {
-        blocks.push(
-          <pre key={`code-${li}`} className="my-2 overflow-x-auto rounded-lg bg-surface px-3 py-2 text-[12px] leading-relaxed">
-            {body.join("\n")}
-          </pre>
-        );
-      }
-      li = end;
-      continue;
-    }
-    // Strip the list marker before parsing emphasis. A line such as
-    // `* **Converted:** 18 leads` otherwise pairs the list's first `*`
-    // with the bold marker and leaves a literal asterisk beside the label.
-    const heading = line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*#*$/);
-    const bullet = heading ? null : line.match(/^\s*[-*•]\s+(.+)$/);
-    const content = heading ? heading[1] : bullet ? bullet[1] : line;
-    const nodes: ReactNode[] = [];
-    // Links first, then bold, italic and code. Only app paths and HTTP(S)
-    // citations are linkable; other schemes remain plain text.
-    const re = /(\[([^\]]+)\]\(((?:https?:\/\/|\/)[^)\s]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`)/g;
-    let last = 0;
-    let m: RegExpExecArray | null;
-    let k = 0;
-    const plain = (s: string, kb: string) =>
-      nodes.push(...injectEntities(s, entities, kb, linkable));
-    while ((m = re.exec(content))) {
-      if (m.index > last) plain(content.slice(last, m.index), `${li}-${k}`);
-      // A NAME INSIDE BOLD IS STILL A NAME (Anir, Aug 15: "whenever it
-      // mentions a person's name or any sort of asset like that, it should
-      // always have the icon... it has to be in a pill shape. It's still not
-      // doing what I asked"). The emphasis branches used to print their text
-      // raw, so the assistant writing **Anant Puranik** — which is exactly
-      // what it does when it leads with a name — produced bold grey text and
-      // never a pill. Entities are injected inside the emphasis now.
-      if (m[2] != null && m[3] != null) {
-        const href = m[3];
-        const label = readableLinkLabel(m[2], href);
-        const badge = entityLink(href, label, entities, `${li}-l${k++}`);
-        if (badge) nodes.push(badge);
-        else if (/^https?:\/\//i.test(href))
-          nodes.push(
-            <a
-              key={`${li}-l${k++}`}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-blue-primary underline decoration-blue-subtle underline-offset-2 hover:decoration-blue-primary"
-            >
-              {label}
-            </a>
-          );
-        else
-          nodes.push(
-            <Link
-              key={`${li}-l${k++}`}
-              href={href}
-              className="font-medium text-blue-primary hover:underline"
-            >
-              {label}
-            </Link>
-          );
-      } else if (m[4] != null)
-        nodes.push(
-          <strong key={k++}>
-            {injectEntities(m[4], entities, `${li}-b${k}`, linkable)}
-          </strong>
-        );
-      else if (m[5] != null)
-        nodes.push(
-          <em key={k++}>
-            {injectEntities(m[5], entities, `${li}-i${k}`, linkable)}
-          </em>
-        );
-      else if (m[6] != null)
-        nodes.push(
-          <code key={k++} className="px-1 py-0.5 rounded bg-black/5 text-[12px]">
-            {m[6]}
-          </code>
-        );
-      last = m.index + m[0].length;
-    }
-    if (last < content.length) plain(content.slice(last), `${li}-end`);
-    blocks.push(
-      heading ? <h3 key={li} className="mt-2 mb-1 font-semibold">{nodes}</h3> :
-      <span key={li} className={bullet ? "flex min-h-[2px] gap-2 pl-2" : "block min-h-[2px]"}>
-        {bullet && <span aria-hidden="true">•</span>}
-        <span>{nodes}</span>
-      </span>
-    );
-  }
-  return blocks;
-}
-
 // A little personality while it works (Anir: "like Claude Code's rotating
 // words"): blue equalizer bars + an italic word that changes every ~1.6s.
 const THINKING_WORDS = [
@@ -398,12 +264,12 @@ function TypedReply({
 }: {
   text: string;
   active: boolean;
-  entities: Parameters<typeof renderRich>[1];
+  entities: Entity[];
   linksOn: boolean;
   entityContext?: string[];
 }) {
   const shown = useTypewriter(text, active);
-  return <>{renderRich(trimStreamingLink(shown), entities, linksOn, entityContext)}</>;
+  return <AgentResponseMarkdown text={trimStreamingLink(shown)} entities={entities} linkable={linksOn} entityContext={entityContext} />;
 }
 
 export function AgentDock({
@@ -1247,7 +1113,7 @@ export function AgentDock({
           >
             <div ref={messageContentRef} className="space-y-2.5">
             <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 text-[13px] leading-[1.55] text-text-primary">
-              {renderRich(greeting, entities, !offeringsOnly)}
+              <AgentResponseMarkdown text={greeting} entities={entities} linkable={!offeringsOnly} />
             </div>
             {visibleMsgs.map((m, i) => {
               // Same dating as the full chat page: a divider when the thread
@@ -1281,7 +1147,7 @@ export function AgentDock({
                       className={cn(
                         "w-fit max-w-[92%] px-3.5 py-2.5 text-[13px] leading-[1.55]",
                         m.role === "agent"
-                          ? "rounded-2xl rounded-bl-md bg-surface text-text-primary"
+                          ? "agent-dock-reply rounded-2xl rounded-bl-md bg-surface text-text-primary"
                           : "rounded-2xl rounded-br-md bg-blue-primary text-white"
                       )}
                     >
@@ -1307,9 +1173,9 @@ export function AgentDock({
               );
             })}
             {busy && (
-              <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 text-[13px] leading-[1.55]">
+              <div className="agent-dock-reply w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 text-[13px] leading-[1.55]">
                 {streamingPreview
-                  ? renderRich(trimStreamingLink(streamingPreview), entities, !offeringsOnly)
+                  ? <AgentResponseMarkdown text={trimStreamingLink(streamingPreview)} entities={entities} linkable={!offeringsOnly} />
                   : <Thinking />}
               </div>
             )}

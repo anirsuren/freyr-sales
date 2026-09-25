@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 25 Agent full/dock response parity:** The full Agent page and side chat now render answers through the same Markdown component. Tables, links, entity pills, charts, bullets, and headings preserve formatting when a conversation moves between views. Table replies fill the dock bubble and scroll horizontally as needed. Typecheck and focused lint pass. Local only, not deployed.
+
 - **Sep 25 Agent table row height:** Agent-generated markdown tables use the full reply width and preserve each cell on one line; if the content needs more room, the table itself scrolls horizontally. This is a generic table rule, not a goal-name exception, and prevents linked record pills from making uneven four-line rows. Local only, not deployed.
 
 - **Sep 25 Market Intel details side transition:** The briefing's Company details rail now retains stable grid placement and slides with the main content when moved left or right. The old grid-order swap jumped immediately and made the 300ms column animation look choppy. The new transform transition has reduced-motion support. Local only, not deployed.

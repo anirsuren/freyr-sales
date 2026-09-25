@@ -11,10 +11,9 @@ import { useEffect, useRef, useState } from "react";
  * very quickly types out the answer like a typewriter — like it does on the
  * agent").
  *
- * A hook rather than a component because the two surfaces RENDER differently:
- * the agent page runs its text through MarkdownText, the dock through
- * renderRich (which also builds entity pills). Both just need to know how much
- * of the string to show right now.
+ * A hook rather than a component because each surface owns its own message
+ * timing and layout. Both pass the revealed string to the shared response
+ * renderer, so tables, links, and entity pills stay the same across views.
  *
  * Timing matches the agent page exactly — ~140 frames over the whole reply at
  * 14ms — so a long answer takes about as long as a short one and neither

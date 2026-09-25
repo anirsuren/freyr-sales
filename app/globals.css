@@ -550,6 +550,11 @@ select:focus-visible {
   max-width: 100%;
 }
 
+.agent-dock-reply:has(.agent-response-table) {
+  width: 100%;
+  max-width: 100%;
+}
+
 /* Market Intel card ticker: each story slides in from the right as the last
    one leaves, NYSE-style. Reduced motion renders it static. */
 @keyframes miTickerIn {
