@@ -1,22 +1,80 @@
 "use client";
 
-import { ArrowUpRight, BookOpenText, BriefcaseBusiness, Building2, CalendarDays, CheckCircle2, FileText, Globe2, Newspaper, Search, Target, UsersRound } from "lucide-react";
+import Image from "next/image";
+import { ArrowUpRight, BookOpenText, BriefcaseBusiness, Building2, CalendarDays, Check, CheckCircle2, FileText, Globe2, Link2, Newspaper, Target, UsersRound } from "lucide-react";
+import claudiaPhoto from "@/public/avatars/claudia-hofmann.png";
+import gracePhoto from "@/public/avatars/grace-liu.png";
 import s from "@/app/landing.module.css";
 
-/** Small, code-rendered scenes using the public Mock sample records. No embedded workspace or inner scroll. */
+/** Focused, code-built details from illustrative workspace records. */
 export function ProductScene({ index }: { index: number }) {
-  const labels = ["Account picture", "Opportunity", "Market intelligence", "Goals", "Knowledge"];
-  return <div className={s.scene}>
-    <div className={s.sceneTop}><span className={s.sceneBrand}><span>ƒ</span> Freyr</span><span className={s.sceneCrumb}>{labels[index]}</span><span className={s.sceneTopRight}><Search size={14}/> Sample workspace</span></div>
-    {index === 0 && <div className={s.sceneBody}>
-      <div className={s.sceneHeadline}><span className={s.sceneIcon}><Building2 size={23}/></span><div><small>CUSTOMER ACCOUNT</small><h3>Meridian Pharmaceuticals</h3><p>Pharmaceutical · Switzerland (Basel)</p></div><span className={s.sceneStatus}>Customer</span></div>
-      <div className={s.sceneStats}><div><small>Company revenue</small><strong>$9.6B</strong></div><div><small>Contacts</small><strong>5</strong></div><div><small>Sessions</small><strong>2</strong></div></div>
-      <div className={s.sceneColumns}><div className={s.scenePanel}><small>PEOPLE IN THE ACCOUNT</small><div className={s.scenePeople}><span className={s.scenePhoto} style={{backgroundImage:"url('/avatars/claudia-hofmann.png')"}}/><span className={s.scenePhoto} style={{backgroundImage:"url('/avatars/raj-vinesh.png')"}}/><span className={s.scenePhoto} style={{backgroundImage:"url('/avatars/suresh-modugu.png')"}}/><span className={s.scenePhoto} style={{backgroundImage:"url('/avatars/priya-nair.png')"}}/><span className={s.sceneMore}>+1</span><span>5 linked contacts</span></div><p>Claudia Hofmann · Global Head, Reg Submissions</p></div><div className={s.scenePanel}><small>LINKED OPPORTUNITY</small><strong>Lifecycle Maintenance</strong><p>Meridian Pharmaceuticals · $140,000</p><span className={s.sceneTextLink}>View linked work <ArrowUpRight size={13}/></span></div></div>
-    </div>}
-    {index === 1 && <div className={s.sceneBody}><div className={s.sceneHeadline}><span className={s.sceneIcon}><BriefcaseBusiness size={23}/></span><div><small>OPPORTUNITIES</small><h3>Every deal in view.</h3><p>From the pipeline to the next commitment.</p></div><span className={s.sceneStatus}>152 sample deals</span></div><div className={s.scenePanel}><div className={s.sceneListHead}><span>Opportunity</span><span>Value</span><span>Expected sign</span></div>{[["GRI. BMS – Bristol Myers Squibb","$1,000,000","Nov 15, 2026"],["GRI. Haleon","$500,000","Nov 15, 2026"],["Lifecycle Maintenance · Meridian","$140,000","Oct 31, 2026"]].map(([name,value,date])=><div className={s.sceneDeal} key={name}><span><BriefcaseBusiness size={15}/><b>{name}</b></span><strong>{value}</strong><time>{date}</time></div>)}</div><div className={s.sceneBottomNote}><CalendarDays size={15}/> Values and dates stay beside the opportunity they describe.</div></div>}
-    {index === 2 && <div className={s.sceneBody}><div className={s.sceneHeadline}><span className={s.sceneIcon}><Globe2 size={23}/></span><div><small>MARKET INTELLIGENCE</small><h3>Signals worth reading.</h3><p>Company activity, sources and context together.</p></div><span className={s.sceneStatus}>32 tracked</span></div><div className={s.sceneSignalGrid}>{[["Takeda","FDA approval and late-stage pipeline activity","6 posts · 12 news · 6 website"],["GSK","New Phase III lung cancer data from a partner","6 posts · 12 news · 6 website"],["Novartis","Clinical readouts and market response","6 posts · 12 news · 6 website"]].map(([name,headline,counts])=><article className={s.sceneSignal} key={name}><span className={s.sceneSignalIcon}><Newspaper size={17}/></span><small>{name.toUpperCase()}</small><strong>{headline}</strong><p>{counts}</p></article>)}</div></div>}
-    {index === 3 && <div className={s.sceneBody}><div className={s.sceneHeadline}><span className={s.sceneIcon}><Target size={23}/></span><div><small>GOALS & RESULTS</small><h3>Know what counts.</h3><p>Targets and verified work, with the period in view.</p></div><span className={s.sceneStatus}>2026</span></div><div className={s.scenePanel}>{[["Booked Revenue (Contract Value Signed)","$41.8M verified","$100M target",41.8],["Marketing Qualified Leads (MQLs) Generated","739 verified","1,200 target",61.6],["Billed / Collected Revenue","$34.5M verified","$70M target",49.3]].map(([name,verified,target,percent])=><div className={s.sceneGoal} key={name}><div><span>{name}</span><strong>{verified} <small>of {target}</small></strong></div><div className={s.sceneBar}><i style={{width:`${percent}%`}}/></div></div>)}</div><div className={s.sceneBottomNote}><CheckCircle2 size={15}/> Verified results and pending work are kept separate.</div></div>}
-    {index === 4 && <div className={s.sceneBody}><div className={s.sceneHeadline}><span className={s.sceneIcon}><BookOpenText size={23}/></span><div><small>OFFERINGS & MATERIALS</small><h3>Knowledge in reach.</h3><p>Open the capability and the materials behind it.</p></div><span className={s.sceneStatus}>57 offerings</span></div><div className={s.sceneOfferingGrid}>{[["Freya.Register","Regulatory Information Management","18 materials"],["Freya.Intelligence","Global Regulatory Intelligence","12 materials"],["Freya.GRR-PAC","Post-approval change requirements","11 materials"]].map(([name,category,materials])=><article className={s.sceneOffering} key={name}><span className={s.sceneOfferingIcon}><FileText size={19}/></span><strong>{name}</strong><p>{category}</p><span className={s.sceneTextLink}>{materials} <ArrowUpRight size={13}/></span></article>)}</div></div>}
-    <div className={s.sceneFooter}><span><UsersRound size={13}/> Sample records from the workspace</span><span>{String(index+1).padStart(2,"0")} / 05</span></div>
+  return <div className={s.featureScene}>
+    <div className={s.featureWindow}>
+      <div className={s.featureWindowTop}>
+        <span className={s.featureWindowMark}>ƒ</span>
+        <span>Freyr</span>
+        <span className={s.featureWindowPath}>{["Customers / Meridian Pharmaceuticals", "Opportunities / Lifecycle Maintenance", "Market Intel / Takeda", "Goals / Booked Revenue", "Offerings / Freya.Register"][index]}</span>
+        <span className={s.featureWindowSample}>SAMPLE WORKSPACE</span>
+      </div>
+
+      {index === 0 && <div className={s.featureWindowBody}>
+        <div className={s.featureLabel}><Building2 size={16}/> CUSTOMER ACCOUNT</div>
+        <h3 className={s.featureTitle}>Meridian Pharmaceuticals</h3>
+        <p className={s.featureSub}>Pharmaceutical · Switzerland (Basel)</p>
+        <div className={s.featureAccountSplit}>
+          <div className={s.featurePerson}>
+            <Image src={claudiaPhoto} alt="Claudia Hofmann" width={76} height={76} sizes="76px"/>
+            <div><small>ONE OF 5 LINKED CONTACTS</small><strong>Claudia Hofmann</strong><span>Global Head, Reg Submissions</span></div>
+          </div>
+          <div className={s.featureAccountLink}>
+            <small>LINKED OPPORTUNITY</small>
+            <strong>Lifecycle Maintenance</strong>
+            <span>$140,000 · expected Oct 31, 2026</span>
+            <span className={s.featureTextLink}>Follow the deal <ArrowUpRight size={15}/></span>
+          </div>
+        </div>
+        <div className={s.featureBottomLine}><UsersRound size={16}/> The person, account and deal stay connected.</div>
+      </div>}
+
+      {index === 1 && <div className={s.featureWindowBody}>
+        <div className={s.featureLabel}><BriefcaseBusiness size={16}/> OPPORTUNITY</div>
+        <h3 className={s.featureTitle}>Lifecycle Maintenance</h3>
+        <p className={s.featureSub}>Meridian Pharmaceuticals</p>
+        <div className={s.featureDealHero}><div><small>OPPORTUNITY VALUE</small><strong>$140,000</strong><span>Recorded in USD</span></div><div><small>EXPECTED SIGN</small><strong>Oct 31</strong><span>2026</span></div></div>
+        <div className={s.featureDealFooter}><span><Image src={gracePhoto} alt="" width={32} height={32} sizes="32px"/> Grace Liu <small>Owner</small></span><span><CalendarDays size={16}/> Pipeline · 75% confidence</span></div>
+      </div>}
+
+      {index === 2 && <div className={s.featureWindowBody}>
+        <div className={s.featureLabel}><Globe2 size={16}/> MARKET INTELLIGENCE</div>
+        <h3 className={s.featureTitle}>A signal worth reading.</h3>
+        <p className={s.featureSub}>Takeda · Regulatory operations</p>
+        <div className={s.featureArticle}>
+          <div className={s.featureArticleSource}><Newspaper size={18}/> REUTERS <span>COMPANY UPDATE</span></div>
+          <strong>Takeda outlines digital overhaul of regulatory operations</strong>
+          <p>Leadership named regulatory technology as a priority for operational spending, citing submission growth across emerging markets.</p>
+          <div><span>Source and company context together</span><ArrowUpRight size={17}/></div>
+        </div>
+      </div>}
+
+      {index === 3 && <div className={s.featureWindowBody}>
+        <div className={s.featureLabel}><Target size={16}/> GOAL PROGRESS</div>
+        <h3 className={s.featureTitle}>Booked Revenue</h3>
+        <p className={s.featureSub}>Contract value signed · FY 2026/27</p>
+        <div className={s.featureGoalFigure}><div><small>VERIFIED RESULTS</small><strong>$41.8M</strong><span>toward a $100M target</span></div><div className={s.featureGoalTrack}><i/></div><div className={s.featureGoalLegend}><span><CheckCircle2 size={15}/> Verified work counts now</span><span>41.8% of target</span></div></div>
+        <div className={s.featureBottomLine}><Check size={16}/> Pending work stays separate until verified.</div>
+      </div>}
+
+      {index === 4 && <div className={s.featureWindowBody}>
+        <div className={s.featureLabel}><BookOpenText size={16}/> OFFERING & MATERIALS</div>
+        <h3 className={s.featureTitle}>Freya.Register</h3>
+        <p className={s.featureSub}>Regulatory Information Management</p>
+        <div className={s.featureMaterial}>
+          <span className={s.featureMaterialIcon}><FileText size={27}/></span>
+          <div><small>SALES MATERIAL</small><strong>Freya.Register overview</strong><span>Available from the offering record</span></div>
+          <ArrowUpRight size={19}/>
+        </div>
+        <div className={s.featureBottomLine}><Link2 size={16}/> The capability and its supporting material stay together.</div>
+      </div>}
+    </div>
   </div>;
 }

@@ -121,21 +121,32 @@ function AgentDemo() {
   </div></section>;
 }
 
-const TABS=["The account picture","Opportunities in view","Signals worth reading","Goals you can explain","Knowledge in reach"];
-const PREVIEW_NOTES=["A customer, their people and the linked opportunity in one picture.","The value and expected date stay beside each deal.","Read company signals with their sources and activity mix.","See verified work against the target, with pending work kept separate.","Find a capability and the materials that support it."];
+const STORIES=[
+  { label:"The account", title:"Start with the person.", detail:"The stakeholder, the customer and the linked deal belong in the same conversation." },
+  { label:"The opportunity", title:"Know where the deal stands.", detail:"Value, owner and expected date are clear before the next customer call." },
+  { label:"The signal", title:"Read what changed.", detail:"A company update makes more sense when its source and context travel with it." },
+  { label:"The goal", title:"See what really counts.", detail:"Verified results stay distinct from work that is still waiting for review." },
+  { label:"The knowledge", title:"Bring the right material.", detail:"Open the capability and its supporting document at the moment you need them." },
+];
 function Showcase(){
   const [index,setIndex]=useState(0);
-  const [direction,setDirection]=useState(1);
-  const dragStart=useRef<number|null>(null);
-  const reduce=useReducedMotion();
-  const go=(n:number)=>{setDirection(n>index?1:-1);setIndex((n+TABS.length)%TABS.length);};
+  const rail=useRef<HTMLDivElement>(null);
+  const go=(n:number)=>{
+    const next=Math.max(0,Math.min(STORIES.length-1,n));
+    const target=rail.current?.children[next] as HTMLElement | undefined;
+    if(target && rail.current) rail.current.scrollTo({left:target.offsetLeft-rail.current.offsetLeft,behavior:"smooth"});
+    setIndex(next);
+  };
+  const syncIndex=()=>{
+    if(!rail.current) return;
+    const left=rail.current.scrollLeft;
+    const cards=Array.from(rail.current.children) as HTMLElement[];
+    const nearest=cards.reduce((best,card,i)=>Math.abs(card.offsetLeft-rail.current!.offsetLeft-left)<Math.abs(cards[best].offsetLeft-rail.current!.offsetLeft-left)?i:best,0);
+    setIndex(nearest);
+  };
   return <section id="features" className={`${s.section} ${s.tint} ${s.ruled}`} aria-labelledby="features-title"><div className={s.container}>
-    <Head eyebrow="The product" id="features-title" title={<>The full sales picture. <strong>One workspace.</strong></>} text="Move between the account, the deal, the market and the goal. The details belong together."/>
-    <div className={s.tabs} role="tablist" aria-label="Product views">{TABS.map((t,i)=><button type="button" role="tab" key={t} id={`view-tab-${i}`} tabIndex={i===index?0:-1} aria-selected={i===index} aria-controls="product-view" onClick={()=>go(i)} onKeyDown={e=>{let next=i;if(e.key==="ArrowRight")next=(i+1)%TABS.length;else if(e.key==="ArrowLeft")next=(i+TABS.length-1)%TABS.length;else if(e.key==="Home")next=0;else if(e.key==="End")next=TABS.length-1;else return;e.preventDefault();go(next);document.getElementById(`view-tab-${next}`)?.focus();}}>{t}</button>)}</div>
-    <Reveal><div className={s.productFrame} id="product-view" role="tabpanel" aria-labelledby={`view-tab-${index}`} onPointerDown={e=>{dragStart.current=e.clientX;}} onPointerUp={e=>{if(dragStart.current===null)return;const delta=e.clientX-dragStart.current;dragStart.current=null;if(Math.abs(delta)>60)go(index+(delta<0?1:-1));}} onPointerCancel={()=>{dragStart.current=null;}}>
-      <div className={s.previewSlides}><AnimatePresence initial={false} custom={direction} mode="popLayout"><motion.div key={index} custom={direction} variants={{enter:(d:number)=>({opacity:0,x:reduce?0:40*d}),center:{opacity:1,x:0},exit:(d:number)=>({opacity:0,x:reduce?0:-40*d})}} initial="enter" animate="center" exit="exit" transition={{duration:.4,ease}}><ProductScene index={index}/></motion.div></AnimatePresence></div>
-    </div></Reveal>
-    <div className={s.carouselFoot}><p><strong>{TABS[index]}.</strong> {PREVIEW_NOTES[index]}</p><div><small>{index+1} / 5</small><button type="button" onClick={()=>go(index-1)} aria-label="Previous product view"><ArrowLeft size={16}/></button><button type="button" onClick={()=>go(index+1)} aria-label="Next product view"><ArrowRight size={16}/></button></div></div>
+    <div className={s.showcaseHeading}><Head eyebrow="The product" id="features-title" title={<>Follow the work. <strong>Find the next move.</strong></>} text="A closer look at the account, the deal, the signal, the goal and the material behind the decision."/><div className={s.showcaseControls}><span>{String(index+1).padStart(2,"0")} / {String(STORIES.length).padStart(2,"0")}</span><button type="button" onClick={()=>go(index-1)} disabled={index===0} aria-label="Previous product view"><ArrowLeft size={20}/></button><button type="button" onClick={()=>go(index+1)} disabled={index===STORIES.length-1} aria-label="Next product view"><ArrowRight size={20}/></button></div></div>
+    <Reveal><div ref={rail} onScroll={syncIndex} className={s.showcaseRail} role="region" aria-label="Freyr product views" tabIndex={0}>{STORIES.map((story,i)=><article className={s.showcaseCard} key={story.label}><div className={s.showcaseVisual}><ProductScene index={i}/></div><div className={s.showcaseCaption}><span>{String(i+1).padStart(2,"0")} / {story.label}</span><h3>{story.title}</h3><p>{story.detail}</p></div></article>)}</div></Reveal>
   </div></section>;
 }
 
