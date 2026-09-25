@@ -493,8 +493,19 @@ export function ManageCompaniesPanel({
                 return (
                   <tr
                     key={c.id}
+                    tabIndex={saving ? -1 : 0}
+                    aria-label={`${c.name}, ${on ? "selected for tracking" : "not selected for tracking"}. Press Enter or Space to ${on ? "deselect" : "select"}.`}
+                    onClick={(event) => {
+                      if (saving || (event.target instanceof Element && event.target.closest("a, button, input, select, textarea, label"))) return;
+                      toggleMine(c);
+                    }}
+                    onKeyDown={(event) => {
+                      if (saving || event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+                      event.preventDefault();
+                      toggleMine(c);
+                    }}
                     className={cn(
-                      "transition-colors",
+                      "cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-primary",
                       c.onboarding && c.onboarding.status !== "failed" && "mi-collecting-row",
                       on ? "bg-[rgba(0,113,227,0.035)] hover:bg-[rgba(0,113,227,0.06)]" : "hover:bg-surface"
                     )}
