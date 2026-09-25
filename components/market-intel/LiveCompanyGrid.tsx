@@ -292,7 +292,7 @@ export function LiveCompanyGrid({
 }) {
   const { toast } = useToast();
   const router = useRouter();
-  const [unstar, setUnstar] = useState<{id: string; name: string} | null>(null);
+  const [unstar, setUnstar] = useState<{id: string; name: string; logoUrl?: string | null} | null>(null);
   const [peoplePanel, setPeoplePanel] = useState<PeoplePanel | null>(null);
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<Range>("90");
@@ -513,7 +513,7 @@ export function LiveCompanyGrid({
                 if (!card) return (
                   <div key={row.id} className="relative grid min-h-[106px] items-center gap-5 px-5 py-4" style={{ gridTemplateColumns: listColumns }}>
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <button type="button" aria-label={`${stars.has(row.id) ? "Unstar" : "Star"} ${row.name}`} aria-pressed={stars.has(row.id)} onClick={() => stars.has(row.id) ? setUnstar({id: row.id, name: row.name}) : void setStar(row.id, true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface", stars.has(row.id) ? "text-amber-600" : "text-text-tertiary")}><Star size={15} fill={stars.has(row.id) ? "currentColor" : "none"} /></button>
+                      <button type="button" aria-label={`${stars.has(row.id) ? "Unstar" : "Star"} ${row.name}`} aria-pressed={stars.has(row.id)} onClick={() => stars.has(row.id) ? setUnstar({id: row.id, name: row.name, logoUrl: companyDirectory?.[row.id]?.logoUrl}) : void setStar(row.id, true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface", stars.has(row.id) ? "text-amber-600" : "text-text-tertiary")}><Star size={15} fill={stars.has(row.id) ? "currentColor" : "none"} /></button>
                       <MiLogo name={row.name} className="h-10 w-10 shrink-0" />
                       <span className="block min-w-0 text-[13.5px] font-semibold leading-snug text-text-primary">{row.name}</span>
                     </div>
@@ -534,7 +534,7 @@ export function LiveCompanyGrid({
                 return (
                   <div key={card.id} className="group/row relative grid min-h-[118px] items-center gap-5 px-5 py-4 transition-[background-color,box-shadow] duration-200 hover:bg-[rgba(0,113,227,0.025)] hover:shadow-[inset_3px_0_0_var(--blue-primary)]" style={{ gridTemplateColumns: listColumns }}>
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <button type="button" aria-label={`${stars.has(card.id) ? "Unstar" : "Star"} ${card.name}`} aria-pressed={stars.has(card.id)} onClick={() => stars.has(card.id) ? setUnstar({id:card.id,name:card.name}) : void setStar(card.id,true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white hover:shadow-sm", stars.has(card.id) ? "text-amber-600" : "text-text-tertiary hover:text-amber-600")}><Star size={15} strokeWidth={2.2} fill={stars.has(card.id) ? "currentColor" : "none"} /></button>
+                      <button type="button" aria-label={`${stars.has(card.id) ? "Unstar" : "Star"} ${card.name}`} aria-pressed={stars.has(card.id)} onClick={() => stars.has(card.id) ? setUnstar({id:card.id,name:card.name,logoUrl:card.logoUrl}) : void setStar(card.id,true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white hover:shadow-sm", stars.has(card.id) ? "text-amber-600" : "text-text-tertiary hover:text-amber-600")}><Star size={15} strokeWidth={2.2} fill={stars.has(card.id) ? "currentColor" : "none"} /></button>
                       <Link href={`/market-intel/${card.id}`} className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
                         <MiLogo name={card.name} logoUrl={card.logoUrl} className="h-11 w-11 shrink-0" />
                         <span className="min-w-0">
@@ -579,7 +579,7 @@ export function LiveCompanyGrid({
               <div className="flex items-center gap-3">
                 <MiLogo name={company.name} logoUrl={company.logoUrl} className="h-10 w-10 shrink-0" />
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-text-primary">{company.name}</p><p className="text-xs text-text-secondary">Starting collection</p></div>
-                <button type="button" aria-label={`${stars.has(company.id) ? "Unstar" : "Star"} ${company.name}`} aria-pressed={stars.has(company.id)} onClick={() => stars.has(company.id) ? setUnstar({ id: company.id, name: company.name }) : void setStar(company.id, true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface", stars.has(company.id) ? "text-amber-600" : "text-text-tertiary hover:text-amber-600")}><Star size={15} fill={stars.has(company.id) ? "currentColor" : "none"} /></button>
+                <button type="button" aria-label={`${stars.has(company.id) ? "Unstar" : "Star"} ${company.name}`} aria-pressed={stars.has(company.id)} onClick={() => stars.has(company.id) ? setUnstar({ id: company.id, name: company.name, logoUrl: company.logoUrl }) : void setStar(company.id, true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface", stars.has(company.id) ? "text-amber-600" : "text-text-tertiary hover:text-amber-600")}><Star size={15} fill={stars.has(company.id) ? "currentColor" : "none"} /></button>
               </div>
               {(divisions[company.id] ?? []).length > 0 && <DivisionChips divisions={divisions[company.id]} className="mt-3" />}
             </div>
@@ -591,7 +591,7 @@ export function LiveCompanyGrid({
               people={group === "customer" ? people[card.id] : undefined}
               divisions={divisions[card.id] ?? []}
               starred={stars.has(card.id)}
-              onStar={on => on ? void setStar(card.id, true) : setUnstar({ id: card.id, name: card.name })}
+              onStar={on => on ? void setStar(card.id, true) : setUnstar({ id: card.id, name: card.name, logoUrl: card.logoUrl })}
               watch={isAdmin ? stateOf(card.id) : undefined}
             />
           ))}
@@ -599,6 +599,7 @@ export function LiveCompanyGrid({
       )}
       <ConfirmDialog
         open={unstar !== null}
+        subject={unstar ? { name: unstar.name, kind: "company", imageUrl: unstar.logoUrl } : null}
         onClose={() => setUnstar(null)}
         onConfirm={() => { if (unstar) void setStar(unstar.id, false); setUnstar(null); }}
         tone="primary"

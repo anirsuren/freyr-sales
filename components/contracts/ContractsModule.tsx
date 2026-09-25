@@ -1972,6 +1972,7 @@ export function ContractsModule({
 
       <ConfirmDialog
         open={!!confirmDelete}
+        subject={confirmDelete ? { name: confirmDelete.name, kind: "contract" } : null}
         onClose={() => setConfirmDelete(null)}
         onConfirm={async () => {
           if (!confirmDelete) return;

@@ -21,12 +21,14 @@ import { useToast } from "@/components/ui/Toast";
 export function CompanyAdminControls({
   companyId,
   companyName,
+  companyLogoUrl,
   group,
   followers,
   compact = false,
 }: {
   companyId: string;
   companyName: string;
+  companyLogoUrl?: string | null;
   group: "customer" | "competitor";
   /** How many people have it on their list, for the delete warning. */
   followers: number;
@@ -103,6 +105,7 @@ export function CompanyAdminControls({
       onConfirm={() => void remove()}
       busy={busy === "delete"}
       title={`Delete ${companyName} for everyone?`}
+      subject={{ name: companyName, kind: "company", imageUrl: companyLogoUrl }}
       body={
         <>
           Everything collected about <b>{companyName}</b> is deleted, and it

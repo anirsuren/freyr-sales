@@ -3676,6 +3676,7 @@ export function OpportunitiesBrowser({
 
       <ConfirmDialog
         open={confirmRemove !== null}
+        subject={confirmRemove ? { name: confirmRemove.name, kind: "opportunity" } : null}
         onClose={() => setConfirmRemove(null)}
         onConfirm={() => confirmRemove && void remove(confirmRemove)}
         busy={busy}

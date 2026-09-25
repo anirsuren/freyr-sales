@@ -660,6 +660,7 @@ export function ManageCompaniesPanel({
         confirmLabel="Discard and leave" />
       <ConfirmDialog
         open={confirming !== null}
+        subject={confirming ? { name: confirming.name, kind: "company", imageUrl: confirming.logoUrl } : null}
         onClose={() => setConfirming(null)}
         onConfirm={() => confirming && void remove(confirming)}
         busy={busy !== null}

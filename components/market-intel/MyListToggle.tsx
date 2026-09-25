@@ -19,12 +19,14 @@ import { cn } from "@/lib/utils";
 export function MyListToggle({
   companyId,
   companyName,
+  companyLogoUrl,
   onMyPage,
   starred,
   group = "customer",
 }: {
   companyId: string;
   companyName: string;
+  companyLogoUrl?: string | null;
   onMyPage: boolean;
   starred: boolean;
   /** Names the Manage page this company lives on ("Manage competitors"). */
@@ -137,6 +139,7 @@ export function MyListToggle({
       busy={busy}
       tone="primary"
       title={confirm === "remove" ? "Stop tracking?" : "Remove star?"}
+      subject={{ name: companyName, kind: "company", imageUrl: companyLogoUrl }}
       body={confirm === "remove" ? `${companyName} will leave your Market Intel page and starred list. You can add it again from Manage ${group === "competitor" ? "competitors" : "customers"}.` : `${companyName} will no longer be starred. It will stay on your page.`}
       confirmLabel={confirm === "remove" ? "Stop tracking" : "Remove star"}
     />

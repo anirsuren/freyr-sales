@@ -717,6 +717,7 @@ export function LiveCompanyBriefing({
         onConfirm={() => void removeStory()}
         busy={removingStory}
         title="Remove this story?"
+        subject={storyRemoval ? { name: storyRemoval.title, kind: "story" } : null}
         body={<>This removes <b>{storyRemoval?.title}</b> from the shared intelligence feed.</>}
         detail="All grouped source copies are removed, and future collections will keep them hidden."
         confirmLabel="Remove story"
@@ -754,6 +755,7 @@ export function LiveCompanyBriefing({
           <MyListToggle
             companyId={briefing.id}
             companyName={briefing.name}
+            companyLogoUrl={briefing.logoUrl}
             onMyPage={onMyPage}
             starred={starred}
             group={briefing.group}
@@ -762,6 +764,7 @@ export function LiveCompanyBriefing({
             <CompanyAdminControls
               companyId={briefing.id}
               companyName={briefing.name}
+              companyLogoUrl={briefing.logoUrl}
               group={briefing.group}
               followers={watch.followers}
               compact

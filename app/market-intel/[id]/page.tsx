@@ -277,6 +277,7 @@ export default async function MarketIntelCompanyPage({
           <MyListToggle
             companyId={mine.id}
             companyName={mine.name}
+            companyLogoUrl={mine.logoUrl}
             onMyPage={onMyPage}
             starred={starred}
             group={mine.group === "competitor" ? "competitor" : "customer"}
@@ -285,6 +286,7 @@ export default async function MarketIntelCompanyPage({
             <CompanyAdminControls
               companyId={mine.id}
               companyName={mine.name}
+              companyLogoUrl={mine.logoUrl}
               group={mine.group === "competitor" ? "competitor" : "customer"}
               followers={followers[mine.id]?.length ?? 0}
               compact

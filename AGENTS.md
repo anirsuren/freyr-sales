@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 25 Confirmation record visuals:** The shared confirmation dialog now uses the affected record's icon instead of a generic warning triangle, and a named company logo or person photo/initials when supplied. Market Intel company delete, tracking, star, and story confirmations carry the actual identity; customer-account, offering, opportunity/deal, and contract delete confirmations carry their record identity too. Other shared confirmations receive a contextual record-type icon from their action title. Verified the local Amplexor delete confirmation visually without confirming deletion; typecheck, focused lint (existing unused-symbol warnings only), and diff check pass. Local only, per the user's release instruction.
+
 - **Sep 25 Market Intel manage-row selection:** Clicking a competitor or customer row now toggles its tracking checkbox; Enter and Space work when the row itself has focus. Company links and checkbox, status, star, and delete controls retain their own actions. Verified locally by toggling an Amplexor row off and back on without saving; typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
 
 - **Sep 25 Market Intel details disclosures:** Signals, Sources, and People tracked in the Company details rail now open and close independently. Their compact headers always show the active signal names, chosen source, or tracked people, so selections remain visible when closed. Verified signal selection and collapse in the local CuraTeQ briefing; typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.

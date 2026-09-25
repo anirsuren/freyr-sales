@@ -686,6 +686,7 @@ export function CustomerEditForm({
 
       <ConfirmDialog
         open={confirmDelete}
+        subject={{ name: customer.company_name, kind: "company" }}
         onClose={() => setConfirmDelete(false)}
         onConfirm={remove}
         title={`Delete ${customer.company_name}?`}

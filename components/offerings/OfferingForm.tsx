@@ -3302,6 +3302,7 @@ export function OfferingForm({
           put it at the top, somewhere in the top right"). */}
       <ConfirmDialog
         open={confirmDelete}
+        subject={{ name: offeringName || "This offering", kind: "offering" }}
         onClose={() => setConfirmDelete(false)}
         onConfirm={remove}
         title="Delete this offering?"

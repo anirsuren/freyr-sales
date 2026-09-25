@@ -1,10 +1,46 @@
 "use client";
 
-import { AlertTriangle, HelpCircle } from "lucide-react";
+import { AlertTriangle, BriefcaseBusiness, Building2, CalendarDays, FileSignature, FileText, HelpCircle, MessageSquare, Newspaper, Package, Target, UserRound, type LucideIcon } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
+import { MiLogo } from "@/components/market-intel/MiLogo";
 import { cn } from "@/lib/utils";
+
+type ConfirmSubject = {
+  name: string;
+  kind: "company" | "person" | "offering" | "story" | "document" | "goal" | "contract" | "opportunity" | "meeting" | "record";
+  imageUrl?: string | null;
+};
+
+function recordIcon(title: string): LucideIcon {
+  if (/person|contact|owner|contributor|member/i.test(title)) return UserRound;
+  if (/compan|account|customer|competitor/i.test(title)) return Building2;
+  if (/stor|article/i.test(title)) return Newspaper;
+  if (/offering|product/i.test(title)) return Package;
+  if (/opportunit|deal/i.test(title)) return BriefcaseBusiness;
+  if (/document|material|file|snippet|version|component|feature/i.test(title)) return FileText;
+  if (/goal|target|milestone/i.test(title)) return Target;
+  if (/contract/i.test(title)) return FileSignature;
+  if (/meeting/i.test(title)) return CalendarDays;
+  if (/chat|sequence/i.test(title)) return MessageSquare;
+  return AlertTriangle;
+}
+
+function subjectIcon(kind: ConfirmSubject["kind"]): LucideIcon {
+  return {
+    company: Building2,
+    person: UserRound,
+    offering: Package,
+    story: Newspaper,
+    document: FileText,
+    goal: Target,
+    contract: FileSignature,
+    opportunity: BriefcaseBusiness,
+    meeting: CalendarDays,
+    record: FileText,
+  }[kind];
+}
 
 /**
  * ASKING "ARE YOU SURE" IN THE APP'S OWN VOICE.
@@ -25,6 +61,7 @@ export function ConfirmDialog({
   title,
   body,
   detail,
+  subject,
   person,
   personPhoto,
   confirmLabel = "Remove",
@@ -39,6 +76,8 @@ export function ConfirmDialog({
   body: React.ReactNode;
   /** The consequence they might not have thought about. Optional. */
   detail?: React.ReactNode;
+  /** The record affected by this confirmation, with its actual visual when available. */
+  subject?: ConfirmSubject | null;
   /** The person this decision affects. Their photo replaces the generic icon. */
   person?: string | null;
   personPhoto?: string | null;
@@ -56,33 +95,26 @@ export function ConfirmDialog({
    */
   tone?: "destructive" | "primary";
 }) {
+  const affected = subject ?? (person ? { name: person, kind: "person" as const, imageUrl: personPhoto } : null);
+  const ContextIcon = affected ? subjectIcon(affected.kind) : recordIcon(title);
   return (
     <Modal open={open} onClose={onClose} title={title}>
       <div className="flex gap-3.5">
-        <span
-          aria-hidden="true"
-          className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-          style={
-            tone === "primary"
-              ? { background: "rgba(0,113,227,0.10)", color: "var(--ink-bright-blue)" }
-              : { background: "rgba(176,32,32,0.10)", color: "var(--ink-red)" }
-          }
-        >
-          {tone === "primary" ? (
-            <HelpCircle size={18} strokeWidth={2} />
+        <span aria-hidden="true" className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-light bg-white shadow-sm">
+          {affected?.kind === "company" ? (
+            <MiLogo name={affected.name} logoUrl={affected.imageUrl} className="h-10 w-10 rounded-xl" />
+          ) : affected?.kind === "person" ? (
+            <Avatar name={affected.name} src={affected.imageUrl} className="h-10 w-10 rounded-xl text-[13px]" />
+          ) : affected ? (
+            <ContextIcon size={19} strokeWidth={2} className="text-blue-primary" />
+          ) : tone === "primary" && ContextIcon === AlertTriangle ? (
+            <HelpCircle size={19} strokeWidth={2} className="text-blue-primary" />
           ) : (
-            <AlertTriangle size={18} strokeWidth={2} />
+            <ContextIcon size={19} strokeWidth={2} className={tone === "primary" ? "text-blue-primary" : "text-[#B02020]"} />
           )}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start gap-2">
-            {person && (
-              <Avatar
-                name={person}
-                src={personPhoto}
-                className="mt-px h-6 w-6 shrink-0 border border-border-light text-[8.5px] shadow-sm"
-              />
-            )}
             <p className="min-w-0 text-[13.5px] leading-relaxed text-text-primary">
               {body}
             </p>
@@ -90,8 +122,7 @@ export function ConfirmDialog({
           {detail && (
             <p
               className={cn(
-                "mt-1.5 text-[12.5px] leading-relaxed text-text-secondary",
-                person && "ml-8"
+                "mt-1.5 text-[12.5px] leading-relaxed text-text-secondary"
               )}
             >
               {detail}

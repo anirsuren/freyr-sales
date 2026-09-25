@@ -253,6 +253,7 @@ export function DealEditScreen({
 
     <ConfirmDialog
       open={confirming}
+      subject={{ name: deal.name || "This deal", kind: "opportunity" }}
       onClose={() => setConfirming(false)}
       onConfirm={() => void remove()}
       busy={deleting}
