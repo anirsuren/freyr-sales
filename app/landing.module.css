@@ -536,31 +536,18 @@
   margin-top:20px;
 }
 .avatar {
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
+  display:block;
   width:28px;
   height:28px;
   flex-shrink:0;
   border-radius:50%;
-  background:#e6efff;
-  color:#1b5fd6;
-  font-size:9px;
-  font-weight:500;
+  object-fit:cover;
   border:2px solid white;
 }
 .avatars .avatar {
   height:35px;
   width:35px;
   margin-right:-5px;
-}
-.avatars .avatar:nth-child(2n) {
-  background:#efeafb;
-  color:#5b3fb2;
-}
-.avatars .avatar:nth-child(3n) {
-  background:#e8f6ee;
-  color:#178a4c;
 }
 .widgetNote {
   font-size:12px;

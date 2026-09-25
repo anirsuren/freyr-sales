@@ -8,6 +8,11 @@ import { CountUp, Reveal, ease, reveal } from "./Motion";
 import { ArrowDown, ArrowLeft, ArrowRight, BookOpenText, BriefcaseBusiness, CalendarDays, Check, CheckCircle2, ChevronRight, CircleDot, FileText, Globe2, Layers, Link2, LockKeyhole, Menu, Pause, Play, Plus, Sparkles, Target, UsersRound, X } from "lucide-react";
 import mark from "@/public/freyr-mark.png";
 import hero from "@/public/landing/heroes/10-profile.jpg";
+import gracePhoto from "@/public/avatars/grace-liu.png";
+import danielPhoto from "@/public/avatars/daniel-foster.png";
+import hannahPhoto from "@/public/avatars/hannah-schmidt.png";
+import ninaPhoto from "@/public/avatars/nina-kowalski.png";
+import claraPhoto from "@/public/avatars/clara-mendez.png";
 import s from "@/app/landing.module.css";
 import { ProductScene } from "./ProductScenes";
 
@@ -17,7 +22,13 @@ function Head({ eyebrow, title, text, centered = false, id }: { eyebrow: string;
 }
 function Tag({ children, tone = "blue" }: { children: ReactNode; tone?: "blue" | "green" | "amber" | "purple" }) { return <span className={`${s.tag} ${s[tone]}`}>{children}</span>; }
 function Chrome({ label }: { label: string }) { return <div className={s.chrome}><span aria-hidden="true"><i /><i /><i /></span><small>{label}</small><span className={s.sample}>Sample workspace</span></div>; }
-function Avatar({ initials }: { initials: string }) { return <span className={s.avatar}>{initials}</span>; }
+const SAMPLE_PEOPLE = [
+  { name: "Grace Liu", photo: gracePhoto },
+  { name: "Daniel Foster", photo: danielPhoto },
+  { name: "Hannah Schmidt", photo: hannahPhoto },
+  { name: "Nina Kowalski", photo: ninaPhoto },
+  { name: "Clara Mendez", photo: claraPhoto },
+];
 
 const AREAS = [ ["Leads", "people & follow-up"], ["Opportunities", "deals & commitments"], ["Market Intel", "customers & competitors"], ["Offerings", "knowledge & materials"], ["Goals", "targets & results"] ];
 const RECORDS = [
@@ -37,7 +48,7 @@ function Widget({ kind }: { kind: number }) {
     {kind === 0 && <div className={s.donutRow}><div className={s.donut}><span>Deals</span></div><div className={s.legend}><span><i style={{ background: "#1b5fd6" }} />Qualified</span><span><i style={{ background: "#6b4bc4" }} />Proposal</span><span><i style={{ background: "#0891b2" }} />Negotiation</span></div></div>}
     {kind === 1 && <><div className={s.progressLabel}><strong>Verified</strong><span>Pending review</span></div><div className={s.progress}><i /><i /><i /></div><div className={s.miniLegend}><span><CheckCircle2 size={12} />Counts now</span><span><CircleDot size={12} />Waiting</span></div></>}
     {kind === 2 && <div className={s.nextStep}><CalendarDays size={28} /><div><strong>Confirm the project scope</strong><span>Customer commitment</span><Tag><Check size={11} />Next step recorded</Tag></div></div>}
-    {kind === 3 && <><div className={s.avatars}>{["AL","SK","MJ","RB","TN"].map(n=><Avatar key={n} initials={n} />)}</div><p className={s.widgetNote}>Owner, stakeholders and contacts.<br />The people behind the work.</p></>}
+    {kind === 3 && <><div className={s.avatars}>{SAMPLE_PEOPLE.map(person=><Image key={person.name} className={s.avatar} src={person.photo} alt={person.name} width={35} height={35} sizes="35px" />)}</div><p className={s.widgetNote}>Owner, stakeholders and contacts.<br />The people behind the work.</p></>}
     {kind === 4 && <div className={s.fileList}>{["Offering overview","Capabilities presentation","Customer scope"].map(t=><span key={t}><FileText size={14} />{t}<ChevronRight size={12} /></span>)}</div>}
     {kind === 5 && <><Tag tone="purple"><Globe2 size={12} />Customer signal</Tag><p className={s.widgetNote}>A company update, with its source and account context close by.</p></>}
   </article>;
