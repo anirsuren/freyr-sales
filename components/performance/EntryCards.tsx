@@ -1735,7 +1735,7 @@ export function MyEntriesCard({
               dialogClassName="!max-w-[960px]"
               bodyClassName="!p-0"
             >
-              <div className="border-b border-border-light bg-[#F8FAFD] px-7 py-5">
+              <div className="border-b border-border-light bg-surface/50 px-7 py-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="min-w-0">
                     <span className="mb-2 block text-[10.5px] font-bold uppercase tracking-[0.1em] text-text-tertiary">
@@ -1752,7 +1752,7 @@ export function MyEntriesCard({
                     </p>
                   </div>
                   {fixing && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F7D1D1] bg-[#FFF2F1] px-3 py-1.5 text-[11.5px] font-bold text-[color:var(--status-red)]">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-error/20 bg-error/10 px-3 py-1.5 text-[11.5px] font-bold text-[color:var(--status-red)]">
                       <AlertCircle size={13} strokeWidth={2.5} />
                       Needs correction
                     </span>
@@ -1764,9 +1764,9 @@ export function MyEntriesCard({
                 {/* The rejection note travels WITH the form. Fixing a claim
                     without the reason in front of you is guesswork. */}
                 {a.managerNote && (
-                  <section className="overflow-hidden rounded-2xl border border-[#F4CCCC] bg-[#FFF9F8] lg:col-start-1 lg:row-start-1">
+                  <section className="overflow-hidden rounded-2xl border border-error/20 bg-error/10 lg:col-start-1 lg:row-start-1">
                     <div className="flex items-center gap-2.5 px-4 pb-2 pt-4">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FFE9E6] text-[color:var(--status-red)]">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-error/10 text-[color:var(--status-red)]">
                         <AlertCircle size={16} strokeWidth={2.4} />
                       </span>
                       <div className="min-w-0">
@@ -1935,7 +1935,7 @@ export function MyEntriesCard({
                   not add it. */}
               {/* The picker draws its own label and hint — saying "Evidence"
                   above it printed the word twice (Anir, Aug 20). */}
-                <section className={cn("min-w-0 rounded-2xl border border-border-light bg-[#FAFBFD] p-4 lg:col-start-1", a.managerNote ? "lg:row-start-2" : "lg:row-start-1")}>
+                <section className={cn("min-w-0 rounded-2xl border border-border-light bg-surface/50 p-4 lg:col-start-1", a.managerNote ? "lg:row-start-2" : "lg:row-start-1")}>
                   <div className="mb-3 flex items-start gap-3">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-blue-primary ring-1 ring-border-light">
                       <Paperclip size={15} strokeWidth={2.2} />

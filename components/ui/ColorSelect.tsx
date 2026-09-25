@@ -617,8 +617,9 @@ export function ColorSelect({
     if (solo && o.short)
       return (
         <span
-          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-[11px] font-bold tnum"
+          className="color-select-mark w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-[11px] font-bold tnum"
           style={{
+            ["--mark-accent" as string]: o.color || "var(--ink-bright-blue)",
             background: o.color || "var(--ink-bright-blue)",
             color: iconForeground(o.color || "var(--ink-bright-blue)"),
           }}
@@ -630,10 +631,11 @@ export function ColorSelect({
       return (
         <span
           className={cn(
-            "rounded-md flex items-center justify-center shrink-0",
+            "color-select-mark rounded-md flex items-center justify-center shrink-0",
             prominent ? "w-8 h-8" : "w-5 h-5"
           )}
           style={{
+            ["--mark-accent" as string]: o.color || "#8E98A8",
             background: o.color || "#8E98A8",
             color: iconForeground(o.color || "#8E98A8"),
           }}
@@ -1386,8 +1388,9 @@ export function MultiColorSelect({
               />
             ) : picked.length === 1 && picked[0].icon ? (
               <span
-                className="flex h-5 w-5 items-center justify-center rounded-md"
+                className="color-select-mark flex h-5 w-5 items-center justify-center rounded-md"
                 style={{
+                  ["--mark-accent" as string]: picked[0].color || "#8E98A8",
                   background: picked[0].color || "#8E98A8",
                   color: iconForeground(picked[0].color || "#8E98A8"),
                 }}
@@ -1411,8 +1414,9 @@ export function MultiColorSelect({
               // Unrestricted, but never a gray blank: the filter keeps its own
               // colour + icon, so collapsed it still says what it filters.
               <span
-                className="flex h-5 w-5 items-center justify-center rounded-md"
+                className="color-select-mark flex h-5 w-5 items-center justify-center rounded-md"
                 style={{
+                  ["--mark-accent" as string]: allColor,
                   background: allColor,
                   color: iconForeground(allColor),
                 }}
@@ -1503,8 +1507,9 @@ export function MultiColorSelect({
           >
             {AllIcon ? (
               <span
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+                className="color-select-mark flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
                 style={{
+                  ["--mark-accent" as string]: allColor,
                   background: allColor,
                   color: iconForeground(allColor),
                 }}
@@ -1560,8 +1565,9 @@ export function MultiColorSelect({
                   />
                 ) : Icon ? (
                   <span
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+                    className="color-select-mark flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
                     style={{
+                      ["--mark-accent" as string]: accent,
                       background: accent,
                       color: iconForeground(accent),
                     }}

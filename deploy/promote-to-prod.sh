@@ -87,6 +87,11 @@ td['memory']=repo['memory']
 env={e['name']:e['value'] for e in c.get('environment',[])}
 env['APP_VERSION']='$FULLSHA'
 env['MARKET_INTEL_AUTO_COLLECTION_ENABLED']='1'
+# Match the unlocked viewer choice used by the dev release. A locked prod task
+# leaves the Workspace switch disabled even though the signed-in user can view
+# both modes; Real remains the default whenever a session has no Mock cookie.
+env['DEFAULT_DATA_MODE']='live'
+env['DATA_MODE_LOCKED']='0'
 c['environment']=[{'name':k,'value':v} for k,v in env.items()]
 for k in ('taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy'):
     td.pop(k,None)

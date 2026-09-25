@@ -174,8 +174,8 @@ export function ContactOutreachPanel({
               aria-pressed={mode === "linkedin"}
               className={`${headerBtn} ${
                 mode === "linkedin"
-                  ? "border-[#0A66C2] bg-[#EAF4FB] shadow-sm"
-                  : "border-border bg-white hover:border-[#0A66C2]/40 hover:bg-[#F4F9FC]"
+                  ? "border-[#0A66C2] bg-blue-light/40 shadow-sm"
+                  : "border-border bg-white hover:border-[#0A66C2]/40 hover:bg-blue-light/15"
               }`}
             >
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0A66C2] text-white">
@@ -191,8 +191,8 @@ export function ContactOutreachPanel({
               aria-pressed={mode === "email"}
               className={`${headerBtn} ${
                 mode === "email"
-                  ? "border-[#7C3AED] bg-[#F3EEFF] shadow-sm"
-                  : "border-border bg-white hover:border-[#7C3AED]/40 hover:bg-[#FAF8FF]"
+                  ? "border-[#7C3AED] bg-[color:color-mix(in_srgb,var(--ink-violet)_14%,var(--white))] shadow-sm"
+                  : "border-border bg-white hover:border-[#7C3AED]/40 hover:bg-surface/50"
               }`}
             >
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7C3AED] text-white">
@@ -208,8 +208,8 @@ export function ContactOutreachPanel({
               aria-pressed={mode === "voice"}
               className={`${headerBtn} ${
                 mode === "voice"
-                  ? "border-[#059669] bg-[#E9F8F2] shadow-sm"
-                  : "border-border bg-white hover:border-[#059669]/40 hover:bg-[#F4FBF8]"
+                  ? "border-[#059669] bg-[color:color-mix(in_srgb,var(--ink-green)_14%,var(--white))] shadow-sm"
+                  : "border-border bg-white hover:border-[#059669]/40 hover:bg-surface/50"
               }`}
             >
               <span className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-[#059669] text-white">
@@ -432,7 +432,7 @@ export function ContactOutreachPanel({
               </div>
               <button
                 onClick={() => open("linkedin", o.id)}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#0A66C2]/20 bg-[#EAF4FB]/55 px-2.5 py-1.5 text-[11px] font-semibold text-[#0A66C2] transition-colors hover:border-[#0A66C2]/40 hover:bg-[#EAF4FB]"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#0A66C2]/20 bg-blue-light/40 px-2.5 py-1.5 text-[11px] font-semibold text-blue-primary transition-colors hover:border-[#0A66C2]/40 hover:bg-blue-light/60"
               >
                 <Image src="/linkedin.webp" alt="" width={13} height={13} className="rounded-[2px]" />
                 Draft outreach

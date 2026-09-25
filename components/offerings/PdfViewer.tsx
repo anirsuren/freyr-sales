@@ -124,7 +124,7 @@ function PdfThumbnail({
         {visible ? (
           <canvas ref={canvas} className="block max-w-full" />
         ) : (
-          <span className="h-[76px] w-[58px] animate-pulse rounded bg-[#EEF2F7]" />
+          <span className="h-[76px] w-[58px] animate-pulse rounded bg-surface" />
         )}
       </span>
       <span className={`mt-1.5 block text-center text-[11px] font-semibold ${active ? "text-blue-primary" : "text-[var(--pdf-muted)]"}`}>

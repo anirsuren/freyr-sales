@@ -256,6 +256,13 @@ html.dark body {
 .dark .border-border {
   border-color: #3a3a3d !important;
 }
+/* Picker icons use the same category hue as their light-mode counterparts,
+   but a quiet dark wash keeps pale pink and blue marks from flashing as solid
+   pastel squares. The glyph is light enough to remain legible on that wash. */
+.dark .color-select-mark {
+  background-color: color-mix(in srgb, var(--mark-accent) 20%, #1c1c1e) !important;
+  color: color-mix(in srgb, var(--mark-accent) 72%, white) !important;
+}
 .dark .bg-blue-light {
   background-color: rgba(10, 132, 255, 0.18) !important;
 }

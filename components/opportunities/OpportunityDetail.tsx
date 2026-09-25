@@ -785,12 +785,12 @@ export function OpportunityDetail({
                         onClick={() => setPlanningAccrual(true)}
                         className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
                       >
-                        {accrual.plan ? (
+                        {accrual.plan?.lines.length ? (
                           <Pencil size={13} strokeWidth={2.4} />
                         ) : (
                           <Plus size={13} strokeWidth={2.4} />
                         )}
-                        {accrual.plan ? "Open the plan" : "Add accrual"}
+                        {accrual.plan?.lines.length ? "Open the plan" : "Add accrual"}
                       </button>
                     ) : null}
                   </span>

@@ -28,7 +28,7 @@ export function LinkMaterialPreview({
   const access = material.accessLevel ? ACCESS_LEVEL_META[material.accessLevel] : null;
 
   return (
-    <div className={cn("h-full overflow-auto bg-[#edf2f8]", compact ? "p-3" : "p-6 sm:p-8")}>
+    <div className={cn("h-full overflow-auto bg-surface", compact ? "p-3" : "p-6 sm:p-8")}>
       <article className={cn("mx-auto min-h-full bg-white shadow-[0_8px_30px_rgba(16,24,40,0.12)]", compact ? "max-w-[510px] p-6" : "max-w-[820px] p-10 sm:p-14")}>
         <header className="border-b-2 border-blue-primary pb-5">
           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-primary">

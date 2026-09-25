@@ -88,7 +88,7 @@ export function TrackPersonButton({
       >
         <div className="space-y-3">
           {availablePeople.length > 0 && (
-            <div className="rounded-xl border border-border-light bg-[#F8FAFD] p-3">
+            <div className="rounded-xl border border-border-light bg-surface/50 p-3">
               <p className="mb-2 text-[12px] font-semibold text-text-primary">Follow someone here again</p>
               <div className="max-h-40 space-y-1 overflow-y-auto">
                 {availablePeople.map((person) => (

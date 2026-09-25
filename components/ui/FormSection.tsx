@@ -109,7 +109,7 @@ export function FormSection({
         "scroll-mt-24 rounded-2xl border border-l-[3px] bg-white shadow-[0_3px_14px_rgba(15,23,42,0.055)] transition-[border-color,box-shadow] duration-200",
         open
           ? "border-blue-primary/25 border-l-blue-primary shadow-[0_5px_20px_rgba(15,23,42,0.075)] ring-1 ring-blue-primary/5"
-          : "border-[#D9E2EC] border-l-[#D9E2EC]"
+          : "border-border-light border-l-border-light"
       )}
     >
       <header
@@ -117,7 +117,7 @@ export function FormSection({
           "relative flex items-center gap-3 px-5 py-4 transition-colors",
           open
             ? "rounded-t-[15px] bg-blue-light/25"
-            : "rounded-[15px] bg-[#FAFBFC] hover:bg-blue-light/15"
+            : "rounded-[15px] bg-surface/50 hover:bg-blue-light/15"
         )}
       >
         <button
@@ -174,7 +174,7 @@ export function FormSection({
       {open && (
         <div
           id={panelId}
-          className="space-y-4 rounded-b-2xl border-t border-[#DCE5EE] bg-[#FBFCFE] p-5"
+          className="space-y-4 rounded-b-2xl border-t border-border-light bg-surface/30 p-5"
         >
           {children}
         </div>

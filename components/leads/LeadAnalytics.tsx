@@ -412,6 +412,8 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 size={132}
                 thickness={15}
                 format="number"
+                onSegmentClick={(index) => openStatusWorkspace(activeStatusSegments[index].label as LeadStatus)}
+                tooltipOnHover={false}
               />
             </div>
             <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">

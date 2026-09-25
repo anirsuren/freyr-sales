@@ -757,14 +757,21 @@ export function OpportunitySummary({
    * there is no focus, so nothing dims.
    */
   const focusKeys = useMemo(() => {
-    /* Only the DEEPEST open branches count as focus. Opening a parent puts
-       every one of its children on an "open path", so testing against all
-       open keys lit the entire table and dimmed nothing — measured, first
-       attempt. A branch you opened and then opened deeper is no longer the
-       thing you are reading; its deepest descendant is. */
-    const keys = [...open];
+    // Saved open keys can belong to a previous grouping order, or to a branch
+    // now hidden under a closed parent. Neither represents an open row on this
+    // screen. Walk the current tree so only visible, expanded rows set focus.
+    if (filtering) return [];
+    const keys: string[] = [];
+    const collect = (nodes: Node[]) => {
+      for (const node of nodes) {
+        if (!open.has(node.key)) continue;
+        keys.push(node.key);
+        collect(node.children);
+      }
+    };
+    collect(tree);
     return keys.filter((k) => !keys.some((o) => o !== k && o.startsWith(`${k}/`)));
-  }, [open]);
+  }, [filtering, open, tree]);
 
   const onOpenPath = (key: string) => {
     if (focusKeys.length === 0) return true;
@@ -891,7 +898,7 @@ export function OpportunitySummary({
              (measured, Aug 30). Table rows are inside an ancestor that is
              already running its own entrance animation; this is not a fight
              worth having for a 200ms fade. */
-          faded && "opacity-40 hover:opacity-100"
+          faded && "opacity-70 hover:opacity-100"
         )}
       >
         <th
@@ -1434,7 +1441,7 @@ export function OpportunitySummary({
                   <th
                     scope="row"
                     style={nameCol}
-                    className={cn("whitespace-nowrap bg-[#f2f7ff] px-3 py-2 text-left text-[14px] font-bold text-text-primary", pinFirstColumn && "sticky left-0 z-[1]")}
+                    className={cn("whitespace-nowrap bg-blue-light/25 px-3 py-2 text-left text-[14px] font-bold text-text-primary", pinFirstColumn && "sticky left-0 z-[1]")}
                   >
                     All {deals.length} {deals.length === 1 ? "deal" : "deals"}
                   </th>

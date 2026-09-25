@@ -15,7 +15,8 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { getDb } from "@/lib/db";
-import { repEmail, repMatchesSlug, repPhone, teamsChatUrl } from "@/lib/team";
+import { repEmail, repMatchesSlug, repPhone, repSlug, teamsChatUrl } from "@/lib/team";
+import { readLeads } from "@/lib/leads";
 import { TeamsIcon } from "@/components/ui/TeamsIcon";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -303,8 +304,20 @@ export default async function RepPage({
     db.interactions.list(),
   ]);
   const allDeals = buildDeals(sessions, customers, contacts, interactions);
+  // Leads can have an owner who has no deal yet. Their owner link still needs
+  // a real destination; the deal-only analytics roster used to omit them.
+  const leadOwners = [...new Set((await readLeads()).leads.map((lead) => lead.owner?.trim()).filter((name): name is string => Boolean(name)))];
   const ranked = buildRepStats(allDeals, {
-    roster: salesTeamFor(currentUser),
+    roster: [
+      ...salesTeamFor(currentUser),
+      ...leadOwners.map((name) => ({
+        key: `legacy:${name.replace(/\s+/g, " ").toLocaleLowerCase()}`,
+        name,
+        memberId: null,
+        source: "legacy" as const,
+        slug: repSlug(name),
+      })),
+    ],
   }); // sorted by open pipeline desc
   /* Team cards carry the durable identity slug; several record tables carry
      the readable name slug. Both identify the same teammate. Rejecting the

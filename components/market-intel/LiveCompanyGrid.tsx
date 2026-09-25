@@ -11,6 +11,8 @@ import { useCollectionStatusRefresh } from "./useCollectionStatusRefresh";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownAZ,
+  ChevronLeft,
+  ChevronRight,
   ArrowUpRight,
   Globe2,
   ArrowDownWideNarrow,
@@ -89,6 +91,52 @@ function ActivityMetric({
       <span className="truncate text-[10px] font-semibold text-text-secondary">{label}</span>
       <span className="ml-auto text-[11px] font-bold tnum">{typeof value === "number" ? value.toLocaleString() : value}</span>
     </span>
+  );
+}
+
+function TableStoryTicker({ card }: { card: CompanyCard }) {
+  const stories = card.stories.slice(0, 5);
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (stories.length < 2 || paused || window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
+    const timer = window.setInterval(() => setIndex((current) => (current + 1) % stories.length), 5000);
+    return () => window.clearInterval(timer);
+  }, [stories.length, paused]);
+
+  const story = stories[index % stories.length];
+  if (!story) return <p className="text-[12px] leading-relaxed text-text-tertiary">No recent headline in this window. Activity tracking is still active.</p>;
+
+  const storyHref = safeHref(story.url);
+  const storyOutlet = outletName(story.source, story.url);
+  const outletHref = outletHomepage(story.source, storyHref ?? undefined);
+  const step = (delta: number) => setIndex((current) => (current + delta + stories.length) % stories.length);
+
+  return (
+    <div
+      className="min-w-0"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false); }}
+    >
+      <div key={`${card.id}-${index}`} className="mi-ticker-in">
+        {outletHref ? (
+          <a href={outletHref} target="_blank" rel="noreferrer" aria-label={`Open ${storyOutlet} website`} className="mb-1 inline-block text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary transition-colors hover:text-blue-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">{storyOutlet}</a>
+        ) : (
+          <p className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary">{storyOutlet}</p>
+        )}
+        {storyHref ? <a href={storyHref} target="_blank" rel="noreferrer" className="group/story block overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary transition-colors hover:text-blue-primary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}<ArrowUpRight size={12} className="ml-1 inline-block align-text-top opacity-0 transition-opacity group-hover/story:opacity-100" /></a> : <p className="overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</p>}
+      </div>
+      {stories.length > 1 && (
+        <div className="mt-1.5 flex items-center gap-1.5" aria-label={`Story ${index + 1} of ${stories.length} for ${card.name}`}>
+          <button type="button" onClick={() => step(-1)} aria-label={`Previous story for ${card.name}`} className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border-light text-text-secondary hover:border-blue-subtle hover:text-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"><ChevronLeft size={12} /></button>
+          {stories.map((_, position) => <span key={position} className={cn("h-1 rounded-full transition-all duration-300", position === index ? "w-3 bg-blue-primary" : "w-1 bg-border-strong")} />)}
+          <button type="button" onClick={() => step(1)} aria-label={`Next story for ${card.name}`} className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border-light text-text-secondary hover:border-blue-subtle hover:text-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"><ChevronRight size={12} /></button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -300,7 +348,11 @@ export function LiveCompanyGrid({
   const [divisionFilter, setDivisionFilter] = useState<string[]>([]);
   const [starredOnly, setStarredOnly] = useState(false);
   const [view, setView] = useState<"companies" | "bookmarks">("companies");
-  const [layout, setLayout] = useStoredView<"table" | "tile">(`freyr.mi.${viewerId}.${group}.layout`, "table", ["table", "tile"]);
+  // Saras's Customer Intel starts in the table even if this browser saved the
+  // older tile preference. After that, her own table/tile choice still persists.
+  const sarasCustomerView = group === "customer" && viewerId === "856ea24d-98a9-4941-b4ea-1176032a378a";
+  const layoutKey = `freyr.mi.${viewerId}.${group}.layout${sarasCustomerView ? ".table-default" : ""}`;
+  const [layout, setLayout] = useStoredView<"table" | "tile">(layoutKey, "table", ["table", "tile"]);
   const [stars, setStars] = useState<Set<string>>(new Set(starred));
   const stateOf = (id: string): WatchState => watch[id] ?? { followers: 0 };
 
@@ -526,10 +578,6 @@ export function LiveCompanyGrid({
                   </div>
                 );
 
-                const story = card.stories[0] ?? null;
-                const storyHref = safeHref(story?.url);
-                const storyOutlet = story ? outletName(story.source, story.url) : "";
-                const outletHref = story ? outletHomepage(story.source, storyHref ?? undefined) : null;
                 const count = (value: number) => card.countsKnown === false ? "—" : value;
                 return (
                   <div key={card.id} className="group/row relative grid min-h-[118px] items-center gap-5 px-5 py-4 transition-[background-color,box-shadow] duration-200 hover:bg-[rgba(0,113,227,0.025)] hover:shadow-[inset_3px_0_0_var(--blue-primary)]" style={{ gridTemplateColumns: listColumns }}>
@@ -551,18 +599,7 @@ export function LiveCompanyGrid({
                       <ActivityMetric icon={<Newspaper size={11} strokeWidth={2.2} />} label="News" value={count(card.counts.news)} tone="teal" />
                       <ActivityMetric icon={<Globe2 size={11} strokeWidth={2.2} />} label="Website" value={count(card.counts.site)} tone="orange" />
                     </div>
-                    <div className="min-w-0">
-                      {story ? <>
-                        {outletHref ? (
-                          <a href={outletHref} target="_blank" rel="noreferrer" aria-label={`Open ${storyOutlet} website`} className="mb-1 inline-block text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary transition-colors hover:text-blue-primary hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
-                            {storyOutlet}
-                          </a>
-                        ) : (
-                          <p className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary">{storyOutlet}</p>
-                        )}
-                        {storyHref ? <a href={storyHref} target="_blank" rel="noreferrer" className="group/story block overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary transition-colors hover:text-blue-primary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}<ArrowUpRight size={12} className="ml-1 inline-block align-text-top opacity-0 transition-opacity group-hover/story:opacity-100" /></a> : <p className="overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</p>}
-                      </> : <p className="text-[12px] leading-relaxed text-text-tertiary">No recent headline in this window. Activity tracking is still active.</p>}
-                    </div>
+                    <TableStoryTicker card={card} />
                     {group === "customer" && <PeopleSummary people={people[card.id]} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyId: card.id, companyName: card.name, people: people[card.id] ?? [] })} />}
                     {isAdmin && <TrackingSummary state={stateOf(card.id)} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: card.name, people: trackingPeople[card.id] ?? [], activeByDefault: stateOf(card.id).byDefault === true })} />}
                     <span className="whitespace-nowrap text-[11px] font-semibold text-text-secondary" title="Latest successful source check">{card.updatedLabel}</span>

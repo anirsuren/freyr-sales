@@ -387,6 +387,8 @@ export function Customer360({
             .includes(q);
         })
       : (active?.items ?? []);
+  const ActiveIcon = active ? BAND_ICON_MAP[active.icon] ?? Target : Target;
+  const activeCount = active?.count ?? active?.items.length ?? 0;
 
   return (
     <section
@@ -513,7 +515,7 @@ export function Customer360({
               longer a summary. */}
           {chromeless && (
             <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
-              <div className="flex items-end gap-6">
+              {activeCount > 0 && <div className="flex items-end gap-6">
                 {/* THE SAME NUMBER THE REST OF THE APP WRITES (Anir, Aug 28:
                     "this 298K, that doesn't look like a font that we've used").
                     It was 30px semibold at -0.02em, invented here; every stat
@@ -522,12 +524,12 @@ export function Customer360({
                     on the tiles above it. */}
                 <span className="flex items-baseline gap-2">
                   <span className="text-[24px] font-bold leading-none tracking-[-0.01em] tnum text-text-primary">
-                    {active.count}
+                    {activeCount}
                   </span>
                   <span className="text-[13px] text-text-secondary">
                     {/* "1 opportunities" was wrong on every band holding one
                         of anything. */}
-                    {countNoun(active.label, active.count ?? 0).toLowerCase()}
+                    {countNoun(active.label, activeCount).toLowerCase()}
                   </span>
                 </span>
                 {active.total !== undefined && active.total > 0 && (
@@ -543,7 +545,10 @@ export function Customer360({
                     </span>
                   </span>
                 )}
-              </div>
+              </div>}
+              {bandActions?.[active.key] && (
+                <div className="flex shrink-0 items-center gap-2">{bandActions[active.key]}</div>
+              )}
             </div>
           )}
 
@@ -817,12 +822,22 @@ export function Customer360({
                   });
                 })()}
               </div>
-            ) : active.count === 0 ? (
-              <p className={cn("mt-1 text-[12.5px] text-text-secondary", unboxed ? "py-5" : "py-6 text-center")}>
-                {bandEmpty
-                  ? active.empty
-                  : `Nothing on ${active.label.toLowerCase()} for ${company} yet.`}
-              </p>
+            ) : activeCount === 0 ? (
+              bandEmpty && chromeless ? (
+                <div className="rounded-xl border border-dashed border-border-light bg-surface/30 px-6 py-12 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-blue-light/40 text-blue-primary">
+                    <ActiveIcon size={19} strokeWidth={1.9} />
+                  </div>
+                  <h3 className="mt-4 text-[15px] font-semibold text-text-primary">No {active.label.toLowerCase()} yet</h3>
+                  <p className="mx-auto mt-1 max-w-lg text-[12.5px] leading-5 text-text-secondary">{active.empty}</p>
+                </div>
+              ) : (
+                <p className={cn("mt-1 text-[12.5px] text-text-secondary", unboxed ? "py-5" : "py-6 text-center")}>
+                  {bandEmpty
+                    ? active.empty
+                    : `Nothing on ${active.label.toLowerCase()} for ${company} yet.`}
+                </p>
+              )
             ) : active.key === "solutionRequests" &&
               solutioningControls &&
               shownItems.length === 0 ? (

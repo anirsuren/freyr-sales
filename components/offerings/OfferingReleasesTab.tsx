@@ -96,7 +96,7 @@ function ModuleTable({ rows }: { rows: OfferingRoadmapModuleRow[] }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-border-light">
       <table className="w-full min-w-[680px] border-collapse text-left">
-        <thead className="bg-[#F7F9FC] text-[11px] font-semibold uppercase tracking-[0.06em] text-text-secondary">
+        <thead className="bg-surface text-[11px] font-semibold uppercase tracking-[0.06em] text-text-secondary">
           <tr>
             <th className="w-[22%] px-4 py-3">Module</th>
             {hasVersions && <th className="w-[12%] px-4 py-3">Version</th>}
@@ -1467,7 +1467,7 @@ export function OfferingReleasesTab({
         {roadmapDetails ? (
           <div className="overflow-x-auto rounded-xl border border-border-light">
             <table className="w-full min-w-[760px] border-collapse text-left">
-              <thead className="bg-[#F7F9FC] text-[11px] font-semibold uppercase tracking-[0.06em] text-text-secondary">
+              <thead className="bg-surface text-[11px] font-semibold uppercase tracking-[0.06em] text-text-secondary">
                 <tr>
                   <th className="w-[22%] px-4 py-3">Capability area</th>
                   <th className="w-[39%] px-4 py-3">
@@ -1612,7 +1612,7 @@ export function OfferingReleasesTab({
         <SectionCard title="Next Customer Version" icon={Clock} {...foldProps("next")}>
           {roadmapDetails ? (
             <div className="space-y-4">
-              <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-xl bg-[#FFF7ED] px-4 py-3">
+              <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-xl bg-warning/10 px-4 py-3">
                 <p className="text-[13px] text-text-secondary">
                   <span className="font-semibold text-text-primary">Expected live:</span>{" "}
                   {roadmapDetails.nextExpectedLive}

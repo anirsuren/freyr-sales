@@ -396,7 +396,7 @@ export function ManageCompaniesPanel({
           </span>
           <h1 className="inline-flex min-h-9 items-center gap-2 text-[22px] font-bold leading-none tracking-[-0.02em] text-text-primary">
             <span>{words.button}</span>
-            <InfoHint className="shrink-0" text="Choose the companies you want to track, then Save changes. Star your favourites to find them quickly. To add a company that is not listed, use Track a company." />
+            <InfoHint className="shrink-0 translate-y-[2px]" text="Choose the companies you want to track, then Save changes. Star your favourites to find them quickly. To add a company that is not listed, use Track a company." />
           </h1>
           </div>
           {canWrite && (

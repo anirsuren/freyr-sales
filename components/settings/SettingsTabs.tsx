@@ -36,6 +36,7 @@ import {
   type UserIdentity,
 } from "@/lib/userIdentity";
 import { canSwitchWorkspaceMode } from "@/lib/release";
+import { addMockModePrefix, replaceAppBrowserUrl, stripMockModePrefix } from "@/lib/modeUrl";
 
 /**
  * WHAT AN INVITED PERSON MAY DO, as a colour + icon each.
@@ -404,8 +405,15 @@ export function SettingsTabs({
       });
       if (!response.ok) throw new Error("Mode update failed");
       setDataMode(mode);
-      toast(mode === "mock" ? "Mock view enabled for this session" : "Real mode restored");
-      window.location.reload();
+      // Keep the current settings section and make the URL agree with the new
+      // cookie before the next document loads. Reloading a /mock-mode URL after
+      // choosing Real caused ModeUrlSync to immediately choose Mock again.
+      const destination = new URL(window.location.href);
+      destination.pathname = mode === "mock"
+        ? addMockModePrefix(stripMockModePrefix(destination.pathname))
+        : stripMockModePrefix(destination.pathname);
+      destination.searchParams.set("tab", tab);
+      window.location.replace(destination.toString());
     } catch {
       toast("Couldn't change your data view", "error");
     } finally {
@@ -934,7 +942,12 @@ export function SettingsTabs({
                   key={item.key}
                   role="tab"
                   aria-selected={selected}
-                  onClick={() => setTab(item.key)}
+                  onClick={() => {
+                    setTab(item.key);
+                    const destination = new URL(window.location.href);
+                    destination.searchParams.set("tab", item.key);
+                    replaceAppBrowserUrl(destination);
+                  }}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors",
                     selected
