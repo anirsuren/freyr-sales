@@ -48,6 +48,7 @@ export const AGENT_MODULES = {
   components: "/components",
   market_intel: "/market-intel",
   leads: "/leads",
+  sessions: "/sessions",
   opportunities: "/opportunities",
   solutioning: "/solutioning",
   contracts: "/contracts",
@@ -228,6 +229,39 @@ export async function readAgentWorkspace(
         customer:r.customer,owner:r.owner,attendees:r.attendees,presenters:r.presenters,
         opportunities:r.opportunityLabels,notes:r.notes,completedAt:r.completedAt,
         url:`/meetings/${encodeURIComponent(r.id)}`}));
+  } else if (key === "sessions") {
+    if (mineOnly) return "Sessions do not record a session owner. A personal Sessions filter cannot be verified; no records were read.";
+    const db = getDb();
+    const [sessions, customers, contacts, interactions, customersAllowed, contactsAllowed] = await Promise.all([
+      db.pitchSessions.list(), db.customers.list(), db.contacts.list(), db.interactions.list(),
+      canOpenModule("/customers"), canOpenModule("/contacts"),
+    ]);
+    const customerById = new Map(customers.map(c => [c.id, c]));
+    const contactById = new Map(contacts.map(c => [c.id, c]));
+    const latestContactOutcome = new Map<string, {outcome:string; at:string}>();
+    for (const interaction of [...interactions].sort((a,b) => a.created_at.localeCompare(b.created_at)))
+      latestContactOutcome.set(interaction.contact_id, {outcome:interaction.outcome,at:interaction.created_at});
+    const label = (value:string) => value.replace(/_/g, " ").replace(/\b\w/g, letter => letter.toUpperCase());
+    rows = sessions.map(session => {
+      const customer = customerById.get(session.customer_id);
+      const contact = contactById.get(session.contact_id);
+      const outcome = latestContactOutcome.get(session.contact_id);
+      return {
+        id: session.id,
+        customer: customer?.company_name || null,
+        contact: contact?.full_name || null,
+        primaryRecommendedService: session.recommended_services[0]?.service_name || null,
+        recommendedServices: session.recommended_services.map(service => service.service_name),
+        outcomeOnSessionsPage: outcome ? label(outcome.outcome) : null,
+        outcomeBasis: "Latest recorded interaction for this contact; it may not belong to this session.",
+        reviewStatus: (session.review_status || "draft").replace(/_/g, " ").replace(/^\w/, letter => letter.toUpperCase()),
+        createdAt: session.created_at,
+        url: `/sessions/${encodeURIComponent(session.id)}`,
+        customerUrl: customersAllowed && customer ? `/customers/${encodeURIComponent(customer.id)}` : null,
+        contactUrl: contactsAllowed && contact ? `/contacts/${encodeURIComponent(contact.id)}` : null,
+      };
+    });
+    summary = {sessionCount:rows.length,basis:"Same pitch-session, customer, contact and latest-contact-interaction records used by the Sessions page. Review status belongs to the session; the table's outcome is the contact's latest recorded interaction. Use the returned session ID and URL, never construct an ID from names or dates."};
   } else if (key === "leads") {
     rows = (await readLeads()).leads
       .filter((r) => !mineOnly || mine(r.owner))

@@ -23,7 +23,12 @@ const companies = Array.from({ length: 76 }, (_, i) => ({
 }));
 const mocks = {
   "server-only": {},
-  "./db": {getDb:()=>({customers:{list:async()=>[{id:"owned",company_name:"Owned",owner_user_id:"rep"},{id:"team",company_name:"Team",owner:null},{id:"other",company_name:"Other",owner_user_id:"other"}]}})},
+  "./db": {getDb:()=>({
+    customers:{list:async()=>[{id:"owned",company_name:"Owned",owner_user_id:"rep"},{id:"team",company_name:"Team",owner:null},{id:"other",company_name:"Other",owner_user_id:"other"}]},
+    contacts:{list:async()=>[{id:"contact-1",customer_id:"owned",full_name:"Arjun Duarte"}]},
+    pitchSessions:{list:async()=>[{id:"session-008",customer_id:"owned",contact_id:"contact-1",recommended_services:[{service_name:"Regulatory Submission Services"}],review_status:"changes_requested",created_at:"2026-06-15T10:00:00Z"}]},
+    interactions:{list:async()=>[{id:"interaction-1",contact_id:"contact-1",outcome:"interested",created_at:"2026-06-16T10:00:00Z"}]},
+  })},
   "./accessStore": {listWorkspaceAccess:async(workspace)=>{assert.equal(workspace,"fixture");reads++;return {members:[{id:"rep",name:"Rep",role:"bd_member",active:true,email:"private@example.test"},{id:"admin",name:"Admin",role:"admin",active:true},{id:"inactive",name:"Inactive",role:"admin",active:false}],invitations:[{email:"secret@example.test"}]};}},
   "./materialAccess": { canViewOfferingMaterial: () => true },
   "./moduleAccessServer": { canOpenModule: async (path) => allowed && (path !== "/revenue-accruals" || accrualAllowed) },
@@ -170,6 +175,22 @@ test("opportunity links open the specific record", async () => {
 test("FDL links use canonical component route", async () => {
   const r = JSON.parse(await readAgentWorkspace(actor, "components"));
   assert.equal(r.records[0].url, "/components/x");
+});
+test("Sessions reader uses exact IDs and the page's outcome and review sources", async () => {
+  const result = JSON.parse(await readAgentWorkspace(actor, "sessions", "Owned"));
+  assert.equal(result.records.length, 1);
+  assert.deepEqual({
+    url: result.records[0].url,
+    outcome: result.records[0].outcomeOnSessionsPage,
+    review: result.records[0].reviewStatus,
+    service: result.records[0].recommendedServices[0],
+  }, {
+    url: "/sessions/session-008",
+    outcome: "Interested",
+    review: "Changes requested",
+    service: "Regulatory Submission Services",
+  });
+  assert.match(await readAgentWorkspace(actor, "sessions", "", true), /do not record a session owner/);
 });
 test("opportunity preserves currency and dates rather than claiming USD", async () => {
   const r = JSON.parse(await readAgentWorkspace(actor, "opportunities"));
