@@ -385,6 +385,9 @@ export function entityLink(href: string, label: string, entities: Entity[], key:
       /^\/contacts\/[^/?#]+\/?$/.test(href) ? "contact" :
       /^\/offerings\/[^/?#]+\/?$/.test(href) ? "offering" :
       /^\/components\/[^/?#]+\/?$/.test(href) ? "component" :
+      // Short metric names stay out of automatic prose matching, but a direct
+      // goal URL identifies the record and should still wear its target icon.
+      /^\/performance\/goal\/[^/?#]+\/?$/.test(href) ? "goal" :
       /^\/team\?member=[^&#]+/.test(href) ? "person" : null;
     if (!fallbackKind || !label.trim() || label.startsWith("/")) return null;
     return (

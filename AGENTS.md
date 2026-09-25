@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 25 Short goal link identity:** Explicit `/performance/goal/:id` links now get the same target-icon pill as indexed goal names, including short generic names such as Renewals. Short goal names remain excluded from automatic prose matching so ordinary sentences do not acquire false goal links. Local only, not deployed.
+
 - **Sep 25 Agent full-chat handoff and width:** The side-panel “Open full chat” link now carries the active conversation ID. The full Agent page waits for that thread in local or account history, selects it, then clears the handoff URL. The main message lane and composer now use up to 1200px instead of 760px, reducing the empty gap after the conversation list. Local only, not deployed.
 
 - **Sep 25 Agent full/dock response parity:** The full Agent page and side chat now render answers through the same Markdown component. Tables, links, entity pills, charts, bullets, and headings preserve formatting when a conversation moves between views. Table replies fill the dock bubble and scroll horizontally as needed. Typecheck and focused lint pass. Local only, not deployed.
