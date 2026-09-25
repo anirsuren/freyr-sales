@@ -167,10 +167,12 @@ function ThinkingDots() {
 
 export function AgentChat({
   initialAsk,
+  initialConversation,
   initialOffering,
   offeringsOnly = false,
 }: {
   initialAsk?: string;
+  initialConversation?: string;
   initialOffering?: OfferingContext;
   offeringsOnly?: boolean;
 } = {}) {
@@ -357,6 +359,20 @@ export function AgentChat({
   const visibleConvos =
     loadedStorageKey === storageKey ? convos : EMPTY_CONVOS;
   const active = visibleConvos.find((c) => c.id === activeId) || null;
+
+  // The dock's “Open full chat” link names the exact conversation. Local
+  // history may arrive first and account history later, so wait for either
+  // source to contain it before selecting and clearing the hand-off URL.
+  const openedConversationRef = useRef("");
+  useEffect(() => {
+    if (!initialConversation || initialAsk || loadedStorageKey !== storageKey) return;
+    const handoff = `${currentUser.id}:${initialConversation}`;
+    if (openedConversationRef.current === handoff) return;
+    if (!visibleConvos.some((conversation) => conversation.id === initialConversation)) return;
+    openedConversationRef.current = handoff;
+    setActiveId(initialConversation);
+    replaceAppBrowserUrl("/agent");
+  }, [currentUser.id, initialAsk, initialConversation, loadedStorageKey, storageKey, visibleConvos]);
 
   function handoffInternalNavigation(event: ReactMouseEvent<HTMLDivElement>) {
     const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>(
@@ -772,7 +788,7 @@ export function AgentChat({
         </div>
         {offeringContext && (
           <div className="border-b border-border-light bg-blue-light px-4 py-2.5">
-            <div className="relative mx-auto flex h-7 max-w-[760px] items-center justify-center">
+            <div className="relative mx-auto flex h-7 max-w-[1200px] items-center justify-center">
               <div className="flex min-w-0 items-center justify-center gap-2.5 px-10 text-center">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-primary text-white">
                   <Sparkles size={14} strokeWidth={2} />
@@ -892,7 +908,7 @@ export function AgentChat({
           </div>
         ) : (
           <div ref={scrollRef} className="flex-1 overflow-y-auto">
-            <div className="max-w-[760px] mx-auto px-3 sm:px-6 py-5 sm:py-8 space-y-5">
+            <div className="mx-auto w-full max-w-[1200px] px-4 py-5 sm:px-8 sm:py-8 space-y-5">
               {active.messages.map((msg, i) => {
                 /* A divider whenever the conversation crosses midnight, and on
                    the first message so even a one-day chat is dated. Without
@@ -965,7 +981,7 @@ export function AgentChat({
 
         {/* The footer reserves its own space; the floating controls never cover a reply. */}
         <div className="relative z-10 shrink-0 px-3 sm:px-6 pb-4 pt-2 bg-gradient-to-t from-white via-white to-white/0">
-          <div className="max-w-[760px] mx-auto">
+          <div className="mx-auto w-full max-w-[1200px]">
             {active && active.messages.length > 0 && (active.messages.at(-1)?.suggestions?.length ?? 0) > 0 && !sending && (
               <div key={active.messages.at(-1)?.ts} className="flex flex-nowrap gap-2 mb-3 overflow-x-auto no-scrollbar py-1">
                 {active.messages.at(-1)?.suggestions?.slice(0, 3).map((s) => (

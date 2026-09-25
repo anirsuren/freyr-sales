@@ -1021,7 +1021,7 @@ export function AgentDock({
             </button>
             {!embedded && (
               <Link
-                href="/agent"
+                href={activeId ? `/agent?conversation=${encodeURIComponent(activeId)}` : "/agent"}
                 aria-label="Open this conversation in the full Agent chat"
                 title="Open full chat"
                 className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 text-[11.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"

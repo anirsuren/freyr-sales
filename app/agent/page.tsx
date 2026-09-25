@@ -12,11 +12,15 @@ export const dynamic = "force-dynamic";
 export default async function AgentPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ ask?: string; offering?: string }>;
+  searchParams?: Promise<{ ask?: string; offering?: string; conversation?: string }>;
 }) {
   await requireModuleAccess("/agent");
   const params = await searchParams;
   const ask = typeof params?.ask === "string" ? params.ask.trim() : "";
+  const conversationId =
+    typeof params?.conversation === "string"
+      ? params.conversation.trim().slice(0, 160)
+      : "";
   const offeringId =
     typeof params?.offering === "string" ? params.offering.trim().slice(0, 120) : "";
   let initialOffering: { id: string; name: string } | undefined;
@@ -30,6 +34,7 @@ export default async function AgentPage({
   return (
     <AgentChat
       initialAsk={ask || undefined}
+      initialConversation={conversationId || undefined}
       initialOffering={initialOffering}
       offeringsOnly={!(await canOpenModule("/customers"))}
     />
