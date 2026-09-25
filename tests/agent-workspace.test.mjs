@@ -5,6 +5,7 @@ const require = createRequire(import.meta.url),
   Module = require("node:module"),
   load = Module._load;
 let allowed = true,
+  blockedSource = "",
   accrualAllowed = true,
   accrualFails = false,
   reads = 0,
@@ -27,11 +28,14 @@ const mocks = {
     customers:{list:async()=>[{id:"owned",company_name:"Owned",owner_user_id:"rep"},{id:"team",company_name:"Team",owner:null},{id:"other",company_name:"Other",owner_user_id:"other"}]},
     contacts:{list:async()=>[{id:"contact-1",customer_id:"owned",full_name:"Arjun Duarte"}]},
     pitchSessions:{list:async()=>[{id:"session-008",customer_id:"owned",contact_id:"contact-1",recommended_services:[{service_name:"Regulatory Submission Services"}],review_status:"changes_requested",created_at:"2026-06-15T10:00:00Z"}]},
-    interactions:{list:async()=>[{id:"interaction-1",contact_id:"contact-1",outcome:"interested",created_at:"2026-06-16T10:00:00Z"}]},
+    interactions:{list:async()=>[
+      {id:"interaction-1",customer_id:"owned",contact_id:"contact-1",outcome:"interested",follow_up_date:"2026-09-24",created_at:"2026-06-16T10:00:00Z"},
+      {id:"interaction-2",customer_id:"owned",contact_id:"contact-1",outcome:"interested",follow_up_date:"2026-09-26",created_at:"2026-06-17T10:00:00Z"},
+    ]},
   })},
   "./accessStore": {listWorkspaceAccess:async(workspace)=>{assert.equal(workspace,"fixture");reads++;return {members:[{id:"rep",name:"Rep",role:"bd_member",active:true,email:"private@example.test"},{id:"admin",name:"Admin",role:"admin",active:true},{id:"inactive",name:"Inactive",role:"admin",active:false}],invitations:[{email:"secret@example.test"}]};}},
   "./materialAccess": { canViewOfferingMaterial: () => true },
-  "./moduleAccessServer": { canOpenModule: async (path) => allowed && (path !== "/revenue-accruals" || accrualAllowed) },
+  "./moduleAccessServer": { canOpenModule: async (path) => allowed && path !== blockedSource && (path !== "/revenue-accruals" || accrualAllowed) },
   "./viewerAccess": {
     resolveViewerAccess: async () => ({ role: viewerRole, access: {} }),
   },
@@ -191,6 +195,25 @@ test("Sessions reader uses exact IDs and the page's outcome and review sources",
     service: "Regulatory Submission Services",
   });
   assert.match(await readAgentWorkspace(actor, "sessions", "", true), /do not record a session owner/);
+});
+test("Tasks reader preserves review state, distinct follow-ups and exact destinations", async () => {
+  const result = JSON.parse(await readAgentWorkspace(actor, "tasks", "Arjun Duarte"));
+  assert.equal(result.matched, 3);
+  assert.equal(result.summary.reviewCount, 1);
+  assert.equal(result.summary.followUpCount, 2);
+  assert.deepEqual(result.records.map(row => [row.kind, row.url]), [
+    ["review", "/sessions/session-008"],
+    ["follow-up", "/contacts/contact-1"],
+    ["follow-up", "/contacts/contact-1"],
+  ]);
+  assert.equal(result.records[0].reviewStatus, "Changes requested");
+  assert.equal(result.records[0].taskPageBadge, "Needs review");
+  assert.deepEqual(result.records.slice(1).map(row => row.dueDate), ["2026-09-24", "2026-09-26"]);
+  assert.ok(result.records.every(row => row.owner === null));
+  assert.match(await readAgentWorkspace(actor, "tasks", "", true), /do not record a task owner/);
+  blockedSource = "/contacts";
+  try { assert.match(await readAgentWorkspace(actor, "tasks", "Arjun"), /source access is incomplete/); }
+  finally { blockedSource = ""; }
 });
 test("opportunity preserves currency and dates rather than claiming USD", async () => {
   const r = JSON.parse(await readAgentWorkspace(actor, "opportunities"));

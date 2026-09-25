@@ -45,6 +45,7 @@ import { hasElevenLabs } from "@/lib/env";
 import { DateText } from "@/components/ui/DateText";
 import { contactPhoneDisplay } from "@/lib/contactPhoneDisplay";
 import { countryFlag } from "@/lib/countries";
+import { dateOnlyDaysFromToday } from "@/lib/dateOnly";
 
 export const metadata = { title: "Contact" };
 export const dynamic = "force-dynamic";
@@ -83,9 +84,10 @@ function roleIcon(role: string): LucideIcon {
 // Human "3 days ago" / "in 5 days" for the where-things-stand timeline.
 function relDaysLabel(dateStr: string | null, mode: "past" | "future"): string | null {
   if (!dateStr) return null;
-  const days = Math.round(
-    Math.abs(Date.now() - new Date(dateStr).getTime()) / 86400000
-  );
+  const calendarDays = dateOnlyDaysFromToday(dateStr, new Date());
+  const days = calendarDays === null
+    ? Math.round(Math.abs(Date.now() - new Date(dateStr).getTime()) / 86400000)
+    : Math.abs(calendarDays);
   if (days === 0) return "today";
   const unit = `${days} day${days === 1 ? "" : "s"}`;
   return mode === "past" ? `${unit} ago` : `in ${unit}`;

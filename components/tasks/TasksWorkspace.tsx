@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { cn, formatDate } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { dateOnlyDaysFromToday } from "@/lib/dateOnly";
 
 type ReviewTask = {
   id: string;
@@ -52,8 +53,8 @@ type DueKind = "overdue" | "today" | "tomorrow" | "week" | "later";
 
 function dueInfo(due: string, todayMs: number) {
   const d = new Date(due);
-  const dayMs = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const days = Math.round((dayMs - todayMs) / 86400000);
+  const days = dateOnlyDaysFromToday(due, new Date(todayMs)) ??
+    Math.round((d.getTime() - todayMs) / 86400000);
   if (days < 0)
     return { kind: "overdue" as DueKind, label: `${Math.abs(days)}d overdue`, days };
   if (days === 0) return { kind: "today" as DueKind, label: "Due today", days };

@@ -27,3 +27,12 @@ export function isDateOnly(raw: string): boolean {
 export function calendarDate(raw: string): string {
   return raw.slice(0, 10);
 }
+
+/** Calendar-day distance for stored YYYY-MM-DD dates, independent of UTC parsing. */
+export function dateOnlyDaysFromToday(value: string, today: Date): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const due = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const current = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.round((due - current) / 86400000);
+}

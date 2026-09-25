@@ -49,6 +49,7 @@ export const AGENT_MODULES = {
   market_intel: "/market-intel",
   leads: "/leads",
   sessions: "/sessions",
+  tasks: "/tasks",
   opportunities: "/opportunities",
   solutioning: "/solutioning",
   contracts: "/contracts",
@@ -262,6 +263,39 @@ export async function readAgentWorkspace(
       };
     });
     summary = {sessionCount:rows.length,basis:"Same pitch-session, customer, contact and latest-contact-interaction records used by the Sessions page. Review status belongs to the session; the table's outcome is the contact's latest recorded interaction. Use the returned session ID and URL, never construct an ID from names or dates."};
+  } else if (key === "tasks") {
+    if (mineOnly) return "Tasks do not record a task owner. A personal Tasks filter cannot be verified; no records were read.";
+    const [sessionsAllowed, customersAllowed, contactsAllowed] = await Promise.all([
+      canOpenModule("/sessions"), canOpenModule("/customers"), canOpenModule("/contacts"),
+    ]);
+    if (!sessionsAllowed || !customersAllowed || !contactsAllowed)
+      return "Tasks source access is incomplete. Sessions, Customers and Contacts access is required; no task records were read.";
+    const db = getDb();
+    const [sessions, customers, contacts, interactions] = await Promise.all([
+      db.pitchSessions.list(), db.customers.list(), db.contacts.list(), db.interactions.list(),
+    ]);
+    const customerById = new Map(customers.map(customer => [customer.id, customer]));
+    const contactById = new Map(contacts.map(contact => [contact.id, contact]));
+    const reviews = sessions.filter(session => session.review_status === "in_review" || session.review_status === "changes_requested").map(session => ({
+      id: session.id, kind: "review", customer: customerById.get(session.customer_id)?.company_name || "Unknown account",
+      contact: contactById.get(session.contact_id)?.full_name || "Unknown contact",
+      primaryService: session.recommended_services?.[0]?.service_name || "Pitch review",
+      reviewStatus: session.review_status === "changes_requested" ? "Changes requested" : "In review",
+      taskPageBadge: "Needs review", dueDate: null, owner: null,
+      url: `/sessions/${encodeURIComponent(session.id)}`,
+    }));
+    const followUps = interactions.filter(interaction => interaction.follow_up_date).map(interaction => ({
+      id: interaction.id, kind: "follow-up", customer: customerById.get(interaction.customer_id)?.company_name || "Unknown account",
+      contact: contactById.get(interaction.contact_id)?.full_name || "Unknown contact",
+      primaryService: null, reviewStatus: null, taskPageBadge: null,
+      dueDate: interaction.follow_up_date, owner: null,
+      url: `/contacts/${encodeURIComponent(interaction.contact_id)}`,
+    }));
+    rows = [...reviews, ...followUps];
+    summary = {
+      reviewCount: reviews.length, followUpCount: followUps.length, taskCount: rows.length,
+      basis: "Same pitch sessions and dated interactions used by the Tasks page. Multiple interactions for one contact are separate follow-up rows. The page's generic Needs review badge hides whether a pitch is In review or Changes requested; use reviewStatus for the exact saved state. Tasks record no owner; do not infer ownership from visibility. Review links open sessions; follow-up links open contacts.",
+    };
   } else if (key === "leads") {
     rows = (await readLeads()).leads
       .filter((r) => !mineOnly || mine(r.owner))
