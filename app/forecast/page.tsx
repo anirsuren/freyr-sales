@@ -31,6 +31,7 @@ import {
   STAGE_COLOR,
   STAGE_ICON,
   STAGE_PROBABILITY,
+  FORECAST_REFERENCE_QUOTA,
   isCurrentRep,
   repOwnsDeal,
   salesTeamFor,
@@ -38,7 +39,6 @@ import {
   formatMoney,
 } from "@/lib/pipeline";
 import { getDataMode } from "@/lib/dataMode";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { getCurrentUser } from "@/lib/currentUser";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
@@ -46,7 +46,7 @@ import { DateText } from "@/components/ui/DateText";
 export const metadata = { title: "Forecast" };
 export const dynamic = "force-dynamic";
 
-const QUOTA = 3_000_000;
+const QUOTA = FORECAST_REFERENCE_QUOTA;
 
 // Stage → the chart layer's serializable icon key, so every stage legend/tip
 // carries its own glyph rather than an anonymous coloured dot (Anir, Jul 27).
@@ -264,7 +264,7 @@ export default async function ForecastPage() {
           raw={commit}
           accent
           icon={CircleCheck}
-          hint="Every open deal counted at its chance of closing, then added up. This is the number you can reasonably promise."
+          hint="Estimated pitch-session deal values weighted by fixed stage probabilities. This is a planning estimate, not committed revenue."
         />
         <Stat
           label="Best case (open)"
@@ -274,29 +274,29 @@ export default async function ForecastPage() {
           hint="The full value of every open deal, added up as if all of them closed. This is the ceiling, not what to expect."
         />
         <Stat
-          label="Quarter quota"
+          label="Reference quota"
           value={formatMoney(QUOTA)}
           raw={QUOTA}
           icon={Target}
-          hint="Your revenue target for the quarter."
+          hint="A fixed $3M comparison benchmark on this page, not a saved or approved sales target."
         />
         <Stat
-          label="Gap to quota"
+          label="Gap to reference"
           value={formatMoney(gap)}
           raw={gap}
           icon={Flag}
-          hint="How far the realistic number still is from the target."
+          hint="How far the weighted estimate is below the page's fixed comparison benchmark."
         />
       </section>
 
-      {/* Quota attainment bar */}
+      {/* Comparison with a reference benchmark, not a saved quota. */}
       <Card>
         <div className="flex items-center justify-between mb-2">
           <span className="flex items-center gap-1.5">
             <h2 className="text-[15px] font-semibold text-text-primary">
-              Quota attainment
+              Reference comparison
             </h2>
-            <InfoHint text={"Solid blue is what you realistically expect to close.\nLight blue behind it is the best case.\nThe further right they reach, the closer you are to target."} />
+            <InfoHint text={"Solid blue is the weighted pitch-session estimate.\nLight blue behind it is the best case.\nThe $3M reference is a fixed comparison value, not a saved goal."} />
           </span>
           <span className="text-[13px] text-text-secondary tnum">
             {commitPct}% committed · {bestPct}% best case
@@ -321,7 +321,7 @@ export default async function ForecastPage() {
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm bg-blue-subtle" /> Best case
           </span>
-          <span className="ml-auto tnum">Quota {formatMoney(QUOTA)}</span>
+          <span className="ml-auto tnum">Reference {formatMoney(QUOTA)}</span>
         </div>
       </Card>
 
@@ -908,7 +908,7 @@ export default async function ForecastPage() {
           <div className="mt-5 flex gap-2.5 border-t border-border-light pt-4">
             <ShieldAlert size={15} className="mt-0.5 shrink-0" style={{ color: "var(--ink-orange)" }} />
             <p className="text-[10.5px] leading-relaxed text-text-secondary">
-              <span className="font-semibold text-text-primary">{formatMoney(gap)} remains to quota.</span>{" "}
+              <span className="font-semibold text-text-primary">{formatMoney(gap)} remains to the reference.</span>{" "}
               {staleOpen.length > 0
                 ? `${formatMoney(riskWeighted)} of it sits on ${staleOpen.length} ${staleOpen.length === 1 ? "deal" : "deals"} nobody has touched for over ${ROTTING_DAYS} days.`
                 : `Every open deal has been touched in the last ${ROTTING_DAYS} days.`}

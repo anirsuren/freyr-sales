@@ -42,8 +42,8 @@ export function ForecastExport({
       [
         ["Commit (weighted)", commit],
         ["Best case (open)", bestCase],
-        ["Quarter quota", quota],
-        ["Gap to quota", gap],
+        ["Reference quota (fixed comparison)", quota],
+        ["Gap to reference", gap],
       ]
     );
     const stage = toCSV(
@@ -51,7 +51,7 @@ export function ForecastExport({
       byStage.map((s) => [s.stage, s.prob, s.count, s.value, s.weighted])
     );
     const rep = toCSV(
-      ["Owner", "Open", "Weighted", "% of quota"],
+      ["Owner", "Open", "Weighted", "% of reference"],
       byRep.map((r) => [r.name, r.open, r.weighted, r.pct])
     );
     downloadCSV("freyr-forecast.csv", [summary, "", stage, "", rep].join("\n"));

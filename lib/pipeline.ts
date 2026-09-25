@@ -45,6 +45,10 @@ export const STAGE_PROBABILITY: Record<Stage, number> = {
   "Closed Lost": 0,
 };
 
+// The Forecast screen's comparison benchmark is a fixed product value, not a
+// saved goal or an approved sales quota. Keep the reader and page in sync.
+export const FORECAST_REFERENCE_QUOTA = 3_000_000;
+
 // One palette for stages everywhere (leaderboard bars, donuts, value charts).
 // Stage colours re-spread across the hue wheel so no two stages read alike in
 // a donut (Suren: teal vs sky vs green were indistinguishable). Amber → blue →

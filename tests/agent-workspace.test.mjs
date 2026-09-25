@@ -249,6 +249,26 @@ test("Sequences reader uses selected-page URL, cadence counts and source access"
     assert.equal(restricted.summary.enrollmentAccess, "source access incomplete");
   } finally { blockedSource = ""; }
 });
+test("Forecast reader grounds page totals in pitch sessions and labels the fixed reference", async () => {
+  const result = JSON.parse(await readAgentWorkspace(actor, "forecast"));
+  assert.equal(result.summary.pageUrl, "/forecast");
+  assert.equal(result.summary.pipelineUrl, "/pipeline");
+  assert.equal(result.summary.referenceQuota, 3000000);
+  assert.match(result.summary.quotaSource, /not a saved Goals target/);
+  assert.match(result.summary.valueSource, /estimate derived from customer size/);
+  assert.match(result.summary.repSource, /synthetic values/);
+  assert.equal(result.records.length, 1);
+  assert.equal(result.records[0].url, "/deals/session-008");
+  assert.equal(result.summary.openCount, 1);
+  assert.equal(result.summary.bestCase, result.records[0].estimatedValue);
+  assert.equal(result.summary.commit, result.records[0].weightedValue);
+  blockedSource = "/contacts";
+  try { assert.match(await readAgentWorkspace(actor, "forecast"), /source access is incomplete/); }
+  finally { blockedSource = ""; }
+  blockedSource = "/forecast";
+  try { assert.match(await readAgentWorkspace(actor, "forecast"), /do not have access/); }
+  finally { blockedSource = ""; }
+});
 test("opportunity preserves currency and dates rather than claiming USD", async () => {
   const r = JSON.parse(await readAgentWorkspace(actor, "opportunities"));
   assert.equal(r.records[0].currency, "INR");
