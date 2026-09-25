@@ -1869,3 +1869,7 @@ An empty-plan question from the older GRI. Lonza deal page was answered with the
 ### Sep 25: Agent monthly organization-goal grounding
 
 A June MQL goal question was first routed to Leads because the goal name contains “Leads,” then resolved to a same-named unselected goal. Goal-progress intent now takes priority, and named goal reads expose organization selection and permission-scoped monthly group values. A repeated Mock side-chat answer matched the organization goal page: 105 verified in June, no pending or sent-back values, groups 46/35/24, no monthly target, and a separate 300-lead cumulative milestone. Its link opened the exact goal page in the existing tab. Typecheck, 12 focused tests, focused lint, and diff check pass. Coverage cursor: `docs/agent-coverage-audit-2026-09-25.md`. Completed locally, not deployed.
+
+### Sep 25: Agent goal-progress chart interaction
+
+The no-monthly-target goal chart was a bare green strip without status explanation or zoom. Goal-progress answers now label and color verified, waiting, and sent-back outcomes, keep the absence of a period target explicit, and provide zoom, pan, and expanded view. Targeted charts use the existing Goals timeline with interaction; non-USD targets retain their original currency in the fallback rail. Reopened the saved MQL answer in the existing Mock full chat: its chart zoomed to 1.6× and the expanded view opened and zoomed. Typecheck, focused lint, and diff check pass. Continuing coverage cursor: `docs/agent-coverage-audit-2026-09-25.md`. Completed locally, not deployed.

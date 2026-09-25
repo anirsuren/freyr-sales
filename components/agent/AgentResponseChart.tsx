@@ -1,10 +1,12 @@
 "use client";
 
-import { useId } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Maximize2, Minus, MoveHorizontal, Plus } from "lucide-react";
 import { AreaChart, BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { ExpandedChartModal, type ExpandedChartSpec } from "@/components/charts/ExpandedChartModal";
 import { VIZ_SERIES } from "@/components/charts/palette";
 import { PaceTimeline } from "@/components/performance/bits";
+import { Modal } from "@/components/ui/Modal";
 
 type ChartSpec = {
   type: "bar" | "donut" | "area" | "goal-progress";
@@ -50,6 +52,115 @@ export function parseChartSpec(raw: string): ChartSpec | null {
   }
 }
 
+/** Without a period target, the rail describes recorded outcomes, never a
+ * manufactured finish line. The same status colors and zoom gestures used by
+ * the Goals timelines still apply. */
+function UntargetedGoalRail({ goal, format, unit }: {
+  goal: NonNullable<ChartSpec["goal"]>;
+  format: ChartSpec["format"];
+  unit?: string;
+}) {
+  const verified = goal.verified;
+  const sentBack = goal.sentBack || 0;
+  const waiting = Math.max(0, goal.pending - sentBack);
+  const total = verified + waiting + sentBack;
+  const target = goal.target && goal.target > 0 ? goal.target : null;
+  const domain = Math.max(total, target || 0);
+  const [view, setView] = useState({ zoom: 1, start: 0 });
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ x: number; start: number; pointerId: number } | null>(null);
+  const clampStart = (start: number, zoom: number) => Math.min(Math.max(0, start), 1 - 1 / zoom);
+  const updateZoom = useCallback((next: number, anchor = 0.5) => {
+    setView((current) => {
+      const zoom = Math.min(12, Math.max(1, next));
+      return { zoom, start: clampStart(current.start + anchor / current.zoom - anchor / zoom, zoom) };
+    });
+  }, []);
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || domain === 0) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY) && !event.ctrlKey) {
+        setView((current) => ({ ...current, start: clampStart(current.start + event.deltaX / Math.max(1, rect.width * current.zoom), current.zoom) }));
+      } else {
+        updateZoom(view.zoom * Math.exp(-event.deltaY * (event.ctrlKey ? 0.012 : 0.006)), Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)));
+      }
+    };
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", onWheel);
+  }, [domain, updateZoom, view.zoom]);
+  const parts = [
+    { label: "Verified, counts now", value: verified, color: "var(--entry-verified)", striped: false },
+    { label: "Sent back, needs a fix", value: sentBack, color: "var(--entry-sent-back)", striped: true },
+    { label: "Waiting for verification", value: waiting, color: "var(--entry-waiting)", striped: true },
+  ];
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-medium text-text-secondary">{exactValue(total, format, unit)} recorded · {target ? `${exactValue(target, format, unit)} target` : "no period target"}</span>
+        {domain > 0 && <div className="flex items-center gap-2">
+          <span className="hidden items-center gap-1 text-[10px] text-text-tertiary sm:flex"><MoveHorizontal size={12} /> Scroll to zoom · drag to move</span>
+          <div className="flex items-center rounded-lg border border-border-light bg-white p-0.5 shadow-sm">
+            <button type="button" aria-label="Zoom out goal progress" disabled={view.zoom <= 1.001} onClick={() => updateZoom(view.zoom / 1.6)} className="grid h-6 w-6 place-items-center rounded-md text-text-secondary hover:bg-surface disabled:opacity-35"><Minus size={12} /></button>
+            <button type="button" aria-label="Reset goal progress zoom" onClick={() => setView({ zoom: 1, start: 0 })} className="min-w-9 rounded-md px-1 text-[10px] font-semibold text-text-secondary hover:bg-surface">{view.zoom <= 1.001 ? "Fit" : `${view.zoom.toFixed(1)}×`}</button>
+            <button type="button" aria-label="Zoom in goal progress" disabled={view.zoom >= 11.999} onClick={() => updateZoom(view.zoom * 1.6)} className="grid h-6 w-6 place-items-center rounded-md text-text-secondary hover:bg-surface disabled:opacity-35"><Plus size={12} /></button>
+          </div>
+        </div>}
+      </div>
+      <div ref={viewportRef} className="select-none overflow-hidden rounded-lg py-3" style={{ touchAction: "pan-y", cursor: domain ? "grab" : undefined }}
+        onPointerDown={(event) => {
+          if (event.button !== 0 || view.zoom <= 1 || (event.target as HTMLElement).closest("button")) return;
+          dragRef.current = { x: event.clientX, start: view.start, pointerId: event.pointerId };
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          const drag = dragRef.current;
+          if (!drag || drag.pointerId !== event.pointerId) return;
+          const width = Math.max(1, event.currentTarget.getBoundingClientRect().width);
+          setView((current) => ({ ...current, start: clampStart(drag.start - (event.clientX - drag.x) / (width * current.zoom), current.zoom) }));
+        }}
+        onPointerUp={(event) => {
+          if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onPointerCancel={() => { dragRef.current = null; }}>
+        <div className="relative h-3 rounded-full bg-surface" style={{ width: `${view.zoom * 100}%`, transform: `translateX(-${view.start * 100}%)` }} role="img" aria-label={`Verified ${exactValue(verified, format, unit)}, waiting ${exactValue(waiting, format, unit)}, sent back ${exactValue(sentBack, format, unit)}`}>
+          <div className="flex h-full overflow-hidden rounded-full">
+            {parts.map((part) => part.value > 0 && <span key={part.label} className={part.striped ? "unverified-fill h-full shrink-0" : "h-full shrink-0"} style={{ width: `${part.value / domain * 100}%`, background: part.striped ? undefined : part.color, ["--fill" as string]: part.color }} />)}
+          </div>
+          {total > 0 && <span className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white shadow-sm" style={{ left: `${total / domain * 100}%`, background: parts.findLast((part) => part.value > 0)?.color }} aria-hidden="true" />}
+          {target && <span className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-text-tertiary bg-white" style={{ left: `${target / domain * 100}%` }} aria-hidden="true" />}
+        </div>
+      </div>
+      <div className="grid gap-1.5 sm:grid-cols-3">
+        {parts.map((part) => <div key={part.label} className="flex items-center gap-1.5 text-[11px] text-text-secondary"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: part.color }} /><span className="min-w-0 flex-1">{part.label}</span><strong className="tabular-nums text-text-primary">{exactValue(part.value, format, unit)}</strong></div>)}
+      </div>
+    </div>
+  );
+}
+
+function GoalProgressChart({ spec, title }: { spec: ChartSpec; title: string }) {
+  const goal = spec.goal!;
+  const [expanded, setExpanded] = useState(false);
+  const format = spec.format || "number";
+  const hasTarget = goal.target != null && goal.target > 0;
+  const content = (large: boolean) => hasTarget && (format !== "money" || !spec.unit || spec.unit === "USD") ? (
+    <PaceTimeline title={title} verified={goal.verified} awaiting={goal.pending} sentBack={goal.sentBack || 0}
+      target={goal.target!} expectedPct={0} unit={format === "money" ? "currency" : format === "percent" ? "percent" : "count"}
+      compact={!large} interactive />
+  ) : <UntargetedGoalRail goal={goal} format={format} unit={spec.unit} />;
+  return <div className="my-2.5 rounded-xl border border-border-light bg-white px-4 py-3.5">
+    <div className="mb-3 flex items-center justify-between gap-3"><p className="text-[12.5px] font-semibold text-text-primary">{title}</p>
+      <button type="button" aria-label={`Expand ${title}`} onClick={() => setExpanded(true)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border-light text-text-secondary hover:bg-surface"><Maximize2 size={14} /></button></div>
+    {content(false)}
+    <Modal open={expanded} onClose={() => setExpanded(false)} title={title} size="chart">
+      <div className="p-5">{content(true)}</div>
+    </Modal>
+  </div>;
+}
+
 // A chart IN the conversation — the same polished components every page uses
 // (animated, portal-tooltipped, unit-labelled), not a hand-rolled sketch
 // (Anir, Jul 25: "really good visualizations, not vibe-coded slop"). The
@@ -69,52 +180,7 @@ export function ChatChart({ spec }: { spec: ChartSpec }) {
   const chartFormat = spec.format === "money" && spec.unit && spec.unit !== "USD" ? "number" : spec.format || "number";
   const chartUnit = spec.unit;
   if (spec.type === "goal-progress" && spec.goal) {
-    const { verified, pending, sentBack = 0, target } = spec.goal;
-    const format = spec.format || "number";
-    return (
-      <div className="my-2.5 rounded-xl border border-border-light bg-white px-4 py-3.5">
-        <p className="mb-3 text-[12.5px] font-semibold text-text-primary">{title}</p>
-        {target != null && target > 0 && (format !== "money" || !spec.unit || spec.unit === "USD") ? (
-          <>
-            <PaceTimeline title={title} verified={verified} awaiting={pending} sentBack={sentBack}
-              target={target} expectedPct={0} unit={format === "money" ? "currency" : format === "percent" ? "percent" : "count"} compact />
-            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-text-secondary">
-              <span>Verified: {exactValue(verified, format, spec.unit)}</span>
-              <span>Target: {exactValue(target, format, spec.unit)}</span>
-              <span>Waiting: {exactValue(Math.max(0, pending - sentBack), format, spec.unit)}</span>
-              {sentBack > 0 && <span>Sent back: {exactValue(sentBack, format, spec.unit)}</span>}
-            </div>
-          </>
-        ) : target != null && target > 0 ? (
-          <div className="space-y-2 text-xs text-text-secondary">
-            <div className="flex justify-between gap-3"><span>Verified: {exactValue(verified, format, spec.unit)}</span><span>Target: {exactValue(target, format, spec.unit)}</span></div>
-            <div className="flex h-3 overflow-hidden rounded-full bg-surface" role="img" aria-label={`Verified ${exactValue(verified, format, spec.unit)} of ${exactValue(target, format, spec.unit)} target`}>
-              <span style={{ width: `${Math.min(100, verified / target * 100)}%`, background: "var(--entry-verified)" }} />
-            </div>
-            <div>Waiting: {exactValue(Math.max(0, pending - sentBack), format, spec.unit)}{sentBack > 0 ? ` · Sent back: ${exactValue(sentBack, format, spec.unit)}` : ""}</div>
-          </div>
-        ) : (
-          <div className="space-y-2.5 text-sm text-text-secondary">
-            {format !== "percent" && verified + pending > 0 && (
-              <div>
-                <p className="mb-1.5 text-xs">Share of recorded activity</p>
-                <div className="flex h-3 overflow-hidden rounded-full bg-surface" role="img" aria-label={`Verified ${exactValue(verified, format, spec.unit)}, waiting ${exactValue(pending - sentBack, format, spec.unit)}, sent back ${exactValue(sentBack, format, spec.unit)}`}>
-                  <span style={{ width: `${verified / (verified + pending) * 100}%`, background: "var(--entry-verified)" }} />
-                  <span style={{ width: `${(pending - sentBack) / (verified + pending) * 100}%`, background: "var(--entry-waiting)" }} />
-                  <span style={{ width: `${sentBack / (verified + pending) * 100}%`, background: "var(--entry-sent-back)" }} />
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-              <span>Verified: {exactValue(verified, format, spec.unit)}</span>
-              <span>Waiting: {exactValue(Math.max(0, pending - sentBack), format, spec.unit)}</span>
-              {sentBack > 0 && <span>Sent back: {exactValue(sentBack, format, spec.unit)}</span>}
-            </div>
-            <p className="text-xs">Target not set for this period</p>
-          </div>
-        )}
-      </div>
-    );
+    return <GoalProgressChart spec={spec} title={title} />;
   }
   const expandedChart: ExpandedChartSpec =
     spec.type === "bar"
