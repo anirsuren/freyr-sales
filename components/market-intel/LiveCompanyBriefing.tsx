@@ -451,7 +451,7 @@ export function LiveCompanyBriefing({
   };
 
   const storyActions = (group: StoryGroup<Item>) => (
-    <span className="absolute right-3 top-3 z-10 inline-flex w-max items-center gap-0.5 rounded-lg border border-border-light bg-white/95 p-0.5 shadow-sm backdrop-blur-sm">
+    <span className="inline-flex w-max shrink-0 items-center gap-0.5 rounded-lg border border-border-light bg-white p-0.5 shadow-sm">
       {bookmarkButton(group.lead)}
       {openItemButton(group.lead)}
       {removeStoryButton(group)}
@@ -578,8 +578,10 @@ export function LiveCompanyBriefing({
     const isLong = Array.from(postRemainder).length > 120;
     return (
       <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
-        {storyActions(group)}
-        <div className="mb-2 flex flex-wrap items-center gap-1.5 pr-28">{signalChips(item)}{sourceTypeChip(item)}{othersLine(group, true)}</div>
+        <div className="mb-2 flex items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">{signalChips(item)}{sourceTypeChip(item)}{othersLine(group, true)}</div>
+          {storyActions(group)}
+        </div>
         <div className="flex items-start gap-3">
           {post.by ? (
             <Avatar
@@ -650,31 +652,33 @@ export function LiveCompanyBriefing({
     const own = item.kind === "site";
     return (
       <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
-        {storyActions(group)}
-        <div className="flex flex-wrap items-center gap-1.5 pr-28">
-          {signalChips(item)}
-          {sourceTypeChip(item)}
-          {own ? (
-            /* Source identity stays neutral blue. "Published by them" still
-               states the meaningful provenance difference in plain text. */
-            <>
-              <span className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-blue-primary">
-                <Globe2 size={10} strokeWidth={2.2} /> Website: {siteSourceLabel(article.url, article.source)}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            {signalChips(item)}
+            {sourceTypeChip(item)}
+            {own ? (
+              /* Source identity stays neutral blue. "Published by them" still
+                 states the meaningful provenance difference in plain text. */
+              <>
+                <span className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-blue-primary">
+                  <Globe2 size={10} strokeWidth={2.2} /> Website: {siteSourceLabel(article.url, article.source)}
+                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
+                  Published by them
+                </span>
+              </>
+            ) : item.kind === "authority" ? (
+              <span title={article.source} className="flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-orange-800">
+                <ShieldAlert size={10} strokeWidth={2.2} /> Official source: {article.source}
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.02em] text-text-tertiary">
-                Published by them
+            ) : (
+              <span title={article.source} className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-blue-primary">
+                <Newspaper size={10} strokeWidth={2.2} /> Source of news article: {outletName(article.source, article.url)}
               </span>
-            </>
-          ) : item.kind === "authority" ? (
-            <span title={article.source} className="flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-orange-800">
-              <ShieldAlert size={10} strokeWidth={2.2} /> Official source: {article.source}
-            </span>
-          ) : (
-            <span title={article.source} className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-blue-primary">
-              <Newspaper size={10} strokeWidth={2.2} /> Source of news article: {outletName(article.source, article.url)}
-            </span>
-          )}
-          {othersLine(group, true)}
+            )}
+            {othersLine(group, true)}
+          </div>
+          {storyActions(group)}
         </div>
         <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
           <a

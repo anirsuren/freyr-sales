@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 25 Market Intel story header spacing:** Article and post cards now place their save/open/remove controls in the header layout beside the source chips instead of absolutely over the text. Long titles begin below that row and cannot run underneath the controls. Verified visually on the local CuraTeQ briefing at the narrower side-panel width; typecheck, focused lint, and diff check pass. Local only, per the user's release instruction.
+
 - **Sep 24 Teammate Goals table spacing:** The profile's Goals table now uses shared proportional column widths across goal families, with matching header/body padding and a clear inset before goal icons. Missing targets say “Not set”; rows without a target no longer show a meaningless progress bar or dot placeholders. Typecheck, focused lint (existing unused-import warnings only), and diff check pass. Local only, per the user's release instruction.
 
 - **Sep 24 Live teammate profile spacing:** The linked-record tabs on a teammate's profile now sit directly on the page rather than inside a second full-width card, with tighter spacing under the profile and compact left-aligned empty copy. The generic “charts fill in” note no longer appears below profiles that already have linked records. Existing stats and tabs remain. Typecheck, focused lint (existing unused-import warnings only), and diff check pass. Local only, per the user's release instruction.
