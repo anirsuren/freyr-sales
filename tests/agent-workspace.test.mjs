@@ -5,6 +5,8 @@ const require = createRequire(import.meta.url),
   Module = require("node:module"),
   load = Module._load;
 let allowed = true,
+  accrualAllowed = true,
+  accrualFails = false,
   reads = 0,
   viewerRole = "bd_member";
 const actor = {
@@ -24,7 +26,7 @@ const mocks = {
   "./db": {getDb:()=>({customers:{list:async()=>[{id:"owned",company_name:"Owned",owner_user_id:"rep"},{id:"team",company_name:"Team",owner:null},{id:"other",company_name:"Other",owner_user_id:"other"}]}})},
   "./accessStore": {listWorkspaceAccess:async(workspace)=>{assert.equal(workspace,"fixture");reads++;return {members:[{id:"rep",name:"Rep",role:"bd_member",active:true,email:"private@example.test"},{id:"admin",name:"Admin",role:"admin",active:true},{id:"inactive",name:"Inactive",role:"admin",active:false}],invitations:[{email:"secret@example.test"}]};}},
   "./materialAccess": { canViewOfferingMaterial: () => true },
-  "./moduleAccessServer": { canOpenModule: async () => allowed },
+  "./moduleAccessServer": { canOpenModule: async (path) => allowed && (path !== "/revenue-accruals" || accrualAllowed) },
   "./viewerAccess": {
     resolveViewerAccess: async () => ({ role: viewerRole, access: {} }),
   },
@@ -54,6 +56,12 @@ const mocks = {
         },
       ],
     }),
+  },
+  "./revenueAccruals": {
+    readRevenueAccruals: async () => {
+      if (accrualFails) throw new Error("accrual store unavailable");
+      return {plans:[{opportunityId:"o1",contractValue:40000000,signDateAtPlan:"2027-01-01",lines:[{month:"2027-02",amount:10000000,ots:10000000},{month:"2027-03",amount:30000000,arr:30000000}]}]};
+    },
   },
   "./contracts": { readContracts: async () => ({ contracts: [] }) },
   "./solutioning": { readSolutioning: async () => ({ requests: [] }) },
@@ -167,6 +175,28 @@ test("opportunity preserves currency and dates rather than claiming USD", async 
   const r = JSON.parse(await readAgentWorkspace(actor, "opportunities"));
   assert.equal(r.records[0].currency, "INR");
   assert.equal(r.records[0].estSignDate, "2027-01-01");
+});
+test("opportunity accruals give exact months for a named deal", async () => {
+  const r = JSON.parse(await readAgentWorkspace(actor, "opportunities", "Deal"));
+  assert.equal(r.summary.accrualAccess, "available");
+  assert.deepEqual(r.records[0].accrual.months.map(line => [line.month,line.amount]), [["2027-02",10000000],["2027-03",30000000]]);
+  assert.equal(r.records[0].accrual.totalPlanned, 40000000);
+  assert.equal(r.records[0].accrual.currency, "INR");
+  const list = JSON.parse(await readAgentWorkspace(actor, "opportunities"));
+  assert.equal(list.records[0].accrual.monthCount, 2);
+  assert.equal(list.records[0].accrual.months, undefined);
+});
+test("opportunity accruals distinguish denied and unavailable access from no plan", async () => {
+  accrualAllowed = false;
+  let r = JSON.parse(await readAgentWorkspace(actor, "opportunities", "Deal"));
+  assert.equal(r.summary.accrualAccess, "denied");
+  assert.equal(r.records[0].accrual, undefined);
+  accrualAllowed = true;
+  accrualFails = true;
+  r = JSON.parse(await readAgentWorkspace(actor, "opportunities", "Deal"));
+  assert.equal(r.summary.accrualAccess, "unavailable");
+  assert.equal(r.records[0].accrual, undefined);
+  accrualFails = false;
 });
 test("goal privacy honors effective viewer role even when signed actor is admin", async () => {
   viewerRole = "bd_member";

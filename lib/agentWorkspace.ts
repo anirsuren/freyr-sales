@@ -7,6 +7,7 @@ import { readRecordTeams, teamFor } from "./recordTeams";
 import { readMeetings } from "./meetings";
 import { readLeads } from "./leads";
 import { readOpportunities } from "./opportunities";
+import { readRevenueAccruals } from "./revenueAccruals";
 import { readContracts } from "./contracts";
 import { readSolutioning } from "./solutioning";
 import { readPerformance } from "./performance";
@@ -269,6 +270,17 @@ export async function readAgentWorkspace(
     };
   } else if (key === "opportunities") {
     const offeringsAllowed = await canOpenModule("/offerings");
+    const accrualsAllowed = await canOpenModule("/revenue-accruals");
+    let accrualPlans: Awaited<ReturnType<typeof readRevenueAccruals>>["plans"] | null = null;
+    if (accrualsAllowed) {
+      try {
+        accrualPlans = (await readRevenueAccruals()).plans;
+      } catch {
+        // An unavailable store is not evidence that a deal has no plan.
+      }
+    }
+    const accrualByOpportunity = new Map(accrualPlans?.map(plan => [plan.opportunityId, plan]) ?? []);
+    const detailedAccruals = Boolean(query.trim()) && !["upcoming", "overdue"].includes(query.trim().toLowerCase());
     if (offeringsAllowed) await initializeLiveOfferings();
     const catalog = offeringsAllowed ? listOfferings() : [];
     const visibleOpportunities = (await readOpportunities()).opportunities
@@ -287,6 +299,7 @@ export async function readAgentWorkspace(
       }, {}),
       estimatedTcvByCurrency: Object.fromEntries([...tcvByCurrency].map(([currency, deals]) => [currency, sumEstimates(deals, "tcv")])),
       pageUrl: "/opportunities",
+      accrualAccess: !accrualsAllowed ? "denied" : accrualPlans ? "available" : "unavailable",
       basis: "Same unfiltered opportunity records and Estimated TCV measure as the Opportunities page. Do not call every record open unless the status counts support it. Keep currencies separate. These are distinct from pitch-session deals on Pipeline; never sum both views.",
     };
     rows = visibleOpportunities
@@ -307,6 +320,19 @@ export async function readAgentWorkspace(
         nextStepsMeaning: "Recorded next steps only. Null means no next step is recorded; a suggestion inferred from stage must be labelled a recommendation, not the recorded next milestone.",
         offerings: offeringsAllowed ? [...new Set([...(r.offeringLabels ?? []), ...(r.offeringIds ?? []).map(id => catalog.find(o => o.id === id)?.offering_name).filter((n): n is string => Boolean(n))])] : undefined,
         offeringIds: offeringsAllowed ? r.offeringIds : undefined,
+        ...(accrualPlans ? {accrual: (() => {
+          const plan = accrualByOpportunity.get(r.id);
+          if (!plan) return {recorded:false};
+          return {
+            recorded:true,
+            currency:r.currency || "USD",
+            contractValue:plan.contractValue,
+            signDateAtPlan:plan.signDateAtPlan ?? null,
+            monthCount:plan.lines.length,
+            totalPlanned:plan.lines.reduce((total, line) => total + line.amount, 0),
+            ...(detailedAccruals ? {months:plan.lines.map(line => ({month:line.month, amount:line.amount, ots:line.ots ?? 0, arr:line.arr ?? 0, mrr:line.mrr ?? 0}))} : {}),
+          };
+        })()} : {}),
         url: `/opportunities/${encodeURIComponent(r.id)}`,
       }));
   } else if (key === "contracts") {
@@ -660,6 +686,7 @@ export async function readAgentWorkspace(
         (valueByCurrency[currency] || 0) + Number(r.value || 0);
     }
     summary = {
+      ...summary,
       totalRecords: rows.length,
       openCount: open.length,
       openValueByCurrency: valueByCurrency,
