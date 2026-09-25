@@ -88,6 +88,9 @@ const PHOTOS: Record<string, string> = {
   // initials badge is the fallback until that person's own portrait exists.
   // Full sales floor (the SALES_TEAM roster) — generated headshots.
   "viktor petrov": "/avatars/viktor-petrov.png",
+  "walter hensley": "/avatars/walter-hensley.webp",
+  "gordon ashby": "/avatars/gordon-ashby.webp",
+  "margaret whitfield": "/avatars/margaret-whitfield.webp",
   "grace liu": "/avatars/grace-liu.png",
   "daniel foster": "/avatars/daniel-foster.png",
   "aisha khan": "/avatars/aisha-khan.png",

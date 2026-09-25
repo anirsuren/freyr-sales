@@ -1853,3 +1853,7 @@ The Revenue Accrual currency table aligns read-only USD amounts with the origina
 ### Sep 24: Source-performance owner menu width
 
 The Leads Source performance popup gives its Owner dropdown a wider menu so a full owner name such as Abhinaya Veeramally stays on one line alongside the avatar and action icons. The toolbar columns remain unchanged. Typecheck, focused lint, and diff check pass. Completed locally, not deployed.
+
+### Sep 25: Agent opportunity owners open their profiles
+
+In Mock mode, the Agent name index includes owners found on permitted opportunities even when a legacy owner is absent from the Team directory. Saved answers render those names with the shared Avatar and a link to the matching rep profile. Out-of-roster profiles show their recorded opportunities without invented performance stats. Three owners in the reported table (Walter Hensley, Gordon Ashby, Margaret Whitfield) now have distinct Mock-only demo portraits; real mode continues to use actual uploaded or verified photos. Verified the saved answer in the existing localhost tab: all six assigned owners show portraits, and Grace Liu opens a profile with her recorded deals while the side chat remains open. Typecheck, focused entity tests, lint, and diff check pass. Completed locally, not deployed.

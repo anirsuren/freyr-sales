@@ -25,7 +25,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { SizeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BackButton, SmartBack } from "@/components/ui/BackButton";
-import { DonutChart, DonutLegend, BarChart, AreaChart, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
+import { BarChart, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
 import { ChartInspector, type ChartRecord } from "@/components/charts/ChartInspector";
 import { ExpandableChartCard } from "@/components/charts/ExpandableChartCard";
 import {
@@ -45,6 +45,7 @@ import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { readWorkspaceMemberProfiles } from "@/lib/memberProfile";
 import { readOpportunities } from "@/lib/opportunities";
+import { canOpenModule } from "@/lib/moduleAccessServer";
 import { buildPerson360 } from "@/lib/person360";
 import { Customer360 } from "@/components/customers/Customer360";
 import { opportunityValue } from "@/lib/opportunitiesShared";
@@ -306,11 +307,23 @@ export default async function RepPage({
   const allDeals = buildDeals(sessions, customers, contacts, interactions);
   // Leads can have an owner who has no deal yet. Their owner link still needs
   // a real destination; the deal-only analytics roster used to omit them.
-  const leadOwners = [...new Set((await readLeads()).leads.map((lead) => lead.owner?.trim()).filter((name): name is string => Boolean(name)))];
+  const [leadState, canViewOpportunities] = await Promise.all([
+    readLeads(),
+    canOpenModule("/opportunities"),
+  ]);
+  const opportunityState = canViewOpportunities
+    ? await readOpportunities()
+    : { opportunities: [] };
+  const recordOwners = [...new Set([
+    ...leadState.leads.map((lead) => lead.owner?.trim()),
+    ...opportunityState.opportunities.map((opportunity) => opportunity.owner?.trim()),
+  ].filter((name): name is string => Boolean(name) && name?.toLowerCase() !== "unassigned"))];
+  const roster = salesTeamFor(currentUser);
+  const rosterNames = new Set(roster.map((person) => person.name.trim().toLowerCase()));
   const ranked = buildRepStats(allDeals, {
     roster: [
-      ...salesTeamFor(currentUser),
-      ...leadOwners.map((name) => ({
+      ...roster,
+      ...recordOwners.filter((name) => !rosterNames.has(name.toLowerCase())).map((name) => ({
         key: `legacy:${name.replace(/\s+/g, " ").toLocaleLowerCase()}`,
         name,
         memberId: null,
@@ -344,6 +357,39 @@ export default async function RepPage({
     );
   }
   const name = me.name;
+  const recordedOpportunities = opportunityState.opportunities.filter(
+    (opportunity) => opportunity.owner?.trim().toLowerCase() === name.trim().toLowerCase()
+  );
+  // Imported Mock records can name an owner outside the seeded sales roster.
+  // Give that person a useful, factual destination instead of inventing the
+  // roster's synthetic quota, activity, and contact details for them.
+  if (!rosterNames.has(name.trim().toLowerCase()) && recordedOpportunities.length) {
+    return (
+      <div className="space-y-6">
+        <SmartBack fallback="/opportunities" className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-blue-primary">
+          <ArrowLeft size={16} /> Back to opportunities
+        </SmartBack>
+        <div className="flex items-center gap-3">
+          <Avatar name={name} className="h-12 w-12" />
+          <div><h1 className="text-2xl font-bold text-text-primary">{name}</h1><p className="text-sm text-text-secondary">Opportunity owner</p></div>
+        </div>
+        <Card className="p-5">
+          <h2 className="mb-3 text-base font-semibold text-text-primary">Recorded opportunities</h2>
+          <ul className="divide-y divide-border-light">
+            {recordedOpportunities.map((opportunity) => (
+              <li key={opportunity.id} className="py-3 first:pt-0 last:pb-0">
+                <Link href={`/opportunities/${encodeURIComponent(opportunity.id)}`} className="font-medium text-blue-primary hover:underline">{opportunity.name}</Link>
+                <p className="mt-1 text-sm text-text-secondary">
+                  {[opportunity.customer, opportunity.status].filter(Boolean).join(" · ")}
+                  {" · "}{opportunity.currency || "USD"} {new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(opportunityValue(opportunity))}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+    );
+  }
   const rank = ranked.findIndex((rep) => rep.key === me.key) + 1;
   const myDeals = allDeals.filter((deal) => repOwnsDeal(me, deal));
   const isYou = isCurrentRep(me, currentUser.memberId);

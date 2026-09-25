@@ -18,6 +18,8 @@ import { canOpenModule } from "@/lib/moduleAccessServer";
 import { canViewOfferingMaterial } from "@/lib/materialAccess";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { readSolutioning } from "@/lib/solutioning";
+import { getDataMode } from "@/lib/dataMode";
+import { repSlug } from "@/lib/team";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +112,16 @@ export async function GET(request: NextRequest) {
       people: (directory?.members || [])
         .filter((m) => m.active !== false && m.name)
         .map((m) => ({ name: m.name, id: m.id })),
+      // Mock opportunities retain some legacy owners who are not account
+      // members. Their rep profiles are real app destinations, but a made-up
+      // Team member ID would strand the link on "not found".
+      reps: allowed.get("/team") && getDataMode() === "mock"
+        ? [...new Set((deals?.opportunities ?? [])
+            .map((o) => o.owner?.trim())
+            .filter((name): name is string => Boolean(name) && name?.toLowerCase() !== "unassigned"))]
+            .filter((name) => !(directory?.members ?? []).some((m) => m.active !== false && m.name.trim().toLowerCase() === name.toLowerCase()))
+            .map((name) => ({ name, id: repSlug(name) }))
+        : [],
       deals: (deals?.opportunities ?? [])
         .filter((o) => o.name)
         .map((o) => ({ name: o.name, id: o.id })),

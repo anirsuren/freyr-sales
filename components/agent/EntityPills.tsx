@@ -37,6 +37,7 @@ export type EntityKind =
   | "offering"
   | "component"
   | "person"
+  | "rep"
   | "report"
   | "material"
   | "deal"
@@ -97,6 +98,12 @@ const KIND: Record<
   },
   person: {
     href: (id) => `/team?member=${encodeURIComponent(id)}`,
+    mark: (name) => (
+      <Avatar name={name} className="w-4 h-4 text-[7px] shrink-0" />
+    ),
+  },
+  rep: {
+    href: (id) => `/analytics/reps/${encodeURIComponent(id)}`,
     mark: (name) => (
       <Avatar name={name} className="w-4 h-4 text-[7px] shrink-0" />
     ),
@@ -201,6 +208,8 @@ export function unambiguousEntities(entities: Entity[]): Entity[] {
         (entity) => entity.kind === "marketCompany"
       );
       if (marketCompany) return marketCompany;
+      const person = records.find((entity) => entity.kind === "person");
+      if (person && records.every((entity) => entity.kind === "person" || entity.kind === "rep")) return person;
       return null;
     })
     .filter((entity): entity is Entity => entity !== null)
@@ -308,6 +317,7 @@ export function injectEntities(
         hit.kind === "offering" ||
         hit.kind === "component" ||
         hit.kind === "person" ||
+        hit.kind === "rep" ||
         hit.kind === "report" ||
         hit.kind === "material" ||
         hit.kind === "deal" ||
@@ -388,7 +398,8 @@ export function entityLink(href: string, label: string, entities: Entity[], key:
       // Short metric names stay out of automatic prose matching, but a direct
       // goal URL identifies the record and should still wear its target icon.
       /^\/performance\/goal\/[^/?#]+\/?$/.test(href) ? "goal" :
-      /^\/team\?member=[^&#]+/.test(href) ? "person" : null;
+      /^\/team\?member=[^&#]+/.test(href) ? "person" :
+      /^\/analytics\/reps\/[^/?#]+\/?$/.test(href) ? "rep" : null;
     if (!fallbackKind || !label.trim() || label.startsWith("/")) return null;
     return (
       <Link key={key} href={href} className={PILL}>
@@ -449,6 +460,7 @@ export function useEntityIndex(): Entity[] {
           ...take(d.leads, "lead"),
           ...take(d.goals, "goal"),
           ...take(d.people, "person"),
+          ...take(d.reps, "rep"),
           ...take(d.reports, "report"),
         ].filter((e) => e.name && e.name.length > 2);
         list.sort((a, b) => b.name.length - a.name.length);

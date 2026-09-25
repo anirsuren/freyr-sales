@@ -8,6 +8,7 @@ let signedIn = true,
   role = "bd_member",
   allowed = new Set(["/agent", "/offerings"]),
   reads = [];
+let opportunityRows = [];
 const source = (name, value) => async () => {
   reads.push(name);
   return value;
@@ -33,6 +34,10 @@ const mocks = {
   "@/lib/moduleAccessServer": {
     canOpenModule: async (path) => allowed.has(path),
   },
+  "@/lib/dataMode": { getDataMode: () => "mock" },
+  "@/lib/team": { repSlug: (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-") },
+  "@/components/ui/Avatar": { Avatar: () => null },
+  "@/components/ui/CompanyLogo": { CompanyLogo: () => null },
   "@/lib/db": {
     getDb: () => ({
       customers: {
@@ -52,7 +57,7 @@ const mocks = {
   },
   "@/lib/accessStore": { listWorkspaceAccess: source("team", { members: [] }) },
   "@/lib/opportunities": {
-    readOpportunities: source("opportunities", { opportunities: [] }),
+    readOpportunities: async () => { reads.push("opportunities"); return { opportunities: opportunityRows }; },
   },
   "@/lib/contracts": { readContracts: source("contracts", { contracts: [] }) },
   "@/lib/leads": { readLeads: source("leads", { leads: [] }) },
@@ -73,7 +78,6 @@ Module._load = function (name, ...args) {
   return mocks[name] || originalLoad.call(this, name, ...args);
 };
 const { GET } = require("../app/api/agent/entities/route.ts");
-Module._load = originalLoad;
 // Rendering functions run without a browser or any network calls.
 globalThis.React = require("react");
 const {
@@ -81,6 +85,7 @@ const {
   unambiguousEntities,
   entitiesForAnswer,
 } = require("../components/agent/EntityPills.tsx");
+Module._load = originalLoad;
 
 test("unauthenticated index refuses before any data reads", async () => {
   signedIn = false;
@@ -111,6 +116,7 @@ test("rep index never reads denied modules and excludes private material names",
     "contacts",
     "components",
     "people",
+    "reps",
     "deals",
     "contracts",
     "leads",
@@ -122,6 +128,16 @@ test("rep index never reads denied modules and excludes private material names",
   ])
     assert.deepEqual(data[kind], [], kind);
   assert.equal(response.headers.get("cache-control"), "private, no-store");
+});
+test("known Mock opportunity owners get portrait links to existing rep profiles", async () => {
+  allowed = new Set(["/agent", "/team", "/opportunities"]);
+  opportunityRows = [{ id: "deal-1", name: "Example deal", owner: "Grace Liu" }, { id: "deal-2", name: "Unassigned", owner: "Unassigned" }];
+  const data = await (await GET({})).json();
+  assert.deepEqual(data.reps, [{ name: "Grace Liu", id: "grace-liu" }]);
+  const nodes = injectEntities("Grace Liu", [{ name: "Grace Liu", id: "grace-liu", kind: "rep" }], "owner");
+  assert.equal(nodes[0].props.href, "/analytics/reps/grace-liu");
+  assert.equal(nodes[0].props.children[0].props.name, "Grace Liu");
+  opportunityRows = [];
 });
 test("admin receives allowed market/solution detail identities and private files", async () => {
   allowed = new Set(["/agent", "/offerings", "/market-intel", "/solutioning"]);
