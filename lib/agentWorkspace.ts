@@ -5,6 +5,7 @@ import { canOpenModule } from "./moduleAccessServer";
 import { resolveViewerAccess } from "./viewerAccess";
 import { readRecordTeams, teamFor } from "./recordTeams";
 import { readMeetings } from "./meetings";
+import { listCampaigns } from "./campaigns";
 import { readLeads } from "./leads";
 import { readOpportunities } from "./opportunities";
 import { readRevenueAccruals } from "./revenueAccruals";
@@ -50,6 +51,7 @@ export const AGENT_MODULES = {
   leads: "/leads",
   sessions: "/sessions",
   tasks: "/tasks",
+  campaigns: "/campaigns",
   opportunities: "/opportunities",
   solutioning: "/solutioning",
   contracts: "/contracts",
@@ -295,6 +297,24 @@ export async function readAgentWorkspace(
     summary = {
       reviewCount: reviews.length, followUpCount: followUps.length, taskCount: rows.length,
       basis: "Same pitch sessions and dated interactions used by the Tasks page. Multiple interactions for one contact are separate follow-up rows. The page's generic Needs review badge hides whether a pitch is In review or Changes requested; use reviewStatus for the exact saved state. Tasks record no owner; do not infer ownership from visibility. Review links open sessions; follow-up links open contacts.",
+    };
+  } else if (key === "campaigns") {
+    rows = listCampaigns()
+      .filter(campaign => !mineOnly || (campaign.owner_user_id ? campaign.owner_user_id === actor.userId : mine(campaign.owner)))
+      .map(campaign => ({
+        id: campaign.id, name: campaign.name, status: campaign.status,
+        objective: campaign.objective, offering: campaign.offering_name || null,
+        owner: campaign.owner || null, recipients: campaign.recipient_contact_ids.length,
+        sent: campaign.sent_count, queued: campaign.status === "queued"
+          ? Math.max(0, campaign.recipient_contact_ids.length - campaign.sent_count) : 0,
+        opened: campaign.opens, replied: campaign.replies,
+        scheduledAt: campaign.scheduled_at, queuedAt: campaign.queued_at,
+        sentAt: campaign.sent_at,
+        url: `/campaigns/${encodeURIComponent(campaign.id)}`,
+      }));
+    summary = {
+      campaignCount: rows.length,
+      basis: "Same campaign store and delivery counters used by the Campaigns page. A queued campaign can have some sent recipients; do not count its unsent recipients as delivered. Open and reply rates on the page use sent messages as the denominator. Mock seeded delivery numbers are demonstration data, not proof a real message was sent.",
     };
   } else if (key === "leads") {
     rows = (await readLeads()).leads

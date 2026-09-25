@@ -47,6 +47,9 @@ const mocks = {
       return { leads: [] };
     },
   },
+  "./campaigns": {listCampaigns: () => [
+    {id:"camp-seed-002",name:"Regulatory Intelligence pilot invite",status:"queued",objective:"pipeline",offering_name:"Regulatory Intelligence Services",owner:"Rep",owner_user_id:"rep",recipient_contact_ids:["c1","c2","c3","c4","c5"],sent_count:2,opens:1,replies:0,scheduled_at:null,queued_at:"2026-09-23",sent_at:null},
+  ]},
   "./opportunities": {
     readOpportunities: async () => ({
       opportunities: [
@@ -213,6 +216,15 @@ test("Tasks reader preserves review state, distinct follow-ups and exact destina
   assert.match(await readAgentWorkspace(actor, "tasks", "", true), /do not record a task owner/);
   blockedSource = "/contacts";
   try { assert.match(await readAgentWorkspace(actor, "tasks", "Arjun"), /source access is incomplete/); }
+  finally { blockedSource = ""; }
+});
+test("Campaigns reader preserves partial delivery and exact link under permission", async () => {
+  const result = JSON.parse(await readAgentWorkspace(actor, "campaigns", "Regulatory Intelligence pilot invite"));
+  assert.equal(result.records.length, 1);
+  assert.deepEqual((({status,recipients,sent,queued,opened,replied,url}) => ({status,recipients,sent,queued,opened,replied,url}))(result.records[0]),
+    {status:"queued",recipients:5,sent:2,queued:3,opened:1,replied:0,url:"/campaigns/camp-seed-002"});
+  blockedSource = "/campaigns";
+  try { assert.match(await readAgentWorkspace(actor, "campaigns", "Regulatory"), /do not have access/); }
   finally { blockedSource = ""; }
 });
 test("opportunity preserves currency and dates rather than claiming USD", async () => {
