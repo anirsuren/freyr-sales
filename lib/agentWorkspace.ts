@@ -6,6 +6,7 @@ import { resolveViewerAccess } from "./viewerAccess";
 import { readRecordTeams, teamFor } from "./recordTeams";
 import { readMeetings } from "./meetings";
 import { listCampaigns } from "./campaigns";
+import { listSequences } from "./sequences";
 import { readLeads } from "./leads";
 import { readOpportunities } from "./opportunities";
 import { readRevenueAccruals } from "./revenueAccruals";
@@ -52,6 +53,7 @@ export const AGENT_MODULES = {
   sessions: "/sessions",
   tasks: "/tasks",
   campaigns: "/campaigns",
+  sequences: "/sequences",
   opportunities: "/opportunities",
   solutioning: "/solutioning",
   contracts: "/contracts",
@@ -315,6 +317,49 @@ export async function readAgentWorkspace(
     summary = {
       campaignCount: rows.length,
       basis: "Same campaign store and delivery counters used by the Campaigns page. A queued campaign can have some sent recipients; do not count its unsent recipients as delivered. Open and reply rates on the page use sent messages as the denominator. Mock seeded delivery numbers are demonstration data, not proof a real message was sent.",
+    };
+  } else if (key === "sequences") {
+    const [sessionsAllowed, customersAllowed, contactsAllowed] = await Promise.all([
+      canOpenModule("/sessions"), canOpenModule("/customers"), canOpenModule("/contacts"),
+    ]);
+    const sourceAllowed = sessionsAllowed && customersAllowed && contactsAllowed;
+    const sequences = listSequences();
+    let derived: {sequenceId:string;customerId:string}[] = [];
+    let persisted: {sequence_id:string;customer_id:string}[] = [];
+    if (sourceAllowed) {
+      const db = getDb();
+      const [sessions, customers, contacts, interactions, saved] = await Promise.all([
+        db.pitchSessions.list(), db.customers.list(), db.contacts.list(),
+        db.interactions.list(), db.sequenceEnrollments.list(),
+      ]);
+      persisted = saved;
+      const primary = sequences.find(sequence => sequence.id === "reg-exec") || sequences[0];
+      const seen = new Set<string>();
+      derived = primary ? buildDeals(sessions, customers, contacts, interactions)
+        .filter(deal => ["Engaged", "Qualified", "Meeting Booked"].includes(deal.stage))
+        .filter(deal => seen.has(deal.customerId) ? false : (seen.add(deal.customerId), true))
+        .map(deal => ({sequenceId:primary.id,customerId:deal.customerId})) : [];
+    }
+    rows = sequences
+      .filter(sequence => !mineOnly || (sequence.owner_user_id ? sequence.owner_user_id === actor.userId : mine(sequence.owner)))
+      .map(sequence => ({
+        id: sequence.id, name: sequence.name, status: sequence.status,
+        owner: sequence.owner, description: sequence.description,
+        stepCount: sequence.steps.length,
+        emailSteps: sequence.steps.filter(step => step.channel === "email").length,
+        callSteps: sequence.steps.filter(step => step.channel === "call").length,
+        waitSteps: sequence.steps.filter(step => step.channel === "wait").length,
+        cadenceDays: Math.max(0, ...sequence.steps.map(step => step.day)),
+        steps: sequence.steps,
+        enrolledAccounts: sourceAllowed
+          ? derived.filter(item => item.sequenceId === sequence.id).length + persisted.filter(item => item.sequence_id === sequence.id).length
+          : null,
+        url: `/sequences?sequence=${encodeURIComponent(sequence.id)}`,
+      }));
+    summary = {
+      sequenceCount: rows.length,
+      enrollmentAccess: sourceAllowed ? "available" : "source access incomplete",
+      basis: "The Sequences page selects a library record in place; ?sequence=ID selects the exact record. Its default Regulatory Exec Outreach enrollments include active deal-derived accounts plus saved enrollments; other plans have saved enrollments. Steps describe a proposed cadence, not messages already sent or calls placed. Null enrolledAccounts means source access was denied, not zero.",
     };
   } else if (key === "leads") {
     rows = (await readLeads()).leads

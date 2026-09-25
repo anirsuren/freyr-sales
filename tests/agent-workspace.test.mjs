@@ -32,6 +32,7 @@ const mocks = {
       {id:"interaction-1",customer_id:"owned",contact_id:"contact-1",outcome:"interested",follow_up_date:"2026-09-24",created_at:"2026-06-16T10:00:00Z"},
       {id:"interaction-2",customer_id:"owned",contact_id:"contact-1",outcome:"interested",follow_up_date:"2026-09-26",created_at:"2026-06-17T10:00:00Z"},
     ]},
+    sequenceEnrollments:{list:async()=>[{id:"enrollment-1",sequence_id:"reg-exec",customer_id:"owned",step_index:2}]},
   })},
   "./accessStore": {listWorkspaceAccess:async(workspace)=>{assert.equal(workspace,"fixture");reads++;return {members:[{id:"rep",name:"Rep",role:"bd_member",active:true,email:"private@example.test"},{id:"admin",name:"Admin",role:"admin",active:true},{id:"inactive",name:"Inactive",role:"admin",active:false}],invitations:[{email:"secret@example.test"}]};}},
   "./materialAccess": { canViewOfferingMaterial: () => true },
@@ -49,6 +50,14 @@ const mocks = {
   },
   "./campaigns": {listCampaigns: () => [
     {id:"camp-seed-002",name:"Regulatory Intelligence pilot invite",status:"queued",objective:"pipeline",offering_name:"Regulatory Intelligence Services",owner:"Rep",owner_user_id:"rep",recipient_contact_ids:["c1","c2","c3","c4","c5"],sent_count:2,opens:1,replies:0,scheduled_at:null,queued_at:"2026-09-23",sent_at:null},
+  ]},
+  "./sequences": {listSequences: () => [
+    {id:"reg-exec",name:"Regulatory Exec Outreach",status:"active",description:"Regulatory cadence",owner:"Rep",owner_user_id:"rep",steps:[
+      {day:0,channel:"email",label:"Intro"},{day:2,channel:"email",label:"Follow-up"},
+      {day:4,channel:"call",label:"Call"},{day:7,channel:"email",label:"Value"},
+      {day:10,channel:"call",label:"Call again"},{day:14,channel:"email",label:"Case study"},
+      {day:18,channel:"email",label:"Breakup"},
+    ]},
   ]},
   "./opportunities": {
     readOpportunities: async () => ({
@@ -226,6 +235,19 @@ test("Campaigns reader preserves partial delivery and exact link under permissio
   blockedSource = "/campaigns";
   try { assert.match(await readAgentWorkspace(actor, "campaigns", "Regulatory"), /do not have access/); }
   finally { blockedSource = ""; }
+});
+test("Sequences reader uses selected-page URL, cadence counts and source access", async () => {
+  const result = JSON.parse(await readAgentWorkspace(actor, "sequences", "Regulatory Exec Outreach"));
+  const sequence = result.records[0];
+  assert.equal(sequence.url, "/sequences?sequence=reg-exec");
+  assert.deepEqual([sequence.status,sequence.stepCount,sequence.emailSteps,sequence.callSteps,sequence.cadenceDays], ["active",7,5,2,18]);
+  assert.equal(typeof sequence.enrolledAccounts, "number");
+  blockedSource = "/contacts";
+  try {
+    const restricted = JSON.parse(await readAgentWorkspace(actor, "sequences", "Regulatory Exec Outreach"));
+    assert.equal(restricted.records[0].enrolledAccounts, null);
+    assert.equal(restricted.summary.enrollmentAccess, "source access incomplete");
+  } finally { blockedSource = ""; }
 });
 test("opportunity preserves currency and dates rather than claiming USD", async () => {
   const r = JSON.parse(await readAgentWorkspace(actor, "opportunities"));

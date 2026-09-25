@@ -177,7 +177,10 @@ export function SequencesView({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const [activeId, setActiveId] = useState(sequences[0]?.id || "");
+  const [activeId, setActiveId] = useState(() => {
+    const requested = searchParams.get("sequence");
+    return sequences.find(sequence => sequence.id === requested)?.id || sequences[0]?.id || "";
+  });
   const [sequenceQuery, setSequenceQuery] = useState("");
   const [accountQuery, setAccountQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -215,6 +218,11 @@ export function SequencesView({
       setActiveId(sequences[0].id);
     }
   }, [activeId, sequences]);
+
+  useEffect(() => {
+    const requested = searchParams.get("sequence");
+    if (requested && sequences.some(sequence => sequence.id === requested)) setActiveId(requested);
+  }, [searchParams, sequences]);
 
   useEffect(() => {
     if (searchParams.get("create") === "1") {
