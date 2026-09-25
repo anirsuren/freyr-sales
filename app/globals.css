@@ -558,6 +558,35 @@ select:focus-visible {
   animation: miTickerIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Move the briefing and details rail without swapping their grid order. A
+   grid-order change jumps to its final position before track sizing can
+   animate, which made the left/right control feel choppy. */
+@media (min-width: 1024px) {
+  .mi-briefing-layout {
+    container-type: inline-size;
+    --mi-rail-width: 40px;
+  }
+  .mi-briefing-layout[data-details-open="true"] {
+    --mi-rail-width: 320px;
+  }
+  .mi-briefing-main,
+  .mi-briefing-rail {
+    transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .mi-briefing-layout[data-details-side="left"] > .mi-briefing-main {
+    transform: translateX(calc(var(--mi-rail-width) + 1rem));
+  }
+  .mi-briefing-layout[data-details-side="left"] > .mi-briefing-rail {
+    transform: translateX(calc(var(--mi-rail-width) - 100cqw));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mi-briefing-main,
+  .mi-briefing-rail {
+    transition: none;
+  }
+}
+
 /* Market Intelligence view switch: the dense ledger arrives from the side
    while tiles settle upward. The direction makes the mode change legible
    without turning a routine toggle into a page transition. */

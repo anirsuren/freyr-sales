@@ -853,13 +853,17 @@ export function LiveCompanyBriefing({
         />
       </SearchPriority>
 
-      <div className={cn(
-        "mt-5 grid items-start gap-4 motion-safe:transition-[grid-template-columns] motion-safe:duration-300 motion-safe:ease-in-out",
-        detailsOpen
-          ? detailsSide === "left" ? "grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)]" : "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]"
-          : detailsSide === "left" ? "grid-cols-[minmax(0,1fr)_40px] lg:grid-cols-[40px_minmax(0,1fr)]" : "grid-cols-[minmax(0,1fr)_40px]"
-      )}>
-        <div className={cn("min-w-0", detailsSide === "left" && "lg:order-2")}>
+      <div
+        data-details-side={detailsSide}
+        data-details-open={detailsOpen}
+        className={cn(
+          "mi-briefing-layout mt-5 grid items-start gap-4 motion-safe:transition-[grid-template-columns] motion-safe:duration-500 motion-safe:ease-out",
+          detailsOpen
+            ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]"
+            : "grid-cols-[minmax(0,1fr)_40px]"
+        )}
+      >
+        <div className="mi-briefing-main min-w-0">
           {selectedCompetitor && (
             <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-blue-subtle bg-blue-light px-3 py-2 text-[12px] text-text-primary" role="status">
               <span>Showing competitor mentions of <strong>{selectedCompetitor}</strong> · {groups.length} {groups.length === 1 ? "story" : "stories"}</span>
@@ -996,7 +1000,7 @@ export function LiveCompanyBriefing({
         </div>
 
         {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4). */}
-        <div className={cn("sticky top-3 min-w-0 self-start", detailsSide === "left" && "lg:order-1")}>
+        <div className="mi-briefing-rail sticky top-3 min-w-0 self-start">
           {!detailsOpen && (
             <button
               type="button"

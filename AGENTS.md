@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 25 Market Intel details side transition:** The briefing's Company details rail now retains stable grid placement and slides with the main content when moved left or right. The old grid-order swap jumped immediately and made the 300ms column animation look choppy. The new transform transition has reduced-motion support. Local only, not deployed.
+
 - **Sep 25 Freyr relevance filter mark:** The Competitor Intel briefing's “Relevant to Freyr” choice now displays the existing Freyr brand mark in both its trigger and dropdown, using the shared company-logo picker support. The “All competitor updates” globe remains. Local only, not deployed.
 
 - **Sep 25 Market Intel post previews:** Company and person posts on a briefing now use their complete first line as the linked headline and the following lines as the body. The previous 160-character headline cap split words between the blue title and gray text, including after “Show the full post” was clicked. Search/list titles remain compact. Local only, not deployed.
