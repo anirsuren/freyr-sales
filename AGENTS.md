@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 25 Market Intel tracking faces:** The Tracking count refers to workspace members who put a company on their list, not the company's employees. Its table cells now show up to five of those members' real profile photos or initials beneath the status and a `+N` badge for any more; the status names them “watchers” so the count cannot be mistaken for company headcount. The existing details popup still lists them. Local only, not deployed.
+
 - **Sep 25 Amplexor identity in Market Intel:** The collected Amplexor and ArisGlobal URLs had identical image hashes because Amplexor Life Sciences now uses its parent's ArisGlobal branding. Market Intel now shows an archived Amplexor Life Sciences mark for the Amplexor record, including table, tiles, briefing, management, confirmation, and watchlist surfaces, while ArisGlobal keeps its own logo. Local only, not deployed.
 
 - **Sep 25 Customer Intel story position dots:** Inactive table-ticker dots used an undefined `bg-border-strong` utility, leaving only the blue active marker visible. They now have explicit theme-aware border color and a larger dot size, while the active position remains blue. Typecheck, focused lint, and diff check pass. Local only, not deployed.

@@ -169,15 +169,25 @@ function PeopleSummary({ people = [], companyName, onOpen }: { people?: CardPers
   );
 }
 
-function TrackingSummary({ state, companyName, onOpen }: { state: WatchState; companyName: string; onOpen: () => void }) {
+function TrackingSummary({ state, companyName, people, onOpen }: { state: WatchState; companyName: string; people: TrackingPerson[]; onOpen: () => void }) {
   return (
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`Show people tracking ${companyName}`}
-      className="cursor-pointer rounded-full outline-none transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-sm focus-visible:ring-2 focus-visible:ring-blue-primary/30"
+      aria-label={`Show ${people.length} workspace ${people.length === 1 ? "member" : "members"} watching ${companyName}`}
+      className="group/watch flex cursor-pointer flex-col items-start gap-2 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30"
     >
       <WatchStatus state={state} className="whitespace-nowrap" />
+      {people.length > 0 && (
+        <span className="flex items-center pl-0.5" aria-hidden="true">
+          {people.slice(0, 5).map((person, index) => (
+            <span key={person.id} className={cn("relative inline-flex transition-[margin,transform] duration-200", index > 0 && "-ml-1.5 group-hover/watch:ml-0.5 group-focus-visible/watch:ml-0.5")}>
+              <Avatar name={person.name} tooltip={person.name} className="h-6 w-6 text-[8px] ring-2 ring-[color:var(--white)] group-hover/watch:-translate-y-0.5" />
+            </span>
+          ))}
+          {people.length > 5 && <span className="-ml-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-light px-1 text-[9px] font-bold text-blue-primary ring-2 ring-[color:var(--white)] tnum">+{people.length - 5}</span>}
+        </span>
+      )}
     </button>
   );
 }
@@ -580,7 +590,7 @@ export function LiveCompanyGrid({
                     <div className="grid grid-cols-1 gap-1.5 opacity-55"><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /></div>
                     <p className="text-[12px] leading-relaxed text-text-tertiary">The first verified posts, news, and website updates will appear here.</p>
                     {group === "customer" && <PeopleSummary people={people[row.id]} companyName={row.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyId: row.id, companyName: row.name, people: people[row.id] ?? [] })} />}
-                    {isAdmin && <TrackingSummary state={stateOf(row.id)} companyName={row.name} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: row.name, people: trackingPeople[row.id] ?? [], activeByDefault: stateOf(row.id).byDefault === true })} />}
+                    {isAdmin && <TrackingSummary state={stateOf(row.id)} companyName={row.name} people={trackingPeople[row.id] ?? []} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: row.name, people: trackingPeople[row.id] ?? [], activeByDefault: stateOf(row.id).byDefault === true })} />}
                     <span className="whitespace-nowrap text-[11px] font-medium text-text-tertiary">Pending</span>
                   </div>
                 );
@@ -608,7 +618,7 @@ export function LiveCompanyGrid({
                     </div>
                     <TableStoryTicker card={card} />
                     {group === "customer" && <PeopleSummary people={people[card.id]} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracked", companyId: card.id, companyName: card.name, people: people[card.id] ?? [] })} />}
-                    {isAdmin && <TrackingSummary state={stateOf(card.id)} companyName={card.name} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: card.name, people: trackingPeople[card.id] ?? [], activeByDefault: stateOf(card.id).byDefault === true })} />}
+                    {isAdmin && <TrackingSummary state={stateOf(card.id)} companyName={card.name} people={trackingPeople[card.id] ?? []} onOpen={() => setPeoplePanel({ kind: "tracking", companyName: card.name, people: trackingPeople[card.id] ?? [], activeByDefault: stateOf(card.id).byDefault === true })} />}
                     <span className="whitespace-nowrap text-[11px] font-semibold text-text-secondary" title="Latest successful source check">{card.updatedLabel}</span>
                   </div>
                 );

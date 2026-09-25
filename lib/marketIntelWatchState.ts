@@ -13,7 +13,7 @@
 export type WatchState = { followers: number; byDefault?: boolean };
 
 export function watchLabel(state: WatchState): string {
-  if (state.followers > 0) return `Active · ${state.followers} ${state.followers === 1 ? "person" : "people"}`;
+  if (state.followers > 0) return `Active · ${state.followers} ${state.followers === 1 ? "watcher" : "watchers"}`;
   return state.byDefault ? "Active" : "Inactive";
 }
 
