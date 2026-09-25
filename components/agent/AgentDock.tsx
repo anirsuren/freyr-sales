@@ -20,7 +20,7 @@ import { bucketByDay, clockTime, dayLabel, listStamp, sameDay } from "@/lib/chat
 import { useEntityIndex, type Entity } from "@/components/agent/EntityPills";
 import { AgentResponseMarkdown } from "@/components/agent/AgentResponseMarkdown";
 import { useTypewriter, trimStreamingLink } from "@/components/agent/useTypewriter";
-import { readAgentResponse } from "@/lib/agentStreamClient";
+import { requestAgentResponse } from "@/lib/agentStreamClient";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 import {
@@ -322,6 +322,7 @@ export function AgentDock({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [streamingPreview, setStreamingPreview] = useState("");
+  const [connectionErrorId, setConnectionErrorId] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   // Customers, contacts, offerings, FDL components, teammates and reports.
   const entities = useEntityIndex();
@@ -710,6 +711,7 @@ export function AgentDock({
       })) ?? [];
     const userTs = Date.now();
     setInput("");
+    setConnectionErrorId(null);
     setBusy(true);
     setStreamingPreview("");
     setActiveId(conversationId);
@@ -746,14 +748,18 @@ export function AgentDock({
 
     const controller = new AbortController();
     requestControllerRef.current = controller;
-    const timer = setTimeout(() => controller.abort(), 90000);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const arm = () => {
+      timer = setTimeout(() => {
+        if (document.hidden) { arm(); return; }
+        controller.abort();
+      }, 90000);
+    };
+    arm();
     const pathChanged = lastAskedPath.current !== null && lastAskedPath.current !== pathname;
     lastAskedPath.current = pathname;
     try {
-      const res = await fetch("/api/agent/converse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const requestBody = {
           message: text,
           stream: true,
           history: prior,
@@ -798,11 +804,9 @@ export function AgentDock({
             }
             return out;
           })(),
-        }),
-        signal: controller.signal,
-      });
+      };
       let receivedProgress = false;
-      const data = await readAgentResponse(res, (answerSoFar) => {
+      const data = await requestAgentResponse(requestBody, controller.signal, (answerSoFar) => {
         receivedProgress = true;
         if (activeUserIdRef.current === requestUserId) setStreamingPreview(answerSoFar);
       });
@@ -832,28 +836,9 @@ export function AgentDock({
       setTypingTs(receivedProgress ? null : replyTs);
     } catch {
       if (activeUserIdRef.current !== requestUserId) return;
-      const replyTs = Date.now();
-      setConvos((previous) =>
-        previous.map((conversation) =>
-          conversation.id === conversationId
-            ? {
-                ...conversation,
-                messages: [
-                  ...conversation.messages,
-                  {
-                    role: "agent" as const,
-                    text: "I couldn't reach the agent just now.",
-                    ts: replyTs,
-                  },
-                ],
-                updated: replyTs,
-              }
-            : conversation
-        )
-      );
-      setTypingTs(replyTs);
+      setConnectionErrorId(conversationId);
     } finally {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       if (requestControllerRef.current === controller) {
         requestControllerRef.current = null;
       }
@@ -862,24 +847,8 @@ export function AgentDock({
     }
   }
 
-  /**
-   * CLICK ANYWHERE ELSE AND THE ASSISTANT CLOSES (Anir, Aug 13: "when I click
-   * out of the AI assistant, it should automatically close"). Floating bubble
-   * only; the embedded side panel is a deliberate workspace and stays.
-   */
   const floatPanelRef = useRef<HTMLDivElement | null>(null);
   const launcherRef = useRef<HTMLButtonElement | null>(null);
-  useEffect(() => {
-    if (!open || embedded) return;
-    const onDown = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (floatPanelRef.current?.contains(target)) return;
-      if (target.closest?.("[data-agent-dock-launcher]")) return;
-      onOpenChange(false);
-    };
-    document.addEventListener("pointerdown", onDown, true);
-    return () => document.removeEventListener("pointerdown", onDown, true);
-  }, [open, embedded, onOpenChange]);
 
   /**
    * Sticky form actions share the launcher's corner. Measure the real rendered
@@ -1022,12 +991,14 @@ export function AgentDock({
             {!embedded && (
               <Link
                 href={activeId ? `/agent?conversation=${encodeURIComponent(activeId)}` : "/agent"}
-                aria-label="Open this conversation in the full Agent chat"
-                title="Open full chat"
-                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 text-[11.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                onClick={busy ? (event) => event.preventDefault() : undefined}
+                aria-label={busy ? "Wait for the answer before opening full chat" : "Open this conversation in the full Agent chat"}
+                aria-disabled={busy}
+                title={busy ? "Finishing this answer" : "Open full chat"}
+                className={cn("inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 text-[11.5px] font-semibold transition-colors", busy ? "cursor-wait text-text-tertiary" : "text-blue-primary hover:border-blue-subtle hover:bg-blue-light")}
               >
                 <MessageCircle size={14} strokeWidth={2} />
-                <span>Open full chat</span>
+                <span>{busy ? "Finishing reply…" : "Open full chat"}</span>
               </Link>
             )}
             {dockable && onDockChange && (
@@ -1178,6 +1149,11 @@ export function AgentDock({
                   ? <AgentResponseMarkdown text={trimStreamingLink(streamingPreview)} entities={entities} linkable={!offeringsOnly} />
                   : <Thinking />}
               </div>
+            )}
+            {connectionErrorId === activeId && !busy && (
+              <p role="alert" className="rounded-xl border border-border-light bg-surface px-3.5 py-2 text-xs text-text-secondary">
+                The connection stopped before the answer finished. Your question is saved; ask again to retry.
+              </p>
             )}
             </div>
           </div>

@@ -51,3 +51,33 @@ export async function readAgentResponse(
   if (!result) throw new Error("agent stream ended without an answer");
   return result;
 }
+
+/** Retry a transient connection failure once, but never repeat a request after
+ * streamed text has arrived (which could duplicate an answer). */
+export async function requestAgentResponse(
+  body: Record<string, unknown>,
+  signal: AbortSignal,
+  onDelta: (answerSoFar: string) => void,
+) {
+  let startedReply = false;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch("/api/agent/converse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal,
+      });
+      if (response.status === 429 || (response.status >= 400 && response.status < 500))
+        throw new Error(`agent request failed: ${response.status}`);
+      return await readAgentResponse(response, (text) => {
+        startedReply = true;
+        onDelta(text);
+      });
+    } catch (error) {
+      if (attempt || startedReply || signal.aborted ||
+        (error instanceof Error && /agent request failed: 4\d\d/.test(error.message))) throw error;
+    }
+  }
+  throw new Error("assistant unreachable");
+}

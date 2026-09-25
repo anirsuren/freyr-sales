@@ -17,6 +17,8 @@ import {
   pctMet,
   milestoneByNow,
   paceVerdict,
+  fiscalMonthLabels,
+  fiscalRange,
 } from "./performanceShared";
 import { BASE_CURRENCY } from "./currency";
 import {
@@ -380,7 +382,18 @@ export async function readAgentWorkspace(
     rows = scoped.goals.map((g) => {
       const verified = familyValue(scoped, g, { verifiedOnly: true });
       const pending = familyValue(scoped, g, { reportedOnly: true });
+      const sentBack = familyValue(scoped, g, { sentBackOnly: true });
       const due = milestoneByNow(g, now);
+      const months = fiscalMonthLabels(g.year).map((month, index) => {
+        const range = fiscalRange(g.year, "month", index);
+        return {
+          month,
+          calendarYear: new Date(range[0]).getFullYear(),
+          verified: familyValue(scoped, g, { verifiedOnly: true, range }),
+          pending: familyValue(scoped, g, { reportedOnly: true, range }),
+          sentBack: familyValue(scoped, g, { sentBackOnly: true, range }),
+        };
+      }).filter(month => month.verified !== 0 || month.pending !== 0 || month.sentBack !== 0);
       return {
         id: g.id,
         name: g.name,
@@ -390,10 +403,13 @@ export async function readAgentWorkspace(
           : {}),
         measure: g.measure,
         year: g.year,
-        target: g.target,
+        target: g.target > 0 ? g.target : null,
         targetVerified: g.verified,
         verifiedValue: verified,
         pendingValue: pending,
+        sentBackValue: sentBack,
+        months,
+        omittedMonthsHaveZeroRecordedValues: true,
         percentMet:
           g.target > 0
             ? Math.round(pctMet(verified, g.target) * 100) / 100
@@ -433,7 +449,7 @@ export async function readAgentWorkspace(
       metCount: rows.filter((r) => r.targetStatus === "met").length,
       laggingScheduledCount: rows.filter((r) => r.pace === "lagging").length,
       unscheduledCount: rows.filter((r) => r.pace === "unscheduled").length,
-      note: "Precomputed using the Goals page's rollup helpers. Verified values count toward targets; pending includes unverified and sent-back entries. Total measures sum their recorded goal-family entries; level measures use the latest reading. Below annual target does not mean behind schedule. Only an explicit due milestone supports a pace verdict. Scoped personal shares have no organization schedule. Currency values use recorded workspace conversion rates; do not sum across units/currencies or count composite totals again alongside their components.",
+      note: "Precomputed using the Goals page's rollup helpers. Fiscal months run April–March and each month carries its calendar year; months omitted from a goal's months array have zero recorded values for all statuses. Verified values count toward targets; pending includes unverified and sent-back entries. Sent-back is a subset of pending, never add it twice. An unset target is null; never mistake pending for a target. Total measures sum their recorded goal-family entries; level measures use the latest reading. Below annual target does not mean behind schedule. Only an explicit due milestone supports a pace verdict. Scoped personal shares have no organization schedule. Currency values use recorded workspace conversion rates; do not sum across units/currencies or count composite totals again alongside their components.",
     };
   } else if (key === "reports") {
     const [

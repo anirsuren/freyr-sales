@@ -4,25 +4,46 @@ import { useId } from "react";
 import { AreaChart, BarChart, DonutChart, DonutLegend } from "@/components/charts/Charts";
 import { ExpandedChartModal, type ExpandedChartSpec } from "@/components/charts/ExpandedChartModal";
 import { VIZ_SERIES } from "@/components/charts/palette";
+import { PaceTimeline } from "@/components/performance/bits";
 
 type ChartSpec = {
-  type: "bar" | "donut" | "area";
+  type: "bar" | "donut" | "area" | "goal-progress";
   title?: string;
   unit?: string;
   format?: "money" | "number" | "percent";
   data: { label: string; value: number; color?: string }[];
   center?: { label: string; sub?: string };
+  goal?: { verified: number; pending: number; sentBack?: number; target?: number | null };
 };
+
+function exactValue(value: number, format: ChartSpec["format"], unit?: string) {
+  if (format === "money")
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: unit && /^[A-Z]{3}$/.test(unit) ? unit : "USD", maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value) + (format === "percent" ? "%" : "");
+}
 
 /** Parse a ```chart fenced block. Returns null on anything malformed — a chat
  * message must never crash on a bad spec, it just renders without the chart. */
 export function parseChartSpec(raw: string): ChartSpec | null {
   try {
     const spec = JSON.parse(raw) as ChartSpec;
-    if (!spec || !Array.isArray(spec.data) || spec.data.length === 0) return null;
+    if (!spec) return null;
+    if (spec.type === "goal-progress") {
+      const goal = spec.goal;
+      if (!goal || !Number.isFinite(goal.verified) || !Number.isFinite(goal.pending) ||
+        goal.verified < 0 || goal.pending < 0 ||
+        (goal.target != null && (!Number.isFinite(goal.target) || goal.target < 0)) ||
+        (goal.sentBack != null && (!Number.isFinite(goal.sentBack) || goal.sentBack < 0 || goal.sentBack > goal.pending))) return null;
+      return spec;
+    }
+    if (!Array.isArray(spec.data) || spec.data.length === 0) return null;
     if (spec.type !== "bar" && spec.type !== "donut" && spec.type !== "area") return null;
     if (!spec.data.every((d) => typeof d.label === "string" && Number.isFinite(d.value)))
       return null;
+    const labels = spec.data.map((d) => d.label.toLowerCase());
+    if ((spec.type === "bar" || spec.type === "donut") &&
+      labels.some((label) => /target|goal/.test(label)) &&
+      labels.some((label) => /verified|pending|sent.back|completed/.test(label))) return null;
     return spec;
   } catch {
     return null;
@@ -36,13 +57,61 @@ export function parseChartSpec(raw: string): ChartSpec | null {
 export function ChatChart({ spec }: { spec: ChartSpec }) {
   // Chart + legend hover in lockstep, same as every donut pair in the app.
   const donutSync = useId();
-  const series = spec.data.map((d, i) => ({
+  const series = (spec.data || []).map((d, i) => ({
     label: d.label,
     value: d.value,
     color: d.color || VIZ_SERIES[i % VIZ_SERIES.length],
   }));
   const total = series.reduce((sum, d) => sum + d.value, 0);
   const title = spec.title?.trim() || "Agent chart";
+  if (spec.type === "goal-progress" && spec.goal) {
+    const { verified, pending, sentBack = 0, target } = spec.goal;
+    const format = spec.format || "number";
+    return (
+      <div className="my-2.5 rounded-xl border border-border-light bg-white px-4 py-3.5">
+        <p className="mb-3 text-[12.5px] font-semibold text-text-primary">{title}</p>
+        {target != null && target > 0 && (format !== "money" || !spec.unit || spec.unit === "USD") ? (
+          <>
+            <PaceTimeline title={title} verified={verified} awaiting={pending} sentBack={sentBack}
+              target={target} expectedPct={0} unit={format === "money" ? "currency" : format === "percent" ? "percent" : "count"} compact />
+            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-text-secondary">
+              <span>Verified: {exactValue(verified, format, spec.unit)}</span>
+              <span>Target: {exactValue(target, format, spec.unit)}</span>
+              <span>Waiting: {exactValue(Math.max(0, pending - sentBack), format, spec.unit)}</span>
+              {sentBack > 0 && <span>Sent back: {exactValue(sentBack, format, spec.unit)}</span>}
+            </div>
+          </>
+        ) : target != null && target > 0 ? (
+          <div className="space-y-2 text-xs text-text-secondary">
+            <div className="flex justify-between gap-3"><span>Verified: {exactValue(verified, format, spec.unit)}</span><span>Target: {exactValue(target, format, spec.unit)}</span></div>
+            <div className="flex h-3 overflow-hidden rounded-full bg-surface" role="img" aria-label={`Verified ${exactValue(verified, format, spec.unit)} of ${exactValue(target, format, spec.unit)} target`}>
+              <span style={{ width: `${Math.min(100, verified / target * 100)}%`, background: "var(--entry-verified)" }} />
+            </div>
+            <div>Waiting: {exactValue(Math.max(0, pending - sentBack), format, spec.unit)}{sentBack > 0 ? ` · Sent back: ${exactValue(sentBack, format, spec.unit)}` : ""}</div>
+          </div>
+        ) : (
+          <div className="space-y-2.5 text-sm text-text-secondary">
+            {format !== "percent" && verified + pending > 0 && (
+              <div>
+                <p className="mb-1.5 text-xs">Share of recorded activity</p>
+                <div className="flex h-3 overflow-hidden rounded-full bg-surface" role="img" aria-label={`Verified ${exactValue(verified, format, spec.unit)}, waiting ${exactValue(pending - sentBack, format, spec.unit)}, sent back ${exactValue(sentBack, format, spec.unit)}`}>
+                  <span style={{ width: `${verified / (verified + pending) * 100}%`, background: "var(--entry-verified)" }} />
+                  <span style={{ width: `${(pending - sentBack) / (verified + pending) * 100}%`, background: "var(--entry-waiting)" }} />
+                  <span style={{ width: `${sentBack / (verified + pending) * 100}%`, background: "var(--entry-sent-back)" }} />
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              <span>Verified: {exactValue(verified, format, spec.unit)}</span>
+              <span>Waiting: {exactValue(Math.max(0, pending - sentBack), format, spec.unit)}</span>
+              {sentBack > 0 && <span>Sent back: {exactValue(sentBack, format, spec.unit)}</span>}
+            </div>
+            <p className="text-xs">Target not set for this period</p>
+          </div>
+        )}
+      </div>
+    );
+  }
   const expandedChart: ExpandedChartSpec =
     spec.type === "bar"
       ? {
@@ -55,7 +124,7 @@ export function ChatChart({ spec }: { spec: ChartSpec }) {
         ? {
             kind: "donut",
             segments: series,
-            centerLabel: spec.center?.label ?? String(total),
+            centerLabel: spec.center?.label ?? exactValue(total, spec.format, spec.unit),
             centerSub: spec.center?.sub,
             format: spec.format || "number",
           }
@@ -91,10 +160,10 @@ export function ChatChart({ spec }: { spec: ChartSpec }) {
             segments={series}
             size={124}
             thickness={14}
-            centerLabel={spec.center?.label ?? String(total)}
+            centerLabel={spec.center?.label ?? exactValue(total, spec.format, spec.unit)}
             centerSub={spec.center?.sub}
           />
-          <DonutLegend items={series} total={total} syncId={donutSync} />
+          <DonutLegend items={series} total={total} syncId={donutSync} format={spec.format || "number"} />
         </div>
       )}
       {spec.type === "area" && (
@@ -110,4 +179,3 @@ export function ChatChart({ spec }: { spec: ChartSpec }) {
     </div>
   );
 }
-

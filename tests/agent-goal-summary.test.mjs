@@ -90,6 +90,9 @@ test("verified and pending values are separate and no pace is invented", async (
   } = await read();
   assert.equal(g.verifiedValue, 10);
   assert.equal(g.pendingValue, 25);
+  assert.equal(g.sentBackValue, 5);
+  assert.deepEqual(g.months, [{ month: "August", calendarYear: 2026, verified: 10, pending: 25, sentBack: 5 }]);
+  assert.equal(g.omittedMonthsHaveZeroRecordedValues, true);
   assert.equal(g.percentMet, 10);
   assert.equal(g.targetGap, 90);
   assert.equal(g.pace, "unscheduled");
@@ -193,6 +196,7 @@ test("unset targets do not manufacture percentages or gaps", async () => {
     records: [g],
   } = await read();
   assert.equal(g.targetStatus, "unset");
+  assert.equal(g.target, null);
   assert.equal(g.percentMet, null);
   assert.equal(g.targetGap, null);
 });

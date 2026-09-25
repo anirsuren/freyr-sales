@@ -1,5 +1,5 @@
 "use client";
-import { readAgentResponse } from "@/lib/agentStreamClient";
+import { requestAgentResponse } from "@/lib/agentStreamClient";
 import { useTypewriter, trimStreamingLink } from "./useTypewriter";
 import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 
@@ -188,6 +188,7 @@ export function AgentChat({
   const [input, setInput] = useState("");
   const [typingReply, setTypingReply] = useState<{ conversationId: string; ts: number } | null>(null);
   const [streamingPreview, setStreamingPreview] = useState<{ conversationId: string; text: string } | null>(null);
+  const [connectionErrorId, setConnectionErrorId] = useState<string | null>(null);
   // History opens immediately; only a reply received in this open chat types.
   const activeConversationRef = useRef(activeId);
   activeConversationRef.current = activeId;
@@ -442,6 +443,7 @@ export function AgentChat({
       const text = raw.trim();
       if (!text || sending || loadedStorageKey !== storageKey) return;
       const requestUserId = currentUser.id;
+      setConnectionErrorId(null);
       setInput("");
 
       // start or continue a conversation — decide the id synchronously so the
@@ -525,10 +527,7 @@ export function AgentChat({
           : visibleConvos
               .find((c) => c.id === id)
               ?.messages.map((mm) => ({ role: mm.role, text: mm.text })) || [];
-        const res = await fetch("/api/agent/converse", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const requestBody = {
             message: text,
             stream: true,
             history: prior,
@@ -538,14 +537,12 @@ export function AgentChat({
             // Context is explicit: it exists only when this conversation was
             // opened from an offering's Ask Freyr AI button.
             offeringId: requestOfferingId,
-          }),
-          signal: controller.signal,
-        });
+        };
         // An unreachable assistant is an error, not a message. Throwing sends
         // it to the catch below, which says so plainly instead of printing
         // something that looks like the agent talking.
         let receivedProgress = false;
-        const data = await readAgentResponse(res, (answerSoFar) => {
+        const data = await requestAgentResponse(requestBody, controller.signal, (answerSoFar) => {
           receivedProgress = true;
           if (activeUserIdRef.current === requestUserId) {
             setStreamingPreview({ conversationId: id, text: answerSoFar });
@@ -576,19 +573,7 @@ export function AgentChat({
       } catch {
         if (activeUserIdRef.current !== requestUserId) return;
         setStreamingPreview(null);
-        setConvos((prev) => {
-          const next = prev.map((c) =>
-            c.id === id
-              ? {
-                  ...c,
-                  messages: [...c.messages, { role: "agent" as const, text: "I couldn't reach the assistant just then. Please try that again.", ts: Date.now() }],
-                  updated: Date.now(),
-                }
-              : c
-          );
-          save(storageKey, next);
-          return next;
-        });
+        setConnectionErrorId(id);
       } finally {
         clearTimeout(timer);
         if (requestControllerRef.current === controller) {
@@ -974,6 +959,11 @@ export function AgentChat({
                       : <ThinkingDots />}
                   </div>
                 </div>
+              )}
+              {connectionErrorId === active?.id && !sending && (
+                <p role="alert" className="rounded-xl border border-border-light bg-surface px-4 py-2 text-sm text-text-secondary">
+                  The connection stopped before the answer finished. Your question is saved; ask again to retry.
+                </p>
               )}
             </div>
           </div>

@@ -265,7 +265,7 @@ export function AgentResponseMarkdown({
                 <tr key={ri} className="border-t border-border-light">
                   {r.map((c, ci) => (
                     <td key={ci} className="whitespace-nowrap px-3 py-2 align-middle">
-                      {renderInline(c, `td-${i}-${ri}-${ci}`, entities, linkable)}
+                      {renderInline(c.replace(/\s*<br\s*\/?\s*>\s*/gi, " · "), `td-${i}-${ri}-${ci}`, entities, linkable)}
                     </td>
                   ))}
                 </tr>
@@ -308,4 +308,3 @@ export function AgentResponseMarkdown({
   flush("ul-end");
   return <>{blocks}</>;
 }
-

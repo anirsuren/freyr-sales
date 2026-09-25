@@ -966,7 +966,12 @@ export function familyValue(
     if (filter.person && a.person !== filter.person) continue;
     if (filter.people && !filter.people.has(a.person)) continue;
     if (filter.range) {
-      const t = Date.parse(a.date);
+      // Goal entry dates are calendar dates, not instants. Parsing a bare
+      // yyyy-mm-dd as UTC moves the first of a month into the previous month
+      // for users west of UTC, while fiscalRange uses local month boundaries.
+      const t = isDateOnly(a.date)
+        ? new Date(`${calendarDate(a.date)}T12:00:00`).getTime()
+        : Date.parse(a.date);
       if (Number.isNaN(t) || t < filter.range[0] || t >= filter.range[1]) continue;
     }
     const status = entryStatus(a);
