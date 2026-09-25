@@ -93,6 +93,7 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => { setDraft(structuredClone(review ?? blankReview())); }, [review]);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(review ?? blankReview());
 
   const update = (patch: Partial<OpportunityReview>) => setDraft((current) => ({ ...current, ...patch }));
   const patchPerson = (id: string, patch: Partial<OpportunityReviewPerson>) => update({ people: draft.people.map((person) => person.id === id ? { ...person, ...patch } : person) });
@@ -177,10 +178,14 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
         <div className="space-y-3">{draft.actions.map((action) => <div key={action.id} className="rounded-xl border border-border-light p-3">{editing ? <div className="grid gap-2 sm:grid-cols-2"><input className={`${field} sm:col-span-2`} value={action.action} onChange={(e) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, action: e.target.value } : item) })} placeholder="Action agreed" aria-label="Review action" /><RecordPicker choices={teammateChoices} name={action.owner} id={action.ownerId} placeholder="Search teammates" emptyLabel="No teammates found" onPick={(choice) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, owner: choice.label, ownerId: options?.teammates.find((teammate) => teammate.id === choice.id)?.id } : item) })} /><input type="date" className={field} value={action.deadline} onChange={(e) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, deadline: e.target.value } : item) })} aria-label="Action deadline" /><button type="button" onClick={() => update({ actions: draft.actions.filter((item) => item.id !== action.id) })} className="justify-self-end px-2 text-text-tertiary hover:text-red-600 sm:col-span-2" aria-label="Remove action"><Trash2 size={16} /></button></div> : <div><strong className="text-[13px] text-text-primary">{action.action}</strong><p className="mt-1 flex items-center gap-1.5 text-[12px] text-text-secondary"><CalendarDays size={13} /> {action.owner} · {action.deadline}</p></div>}</div>)}{!draft.actions.length && !editing && <p className="text-[13px] text-text-secondary">No actions agreed yet.</p>}{editing && <button type="button" onClick={() => update({ actions: [...draft.actions, { id: uid(), action: "", owner: "", deadline: "" }] })} className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary"><Plus size={15} /> Add action</button>}</div>
       </Section>
     </div>
-    {editing && <div className="sticky bottom-0 z-30 -mx-1 px-1 pb-1">
+    {editing && (dirty || error) && <div className="sticky bottom-0 z-30 -mx-1 mt-2 px-1 pb-1">
       <div data-agent-dock-clearance className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white/95 px-4 py-3 shadow-[0_-2px_18px_-6px_rgba(16,22,30,0.22)] backdrop-blur">
-        {error && <p role="alert" className="min-w-0 flex-1 text-[12.5px] font-medium text-red-700">{error}</p>}
-        <div className="ml-auto flex items-center gap-2"><button type="button" onClick={cancel} disabled={saving} className="rounded-lg border border-border-light bg-white px-4 py-2 text-[13px] font-medium text-text-secondary">Cancel</button><button type="button" onClick={() => void save()} disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-blue-primary px-5 py-2 text-[13px] font-semibold text-white disabled:opacity-60"><Check size={15} />{saving ? "Saving…" : "Save changes"}</button></div>
+        <span className="text-[13px] font-semibold text-text-primary">Unsaved review changes</span>
+        {error && <p role="alert" className="min-w-0 text-[12.5px] font-medium text-[color:var(--status-red)]">{error}</p>}
+        <div className="ml-auto flex items-center gap-2">
+          <button type="button" onClick={cancel} disabled={saving} className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary disabled:opacity-50">Cancel</button>
+          <button type="button" onClick={() => void save()} disabled={saving || !dirty} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-primary px-4 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"><Check size={14} />{saving ? "Saving…" : "Save changes"}</button>
+        </div>
       </div>
     </div>}
   </div>;
