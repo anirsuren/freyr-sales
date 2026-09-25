@@ -37,6 +37,7 @@ import { listWorkspaceAccess } from "./accessStore";
 import { PRIVILEGE_MODULES } from "./privileges";
 import { portfolioReport } from "./revenue";
 import { buildDeals, FORECAST_REFERENCE_QUOTA, STAGE_PROBABILITY } from "./pipeline";
+import { accountHealth } from "./health";
 import { opportunityValue, opportunityConfidence, signDateOf, sumEstimates } from "./opportunitiesShared";
 import {
   resolveHeatMapCell,
@@ -218,13 +219,26 @@ export async function readAgentWorkspace(
               url: `/offerings/${encodeURIComponent(o.id)}`,
             }));
   } else if (key === "customers") {
-    const [customers, teams] = await Promise.all([getDb().customers.list(), readRecordTeams()]);
+    const db = getDb();
+    const [customers, teams, contacts, interactions, sessions] = await Promise.all([
+      db.customers.list(), readRecordTeams(), db.contacts.list(),
+      db.interactions.list(), db.pitchSessions.list(),
+    ]);
+    // Mirror the Customers page's computed relationship health, not a stored field.
+    const sessionDeals = buildDeals(sessions, customers, contacts, interactions);
     rows = customers.map(c => {
       const team = teamFor(teams,"customer",c.id);
       const owned = team?.owner ? mine(team.owner) : c.owner_user_id ? c.owner_user_id === actor.userId : mine(c.owner);
       const onTeam = (team?.members ?? []).some(mine);
+      const health = accountHealth({
+        interactions: interactions.filter(i => i.customer_id === c.id),
+        deals: sessionDeals.filter(d => d.customerId === c.id),
+        contactCount: contacts.filter(x => x.customer_id === c.id).length,
+      });
       return {id:c.id,name:c.company_name,owner:team?.owner || c.owner,
-        teamMembers:team?.members ?? [],ownedByMe:owned,onMyTeam:onTeam,
+        assignedTeamMembers:team?.members ?? [],ownedByMe:owned,onMyTeam:onTeam,
+        teamBasis:"Explicit account-team assignments only. The Customers page Team tab also includes people inferred from linked opportunities, meetings and solutioning work; an empty assigned list does not mean nobody is shown there.",
+        relationshipHealth:{score:health.score,label:health.label,basis:"Computed estimate shown on the Customers page; not a stored field."},
         url:`/customers/${encodeURIComponent(c.id)}`};
     }).filter(c => !mineOnly || c.ownedByMe || c.onMyTeam);
     summary = {ownedCount:rows.filter(r=>r.ownedByMe).length,

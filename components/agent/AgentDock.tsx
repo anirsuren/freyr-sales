@@ -19,6 +19,7 @@ import { putConversations } from "@/lib/saveConversations";
 import { bucketByDay, clockTime, dayLabel, listStamp, sameDay } from "@/lib/chatTime";
 import { useEntityIndex, type Entity } from "@/components/agent/EntityPills";
 import { AgentResponseMarkdown } from "@/components/agent/AgentResponseMarkdown";
+import { AgentThinking } from "@/components/agent/AgentThinking";
 import { useTypewriter, trimStreamingLink } from "@/components/agent/useTypewriter";
 import { requestAgentResponse } from "@/lib/agentStreamClient";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
@@ -214,40 +215,6 @@ function suggestionsFor(label: string, offeringsOnly = false): string[] {
   if (label.includes("Campaign"))
     return ["Who should I add?", "Draft a subject line", "How's this campaign doing?"];
   return ["What should I work on next?", "Summarize my pipeline", "Which deals have no recent activity?"];
-}
-
-// A little personality while it works (Anir: "like Claude Code's rotating
-// words"): blue equalizer bars + an italic word that changes every ~1.6s.
-const THINKING_WORDS = [
-  "Thinking",
-  "Percolating",
-  "Noodling",
-  "Cogitating",
-  "Scheming",
-  "Bamboozling",
-  "Conjuring",
-  "Crunching",
-  "Pondering",
-  "Vibing",
-];
-function Thinking() {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setI((x) => (x + 1) % THINKING_WORDS.length), 1600);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <span className="flex items-center gap-2.5" aria-label="Thinking">
-      <span className="flex items-end gap-1 h-4">
-        <span className="eq-bar" style={{ animationDelay: "0ms" }} />
-        <span className="eq-bar" style={{ animationDelay: "150ms" }} />
-        <span className="eq-bar" style={{ animationDelay: "300ms" }} />
-      </span>
-      <span className="text-[12.5px] italic text-text-tertiary">
-        {THINKING_WORDS[i]}…
-      </span>
-    </span>
-  );
 }
 
 /**
@@ -664,6 +631,7 @@ export function AgentDock({
 
   function startNewChat() {
     setActiveId(null);
+    setConnectionErrorId(null);
     setPendingOffering(null);
     setPending(null);
     setTypingTs(null);
@@ -1147,10 +1115,10 @@ export function AgentDock({
               <div className="agent-dock-reply w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 text-[13px] leading-[1.55]">
                 {streamingPreview
                   ? <AgentResponseMarkdown text={trimStreamingLink(streamingPreview)} entities={entities} linkable={!offeringsOnly} />
-                  : <Thinking />}
+                  : <AgentThinking />}
               </div>
             )}
-            {connectionErrorId === activeId && !busy && (
+            {connectionErrorId !== null && connectionErrorId === activeId && !busy && (
               <p role="alert" className="rounded-xl border border-border-light bg-surface px-3.5 py-2 text-xs text-text-secondary">
                 The connection stopped before the answer finished. Your question is saved; ask again to retry.
               </p>

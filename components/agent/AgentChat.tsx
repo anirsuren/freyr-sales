@@ -31,6 +31,7 @@ import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { putConversations } from "@/lib/saveConversations";
 import { useEntityIndex, type Entity } from "@/components/agent/EntityPills";
 import { AgentResponseMarkdown } from "@/components/agent/AgentResponseMarkdown";
+import { AgentThinking } from "@/components/agent/AgentThinking";
 import { AGENT_NAME } from "@/lib/agentIdentity";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -149,20 +150,6 @@ function TypedAgentReply({ text, active, entities, entityContext, onReveal }: {
     if (active) onReveal();
   }, [shown, active, onReveal]);
   return <AgentResponseMarkdown text={trimStreamingLink(shown)} entities={entities} entityContext={entityContext} />;
-}
-
-function ThinkingDots() {
-  return (
-    <span className="flex items-center gap-1 py-0.5" aria-label="Thinking">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="w-1.5 h-1.5 rounded-full bg-text-tertiary animate-bounce"
-          style={{ animationDelay: `${i * 0.15}s`, animationDuration: "0.9s" }}
-        />
-      ))}
-    </span>
-  );
 }
 
 export function AgentChat({
@@ -956,7 +943,7 @@ export function AgentChat({
                   <div className="bg-surface border border-border-light rounded-2xl rounded-tl-md px-4 py-3 text-[14px] leading-relaxed">
                     {streamingPreview?.conversationId === active.id && streamingPreview.text
                       ? <AgentResponseMarkdown text={trimStreamingLink(streamingPreview.text)} entities={entities} />
-                      : <ThinkingDots />}
+                      : <AgentThinking />}
                   </div>
                 </div>
               )}

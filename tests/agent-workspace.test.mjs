@@ -168,6 +168,15 @@ test("offering ownership uses stable id and approved status", async () => {
     ["own"],
   );
 });
+test("customer reader exposes the same computed relationship health as the page", async () => {
+  const result = JSON.parse(await readAgentWorkspace(actor, "customers", "Other"));
+  const customer = result.records.find((record) => record.id === "other");
+  assert.deepEqual(customer.relationshipHealth, {
+    score: 30,
+    label: "At risk",
+    basis: "Computed estimate shown on the Customers page; not a stored field.",
+  });
+});
 test("personal starred result beyond first50 is still present and pagination complete", async () => {
   const r = JSON.parse(
     await readAgentWorkspace(actor, "market_intel", "", true),

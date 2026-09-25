@@ -64,6 +64,13 @@ export function buildSupabaseAdapter(supabaseOverride?: any): Db {
     return res.data;
   };
 
+  // Some live workspaces predate the optional customer creator column. A
+  // failed PostgREST schema check does not write a row, so retrying without
+  // that attribution keeps account/contact links usable in those workspaces.
+  const missingCustomerCreator = (error: { code?: string; message?: string } | null) =>
+    error?.code === "PGRST204" &&
+    /['"]created_by['"] column of ['"]customers['"]/.test(error.message ?? "");
+
   const stripRelation = <T>(
     value: (T & Record<string, unknown>) | null,
     relation: string
@@ -286,27 +293,34 @@ export function buildSupabaseAdapter(supabaseOverride?: any): Db {
       },
       create: async (data: Partial<Customer>) => {
         const workspace = await workspaceId();
-        return unwrap<Customer>(
-          await supabase
-            .from("customers")
-            .insert({ ...data, workspace_id: workspace })
-            .select()
-            .single()
-        );
+        const payload = { ...data, workspace_id: workspace };
+        const result = await supabase.from("customers").insert(payload).select().single();
+        if (!missingCustomerCreator(result.error) || !("created_by" in payload))
+          return unwrap<Customer>(result);
+        const compatible = { ...payload };
+        delete compatible.created_by;
+        return unwrap<Customer>(await supabase.from("customers").insert(compatible).select().single());
       },
       update: async (id: string, data: Partial<Customer>) => {
         const workspace = await workspaceId();
-        const result = await supabase
+        const payload = {
+          ...data,
+          workspace_id: workspace,
+          last_enriched_at: new Date().toISOString(),
+        };
+        const write = (value: typeof payload) => supabase
           .from("customers")
-          .update({
-            ...data,
-            workspace_id: workspace,
-            last_enriched_at: new Date().toISOString(),
-          })
+          .update(value)
           .eq("id", id)
           .eq("workspace_id", workspace)
           .select()
           .maybeSingle();
+        let result = await write(payload);
+        if (missingCustomerCreator(result.error) && "created_by" in payload) {
+          const compatible = { ...payload };
+          delete compatible.created_by;
+          result = await write(compatible);
+        }
         return maybe<Customer>(result);
       },
       /**

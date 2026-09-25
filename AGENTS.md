@@ -196,6 +196,10 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 25 Landing previews correction:** The product carousel uses five compact React/CSS scenes for accounts, opportunities, Market Intel, goals and offerings. It does not embed full application pages or scroll internally. The figures and labels are taken from Mock sample records. Users can move between views with tabs, arrows, keyboard or touch swipe. Removed Working Principles, How It Works and Connected Picture sections; FAQs remain. Connected-workspace count animates 9,999→1 on entering view. Local only.
+
+- **Sep 25 Landing redesign:** Rebuilt the public homepage using the local Aequus Verify landing structure, IBM Plex Sans/Newsreader typography, pale panels, navy actions, product marquees, interactive examples, five product views, team sections and categorized FAQ. User chose the tenth original marble philosopher image. Static image imports avoid sign-in redirects and stale optimized hero URLs. Ten on-page hero screenshots and desktop/mobile previews are saved in `output/landing-hero-options`; `?hero=` comparison is development-only. Typecheck, focused lint, desktop/mobile controls and asset loading verified. Aequus source unchanged. Local only, not deployed.
+
 - **Sep 25 Short goal link identity:** Explicit `/performance/goal/:id` links now get the same target-icon pill as indexed goal names, including short generic names such as Renewals. Short goal names remain excluded from automatic prose matching so ordinary sentences do not acquire false goal links. Local only, not deployed.
 
 - **Sep 25 Agent full-chat handoff and width:** The side-panel “Open full chat” link now carries the active conversation ID. The full Agent page waits for that thread in local or account history, selects it, then clears the handoff URL. The main message lane and composer now use up to 1200px instead of 760px, reducing the empty gap after the conversation list. Local only, not deployed.
