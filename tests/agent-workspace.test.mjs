@@ -269,6 +269,21 @@ test("Forecast reader grounds page totals in pitch sessions and labels the fixed
   try { assert.match(await readAgentWorkspace(actor, "forecast"), /do not have access/); }
   finally { blockedSource = ""; }
 });
+test("Pipeline reader returns stage totals and exact deal destinations", async () => {
+  const result = JSON.parse(await readAgentWorkspace(actor, "pipeline"));
+  assert.equal(result.summary.pageUrl, "/pipeline");
+  assert.equal(result.summary.totalDeals, 1);
+  assert.equal(result.summary.openCount, 1);
+  assert.equal(result.summary.openValue, result.records[0].estimatedValue);
+  assert.equal(result.records[0].url, "/deals/session-008");
+  assert.equal(result.summary.byStage.find(stage => stage.stage === result.records[0].stage).count, 1);
+  blockedSource = "/sessions";
+  try { assert.match(await readAgentWorkspace(actor, "pipeline"), /source access is incomplete/); }
+  finally { blockedSource = ""; }
+  blockedSource = "/pipeline";
+  try { assert.match(await readAgentWorkspace(actor, "pipeline"), /do not have access/); }
+  finally { blockedSource = ""; }
+});
 test("opportunity preserves currency and dates rather than claiming USD", async () => {
   const r = JSON.parse(await readAgentWorkspace(actor, "opportunities"));
   assert.equal(r.records[0].currency, "INR");

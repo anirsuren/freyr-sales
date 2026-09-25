@@ -170,8 +170,8 @@ export function PipelineAnalytics({ deals }: { deals: Deal[] }) {
             How your pipeline is moving
           </h2>
           <p className="mt-0.5 text-[11px] text-text-tertiary">
-            Both graphs are drawn straight from the deals on this board, real
-            totals on real dates, nothing estimated or filled in.
+            Both charts use this board&apos;s estimated deal values. The timeline
+            shows when today&apos;s open deals entered, not past pipeline snapshots.
           </p>
         </div>
         <p className="text-[11px] font-medium text-text-secondary tnum">

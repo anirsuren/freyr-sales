@@ -87,7 +87,7 @@ export default async function PipelinePage() {
       <div className="rise-in">
         <PageHeader
           title="Pipeline"
-          subtitle={`${deals.length} deals · ${formatMoney(openValue)} open pipeline value`}
+          subtitle={`${deals.length} deals · ${formatMoney(openValue)} estimated open pipeline value`}
           action={
             <div className="flex flex-wrap items-center gap-2">
               <Link

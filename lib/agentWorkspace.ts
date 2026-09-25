@@ -54,6 +54,7 @@ export const AGENT_MODULES = {
   tasks: "/tasks",
   campaigns: "/campaigns",
   sequences: "/sequences",
+  pipeline: "/pipeline",
   forecast: "/forecast",
   opportunities: "/opportunities",
   solutioning: "/solutioning",
@@ -362,18 +363,19 @@ export async function readAgentWorkspace(
       enrollmentAccess: sourceAllowed ? "available" : "source access incomplete",
       basis: "The Sequences page selects a library record in place; ?sequence=ID selects the exact record. Its default Regulatory Exec Outreach enrollments include active deal-derived accounts plus saved enrollments; other plans have saved enrollments. Steps describe a proposed cadence, not messages already sent or calls placed. Null enrolledAccounts means source access was denied, not zero.",
     };
-  } else if (key === "forecast") {
-    if (mineOnly) return "The Forecast headline is for the whole pitch-session book, not a personal quota. Use a named rep query for a recorded-owner breakdown; no personal headline was read.";
+  } else if (key === "forecast" || key === "pipeline") {
+    if (key === "forecast" && mineOnly) return "The Forecast headline is for the whole pitch-session book, not a personal quota. Use the Pipeline reader with mineOnly for a recorded-owner breakdown; no personal Forecast headline was read.";
     const [sessionsAllowed, customersAllowed, contactsAllowed] = await Promise.all([
       canOpenModule("/sessions"), canOpenModule("/customers"), canOpenModule("/contacts"),
     ]);
     if (!sessionsAllowed || !customersAllowed || !contactsAllowed)
-      return "Forecast source access is incomplete. Sessions, Customers and Contacts access is required; no forecast figures were read.";
+      return "Pipeline/Forecast source access is incomplete. Sessions, Customers and Contacts access is required; no figures were read.";
     const db = getDb();
     const [sessions, customers, contacts, interactions] = await Promise.all([
       db.pitchSessions.list(), db.customers.list(), db.contacts.list(), db.interactions.list(),
     ]);
-    const deals = buildDeals(sessions, customers, contacts, interactions);
+    const deals = buildDeals(sessions, customers, contacts, interactions)
+      .filter(deal => !mineOnly || (deal.ownerUserId ? deal.ownerUserId === actor.userId : mine(deal.owner)));
     const open = deals.filter(deal => deal.stage !== "Closed Lost");
     const byStage = Object.keys(STAGE_PROBABILITY).map(stage => {
       const stageDeals = deals.filter(deal => deal.stage === stage);
@@ -384,17 +386,23 @@ export async function readAgentWorkspace(
     const bestCase = open.reduce((sum, deal) => sum + deal.value, 0);
     const commit = byStage.reduce((sum, stage) => sum + stage.weightedValue, 0);
     summary = {
-      pageUrl:"/forecast", pipelineUrl:"/pipeline", currency:"USD", openCount:open.length,
-      bestCase, commit, referenceQuota:FORECAST_REFERENCE_QUOTA,
-      quotaSource:"Fixed Forecast page comparison benchmark; not a saved Goals target, approved team quota, or verified CRM fact.",
-      gapToReference:Math.max(0, FORECAST_REFERENCE_QUOTA - commit), byStage,
+      pageUrl:key === "forecast" ? "/forecast" : "/pipeline", pipelineUrl:"/pipeline", currency:"USD",
+      totalDeals:deals.length,openCount:open.length,openValue:bestCase,
+      bestCase, commit,
+      ...(key === "forecast" ? {
+        referenceQuota:FORECAST_REFERENCE_QUOTA,
+        quotaSource:"Fixed Forecast page comparison benchmark; not a saved Goals target, approved team quota, or verified CRM fact.",
+        gapToReference:Math.max(0, FORECAST_REFERENCE_QUOTA - commit),
+      } : {}),
+      byStage,
       valueSource:"Pitch sessions joined to their customers, contacts and latest contact interactions. Each session becomes one Pipeline deal. The dollar value is an estimate derived from customer size, not a recorded opportunity amount; stage comes from latest contact outcome. Commit weights those estimates by fixed stage probabilities. Opportunities is a separate revenue view; never add it to this Forecast or cite it as the source of these figures.",
       repSource:"Rep rows use recorded-owner pitch-session estimates when present. In Mock mode, reps without deals receive deterministic synthetic values and example accounts; those are illustrations, not recorded sales facts. The headline totals do not include synthetic rep rows.",
     };
     rows = deals.map(deal => ({id:deal.sessionId,customer:deal.company,contact:deal.contactName,
       owner:deal.owner,stage:deal.stage,estimatedValue:deal.value,currency:"USD",
       stageProbability:STAGE_PROBABILITY[deal.stage],weightedValue:deal.value * STAGE_PROBABILITY[deal.stage],
-      lastActivity:deal.lastActivity,url:`/deals/${encodeURIComponent(deal.sessionId)}`}));
+      lastActivity:deal.lastActivity,url:`/deals/${encodeURIComponent(deal.sessionId)}`}))
+      .sort((a,b) => b.estimatedValue - a.estimatedValue || a.id.localeCompare(b.id));
   } else if (key === "leads") {
     rows = (await readLeads()).leads
       .filter((r) => !mineOnly || mine(r.owner))
