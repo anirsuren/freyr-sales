@@ -571,14 +571,14 @@ export function LiveCompanyBriefing({
   const postCard = (group: StoryGroup<Item>, key: string) => {
     const item = group.lead;
     const post = item.post!;
-    // COUNT CHARACTERS, NOT UTF-16 UNITS. LinkedIn posts are full of styled
-    // unicode, where one visible character is two units, so slicing by
-    // index could split one and React would throw a hydration error.
-    const chars = Array.from(post.text);
+    // A post's first line is its headline. The indexed item title is capped
+    // for search/list views; using that cap here split words between the blue
+    // headline and gray body, even after "Show the full post" was clicked.
+    const firstBreak = post.text.indexOf("\n");
+    const headline = (firstBreak < 0 ? post.text : post.text.slice(0, firstBreak)).trim();
+    const postRemainder = firstBreak < 0 ? "" : post.text.slice(firstBreak + 1).trim();
     const open = expanded.has(post.url);
-    const titleLength = Array.from(item.title).length;
-    const postRemainder = chars.slice(titleLength).join("").trim();
-    const isLong = Array.from(postRemainder).length > 120;
+    const isLong = Array.from(postRemainder).length > 120 || postRemainder.split("\n").length > 2;
     return (
       <Card key={key} className={cardClass(item)} style={cardStyle(item)}>
         <div className="mb-2 flex items-start justify-between gap-4">
@@ -613,9 +613,9 @@ export function LiveCompanyBriefing({
               </span>
             </p>
             <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
-              <a href={safeHref(post.url) as string} target="_blank" rel="noreferrer" className="text-blue-primary hover:underline">{item.title}</a>
+              <a href={safeHref(post.url) as string} target="_blank" rel="noreferrer" className="text-blue-primary hover:underline">{headline || item.title}</a>
             </h3>
-            {postRemainder && <p className={cn("mt-1 whitespace-pre-line text-[12.5px] leading-relaxed text-text-secondary", !open && "overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]")}>
+            {postRemainder && <p className={cn("mt-1 whitespace-pre-line text-[12.5px] leading-relaxed text-text-secondary", isLong && !open && "overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]")}>
               {postRemainder}
             </p>}
             {isLong && (
