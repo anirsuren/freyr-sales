@@ -132,7 +132,14 @@ function TableStoryTicker({ card }: { card: CompanyCard }) {
       {stories.length > 1 && (
         <div className="mt-1.5 flex items-center gap-1.5" aria-label={`Story ${index + 1} of ${stories.length} for ${card.name}`}>
           <button type="button" onClick={() => step(-1)} aria-label={`Previous story for ${card.name}`} className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border-light text-text-secondary hover:border-blue-subtle hover:text-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"><ChevronLeft size={12} /></button>
-          {stories.map((_, position) => <span key={position} className={cn("h-1 rounded-full transition-all duration-300", position === index ? "w-3 bg-blue-primary" : "w-1 bg-border-strong")} />)}
+          {stories.map((_, position) => (
+            <span
+              key={position}
+              aria-hidden="true"
+              className={cn("h-1.5 rounded-full transition-all duration-300", position === index ? "w-3" : "w-1.5")}
+              style={{ backgroundColor: position === index ? "var(--blue-primary)" : "var(--border)" }}
+            />
+          ))}
           <button type="button" onClick={() => step(1)} aria-label={`Next story for ${card.name}`} className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border-light text-text-secondary hover:border-blue-subtle hover:text-blue-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"><ChevronRight size={12} /></button>
         </div>
       )}

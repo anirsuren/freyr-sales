@@ -196,6 +196,8 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+- **Sep 25 Customer Intel story position dots:** Inactive table-ticker dots used an undefined `bg-border-strong` utility, leaving only the blue active marker visible. They now have explicit theme-aware border color and a larger dot size, while the active position remains blue. Typecheck, focused lint, and diff check pass. Local only, not deployed.
+
 - **Sep 25 Review editor save footer:** The separate opportunity review editor now follows the deal overview's sticky save pattern: it appears only after an edit, identifies the unsaved review, and uses the same compact Cancel/Save sizing and spacing. Form errors remain beside the controls. Typecheck, focused lint, and diff check pass. Local only, not deployed.
 
 - **Sep 25 Customer Intel table and five-story rotation:** Saras's Customer Intel uses a fresh table-first saved view key so an older tile preference cannot replace the table she requested; she may still choose either view afterward. Table rows now cycle through up to five latest headlines every five seconds, matching the existing tile ticker, with previous/next controls, pause on hover/focus, and reduced-motion support. The visible story retains its own source and article links. Typecheck, focused lint, and diff check pass. Local only, not deployed.
