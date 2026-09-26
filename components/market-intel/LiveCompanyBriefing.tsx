@@ -1162,28 +1162,39 @@ export function LiveCompanyBriefing({
           {/* NO PEOPLE ON A COMPETITOR (Saras, Sep 10). */}
           {!isCompetitor && (
             <Card className="p-4">
-              <div className="flex items-start gap-2">
-                <button type="button" onClick={() => setPeopleOpen(!peopleOpen)} aria-expanded={peopleOpen} aria-controls="tracked-people-options" className="flex min-w-0 flex-1 cursor-pointer items-start justify-between gap-2 text-left focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
-                      <Users size={14} strokeWidth={2} className="text-blue-primary" />
-                      People tracked
-                    </span>
-                    <span className={cn("mt-1 block text-[11.5px] leading-snug", extraPeople.length > 0 ? "font-medium text-blue-primary" : "text-text-tertiary")}>
-                      {extraPeople.length > 0 ? extraPeople.map(person => person.name).join(", ") : "Nobody tracked yet"}
-                    </span>
+              <button type="button" onClick={() => setPeopleOpen(!peopleOpen)} aria-expanded={peopleOpen} aria-controls="tracked-people-options" className="flex w-full cursor-pointer items-start justify-between gap-2 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
+                    <Users size={14} strokeWidth={2} className="text-blue-primary" />
+                    People tracked
+                    {extraPeople.length > 0 && <span className="tnum rounded-full bg-blue-light px-1.5 py-0.5 text-[10px] font-bold text-blue-primary">{extraPeople.length}</span>}
                   </span>
-                  <ChevronDown size={16} aria-hidden="true" className={cn("mt-0.5 shrink-0 text-text-secondary transition-transform", peopleOpen && "rotate-180")} />
-                </button>
-                {canManagePeople && <TrackPersonButton companyId={briefing.id} companyName={briefing.name} availablePeople={availablePeople} />}
+                  {!peopleOpen && (extraPeople.length > 0 ? (
+                    <span className="mt-3 flex items-center -space-x-2 pl-0.5" aria-hidden="true">
+                      {extraPeople.slice(0, 6).map(person => (
+                        <span key={person.id} title={person.name} className="relative rounded-full ring-2 ring-white">
+                          <Avatar name={person.name} src={person.photoUrl || undefined} className="h-8 w-8 text-[10px]" />
+                        </span>
+                      ))}
+                      {extraPeople.length > 6 && <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-blue-light text-[10px] font-bold text-blue-primary ring-2 ring-white">+{extraPeople.length - 6}</span>}
+                    </span>
+                  ) : <span className="mt-1 block text-[11.5px] text-text-tertiary">Nobody tracked yet</span>)}
+                </span>
+                <ChevronDown size={16} aria-hidden="true" className={cn("mt-0.5 shrink-0 text-text-secondary transition-transform", peopleOpen && "rotate-180")} />
+              </button>
+              <div id="tracked-people-options" hidden={!peopleOpen}>
+                {peopleOpen && canManagePeople && <div className="mt-3 flex justify-end border-t border-border-light pt-3">
+                  <TrackPersonButton companyId={briefing.id} companyName={briefing.name} availablePeople={availablePeople} />
+                </div>}
+                {extraPeople.length === 0 ? (
+                  <p className="mt-2.5 text-[12px] leading-relaxed text-text-secondary">
+                    Nobody yet.{canManagePeople ? " Add the senior people whose posts you want in this feed." : ""}
+                  </p>
+                ) : (
+                  <TrackedPeopleList people={extraPeople} personPosts={railPosts} canManage={canManagePeople} />
+                )}
               </div>
-              <div id="tracked-people-options" hidden={!peopleOpen}>{extraPeople.length === 0 ? (
-                <p className="mt-2.5 text-[12px] leading-relaxed text-text-secondary">
-                  Nobody yet.{canManagePeople ? " Add the senior people whose posts you want in this feed." : ""}
-                </p>
-              ) : (
-                <TrackedPeopleList people={extraPeople} personPosts={railPosts} canManage={canManagePeople} />
-              )}</div>
+              {!peopleOpen && extraPeople.length === 0 && canManagePeople && <div className="mt-3 flex justify-end"><TrackPersonButton companyId={briefing.id} companyName={briefing.name} availablePeople={availablePeople} /></div>}
             </Card>
           )}
 

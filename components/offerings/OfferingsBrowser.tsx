@@ -1778,7 +1778,7 @@ export function OfferingsBrowser({
                             comes with a face (Anir, overruling the ask to drop
                             them). */}
                         {grantedOwners.length > 0 ? (
-                          <span className="flex min-w-0 flex-col gap-1">
+                          <span className="flex min-w-0 flex-col items-start gap-1">
                             {grantedOwners.map((owner) => (
                               <PersonHoverCard
                                 key={owner.memberId || owner.name}

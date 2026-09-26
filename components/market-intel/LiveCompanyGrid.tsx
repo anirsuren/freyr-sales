@@ -45,7 +45,7 @@ import { LiveCompanyCard, type CardPerson } from "@/components/market-intel/Live
 import { WatchStatus, type WatchState } from "@/components/market-intel/WatchStatus";
 import type { CompanyCard } from "@/lib/marketIntelFeed";
 import type { TrackedCompany } from "@/lib/marketIntelTracking";
-import { outletHomepage, outletName } from "@/lib/marketIntelText";
+import { outletName } from "@/lib/marketIntelText";
 import { DIVISIONS, DIVISION_META, type Division } from "@/lib/offeringMaterials";
 import { linkedInUrl, safeHref } from "@/lib/safeUrl";
 import { cn } from "@/lib/utils";
@@ -110,7 +110,6 @@ function TableStoryTicker({ card }: { card: CompanyCard }) {
 
   const storyHref = safeHref(story.url);
   const storyOutlet = outletName(story.source, story.url);
-  const outletHref = outletHomepage(story.source, storyHref ?? undefined);
   const step = (delta: number) => setIndex((current) => (current + delta + stories.length) % stories.length);
 
   return (
@@ -122,8 +121,8 @@ function TableStoryTicker({ card }: { card: CompanyCard }) {
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false); }}
     >
       <div key={`${card.id}-${index}`} className="mi-ticker-in">
-        {outletHref ? (
-          <a href={outletHref} target="_blank" rel="noreferrer" aria-label={`Open ${storyOutlet} website`} className="mb-1 inline-block text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary transition-colors hover:text-blue-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">{storyOutlet}</a>
+        {storyHref ? (
+          <a href={storyHref} target="_blank" rel="noreferrer" aria-label={`Open source from ${storyOutlet}`} className="mb-1 inline-flex items-center gap-0.5 text-[10.5px] font-bold uppercase tracking-[0.055em] text-blue-primary transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">{storyOutlet}<ArrowUpRight size={10} aria-hidden="true" /></a>
         ) : (
           <p className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary">{storyOutlet}</p>
         )}

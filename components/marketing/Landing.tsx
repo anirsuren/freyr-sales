@@ -5,16 +5,15 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, MotionConfig, motion, useInView, useReducedMotion } from "motion/react";
 import { CountUp, Reveal, ease, reveal } from "./Motion";
-import { ArrowDown, ArrowLeft, ArrowRight, BookOpenText, BriefcaseBusiness, CalendarDays, Check, CheckCircle2, ChevronRight, CircleDot, FileText, Globe2, Layers, Link2, LockKeyhole, Menu, Pause, Play, Plus, Sparkles, Target, UsersRound, X } from "lucide-react";
+import { ArrowDown, ArrowRight, BookOpenText, BriefcaseBusiness, CalendarDays, Check, CheckCircle2, ChevronRight, CircleDot, FileText, Globe2, Layers, Link2, LockKeyhole, Menu, Pause, Play, Plus, Sparkles, Target, UsersRound, X } from "lucide-react";
 import mark from "@/public/freyr-mark.png";
-import hero from "@/public/landing/heroes/10-profile.jpg";
+import hero from "@/public/landing/heroes/13-roman-freyr-hero.png";
 import gracePhoto from "@/public/avatars/grace-liu.png";
 import danielPhoto from "@/public/avatars/daniel-foster.png";
 import hannahPhoto from "@/public/avatars/hannah-schmidt.png";
 import ninaPhoto from "@/public/avatars/nina-kowalski.png";
 import claraPhoto from "@/public/avatars/clara-mendez.png";
 import s from "@/app/landing.module.css";
-import { ProductScene } from "./ProductScenes";
 
 function Brand() { return <Link href="/" className={s.brand} aria-label="Freyr Sales Intelligence home"><Image src={mark} width={30} height={30} alt="" /><span><strong>Freyr</strong><small>Sales Intelligence</small></span></Link>; }
 function Head({ eyebrow, title, text, centered = false, id }: { eyebrow: string; title: ReactNode; text?: string; centered?: boolean; id?: string }) {
@@ -121,35 +120,6 @@ function AgentDemo() {
   </div></section>;
 }
 
-const STORIES=[
-  { label:"The account", title:"Start with the person.", detail:"The stakeholder, the customer and the linked deal belong in the same conversation." },
-  { label:"The opportunity", title:"Know where the deal stands.", detail:"Value, owner and expected date are clear before the next customer call." },
-  { label:"The signal", title:"Read what changed.", detail:"A company update makes more sense when its source and context travel with it." },
-  { label:"The goal", title:"See what really counts.", detail:"Verified results stay distinct from work that is still waiting for review." },
-  { label:"The knowledge", title:"Bring the right material.", detail:"Open the capability and its supporting document at the moment you need them." },
-];
-function Showcase(){
-  const [index,setIndex]=useState(0);
-  const rail=useRef<HTMLDivElement>(null);
-  const go=(n:number)=>{
-    const next=Math.max(0,Math.min(STORIES.length-1,n));
-    const target=rail.current?.children[next] as HTMLElement | undefined;
-    if(target && rail.current) rail.current.scrollTo({left:target.offsetLeft-rail.current.offsetLeft,behavior:"smooth"});
-    setIndex(next);
-  };
-  const syncIndex=()=>{
-    if(!rail.current) return;
-    const left=rail.current.scrollLeft;
-    const cards=Array.from(rail.current.children) as HTMLElement[];
-    const nearest=cards.reduce((best,card,i)=>Math.abs(card.offsetLeft-rail.current!.offsetLeft-left)<Math.abs(cards[best].offsetLeft-rail.current!.offsetLeft-left)?i:best,0);
-    setIndex(nearest);
-  };
-  return <section id="features" className={`${s.section} ${s.tint} ${s.ruled}`} aria-labelledby="features-title"><div className={s.container}>
-    <div className={s.showcaseHeading}><Head eyebrow="The product" id="features-title" title={<>Follow the work. <strong>Find the next move.</strong></>} text="A closer look at the account, the deal, the signal, the goal and the material behind the decision."/><div className={s.showcaseControls}><span>{String(index+1).padStart(2,"0")} / {String(STORIES.length).padStart(2,"0")}</span><button type="button" onClick={()=>go(index-1)} disabled={index===0} aria-label="Previous product view"><ArrowLeft size={20}/></button><button type="button" onClick={()=>go(index+1)} disabled={index===STORIES.length-1} aria-label="Next product view"><ArrowRight size={20}/></button></div></div>
-    <Reveal><div ref={rail} onScroll={syncIndex} className={s.showcaseRail} role="region" aria-label="Freyr product views" tabIndex={0}>{STORIES.map((story,i)=><article className={s.showcaseCard} key={story.label}><div className={s.showcaseVisual}><ProductScene index={i}/></div><div className={s.showcaseCaption}><span>{String(i+1).padStart(2,"0")} / {story.label}</span><h3>{story.title}</h3><p>{story.detail}</p></div></article>)}</div></Reveal>
-  </div></section>;
-}
-
 const FAQS=[
  {cat:"Workspace",q:"What does Freyr Sales Intelligence bring together?",a:"Customer and contact records, leads, opportunities, solutioning, contracts, market intelligence, offerings and goals. The pages available to you depend on your workspace access."},
  {cat:"Freyr AI",q:"What can I ask Freyr AI?",a:"Ask about the records and materials available to you: who owns a deal, the next customer commitment, an offering’s capabilities, recent intelligence or goal progress. Follow the linked source when you need the full detail."},
@@ -162,21 +132,52 @@ const FAQS=[
 ];
 function Faq(){const [cat,setCat]=useState("All");const [open,setOpen]=useState<string|null>(null);return <section id="faq" className={`${s.section} ${s.ruled}`} aria-labelledby="faq-title"><div className={`${s.container} ${s.split}`}><div><Head eyebrow="Questions" id="faq-title" title={<>A little more <em>clarity.</em></>}/><div className={s.faqTabs} aria-label="Question categories">{["All","Workspace","Freyr AI","Goals"].map(c=><button type="button" key={c} aria-pressed={cat===c} onClick={()=>{setCat(c);setOpen(null);}}>{c}</button>)}</div></div><motion.div key={cat} className={s.faqList} {...reveal} transition={{duration:.4,ease}}>{FAQS.filter(f=>cat==="All"||f.cat===cat).map((f)=>{const id=`faq-${FAQS.indexOf(f)}`;return <div key={f.q}><h3><button type="button" aria-expanded={open===f.q} aria-controls={id} onClick={()=>setOpen(open===f.q?null:f.q)}>{f.q}<span><Plus size={14}/></span></button></h3><div className={s.faqAnswer} id={id} data-open={open===f.q} inert={open!==f.q}><div><p>{f.a}</p></div></div></div>;})}</motion.div></div></section>;}
 
+function Footer({entry,entryLabel}:{entry:string;entryLabel:string}) {
+  const columns=[
+    ["Workspace",[["The product","#product"],["Teams","#teams"]]],
+    ["Learn",[["Freyr AI","#demo-title"],["Questions","#faq"]]],
+    ["Your account",[[entryLabel,entry],["Back to top","#hero-title"]]],
+  ] as const;
+  return <footer className={`${s.footer} ${s.ruled}`}>
+    <div className={`${s.container} ${s.footerGrid}`}>
+      <motion.div {...reveal} transition={{duration:.65,ease}}><Brand/><p>Customer relationships, opportunities, knowledge and market context. Connected for Freyr teams.</p></motion.div>
+      {columns.map(([title,links],i)=><motion.div key={title} {...reveal} transition={{duration:.65,delay:.09*(i+1),ease}}><h3>{title}</h3><ul>{links.map(([label,href])=><li key={label}><Link href={href}>{label}</Link></li>)}</ul></motion.div>)}
+    </div>
+    <motion.div className={s.footerBottom} {...reveal} transition={{duration:.55,delay:.25,ease}}><div className={s.container}><span>© {new Date().getFullYear()} Freyr Sales Intelligence</span><span>Built for Freyr teams</span></div></motion.div>
+  </footer>;
+}
+
 export function Landing({entry,signedIn,heroImage}:{entry:string;signedIn:boolean;heroImage?:StaticImageData}) {
  const [menu,setMenu]=useState(false);const [scrolled,setScrolled]=useState(false);
  useEffect(()=>{const update=()=>setScrolled(window.scrollY>8);update();window.addEventListener("scroll",update,{passive:true});return()=>window.removeEventListener("scroll",update);},[]);
  const entryLabel=signedIn?"Open workspace":"Sign in";
- return <MotionConfig reducedMotion="user" transition={{duration:.6,ease}}><header className={s.header} data-scrolled={scrolled||menu}><div className={s.navInner}><Brand/><nav aria-label="Primary">{[["#product","Product"],["#faq","FAQ"]].map(([href,t])=><a key={href} href={href}>{t}</a>)}</nav><Link className={s.navSignIn} href={entry}>{entryLabel}</Link><a href="#features" className={s.button}>Explore Freyr</a><button className={s.menuToggle} type="button" aria-label={menu?"Close menu":"Open menu"} aria-expanded={menu} aria-controls="landing-menu" onClick={()=>setMenu(!menu)}>{menu?<X size={20}/>:<Menu size={20}/>}</button></div>{menu&&<nav id="landing-menu" className={s.mobileMenu} aria-label="Mobile navigation">{[["#product","Product"],["#faq","FAQ"]].map(([href,t])=><a key={href} href={href} onClick={()=>setMenu(false)}>{t}</a>)}<Link href={entry} className={s.button}>{entryLabel}</Link></nav>}</header>
+ return <MotionConfig reducedMotion="user" transition={{duration:.6,ease}}>
+ <header className={s.header} data-scrolled={scrolled||menu}>
+   <div className={s.navInner}>
+     <nav aria-label="Primary">{[["#product","Product"],["#demo-title","Freyr AI"],["#teams","Teams"],["#faq","FAQ"]].map(([href,t])=><a key={href} href={href}>{t}</a>)}</nav>
+     <Brand/>
+     <div className={s.navActions}><Link className={s.navSignIn} href={entry}>{entryLabel}</Link><a href="#product" className={s.button}>Explore Freyr</a></div>
+     <button className={s.menuToggle} type="button" aria-label={menu?"Close menu":"Open menu"} aria-expanded={menu} aria-controls="landing-menu" onClick={()=>setMenu(!menu)}>{menu?<X size={20}/>:<Menu size={20}/>}</button>
+   </div>
+   {menu&&<nav id="landing-menu" className={s.mobileMenu} aria-label="Mobile navigation">{[["#product","Product"],["#demo-title","Freyr AI"],["#teams","Teams"],["#faq","FAQ"]].map(([href,t])=><a key={href} href={href} onClick={()=>setMenu(false)}>{t}</a>)}<Link href={entry} className={s.button}>{entryLabel}</Link></nav>}
+ </header>
  <main>
- <section className={s.hero} aria-labelledby="hero-title"><motion.div className={s.heroVisual} initial={{opacity:0,scale:1.04}} animate={{opacity:1,scale:1}} transition={{duration:1.6,ease}}><Image src={heroImage ?? hero} alt="" fill priority sizes="100vw"/><div/></motion.div><div className={s.heroInner}><div className={s.heroCopy}><motion.h1 initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.15}} id="hero-title">Every account, a <em>clearer</em> next move.</motion.h1><motion.p initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.24}}>Know the customer. Follow the opportunity. Bring the right knowledge to every conversation, with Freyr AI beside you.</motion.p><motion.ul initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.33}}><li><UsersRound size={16}/>People and deals, connected</li><li><Globe2 size={16}/>Customer and market context</li><li><Sparkles size={16}/>Answers from your workspace</li></motion.ul><motion.div initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.42}} className={s.heroActions}><Link href={entry} className={s.button}>{entryLabel}<ArrowRight size={17}/></Link><p>Built for Freyr teams. <a href="#features">Take a look inside <ArrowDown size={12}/></a></p></motion.div></div></div></section>
+ <section className={s.hero} aria-labelledby="hero-title">
+   <motion.div className={s.heroVisual} initial={{opacity:0,scale:1.04}} animate={{opacity:1,scale:1}} transition={{duration:1.6,ease}}><Image src={heroImage ?? hero} alt="" fill priority sizes="100vw"/><div/></motion.div>
+   <div className={s.heroInner}><div className={s.heroCopy}>
+     <motion.h1 initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.15}} id="hero-title">Every account, a <em>clearer</em> next move.</motion.h1>
+     <motion.p initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.24}}>Freyr brings your customers, opportunities, knowledge and market context together. Ask Freyr AI what matters, then follow the answer back to the work.</motion.p>
+     <motion.ul initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.33}}><li><UsersRound size={16}/>People and deals, connected</li><li><Globe2 size={16}/>Customer and market context</li><li><Sparkles size={16}/>Answers from your workspace</li></motion.ul>
+     <motion.div initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.42}} className={s.heroActions}><Link href={entry} className={s.button}>{signedIn?"Open workspace":"Get started with Freyr"}<ArrowRight size={17}/></Link><p>Built for Freyr teams. <a href="#product">See what Freyr can do <ArrowDown size={12}/></a></p></motion.div>
+   </div></div>
+ </section>
  <section className={s.standards}><Reveal className={s.container}><h2>One workspace for the full sales picture</h2><ul>{AREAS.map(([name,note])=><li key={name}><strong>{name}</strong><span>{note}</span></li>)}</ul></Reveal></section>
  <RecordRows/><AgentDemo/>
  <section id="product" className={s.section} aria-labelledby="product-title"><div className={`${s.container} ${s.productSplit}`}><div><Head eyebrow="What is Freyr Sales Intelligence?" id="product-title" title={<>A sales workspace built around one question: <em>what should happen next?</em></>}/><div className={s.productText}><p>The customer history is in one place. The offering is in another. The next step is buried in a conversation. Preparing for a meeting becomes a search.</p><p>Freyr connects the account, its people, opportunities, market intelligence and materials. Freyr AI helps you ask about that work and follow the answer back to its records.</p><p>Less time finding the context. More time using it.</p></div></div><Reveal delay={100}><div className={s.productFact}><p className={s.eyebrow}>The same customer story</p><strong className={s.bigNumber}><CountUp from={9999} to={1} duration={0.7}/></strong><h3>connected workspace</h3><p>From the first lead to the opportunity, the solutioning request and the contract. Keep the people and the commitments in the picture.</p><div className={s.factDetails}><div><span>Ask about the work</span><strong>Freyr AI</strong></div><div><span>Follow the detail</span><strong>Linked records</strong></div></div></div></Reveal></div></section>
- <Showcase/>
  <section className={`${s.section} ${s.ruled}`} aria-labelledby="value-title"><div className={s.container}><Head eyebrow="What changes" id="value-title" title={<>Prepare with <strong>context.</strong> Follow through with confidence.</>}/><div className={s.valueGrid}>{[[UsersRound,"Know the people","Keep the owner, stakeholders and customer contacts beside the work."],[Link2,"Follow the record","Move from an answer to the account, opportunity or material it describes."],[Globe2,"Read the signals","Bring customer and competitor activity into your preparation."],[Target,"See what counts","Distinguish verified progress from work still awaiting review."]].map(([Icon,title,body],i)=>{const I=Icon as typeof Sparkles;return <Reveal key={String(title)} delay={i*60}><article className={s.card}><span className={s.iconBox}><I size={18}/></span><h3>{String(title)}</h3><p>{String(body)}</p></article></Reveal>;})}</div></div></section>
  <section id="teams" className={`${s.section} ${s.tint} ${s.ruled}`} aria-labelledby="teams-title"><div className={s.container}><Head eyebrow="Who uses it" id="teams-title" title={<>Built for the teams that <strong>move the customer forward.</strong></>} text="The same account looks different from each seat. Keep the work connected across the team."/><div className={s.roleGrid}>{[[BriefcaseBusiness,"Account owners","CUSTOMER RELATIONSHIPS","Prepare for the next call with the account, open deals, people and commitments in view."],[UsersRound,"Sales leaders","OWNERSHIP & FOLLOW-THROUGH","Review the work, see where attention is needed and find the person responsible for the next step."],[Layers,"Solutioning teams","SCOPE & CUSTOMER NEED","Start from the linked request and offering context when shaping a response."],[BookOpenText,"Offering teams","CAPABILITIES & MATERIALS","Keep the offering and its supporting knowledge close to the sales conversation."],[Globe2,"Market intelligence teams","CUSTOMERS & COMPETITORS","Follow company activity and sources that matter to the accounts your team works with."],[Target,"Performance owners","TARGETS & VERIFIED RESULTS","Review goal contributions with clear periods, ownership and verification status."]].map(([Icon,title,who,body],i)=>{const I=Icon as typeof Sparkles;return <Reveal key={String(title)} delay={i*50}><article className={s.card}><div className={s.roleTitle}><span className={s.iconBox}><I size={17}/></span><h3>{String(title)}</h3></div><p className={s.roleWho}>{String(who)}</p><p>{String(body)}</p></article></Reveal>;})}</div></div></section>
  <section className={`${s.trust} ${s.ruled}`} aria-label="Workspace access and source context"><div className={`${s.container} ${s.trustGrid}`}>{[[Link2,"Keep the source in sight","Open the underlying record when you need the full detail. Ownership, dates, linked work and supporting materials stay available in the workspace.",["Linked records","Named owners","Source context"]],[LockKeyhole,"Access follows the workspace","Use your Freyr account to sign in. Available modules and records follow your workspace role and permissions.",["Work account","Role-based access","Workspace permissions"]]].map(([Icon,title,body,chips])=>{const I=Icon as typeof Sparkles;return <Reveal key={String(title)}><article className={s.trustCard}><div><span className={s.iconBox}><I size={20}/></span><h3>{String(title)}</h3></div><p>{String(body)}</p><ul>{(chips as string[]).map(c=><li key={c}>{c}</li>)}</ul></article></Reveal>;})}</div></section>
  <Faq/>
- <section className={`${s.cta} ${s.ruled}`} aria-labelledby="cta-title"><div className={s.container}><Reveal className={s.centered}><h2 id="cta-title">Know the account.<br/><strong>See the opportunity.</strong> <em>Make the next move.</em></h2><p>Bring your customer work into one connected workspace.<br/>Start your next conversation with the full picture.</p><div><Link href={entry} className={s.button}>{entryLabel}<ArrowRight size={16}/></Link><a href="#features" className={s.secondary}>Explore the workspace</a></div></Reveal></div></section>
- </main><footer className={`${s.footer} ${s.ruled}`}><div className={`${s.container} ${s.footerGrid}`}><div><Brand/><p>Customer relationships, opportunities, knowledge and market context. Connected for Freyr teams.</p></div>{[["Workspace",[["The product","#product"],["Explore the views","#features"],["Teams","#teams"]]],["Learn",[["Freyr AI","#demo-title"],["Questions","#faq"]]],["Your account",[[entryLabel,entry],["Back to top","#hero-title"]]]].map(([title,links])=><div key={String(title)}><h3>{String(title)}</h3><ul>{(links as string[][]).map(([t,href])=><li key={t}><Link href={href}>{t}</Link></li>)}</ul></div>)}</div><div className={s.footerBottom}><div className={s.container}><span>© {new Date().getFullYear()} Freyr Sales Intelligence</span><span>Built for Freyr teams</span></div></div></footer></MotionConfig>;
+ <section className={`${s.cta} ${s.ruled}`} aria-labelledby="cta-title"><div className={s.container}><Reveal className={s.centered}><h2 id="cta-title">Know the account.<br/><strong>See the opportunity.</strong> <em>Make the next move.</em></h2><p>Bring your customer work into one connected workspace.<br/>Start your next conversation with the full picture.</p><div><Link href={entry} className={s.button}>{entryLabel}<ArrowRight size={16}/></Link><a href="#product" className={s.secondary}>Explore the workspace</a></div></Reveal></div></section>
+ </main><Footer entry={entry} entryLabel={entryLabel}/></MotionConfig>;
 }
