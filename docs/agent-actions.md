@@ -763,3 +763,16 @@ Anir decides on by name.
   LESSON: the first run reported 35 failures that were all mine: I edited the
   card while the sweep ran, the dev server recompiled with a syntax error, and
   every webhook answered 500. Tree frozen for every run after that.
+- Sep 28, 05:20 UTC: the account chain's last gap closed. "Log a call on
+  <account>: spoke to the CFO" kept choosing the contact touch, finding no
+  contact, and answering "add a contact first"; naming the other action in the
+  refusal did not move the model, three runs in a row. So the touch action
+  does the right thing itself: with nobody named and no contacts on the
+  account, the same proposal becomes the account's own timeline note. Proven
+  over WhatsApp: "Add a call to __qa Probe Account Ltd's timeline" proposed,
+  YES, "The call is on the account's timeline". A contact that was named and
+  not found is still a question. Final tally across the runs: all 38 sweep
+  steps have passed end to end at least once on the final code, every chain
+  removed what it made, the three pre-existing WhatsApp links are untouched,
+  Cold Reachouts is back to nobody. The contract test now reads a call that
+  branches, so the touch action's route half is still checked.
