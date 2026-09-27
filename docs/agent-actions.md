@@ -539,3 +539,10 @@ Anir decides on by name.
   the phrase itself inside a line. Checked against three shapes, then live.
   The expired-proposal messages now quote the summary instead of running its
   full stop into the next word.
+- Sep 27, 17:50 UTC: "actually undo that", straight after "Done. Incyte is now
+  starred", failed with "I cannot find a company with that ID to unstar": the
+  agent reached for Incyte's CUSTOMER id, which Market Intel has never heard
+  of. resolveTrackedCompany now falls back to the customer of that id or name
+  and takes the tracked company with the SAME name, when exactly one matches,
+  so it is the same company seen from another module rather than a substitute.
+  Undo then worked over WhatsApp and the rep is back to zero starred.

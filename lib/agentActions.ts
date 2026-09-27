@@ -198,7 +198,22 @@ async function resolveLead(query: unknown) {
 
 async function resolveTrackedCompany(query: unknown) {
   const tracking = await readMarketIntelTracking();
-  return matchOne(str(query, 200), tracking.companies.map((c) => ({ id: c.id, name: c.name })), "company");
+  const companies = tracking.companies.map((c) => ({ id: c.id, name: c.name }));
+  const q = str(query, 200);
+  const first = matchOne(q, companies, "company");
+  if (first.ok) return first;
+  /* THE SAME COMPANY, NAMED FROM ANOTHER MODULE. Asked to undo a star, the
+     agent reached for Incyte's CUSTOMER id, which Market Intel has never
+     heard of (Sep 27). A customer id or name resolves to the tracked company
+     with the same name — the same company, not a substitute, so the exact
+     name has to match. */
+  if (!q) return first;
+  const customers = await getDb().customers.list();
+  const norm = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
+  const customer = customers.find((c) => c.id === q.trim() || norm(c.company_name) === norm(q));
+  if (!customer) return first;
+  const sameName = companies.filter((c) => norm(c.name) === norm(customer.company_name));
+  return sameName.length === 1 ? ({ ok: true as const, value: sameName[0] }) : first;
 }
 
 /** A logged goal result that is still open: by its id, or the newest one for a person on a goal. */
