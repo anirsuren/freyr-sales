@@ -240,7 +240,7 @@ export function actionAccessLine(firstName: string, s: ActionAccessSummary): str
   return (
     `WHAT ${firstName} MAY DO, decided by their privileges and final: ${parts.join("; ") || "nothing can be changed"}. ` +
     "When a request needs more than they have, say so first in one plain line, before any lookup or clarifying question, and name who can (an owner or admin); " +
-    "never offer, suggest or list an action above their level, and never point them at a page button for it."
+    "never offer, suggest or list an action above their level, never point them at a page button for it, and never link a page inside a module that is not open to them: it sends them to a door that closes in their face."
   );
 }
 

@@ -523,3 +523,10 @@ Anir decides on by name.
   future curl checks: the access grant expires after 15 minutes, so a DELETE
   can come back "Workspace owner approval required" until the cookies are
   minted again.
+- Sep 27, 17:20 UTC: a BD member asking "show me the privilege table and who
+  is an admin" got the three admins by name, which is right (roles are on the
+  Team page, which every privilege can view) and it did not read the table
+  itself. It did link /admin/privileges, a page that redirects that person
+  straight back out. The access line now also forbids linking a page inside a
+  module that is not open to them; the same question now answers with the
+  three names and no dead link.
