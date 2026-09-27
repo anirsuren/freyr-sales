@@ -321,3 +321,14 @@ Anir decides on by name.
   have the agent is Anir's decision; nothing changed there. Every test mutation
   (Sol Tester's role, the privilege table, the fake link ...0005) was restored
   and verified.
+- Sep 27, 08:35 UTC: record-level rule for deals moved in front of the proposal.
+  A BD member changing a deal they do not own used to get a proposal, say YES,
+  and only then be refused by the route. The route's ownership rule (managers
+  and admins always, otherwise the owner by name) now lives in one place,
+  lib/opportunityOwnership.ts, the route calls it, and update_opportunity asks
+  it before proposing, so the answer comes first, in the same words. Verified
+  over WhatsApp as Anir Test Rep on OPP-0001: "Only its owner, or a manager,
+  can change this opportunity.", nothing proposed, nothing written.
+  set_record_people was left alone on purpose: /api/record-team decides by
+  record-team membership, a different rule, so a pre-check there would have to
+  be that rule and not this one.

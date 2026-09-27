@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
-import { isManagerOrAdmin } from "@/lib/moduleAccess";
+import { opportunityChangeRefusal } from "@/lib/opportunityOwnership";
 import {
   addOpportunity,
   commitOpportunitiesChange,
@@ -261,7 +261,6 @@ export async function POST(req: NextRequest) {
   const raw = ((await req.json().catch(() => ({}))) ?? {}) as Record<string, unknown>;
   const op = String(raw.op ?? "");
   const me = await getCurrentUser();
-  const privileged = isManagerOrAdmin(me.role);
 
   /* Every mutation below reads the whole row and writes it back, so they must
      not overlap — see commitOpportunitiesChange. Wrapping the whole block
@@ -364,14 +363,9 @@ export async function POST(req: NextRequest) {
           { status: 404 }
         );
       }
-      const mine =
-        !!target.owner &&
-        target.owner.trim().toLowerCase() === me.name.trim().toLowerCase();
-      if (!privileged && !mine) {
-        return NextResponse.json(
-          { error: "Only its owner, or a manager, can change this opportunity." },
-          { status: 403 }
-        );
+      const notYours = opportunityChangeRefusal(target, me);
+      if (notYours) {
+        return NextResponse.json({ error: notYours }, { status: 403 });
       }
       if (op === "remove") {
         /* "The person who can create only can delete. The edit person can only

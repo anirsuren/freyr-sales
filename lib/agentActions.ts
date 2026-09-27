@@ -11,6 +11,8 @@ import { readRecordTeams, teamFor } from "@/lib/recordTeams";
 import { readCustomerGroups } from "@/lib/customerGroups";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { moduleCreateRefusal, moduleWriteRefusal, recordWriteRefusal } from "@/lib/moduleAccessServer";
+import { getCurrentUser } from "@/lib/currentUser";
+import { opportunityChangeRefusal } from "@/lib/opportunityOwnership";
 import { addProposal, getProposal, updateProposal } from "@/lib/agentActionStore";
 import {
   matchOne,
@@ -385,6 +387,9 @@ export const ACTIONS: ActionDef[] = [
     async prepare(params, ctx) {
       const opp = await resolveOpportunity(params.opportunity);
       if (!opp.ok) return { error: opp.error };
+      /* The route's own ownership rule, asked now so nobody is asked to confirm a change the route would refuse. */
+      const notYours = opportunityChangeRefusal(opp.value, await getCurrentUser());
+      if (notYours) return { error: notYours };
       const patch: Params = {};
       const changes: string[] = [];
       if (str(params.status)) {

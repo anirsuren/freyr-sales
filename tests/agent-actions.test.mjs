@@ -103,3 +103,13 @@ test("what a person may do is summarised per module from the same checks the gat
   assert.match(line, /make new and change: Market Intel stars/);
   assert.match(line, /^WHAT Neha MAY DO/);
 });
+
+test("an existing deal is changed by its owner, a manager or an admin, nobody else", async () => {
+  const { opportunityChangeRefusal, OPPORTUNITY_NOT_YOURS } = await import("../lib/opportunityOwnership.ts");
+  const deal = { owner: "Neha Sharma" };
+  assert.equal(opportunityChangeRefusal(deal, { name: " neha sharma ", role: "bd_member" }), null);
+  assert.equal(opportunityChangeRefusal(deal, { name: "Anir Test Rep", role: "bd_member" }), OPPORTUNITY_NOT_YOURS);
+  assert.equal(opportunityChangeRefusal(deal, { name: "Kranthi", role: "bd_owner" }), null);
+  assert.equal(opportunityChangeRefusal(deal, { name: "Anir Suren", role: "admin" }), null);
+  assert.equal(opportunityChangeRefusal({ owner: null }, { name: "Anir Test Rep", role: "bd_member" }), OPPORTUNITY_NOT_YOURS);
+});
