@@ -20,7 +20,9 @@ function inventory() {
   const blocks = actions.split(/\n    key: "/).slice(1);
   for (const block of blocks) {
     const key = block.slice(0, block.indexOf('"'));
-    const call = block.match(/call:\s*\(p\)\s*=>\s*\(\{([\s\S]*?)\}\)\s*,?\n/);
+    /* Everything between call: and done:, so a call that branches (a ternary
+       between a route and an in-process write) is still read for its path. */
+    const call = block.match(/call:\s*\(p\)\s*=>\s*([\s\S]*?)\n    done:/);
     if (!call) { out.push({ key, path: null }); continue; }
     const path = call[1].match(/path:\s*(?:"([^"]+)"|`([^`]+)`)/);
     const op = call[1].match(/op:\s*"([a-z-]+)"/);
