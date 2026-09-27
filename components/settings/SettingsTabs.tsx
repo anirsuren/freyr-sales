@@ -22,6 +22,7 @@ import type { SsoStatus } from "@/lib/ssoStatus";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Avatar } from "@/components/ui/Avatar";
 import { ThemeSetting } from "@/components/settings/ThemeSetting";
 import { FontPresetSetting } from "@/components/settings/FontPresetSetting";
@@ -451,6 +452,18 @@ export function SettingsTabs({
     ok: boolean;
     message: string;
   } | null>(null);
+  /* THE LINKEDIN READ AS A SMALL MACHINE: idle, reading (with a bar that
+     moves), done (what it found), error (the route's words). The result
+     lives in its own card so the person sees what the agent knows. */
+  const [linkedinStage, setLinkedinStage] = useState<"idle" | "reading" | "done" | "error">("idle");
+  const [linkedinPct, setLinkedinPct] = useState(0);
+  const [linkedinInfo, setLinkedinInfo] = useState<{
+    headline: string | null;
+    about: string | null;
+    photo: string | null;
+    syncedAt: string | null;
+  } | null>(null);
+  const [linkedinRemoveOpen, setLinkedinRemoveOpen] = useState(false);
   // Tracks the last URL we sent for enrichment so repeated saves don't re-run a
   // scrape (and burn Apify credits) for a link that has not changed.
   const savedLinkedinRef = useRef<string>("");
@@ -664,17 +677,51 @@ export function SettingsTabs({
     : role === "Admin";
 
 
+  /* On load, what the last LinkedIn read found, and the saved link if the
+     browser has none. Server truth first, so a new machine shows the same. */
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/profile/linkedin", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { url?: string | null; headline?: string | null; about?: string | null; photo?: string | null; syncedAt?: string | null } | null) => {
+        if (!d || cancelled) return;
+        if (d.headline || d.about || d.photo) {
+          setLinkedinInfo({ headline: d.headline ?? null, about: d.about ?? null, photo: d.photo ?? null, syncedAt: d.syncedAt ?? null });
+          setLinkedinStage("done");
+        }
+        if (d.url) {
+          savedLinkedinRef.current = d.url;
+          setProfile((p) => (p.linkedin ? p : { ...p, linkedin: d.url as string }));
+          setSavedProfile((p) => (p.linkedin ? p : { ...p, linkedin: d.url as string }));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /* The bar moves while the read runs, so a ten-second Apify call reads as
+     progress rather than a frozen page. It never reaches 100 on its own. */
+  useEffect(() => {
+    if (linkedinStage !== "reading") return;
+    const timer = setInterval(() => setLinkedinPct((v) => Math.min(88, v + (v < 40 ? 9 : v < 70 ? 4 : 1))), 700);
+    return () => clearInterval(timer);
+  }, [linkedinStage]);
+
   /**
-   * Turn the pasted LinkedIn URL into identity the agent can read. Runs as part
-   * of Save so there is no second button to discover — the rep pastes a link,
-   * saves, and the agent knows who they are.
+   * Turn the pasted LinkedIn URL into identity the agent can read. Runs from
+   * the Read profile button and as part of Save, so a rep who only pastes and
+   * saves still gets read.
    */
-  async function syncLinkedIn() {
+  async function syncLinkedIn(force = false) {
     const url = profile.linkedin.trim();
-    if (url === (savedLinkedinRef.current || "")) return; // unchanged
+    if (!force && url === (savedLinkedinRef.current || "")) return; // unchanged
     savedLinkedinRef.current = url;
     if (!url) {
       setLinkedinStatus(null);
+      setLinkedinStage("idle");
+      setLinkedinInfo(null);
       void fetch("/api/profile/linkedin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -682,7 +729,9 @@ export function SettingsTabs({
       }).catch(() => {});
       return;
     }
-    setLinkedinStatus({ ok: true, message: "Reading your profile…" });
+    setLinkedinStage("reading");
+    setLinkedinPct(8);
+    setLinkedinStatus({ ok: true, message: "Reading your LinkedIn…" });
     try {
       const res = await fetch("/api/profile/linkedin", {
         method: "POST",
@@ -691,24 +740,51 @@ export function SettingsTabs({
       });
       const data = await res.json().catch(() => null);
       if (res.ok) {
+        setLinkedinPct(100);
+        setLinkedinInfo({
+          headline: data?.profile?.headline ?? null,
+          about: data?.profile?.about ?? null,
+          photo: data?.profile?.photo ?? null,
+          syncedAt: new Date().toISOString(),
+        });
+        setLinkedinStage("done");
         setLinkedinStatus({
           ok: true,
           message: data?.profile?.headline
-            ? `Got it: the agent now knows you as "${data.profile.headline}".`
-            : "Saved. The agent will use this when it writes as you.",
+            ? `The agent now knows you as "${data.profile.headline}".`
+            : "Read. The agent will use this when it writes as you.",
         });
+        void refreshPhoto();
       } else {
+        setLinkedinStage("error");
         setLinkedinStatus({
           ok: false,
           message: data?.error || "Couldn't read that profile. Check the link.",
         });
       }
     } catch {
+      setLinkedinStage("error");
       setLinkedinStatus({
         ok: false,
-        message: "Couldn't reach the profile service. Try saving again.",
+        message: "Couldn't reach the profile service. Try again.",
       });
     }
+  }
+
+  async function removeLinkedIn() {
+    setProfile((p) => ({ ...p, linkedin: "" }));
+    setSavedProfile((p) => ({ ...p, linkedin: "" }));
+    savedLinkedinRef.current = "";
+    setLinkedinInfo(null);
+    setLinkedinStage("idle");
+    setLinkedinStatus(null);
+    setLinkedinRemoveOpen(false);
+    await fetch("/api/profile/linkedin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linkedinUrl: "" }),
+    }).catch(() => {});
+    void refreshPhoto();
   }
 
   /**
@@ -1092,210 +1168,263 @@ export function SettingsTabs({
       )}
 
       {tab === "profile" && (
-        <Card className="tab-panel">
-          <div className="flex items-center gap-4 mb-5">
-            <button
-              type="button"
-              onClick={() => photoInputRef.current?.click()}
-              disabled={photoBusy}
-              title="Upload a profile picture"
-              className="group relative h-14 w-14 shrink-0 rounded-full disabled:opacity-60"
-            >
-              {photo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={photo}
-                  alt={profile.name}
-                  className="h-14 w-14 rounded-full object-cover"
-                />
-              ) : (
-                <Avatar name={profile.name} className="w-14 h-14 text-[18px]" />
-              )}
-              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-[11px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
-                {photoBusy ? "…" : "Change"}
-              </span>
-            </button>
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => void onPickPhoto(e.target.files?.[0] ?? null)}
-            />
-            <div className="min-w-0">
-              <p className="text-[15px] font-semibold text-text-primary">{profile.name}</p>
-              <p className="text-[13px] text-text-secondary">
-                {profile.title || "Title not set"}
-              </p>
-              {/* The avatar itself is the control: hover it and it says Change
-                  (Anir, Jul 29: "it shouldn't be an upload a picture button").
-                  Remove only appears once there is something to remove. */}
-              {photo && (
-                <button
-                  type="button"
-                  onClick={() => void removePhoto()}
-                  disabled={photoBusy}
-                  className="mt-1 text-[12px] font-semibold text-text-secondary hover:underline disabled:opacity-60"
-                >
-                  Remove picture
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className="block">
-                <span className="block text-[13px] font-medium text-text-primary mb-1.5">Full name</span>
-                <Input
-                  value={profile.name}
-                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                />
-              </label>
-              <label className="block">
-                {/* The explanation moved off the page and onto the label's own
-                    "?" (Anir, Aug 13: "move the subtext to a question mark next
-                    to the title"). Two grey lines under a one-line field made
-                    the field look like the small print. */}
-                <span className="mb-1.5 flex items-center gap-1.5">
-                  <span className="text-[13px] font-medium text-text-primary">Title</span>
-                  <InfoHint
-                    text={"This job title shows on your Team profile.\nChanging it does not change what you are allowed to do in the app."}
-                  />
-                </span>
-                <Input
-                  value={profile.title}
-                  placeholder="e.g. Director, Regulatory Solutions"
-                  onChange={(e) => setProfile({ ...profile, title: e.target.value })}
-                />
-              </label>
-            </div>
-            <label className="block">
-              <span className="block text-[13px] font-medium text-text-primary mb-1.5">Email</span>
-              <Input type="email" value={profile.email} readOnly aria-readonly="true" />
-            </label>
-            {/* TIME ZONE. Every timestamp in the app is rendered in this zone,
-                and hovering one shows the exact time (Anir, Jul 30). Automatic
-                follows the device, which is right for almost everyone and stays
-                right when they travel; an explicit zone is for the person who
-                wants their times in head-office hours wherever they are.
-                Either way the app stores a ZONE, never an offset, so daylight
-                saving is handled for it. */}
-            <label className="block">
-              <span className="block text-[13px] font-medium text-text-primary mb-1.5">
-                Time zone
-              </span>
-              <ColorSelect
-                ariaLabel="Time zone"
-                className={savingZone ? "pointer-events-none w-full opacity-60" : "w-full"}
-                collapsible={false}
-                value={savedZone}
-                onChange={(v) => void saveTimeZone(v)}
-                options={[
-                  {
-                    value: "",
-                    label: `Automatic, follow this device (${describeZone(detectedZone)})`,
-                    icon: MonitorSmartphone,
-                    color: "var(--ink-bright-blue)",
-                  },
-                  ...zoneChoices.map((z) => ({
-                    value: z,
-                    label: describeZone(z),
-                    icon: Clock,
-                    color: "var(--ink-teal-deep)",
-                  })),
-                ]}
-              />
-              <span className="mt-1.5 block text-[12px] text-text-secondary">
-                Times read in <strong>{describeZone(activeZone)}</strong>. Right
-                now that is {nowInZone}.
-              </span>
-            </label>
-            <label className="block">
-              <span className="block text-[13px] font-medium text-text-primary mb-1.5">Email signature</span>
-              <Textarea className="min-h-[90px]" value={profile.signature} onChange={(e) => setProfile({ ...profile, signature: e.target.value })} />
-            </label>
-            {/* The agent drafts in the rep's own voice, so it has to know who
-                the rep is. LinkedIn is the one link that carries role, tenure
-                and background in a form the enrichment run can read, and it is
-                where the profile photo comes from, replacing the initials
-                circle (Anir, Jul 25: "the agent should know all about my
-                LinkedIn URL… that's how it pulls your profile picture too"). */}
-            <label className="block">
-              <span className="block text-[13px] font-medium text-text-primary mb-1.5">
-                LinkedIn profile
-              </span>
-              <Input
-                type="url"
-                inputMode="url"
-                placeholder="https://www.linkedin.com/in/your-profile"
-                value={profile.linkedin}
-                onChange={(e) =>
-                  setProfile({ ...profile, linkedin: e.target.value })
-                }
-                aria-describedby="linkedin-help"
-              />
-              <span
-                id="linkedin-help"
-                className="mt-1.5 block text-[12px] text-text-secondary"
+        <div className="space-y-4">
+          {/* THREE CARDS, ONE PER KIND OF THING (Anir, Sep 27): the basics,
+              LinkedIn on its own, and how you get in. */}
+          <Card className="tab-panel">
+            <h2 className="text-[15px] font-semibold text-text-primary">Basic info</h2>
+            <p className="mb-5 mt-0.5 text-[12.5px] text-text-secondary">Your name, title and signature as the team and the agent see them.</p>
+            <div className="flex items-center gap-4 mb-5">
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={photoBusy}
+                title="Upload a profile picture"
+                className="group relative h-14 w-14 shrink-0 rounded-full disabled:opacity-60"
               >
-                Paste your LinkedIn address. The agent reads it to learn your
-                role and background, so what it writes sounds like you, and it
-                can pick up your photo. Optional: you can upload a picture above instead.
-              </span>
-              {linkedinStatus && (
-                <span
-                  role="status"
-                  className={cn(
-                    "mt-1.5 block text-[12px] font-medium",
-                    linkedinStatus.ok ? "text-emerald-700" : "text-red-600"
-                  )}
-                >
-                  {linkedinStatus.message}
+                {photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={photo}
+                    alt={profile.name}
+                    className="h-14 w-14 rounded-full object-cover"
+                  />
+                ) : (
+                  <Avatar name={profile.name} className="w-14 h-14 text-[18px]" />
+                )}
+                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-[11px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  {photoBusy ? "…" : "Change"}
                 </span>
-              )}
-            </label>
-
-            {/* HOW YOU GET IN. Enrolled while already signed in, because a
-                passkey is an extra key to your own account — never a way to
-                claim one (Anir, Aug 7: "I hate logging in, I want Touch ID"). */}
-            <PasskeySetup />
-            <SsoCard
-              status={ssoStatus}
-              email={meEmail}
-              supabaseUrl={supabaseUrl ?? null}
-              supabaseAnonKey={supabaseAnonKey ?? null}
-            />
-
-            {profileDirty && (
-              <div className="page-in">
-                <Button onClick={saveProfile}>Save profile</Button>
-              </div>
-            )}
-            <div className="flex items-center justify-between gap-5 border-t border-border-light pt-4">
+              </button>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => void onPickPhoto(e.target.files?.[0] ?? null)}
+              />
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-text-primary">
-                  Account password
+                <p className="text-[15px] font-semibold text-text-primary">{profile.name}</p>
+                <p className="text-[13px] text-text-secondary">
+                  {profile.title || "Title not set"}
                 </p>
-                <p className="mt-0.5 text-[12px] leading-relaxed text-text-secondary">
-                  {authConfig.authMode === "supabase"
-                    ? `Send a secure reset link to ${profile.email}.`
-                    : "Your password is managed by your company identity provider."}
-                </p>
+                {photo && (
+                  <button
+                    type="button"
+                    onClick={() => void removePhoto()}
+                    disabled={photoBusy}
+                    className="mt-1 text-[12px] font-semibold text-text-secondary hover:underline disabled:opacity-60"
+                  >
+                    Remove picture
+                  </button>
+                )}
               </div>
-              {authConfig.authMode === "supabase" && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  loading={passwordResetBusy}
-                  onClick={() => void sendPasswordReset()}
-                  className="shrink-0"
-                >
-                  <LockKeyhole size={15} /> Reset password
-                </Button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="block">
+                  <span className="block text-[13px] font-medium text-text-primary mb-1.5">Full name</span>
+                  <Input
+                    value={profile.name}
+                    onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 flex items-center gap-1.5">
+                    <span className="text-[13px] font-medium text-text-primary">Title</span>
+                    <InfoHint
+                      text={"This job title shows on your Team profile.\nChanging it does not change what you are allowed to do in the app."}
+                    />
+                  </span>
+                  <Input
+                    value={profile.title}
+                    placeholder="e.g. Director, Regulatory Solutions"
+                    onChange={(e) => setProfile({ ...profile, title: e.target.value })}
+                  />
+                </label>
+              </div>
+              <label className="block">
+                <span className="block text-[13px] font-medium text-text-primary mb-1.5">Email</span>
+                <Input type="email" value={profile.email} readOnly aria-readonly="true" />
+              </label>
+              <label className="block">
+                <span className="block text-[13px] font-medium text-text-primary mb-1.5">
+                  Time zone
+                </span>
+                <ColorSelect
+                  ariaLabel="Time zone"
+                  className={savingZone ? "pointer-events-none w-full opacity-60" : "w-full"}
+                  collapsible={false}
+                  value={savedZone}
+                  onChange={(v) => void saveTimeZone(v)}
+                  options={[
+                    {
+                      value: "",
+                      label: `Automatic, follow this device (${describeZone(detectedZone)})`,
+                      icon: MonitorSmartphone,
+                      color: "var(--ink-bright-blue)",
+                    },
+                    ...zoneChoices.map((z) => ({
+                      value: z,
+                      label: describeZone(z),
+                      icon: Clock,
+                      color: "var(--ink-teal-deep)",
+                    })),
+                  ]}
+                />
+                <span className="mt-1.5 block text-[12px] text-text-secondary">
+                  Times read in <strong>{describeZone(activeZone)}</strong>. Right
+                  now that is {nowInZone}.
+                </span>
+              </label>
+              <label className="block">
+                <span className="block text-[13px] font-medium text-text-primary mb-1.5">Email signature</span>
+                <Textarea className="min-h-[90px]" value={profile.signature} onChange={(e) => setProfile({ ...profile, signature: e.target.value })} />
+              </label>
+              {profileDirty && (
+                <div className="page-in">
+                  <Button onClick={saveProfile}>Save profile</Button>
+                </div>
               )}
             </div>
-          </div>
-        </Card>
+          </Card>
+
+          <Card className="tab-panel">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
+                  LinkedIn
+                  <InfoHint text="The agent reads your LinkedIn to learn your role and background, so what it writes sounds like you, and it picks up your photo. It only ever reads your own profile: a link to someone else is refused." />
+                </h2>
+                <p className="mt-0.5 text-[12.5px] text-text-secondary">What the agent knows about you comes from here.</p>
+              </div>
+            </div>
+            <div className="mt-4 flex items-end gap-3">
+              <label className="block min-w-0 flex-1">
+                <span className="block text-[13px] font-medium text-text-primary mb-1.5">Your LinkedIn address</span>
+                <Input
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://www.linkedin.com/in/your-profile"
+                  value={profile.linkedin}
+                  onChange={(e) => setProfile({ ...profile, linkedin: e.target.value })}
+                />
+              </label>
+              <Button
+                type="button"
+                variant="primary"
+                className="shrink-0 px-4 py-2 text-[13px]"
+                onClick={() => void syncLinkedIn(true)}
+                disabled={linkedinStage === "reading" || !profile.linkedin.trim()}
+                loading={linkedinStage === "reading"}
+              >
+                {linkedinInfo ? "Read again" : "Read my profile"}
+              </Button>
+            </div>
+            {/* A fixed-height stage so the card never jumps: bar while
+                reading, the result once read, the route's words on a miss. */}
+            <div className="mt-4 min-h-[112px] rounded-xl border border-border-light bg-surface p-4">
+              {linkedinStage === "reading" ? (
+                <div className="flex h-full flex-col justify-center">
+                  <div className="flex items-center justify-between text-[12.5px]">
+                    <span className="font-medium text-text-primary">Reading your LinkedIn…</span>
+                    <span className="tabular-nums text-text-tertiary">{linkedinPct}%</span>
+                  </div>
+                  <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-blue-light">
+                    <div className="h-2 rounded-full bg-blue-primary transition-[width] duration-700 ease-out" style={{ width: `${linkedinPct}%` }} />
+                  </div>
+                  <p className="mt-2.5 text-[12px] text-text-secondary">Fetching the profile, then the headline, background and photo. About ten seconds.</p>
+                </div>
+              ) : linkedinStage === "error" ? (
+                <div className="flex h-full flex-col justify-center">
+                  <p className="text-[13px] font-medium text-red-600">{linkedinStatus?.message}</p>
+                  <p className="mt-1 text-[12px] text-text-secondary">The link is saved. Fix it if needed and press Read again.</p>
+                </div>
+              ) : linkedinInfo ? (
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-start gap-3.5">
+                    {linkedinInfo.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={linkedinInfo.photo} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />
+                    ) : (
+                      <Avatar name={profile.name} className="h-12 w-12 shrink-0 text-[15px]" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-[13.5px] font-semibold text-text-primary">{linkedinInfo.headline || profile.name}</p>
+                      {linkedinInfo.about ? (
+                        <p className="mt-1 line-clamp-2 text-[12.5px] leading-relaxed text-text-secondary">{linkedinInfo.about}</p>
+                      ) : null}
+                      <p className="mt-1.5 text-[11.5px] text-text-tertiary">
+                        {linkedinInfo.syncedAt ? `Read ${new Date(linkedinInfo.syncedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}. ` : ""}
+                        The agent uses this whenever it writes as you.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="shrink-0 px-3 py-1.5 text-[12.5px]"
+                    onClick={() => setLinkedinRemoveOpen(true)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex h-full flex-col justify-center">
+                  <p className="text-[13px] font-medium text-text-primary">Nothing read yet.</p>
+                  <p className="mt-1 text-[12px] text-text-secondary">Paste your address and press Read my profile. The headline, background and photo appear here.</p>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card className="tab-panel">
+            <h2 className="text-[15px] font-semibold text-text-primary">Sign-in and security</h2>
+            <p className="mb-4 mt-0.5 text-[12.5px] text-text-secondary">How you get into Freyr.</p>
+            <div className="space-y-4">
+              <PasskeySetup />
+              <SsoCard
+                status={ssoStatus}
+                email={meEmail}
+                supabaseUrl={supabaseUrl ?? null}
+                supabaseAnonKey={supabaseAnonKey ?? null}
+              />
+              <div className="flex items-center justify-between gap-5 border-t border-border-light pt-4">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-text-primary">
+                    Account password
+                  </p>
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-text-secondary">
+                    {authConfig.authMode === "supabase"
+                      ? `Send a secure reset link to ${profile.email}.`
+                      : "Your password is managed by your company identity provider."}
+                  </p>
+                </div>
+                {authConfig.authMode === "supabase" && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    loading={passwordResetBusy}
+                    onClick={() => void sendPasswordReset()}
+                    className="shrink-0"
+                  >
+                    <LockKeyhole size={15} /> Reset password
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          <ConfirmDialog
+            open={linkedinRemoveOpen}
+            onClose={() => setLinkedinRemoveOpen(false)}
+            onConfirm={() => void removeLinkedIn()}
+            title="Remove your LinkedIn?"
+            body={<>The agent will stop using your headline and background, and the photo it picked up goes with it.</>}
+            detail="You can paste the address again any time."
+            confirmLabel="Remove"
+          />
+        </div>
       )}
 
       {/* The Team panel that stood here moved to Admin > Team members on

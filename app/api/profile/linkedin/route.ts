@@ -39,6 +39,22 @@ function trimAbout(about: unknown): string | null {
   return clean.length > 600 ? `${clean.slice(0, 597)}...` : clean;
 }
 
+/** What Settings shows on load: the saved link and what the last read found. */
+export async function GET(req: NextRequest) {
+  const scope = await verifiedRequestMemberScope(req);
+  if (!scope) {
+    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  }
+  const prefs = await getDb().agentPrefs.get(scope);
+  return NextResponse.json({
+    url: prefs?.linkedin_url ?? null,
+    headline: prefs?.linkedin_headline ?? null,
+    about: prefs?.linkedin_about ?? null,
+    photo: prefs?.linkedin_photo ?? null,
+    syncedAt: prefs?.linkedin_synced_at ?? null,
+  });
+}
+
 export async function POST(req: NextRequest) {
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
