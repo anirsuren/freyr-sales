@@ -42,6 +42,11 @@ export type MultiPickerOption = {
   /** Company whose logo fronts the row — deals wear their account's mark
    *  (Anir, Aug 18: "that's ugly. I need colors, logos, etc."). */
   logoName?: string;
+  /** The company's real logo image, when the record stores one (a tracked
+   *  company's LinkedIn page logo). Without it a competitor row falls back to
+   *  coloured initials, which is what Anir saw on the review page (Sep 27:
+   *  "aren't you supposed to have the logos"). */
+  logoSrc?: string | null;
   /**
    * PERSON WHOSE FACE FRONTS THE ROW.
    *
@@ -118,7 +123,7 @@ function OptionRow({
       ) : o.avatarName ? (
         <Avatar name={o.avatarName} className="h-6 w-6 shrink-0 text-[8px]" />
       ) : o.logoName ? (
-        <CompanyLogo name={o.logoName} className="h-6 w-6 shrink-0 text-[8px]" />
+        <CompanyLogo name={o.logoName} src={o.logoSrc} className="h-6 w-6 shrink-0 text-[8px]" />
       ) : o.icon ? (
         <o.icon
           size={13}
@@ -416,7 +421,7 @@ function DropdownPicker({
                   ) : o?.avatarName ? (
                     <Avatar name={o.avatarName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
                   ) : o?.logoName ? (
-                    <CompanyLogo name={o.logoName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
+                    <CompanyLogo name={o.logoName} src={o.logoSrc} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
                   ) : (
                     Icon && <Icon size={11} strokeWidth={2.5} aria-hidden="true" />
                   )}
@@ -714,7 +719,7 @@ export function MultiPicker({
                 ) : o?.avatarName ? (
                   <Avatar name={o.avatarName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
                 ) : o?.logoName ? (
-                  <CompanyLogo name={o.logoName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
+                  <CompanyLogo name={o.logoName} src={o.logoSrc} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
                 ) : (
                   Icon && <Icon size={11} strokeWidth={2.5} aria-hidden="true" />
                 )}
@@ -778,7 +783,7 @@ export function MultiPicker({
                 ) : o.avatarName ? (
                   <Avatar name={o.avatarName} className="h-6 w-6 shrink-0 text-[8px]" />
                 ) : o.logoName ? (
-                  <CompanyLogo name={o.logoName} className="h-6 w-6 shrink-0 text-[8px]" />
+                  <CompanyLogo name={o.logoName} src={o.logoSrc} className="h-6 w-6 shrink-0 text-[8px]" />
                 ) : o.icon ? (
                   <o.icon
                     size={13}

@@ -339,7 +339,7 @@ export type OpportunityReviewRecord = {
 export type OpportunityReviewOptions = {
   contacts: { id: string; name: string; title: string; linkedin: string }[];
   companies: { id: string; name: string }[];
-  competitors: { id: string; name: string }[];
+  competitors: { id: string; name: string; logoUrl?: string | null }[];
   teammates: { id: string; name: string }[];
 };
 

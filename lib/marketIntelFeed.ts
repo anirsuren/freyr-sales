@@ -1378,12 +1378,15 @@ export function buildBriefing(
 
 /** Freyr's competitor catalogue, including competitors added in Manage. */
 export function freyrCompetitorNames(
-  tracked: { id: string; name: string; group?: "customer" | "competitor" }[] = []
-): { id: string; name: string }[] {
-  const out = new Map<string, { id: string; name: string }>();
+  tracked: { id: string; name: string; group?: "customer" | "competitor"; logoUrl?: string | null }[] = []
+): { id: string; name: string; logoUrl?: string | null }[] {
+  /* The tracked row already holds the company's own logo. Dropping it here is
+     why every competitor showed up as coloured initials wherever this list is
+     offered (Sep 27). */
+  const out = new Map<string, { id: string; name: string; logoUrl?: string | null }>();
   for (const c of COMPETITOR_SOURCES) out.set(c.id, { id: c.id, name: c.name });
   for (const c of tracked) {
-    if (c.group === "competitor") out.set(c.id, { id: c.id, name: c.name });
+    if (c.group === "competitor") out.set(c.id, { id: c.id, name: c.name, logoUrl: c.logoUrl ?? null });
     else if (c.group === "customer") out.delete(c.id);
   }
   return [...out.values()];
