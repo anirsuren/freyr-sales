@@ -481,3 +481,11 @@ Anir decides on by name.
   the person, found the goal, proposed, YES put her on it, then "take Neha off
   the Cold Reachouts goal" + YES removed her. The goal is back to nobody and
   the test account is back to bd_member. Nothing else on dev was touched.
+- Sep 27, 15:40 UTC: a YES that arrives after the proposal expired (thirty
+  minutes) used to fall through to the model and come back as "what would you
+  like done?", throwing the answer away. People answer WhatsApp hours later,
+  so the deterministic path now names what expired: "That one expired before
+  you answered: <summary> Proposals last 30 minutes. Say 'do it again' and
+  I'll put it back up." Proved by proposing, ageing the stored proposal, then
+  replying YES; "do it again" re-proposed it, and NO left nothing pending.
+  New QA driver scripts/qa/age-proposal.mjs.

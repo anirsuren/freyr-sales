@@ -80,7 +80,7 @@ import {
   type ExecuteResult,
 } from "@/lib/agentActions";
 import { viewerAccessMap } from "@/lib/viewerAccess";
-import { pendingProposals } from "@/lib/agentActionStore";
+import { pendingProposals, readProposals } from "@/lib/agentActionStore";
 import { actionAccessLine, isAffirmative, isNegative, localDay, summarizeActionAccess, type ActionProposal, type PendingActionPayload } from "@/lib/agentActionsShared";
 import { memberTimeZone } from "@/lib/memberTimeZone";
 import { internalAppOrigin } from "@/lib/internalOrigin";
@@ -286,6 +286,28 @@ export async function POST(req: NextRequest) {
         source: "action",
         pendingAction: result.proposal ? actionPayload(result.proposal) : null,
       });
+    }
+    /* A YES THAT CAME TOO LATE. People answer WhatsApp hours later; the
+       proposal is thirty minutes old and gone by then. Saying "what would you
+       like?" throws their answer away, so say what expired and offer it
+       again — still deterministic, still no model call. */
+    if (pending.length === 0) {
+      const recent = (await readProposals(scope).catch(() => [] as ActionProposal[]))
+        .filter((p) => p.status === "expired" && (!here || p.conversationId === here))
+        .sort((a, b) => b.createdAt - a.createdAt)[0];
+      if (recent) {
+        return respondDirect({
+          ok: true,
+          reply:
+            decision === "confirm"
+              ? `That one expired before you answered: ${recent.summary} Proposals last 30 minutes. Say "do it again" and I'll put it back up.`
+              : `Nothing is waiting: ${recent.summary} had already expired, so nothing happened.`,
+          suggestions: [],
+          entityContext: [],
+          source: "action",
+          pendingAction: null,
+        });
+      }
     }
     if (decision === "confirm" && pending.length > 1) {
       return respondDirect({
