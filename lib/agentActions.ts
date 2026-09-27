@@ -2067,7 +2067,7 @@ export const ACTIONS: ActionDef[] = [
       from: { type: "string", description: "First month, e.g. 'January 2027'." },
       to: { type: "string", description: "Last month, e.g. 'June 2027'. Give this or months." },
       months: { type: "number", description: "How many months from the first month, if no last month was given." },
-      amounts: { type: "array", items: { type: "string" }, description: "Only when amounts were named per month: entries like 'January 2027: 30000'. Months not listed share the remainder evenly." },
+      amounts: { type: "array", items: { type: "string" }, description: "ONLY when the person named an amount for a specific month, as 'January 2027: 30000'. Leave empty for an even spread; never work out the per-month figure yourself." },
       note: { type: "string", description: "A note on the plan, if said." },
     },
     required: ["opportunity", "from"],
@@ -2109,7 +2109,26 @@ export const ACTIONS: ActionDef[] = [
       /* Named amounts pin their months; the rest share what is left, evenly,
          in whole dollars, the odd dollars on the last open month. */
       const pinned = new Map<string, number>();
-      for (const entry of list(params.amounts)) {
+      /* WHATEVER SHAPE THE MONTHS ARRIVE IN. The schema says "Month: amount"
+         strings; the model has sent bare numbers, and may send objects or a
+         map. All of them are read; only ambiguity is refused. */
+      const raw = params.amounts;
+      const entries: string[] = Array.isArray(raw)
+        ? raw.map((e) => (e && typeof e === "object" && !Array.isArray(e)
+            ? `${str((e as Params).month ?? (e as Params).label ?? (e as Params).name, 40)}: ${str((e as Params).amount ?? (e as Params).value, 40)}`
+            : str(e, 200))).filter(Boolean)
+        : raw && typeof raw === "object" ? Object.entries(raw as Params).map(([k, v]) => `${k}: ${str(v, 40)}`)
+        : list(raw);
+      /* BARE NUMBERS ARE POSITIONAL. Asked for an even spread, the model
+         worked out the per-month figure itself and sent ["20000"], and the
+         parser refused it (first live check, Sep 28). One bare number is the
+         figure for every month; a full list is month by month, in order. */
+      const bare = entries.length > 0 && entries.every((e) => !/[:=]/.test(e) && parseMoney(e) !== null);
+      if (bare) {
+        if (entries.length !== 1 && entries.length !== months.length) return { error: `${entries.length} amounts for ${months.length} months. Name the months, like "January 2027: 30000", or give one figure for all of them.` };
+        months.forEach((month, k) => pinned.set(month, parseMoney(entries[entries.length === 1 ? 0 : k])!));
+      }
+      for (const entry of bare ? [] : entries) {
         const m = entry.match(/^(.*?)[:=]\s*([\s\S]+)$/);
         if (!m) return { error: `I could not read "${entry}". Say it like "January 2027: 30000".` };
         const day = parseDay(m[1].trim(), new Date(), ctx.timeZone);
@@ -2123,7 +2142,7 @@ export const ACTIONS: ActionDef[] = [
       if (pinnedTotal > total) return { error: `The named months add up to ${money(pinnedTotal)}, more than the ${money(total)} total.` };
       const open = months.filter((m) => !pinned.has(m));
       const remainder = total - pinnedTotal;
-      if (!open.length && remainder !== 0) return { error: `Every month is named but they add up to ${money(pinnedTotal)}, not ${money(total)}.` };
+      if (!open.length && remainder !== 0) return { error: `The months add up to ${money(pinnedTotal)}, not the ${money(total)} total. Say which is right.` };
       const share = open.length ? Math.floor(remainder / open.length) : 0;
       const lines = months.map((month, k) => ({ month, amount: pinned.has(month) ? pinned.get(month)! : share }));
       if (open.length) { const lastOpen = open[open.length - 1]; const line = lines.find((l) => l.month === lastOpen)!; line.amount += remainder - share * open.length; }
