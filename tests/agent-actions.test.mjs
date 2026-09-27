@@ -62,3 +62,25 @@ test("proposal ids are unique and short", () => {
   assert.notEqual(a, b);
   assert.match(a, /^act-[a-z0-9]+$/);
 });
+
+test("days are answered on the person's own calendar, and weekday phrases resolve", () => {
+  // 8 pm Saturday 26 Sep 2026 in New Jersey is already 03:00 Sunday 27 Sep in UTC.
+  const now = new Date("2026-09-27T03:00:00Z");
+  const ny = "America/New_York";
+  assert.equal(shared.localDay(now, ny).ymd, "2026-09-26");
+  assert.equal(shared.localDay(now).ymd, "2026-09-27");
+  assert.equal(shared.parseDay("today", now, ny), "2026-09-26");
+  assert.equal(shared.parseDay("today", now), "2026-09-27");
+  assert.equal(shared.parseDay("Tuesday", now, ny), "2026-09-29");
+  assert.equal(shared.parseDay("next Tuesday", now, ny), "2026-09-29");
+  assert.equal(shared.parseDay("Saturday", now, ny), "2026-09-26");
+  assert.equal(shared.parseDay("next Saturday", now, ny), "2026-10-03");
+  assert.equal(shared.parseDay("Friday next week", now, ny), "2026-10-02");
+  assert.equal(shared.parseDay("end of week", now, ny), "2026-10-02");
+  assert.equal(shared.parseDay("end of month", now, ny), "2026-09-30");
+  assert.equal(shared.parseDay("end of next month", now, ny), "2026-10-31");
+  assert.equal(shared.parseDay("in 3 days", now, ny), "2026-09-29");
+  assert.equal(shared.parseDay("next week", now, "Asia/Kolkata"), "2026-10-04");
+  assert.equal(shared.parseDay("Monday", now, "Not/AZone"), "2026-09-28");
+});
+

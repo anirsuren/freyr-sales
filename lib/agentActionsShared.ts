@@ -108,22 +108,73 @@ export function parseMoney(value: unknown): number | null {
 }
 
 /** An ISO day (YYYY-MM-DD) from what a person types; null when unreadable. */
-export function parseDay(value: unknown, now = new Date()): string | null {
+const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+/**
+ * THE CALENDAR DAY THE PERSON IS IN. The server runs on UTC, so at 8 pm on a
+ * Saturday in New Jersey "today" was already Sunday and "next Tuesday" slid a
+ * week (Sep 27). A day is answered in the person's zone; an unknown zone
+ * falls back to UTC so a stale preference cannot throw.
+ */
+export function localDay(now = new Date(), zone = "UTC"): { ymd: string; weekday: number } {
+  let tz = zone || "UTC";
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: tz }).format(now);
+  } catch {
+    tz = "UTC";
+  }
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  const ymd = `${get("year")}-${get("month")}-${get("day")}`;
+  const weekday = Math.max(0, WEEKDAYS.indexOf(get("weekday").slice(0, 3).toLowerCase()));
+  return { ymd, weekday };
+}
+
+/**
+ * "today", "tomorrow", "in 3 days", "next week", "Friday", "next Tuesday",
+ * "Monday next week", "end of week", "end of month", "end of Q4", or a date.
+ * A plain weekday is the first one from today on (today counts); "next" and
+ * "next week" mean the occurrence in the following Monday-to-Sunday week.
+ * Everything is worked out on the person's own calendar day in `zone`.
+ */
+export function parseDay(value: unknown, now = new Date(), zone = "UTC"): string | null {
   const raw = String(value ?? "").trim();
   if (!raw) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  const lower = raw.toLowerCase();
+  const lower = raw.toLowerCase().replace(/\s+/g, " ");
   const day = (d: Date) => d.toISOString().slice(0, 10);
-  const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  if (lower === "today") return day(base);
-  if (lower === "tomorrow") return day(new Date(base.getTime() + 86_400_000));
+  const { ymd, weekday } = localDay(now, zone);
+  const base = new Date(`${ymd}T00:00:00Z`);
+  const plus = (days: number) => day(new Date(base.getTime() + days * 86_400_000));
+  if (lower === "today") return plus(0);
+  if (lower === "tomorrow") return plus(1);
   const inDays = /^in (\d+) days?$/.exec(lower);
-  if (inDays) return day(new Date(base.getTime() + Number(inDays[1]) * 86_400_000));
+  if (inDays) return plus(Number(inDays[1]));
   const inWeeks = /^(?:in (\d+) weeks?|next week)$/.exec(lower);
-  if (inWeeks) return day(new Date(base.getTime() + (inWeeks[1] ? Number(inWeeks[1]) : 1) * 7 * 86_400_000));
+  if (inWeeks) return plus((inWeeks[1] ? Number(inWeeks[1]) : 1) * 7);
+  const wd = /^(?:(this|next|coming) )?(sun|mon|tue|wed|thu|fri|sat)[a-z]*( next week)?$/.exec(lower);
+  if (wd) {
+    const target = WEEKDAYS.indexOf(wd[2]);
+    const followingWeek = wd[1] === "next" || !!wd[3];
+    if (!followingWeek) return plus((target - weekday + 7) % 7);
+    const mondayIndex = (weekday + 6) % 7;
+    return plus(7 - mondayIndex + ((target + 6) % 7));
+  }
+  if (/^end of (this )?week$/.test(lower)) return plus((5 - weekday + 7) % 7);
+  const endOfMonth = /^end of (the |this |next )?month$/.exec(lower);
+  if (endOfMonth) {
+    const ahead = endOfMonth[1] === "next " ? 2 : 1;
+    return day(new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + ahead, 0)));
+  }
   const endOf = /^end of (q[1-4])(?: (\d{4}))?$/.exec(lower);
   if (endOf) {
-    const year = endOf[2] ? Number(endOf[2]) : now.getUTCFullYear();
+    const year = endOf[2] ? Number(endOf[2]) : base.getUTCFullYear();
     const month = { q1: 2, q2: 5, q3: 8, q4: 11 }[endOf[1] as "q1" | "q2" | "q3" | "q4"];
     return day(new Date(Date.UTC(year, month + 1, 0)));
   }

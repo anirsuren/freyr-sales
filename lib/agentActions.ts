@@ -50,6 +50,8 @@ export type ActionContext = {
   internalOrigin: string;
   channel: "web" | "whatsapp";
   conversationId?: string;
+  /** The person's own calendar day for "today", "Friday", "next week". */
+  timeZone?: string;
 };
 
 type Params = Record<string, unknown>;
@@ -228,9 +230,9 @@ async function contactForTimeline(customerId: string, customerName: string, quer
 }
 
 /** "next Tuesday", "in 3 days", "Oct 14": a day for a reminder, default a week out. */
-function followupDay(value: unknown): { iso: string; label: string } {
+function followupDay(value: unknown, zone?: string): { iso: string; label: string } {
   const raw = str(value, 60);
-  const day = parseDay(raw || "next week") ?? parseDay("next week")!;
+  const day = parseDay(raw || "next week", new Date(), zone) ?? parseDay("next week", new Date(), zone)!;
   return { iso: day, label: raw || "next week" };
 }
 
@@ -320,7 +322,7 @@ export const ACTIONS: ActionDef[] = [
         if (!found.ok) return { error: found.error };
         customer = { id: found.value.id, name: found.value.name };
       }
-      const date = str(params.date) ? parseDay(params.date) : null;
+      const date = str(params.date) ? parseDay(params.date, new Date(), ctx.timeZone) : null;
       if (str(params.date) && !date) return { error: "I could not read that date; use YYYY-MM-DD." };
       return {
         summary: `Log ${amount.toLocaleString("en-US")} for ${person.value.name} on "${goal.value.name}"${customer ? ` from ${customer.name}` : ""}${date ? ` dated ${date}` : ""}. It will wait for verification.`,
@@ -380,7 +382,7 @@ export const ACTIONS: ActionDef[] = [
       name: { type: "string", description: "New deal name." },
     },
     required: ["opportunity"],
-    async prepare(params) {
+    async prepare(params, ctx) {
       const opp = await resolveOpportunity(params.opportunity);
       if (!opp.ok) return { error: opp.error };
       const patch: Params = {};
@@ -416,7 +418,7 @@ export const ACTIONS: ActionDef[] = [
         changes.push(`confidence → ${confidence}%`);
       }
       if (str(params.estSignDate)) {
-        const day = parseDay(params.estSignDate);
+        const day = parseDay(params.estSignDate, new Date(), ctx.timeZone);
         if (!day) return { error: "I could not read that signing date; use YYYY-MM-DD." };
         patch.estSignDate = day;
         changes.push(`expected signing → ${day}`);
@@ -455,7 +457,7 @@ export const ACTIONS: ActionDef[] = [
       status: { type: "string", description: "Optional starting stage.", enum: OPPORTUNITY_STATUSES },
     },
     required: ["customer", "name", "estimatedTcv", "confidence", "estSignDate"],
-    async prepare(params) {
+    async prepare(params, ctx) {
       const customer = await resolveCustomer(params.customer);
       if (!customer.ok) return { error: customer.error };
       const name = str(params.name, 200);
@@ -464,7 +466,7 @@ export const ACTIONS: ActionDef[] = [
       if (tcv === null) return { error: "A new deal needs an estimated TCV." };
       const confidence = Number(params.confidence);
       if (!Number.isFinite(confidence) || confidence < 0 || confidence > 100) return { error: "A new deal needs a confidence percentage from 0 to 100." };
-      const day = parseDay(params.estSignDate);
+      const day = parseDay(params.estSignDate, new Date(), ctx.timeZone);
       if (!day) return { error: "A new deal needs an expected signing date (YYYY-MM-DD)." };
       let status: string | undefined;
       if (str(params.status)) {
@@ -721,7 +723,7 @@ export const ACTIONS: ActionDef[] = [
       when: { type: "string", description: "Date and time, ISO (2026-10-02T14:00) or a day." },
     },
     required: ["title", "when"],
-    async prepare(params) {
+    async prepare(params, ctx) {
       const title = str(params.title, 200);
       if (!title) return { error: "What is the meeting called?" };
       let customer: { id: string; name: string } | undefined;
@@ -734,7 +736,7 @@ export const ACTIONS: ActionDef[] = [
       let when = "";
       if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(raw)) when = raw.slice(0, 16);
       else {
-        const day = parseDay(raw);
+        const day = parseDay(raw, new Date(), ctx.timeZone);
         if (!day) return { error: "When is the meeting? Give a date, ideally with a time." };
         when = `${day}T10:00`;
       }
@@ -883,7 +885,7 @@ export const ACTIONS: ActionDef[] = [
       opportunity: { type: "string", description: "Optional: the deal it belongs to (id, OPP number or name)." },
     },
     required: ["customer", "kind", "title", "neededBy"],
-    async prepare(params) {
+    async prepare(params, ctx) {
       const customer = await resolveCustomer(params.customer);
       if (!customer.ok) return { error: customer.error };
       const kind = pickEnum(params.kind, ["presentation", "submission", "meeting"], "kind");
@@ -892,7 +894,7 @@ export const ACTIONS: ActionDef[] = [
       if (!title) return { error: "What is the request for?" };
       /* The route insists on a due date ("Pick a valid due date"), so ask
          for one up front rather than failing after the yes. */
-      const neededBy = parseDay(params.neededBy);
+      const neededBy = parseDay(params.neededBy, new Date(), ctx.timeZone);
       if (!neededBy) return { error: "When is it needed by? Give a date (YYYY-MM-DD)." };
       let priority: string | undefined;
       if (str(params.priority)) {
@@ -939,12 +941,12 @@ export const ACTIONS: ActionDef[] = [
       contact: { type: "string", description: "Optional: which contact at the account it concerns." },
     },
     required: ["customer", "when"],
-    async prepare(params) {
+    async prepare(params, ctx) {
       const customer = await customerForWrite(params.customer);
       if (!customer.ok) return { error: customer.error };
       const contact = await contactForTimeline(customer.value.id, customer.value.name, params.contact);
       if (!contact.ok) return { error: contact.error };
-      const when = followupDay(params.when);
+      const when = followupDay(params.when, ctx.timeZone);
       return {
         summary: `Set a follow-up with ${customer.value.name} (${contact.value.name}) for ${when.iso}${str(params.note) ? ` (${str(params.note, 200)})` : ""}.`,
         params: { customerId: customer.value.id, customer: customer.value.name, contactId: contact.value.id, when: when.iso, label: when.label, note: str(params.note, 1000) || undefined },
@@ -981,7 +983,7 @@ export const ACTIONS: ActionDef[] = [
       contact: { type: "string", description: "Optional: who at the account it was with." },
     },
     required: ["customer", "notes"],
-    async prepare(params) {
+    async prepare(params, ctx) {
       const customer = await customerForWrite(params.customer);
       if (!customer.ok) return { error: customer.error };
       const contact = await contactForTimeline(customer.value.id, customer.value.name, params.contact);
@@ -1024,7 +1026,7 @@ export const ACTIONS: ActionDef[] = [
       contact: { type: "string", description: "Optional: who at the account it is for." },
     },
     required: ["customer", "body"],
-    async prepare(params) {
+    async prepare(params, ctx) {
       const customer = await customerForWrite(params.customer);
       if (!customer.ok) return { error: customer.error };
       const contact = await contactForTimeline(customer.value.id, customer.value.name, params.contact);

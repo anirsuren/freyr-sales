@@ -226,3 +226,53 @@ Anir decides on by name.
   own sendWhatsAppText (lib/whatsapp.ts), Meta returned a message id. The
   outbound leg is proven end to end in our code; inbound waits on the app
   secret, the dev deploy and the webhook URL.
+
+- Sep 27, 02:55: Solutioning member (Sol Tester, fake number ...0003) over
+  WhatsApp: a Goals write was refused in the module's words (view-only on
+  Goals); a deal they do not own was proposed and the route refused the YES
+  ("Only its owner, or a manager, can change this opportunity."), OPP-0001
+  untouched; a request for Pfizer, which is only tracked in Market Intel, was
+  not proposed and the agent offered to create the account first; a request on
+  J&J Medtech was proposed, YES raised it, the stored record matched, and it
+  was deleted through the route's delete op as admin (the requester was
+  refused: "Only an owner can delete this."). Found and fixed: (1) the first
+  proposal had attached the account's only deal without being asked; prompt
+  rule added (never attach a deal, account, contact, group or owner the
+  person did not name) and the action's deal field says so; the re-proposal
+  carried no deal. (2) Once in two tries the model dropped a typed "high
+  priority"; backstopParams in the converse route now restores a priority
+  word that is literally in the message, never inferred. (3) With an EXPIRED
+  access token the WhatsApp leg went silent: the handler stores the exchange
+  only after a delivered send, so a failed send left nothing in history and
+  the phone got nothing (the web route answered in 5 s). The 24-hour test
+  token expired 18:00 PDT; it is parked in .env.local until the System User
+  token exists. Open question for Anir: should an undelivered reply still be
+  kept in the person's Agent history, and should /api/health report a failing
+  WhatsApp send? BD owner (Kranthi, ...0004) over WhatsApp: put Neha Sharma on
+  the empty goal Cold Reachouts (proposal 9.8 s, YES 5 s), then took her off
+  again; the goal is empty as before. Type check clean; 9 + 7 + 116 tests
+  green. Dev deploy: 99fcb5d6 pushed to main at 02:58 with Anir's yes, after
+  a GitHub device sign-in that added the workflow scope.
+- Sep 27, 03:20: the rep's "next Tuesday" follow-up landed on Oct 6 because the
+  model was told the date in UTC: at 8 pm Saturday in New Jersey the server
+  already said Sunday, and it worked the weekday out itself. Fixed in three
+  places: parseDay now takes the person's zone (localDay) and understands
+  Friday / next Tuesday / Monday next week / end of week / end of month; every
+  action date goes through it with ctx.timeZone; the converse route resolves
+  the zone (the person's saved Settings zone, else APP_DEFAULT_TIMEZONE, else
+  UTC, lib/memberTimeZone.ts), tells the model "Today is Saturday 2026-09-26
+  in America/New_York" and to hand day words to actions as said. Live as the
+  rep over WhatsApp: on Tuesday and next Tuesday both proposed 2026-09-29, end
+  of the month proposed 2026-09-30; all cancelled, the probe contact removed
+  through the route. 8 + 117 + 9 tests green, tsc clean. For Anir: nobody has
+  a saved zone yet, so dev/prod would use APP_DEFAULT_TIMEZONE if he wants one
+  set (America/New_York?), otherwise UTC; the agent always names the zone it
+  used in the date line. Also rep-level actions over WhatsApp (…0002): add
+  contact, log a call, set a follow-up, each proposed then run on YES, then
+  removed (two timeline rows via the store, the contact via DELETE
+  /api/contacts/:id as admin); the unowned account stayed unowned. The dev
+  deploy of 99fcb5d6 FAILED at "Register task definition": a comment I had
+  put inside the single-quoted jq program contained an apostrophe ("it's"),
+  which ended the shell string; the image was built, dev still runs d8f8bbf.
+  Fix committed locally (e3e0dd5b): comments moved above the jq call. Waiting
+  for Anir's yes to push it.
