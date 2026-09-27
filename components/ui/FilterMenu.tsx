@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import { Check, ChevronRight, Search, SlidersHorizontal, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
@@ -63,6 +63,16 @@ export type FilterGroup = {
   content?: ReactNode;
 };
 
+/** Past this many options a group gets its own search box. */
+const SEARCH_FROM = 8;
+
+/** The options a typed query keeps: label, badge or value, any case. */
+function visibleOptions(options: FilterOption[], query: string): FilterOption[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return options;
+  return options.filter((o) => [o.label, o.badge, o.value].some((t) => String(t ?? "").toLowerCase().includes(q)));
+}
+
 /** Two columns side by side: the categories, and the options in one of them. */
 const LEFT_W = 168;
 const PANEL_W = 430;
@@ -85,6 +95,18 @@ export function FilterMenu({
   /** The category whose options are showing on the right. Set by hover as
    *  well as click — see the panel below. */
   const [layer, setLayer] = useState<string | null>(null);
+  /* A LONG LIST GETS A SEARCH BOX (Anir, Sep 28, in the Offering filter:
+     "search bar on these filters that are really long, this applies to all
+     the pages"). One shared menu, so one box serves every page. It only
+     appears past a handful of options, resets when another group opens, and
+     takes focus so the person can type the moment the list is in view. */
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    setQuery("");
+    const id = window.setTimeout(() => searchRef.current?.focus({ preventScroll: true }), 30);
+    return () => window.clearTimeout(id);
+  }, [layer]);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
@@ -322,10 +344,33 @@ export function FilterMenu({
                         </button>
                       )}
                     </div>
+                    {!current.content && current.options.length > SEARCH_FROM && (
+                      <div className="sticky top-[37px] z-10 border-b border-border-light bg-white px-2 py-1.5">
+                        <div className="relative">
+                          <Search size={13} strokeWidth={2.2} aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                          <input
+                            ref={searchRef}
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Escape" && query) { e.stopPropagation(); setQuery(""); } }}
+                            placeholder={`Search ${current.label.toLowerCase()}`}
+                            aria-label={`Search ${current.label}`}
+                            className="h-8 w-full rounded-lg border border-border-light bg-white pl-8 pr-7 text-[12.5px] text-text-primary outline-none placeholder:text-text-tertiary focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
+                          />
+                          {query && (
+                            <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-text-tertiary hover:text-text-primary">
+                              <X size={12} strokeWidth={2.2} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     <div className="min-h-0 flex-1 overflow-y-auto py-1">
                       {current.content ? (
                         <div className="p-3">{current.content}</div>
-                      ) : current.options.map((option) => {
+                      ) : visibleOptions(current.options, query).length === 0 ? (
+                        <p className="px-3 py-6 text-center text-[12.5px] text-text-tertiary">Nothing matches &ldquo;{query}&rdquo;.</p>
+                      ) : visibleOptions(current.options, query).map((option) => {
                         const on = current.values.includes(option.value);
                         return (
                           <button
