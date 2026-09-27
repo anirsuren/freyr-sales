@@ -506,3 +506,9 @@ Anir decides on by name.
   in the route's mapper), the goal and group ops, and the record-team call.
   set_followup, log_touch and save_draft write through the typed db interface,
   where the compiler catches it. add_contact was the only one; no others found.
+- Sep 27, 16:15 UTC: "Open it" after a goal or lead change used to land on the
+  module index. Goal assign, unassign, log a result, verify and send back now
+  link to /performance/goal/<id>, and a lead update to /leads/<id>; verify and
+  send back carry the entry's goalId for it. Proved on dev by assigning and
+  unassigning Neha on Cold Reachouts over WhatsApp: both done messages linked
+  the goal itself, and the goal is back to nobody.

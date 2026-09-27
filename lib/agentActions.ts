@@ -300,7 +300,7 @@ export const ACTIONS: ActionDef[] = [
       };
     },
     call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "assign-goal", goalId: p.goalId, person: p.person, ...(p.target !== undefined ? { target: p.target } : {}) } }),
-    done: (p) => ({ text: `${p.person} is now on the goal "${p.goalName}".`, link: "/performance" }),
+    done: (p) => ({ text: `${p.person} is now on the goal "${p.goalName}".`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
   },
   {
     key: "unassign_goal",
@@ -324,7 +324,7 @@ export const ACTIONS: ActionDef[] = [
       };
     },
     call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "unassign-goal", goalId: p.goalId, person: p.person } }),
-    done: (p) => ({ text: `${p.person} is no longer on the goal "${p.goalName}".`, link: "/performance" }),
+    done: (p) => ({ text: `${p.person} is no longer on the goal "${p.goalName}".`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
   },
   {
     key: "log_goal_actual",
@@ -363,7 +363,7 @@ export const ACTIONS: ActionDef[] = [
       };
     },
     call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "log-actual", goalId: p.goalId, person: p.person, amount: p.amount, customer: p.customer, customerId: p.customerId, date: p.date, note: p.note } }),
-    done: (p) => ({ text: `Logged ${Number(p.amount).toLocaleString("en-US")} for ${p.person} on "${p.goalName}". It is reported and waits for verification.`, link: "/performance" }),
+    done: (p) => ({ text: `Logged ${Number(p.amount).toLocaleString("en-US")} for ${p.person} on "${p.goalName}". It is reported and waits for verification.`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
   },
   {
     key: "move_group_member",
@@ -808,7 +808,7 @@ export const ACTIONS: ActionDef[] = [
       return { summary: `Update lead ${lead.value.name}: ${changes.join(", ")}.`, params: { id: lead.value.id, label: lead.value.name, patch } };
     },
     call: (p) => ({ method: "POST", path: "/api/leads", body: { op: "save", lead: { id: p.id, ...(p.patch as Params) } } }),
-    done: (p) => ({ text: `Updated lead ${p.label}.`, link: "/leads" }),
+    done: (p) => ({ text: `Updated lead ${p.label}.`, link: `/leads/${encodeURIComponent(String(p.id))}` }),
   },
   {
     key: "create_meeting",
@@ -896,11 +896,11 @@ export const ACTIONS: ActionDef[] = [
       const goalName = entry.state.goals.find((g) => g.id === entry.value.goalId)?.name ?? entry.value.goalId;
       return {
         summary: `Verify ${entryLabel(entry.value, goalName)}. Once verified it counts and cannot be edited.`,
-        params: { actualId: entry.value.id, label: entryLabel(entry.value, goalName) },
+        params: { actualId: entry.value.id, goalId: entry.value.goalId, label: entryLabel(entry.value, goalName) },
       };
     },
     call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "verify-actual", actualId: p.actualId } }),
-    done: (p) => ({ text: `Verified ${p.label}.`, link: "/performance" }),
+    done: (p) => ({ text: `Verified ${p.label}.`, link: p.goalId ? `/performance/goal/${encodeURIComponent(String(p.goalId))}` : "/performance" }),
   },
   {
     key: "send_back_goal_result",
@@ -923,11 +923,11 @@ export const ACTIONS: ActionDef[] = [
       const goalName = entry.state.goals.find((g) => g.id === entry.value.goalId)?.name ?? entry.value.goalId;
       return {
         summary: `Send back ${entryLabel(entry.value, goalName)} with the note "${note}".`,
-        params: { actualId: entry.value.id, note, label: entryLabel(entry.value, goalName) },
+        params: { actualId: entry.value.id, goalId: entry.value.goalId, note, label: entryLabel(entry.value, goalName) },
       };
     },
     call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "send-back-actual", actualId: p.actualId, note: p.note } }),
-    done: (p) => ({ text: `Sent back ${p.label}.`, link: "/performance" }),
+    done: (p) => ({ text: `Sent back ${p.label}.`, link: p.goalId ? `/performance/goal/${encodeURIComponent(String(p.goalId))}` : "/performance" }),
   },
   {
     key: "create_customer",
