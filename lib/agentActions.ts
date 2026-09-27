@@ -336,7 +336,7 @@ async function customerForWrite(query: unknown) {
  */
 async function contactForTimeline(customerId: string, customerName: string, query: unknown): Promise<Match<{ id: string; name: string }>> {
   const contacts = (await getDb().contacts.list()).filter((c) => c.customer_id === customerId).map((c) => ({ id: c.id, name: c.full_name }));
-  if (!contacts.length) return { ok: false, error: `${customerName} has no contacts yet, and a timeline entry needs one. Add a contact first.` };
+  if (!contacts.length) return { ok: false, error: `${customerName} has no contacts yet, and a touch is logged against a contact. To put this on the account's own timeline instead, propose add_customer_note with the same words.` };
   const q = str(query, 120);
   if (q) return matchOne(q, contacts, "contact");
   return { ok: true, value: contacts[0] };
@@ -1235,7 +1235,7 @@ export const ACTIONS: ActionDef[] = [
   {
     key: "log_touch",
     title: "Log a call, email or meeting you already had",
-    description: "Record a past touch with a customer account on its timeline: what happened and how it went.",
+    description: "Log a call, email or meeting WITH A NAMED CONTACT on their timeline. Needs a contact: if the person only names the company, use add_customer_note instead.",
     module: "/customers",
     gate: "write",
     fields: {
@@ -2148,7 +2148,7 @@ export const ACTIONS: ActionDef[] = [
   {
     key: "add_customer_note",
     title: "Add a note to an account",
-    description: "Record a call, email, meeting or note on an account's timeline, optionally with a next step.",
+    description: "Record a call, email, meeting or note on the ACCOUNT's own timeline, with an optional next step. Needs no contact: use this whenever the person names the company but not a specific person there. (To log a touch with a named contact, use log_touch.)",
     module: "/customers",
     gate: "write",
     fields: { customer: { type: "string", description: "Account name or id." }, text: { type: "string", description: "The note, in the person's words." }, kind: { type: "string", description: "call, email, meeting or note. Defaults to note." }, nextStep: { type: "string", description: "The next step, if said." } },
