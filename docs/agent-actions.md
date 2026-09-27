@@ -46,11 +46,74 @@ config line and be switched on later without a build.
 
 | Piece | File |
 | --- | --- |
-| Action catalogue: params, summary, permission pre-check, route call | `lib/agentActions.ts` |
-| Proposal store (per member, 30 min TTL) | `lib/agentActionStore.ts` |
-| Tools `propose_action` and `run_action`, the yes/no fast path | `app/api/agent/converse/route.ts` |
-| Web confirm/cancel | `app/api/agent/actions/route.ts`, `components/agent/ActionCard.tsx` |
-| WhatsApp yes/no | same fast path; `lib/whatsappAgent.ts` only carries the text |
+| # | Action | Does | Module | Needs |
+|---|---|---|---|---|
+| 1 | `assign_goal` | Put a person on a goal | /performance | edit |
+| 2 | `unassign_goal` | Take a person off a goal | /performance | edit |
+| 3 | `assign_goal_group` | Put a whole group on a goal | /performance | edit |
+| 4 | `unassign_goal_group` | Take a whole group off a goal | /performance | edit |
+| 5 | `log_goal_actual` | Log a result against a goal | /performance | edit |
+| 6 | `move_group_member` | Move a person into or out of a group | /performance | edit |
+| 7 | `update_opportunity` | Change a deal | /opportunities | edit |
+| 8 | `create_opportunity` | Open a new deal | /opportunities | create |
+| 9 | `assign_customer_owner` | Set who owns an account | /customers | edit |
+| 10 | `add_contact` | Add a contact at an account | /customers | edit |
+| 11 | `set_record_people` | Change who is on a deal or account | /opportunities | edit |
+| 12 | `create_lead` | Add a lead | /leads | create |
+| 13 | `update_lead` | Change a lead | /leads | edit |
+| 14 | `create_meeting` | Log or plan a meeting | /meetings | create |
+| 15 | `star_company` | Star or unstar a company in Market Intel | /market-intel | edit |
+| 16 | `verify_goal_result` | Verify a logged goal result | /performance | edit |
+| 17 | `send_back_goal_result` | Send a logged goal result back | /performance | edit |
+| 18 | `create_customer` | Add a customer account | /customers | create |
+| 19 | `create_solutioning_request` | Raise a solutioning request | /solutioning | edit |
+| 20 | `set_followup` | Set a follow-up reminder on an account | /customers | edit |
+| 21 | `log_touch` | Log a call, email or meeting you already had | /customers | edit |
+| 22 | `save_draft` | Save an outreach draft | /customers | edit |
+| 23 | `create_goal` | Create a goal | /performance | create |
+| 24 | `update_goal` | Change a goal | /performance | edit |
+| 25 | `delete_goal` | Delete a goal | /performance | create |
+| 26 | `create_subgoal` | Add a subgoal under a goal | /performance | edit |
+| 27 | `delete_subgoal` | Remove a subgoal | /performance | create |
+| 28 | `update_goal_result` | Correct a logged result | /performance | edit |
+| 29 | `remove_goal_result` | Remove a logged result | /performance | edit |
+| 30 | `create_group` | Create a group | /performance | create |
+| 31 | `update_group` | Rename a group or change its head | /performance | edit |
+| 32 | `delete_group` | Delete a group | /performance | create |
+| 33 | `delete_opportunity` | Delete a deal | /opportunities | create |
+| 34 | `convert_lead` | Mark a lead as converted | /leads | edit |
+| 35 | `delete_lead` | Delete a lead | /leads | create |
+| 36 | `refresh_lead_linkedin` | Re-read a lead's LinkedIn profile | /leads | edit |
+| 37 | `update_solutioning_request` | Change a solutioning request | /solutioning | edit |
+| 38 | `assign_solutioning_request` | Assign a solutioning request to someone | /solutioning | edit |
+| 39 | `pick_up_solutioning_request` | Pick up a solutioning request | /solutioning | edit |
+| 40 | `complete_solutioning_request` | Mark a solutioning request complete | /solutioning | edit |
+| 41 | `cancel_solutioning_request` | Cancel a solutioning request | /solutioning | edit |
+| 42 | `reopen_solutioning_request` | Reopen a solutioning request | /solutioning | edit |
+| 43 | `comment_on_solutioning_request` | Comment on a solutioning request | /solutioning | edit |
+| 44 | `set_solutioning_priority` | Set a request's priority | /solutioning | edit |
+| 45 | `delete_solutioning_request` | Delete a solutioning request | /solutioning | edit |
+| 46 | `create_contract` | Record a contract | /contracts | create |
+| 47 | `update_contract` | Change a contract | /contracts | edit |
+| 48 | `delete_contract` | Delete a contract | /contracts | create |
+| 49 | `update_meeting` | Change a meeting | /meetings | edit |
+| 50 | `set_meeting_status` | Mark a meeting held or cancelled | /meetings | edit |
+| 51 | `add_meeting_note` | Add a note to a meeting | /meetings | edit |
+| 52 | `delete_meeting` | Delete a meeting | /meetings | create |
+| 53 | `delete_accrual_plan` | Delete a deal's accrual plan | /opportunities | create |
+| 54 | `freeze_accrual_month` | Freeze a month of accruals | /opportunities | create |
+| 55 | `unfreeze_accrual_month` | Unfreeze a month of accruals | /opportunities | create |
+| 56 | `create_customer_group` | Create a customer group | /customers | create |
+| 57 | `update_customer_group` | Rename a customer group | /customers | edit |
+| 58 | `add_customer_to_group` | Put an account in a customer group | /customers | edit |
+| 59 | `remove_customer_from_group` | Take an account out of a customer group | /customers | edit |
+| 60 | `delete_customer_group` | Delete a customer group | /customers | create |
+| 61 | `update_customer` | Change an account's details | /customers | edit |
+| 62 | `add_customer_note` | Add a note to an account | /customers | edit |
+| 63 | `delete_contact` | Delete a contact | /customers | create |
+| 64 | `track_company` | Track a new company in Market Intel | /market-intel | edit |
+| 65 | `remove_from_my_list` | Take a company off your Market Intel list | /market-intel | edit |
+| 66 | `delete_tracked_company` | Delete a company from Market Intel for everyone | /market-intel | create |
 
 ## The actions (v1)
 
@@ -667,3 +730,36 @@ Anir decides on by name.
   WhatsApp on an empty goal and undone; Renewals was snapshotted and never
   written to, since its existing group-sourced assignments made a clean restore
   uncertain.
+- Sep 28, 03:30 UTC, THE FULL AUDIT (Anir: "the agent has to be able to do
+  literally anything I can do in the app... one shot, and verify it actually
+  works"). Read every write route and its op list, mapped the 44 writes the
+  agent had no door for: 67 actions now, the table above. Three deliberate
+  gaps, each Anir's call: customer delete (cascades through contacts, deals,
+  plans), "message a contact" (sends email), accrual plan save/deviate (a
+  month-by-month money schedule typed into chat is where mistakes hide; the
+  dialog stays). Not mapped either: offerings/FDL catalogue CRUD, privileges,
+  settings, uploads. New test `tests/agent-action-routes.test.mjs` reads both
+  sides as text and fails on any action whose route, op or method does not
+  exist, so a renamed op can never again become a false statement about the
+  product.
+  VERIFIED, over WhatsApp, one sentence per step then YES, every chain
+  creating and then removing its own records: goals (create, change, subgoal
+  add/remove, delete), groups (create, rename, delete), meetings (create,
+  note, reschedule, complete, delete), solutioning (create, priority, comment,
+  cancel, reopen, delete), contracts (create, sign, delete), leads (create,
+  deal create, convert, delete lead, delete deal), Market Intel (star, off my
+  list). Refusals as a BD member, all five before proposing: delete a goal,
+  create a group, freeze a month, delete a tracked company, delete a deal.
+  FOUND BY THE SWEEP AND FIXED: create_goal rejected "count goal" as a unit
+  (lenient matching now); create_customer proposed the admin as owner and the
+  route refused after YES (the owner must be a BD member; it asks first now);
+  create_opportunity died on a stage the model invented (an unnamed stage is
+  dropped, never a reason to refuse); the agent could create a customer group
+  and then insist it did not exist because nothing it could read listed them
+  (customer groups ride on the customers read now).
+  PRODUCT WRINKLE, not changed: deleting a lead leaves the contact it created
+  behind (`__qa Probe Lead` had to be removed by hand twice). Anir decides
+  whether a lead's contact goes with it.
+  LESSON: the first run reported 35 failures that were all mine: I edited the
+  card while the sweep ran, the dev server recompiled with a syntax error, and
+  every webhook answered 500. Tree frozen for every run after that.

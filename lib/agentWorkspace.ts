@@ -4,6 +4,7 @@ import { canViewOfferingMaterial } from "./materialAccess";
 import { canOpenModule } from "./moduleAccessServer";
 import { resolveViewerAccess } from "./viewerAccess";
 import { readRecordTeams, teamFor } from "./recordTeams";
+import { readCustomerGroups } from "./customerGroups";
 import { readMeetings } from "./meetings";
 import { listCampaigns } from "./campaigns";
 import { listSequences } from "./sequences";
@@ -244,10 +245,15 @@ export async function readAgentWorkspace(
             }));
   } else if (key === "customers") {
     const db = getDb();
-    const [customers, teams, contacts, interactions, sessions] = await Promise.all([
+    const [customers, teams, contacts, interactions, sessions, groupState] = await Promise.all([
       db.customers.list(), readRecordTeams(), db.contacts.list(),
       db.interactions.list(), db.pitchSessions.list(),
+      /* CUSTOMER GROUPS, VISIBLE. The agent could create one and then insist
+         it did not exist, because nothing it could read listed them; it then
+         never called the action that would have found it (sweep, Sep 28). */
+      readCustomerGroups().catch(() => ({ groups: [] })),
     ]);
+    const customerGroups = groupState.groups.map((g) => ({ id: g.id, name: g.name, description: g.description ?? "", customers: g.customerIds.map((id) => customers.find((c) => c.id === id)?.company_name ?? id) }));
     // Mirror the Customers page's computed relationship health, not a stored field.
     const sessionDeals = buildDeals(sessions, customers, contacts, interactions);
     rows = customers.map(c => {
@@ -265,7 +271,7 @@ export async function readAgentWorkspace(
         relationshipHealth:{score:health.score,label:health.label,basis:"Computed estimate shown on the Customers page; not a stored field."},
         url:`/customers/${encodeURIComponent(c.id)}`};
     }).filter(c => !mineOnly || c.ownedByMe || c.onMyTeam);
-    summary = {ownedCount:rows.filter(r=>r.ownedByMe).length,
+    summary = {customerGroups, ownedCount:rows.filter(r=>r.ownedByMe).length,
       teamMemberCount:rows.filter(r=>r.onMyTeam).length,
       basis:"Customer records and the full account-team store were both read. With mineOnly, results include owned OR team-member accounts. An empty result confirms neither ownership nor team membership; no per-account follow-up lookup is needed."};
   } else if (key === "meetings") {

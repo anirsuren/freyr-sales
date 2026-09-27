@@ -648,7 +648,11 @@ export const ACTIONS: ActionDef[] = [
       const day = parseDay(params.estSignDate, new Date(), ctx.timeZone);
       if (!day) return { error: "A new deal needs an expected signing date (YYYY-MM-DD)." };
       let status: string | undefined;
-      if (str(params.status)) {
+      /* Only a stage the person actually named counts. The model relays a
+         guess like "Open" when nothing was said, and a guess that fails the
+         enum must not block the deal (first sweep, Sep 28): it is dropped and
+         the deal opens at the default stage. */
+      if (str(params.status) && pickEnum(params.status, OPPORTUNITY_STATUSES, "status").ok) {
         const picked = pickEnum(params.status, OPPORTUNITY_STATUSES, "status");
         if (!picked.ok) return { error: picked.error };
         status = picked.value;
@@ -1093,7 +1097,7 @@ export const ACTIONS: ActionDef[] = [
       hqCountry: { type: "string", description: "HQ country." },
       hqState: { type: "string", description: "HQ state or region, optional." },
       hqZip: { type: "string", description: "HQ postal code, optional." },
-      owner: { type: "string", description: "Owner (a BD member); defaults to the person asking." },
+      owner: { type: "string", description: "Owner, who must be a BD member. Only defaults to the person asking when they are one." },
       group: { type: "string", description: "Customer group name. Ask which if the person did not say." },
     },
     required: ["name", "website", "hqLine1", "hqCity", "hqCountry", "group"],
@@ -1104,6 +1108,14 @@ export const ACTIONS: ActionDef[] = [
       if (!name || !website || !hq.line1 || !hq.city || !hq.country) return { error: "A customer needs a name, a website and an HQ address with line 1, city and country." };
       const owner = await resolvePerson(params.owner, ctx);
       if (!owner.ok) return { error: owner.error };
+      /* The route only accepts a BD member as owner. An admin who did not name
+         one used to be proposed as owner, say YES, and be refused after the
+         fact (first sweep, Sep 28). Ask before proposing instead. */
+      if (owner.value.role !== "bd_member") {
+        return { error: str(params.owner) && !/^(me|myself|i|my)$/i.test(str(params.owner))
+          ? `${owner.value.name} is not a BD member, and an account's owner has to be one. Who should own it?`
+          : "Who should own this account? It has to be a BD member." };
+      }
       const { groups } = await readCustomerGroups();
       const group = matchOne(str(params.group, 120), groups.map((g) => ({ id: g.id, name: g.name })), "customer group");
       if (!group.ok) return { error: `${group.error} Groups: ${groups.map((g) => g.name).join(", ")}.` };
@@ -1334,8 +1346,12 @@ export const ACTIONS: ActionDef[] = [
     async prepare(params) {
       const name = str(params.name, 160);
       if (!name) return { error: "What should the goal be called?" };
-      const unit = pickEnum(params.unit, ["count", "currency", "percent"], "unit");
-      if (!unit.ok) return { error: unit.error };
+      /* "a count goal", "dollars", "%": the model relays the person's words,
+         not the enum, and the first sweep died here on "count goal". */
+      const unitWord = str(params.unit, 60).toLowerCase();
+      const unitValue = /percent|%|pct/.test(unitWord) ? "percent" : /currenc|\$|usd|dollar|money|revenue|eur|gbp|inr/.test(unitWord) ? "currency" : /count|number|how many|times|meetings|calls|leads/.test(unitWord) ? "count" : "";
+      if (!unitValue) return { error: "Is the goal counted in numbers, in money, or as a percentage?" };
+      const unit = { ok: true as const, value: unitValue };
       const target = params.target === undefined || params.target === null || params.target === "" ? undefined : parseMoney(params.target);
       if (params.target !== undefined && params.target !== null && params.target !== "" && target === null) return { error: "The target must be a number." };
       const year = Number(str(params.year, 8)) || new Date().getFullYear();
