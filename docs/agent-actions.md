@@ -489,3 +489,9 @@ Anir decides on by name.
   I'll put it back up." Proved by proposing, ageing the stored proposal, then
   replying YES; "do it again" re-proposed it, and NO left nothing pending.
   New QA driver scripts/qa/age-proposal.mjs.
+- Sep 27, 15:50 UTC: ambiguity on the goal side, the other half of "find the
+  person, find the goal". As an owner over WhatsApp: "put Neha on the Billed
+  goal" came back "I found two goals matching Billed: Billed Revenue and
+  Billed / Collected Revenue. Which one?", with both links; answering "Billed
+  Revenue" proposed the right one and NO cancelled it. Both goals are
+  unchanged and the test account is back to bd_member.
