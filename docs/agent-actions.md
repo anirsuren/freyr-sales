@@ -360,3 +360,13 @@ Anir decides on by name.
   loopback stays for `next dev`), and the webhook route uses that helper
   instead of its own copy. The same origin carries every executed action, so
   web-card "Do it" on the cloud would have failed the same way.
+- Sep 27, 12:37 UTC: END TO END FROM ANIR'S REAL PHONE on deployed dev (he signed
+  into WhatsApp Web in his Chrome, I typed): link code accepted ("Connected...
+  answers as Anir Suren"), "Which of our deals are closing this month?" came
+  back with the GSK deal and its dev link. His ask in the same minute: the
+  same phone must be able to switch between his test accounts by code. It
+  could not: a six-digit code from an already-linked number went to the agent
+  as a question. Now a code is a claim whether the number is linked or not
+  (newest code wins, older link dropped, reply says "Switched... answers as
+  <name>"); a linked person's six digits that match no pending code still go
+  to the agent (an amount, say). Proved locally with the QA number both ways.

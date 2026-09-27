@@ -163,25 +163,35 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
   if (config.phoneNumberId && message.phoneNumberId && message.phoneNumberId !== config.phoneNumberId) return;
 
   const member = await memberForWhatsAppNumber(message.from);
-  if (!member) {
-    const code = linkCodeIn(message.text);
-    if (code) {
-      const claimed = await claimWhatsAppCode(code, message.from, message.name);
-      if (claimed === "expired") {
-        await reply(message.from, "That code has expired. Get a new one from Settings, then Integrations, then WhatsApp in Freyr.", options);
-      } else if (!claimed) {
-        await reply(message.from, "That code doesn't match anything. Check Settings, then Integrations, then WhatsApp in Freyr and text the code shown there.", options);
-      } else {
-        const user = await appUser(claimed.scope.userId);
-        const who = user?.display_name || user?.email || "you";
-        await reply(
-          message.from,
-          `Connected. This is your Freyr agent, and it answers as ${who}. Ask about your accounts, deals, offerings or market news.`,
-          options
-        );
-      }
+  /* A SIX-DIGIT CODE IS A CLAIM, LINKED OR NOT (Anir, Sep 27: "my other test
+     accounts... it'll be the same phone number... it'll just know it's the
+     code that's connected to the account"). One phone, several accounts: the
+     newest code decides who the phone speaks as, and claimWhatsAppCode drops
+     the older link itself. A linked person whose six digits match no pending
+     code is just typing a number (an amount, say), so that goes to the agent. */
+  const code = linkCodeIn(message.text);
+  if (code) {
+    const claimed = await claimWhatsAppCode(code, message.from, message.name);
+    if (claimed === "expired") {
+      await reply(message.from, "That code has expired. Get a new one from Settings, then Integrations, then WhatsApp in Freyr.", options);
       return;
     }
+    if (claimed) {
+      const user = await appUser(claimed.scope.userId);
+      const who = user?.display_name || user?.email || "you";
+      await reply(
+        message.from,
+        `${member ? "Switched" : "Connected"}. This is your Freyr agent, and it answers as ${who}. Ask about your accounts, deals, offerings or market news.`,
+        options
+      );
+      return;
+    }
+    if (!member) {
+      await reply(message.from, "That code doesn't match anything. Check Settings, then Integrations, then WhatsApp in Freyr and text the code shown there.", options);
+      return;
+    }
+  }
+  if (!member) {
     if (unlinkedReplyDue(message.from)) await reply(message.from, HOW_TO_LINK, options);
     return;
   }
