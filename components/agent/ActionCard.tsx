@@ -126,7 +126,7 @@ export function ActionCard({
             {look.label}
           </span>
         </span>
-        <span className="shrink-0 rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
+        <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
           {actionLabel(action.action)}
         </span>
       </div>
