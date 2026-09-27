@@ -162,3 +162,18 @@ chunking, and the Graph API call shape.
   number (the test number can only reach verified test recipients), and
   publishing the app (Meta warns unpublished apps only receive test webhooks
   from the dashboard; the test number's inbound is checked empirically).
+
+### The step the dashboard does not do: subscribe the app to the WABA
+
+Verifying the callback and ticking `messages` only registers the app's
+webhook. Inbound texts are routed per WhatsApp Business Account, and on
+Sep 27 the test WABA was subscribed only to Meta's own dashboard app, so
+Anir's texts never arrived (Meta's "Test" button still succeeded, because
+that goes straight to the callback). One call with the system-user token
+fixes it, and it is needed again for any new WABA (the real company number):
+
+    curl -X POST "https://graph.facebook.com/v22.0/<WABA_ID>/subscribed_apps" \
+         -H "Authorization: Bearer $WHATSAPP_ACCESS_TOKEN"
+    curl "https://graph.facebook.com/v22.0/<WABA_ID>/subscribed_apps?access_token=$WHATSAPP_ACCESS_TOKEN"
+
+The second call must list "Freyr Sales" (app 2569174366890174).
