@@ -39,10 +39,10 @@ export const hasCrm = () =>
 
 // ElevenLabs — the offering-category voice agents (Suren's Jul 3 ask).
 export const hasElevenLabs = () => !!process.env.ELEVENLABS_API_KEY;
-/* Speech to text: voice notes and meeting recordings. Two providers, either
-   one is enough, and the list said nothing about it until Sep 27, when the
-   OpenAI balance ran out and no status page showed transcription was down. */
-export const hasTranscription = () => !!process.env.OPENAI_API_KEY || !!process.env.ELEVENLABS_API_KEY;
+/* Speech to text: voice notes and meeting recordings. The list said nothing
+   about it until Sep 27, when the OpenAI balance ran out and no status page
+   showed transcription was down. */
+export const hasTranscription = () => !!process.env.OPENAI_API_KEY;
 
 // Convenience snapshot used by the /admin system-status panel.
 export function getServiceStatus() {
