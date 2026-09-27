@@ -1095,7 +1095,11 @@ export function OpportunitySummary({
                 data-deal-id={d.id}
                 style={{ ["--row" as string]: i }}
                 className={cn(
-                  "tree-row-in border-b border-border-light last:border-b-0",
+                  /* THE LEAF ANSWERS THE POINTER TOO (Anir, Sep 28: "you have
+                     the effect on the main rows, but not on the actual item,
+                     the line item that I click on"). Same rail, same lift,
+                     same figure coming forward as the rows above it. */
+                  "summary-row tree-row-in border-b border-border-light last:border-b-0",
                   /* THE ONE YOU JUST MADE, LIT FOR A MOMENT. Opening the folds
                      down to a deal still leaves you scanning a screen of rows
                      for it; the tint says which one without moving anything. */
