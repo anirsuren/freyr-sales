@@ -370,3 +370,25 @@ Anir decides on by name.
   (newest code wins, older link dropped, reply says "Switched... answers as
   <name>"); a linked person's six digits that match no pending code still go
   to the agent (an amount, say). Proved locally with the QA number both ways.
+- Sep 27, 12:55 UTC: 35d875c live on dev (first build died of a heap OOM in
+  the Docker build, the re-run passed). Account switch PROVED FROM ANIR'S PHONE:
+  a fresh code for Anir Test 5 sent from his number flipped the link
+  (12:47:51, "Switched... answers as Anir Test 5"), and "What can I do here?"
+  came back "As a BD Member... view-only access to Goals and Team"; the same
+  code sent again, already used, went to the agent as plain text ("I couldn't
+  find any records matching 143038"), as designed. Prod: the five WhatsApp
+  keys are in freyr-sales/runtime and task def freyr-sales:52 rolled green on
+  the old image; promotion of 35d875c started 12:54 UTC on Anir's "push to
+  both" plus "make sure it works before you deploy anything".
+- Sep 27, 12:58 UTC: PRODUCTION. promote-to-prod.sh 35d875c: image copied
+  with crane, task def freyr-sales:53 registered, service rolled, /api/health
+  serves 35d875c. Meta webhook moved to
+  https://freyrsales.freyrapps.com/api/whatsapp/webhook through the Graph API
+  (POST /{app}/subscriptions with the app token; Meta's handshake against prod
+  succeeded, which also proves the prod verify token is in place). Dev no
+  longer receives WhatsApp traffic. Anir's phone is linked on DEV (as Anir
+  Test 5 after the switch test); on prod nobody is linked yet, which needs his
+  prod sign-in (prod cookies cannot be minted). Security answer given to Anir
+  in chat: no attempt limit on codes, links never expire, Meta sees message
+  text, test number reaches five phones; first two are the fixes to build on
+  his word.
