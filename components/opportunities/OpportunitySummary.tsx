@@ -886,7 +886,7 @@ export function OpportunitySummary({
            the list instead of every child appearing on the same frame. */
         style={{ ["--row" as string]: rowIndex }}
         className={cn(
-          "border-b border-border-light hover:bg-surface/50",
+          "summary-row border-b border-border-light",
           depth > 0 && "tree-row-in",
           /* Dimmed, not hidden: the totals still have to be readable, because
              a row you are not reading is still a row you might glance at.
@@ -1035,7 +1035,7 @@ export function OpportunitySummary({
             </span>
           </button>
         </th>
-        <td className={cn(cellCls,"font-bold text-text-primary")}>
+        <td className={cn(cellCls,"summary-figure font-bold text-text-primary")}>
           <Money n={total.total} />
         </td>
         {byPeriod.map((v, i) => (
@@ -1288,7 +1288,7 @@ export function OpportunitySummary({
                     : own;
                   return (
                     <>
-                      <td className={cn(cellCls,"font-semibold text-text-primary")}>
+                      <td className={cn(cellCls,"summary-figure font-semibold text-text-primary")}>
                         {leafTotal === undefined ? (
                           <span className="font-normal text-text-tertiary">·</span>
                         ) : (
@@ -1445,7 +1445,7 @@ export function OpportunitySummary({
                   >
                     All {deals.length} {deals.length === 1 ? "deal" : "deals"}
                   </th>
-                  <td className={cn(cellCls,"font-bold text-text-primary")}>
+                  <td className={cn(cellCls,"summary-figure font-bold text-text-primary")}>
                     <Money n={grandCells.total.total} />
                   </td>
                   {grandCells.byPeriod.map((v, i) => (
@@ -1470,7 +1470,7 @@ export function OpportunitySummary({
                       return (
                         <tr
                           key={d.id}
-                          className="border-b border-border-light last:border-b-0 hover:bg-surface/50"
+                          className="summary-row border-b border-border-light last:border-b-0"
                         >
                           <th
                             scope="row"
@@ -1497,7 +1497,7 @@ export function OpportunitySummary({
                               )}
                             </button>
                           </th>
-                          <td className={cn(cellCls,"font-semibold text-text-primary")}>
+                          <td className={cn(cellCls,"summary-figure font-semibold text-text-primary")}>
                             {own === undefined ? (
                               <span className="font-normal text-text-tertiary">·</span>
                             ) : (

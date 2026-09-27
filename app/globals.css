@@ -1509,6 +1509,43 @@ select:focus-visible {
   .tree-row-in { animation: none; }
 }
 
+/* A SUMMARY ROW THAT ANSWERS THE POINTER (Anir, Sep 27: "I like the animation
+   you have when I hover... copy that over onto the summary view", then "just
+   make the hover better").
+
+   A card can scale up over its neighbours; a table row cannot, because the
+   grid would tear. So a row borrows the same three signals the cards use and
+   spends them where a row can hold them: it lifts (its own surface plus a
+   soft shadow), it declares itself (an accent rail down the leading edge) and
+   its own figures come forward. Nothing moves, so the columns stay in line
+   and the eye keeps its place in a table thirty rows deep. */
+.summary-row {
+  --summary-rail: var(--blue-primary);
+  transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+.summary-row > * {
+  transition: background-color 140ms ease, color 140ms ease;
+}
+/* The rail goes on the leading CELL, not the row: the first column is sticky
+   and paints its own background, so a shadow on the row sat behind it. */
+.summary-row:hover > :first-child {
+  box-shadow: inset 3px 0 0 0 var(--summary-rail);
+}
+.summary-row:hover {
+  box-shadow: 0 1px 10px -6px rgb(16 22 30 / 0.28);
+}
+.summary-row:hover > *,
+.summary-row:hover > th {
+  background-color: color-mix(in srgb, var(--blue-light) 55%, transparent);
+}
+.summary-row:hover .summary-figure {
+  color: var(--blue-primary);
+}
+@media (prefers-reduced-motion: reduce) {
+  .summary-row,
+  .summary-row > * { transition: none; }
+}
+
 /* One user-controlled delay for help tooltips and other CSS hover popups. */
 .freyr-hover-trigger:hover .freyr-hover-popup {
   transition-delay: var(--freyr-hover-delay, 250ms);
