@@ -227,6 +227,13 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
     answer = (await response.json().catch(() => null)) as ConverseReply | null;
     if (!response.ok) {
       console.error("[whatsapp] converse failed", { status: response.status, error: answer?.error });
+      /* A 403 is the app's permission answer, not a hiccup: relay it instead of
+         asking them to try again in a minute (a solutioning member's account,
+         for one, does not open the agent at all). */
+      if (response.status === 403) {
+        await reply(message.from, typeof answer?.error === "string" && answer.error ? answer.error : "Not available on this account.", options);
+        return;
+      }
       answer = null;
     }
   } catch (error) {
