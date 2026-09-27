@@ -113,3 +113,11 @@ test("an existing deal is changed by its owner, a manager or an admin, nobody el
   assert.equal(opportunityChangeRefusal(deal, { name: "Anir Suren", role: "admin" }), null);
   assert.equal(opportunityChangeRefusal({ owner: null }, { name: "Anir Test Rep", role: "bd_member" }), OPPORTUNITY_NOT_YOURS);
 });
+
+test("a day in a summary reads as a date a person can check", () => {
+  assert.equal(shared.readableDay("2026-10-02"), "Fri, 2 Oct 2026");
+  assert.equal(shared.readableDay("2026-12-25"), "Fri, 25 Dec 2026");
+  // Anything that is not a plain calendar day comes back untouched.
+  assert.equal(shared.readableDay("next Friday"), "next Friday");
+  assert.equal(shared.readableDay(""), "");
+});

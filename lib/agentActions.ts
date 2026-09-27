@@ -19,6 +19,7 @@ import {
   parseDay,
   parseMoney,
   shortId,
+  readableDay,
   type ActionProposal,
   type Match,
 } from "@/lib/agentActionsShared";
@@ -357,7 +358,7 @@ export const ACTIONS: ActionDef[] = [
       const date = str(params.date) ? parseDay(params.date, new Date(), ctx.timeZone) : null;
       if (str(params.date) && !date) return { error: "I could not read that date; use YYYY-MM-DD." };
       return {
-        summary: `Log ${amount.toLocaleString("en-US")} for ${person.value.name} on "${goal.value.name}"${customer ? ` from ${customer.name}` : ""}${date ? ` dated ${date}` : ""}. It will wait for verification.`,
+        summary: `Log ${amount.toLocaleString("en-US")} for ${person.value.name} on "${goal.value.name}"${customer ? ` from ${customer.name}` : ""}${date ? ` dated ${readableDay(date)}` : ""}. It will wait for verification.`,
         params: { goalId: goal.value.id, goalName: goal.value.name, person: person.value.name, amount, ...(customer ? { customer: customer.name, customerId: customer.id } : {}), ...(date ? { date } : {}), ...(str(params.note) ? { note: str(params.note, 500) } : {}) },
         ...(customer ? { customerId: customer.id, company: customer.name } : {}),
       };
@@ -1048,7 +1049,7 @@ export const ACTIONS: ActionDef[] = [
       if (!contact.ok) return { error: contact.error };
       const when = followupDay(params.when, ctx.timeZone);
       return {
-        summary: `Set a follow-up with ${customer.value.name} (${contact.value.name}) for ${when.iso}${str(params.note) ? ` (${str(params.note, 200)})` : ""}.`,
+        summary: `Set a follow-up with ${customer.value.name} (${contact.value.name}) for ${readableDay(when.iso)}${str(params.note) ? ` (${str(params.note, 200)})` : ""}.`,
         params: { customerId: customer.value.id, customer: customer.value.name, contactId: contact.value.id, when: when.iso, label: when.label, note: str(params.note, 1000) || undefined },
         customerId: customer.value.id,
         company: customer.value.name,

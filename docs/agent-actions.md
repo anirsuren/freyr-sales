@@ -512,3 +512,14 @@ Anir decides on by name.
   send back carry the entry's goalId for it. Proved on dev by assigning and
   unassigning Neha on Cold Reachouts over WhatsApp: both done messages linked
   the goal itself, and the goal is back to nobody.
+- Sep 27, 16:30 UTC: dates in a proposal read as dates. A follow-up summary
+  said "for 2026-10-02"; it now says "for Fri, 2 Oct 2026", and a logged goal
+  result does the same, so a day that came from words like "next Friday" can
+  be checked at a glance (this is the class of mistake that put a follow-up on
+  Oct 6 in the first place). readableDay lives with the pure helpers and has
+  its own test. Proved live over WhatsApp on a probe contact at Zydus, then
+  cancelled: "Set a follow-up with Zydus (QA Probe Three) for Fri, 2 Oct
+  2026". The probe contact was deleted; dev has no contacts again. Note for
+  future curl checks: the access grant expires after 15 minutes, so a DELETE
+  can come back "Workspace owner approval required" until the cookies are
+  minted again.

@@ -276,3 +276,16 @@ export const ACTION_LABELS: Record<string, string> = {
 export function actionLabel(action: string): string {
   return ACTION_LABELS[action] ?? action.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 }
+
+/**
+ * A calendar day a person can check at a glance. The stored value is
+ * 2026-10-02; "Fri 2 Oct 2026" is what shows a wrong date immediately, which
+ * matters because the day came from words like "next Friday".
+ */
+export function readableDay(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? "").trim());
+  if (!m) return String(iso ?? "");
+  const date = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+}
