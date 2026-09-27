@@ -301,3 +301,23 @@ Anir decides on by name.
   than f3d433e. Gap noted, not changed: an unlinked sender who gets the
   how-to-link reply leaves no log line, so a successful first contact is
   invisible server-side; only a failed send is logged.
+- Sep 27, 05:30 UTC: permission levels over WhatsApp, second pass. View-only is
+  a level a person holds in a module, never a role: view_all is additive (the
+  role's own privilege is always held), so "Anir Test 5 + view_all" stayed a BD
+  member, and the real view-only cases for a BD member are goals, offerings,
+  team and reports. Built: the actions prompt now tells the model what the
+  person may do per module (make new / change only / look only / not open),
+  from the same checks propose_action applies, so a BD member asking to move
+  someone onto a goal is refused in one line instead of being asked which Neha
+  first, and the model stops suggesting actions above their level (81b61f1b).
+  Create and delete refusals say "You can look at this, but not change it" for
+  a view-level person instead of "You can change these". Found: Sol Tester was
+  a bd_member in app_users all along, so the solutioning level had never been
+  exercised. A real sol_member cannot open the agent at all: canAccessModuleWith
+  limits that role to /solutioning and /meetings whatever the privilege table
+  says (the table says agent: edit), so /api/agent/converse answers 403 and
+  WhatsApp said "try again in a minute"; WhatsApp now relays the permission
+  answer ("Not available on this account."). Whether solutioning members should
+  have the agent is Anir's decision; nothing changed there. Every test mutation
+  (Sol Tester's role, the privilege table, the fake link ...0005) was restored
+  and verified.
