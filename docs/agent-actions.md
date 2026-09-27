@@ -495,3 +495,14 @@ Anir decides on by name.
   Billed / Collected Revenue. Which one?", with both links; answering "Billed
   Revenue" proposed the right one and NO cancelled it. Both goals are
   unchanged and the test account is back to bd_member.
+- Sep 27, 16:00 UTC: swept every action for the bug class add_contact had, a
+  field name in the action's body that the route never reads, so the change is
+  summarised and then silently dropped. Checked each call body against the
+  route that receives it: create_customer (name, website, hq, owner,
+  ownerUserId, groupId), create_meeting (title, type, meetingAt, customer,
+  customerId), create_lead (name, company, title, email, phone, source,
+  interest, note against the Lead type), update_opportunity (status, level,
+  value, estimatedTcv, confidence, estSignDate, nextSteps, name, all present
+  in the route's mapper), the goal and group ops, and the record-team call.
+  set_followup, log_touch and save_draft write through the typed db interface,
+  where the compiler catches it. add_contact was the only one; no others found.
