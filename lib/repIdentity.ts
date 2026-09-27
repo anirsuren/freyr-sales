@@ -33,13 +33,21 @@ export function repIdentityBlock(
     lines.push(`LinkedIn headline: ${headline}`);
   }
 
+  /* Asked "do you have my LinkedIn?", the agent has to be able to say which
+     page it read, not just quote the headline back (Anir, Sep 27: it kept
+     answering no while the profile was sitting right here). */
+  const url = prefs?.linkedin_url?.trim();
+  if (url) lines.push(`LinkedIn page: ${url}`);
+
   const about = prefs?.linkedin_about?.trim();
   if (about) lines.push(`Background: ${about}`);
 
   if (!lines.length) return "";
 
   return [
-    "About the rep you are writing as (write in their voice, match their seniority):",
+    "ABOUT THE PERSON YOU ARE TALKING TO. This is their own profile, read from the",
+    "LinkedIn they connected in Settings. It is what you know about them, so answer",
+    "questions about themselves from it, and write in their voice at their seniority.",
     ...lines,
   ].join("\n");
 }

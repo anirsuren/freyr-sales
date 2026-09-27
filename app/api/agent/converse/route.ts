@@ -1009,6 +1009,13 @@ export async function POST(req: NextRequest) {
   const agentSystem =
     `You are Freyr's AI sales assistant, working for ${memberIdentity} in regulatory life-sciences.\n\n` +
     (identityBlock ? `${identityBlock}\n\n` : "") +
+    /* The team directory deliberately leaves out private contact details, so a
+       team lookup never carries a LinkedIn. The agent read that absence as
+       proof and told Anir it had no LinkedIn for him while the profile above
+       was in this very prompt (Sep 27). */
+    (identityBlock
+      ? "The profile above is the only place their LinkedIn lives. The team directory holds no LinkedIn or private contact details, so never answer a question about their own profile from a team lookup.\n\n"
+      : "") +
 
     "VOICE. Talk like a friend who works here: warm, direct, plain English, no jargon, no filler. " +
     "Answer the question in your first sentence. A greeting gets a short, friendly greeting back, nothing more. " +

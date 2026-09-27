@@ -629,3 +629,16 @@ Anir decides on by name.
   matter: the agent recovered from Whisper's version too, finding both Kranthis
   and the Cold Reachouts goal from the mis-heard words. Driver
   scripts/qa/voice-note-ab.mts <file> whisper|scribe.
+- Sep 27, 23:55 UTC: "Do u have my LinkedIn info" answered "No LinkedIn profile
+  link is recorded for you" on prod while the profile was sitting in the very
+  same prompt. Reproduced locally, and the tool trace showed why: the model
+  called read_workspace(module: team) and answered from the directory record,
+  which deliberately carries no LinkedIn or private contact details. The
+  identity block was present and complete the whole time; it just read as
+  writing material ("About the rep you are writing as") rather than as what the
+  agent knows about the person. Two fixes: the block now opens by saying it IS
+  their own profile, read from the LinkedIn they connected in Settings, and
+  carries the page URL as well as the headline and background; and the prompt
+  says the team directory holds no LinkedIn, so its absence there proves
+  nothing. Same question now answers with the headline and the URL, and "what
+  do you know about me" answers from the background. Suites still 12/11/120.
