@@ -25,6 +25,7 @@ import { buildCustomer360 } from "@/lib/customer360";
 import { Customer360 } from "@/components/customers/Customer360";
 import { BAND_ICONS } from "@/lib/customer360Shared";
 import { CustomerTabs } from "@/components/customers/CustomerTabs";
+import { readAccountReviews } from "@/lib/accountReviews";
 import { initializeLiveOfferings, listFdlComponents } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { RecordView } from "@/components/RecordView";
@@ -100,6 +101,7 @@ export default async function CustomerDetailPage({
      module's own list, which exists in both worlds. */
   if (!customer) redirect("/customers");
 
+  const accountReviews = await readAccountReviews(customer.id);
   const contacts = await db.contacts.list(id);
 
   /**
@@ -450,6 +452,7 @@ export default async function CustomerDetailPage({
         canDeleteContacts={mayDeleteOnThisAccount}
         bands={bands360}
         customer={customer}
+        accountReviews={accountReviews}
         contacts={contacts}
         sessions={sessions}
         interactions={interactions}

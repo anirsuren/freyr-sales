@@ -95,7 +95,7 @@ export function SignalRow({
           className={cn(
             chip,
             all
-              ? "border-transparent bg-[color:var(--ink-bright-blue)] text-white"
+              ? "border-transparent bg-[color:var(--ink-bright-blue)] text-white dark:bg-[#294765] dark:text-[#e6f2ff]"
               : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:text-text-primary"
           )}
         >

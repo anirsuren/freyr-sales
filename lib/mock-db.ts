@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { SALES_TEAM } from "./salesTeam";
+import { normalizeMockRecordDates } from "./mockDates";
 import {
   MOCK_OFFERING_CATALOGUE,
 } from "./offeringCatalogue";
@@ -1299,6 +1300,16 @@ if (globalThis.__FREYR_MOCK_STORE__ !== store) {
   globalThis.__FREYR_MOCK_STORE__ = store;
   globalThis.__FREYR_MOCK_STORE_V__ = SCHEMA_VERSION;
 }
+// Migrate dated mock records in place, preserving user edits and local chats.
+// A schema bump here would discard the persisted showroom workspace.
+if (normalizeMockRecordDates({
+  customers: store.customers,
+  contacts: store.contacts,
+  pitchSessions: store.pitchSessions,
+  interactions: store.interactions,
+  agentRuns: store.agentRuns,
+  sequenceEnrollments: store.sequenceEnrollments,
+}) > 0) persist();
 
 function inScope(
   record: ScopeColumns,

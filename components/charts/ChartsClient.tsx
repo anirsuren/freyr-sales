@@ -1861,15 +1861,20 @@ export function DonutChart({
 }) {
   const {
     hover,
+    active,
     anchor: mouse,
     show: showHover,
     move: moveTip,
     close: closeTip,
     keepOpen,
   } = useChartHover();
+  // Some drill-down charts show their records beside the ring instead of in a
+  // popup. Suppressing that popup must not also suppress the slice animation.
+  const [passiveHover, setPassiveHover] = useState<number | null>(null);
+  const [focusedSlice, setFocusedSlice] = useState<number | null>(null);
   const linked = useDonutSync(syncId);
   // A slice is "lit" when the mouse is on it OR its legend row is hovered.
-  const lit = hover ?? linked ?? selectedIndex;
+  const lit = focusedSlice ?? (tooltipOnHover ? active ?? hover : passiveHover) ?? linked ?? selectedIndex;
   const rawTotal = segments.reduce((s, x) => s + x.value, 0);
   const total = rawTotal || 1;
   // Reserve room inside the SVG for the thicker hover stroke. Without this,
@@ -1978,8 +1983,11 @@ export function DonutChart({
                 strokeLinecap="butt"
                 role={onSegmentClick ? "button" : undefined}
                 tabIndex={onSegmentClick ? 0 : undefined}
+                className={onSegmentClick ? "outline-none" : undefined}
                 aria-label={onSegmentClick ? `Show ${s.label} records` : undefined}
                 onClick={onSegmentClick ? () => onSegmentClick(i) : undefined}
+                onFocus={onSegmentClick ? () => setFocusedSlice(i) : undefined}
+                onBlur={onSegmentClick ? () => setFocusedSlice(null) : undefined}
                 onKeyDown={onSegmentClick ? (event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
@@ -1989,18 +1997,22 @@ export function DonutChart({
                 onMouseEnter={(e) => {
                   if (tooltipOnHover) {
                     showHover(i, tipAnchor(e));
-                    if (syncId) donutSyncBroadcast(syncId, i);
+                  } else {
+                    setPassiveHover(i);
                   }
+                  if (syncId) donutSyncBroadcast(syncId, i);
                 }}
                 onMouseMove={(e) => { if (tooltipOnHover) moveTip(tipAnchor(e)); }}
                 onMouseLeave={() => {
                   if (tooltipOnHover) {
                     closeTip();
-                    if (syncId) donutSyncBroadcast(syncId, null);
+                  } else {
+                    setPassiveHover(null);
                   }
+                  if (syncId) donutSyncBroadcast(syncId, null);
                 }}
                 style={{
-                  cursor: onSegmentClick ? "pointer" : tooltipOnHover ? "help" : "default",
+                  cursor: onSegmentClick || tooltipOnHover ? "pointer" : "default",
                   // Keep the arc geometry stable. Animating dash lengths caused
                   // square notches at segment endpoints as the sweep completed.
                   transition: "stroke-width 120ms ease, opacity 150ms ease",

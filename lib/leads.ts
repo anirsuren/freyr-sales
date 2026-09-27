@@ -3,6 +3,7 @@ import { leadLinkedInUrl, normalizeLeadLinkedInProfile } from "./leadLinkedIn";
 import { ensureLeadContact } from "./ensureLeadContact";
 
 import { getDataMode } from "./dataMode";
+import { mockDated } from "./mockDates";
 import { mockFillLeads, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
 import { refreshMockFillNames } from "./mockFillCast";
 import {
@@ -277,9 +278,9 @@ export async function readLeads(): Promise<LeadsState> {
       !state.leads.some((lead) => isStaleFillRow(lead.id)) &&
       !refreshMockFillNames(state.leads)
     )
-      return state;
+      return mockDated(state);
   }
-  return topUpMockFill();
+  return mockDated(await topUpMockFill());
 }
 
 export type LeadInput = {

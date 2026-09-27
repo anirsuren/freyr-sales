@@ -7,6 +7,7 @@
 // app's seeded customers/deals/sessions. Campaigns a user creates at runtime
 // keep honest zeros until the channel connects.
 import { getDataMode } from "./dataMode";
+import { mockDated, normalizeMockDate } from "./mockDates";
 import { FILL_ACCOUNTS } from "./mockFillCast";
 
 export type CampaignStatus = "draft" | "queued" | "sent";
@@ -45,7 +46,7 @@ interface CampaignStore {
 // cross-links (recipients → contact pages, voice touches) all resolve.
 function seedCampaigns(): Campaign[] {
   const d = (days: number) =>
-    new Date(Date.now() - days * 86_400_000).toISOString();
+    normalizeMockDate(new Date(Date.now() - days * 86_400_000).toISOString());
   return [
     {
       id: "camp-seed-001",
@@ -136,7 +137,7 @@ function seedCampaigns(): Campaign[] {
  * Three campaigns is a screenshot, not a workspace: the list was three cards,
  * the objective filter had one row per bucket at best, and the performance
  * comparison had nothing to compare (Anir, Aug 31: "every rabbit hole needs to
- * have a shit ton of data"). A year of sends against the generated book of
+ * have a shit ton of data"). A dense recent run of sends against the generated book of
  * accounts, so the list pages, the objective mix and the open/reply
  * distributions all have a real spread behind them.
  *
@@ -228,7 +229,7 @@ function store(): CampaignStore {
     return g.__freyrLiveCampaigns;
   }
   if (!g.__freyrCampaigns) g.__freyrCampaigns = { campaigns: seedCampaigns() };
-  return g.__freyrCampaigns;
+  return mockDated(g.__freyrCampaigns);
 }
 
 let n = 0;

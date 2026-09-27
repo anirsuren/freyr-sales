@@ -464,10 +464,10 @@ const PACE_META: Record<
   Pace,
   { label: string; color: string; icon: LucideIcon } | null
 > = {
-  met: { label: "Target met", color: "#16A34A", icon: CheckCircle2 },
-  ahead: { label: "Ahead", color: "#16A34A", icon: TrendingUp },
+  met: { label: "Target met", color: "var(--ink-green)", icon: CheckCircle2 },
+  ahead: { label: "Ahead", color: "var(--ink-green)", icon: TrendingUp },
   ontrack: { label: "On track", color: "var(--ink-bright-blue)", icon: Activity },
-  lagging: { label: "Lagging", color: "#DC2626", icon: TrendingDown },
+  lagging: { label: "Lagging", color: "var(--status-red)", icon: TrendingDown },
   unset: null,
   /* A target with no schedule cannot be behind or ahead of anything. Saying
      "no schedule" is the honest verdict; the old code called it lagging
@@ -477,7 +477,7 @@ const PACE_META: Record<
      slice and a legend dot in "Where the goals stand". Violet because the
      reserved status hues are spoken for — green met, blue on track, red
      lagging — and "nobody set a schedule" is not a verdict about the goal. */
-  unscheduled: { label: "No schedule", color: "#A855F7", icon: CalendarClock },
+  unscheduled: { label: "No schedule", color: "var(--ink-violet)", icon: CalendarClock },
 };
 
 export function PacePill({ pace, size = "md" }: { pace: Pace; size?: "sm" | "md" }) {
@@ -638,7 +638,7 @@ export function MetPill({ met, size = "md" }: { met: boolean; size?: "sm" | "md"
       )}
       style={
         met
-          ? { color: "#16A34A", background: "rgba(22,163,74,0.10)" }
+          ? { color: "var(--ink-green)", background: "rgba(22,163,74,0.10)" }
           : { color: "var(--ink-bright-blue)", background: "rgba(0,113,227,0.08)" }
       }
     >
@@ -673,7 +673,7 @@ export function GoalBar({
   const pct = Math.min(100, pctMet(actual, target));
   const expected = Math.min(100, yearElapsed(year) * 100);
   const color =
-    pace === "lagging" ? "#DC2626" : pace === "ontrack" ? "var(--ink-bright-blue)" : "#16A34A";
+    pace === "lagging" ? "var(--status-red)" : pace === "ontrack" ? "var(--ink-bright-blue)" : "var(--ink-green)";
   return (
     <div className={cn("min-w-0", className)}>
       <div className="relative h-2 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)]">
@@ -1523,7 +1523,7 @@ function PaceRow({
           tone === "danger"
             ? { color: "var(--status-red)" }
             : tone === "success"
-              ? { color: "#15803D" }
+              ? { color: "var(--ink-green)" }
               : undefined
         }
       >
@@ -1538,7 +1538,7 @@ function PaceRow({
           tone === "danger"
             ? { color: "var(--status-red)" }
             : tone === "success"
-              ? { color: "#15803D" }
+              ? { color: "var(--ink-green)" }
               : undefined
         }
       >
@@ -2103,7 +2103,7 @@ export function PersonProgress({
             <span
               style={{
                 color:
-                  donePct >= 85 ? "#15803D" : donePct >= 55 ? "var(--ink-bright-blue)" : "#DC2626",
+                  donePct >= 85 ? "var(--ink-green)" : donePct >= 55 ? "var(--ink-bright-blue)" : "var(--status-red)",
               }}
             >
               {donePct}%
@@ -2234,7 +2234,7 @@ export function MiniBar({
       <span
         className="text-[12px] font-semibold tnum"
         style={{
-          color: target > 0 && pct > 0 ? ENTRY_COLOR.verified : "var(--text-tertiary)",
+          color: target > 0 && pct > 0 ? "var(--entry-verified-ink)" : "var(--text-tertiary)",
         }}
       >
         {target > 0 ? `${Math.round(pct)}%` : "·"}

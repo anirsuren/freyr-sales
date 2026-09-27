@@ -560,7 +560,7 @@ export function GroupPerformanceTab({
                         <Avatar name={m} className="h-10 w-10 text-[11px]" />
                         {owner && (
                           <span
-                            className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-[color:var(--ink-violet-soft)] text-white"
+                            className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-[color:var(--ink-violet-soft)] text-white dark:bg-[#574779] dark:text-[#f0eaff]"
                             title="Group owner"
                           >
                             <Crown

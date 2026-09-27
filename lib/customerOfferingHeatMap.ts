@@ -15,26 +15,29 @@ import type {
  */
 export const CUSTOMER_OFFERING_ACTIVITIES: Record<
   CustomerOfferingActivity,
-  { label: string; short: string; color: string; text: string }
+  { label: string; short: string; color: string; fill: string; text: string }
 > = {
-  lead: { label: "Lead", short: "Lead", color: "var(--ink-bright-blue)", text: "#FFFFFF" },
+  lead: { label: "Lead", short: "Lead", color: "var(--ink-bright-blue)", fill: "var(--heat-lead-fill)", text: "#FFFFFF" },
   opportunity: {
     label: "Opportunity",
     short: "Opportunity",
     color: "var(--ink-violet-soft)",
+    fill: "var(--heat-opportunity-fill)",
     text: "#FFFFFF",
   },
-  pilot: { label: "Pilot", short: "Pilot", color: "var(--ink-teal)", text: "#FFFFFF" },
+  pilot: { label: "Pilot", short: "Pilot", color: "var(--ink-teal)", fill: "var(--heat-pilot-fill)", text: "#FFFFFF" },
   contract: {
     label: "Contract",
     short: "Contract",
     color: "var(--ink-orange)",
+    fill: "var(--heat-contract-fill)",
     text: "#FFFFFF",
   },
   delivery: {
     label: "Delivery",
     short: "Delivery",
     color: "var(--ink-green)",
+    fill: "var(--heat-delivery-fill)",
     text: "#FFFFFF",
   },
 };

@@ -34,6 +34,7 @@ import {
   unassignGoalFromGroup,
   updateGoal,
   updateSubgoal,
+  scopeStateForViewer,
 } from "@/lib/performance";
 import {
   canVerifyEntry,
@@ -87,36 +88,9 @@ function callerScope(
    page can hand the deal form the same live-merged table this route already
    served. One merge, one rule: live underneath, stored wins. */
 
-function scopeState(state: PerformanceState, visible: Set<string>): PerformanceState {
-  const has = (name: string) => visible.has(name.trim());
-  // The groups this caller may see at all; a group assignment is scoped the
-  // same way its group is, so a rep never learns a goal was handed to a
-  // department they are not in.
-  const visibleGroups = state.groups.filter(
-    (g) => has(g.head) || g.members.some((m) => has(m))
-  );
-  const visibleGroupIds = new Set(visibleGroups.map((g) => g.id));
-  return {
-    types: state.types,
-    goals: state.goals.map((g) => ({
-      ...g,
-      subgoals: g.subgoals.map((s) => ({
-        ...s,
-        people: s.people.filter((p) => has(p.name)),
-      })),
-      assignments: (g.assignments ?? []).filter((a) => has(a.person)),
-      groupAssignments: (g.groupAssignments ?? []).filter((a) =>
-        visibleGroupIds.has(a.groupId)
-      ),
-    })),
-    groups: visibleGroups,
-    actuals: state.actuals.filter((a) => has(a.person)),
-    /* The FX table is workspace facts, not somebody's numbers — dropping it
-       here made every scoped screen (and its CSV) count a converted entry as
-       zero the moment a save responded (Aug 23 audit). */
-    rates: state.rates,
-  };
-}
+/* scopeState lives in lib/performance as scopeStateForViewer since Sep 26, so
+   the agent shows a person the same goal catalog this route does. */
+const scopeState = scopeStateForViewer;
 
 export async function GET(req: NextRequest) {
   const scope = await verifiedRequestMemberScope(req);

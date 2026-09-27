@@ -1029,7 +1029,7 @@ export function LeadsModule({
                                       <span className="flex h-4 shrink-0 items-center whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary">Contact record</span>
                                       <Link href={lead.contactId ? `/contacts/${lead.contactId}` : `/leads/${lead.id}/contact`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-h-5 min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
                                         <Avatar name={lead.name} className="h-5 w-5 shrink-0 text-[7px]" />
-                                        <span className="truncate">Open {lead.name}</span>
+                                        <span className="truncate">{lead.name}</span>
                                       </Link>
                                     </span>
                                   )}

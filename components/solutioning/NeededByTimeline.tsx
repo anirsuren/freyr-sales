@@ -31,7 +31,9 @@ const DAY = 86_400_000;
    today band sits above the rail, the dots straddle it, the captions hang
    below. Changing the rail moves everything that references it. */
 const RAIL_TOP = 30;
-const OFFSCREEN_DATE_TOP = 62;
+// Leave a clear band below the rail and its "Needed" caption before showing
+// an off-screen date badge. The card has room for the extra separation.
+const OFFSCREEN_DATE_TOP = 82;
 
 function midnight(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -295,7 +297,7 @@ export function NeededByTimeline({
           as on top rather than as a break in the line. */}
       <div
         ref={viewportRef}
-        className={cn("relative mt-2 select-none overflow-hidden", edgeRows === 2 ? "h-[108px]" : "h-[86px]")}
+        className={cn("relative mt-2 select-none overflow-hidden", edgeRows === 2 ? "h-[136px]" : edgeRows === 1 ? "h-[112px]" : "h-[86px]")}
         style={{ touchAction: "pan-y", cursor: view.zoom > 1 ? "grab" : "default" }}
         onPointerDown={(event) => {
           if (view.zoom <= 1 || event.button !== 0) return;

@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -79,16 +80,21 @@ function RecordPicker({ choices, name, id, onPick, onCreate, placeholder, emptyL
     placeholder={placeholder} emptyLabel={emptyLabel} ariaLabel={placeholder} />;
 }
 
-export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage = false, onCancel, options }: {
+export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage = false, onCancel, options, copiedFromId }: {
   review?: OpportunityReview;
   mayEdit: boolean;
-  onSave?: (review: OpportunityReview) => Promise<{ error: string | null; review?: OpportunityReview }>;
+  onSave?: (review: OpportunityReview, reviewedOn: string) => Promise<{ error: string | null; review?: OpportunityReview }>;
   dealId: string;
   editPage?: boolean;
   onCancel?: () => void;
   options?: OpportunityReviewOptions;
+  copiedFromId?: string;
 }) {
   const [draft, setDraft] = useState<OpportunityReview>(() => structuredClone(review ?? blankReview()));
+  const [reviewedOn, setReviewedOn] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  });
   const editing = editPage;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -106,6 +112,10 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
   const cancel = () => { setDraft(structuredClone(review ?? blankReview())); setError(""); onCancel?.(); };
   async function save() {
     if (!onSave) return;
+    if (!reviewedOn) { setError("Choose the date of this review."); return; }
+    if (!draft.compellingEvent.trim() && !draft.strategy.trim() && !draft.nextStep.objective.trim() && !draft.actions.length) {
+      setError("Record the discussion or an agreed next step before saving."); return;
+    }
     if (draft.actions.some((action) => !action.action.trim() || !action.owner.trim() || !action.deadline)) {
       setError("Every review action needs a description, owner, and deadline."); return;
     }
@@ -113,13 +123,14 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
       setError("Name each person you added, or remove the empty row."); return;
     }
     setSaving(true); setError("");
-    const result = await onSave(draft);
+    const result = await onSave(draft, reviewedOn);
     setSaving(false);
     if (result.error) setError(result.error);
     else { setDraft(structuredClone(result.review ?? draft)); onCancel?.(); }
   }
 
   return <div className="space-y-4 pb-12">
+    {editing && <div className="rounded-2xl border border-blue-subtle bg-blue-light/40 p-5 sm:p-6"><div className="grid gap-4 sm:grid-cols-[minmax(0,240px)_1fr] sm:items-end"><Field title="Review date"><DateField className={field} value={reviewedOn} onChange={(event) => setReviewedOn(event)} /></Field><p className="text-[13px] leading-5 text-text-secondary">{copiedFromId ? "Copied from a saved review. Changes here create a new record; the earlier review stays intact." : "Record this discussion as a new snapshot. Future reviews can copy it and update what changed."}</p></div></div>}
     {!editing && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-light pb-4">
       <div><h2 className="text-[18px] font-semibold text-text-primary">Opportunity review</h2><p className="mt-1 text-[12.5px] text-text-secondary">Decision, relationships and next moves</p></div>
       {mayEdit && <Link href={`/opportunities/${dealId}/review/edit`} className="inline-flex items-center gap-2 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:bg-surface-secondary"><Pencil size={14} /> Edit review</Link>}
@@ -131,7 +142,7 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
       </Section>
       <Section title="Next step agreed with the customer" note="Record the commitment made together, not an internal intention.">
         {editing ? <div className="grid gap-3 sm:grid-cols-2">
-          <Field title="Date"><input type="date" className={field} value={draft.nextStep.date} onChange={(e) => update({ nextStep: { ...draft.nextStep, date: e.target.value } })} /></Field>
+          <Field title="Date"><DateField className={field} value={draft.nextStep.date} onChange={(e) => update({ nextStep: { ...draft.nextStep, date: e } })} /></Field>
           <Field title="Objective"><input className={field} value={draft.nextStep.objective} onChange={(e) => update({ nextStep: { ...draft.nextStep, objective: e.target.value } })} placeholder="What will be achieved?" /></Field>
           <div className="min-w-0"><span className={label}>Highest stakeholder involved</span><RecordPicker choices={contactChoices} name={draft.nextStep.stakeholderName} id={draft.nextStep.stakeholderContactId} placeholder="Search contacts" emptyLabel="No contacts found" onPick={(choice) => { const contact = options?.contacts.find((item) => item.id === choice.id); update({ nextStep: { ...draft.nextStep, stakeholderName: choice.label, stakeholderContactId: contact?.id, stakeholderTitle: contact?.title || draft.nextStep.stakeholderTitle } }); }} onCreate={(name) => update({ nextStep: { ...draft.nextStep, stakeholderName: name, stakeholderContactId: undefined, stakeholderTitle: "" } })} /></div>
           <Field title="Stakeholder title"><input className={field} value={draft.nextStep.stakeholderTitle} onChange={(e) => update({ nextStep: { ...draft.nextStep, stakeholderTitle: e.target.value } })} placeholder="Title" /></Field>
@@ -175,16 +186,16 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
         <div className="space-y-3">{draft.thirdParties.map((party) => <div key={party.id} className="rounded-xl border border-border-light p-3">{editing ? <div className="grid gap-2 sm:grid-cols-2"><RecordPicker choices={companyChoices} name={party.company} id={party.customerId} company placeholder="Search companies" emptyLabel="No companies found" onPick={(choice) => update({ thirdParties: draft.thirdParties.map((item) => item.id === party.id ? { ...item, company: choice.label, customerId: options?.companies.find((company) => company.id === choice.id)?.id } : item) })} onCreate={(name) => update({ thirdParties: draft.thirdParties.map((item) => item.id === party.id ? { ...item, company: name, customerId: undefined } : item) })} /><input className={field} value={party.role} onChange={(e) => update({ thirdParties: draft.thirdParties.map((item) => item.id === party.id ? { ...item, role: e.target.value } : item) })} placeholder="Role in the opportunity" aria-label="Third-party role" /><select className={field} value={party.sentiment} onChange={(e) => update({ thirdParties: draft.thirdParties.map((item) => item.id === party.id ? { ...item, sentiment: e.target.value as typeof party.sentiment } : item) })} aria-label="Third-party sentiment">{SENTIMENTS.map((item) => <option key={item}>{item}</option>)}</select><button type="button" onClick={() => update({ thirdParties: draft.thirdParties.filter((item) => item.id !== party.id) })} className="justify-self-end px-2 text-text-tertiary hover:text-red-600" aria-label={`Remove ${party.company || "third party"}`}><Trash2 size={16} /></button></div> : <div><strong className="text-[13px] text-text-primary">{party.company}</strong><p className="mt-1 text-[12px] text-text-secondary">{party.role || "Role not recorded"} · {party.sentiment}</p></div>}</div>)}{!draft.thirdParties.length && !editing && <p className="text-[13px] text-text-secondary">None recorded yet.</p>}{editing && <button type="button" onClick={() => update({ thirdParties: [...draft.thirdParties, { id: uid(), company: "", role: "", sentiment: "Unknown" }] })} className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary"><Plus size={15} /> Add third party</button>}</div>
       </Section>
       <Section title="Review actions" note="Actions agreed during the review. Every action must have an owner and a deadline.">
-        <div className="space-y-3">{draft.actions.map((action) => <div key={action.id} className="rounded-xl border border-border-light p-3">{editing ? <div className="grid gap-2 sm:grid-cols-2"><input className={`${field} sm:col-span-2`} value={action.action} onChange={(e) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, action: e.target.value } : item) })} placeholder="Action agreed" aria-label="Review action" /><RecordPicker choices={teammateChoices} name={action.owner} id={action.ownerId} placeholder="Search teammates" emptyLabel="No teammates found" onPick={(choice) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, owner: choice.label, ownerId: options?.teammates.find((teammate) => teammate.id === choice.id)?.id } : item) })} /><input type="date" className={field} value={action.deadline} onChange={(e) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, deadline: e.target.value } : item) })} aria-label="Action deadline" /><button type="button" onClick={() => update({ actions: draft.actions.filter((item) => item.id !== action.id) })} className="justify-self-end px-2 text-text-tertiary hover:text-red-600 sm:col-span-2" aria-label="Remove action"><Trash2 size={16} /></button></div> : <div><strong className="text-[13px] text-text-primary">{action.action}</strong><p className="mt-1 flex items-center gap-1.5 text-[12px] text-text-secondary"><CalendarDays size={13} /> {action.owner} · {action.deadline}</p></div>}</div>)}{!draft.actions.length && !editing && <p className="text-[13px] text-text-secondary">No actions agreed yet.</p>}{editing && <button type="button" onClick={() => update({ actions: [...draft.actions, { id: uid(), action: "", owner: "", deadline: "" }] })} className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary"><Plus size={15} /> Add action</button>}</div>
+        <div className="space-y-3">{draft.actions.map((action) => <div key={action.id} className="rounded-xl border border-border-light p-3">{editing ? <div className="grid gap-2 sm:grid-cols-2"><input className={`${field} sm:col-span-2`} value={action.action} onChange={(e) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, action: e.target.value } : item) })} placeholder="Action agreed" aria-label="Review action" /><RecordPicker choices={teammateChoices} name={action.owner} id={action.ownerId} placeholder="Search teammates" emptyLabel="No teammates found" onPick={(choice) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, owner: choice.label, ownerId: options?.teammates.find((teammate) => teammate.id === choice.id)?.id } : item) })} /><DateField className={field} value={action.deadline} onChange={(e) => update({ actions: draft.actions.map((item) => item.id === action.id ? { ...item, deadline: e } : item) })} ariaLabel="Action deadline" /><button type="button" onClick={() => update({ actions: draft.actions.filter((item) => item.id !== action.id) })} className="justify-self-end px-2 text-text-tertiary hover:text-red-600 sm:col-span-2" aria-label="Remove action"><Trash2 size={16} /></button></div> : <div><strong className="text-[13px] text-text-primary">{action.action}</strong><p className="mt-1 flex items-center gap-1.5 text-[12px] text-text-secondary"><CalendarDays size={13} /> {action.owner} · {action.deadline}</p></div>}</div>)}{!draft.actions.length && !editing && <p className="text-[13px] text-text-secondary">No actions agreed yet.</p>}{editing && <button type="button" onClick={() => update({ actions: [...draft.actions, { id: uid(), action: "", owner: "", deadline: "" }] })} className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary"><Plus size={15} /> Add action</button>}</div>
       </Section>
     </div>
-    {editing && (dirty || error) && <div className="sticky bottom-0 z-30 -mx-1 mt-2 px-1 pb-1">
-      <div data-agent-dock-clearance className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white/95 px-4 py-3 shadow-[0_-2px_18px_-6px_rgba(16,22,30,0.22)] backdrop-blur">
-        <span className="text-[13px] font-semibold text-text-primary">Unsaved review changes</span>
+    {editing && <div className="sticky bottom-0 z-30 -mx-1 mt-2 px-1 pb-1">
+      <div data-agent-dock-clearance className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-canvas/95 px-4 py-3 shadow-[0_-2px_18px_-6px_rgba(16,22,30,0.22)] backdrop-blur">
+        <span className="text-[13px] font-semibold text-text-primary">{dirty ? "New review ready to save" : "New opportunity review"}</span>
         {error && <p role="alert" className="min-w-0 text-[12.5px] font-medium text-[color:var(--status-red)]">{error}</p>}
         <div className="ml-auto flex items-center gap-2">
           <button type="button" onClick={cancel} disabled={saving} className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary disabled:opacity-50">Cancel</button>
-          <button type="button" onClick={() => void save()} disabled={saving || !dirty} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-primary px-4 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"><Check size={14} />{saving ? "Saving…" : "Save changes"}</button>
+          <button type="button" onClick={() => void save()} disabled={saving} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-primary px-4 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"><Check size={14} />{saving ? "Saving…" : "Save review"}</button>
         </div>
       </div>
     </div>}

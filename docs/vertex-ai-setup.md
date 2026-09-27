@@ -64,6 +64,42 @@ For the first deployment:
 Never broaden the service-account binding to the whole AWS account. If the ECS
 task role changes, update both the provider condition and the binding.
 
+## State on September 26, 2026
+
+- The dev pipeline (`.github/workflows/deploy.yml`) and the prod promotion
+  (`deploy/promote-to-prod.sh`) now set the Google variables and
+  `AGENT_PROVIDER=vertex` on every deploy. Before this, the pipeline inherited
+  the environment from the live task, so the settings added to
+  `deploy/ecs-task-definition.json` on Sep 21 never reached a running service
+  and `/api/health` kept reporting `vertexBrain: not configured`.
+- A failed Vertex call falls back to Anthropic for that one question
+  (`lib/agentProvider.ts`), so a broken federation shows as `vertexBrain:
+  failing` on `/api/health` while the agent keeps answering. Each answer says
+  which provider wrote it (`source`).
+- Both services run on **Fargate**. Google's auth library finds the AWS role
+  through the three `AWS_*` environment variables or the EC2 metadata address;
+  Fargate provides neither, it hands task credentials out at
+  `169.254.170.2` through `AWS_CONTAINER_CREDENTIALS_RELATIVE_URI`. The
+  startup bridge in `lib/ecsAwsCredentials.ts` reads that endpoint, places the
+  credentials in the environment and renews them ahead of expiry, so the
+  federation file's metadata addresses are never used on ECS. Without it,
+  Vertex could not sign in on either service regardless of the trust rule.
+- Production has its own provider. A Google AWS provider is bound to one AWS
+  account, so the pool `freyr-sales-aws` now holds two: `freyr-sales-ecs`
+  (dev, `602367507820`) and `freyr-sales-ecs-prod` (prod, `966427768186`),
+  each accepting only `freyr-sales-ecs-task-role`. The service account's
+  `roles/iam.workloadIdentityUser` binding is by `attribute.aws_role`, so it
+  covers both. Created on September 26, 2026.
+- Each environment ships its own credential config in the image:
+  `deploy/gcp-aws-wif.json` (dev provider) and `deploy/gcp-aws-wif-prod.json`
+  (prod provider). They differ only in `audience` and contain no key. The
+  dev pipeline points `GOOGLE_APPLICATION_CREDENTIALS` at the first, the prod
+  promotion at the second.
+- First deploy of each environment proves the federation: `/api/health` must
+  report `vertexBrain: working`. If it reports `failing`, the agent keeps
+  answering through the Anthropic fallback and the health line names the
+  cause.
+
 ## Cutover and rollback
 
 `AGENT_PROVIDER` is the only provider switch. `anthropic` preserves the current

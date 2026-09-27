@@ -3,6 +3,7 @@ import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { splitAgentAnswer } from "@/lib/agentAnswerPresentation";
 import { agentSourceReferences } from "@/lib/agentSourceReferences";
 import { NextRequest, NextResponse } from "next/server";
+import { appendFileSync } from "node:fs";
 import { bumpUsage } from "@/lib/usageCounters";
 import { getDb, type Db } from "@/lib/db";
 import { escapeRegExp } from "@/lib/utils";
@@ -67,6 +68,18 @@ import type { Contact, PitchSession } from "@/lib/types";
 import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 import { readMemberProfile } from "@/lib/memberProfile";
 import { searchMarketIntel } from "@/lib/marketIntelAgent";
+import {
+  cancelProposal,
+  executeProposal,
+  proposeAction,
+  proposeActionTool,
+  runActionTool,
+  type ActionContext,
+  type ExecuteResult,
+} from "@/lib/agentActions";
+import { pendingProposals } from "@/lib/agentActionStore";
+import { isAffirmative, isNegative, type ActionProposal, type PendingActionPayload } from "@/lib/agentActionsShared";
+import { internalAppOrigin } from "@/lib/internalOrigin";
 
 export const dynamic = "force-dynamic";
 
@@ -142,6 +155,116 @@ export async function POST(req: NextRequest) {
   }
   /** The dock keeps one thread across navigation; this says the ground moved. */
   const pathChanged = body.pathChanged === true;
+  /** Where the answer will be read. WhatsApp gets the same agent, shorter and flatter. */
+  const channel: "web" | "whatsapp" = body.channel === "whatsapp" ? "whatsapp" : "web";
+  /**
+   * AN ORDER IS NOT A QUESTION. "Star GSK for me" names a tracked company, so
+   * the market-focused answer path claimed it, and that path has no tools, so
+   * the agent could only explain that it cannot. Anything that reads as an
+   * instruction to change something stays on the general path, tools in hand.
+   */
+  const actionIntent = ACTION_INTENT.test(message);
+  /**
+   * ACTIONS RUN AS THE PERSON (Anir, Sep 26: "it should follow the
+   * permissions, obviously, that's the whole point"). Every change goes
+   * through the app's own route over loopback with THIS request's cookies, so
+   * the route's permission check is the one that counts. A proposal made in
+   * this request cannot be executed in this request: the person sees it first.
+   */
+  const requestEpoch = Date.now();
+  const actionContext: ActionContext = {
+    scope,
+    actorName,
+    cookie: req.headers.get("cookie") ?? "",
+    internalOrigin: internalAppOrigin(),
+    channel,
+    ...(typeof body.conversationId === "string" && body.conversationId
+      ? { conversationId: String(body.conversationId).slice(0, 200) }
+      : {}),
+  };
+  const respondDirect = (payload: Record<string, unknown>) =>
+    body.stream === true
+      ? new Response(`${JSON.stringify({ type: "done", ...payload })}\n`, {
+          headers: {
+            "Content-Type": "application/x-ndjson; charset=utf-8",
+            "Cache-Control": "no-cache, no-transform",
+            "X-Content-Type-Options": "nosniff",
+          },
+        })
+      : NextResponse.json(payload);
+  const actionPayload = (p: ActionProposal): PendingActionPayload => ({
+    id: p.id,
+    action: p.action,
+    summary: p.summary,
+    status: p.status,
+    ...(p.result ? { result: p.result } : {}),
+    ...(p.link ? { link: p.link } : {}),
+  });
+  /* A BARE YES OR NO NEEDS NO MODEL. The proposal is stored; the answer is
+     deterministic; the same words work from the web and from WhatsApp. */
+  const decision = agentActionsEnabled() ? (isAffirmative(message) ? "confirm" : isNegative(message) ? "cancel" : null) : null;
+  if (decision) {
+    /* A YES BELONGS TO THE CHAT IT WAS ASKED IN. A proposal made on the web
+       page must not be executed by a stray "yes" texted to WhatsApp an hour
+       later (or the other way round). Proposals from other chats are named,
+       not run; the person can ask for them by name and the model uses
+       run_action with the id. */
+    const allPending = await pendingProposals(scope).catch(() => [] as ActionProposal[]);
+    const here = actionContext.conversationId;
+    const pending = here ? allPending.filter((p) => p.conversationId === here) : allPending;
+    const elsewhere = allPending.filter((p) => !pending.includes(p));
+    if (pending.length === 0 && elsewhere.length > 0) {
+      return respondDirect({
+        ok: true,
+        reply: `Nothing is waiting in this chat. ${elsewhere.length === 1 ? "From another chat, this is waiting" : "From other chats, these are waiting"}:\n${elsewhere.map((p, i) => `${i + 1}. ${p.summary}`).join("\n")}\nSay "do the first one" to run it here, or "cancel the first one" to drop it.`,
+        suggestions: [],
+        entityContext: [],
+        source: "action",
+        pendingAction: null,
+      });
+    }
+    if (decision === "cancel" && pending.length > 0) {
+      const cancelled: ActionProposal[] = [];
+      for (const p of pending) {
+        const c = await cancelProposal(p.id, actionContext);
+        if (c) cancelled.push(c);
+      }
+      return respondDirect({
+        ok: true,
+        reply: cancelled.length === 1
+          ? `Cancelled. I won't do this: ${cancelled[0].summary}`
+          : `Cancelled all ${cancelled.length} pending actions. Nothing was changed.`,
+        suggestions: [],
+        entityContext: [],
+        source: "action",
+        pendingAction: cancelled.length === 1 ? actionPayload(cancelled[0]) : null,
+      });
+    }
+    if (decision === "confirm" && pending.length === 1) {
+      const result: ExecuteResult = await executeProposal(pending[0].id, actionContext);
+      const reply = result.ok
+        ? `Done. ${result.text}${result.link ? ` [Open it](${result.link})` : ""}`
+        : `I couldn't do that: ${result.error}`;
+      return respondDirect({
+        ok: true,
+        reply,
+        suggestions: [],
+        entityContext: [],
+        source: "action",
+        pendingAction: result.proposal ? actionPayload(result.proposal) : null,
+      });
+    }
+    if (decision === "confirm" && pending.length > 1) {
+      return respondDirect({
+        ok: true,
+        reply: `You have ${pending.length} actions waiting. Which one?\n${pending.map((p, i) => `${i + 1}. ${p.summary}`).join("\n")}\nSay "do the first one" or name it.`,
+        suggestions: [],
+        entityContext: [],
+        source: "action",
+        pendingAction: null,
+      });
+    }
+  }
   // The destinations behind the words on screen. textContent drops every
   // href, so without these the agent can see "Read the article" and honestly
   // cannot tell you where it goes.
@@ -1025,7 +1148,18 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
   const dateOf = (iso: string) => new Date(iso).getTime();
 
   let sourceReads = 0;
+  /** What this turn proposed or carried out, for the reply card. */
+  let proposedThisTurn: ActionProposal | null = null;
+  let executedThisTurn: ActionProposal | null = null;
   const runTool = async (
+    name: string,
+    input: any
+  ): Promise<{ content: string; did?: string }> => {
+    const out = await runToolInner(name, input);
+    traceTool(actor.name, channel, name, input, out.content);
+    return out;
+  };
+  const runToolInner = async (
     name: string,
     input: any
   ): Promise<{ content: string; did?: string }> => {
@@ -1054,7 +1188,7 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
           deals: sessionDeals.filter(d => d.customerId === c.id),
           contactCount: cContacts.length,
         });
-        return {content:JSON.stringify({customer:{id:c.id,name:c.company_name,owner:c.owner,ownerUserId:c.owner_user_id,country:c.geography,industry:c.industry,summary:c.enrichment_summary,url:`/customers/${encodeURIComponent(c.id)}`},relationshipHealth:{label:health.label,score:health.score,basis:"Computed estimate shown on the Customers page; not a stored field."},contacts:cContacts.map(x=>({name:x.full_name,title:x.job_title,email:x.email})),opportunities:await readAgentWorkspace(actor,"opportunities",c.company_name),recentInteractions:interactions.filter(i=>i.customer_id===c.id).slice(-6),note:"Counts reflect visible records. Use opportunity statuses and currencies as returned."})};
+        return {content:JSON.stringify({customer:{id:c.id,name:c.company_name,owner:c.owner,ownerUserId:c.owner_user_id,country:c.geography,industry:c.industry,summary:c.enrichment_summary,url:`/customers/${encodeURIComponent(c.id)}`},relationshipHealth:{label:health.label,score:health.score,basis:"Computed estimate shown on the Customers page; not a stored field."},contacts:cContacts.map(x=>({name:x.full_name,title:x.job_title,email:x.email})),opportunities:await readAgentWorkspace(actor,"opportunities","",false,0,false,{id:c.id,name:c.company_name}),recentInteractions:interactions.filter(i=>i.customer_id===c.id).slice(-6),note:"Counts reflect visible records. Use opportunity statuses and currencies as returned."})};
       }
       const cDeals = deals.filter((d) => d.customerId === c.id);
       const open = cDeals.filter((d) => d.stage !== "Closed Lost");
@@ -1243,6 +1377,30 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
       };
     }
 
+    if (name === "propose_action") {
+      const result = await proposeAction(String(input?.action || ""), input?.params, actionContext);
+      if (!result.ok) return { content: `Not proposed. Tell ${firstName} exactly this, in these words: "${result.error}" Do not soften or reword it, and do not suggest another way around a permission refusal.` };
+      proposedThisTurn = result.proposal;
+      return {
+        content:
+          `PROPOSED, NOT DONE. Proposal ${result.proposal.id}: ${result.proposal.summary} ` +
+          `Tell ${firstName} exactly this will happen and ask them to confirm` +
+          (channel === "whatsapp" ? "; they reply YES or NO." : "; they press Do it or Not now under your message.") +
+          " Do not say it is done.",
+      };
+    }
+    if (name === "run_action") {
+      const result = await executeProposal(String(input?.proposalId || ""), actionContext, requestEpoch);
+      if (!result.ok && !result.proposal) {
+        return { content: `Not done: there is no proposal with that id. Proposal ids come only from propose_action results; nothing has been proposed for this, so call propose_action with the action and its params now, and tell ${firstName} what will happen. Do not say anything was proposed or done.` };
+      }
+      if (!result.ok) return { content: `Not done: ${result.error}` };
+      executedThisTurn = result.proposal;
+      return {
+        content: `DONE: ${result.text}${result.link ? ` Link: ${result.link}` : ""} Tell ${firstName} it is done in one or two sentences, with the link.`,
+        did: "action",
+      };
+    }
     return { content: `Unknown tool: ${name}.` };
   };
 
@@ -1284,19 +1442,49 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     "Finish with <followups>[\"question one\",\"question two\",\"question three\"]</followups>.\n" +
     (trackingListQuestion ? prefetchedTrackingContext : offeringsInventoryQuestion ? catalogueGrounding : opportunityAggregateQuestion ? opportunityContext : leadStatusDetailQuestion ? leadStatusContext : prefetchedLeadContext);
   const agentStartedAt = performance.now();
-  const responseSystem = (marketFocused ? focusedMarketSystem : leadAggregateQuestion || leadStatusDetailQuestion || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion ? focusedListSystem : agentSystem + namedMarketContext) + "\nRESPONSE PRESENTATION: Give a concise answer, normally 150–250 words unless more detail is requested. Link every named application record using its provided canonical destination, including the first mention. Never expose backend tool names as user navigation or fabricate a page for a tool. Keep opaque database IDs out of prose unless requested; put them only inside the supplied link destinations. When explaining navigation, link named pages using navigation in VERIFIED CURRENT USER and verified routes in the app guide (for example [Team](/team)); do not leave page directions as unlinked text. Internal application links MUST preserve the exact relative path returned by the tool, e.g. [Company name](/market-intel/company-id). NEVER prepend https://app, any hostname or any invented prefix. External article citations use the exact supplied destination. A /agent-source/N destination is a request-local citation reference: copy it exactly as [Publisher or article title](/agent-source/N); the application restores its verified source URL. Never rewrite, shorten, or invent a source destination. Use a descriptive publisher or article title as the link label and copy its supplied destination byte-for-byte; never show a raw URL or application path (including paths in parentheses or code formatting). Write [Team members](/admin/members), never Team members (/admin/members). Never place whitespace between ] and (. Use only verified destinations. Finish every answer with <followups>[\"question one\",\"question two\",\"question three\"]</followups>. These must be three short, distinct next questions (aim for 4–8 words each) the USER could ask, specific to this question and answer, exploring new useful information rather than repeating answered questions or generic starters. This metadata is removed from the displayed answer. Do not mention the metadata. Generate it in this same response, without extra tool calls solely for suggestions.";
-  const responseTools = marketFocused || leadAggregateQuestion || leadStatusDetailQuestion || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion ? [] : readOnlyTools;
+  const pendingForPrompt = agentActionsEnabled() ? await pendingProposals(scope).catch(() => [] as ActionProposal[]) : [];
+  const actionsSystem = !agentActionsEnabled() ? "\nACTIONS are switched off on this workspace: you can read and explain, but you cannot change anything; say so plainly if asked to." :
+    `\nACTIONS. You can change the workspace for ${firstName}, in two steps and never fewer: ` +
+    "(1) propose_action, which checks their permissions and records exactly what will change; " +
+    "(2) ONLY after they confirm in a LATER message, run_action with that proposal id. " +
+    "Before proposing, find the exact records with the read tools (read_workspace team for people and groups, goals for goals, opportunities, get_account_detail or list_accounts for accounts) and use the names and ids they return; when the person gives an exact reference (OPP-0001, LEAD-0002, a full name), pass it straight to propose_action, which resolves it itself. " +
+    "Propose one change at a time. When a name could be more than one person or record (a surname, a first name two people share), ask which one; never pick for them. " +
+    "Never substitute a different record for the one they named: if the deal, account, goal or person they named is not in what the tools return, say you cannot find it and stop; do not propose a change to something similar. " +
+    "A bare yes, ok or no with nothing pending is not an instruction: ask what they would like done. " +
+    "Describe a proposal with the summary propose_action returned, word for word, ONCE (no bullet repeating it), then ask them to confirm in one short sentence; do not add details that are not in the summary. " +
+    "Fill only the fields the person actually gave; leave every optional field out rather than inventing a note, a target, a date or a value. " +
+    "'Log 3 meetings', 'log 2 demos', 'log $50k' against a goal that counts that thing means log_goal_actual on that goal; create_meeting is for one specific meeting with a title and a time. " +
+    "Never say something is done unless run_action returned DONE, and never say 'I have proposed' unless propose_action returned PROPOSED in this very turn; if you have not called it yet, call it. Proposal ids exist only in propose_action results; never make one up. " +
+    "If propose_action answers 'Not proposed', say why in its words; a permission refusal is final, do not look for another way around it. " +
+    "If they ask what you can do, list the actions in plain words (goals, groups, deals, accounts, contacts, leads, meetings, Market Intel stars). " +
+    (pendingForPrompt.length
+      ? `PENDING PROPOSALS awaiting their answer: ${pendingForPrompt.map((p) => `[${p.id}] ${p.summary}`).join(" | ")}. If this message confirms one of them, call run_action with its id; if it changes the details, propose again.`
+      : "No proposals are pending.");
+  const focusedRead = !actionIntent && (marketFocused || leadAggregateQuestion || leadStatusDetailQuestion || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion);
+  const responseSystem = (!focusedRead ? agentSystem + namedMarketContext + actionsSystem : marketFocused ? focusedMarketSystem : focusedListSystem) + "\nRESPONSE PRESENTATION: Give a concise answer, normally 150–250 words unless more detail is requested. Link every named application record using its provided canonical destination, including the first mention. Never expose backend tool names as user navigation or fabricate a page for a tool. Keep opaque database IDs out of prose unless requested; put them only inside the supplied link destinations. When explaining navigation, link named pages using navigation in VERIFIED CURRENT USER and verified routes in the app guide (for example [Team](/team)); do not leave page directions as unlinked text. Internal application links MUST preserve the exact relative path returned by the tool, e.g. [Company name](/market-intel/company-id). NEVER prepend https://app, any hostname or any invented prefix. External article citations use the exact supplied destination. A /agent-source/N destination is a request-local citation reference: copy it exactly as [Publisher or article title](/agent-source/N); the application restores its verified source URL. Never rewrite, shorten, or invent a source destination. Use a descriptive publisher or article title as the link label and copy its supplied destination byte-for-byte; never show a raw URL or application path (including paths in parentheses or code formatting). Write [Team members](/admin/members), never Team members (/admin/members). Never place whitespace between ] and (. Use only verified destinations. Finish every answer with <followups>[\"question one\",\"question two\",\"question three\"]</followups>. These must be three short, distinct next questions (aim for 4–8 words each) the USER could ask, specific to this question and answer, exploring new useful information rather than repeating answered questions or generic starters. This metadata is removed from the displayed answer. Do not mention the metadata. Generate it in this same response, without extra tool calls solely for suggestions." + (channel === "whatsapp" ? WHATSAPP_CHANNEL_PRESENTATION : "");
+  /* The two action tools go to everyone: which actions a person may take is
+     decided per action by the route it calls, and a refusal comes back in
+     the route's own words for the agent to relay. */
+  const actionTools = agentActionsEnabled() ? ([proposeActionTool(), runActionTool()] as AgentToolDef[]) : [];
+  const responseTools = focusedRead ? [] : [...readOnlyTools, ...actionTools];
   let firstDeltaMs: number | null = null;
-  const runAgent = (onText?: (delta: string) => void) =>
-    agentConversePrimary(responseSystem, turns, responseTools, runTool, undefined,
+  /* THE WHOLE QUESTION HAS A BUDGET (Anir, Sep 26: a question ran 205 seconds
+     and never answered). The chat gives up at 90s; the server now stops at
+     75s, so no model call keeps running and billing for an answer nobody
+     will see. Each provider call also has its own 45s ceiling. */
+  const deadline = AbortSignal.timeout(AGENT_TIME_BUDGET_MS);
+  const runAgent = (onText?: (delta: string) => void, onReset?: () => void) =>
+    agentConversePrimary(responseSystem, turns, responseTools, runTool, 6,
       onText ? (delta) => {
         if (firstDeltaMs === null) firstDeltaMs = Math.round(performance.now() - requestStartedAt);
         onText(delta);
-      } : undefined);
+      } : undefined,
+      onReset,
+      deadline);
   const finishResult = (agentResult: Awaited<ReturnType<typeof runAgent>>) => {
     if (!agentResult?.text) return null;
     console.info("[agent] response", {
-      provider: configuredAgentProvider(),
+      provider: agentResult.provider,
       elapsedMs: Math.round(performance.now() - agentStartedAt),
       preparationMs: Math.round(agentStartedAt - requestStartedAt),
       totalMs: Math.round(performance.now() - requestStartedAt),
@@ -1319,28 +1507,49 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
         `[$1](/customers/${encodeURIComponent(customer.id)})`
       );
     }
+    const split = splitAgentAnswer(answer);
+    /* WhatsApp has no buttons; the server adds the one line that matters, so
+       the wording is the same every time and the yes/no path recognises it. */
+    if (proposedThisTurn) {
+      /* THE PROPOSAL IS STATED ONCE. The model likes to restate the summary
+         as a bold bullet under "Here is the proposal:" and to write its own
+         "reply YES or NO" line; the card (web) and the fixed line (WhatsApp)
+         already carry both, so the repeats go. */
+      split.reply = tidyProposalReply(split.reply, proposedThisTurn.summary, channel);
+      if (channel === "whatsapp") split.reply = `${split.reply}\n\nReply YES to do this, or NO.`;
+    }
+    const acted = executedThisTurn ?? proposedThisTurn;
     return {
       ok: true,
-      ...splitAgentAnswer(answer),
+      ...split,
+      pendingAction: acted ? actionPayload(acted) : null,
       entityContext,
-      source: configuredAgentProvider() === "vertex" ? "vertex-agent" : "claude-agent",
+      source: agentResult.provider === "vertex" ? "vertex-agent" : "claude-agent",
       did: agentResult.dids[0],
       continuationAvailable: agentResult.truncated,
       usage: agentResult.usage,
     };
   };
-  if (body.stream === true && configuredAgentProvider() === "vertex" && responseTools.length === 0) {
+  /* STREAM WHENEVER THE CLIENT ASKS. This used to require Vertex AND a
+     question that needed no tools, which is almost no real question, so the
+     words-as-they-come work was invisible to everyone (Anir, Sep 26). Both
+     providers now stream every step; `reset` clears preamble that turned out
+     to precede a tool call. */
+  if (body.stream === true) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         const send = (event: Record<string, unknown>) =>
           controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
         try {
-          const result = await runAgent((delta) => send({ type: "delta", text: delta }));
+          const result = await runAgent(
+            (delta) => send({ type: "delta", text: delta }),
+            () => send({ type: "reset" })
+          );
           const payload = finishResult(result);
-          send(payload ? { type: "done", ...payload } : { type: "error", error: "The assistant is unreachable right now." });
+          send(payload ? { type: "done", ...payload } : { type: "error", error: outageMessage(deadline) });
         } catch {
-          send({ type: "error", error: "The assistant is unreachable right now." });
+          send({ type: "error", error: outageMessage(deadline) });
         } finally {
           controller.close();
         }
@@ -1370,9 +1579,72 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
   // The deterministic brain survives for `mock:true` only, which is the test
   // suite, never a user.
   return NextResponse.json(
-    { ok: false, error: "The assistant is unreachable right now." },
+    { ok: false, error: outageMessage(deadline) },
     { status: 503 }
   );
+}
+
+/** 75s: under the chat's own 90s, over any honest answer. */
+const AGENT_TIME_BUDGET_MS = 75_000;
+
+/**
+ * WHAT THE MODEL ACTUALLY CALLED. With AGENT_TOOL_LOG set to a file path,
+ * every tool call is appended as one JSON line: who, channel, tool, input and
+ * the first 400 characters of the result. Off unless the variable is set;
+ * this is how a claim like "I have proposed" is checked against the truth.
+ */
+function traceTool(who: string, channel: string, tool: string, input: unknown, content: string): void {
+  const file = process.env.AGENT_TOOL_LOG;
+  if (!file) return;
+  try {
+    appendFileSync(file, `${JSON.stringify({ at: new Date().toISOString(), who, channel, tool, input, result: String(content).slice(0, 400) })}\n`);
+  } catch {
+    // A trace that cannot be written is not worth failing an answer for.
+  }
+}
+
+/** Drop the model's restatement of a proposal and its own yes/no line. */
+function tidyProposalReply(reply: string, summary: string, channel: "web" | "whatsapp"): string {
+  const escaped = escapeRegExp(summary.trim().replace(/[.]$/, ""));
+  let out = reply.replace(/\r/g, "");
+  // "Here is the proposal:" followed by the summary as a bullet or bold line.
+  out = out.replace(new RegExp(`\\n+[^\\n]*here (?:is|'s) the proposal[^\\n]*\\n+(?:[*-]\\s*)?\\*{0,2}${escaped}\\.?\\*{0,2}[ \\t]*(?=\\n|$)`, "i"), "");
+  out = out.replace(new RegExp(`\\n+(?:[*-]\\s*)\\*{0,2}${escaped}\\.?\\*{0,2}[ \\t]*(?=\\n|$)`, "i"), "");
+  if (channel === "whatsapp") {
+    out = out.replace(/\n+[^\n]*\breply\b[^\n]*\byes\b[^\n]*$/i, "");
+  }
+  return out.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * THE KILL SWITCH. Actions are on unless AGENT_ACTIONS_DISABLED=1 is set, so
+ * production can go out read-only on a config line and be switched on later
+ * without a build. Off means: no action tools, no yes/no shortcut, and the
+ * confirm route answers 503.
+ */
+function agentActionsEnabled(): boolean {
+  return process.env.AGENT_ACTIONS_DISABLED !== "1";
+}
+
+/** A message that opens with an instruction to change something, politeness allowed. */
+const ACTION_INTENT =
+  /^(?:\s*(?:hey|hi|ok|okay|please|so|now|also|then|and|,|!)\s*)*(?:(?:can|could|will|would)\s+(?:you|we)\s+(?:please\s+)?|please\s+|let'?s\s+|i\s+(?:want|need|would like|'d like)\s+(?:you\s+)?to\s+|go ahead and\s+)?(?:star|unstar|assign|unassign|reassign|put|move|remove|add|create|open|log|record|update|change|set|make|mark|take|rename|schedule|book|convert|disqualify|qualify|bump|raise|lower|increase|decrease|push|give|send|save|note|register|track|untrack)\b/i;
+
+/**
+ * THE SAME AGENT, READ ON A PHONE. A WhatsApp text has no table, heading or
+ * pill to land in, so the answer is shorter and flatter; the links stay in
+ * markdown because the WhatsApp bridge turns them into plain URLs the phone
+ * can open. Facts and permissions are unchanged: it is the same brain behind
+ * the same tools for the same signed-in person.
+ */
+const WHATSAPP_CHANNEL_PRESENTATION =
+  "\nCHANNEL: WhatsApp on a phone. Keep the whole answer under 120 words unless the person asks for detail. No tables, no headings, no chart blocks, no more than three links. Short paragraphs or a short bullet list. Numbers and names exactly as the tools returned them.";
+
+/** Still no canned answer, just the truth about why there is none. */
+function outageMessage(deadline: AbortSignal): string {
+  return deadline.aborted
+    ? "That question took too long to answer. Try asking a narrower one."
+    : "The assistant is unreachable right now.";
 }
 
 // Tools the live agent can call. Reads (detail/list/pitch) keep it grounded;

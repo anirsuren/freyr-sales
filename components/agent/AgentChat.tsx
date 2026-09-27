@@ -16,6 +16,7 @@ import {
   SlidersHorizontal,
   Trash2,
   MessageSquareText,
+  MessageCircle,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,8 @@ import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { putConversations } from "@/lib/saveConversations";
 import { useEntityIndex, type Entity } from "@/components/agent/EntityPills";
 import { AgentResponseMarkdown } from "@/components/agent/AgentResponseMarkdown";
+import { ActionCard } from "@/components/agent/ActionCard";
+import type { PendingActionPayload } from "@/lib/agentActionsShared";
 import { AgentThinking } from "@/components/agent/AgentThinking";
 import { AGENT_NAME } from "@/lib/agentIdentity";
 import { Modal } from "@/components/ui/Modal";
@@ -39,7 +42,7 @@ import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 import { queueAgentNavigationHandoff } from "@/lib/agentNavigationHandoff";
 
-type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[] };
+type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[]; pendingAction?: PendingActionPayload };
 type OfferingContext = { id: string; name: string };
 type Convo = {
   id: string;
@@ -56,6 +59,8 @@ type Convo = {
   excludedSources?: string[];
   /** Explicitly selected by clicking Ask Freyr AI on an offering page. */
   offeringContext?: OfferingContext;
+  /** Where the chat came from; absent means this page. WhatsApp threads are read here too. */
+  channel?: "web" | "whatsapp";
 };
 
 const KEY = "freyr.agent.conversations";
@@ -419,6 +424,55 @@ export function AgentChat({
     }
   }, []);
 
+  /* THE BUTTONS ON A PROPOSAL. Pressing one is the confirmation; the result
+     comes back as the next agent message so the thread reads as a thread. */
+  const decideAction = useCallback(
+    async (conversationId: string, ts: number, decision: "confirm" | "cancel") => {
+      const target = convos.find((c) => c.id === conversationId)?.messages.find((m) => m.ts === ts)?.pendingAction;
+      if (!target) return;
+      let outcome: { ok?: boolean; status?: string; text?: string; link?: string | null; error?: string } = {};
+      try {
+        const response = await fetch("/api/agent/actions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: target.id, decision }),
+        });
+        outcome = (await response.json().catch(() => ({}))) as typeof outcome;
+        if (!response.ok && !outcome.status) outcome = { ok: false, status: "failed", text: outcome.error || "That did not work." };
+      } catch {
+        outcome = { ok: false, status: "failed", text: "The app did not answer. Try again." };
+      }
+      const status = (outcome.status as PendingActionPayload["status"]) || (outcome.ok ? "done" : "failed");
+      const text = outcome.text || outcome.error || "";
+      const followUp = status === "done"
+        ? `Done. ${text}${outcome.link ? ` [Open it](${outcome.link})` : ""}`
+        : status === "cancelled"
+          ? `Okay, I won't do that.`
+          : `I couldn't do that: ${text}`;
+      setConvos((prev) => {
+        const next = prev.map((c) =>
+          c.id === conversationId
+            ? {
+                ...c,
+                messages: [
+                  ...c.messages.map((m) =>
+                    m.ts === ts && m.pendingAction
+                      ? { ...m, pendingAction: { ...m.pendingAction, status, ...(status === "done" ? { result: text, ...(outcome.link ? { link: outcome.link } : {}) } : status === "failed" ? { result: text } : {}) } }
+                      : m
+                  ),
+                  { role: "agent" as const, text: followUp, ts: Date.now() },
+                ],
+                updated: Date.now(),
+              }
+            : c
+        );
+        save(storageKey, next);
+        return next;
+      });
+    },
+    [convos, storageKey]
+  );
+
   const send = useCallback(
     async (
       raw: string,
@@ -517,6 +571,7 @@ export function AgentChat({
         const requestBody = {
             message: text,
             stream: true,
+            conversationId: id,
             history: prior,
             // Empty means the whole knowledge base; a selection scopes THIS
             // chat to it without hiding anything from any other chat.
@@ -544,14 +599,29 @@ export function AgentChat({
           setTypingReply({ conversationId: id, ts: replyTs });
         }
         setStreamingPreview(null);
+        const arrived = data.pendingAction && typeof data.pendingAction === "object" ? (data.pendingAction as PendingActionPayload) : null;
         setConvos((prev) => {
           const next = prev.map((c) =>
             c.id === id
-              ? {
-                  ...c,
-                  messages: [...c.messages, { role: "agent" as const, text: reply, ts: replyTs, suggestions: nextSuggestions, entityContext: Array.isArray(data.entityContext) ? data.entityContext.filter((v: unknown) => typeof v === "string") : [] }],
-                  updated: replyTs,
-                }
+              ? (() => {
+                  /* A typed "yes"/"no" (or a newer proposal) comes back with
+                     the SAME proposal id an earlier card shows: update that
+                     card rather than drawing a second one. A brand-new
+                     proposal retires any older open card in this thread,
+                     matching the server's one-open-question rule. */
+                  const known = arrived ? c.messages.some((m) => m.pendingAction?.id === arrived.id) : false;
+                  const messages = c.messages.map((m) => {
+                    if (!m.pendingAction) return m;
+                    if (arrived && m.pendingAction.id === arrived.id) return { ...m, pendingAction: { ...m.pendingAction, ...arrived } };
+                    if (arrived && !known && arrived.status === "proposed" && m.pendingAction.status === "proposed") return { ...m, pendingAction: { ...m.pendingAction, status: "cancelled" as const } };
+                    return m;
+                  });
+                  return {
+                    ...c,
+                    messages: [...messages, { role: "agent" as const, text: reply, ts: replyTs, suggestions: nextSuggestions, entityContext: Array.isArray(data.entityContext) ? data.entityContext.filter((v: unknown) => typeof v === "string") : [], ...(arrived && !known ? { pendingAction: arrived } : {}) }],
+                    updated: replyTs,
+                  };
+                })()
               : c
           );
           save(storageKey, next);
@@ -682,7 +752,7 @@ export function AgentChat({
                         onClick={() => { setActiveId(c.id); setMobileHistoryOpen(false); }}
                         /* The stamp costs a little title width, so hover gives
                            back the untruncated title alongside the full date. */
-                        title={[c.title || "New chat", c.updated ? dayAndTime(c.updated) : ""]
+                        title={[c.title || "New chat", c.channel === "whatsapp" ? "From WhatsApp" : "", c.updated ? dayAndTime(c.updated) : ""]
                           .filter(Boolean)
                           .join("\n")}
                         className={cn(
@@ -692,7 +762,11 @@ export function AgentChat({
                             : "text-text-secondary hover:bg-surface"
                         )}
                       >
-                        <MessageSquareText size={15} strokeWidth={1.7} className="shrink-0" />
+                        {c.channel === "whatsapp" ? (
+                          <MessageCircle size={15} strokeWidth={1.7} className="shrink-0" aria-label="From WhatsApp" />
+                        ) : (
+                          <MessageSquareText size={15} strokeWidth={1.7} className="shrink-0" />
+                        )}
                         <span className="truncate">{c.title || "New chat"}</span>
                       </button>
                       {c.updated ? (
@@ -929,6 +1003,12 @@ export function AgentChat({
                               onReveal={followReply}
                             />
                           </div>
+                          {msg.pendingAction ? (
+                            <ActionCard
+                              action={msg.pendingAction}
+                              onDecide={(decision) => decideAction(active.id, msg.ts, decision)}
+                            />
+                          ) : null}
                         </div>
                       </div>
                     )}

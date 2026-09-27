@@ -328,7 +328,7 @@ export function FeedbackButton({ dataMode }: { dataMode: DataMode }) {
             aria-live="polite"
             aria-label="Preparing feedback form"
           >
-            <div className="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/95 px-5 py-4 shadow-[0_18px_52px_-18px_rgba(15,23,42,0.55)]">
+            <div className="flex items-center gap-3 rounded-2xl border border-white/70 bg-canvas/95 px-5 py-4 shadow-[0_18px_52px_-18px_rgba(15,23,42,0.55)]">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-light text-blue-primary">
                 <LoaderCircle size={20} strokeWidth={1.9} className="animate-spin" />
               </span>

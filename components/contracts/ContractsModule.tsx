@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { useEffect, useMemo, useState } from "react";
 import { safeHref } from "@/lib/safeUrl";
@@ -1615,27 +1616,24 @@ export function ContractsModule({
           >
           <div className="grid grid-cols-2 content-start gap-3">
             <Field label="Starts">
-              <Input
-                type="date"
+              <DateField
                 value={editing.startDate}
                 /* The months are keyed from the start date, so moving it
                    slides the whole schedule rather than relabelling it. */
-                onChange={(e) => editSchedule({ startDate: e.target.value })}
+                onChange={(e) => editSchedule({ startDate: e })}
               />
             </Field>
             <Field label="Ends">
-              <Input
-                type="date"
+              <DateField
                 value={editing.endDate}
-                onChange={(e) => setEditing({ ...editing, endDate: e.target.value })}
+                onChange={(e) => setEditing({ ...editing, endDate: e })}
               />
             </Field>
             <Field label="Signed on">
-              <Input
-                type="date"
+              <DateField
                 value={editing.signedOn}
                 onChange={(e) =>
-                  setEditing({ ...editing, signedOn: e.target.value })
+                  setEditing({ ...editing, signedOn: e })
                 }
               />
             </Field>

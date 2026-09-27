@@ -29,8 +29,33 @@
 /** Below the 64KB spec limit with room for headers and the JSON envelope. */
 const KEEPALIVE_MAX_BYTES = 60 * 1024;
 
+/**
+ * SEND ONLY WHAT CHANGED (Anir, Sep 26: every message re-uploaded all 144 of
+ * his conversations). The server merges per conversation id, so it only
+ * needs the before and after of the ids that moved. A brand new chat has no
+ * before; a deleted one has no after; an untouched one is not sent at all.
+ * The 64KB keepalive ceiling above stops mattering for ordinary messages.
+ */
+function changedOnly(conversations: unknown[], base: unknown[]) {
+  const idOf = (item: unknown) => (item as { id?: string })?.id ?? "";
+  const before = new Map(base.map((item) => [idOf(item), item]));
+  const after = new Map(conversations.map((item) => [idOf(item), item]));
+  const changedBase: unknown[] = [];
+  const changedNext: unknown[] = [];
+  for (const id of new Set([...before.keys(), ...after.keys()])) {
+    const was = before.get(id);
+    const now = after.get(id);
+    if (JSON.stringify(was) === JSON.stringify(now)) continue;
+    if (was !== undefined) changedBase.push(was);
+    if (now !== undefined) changedNext.push(now);
+  }
+  return { changedBase, changedNext };
+}
+
 export async function putConversations(conversations: unknown[], base: unknown[]): Promise<void> {
-  const body = JSON.stringify({ conversations, base });
+  const { changedBase, changedNext } = changedOnly(conversations, base);
+  if (!changedBase.length && !changedNext.length) return;
+  const body = JSON.stringify({ conversations: changedNext, base: changedBase, delta: true });
   const response = await fetch("/api/agent/conversations", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

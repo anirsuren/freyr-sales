@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { SlotPortal } from "@/components/ui/SlotPortal";
 import { OPPORTUNITY_ACTIONS_SLOT } from "@/lib/opportunityTabs";
@@ -1947,7 +1948,7 @@ export function OpportunitiesBrowser({
                                                 ? "·"
                                                 : money(lineWeighted(line))}
                                             </b>
-                                            <span className="font-semibold text-[color:rgba(0,113,227,0.55)]">
+                                            <span className="font-semibold text-[color:var(--ink-blue-soft)]">
                                               {" "}of {money(line.value)}
                                             </span>
                                             <span className="text-text-tertiary">
@@ -3527,18 +3528,17 @@ export function OpportunitiesBrowser({
                       className={cn(inputCls, "!w-auto min-w-[150px] flex-1")}
                     />
                     <span className="flex flex-col">
-                      <input
-                        type="date"
+                      <DateField
                         value={a.startDate}
                         onChange={(e) =>
                           setEditing({
                             ...editing,
                             activities: editing.activities.map((x) =>
-                              x.key === a.key ? { ...x, startDate: e.target.value } : x
+                              x.key === a.key ? { ...x, startDate: e } : x
                             ),
                           })
                         }
-                        aria-label={`Activity ${i + 1} start date`}
+                        ariaLabel={`Activity ${i + 1} start date`}
                         title="When this activity started"
                         className={cn(inputCls, "!w-[138px] tnum")}
                       />
@@ -3546,18 +3546,17 @@ export function OpportunitiesBrowser({
                     </span>
                     <span className="self-start pt-2.5 text-[11.5px] font-semibold text-text-tertiary">to</span>
                     <span className="flex flex-col">
-                      <input
-                        type="date"
+                      <DateField
                         value={a.endDate}
                         onChange={(e) =>
                           setEditing({
                             ...editing,
                             activities: editing.activities.map((x) =>
-                              x.key === a.key ? { ...x, endDate: e.target.value } : x
+                              x.key === a.key ? { ...x, endDate: e } : x
                             ),
                           })
                         }
-                        aria-label={`Activity ${i + 1} end date`}
+                        ariaLabel={`Activity ${i + 1} end date`}
                         title="When this activity ended, or should end"
                         className={cn(inputCls, "!w-[138px] tnum")}
                       />
@@ -4193,10 +4192,9 @@ function SingleOfferingEditor({
         </div>
         <div className="min-w-0">
           <label className={labelCls}>Est. sign {requiredForCreation ? <RequiredMark /> : <OptionalMark />}<InfoHint text="When you expect the contract to be signed. It decides which quarter the deal lands in on every report, and it is the date the currency is converted on." /></label>
-          <input
-            type="date"
+          <DateField
             value={line.estSignDate}
-            onChange={(e) => set({ estSignDate: e.target.value })}
+            onChange={(e) => set({ estSignDate: e })}
             className={cn(inputCls, "mt-1 tnum")}
           />
           <DateEcho value={line.estSignDate} />

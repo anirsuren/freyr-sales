@@ -18,7 +18,7 @@
         { "name": "PORT", "value": "8080" },
         { "name": "AUTH_MODE", "value": "supabase" },
         { "name": "AUTH_PUBLIC_ORIGIN", "value": "https://freyrsales.dev.freyrapps.com" },
-        { "name": "AGENT_PROVIDER", "value": "anthropic" },
+        { "name": "AGENT_PROVIDER", "value": "vertex" },
         { "name": "GOOGLE_CLOUD_PROJECT", "value": "sound-fastness-480519-a6" },
         { "name": "GOOGLE_CLOUD_LOCATION", "value": "global" },
         { "name": "GOOGLE_GENAI_USE_ENTERPRISE", "value": "true" },

@@ -179,12 +179,12 @@ export function contractStatusColor(status: ContractStatus): string {
   /* Status colours are reserved in this app: green means done, red means
      somebody stopped it, and nothing else may borrow them. */
   return status === "Signed"
-    ? "#16A34A"
+    ? "var(--ink-green)"
     : status === "Ready for delivery"
-      ? "#4338CA"
+      ? "var(--ink-indigo)"
       : status === "Cancelled"
-        ? "#DC2626"
-        : "#8E98A8";
+        ? "var(--ink-red)"
+        : "var(--ink-neutral)";
 }
 
 /**

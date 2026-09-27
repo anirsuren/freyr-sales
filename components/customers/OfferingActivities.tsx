@@ -181,6 +181,7 @@ export function OfferingActivities({
   customerId,
   startAdding = false,
   onStartedAdding,
+  onEditorClosed,
 }: {
   versions: CustomerOfferingEngagementVersion[];
   onSave: (
@@ -199,7 +200,9 @@ export function OfferingActivities({
   /** The customer tab's picker chose THIS offering: open the add-activity
    *  editor as soon as the group renders, once. */
   startAdding?: boolean;
-  onStartedAdding?: () => void;}) {
+  onStartedAdding?: () => void;
+  onEditorClosed?: () => void;
+}) {
   const currentUser = useCurrentUser();
   /** null = closed; "" = adding; otherwise the id being edited. */
   const [editing, setEditing] = useState<string | null>(null);
@@ -623,7 +626,7 @@ export function OfferingActivities({
 
       <Modal
         open={editing !== null}
-        onClose={() => setEditing(null)}
+        onClose={() => { setEditing(null); onEditorClosed?.(); }}
         title={editing === "" ? "Add an activity" : "Edit activity"}
         /* Full editor width. 440px read as a strip (Anir, Aug 18) and the
            640px "wide" still did (Anir, Sep 5: "you can make this a

@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import Link from "next/link";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
@@ -3933,14 +3934,13 @@ function GoalEditorFields({
                           <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
                             By<RequiredMark />
                           </span>
-                          <input
+                          <DateField
                             required
-                            type="date"
                             value={m.date}
                             onChange={(e) =>
                               setMilestones((prev) =>
                                 prev.map((x, i) =>
-                                  i === idx ? { ...x, date: e.target.value } : x
+                                  i === idx ? { ...x, date: e } : x
                                 )
                               )
                             }
@@ -5830,11 +5830,10 @@ function LogActualModal({
                     Expected to sign
                     <RequiredMark />
                   </span>
-                  <input
+                  <DateField
                     required
-                    type="date"
                     value={newOpportunitySignDate}
-                    onChange={(event) => setNewOpportunitySignDate(event.target.value)}
+                    onChange={(event) => setNewOpportunitySignDate(event)}
                     className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle"
                   />
                 </label>
@@ -6090,11 +6089,10 @@ function LogActualModal({
               <RequiredMark />
               <InfoHint text="When it actually happened. It lands in that month on the progress charts." />
             </label>
-            <input
+            <DateField
               required
-              type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => setDate(e)}
               className="mt-1 h-[40px] w-full rounded-lg border border-border-light bg-white px-2.5 text-[13px] outline-none tnum focus:border-blue-subtle"
             />
             <DateEcho value={date} />

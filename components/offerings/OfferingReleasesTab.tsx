@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { DateEcho } from "@/components/ui/DateEcho";
@@ -250,7 +251,7 @@ function EmptyRowButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-white/70 py-5 text-[12.5px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:bg-white hover:text-blue-primary"
+      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-canvas/70 py-5 text-[12.5px] font-medium text-text-secondary transition-colors hover:border-blue-subtle hover:bg-white hover:text-blue-primary"
     >
       <Plus size={14} /> {label}
     </button>
@@ -1779,12 +1780,11 @@ export function OfferingReleasesTab({
                     <OptionalMark />
                   )}
                 </label>
-                <input
+                <DateField
                   id="release-date"
-                  type="date"
                   className={FIELD}
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => setDate(e)}
                 />
                 <DateEcho value={date} />
               </div>

@@ -1,5 +1,52 @@
 import type { Metadata } from "next";
+import {
+  DM_Sans,
+  Fraunces,
+  Geist,
+  Geist_Mono,
+  IBM_Plex_Mono,
+  IBM_Plex_Sans,
+  Inter,
+  JetBrains_Mono,
+  Manrope,
+  Newsreader,
+  Plus_Jakarta_Sans,
+  Source_Sans_3,
+} from "next/font/google";
 import "./globals.css";
+import { readMemberProfile } from "@/lib/memberProfile";
+import { requireServerMemberScope } from "@/lib/memberScope";
+import { DEFAULT_FONT_PRESET } from "@/lib/fontPresets";
+
+/* THE FACES BEHIND THE FONT PRESETS (lib/fontPresets). Loaded once here so
+   every preset is a CSS variable away; `preload: false` means a face is only
+   fetched when a preset actually uses it, so the people on the system font
+   pay nothing for the others. */
+const plexSans = IBM_Plex_Sans({ variable: "--font-plex-sans", subsets: ["latin"], weight: ["400", "500", "600"], preload: false, display: "swap" });
+const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "500"], preload: false, display: "swap" });
+const newsreader = Newsreader({ variable: "--font-newsreader", subsets: ["latin"], preload: false, display: "swap" });
+const sourceSans = Source_Sans_3({ variable: "--font-source-sans", subsets: ["latin"], preload: false, display: "swap" });
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"], preload: false, display: "swap" });
+const jetbrainsMono = JetBrains_Mono({ variable: "--font-jetbrains-mono", subsets: ["latin"], preload: false, display: "swap" });
+const geist = Geist({ variable: "--font-geist", subsets: ["latin"], preload: false, display: "swap" });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], preload: false, display: "swap" });
+const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"], preload: false, display: "swap" });
+const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], preload: false, display: "swap" });
+const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"], preload: false, display: "swap" });
+const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"], preload: false, display: "swap" });
+const FONT_VARIABLE_CLASSES = [plexSans, plexMono, newsreader, sourceSans, inter, jetbrainsMono, geist, geistMono, manrope, fraunces, dmSans, jakarta]
+  .map((font) => font.variable)
+  .join(" ");
+
+/** The signed-in person's chosen preset, or the default when nobody is signed in. */
+async function fontPresetForRequest(): Promise<string> {
+  try {
+    const scope = await requireServerMemberScope();
+    return (await readMemberProfile(scope)).fontPreset;
+  } catch {
+    return DEFAULT_FONT_PRESET;
+  }
+}
 import { AppShell } from "@/components/layout/AppShell";
 import { getDataMode } from "@/lib/dataMode";
 import { isApprovalGateEnabled } from "@/lib/accessControl";
@@ -79,8 +126,9 @@ export default async function RootLayout({
       : ["people"];
   }
 
+  const fontPreset = await fontPresetForRequest();
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={FONT_VARIABLE_CLASSES} data-font={fontPreset}>
       <head>
         {/* Apply persisted visual preferences before paint to avoid a flash. */}
         <script

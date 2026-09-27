@@ -13,6 +13,7 @@ import { readRevenueAccruals } from "./revenueAccruals";
 import { readContracts } from "./contracts";
 import { readSolutioning } from "./solutioning";
 import { readPerformance } from "./performance";
+import { canVerifyEntry } from "./performanceShared";
 import {
   visibleNamesFor,
   scopeStateToPeople,
@@ -106,6 +107,15 @@ export async function readAgentWorkspace(
   mineOnly = false,
   offset = 0,
   teamOnly = false,
+  /**
+   * THE ACCOUNT'S OWN DEALS, BY THE ACCOUNT PAGE'S RULE (Anir, Sep 26: the
+   * agent "can't disagree with the app"). A deal belongs to an account when
+   * it carries the account's id or the exact company name, which is how the
+   * customer page counts them. Searching the company name as text matched
+   * "GSK - RTQ" and "GlaxoSmithKline Consumer" and answered four deals where
+   * the page shows two.
+   */
+  account?: { id: string; name: string },
 ) {
   if (!(module in AGENT_MODULES))
     return "Unknown module. Choose a module from the tool schema.";
@@ -515,8 +525,29 @@ export async function readAgentWorkspace(
     const detailedAccruals = Boolean(query.trim()) && !["upcoming", "overdue"].includes(query.trim().toLowerCase());
     if (offeringsAllowed) await initializeLiveOfferings();
     const catalog = offeringsAllowed ? listOfferings() : [];
+    const sameName = (a: unknown, b: string) =>
+      String(a ?? "").trim().toLowerCase() === b.trim().toLowerCase();
+    /* A QUERY THAT NAMES AN ACCOUNT IS THE ACCOUNT, NOT A SUBSTRING. The model
+       asks read_workspace("opportunities", "GSK"); as text, "GSK" matches
+       "GSK - RTQ" and "GlaxoSmithKline Consumer / GSK Cx Services", so the
+       agent counted four deals where the GSK page counts two (Anir, Sep 26:
+       the agent "can't disagree with the app"). When the query is exactly an
+       account's name, use the account join the page uses. */
+    if (!account && query.trim() && await canOpenModule("/customers")) {
+      const named = (await getDb().customers.list().catch(() => []))
+        .find((c) => sameName(c.company_name, query));
+      if (named) {
+        account = { id: named.id, name: named.company_name };
+        query = "";
+      }
+    }
     const visibleOpportunities = (await readOpportunities()).opportunities
-      .filter((r) => ownedInScope(r.owner));
+      .filter((r) => ownedInScope(r.owner))
+      .filter((r) =>
+        !account ||
+        (r.customerId && r.customerId === account.id) ||
+        sameName(r.customer, account.name)
+      );
     const tcvByCurrency = new Map<string, typeof visibleOpportunities>();
     for (const deal of visibleOpportunities) {
       const currency = deal.currency || "USD";
@@ -531,12 +562,16 @@ export async function readAgentWorkspace(
       }, {}),
       estimatedTcvByCurrency: Object.fromEntries([...tcvByCurrency].map(([currency, deals]) => [currency, sumEstimates(deals, "tcv")])),
       pageUrl: "/opportunities",
+      ...(account ? { accountRule: `Only deals attached to ${account.name} by account id or exact company name, the same rule the account page uses. Similar names are different accounts.` } : {}),
       accrualAccess: !accrualsAllowed ? "denied" : accrualPlans ? "available" : "unavailable",
       basis: "Same unfiltered opportunity records and Estimated TCV measure as the Opportunities page. Do not call every record open unless the status counts support it. Keep currencies separate. These are distinct from pitch-session deals on Pipeline; never sum both views.",
     };
     rows = visibleOpportunities
       .map((r) => ({
         id: r.id,
+        /* The number people quote ("OPP-0001"); without it the agent could not
+           find a deal by the one name everybody uses for it (Sep 26). */
+        reference: r.externalId || undefined,
         name: r.name,
         customer: r.customer,
         owner: r.owner,
@@ -704,11 +739,42 @@ export async function readAgentWorkspace(
           ...(g.assignments || []).map((a) => a.person),
           ...g.subgoals.flatMap((sub) => sub.people.map((p) => p.name)),
         ]).size,
+        /* WHAT IS WAITING FOR A SIGN-OFF, with ids, so a group head can ask
+           "what's waiting for my verification?" and then verify or send back
+           by name from wherever they are (Sep 27). Entries are the scoped
+           ones this viewer may see; verifiableByMe is the same question the
+           route asks (a manager, or the head of the entry's person's group). */
+        awaitingVerification: scoped.actuals
+          .filter((a) => a.goalId === g.id && (a.status ?? "verified") !== "verified")
+          .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+          .slice(0, 25)
+          .map((a) => ({
+            id: a.id,
+            person: a.person,
+            amount: a.amount,
+            date: a.date,
+            status: a.status === "sent_back" ? "sent back" : "waiting for verification",
+            ...(a.customer ? { customer: a.customer } : {}),
+            ...(a.note ? { note: String(a.note).slice(0, 200) } : {}),
+            verifiableByMe: role === "admin" || role === "bd_owner" || canVerifyEntry(state, actor.name, a.person),
+          })),
         url: `/performance/goal/${encodeURIComponent(g.id)}`,
       };
     });
+    /* THE REST OF THE CATALOGUE, NAMES ONLY. A rep's records are the goals
+       they carry, with their own shares (the tests pin that); but the Goal
+       Master shows everyone every goal's name so they can pick one up, and
+       "put me on the goal X" needs the agent to know X exists. No numbers, no
+       people: exactly what the picker shows. */
+    const carried = new Set(rows.map((r) => r.id));
+    const otherGoals = visible || mineOnly || teamOnly
+      ? state.goals
+          .filter((g) => !carried.has(g.id))
+          .map((g) => ({ id: g.id, name: g.name, unit: g.unit, year: g.year, url: `/performance/goal/${encodeURIComponent(g.id)}` }))
+      : [];
     summary = {
       goalCount: rows.length,
+      ...(otherGoals.length ? { otherGoals, otherGoalsNote: "Goals in the catalogue that the scoped person does not carry. Names only: no targets or values are recorded for them here. Any of them can be picked up with assign_goal." } : {}),
       targetScope: teamOnly
         ? managedGroups.length === 1 ? "recorded managed-group target, or its assigned personal shares when no group target is set" : "combined assigned personal shares of managed-group members"
         : mineOnly

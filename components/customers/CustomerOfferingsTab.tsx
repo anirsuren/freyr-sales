@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { useEffect, useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/currency";
@@ -141,10 +142,11 @@ export function segmentColor(type: string): string {
 // badge, so one concept wore two colours depending on which card you looked at.
 function segmentParts(type: string) {
   const [family, ...sizeParts] = type.split(/\s+-\s+/);
-  const size = sizeParts.join(" - ") || "Size not set";
-  const key = size.toLowerCase();
+  const storedSize = sizeParts.join(" - ") || "Size not set";
+  const key = storedSize.toLowerCase();
   const tier = key.includes("small") ? "small" : key.includes("large") ? "large" : "mid";
   const meta = SIZE_TIER_META[tier];
+  const size = key === "mid size" || key === "mid-size" ? "Mid" : storedSize;
   return { family, size, color: meta.color, bg: meta.bg };
 }
 
@@ -475,11 +477,10 @@ function RevenueSection({
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               Start date
               <OptionalMark />
-              <input
-                aria-label="Start date"
-                type="date"
+              <DateField
+                ariaLabel="Start date"
                 value={start}
-                onChange={(e) => setStart(e.target.value)}
+                onChange={(e) => setStart(e)}
                 className={inp}
               />
               <DateEcho value={start} className="font-normal normal-case tracking-normal" />
@@ -487,11 +488,10 @@ function RevenueSection({
             <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               End date
               <OptionalMark />
-              <input
-                aria-label="End date"
-                type="date"
+              <DateField
+                ariaLabel="End date"
                 value={end}
-                onChange={(e) => setEnd(e.target.value)}
+                onChange={(e) => setEnd(e)}
                 className={inp}
               />
               <DateEcho value={end} className="font-normal normal-case tracking-normal" />
@@ -796,27 +796,30 @@ export function CustomerOfferingsTab({
   }
 
   // ------------------------------------------------------------------ cards
-  const OfferingCard = ({
-    o,
-    using,
-  }: {
-    o: TabOffering;
-    using: boolean;
-  }) => {
+  const renderOfferingCard = (o: TabOffering, using: boolean) => {
     const expanded = expandedIds.has(o.id);
     const revenueTotal = linesForOffering(o.id).reduce((sum, line) => sum + (line.amount || 0), 0);
     const activityCount = activitiesForOffering(o.id).length;
     return (
       <Card
+        key={o.id}
         className="relative overflow-hidden border border-border-light bg-white p-0 shadow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-success"
         data-testid={`cust-offering-${o.id}`}
       >
-        <div className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(245px,360px)_auto] lg:items-center">
-          <div className="min-w-0">
+        <div className="group relative grid gap-4 px-5 py-4 transition-colors hover:bg-blue-light/40 lg:grid-cols-[minmax(0,1fr)_minmax(245px,360px)_auto] lg:items-center">
+          <button
+            type="button"
+            onClick={() => toggleExpanded(o.id)}
+            aria-expanded={expanded}
+            aria-controls={`offering-detail-${o.id}`}
+            aria-label={expanded ? `Collapse ${o.name}` : `Expand ${o.name}`}
+            className="absolute inset-0 z-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary"
+          />
+          <div className="pointer-events-none relative z-10 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <Link
                 href={`/offerings/${o.id}`}
-                className="text-[15px] font-semibold text-text-primary hover:text-blue-primary hover:underline"
+                className="pointer-events-auto relative z-20 text-[15px] font-semibold text-text-primary hover:text-blue-primary hover:underline"
               >
                 {o.name}
               </Link>
@@ -833,7 +836,7 @@ export function CustomerOfferingsTab({
               </p>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-3 border-y border-border-light py-2 lg:border-y-0 lg:border-l lg:py-0 lg:pl-4">
+          <div className="pointer-events-none relative z-10 grid grid-cols-3 gap-3 border-y border-border-light py-2 lg:border-y-0 lg:border-l lg:py-0 lg:pl-4">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Revenue</p>
               <p className="mt-1 whitespace-nowrap text-[13px] font-semibold text-text-primary tnum">{revenueTotal > 0 ? compactMoney(revenueTotal) : "—"}</p>
@@ -847,19 +850,11 @@ export function CustomerOfferingsTab({
               <p className="mt-1 text-[13px] font-semibold text-text-primary tnum">{o.materials.length}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => toggleExpanded(o.id)}
-            aria-expanded={expanded}
-            aria-label={expanded ? `Hide ${o.name} details` : `Show ${o.name} details`}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
-          >
-            {expanded ? "Hide details" : "View details"}
-            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+          <ChevronDown size={17} strokeWidth={2.2} aria-hidden="true" className={`pointer-events-none relative z-10 justify-self-end text-text-tertiary transition-transform duration-200 group-hover:text-blue-primary ${expanded ? "rotate-180" : ""}`} />
         </div>
 
-        {expanded && (
+        <div id={`offering-detail-${o.id}`} className="freyr-fold" data-open={expanded} aria-hidden={!expanded} inert={!expanded}>
+          <div>
           <div className="border-t border-border-light bg-white px-5 pb-5 pt-1">
             {o.description && (
               <p className="mt-3 whitespace-pre-line text-[13px] leading-relaxed text-text-secondary">
@@ -967,7 +962,8 @@ export function CustomerOfferingsTab({
               </button>
             </div>
           </div>
-        )}
+          </div>
+        </div>
       </Card>
     );
   };
@@ -1058,7 +1054,7 @@ export function CustomerOfferingsTab({
             return (
               <button
                 key={t}
-                aria-label={t}
+                aria-label={`${parts.family} - ${parts.size}`}
                 onClick={() => saveType(t)}
                 disabled={savingType}
                 className="flex min-h-[54px] items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-3 text-[12.5px] font-medium text-text-primary hover:border-blue-primary hover:shadow-[0_2px_10px_rgba(0,113,227,0.10)] transition-all disabled:opacity-50 text-left active:scale-[0.98]"
@@ -1184,9 +1180,7 @@ export function CustomerOfferingsTab({
             <p className="hidden text-[12px] text-text-tertiary sm:block">Select an offering to review its revenue, activity, and materials.</p>
           </div>
           <div className="space-y-2.5">
-            {visibleInUse.map((o) => (
-              <OfferingCard key={o.id} o={o} using />
-            ))}
+            {visibleInUse.map((o) => renderOfferingCard(o, true))}
           </div>
         </section>
       )}

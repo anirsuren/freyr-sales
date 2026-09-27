@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
@@ -266,6 +267,7 @@ export function LiveCompanyBriefing({
       style={savedUrls.has(item.url) ? { color: "#d97706", backgroundColor: "#fef3c7", borderColor: "#fcd34d" } : undefined}
       className={cn(
         storyActionClass,
+        "saved-source-button",
         "w-7 hover:bg-amber-50 hover:!text-amber-600 disabled:cursor-default",
         savedUrls.has(item.url) && "border border-amber-200 bg-amber-100 !text-amber-600 hover:bg-amber-100",
       )}>
@@ -836,7 +838,7 @@ export function LiveCompanyBriefing({
         <div className="relative flex h-10 items-center gap-2 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary focus-within:border-blue-subtle">
           <CalendarDays size={14} className="text-blue-primary" />
           <label htmlFor="briefing-exact-date" className="sr-only">Show updates from an exact date</label>
-          <input id="briefing-exact-date" type="date" value={exactDate} onChange={(event) => setExactDate(event.target.value)} className="cursor-pointer bg-transparent text-[12px] text-text-primary outline-none" />
+          <DateField id="briefing-exact-date" value={exactDate} onChange={(event) => setExactDate(event)} className="cursor-pointer bg-transparent text-[12px] text-text-primary outline-none" />
           {exactDate && <button type="button" onClick={() => setExactDate("")} className="cursor-pointer text-blue-primary hover:underline">Clear</button>}
         </div>
         <ColorSelect

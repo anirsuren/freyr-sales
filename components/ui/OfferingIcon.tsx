@@ -199,7 +199,7 @@ export function ServiceTag({
           (the pipeline cards, to keep long offering names on one line) would
           otherwise keep a fixed 18px circle that no longer fits the pill. */}
       <span
-        className="flex h-[1.45em] w-[1.45em] shrink-0 items-center justify-center rounded-full text-white"
+        className="service-tag-icon flex h-[1.45em] w-[1.45em] shrink-0 items-center justify-center rounded-full text-white"
         style={{ backgroundColor: color }}
       >
         <Icon size={11} strokeWidth={2.2} className="h-[0.85em] w-[0.85em]" />
@@ -234,10 +234,10 @@ export function OfferingIcon({
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-xl text-white shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25),0_1px_2px_rgba(0,0,0,0.10)]",
+        "offering-icon inline-flex items-center justify-center rounded-xl text-white shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25),0_1px_2px_rgba(0,0,0,0.10)]",
         className
       )}
-      style={{ backgroundImage: `linear-gradient(135deg, ${a}, ${b})` }}
+      style={{ "--offering-mark": a, backgroundImage: `linear-gradient(135deg, ${a}, ${b})` } as CSSProperties}
       aria-hidden="true"
     >
       <Icon className="w-[55%] h-[55%]" strokeWidth={1.9} />

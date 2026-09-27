@@ -168,7 +168,7 @@ export function KnowledgePanel({
                     onClick={() => onExcludedChange([])}
                     title="Turn everything back on"
                     aria-label="Turn everything back on"
-                    className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-white"
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-canvas/70 px-2 py-0.5 text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-white"
                   >
                     <CheckCheck size={12} strokeWidth={2.4} /> Reset
                   </button>

@@ -15,8 +15,9 @@ import { cn } from "@/lib/utils";
  * be moved with CSS, so the field owns its own calendar: it opens to the RIGHT
  * of the trigger, flipping left or up only when there is genuinely no room.
  *
- * Portalled to the body like every other popover in the app, so a dialog's
- * overflow cannot clip it.
+ * Portalled into the active modal when there is one, so its dates remain
+ * reachable by keyboard and accessibility tools. Outside a modal it uses the
+ * body, keeping page containers from clipping it.
  */
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -54,25 +55,36 @@ export function DateField({
  value,
  onChange,
  min,
+ max,
  placeholder = "Pick a date",
  ariaLabel,
  className,
+ id,
+ title,
+ required,
 }: {
  /** yyyy-mm-dd, or "" for empty. */
  value: string;
  onChange: (value: string) => void;
  /** yyyy-mm-dd; earlier days are shown but cannot be chosen. */
  min?: string;
+ /** yyyy-mm-dd; later days are shown but cannot be chosen. */
+ max?: string;
  placeholder?: string;
  ariaLabel?: string;
  className?: string;
+ id?: string;
+ title?: string;
+ required?: boolean;
 }) {
  const [open, setOpen] = useState(false);
  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
  const triggerRef = useRef<HTMLButtonElement>(null);
  const panelRef = useRef<HTMLDivElement>(null);
+ const dialogHost = open ? triggerRef.current?.closest<HTMLElement>('[role="dialog"].modal-in') : null;
  const selected = parse(value);
  const minDate = min? parse(min): null;
+ const maxDate = max? parse(max): null;
  const [month, setMonth] = useState(() => selected?? new Date());
 
  useEffect(() => {
@@ -106,7 +118,8 @@ export function DateField({
         Math.max(8, rect.top),
         Math.max(8, window.innerHeight - height - 8)
       );
-      setPos({ left, top });
+      const hostRect = trigger.closest<HTMLElement>('[role="dialog"].modal-in')?.getBoundingClientRect();
+      setPos({ left: left - (hostRect?.left ?? 0), top: top - (hostRect?.top ?? 0) });
     };
     place();
     window.addEventListener("scroll", place, true);
@@ -144,13 +157,17 @@ export function DateField({
     return d;
   });
   const today = iso(new Date());
+  const todayDate = parse(today)!;
+  const todayDisabled = (!!minDate && todayDate < minDate) || (!!maxDate && todayDate > maxDate);
 
   return (
     <>
       <button
         ref={triggerRef}
         type="button"
-        aria-label={ariaLabel}
+        id={id}
+        title={title}
+        aria-label={ariaLabel && required ? `${ariaLabel} (required)` : ariaLabel}
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
@@ -175,6 +192,23 @@ export function DateField({
         </span>
       </button>
 
+      {required && (
+        <input
+          type="text"
+          tabIndex={-1}
+          required
+          readOnly
+          aria-hidden="true"
+          value={value}
+          onInvalid={(event) => {
+            event.preventDefault();
+            setOpen(true);
+            triggerRef.current?.focus();
+          }}
+          className="pointer-events-none absolute h-px w-px opacity-0"
+        />
+      )}
+
       {open &&
         pos &&
         createPortal(
@@ -183,7 +217,7 @@ export function DateField({
             role="dialog"
             aria-label={ariaLabel || "Choose a date"}
             style={{ left: pos.left, top: pos.top, width: 268 }}
-            className="menu-in fixed z-[130] rounded-xl border border-border-light bg-white p-3 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
+            className={cn("menu-in z-[130] rounded-xl border border-border-light bg-white p-3 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]", dialogHost ? "absolute" : "fixed")}
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="text-[13px] font-semibold text-text-primary">
@@ -225,7 +259,7 @@ export function DateField({
               {cells.map((date) => {
                 const key = iso(date);
                 const outside = date.getMonth() !== month.getMonth();
-                const disabled = !!minDate && date < minDate;
+                const disabled = (!!minDate && date < minDate) || (!!maxDate && date > maxDate);
                 const isSelected = !!selected && key === iso(selected);
                 return (
                   <button
@@ -258,6 +292,7 @@ export function DateField({
             <div className="mt-2 flex items-center justify-between border-t border-border-light pt-2">
               <button
                 type="button"
+                disabled={todayDisabled}
                 onClick={() => {
                   onChange("");
                   setOpen(false);
@@ -278,7 +313,7 @@ export function DateField({
               </button>
             </div>
           </div>,
-          document.body
+          dialogHost ?? document.body
         )}
     </>
   );

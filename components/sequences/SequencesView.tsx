@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -66,17 +66,17 @@ const CHANNEL_META: Record<
   SequenceChannel,
   { icon: typeof Mail; color: string; bg: string }
 > = {
-  email: { icon: Mail, color: "#0066CC", bg: "rgba(0,113,227,0.10)" },
-  call: { icon: Phone, color: "#047857", bg: "rgba(5,150,105,0.11)" },
-  wait: { icon: Clock, color: "#64748B", bg: "rgba(100,116,139,0.10)" },
+  email: { icon: Mail, color: "var(--sequence-email)", bg: "rgba(0,113,227,0.10)" },
+  call: { icon: Phone, color: "var(--sequence-call)", bg: "rgba(5,150,105,0.11)" },
+  wait: { icon: Clock, color: "var(--sequence-wait)", bg: "rgba(100,116,139,0.10)" },
 };
 
 function stageStyle(stage: string) {
   const key = stage.toLowerCase();
-  if (key.includes("meeting")) return { color: "#047857", bg: "rgba(5,150,105,0.11)" };
+  if (key.includes("meeting")) return { color: "var(--sequence-call)", bg: "rgba(5,150,105,0.11)" };
   if (key.includes("qualified")) return { color: "var(--ink-violet)", bg: "rgba(109,40,217,0.10)" };
-  if (key.includes("engaged")) return { color: "#0066CC", bg: "rgba(0,113,227,0.10)" };
-  return { color: "#475569", bg: "rgba(100,116,139,0.10)" };
+  if (key.includes("engaged")) return { color: "var(--sequence-email)", bg: "rgba(0,113,227,0.10)" };
+  return { color: "var(--sequence-wait)", bg: "rgba(100,116,139,0.10)" };
 }
 
 function blankStep(day = 0): SequenceStep {
@@ -98,9 +98,9 @@ const SEQUENCE_TEMPLATES: Array<{
     description: "Open a focused conversation with a senior regulatory stakeholder.",
     useCase: "Start a new conversation",
     icon: BriefcaseBusiness,
-    color: "#0066CC",
-    bg: "#EFF6FF",
-    border: "#BFDBFE",
+    color: "var(--sequence-email)",
+    bg: "var(--sequence-template-blue-bg)",
+    border: "var(--sequence-template-blue-border)",
     steps: [
       { day: 0, channel: "email", label: "Send a concise, role-specific introduction" },
       { day: 2, channel: "email", label: "Share a relevant proof point or customer outcome" },
@@ -114,9 +114,9 @@ const SEQUENCE_TEMPLATES: Array<{
     description: "Turn a completed meeting into an agreed commercial next step.",
     useCase: "Move an active deal forward",
     icon: Send,
-    color: "#047857",
-    bg: "#ECFDF5",
-    border: "#A7F3D0",
+    color: "var(--sequence-call)",
+    bg: "var(--sequence-template-green-bg)",
+    border: "var(--sequence-template-green-border)",
     steps: [
       { day: 0, channel: "email", label: "Send the recap, owners, and agreed next steps" },
       { day: 2, channel: "call", label: "Confirm stakeholders, timing, and open questions" },
@@ -130,8 +130,8 @@ const SEQUENCE_TEMPLATES: Array<{
     useCase: "Revive an inactive opportunity",
     icon: RefreshCcw,
     color: "var(--ink-orange)",
-    bg: "#FFF7ED",
-    border: "#FED7AA",
+    bg: "var(--sequence-template-orange-bg)",
+    border: "var(--sequence-template-orange-border)",
     steps: [
       { day: 0, channel: "email", label: "Send a short pattern-interrupt with a new reason to reply" },
       { day: 3, channel: "call", label: "Call with a specific, low-friction question" },
@@ -656,7 +656,7 @@ export function SequencesView({
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.05em] text-text-secondary">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-text-primary text-[9px] text-white">{index + 1}</span>
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[color:var(--sequence-step-fill)] text-[9px] text-white">{index + 1}</span>
                             Step {index + 1}
                           </span>
                           <span className="rounded-md bg-surface px-2 py-1 text-[10px] font-bold text-text-primary tnum">Day {step.day}</span>
@@ -875,11 +875,11 @@ export function SequencesView({
                       className="relative min-h-[190px] rounded-xl border-2 p-4 text-left transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:shadow-card"
                       style={{
                         borderColor: selected ? template.color : template.border,
-                        background: selected ? template.bg : "#FFFFFF",
+                        background: selected ? template.bg : "var(--white)",
                         boxShadow: selected ? `0 0 0 3px ${tint(template.color, 9)}` : undefined,
                       }}
                     >
-                      {selected && <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-white" style={{ background: template.color }}><Check size={13} /></span>}
+                      {selected && <span className="sequence-template-check absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-white" style={{ background: template.color, "--sequence-color": template.color } as CSSProperties}><Check size={13} /></span>}
                       <span className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ color: template.color, background: template.bg }}>
                         <TemplateIcon size={18} strokeWidth={1.9} />
                       </span>

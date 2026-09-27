@@ -119,7 +119,7 @@ export function BookmarkedItems({
             const name = displayCompanyName(item, companies);
             const href = safeHref(item.url);
             return (
-              <article key={`${item.companyId}:${item.url}`} className="group px-5 py-4 transition-colors hover:bg-slate-50/70">
+              <article key={`${item.companyId}:${item.url}`} className="group px-5 py-4 transition-colors hover:bg-slate-50/70 dark:hover:bg-[#292b2e]">
                 <div className="flex items-start gap-3.5">
                   <MiLogo name={name} logoUrl={companies[item.companyId]?.logoUrl} className="mt-0.5 h-9 w-9 shrink-0" />
                   <div className="min-w-0 flex-1">

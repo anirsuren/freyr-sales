@@ -104,7 +104,7 @@ const FIELD =
 
 const VERSION_PANEL_DEFAULT = 330;
 const VERSION_PANEL_MIN = 230;
-const VERSION_PANEL_MAX = 620;
+const VERSION_PANEL_MAX = 900;
 
 function slug(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -1157,7 +1157,7 @@ export function FdlComponentDetail({
                   style={
                     release.current
                       ? {
-                          background: "rgba(232,241,251,0.55)",
+                          background: "var(--fdl-current-bg)",
                           borderColor: "var(--ink-bright-blue)",
                         }
                       : undefined
@@ -1344,13 +1344,9 @@ export function FdlComponentDetail({
                           </HoverCard>
                         </span>
                       </span>
-                      {/* THE LOGOS MOVE UP AND GROW (Anir, Aug 9: "the company
-                          logos, move it so that it's bigger and it's in line
-                          instead of on the bottom"). Tucked among the date and
-                          feature chips they read as one more chip; on the main
-                          line at 34px they read as the accounts they are. Five
-                          then +N, so the row's length never depends on how many
-                          customers a version happens to have. */}
+                      {/* Keep the customer marks compact on the main line; the
+                          total stays below them and the overflow badge remains
+                          legible even when many accounts share a version. */}
                       {/* THE COUNT UNDER THE FACES (Anir, Aug 9: "underneath
                           the circles for the logos, you can say five customers
                           or ten customers or whatever"). Five marks and a +N
@@ -1361,7 +1357,7 @@ export function FdlComponentDetail({
                           <CustomerDots
                             people={versionCustomers}
                             max={5}
-                            size={34}
+                            size={20}
                             note={() => `On ${withV(release.version)}`}
                             modalTitle={`Companies on ${withV(release.version)}`}
                           />
@@ -1738,15 +1734,20 @@ export function FdlComponentDetail({
                       <div
                         role="separator"
                         aria-orientation="horizontal"
-                        aria-label="Resize version details"
+                        aria-label="Drag to resize these three version boxes"
+                        title="Drag to resize · double-click to reset"
                         onPointerDown={onVersionPanelResize}
                         onDoubleClick={() => setVersionPanelHeight(VERSION_PANEL_DEFAULT)}
                         className={cn(
-                          "group/resize absolute inset-x-0 bottom-0 z-20 h-3 cursor-ns-resize touch-none",
-                          resizingVersionPanel && "bg-blue-light/40"
+                          "group/resize absolute inset-x-0 -bottom-1.5 z-20 h-3 cursor-ns-resize touch-none"
                         )}
                       >
-                        <span className="absolute bottom-1 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-border opacity-0 transition-opacity group-hover/resize:opacity-100" />
+                        <span className={cn(
+                          "absolute left-1/2 top-1/2 h-1 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity",
+                          resizingVersionPanel
+                            ? "bg-blue-primary opacity-100"
+                            : "bg-blue-subtle opacity-0 group-hover/resize:opacity-100"
+                        )} />
                       </div>
                     </div>
                   )}
@@ -3163,7 +3164,7 @@ export function FdlComponentDetail({
                           }
                           className="group cursor-pointer transition-colors hover:bg-blue-light/25"
                         >
-                          <td className="py-3 pr-4">
+                          <td className="py-3 pl-3 pr-4">
                             {/* The whole row navigates (Anir, Aug 9: "it's not
                                 letting me click on this row"); the link stays
                                 for keyboard and middle-click. */}
@@ -3627,7 +3628,7 @@ export function FdlComponentDetail({
                 {status === "released" ? "Release date" : "Expected date"}
                 <OptionalMark />
               </label>
-              <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className={FIELD} />
+              <DateField value={date} onChange={(event) => setDate(event)} className={FIELD} />
               <DateEcho value={date} />
             </div>
           </div>

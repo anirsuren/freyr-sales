@@ -2,7 +2,7 @@
 export async function readAgentResponse(
   response: Response,
   onDelta: (answerSoFar: string) => void,
-): Promise<{ reply: string; suggestions?: string[]; entityContext?: string[] }> {
+): Promise<{ reply: string; suggestions?: string[]; entityContext?: string[]; pendingAction?: unknown }> {
   if (!response.ok) throw new Error("assistant unreachable");
   if (!response.headers.get("content-type")?.includes("application/x-ndjson")) {
     return response.json();
@@ -13,7 +13,7 @@ export async function readAgentResponse(
   const decoder = new TextDecoder();
   let buffer = "";
   let preview = "";
-  let result: { reply: string; suggestions?: string[]; entityContext?: string[] } | null = null;
+  let result: { reply: string; suggestions?: string[]; entityContext?: string[]; pendingAction?: unknown } | null = null;
   const consume = (line: string) => {
     if (!line.trim()) return;
     const event = JSON.parse(line);
@@ -26,6 +26,11 @@ export async function readAgentResponse(
         marker.startsWith(preview.slice(unfinishedTag));
       const visibleEnd = metadataStart >= 0 ? metadataStart : unfinished ? unfinishedTag : preview.length;
       onDelta(preview.slice(0, visibleEnd));
+    } else if (event.type === "reset") {
+      // What streamed so far was preamble to a tool call, not the answer.
+      // Clear it so the real answer starts on a clean line.
+      preview = "";
+      onDelta("");
     } else if (event.type === "done" && typeof event.reply === "string") {
       result = event;
     } else if (event.type === "error") {

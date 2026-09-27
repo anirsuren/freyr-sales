@@ -64,7 +64,7 @@ export type { ManagedCompany } from "@/lib/marketIntelManaged";
 
 function CollectionStatus({ company: c }: { company: ManagedCompany }) {
   if (!c.onboarding) return null;
-  return <span role="status" className={cn("inline-flex items-center gap-2 rounded-full border border-current/15 bg-white/80 px-3 py-1.5 text-xs font-semibold", c.onboarding.status === "failed" ? "text-red-600" : "text-blue-primary")}>
+  return <span role="status" className={cn("inline-flex items-center gap-2 rounded-full border border-current/15 bg-canvas/80 px-3 py-1.5 text-xs font-semibold", c.onboarding.status === "failed" ? "text-red-600" : "text-blue-primary")}>
                             {c.onboarding.status === "failed" ? <AlertCircle size={13} /> : <Loader2 size={13} className="animate-spin motion-reduce:animate-none" />}
                             {c.onboarding.status === "failed" ? "Collection needs attention" : c.onboarding.status === "queued" ? "Queued for collection" : c.onboarding.stage === "briefing" ? "Preparing briefing" : c.onboarding.stage === "saving" ? "Saving updates" : "Collection in progress"}
                           </span>;

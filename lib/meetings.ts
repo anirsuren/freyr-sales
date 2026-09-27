@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { getDataMode } from "./dataMode";
+import { mockDated } from "./mockDates";
 import { SEED_OPPORTUNITIES } from "./pipelineSeed";
 import { hasSupabase } from "./env";
 import { sampleDocPath } from "./sampleDocuments";
@@ -373,9 +374,9 @@ export async function readMeetings(): Promise<MeetingsState> {
       !state.meetings.some((meeting) => isStaleFillRow(meeting.id)) &&
       !refreshMockFillNames(state.meetings)
     )
-      return state;
+      return mockDated(state);
   }
-  return topUpMockFill();
+  return mockDated(await topUpMockFill());
 }
 
 /** MTG-0001, MTG-0002 — the same shape every other record here wears. */
@@ -641,19 +642,31 @@ export function groupMeetingsByPeriod(
         timeZone: "UTC",
       });
     } else {
-      /* The Monday of that week, so a week is named by the day it starts. */
+      /* Show both calendar boundaries, including the Sunday even when the
+         range crosses a month or year. */
       const monday = new Date(
         Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
       );
       const shift = (monday.getUTCDay() + 6) % 7;
       monday.setUTCDate(monday.getUTCDate() - shift);
       key = monday.toISOString().slice(0, 10);
-      label = `Week of ${monday.toLocaleDateString("en-US", {
+      const sunday = new Date(monday);
+      sunday.setUTCDate(sunday.getUTCDate() + 6);
+      const start = monday.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      });
+      const startYear = monday.getUTCFullYear() !== sunday.getUTCFullYear()
+        ? `, ${monday.getUTCFullYear()}`
+        : "";
+      const end = sunday.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
         timeZone: "UTC",
-      })}`;
+      });
+      label = `${start}${startYear} – ${end}`;
     }
     const bucket = buckets.get(key) ?? { label, meetings: [] };
     bucket.meetings.push(m);

@@ -3230,7 +3230,7 @@ export function OfferingForm({
           because the form is five sections tall. */}
       <div
         data-agent-dock-clearance
-        className="sticky bottom-4 z-20 -mx-1 rounded-xl border border-border-light bg-white/95 py-3 pl-4 pr-4 shadow-card backdrop-blur"
+        className="sticky bottom-4 z-20 -mx-1 rounded-xl border border-border-light bg-canvas/95 py-3 pl-4 pr-4 shadow-card backdrop-blur"
       >
         {saveError && (
           <div

@@ -18,25 +18,26 @@ const config: Config = {
     extend: {
       colors: {
         blue: {
-          primary: "#0071E3",
-          hover: "#0077ED",
-          light: "#E8F1FB",
-          subtle: "#C7DCFA",
+          primary: "rgb(var(--blue-primary-rgb) / <alpha-value>)",
+          hover: "rgb(var(--blue-hover-rgb) / <alpha-value>)",
+          light: "rgb(var(--blue-light-rgb) / <alpha-value>)",
+          subtle: "rgb(var(--blue-subtle-rgb) / <alpha-value>)",
         },
         // Channel syntax, NOT a hex: it makes every opacity variant
         // (`bg-surface/50`, `hover:bg-surface/60`) resolve through
         // --surface-rgb, so they follow dark mode like the bare class does.
         surface: "rgb(var(--surface-rgb) / <alpha-value>)",
-        border: "#D2D2D7",
-        "border-light": "#E5E5EA",
+        canvas: "rgb(var(--canvas-rgb) / <alpha-value>)",
+        border: "rgb(var(--border-rgb) / <alpha-value>)",
+        "border-light": "rgb(var(--border-light-rgb) / <alpha-value>)",
         text: {
-          primary: "#1D1D1F",
-          secondary: "#6E6E73",
+          primary: "rgb(var(--text-primary-rgb) / <alpha-value>)",
+          secondary: "rgb(var(--text-secondary-rgb) / <alpha-value>)",
           // darkened from #AEAEB2 for WCAG AA contrast on white (#98)
           /* Was #8A8A8E, which read 3.44:1 on white and 3.29:1 on the
              surface — under the 4.5:1 floor at the 11-13px this is used at
              (Anir, Sep 4). #6E6E73 is the same quiet grey, one step darker. */
-          tertiary: "#6E6E73",
+          tertiary: "rgb(var(--text-tertiary-rgb) / <alpha-value>)",
         },
         success: "#34C759",
         // Burnt orange, not amber. `text-warning` is used as chip TEXT on

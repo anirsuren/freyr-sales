@@ -927,7 +927,7 @@ export function MaterialsSection({
               className={`inline-flex h-8 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
                 !showAllFiles
                   ? "bg-white text-blue-primary shadow-card"
-                  : "text-text-secondary hover:bg-white/70 hover:text-text-primary"
+                  : "text-text-secondary hover:bg-canvas/70 hover:text-text-primary"
               }`}
             >
               <Folder size={14} strokeWidth={2} aria-hidden="true" />
@@ -940,7 +940,7 @@ export function MaterialsSection({
               className={`inline-flex h-8 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-[12px] font-semibold transition-colors ${
                 showAllFiles
                   ? "bg-white text-blue-primary shadow-card"
-                  : "text-text-secondary hover:bg-white/70 hover:text-text-primary"
+                  : "text-text-secondary hover:bg-canvas/70 hover:text-text-primary"
               }`}
             >
               <Files size={14} strokeWidth={2} aria-hidden="true" />

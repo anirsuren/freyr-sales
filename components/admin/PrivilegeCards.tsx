@@ -139,7 +139,7 @@ export function PrivilegeCards({
                   {p.label}
                 </span>
                 {viaRole && (
-                  <span className="shrink-0 whitespace-nowrap rounded-full bg-white/70 px-1.5 py-px text-[9.5px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
+                  <span className="shrink-0 whitespace-nowrap rounded-full bg-canvas/70 px-1.5 py-px text-[9.5px] font-bold uppercase tracking-[0.04em] text-text-tertiary">
                     From role
                   </span>
                 )}

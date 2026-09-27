@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { EditableFact } from "@/components/opportunities/EditableFact";
 import { safeHref } from "@/lib/safeUrl";
@@ -47,6 +48,8 @@ import {
 } from "@/components/customers/CustomerOfferingsTab";
 import { CustomerDigitalComponents } from "@/components/customers/CustomerDigitalComponents";
 import { CustomerAccountPlanTab } from "@/components/customers/CustomerAccountPlanTab";
+import { AccountReviewTab } from "@/components/customers/AccountReviewTab";
+import type { AccountReviewRecord } from "@/lib/accountReviews";
 import { SizeBadge, Badge, OutcomeBadge, SIZE_TIER_META } from "@/components/ui/Badge";
 import { REVIEW_META } from "@/lib/review";
 import { Avatar } from "@/components/ui/Avatar";
@@ -168,6 +171,7 @@ function locationGeography(country: string, city: string, previous: string): str
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "account-plan", label: "Account plan" },
+  { key: "account-review", label: "Account review" },
   { key: "analytics", label: "Analytics" },
   { key: "offerings", label: "Offerings" },
   { key: "components", label: "Digital components" },
@@ -198,6 +202,7 @@ const TABS = [
    own record, which is as real as anything on the page. */
 const REAL_MODE_TABS = new Set([
   "overview",
+  "account-review",
   "components",
   "activity",
   /* CONTACTS IS REAL DATA, AND WAS BEING HIDDEN WITH THE DEMO TABS.
@@ -386,16 +391,16 @@ function GeographyValue({ value }: { value: string }) {
        at hydration (the "2 Issues" badge on every account page, Sep 4). */
     <span className="mt-0.5 block min-w-0">
       <span
-        className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-normal break-words"
+        className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap"
         // Inline because the palette is a runtime value, not a Tailwind class.
         // 1A ≈ 10% alpha — a tint that stays readable in both themes.
         style={{ color: "#0891B2", background: "#0891B21A" }}
         title={`Location: ${city ? `${city}, ` : ""}${country}`}
       >
         <span className="sr-only">Location: </span>
-        {city && <span>{city},</span>}
-        {flag && <span aria-hidden="true">{flag}</span>}
-        {country}
+        {city && <span className="shrink-0">{city},</span>}
+        {flag && <span className="shrink-0" aria-hidden="true">{flag}</span>}
+        <span className="min-w-0 truncate">{country}</span>
       </span>
     </span>
   );
@@ -405,6 +410,7 @@ export function CustomerTabs({
   intelligence,
   canEditFacts,
   customer,
+  accountReviews = [],
   contacts,
   sessions,
   interactions,
@@ -436,6 +442,7 @@ export function CustomerTabs({
    */
   canEditFacts: boolean;
   customer: Customer;
+  accountReviews?: AccountReviewRecord[];
   contacts: Contact[];
   sessions: PitchSession[];
   interactions: Interaction[];
@@ -478,6 +485,7 @@ export function CustomerTabs({
      hiding the number: the point of the count is to answer "is there anything
      in here" without opening it, and a blank cannot answer that. */
   const tabCounts: Record<string, number> = {
+    "account-review": accountReviews.length,
     components: (customer.digital_components || []).length,
     contacts: contacts.length,
     sessions: sessions.length,
@@ -508,6 +516,22 @@ export function CustomerTabs({
      anywhere else means arriving at a band instead of at the account. */
   const [tab, setTabState] = useState("overview");
   const tabStripRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const strip = tabStripRef.current;
+      const selected = strip?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      if (!strip || !selected) return;
+      const stripBounds = strip.getBoundingClientRect();
+      const selectedBounds = selected.getBoundingClientRect();
+      if (selectedBounds.left < stripBounds.left || selectedBounds.right > stripBounds.right) {
+        strip.scrollBy({
+          left: selectedBounds.left - stripBounds.left - (strip.clientWidth - selectedBounds.width) / 2,
+          behavior: "auto",
+        });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [tab, customer.id]);
   const [accountRailOpen, setAccountRailOpen] = useState(true);
   // Persist the active tab in the URL (?tab=) so it's always clear which tab
   // you're on AND browser-back from a deal/session returns to the SAME tab, not
@@ -583,6 +607,7 @@ export function CustomerTabs({
   const [keyOverrides, setKeyOverrides] = useState<Record<string, boolean>>({});
   const [contactOverrides, setContactOverrides] = useState<Record<string, Contact>>({});
   const [keySaving, setKeySaving] = useState<string | null>(null);
+  const [unmarkingKeyContact, setUnmarkingKeyContact] = useState<{ contact: Contact; index: number } | null>(null);
   const displayedContacts = useMemo(() => contacts.map((contact) => contactOverrides[contact.id] ?? contact), [contacts, contactOverrides]);
   const contactDeepLinkHandled = useRef(false);
   const isKeyContact = useCallback((contact: Contact, index: number) => keyOverrides[contact.id] ?? contact.is_key ?? index < 4, [keyOverrides]);
@@ -952,7 +977,7 @@ export function CustomerTabs({
   }, [displayedContacts, editContact]);
 
   async function toggleKeyContact(contact: Contact, index: number) {
-    if (keySaving) return;
+    if (keySaving) return false;
     const next = !isKeyContact(contact, index);
     setKeySaving(contact.id);
     setKeyOverrides((previous) => ({ ...previous, [contact.id]: next }));
@@ -962,10 +987,17 @@ export function CustomerTabs({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ is_key: next }),
       });
-      if (!response.ok) throw new Error();
-    } catch {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not update key contacts.");
+      if (data.contact) {
+        setContactOverrides((previous) => ({ ...previous, [contact.id]: data.contact as Contact }));
+      }
+      toast(next ? `${contact.full_name} is a key contact.` : `${contact.full_name} is no longer a key contact.`);
+      return true;
+    } catch (error) {
       setKeyOverrides((previous) => ({ ...previous, [contact.id]: !next }));
-      toast("Could not update key contacts.", "error");
+      toast(error instanceof Error ? error.message : "Could not update key contacts.", "error");
+      return false;
     } finally {
       setKeySaving(null);
     }
@@ -1283,6 +1315,21 @@ export function CustomerTabs({
               Account plan
             </button>
           )}
+          <button
+            key="account-review"
+            data-account-tab="account-review"
+            role="tab"
+            aria-selected={tab === "account-review"}
+            onClick={() => setTab("account-review")}
+            className={cn(
+              "-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 pb-3 text-[14px] transition-colors",
+              tab === "account-review"
+                ? "border-blue-primary font-semibold text-blue-primary"
+                : "border-transparent font-medium text-text-secondary hover:text-text-primary"
+            )}
+          >
+            Account review <b className="tnum font-semibold">{accountReviews.length}</b>
+          </button>
           {bands.map((b) => (
             <button
               key={`band:${b.key}`}
@@ -1309,6 +1356,7 @@ export function CustomerTabs({
             (t) =>
               t.key !== "overview" &&
               t.key !== "account-plan" &&
+              t.key !== "account-review" &&
               (includeDemoTeam || REAL_MODE_TABS.has(t.key))
           ).map((t) => (
             <button
@@ -1409,7 +1457,7 @@ export function CustomerTabs({
                   deal rail fixed on Aug 30 with EditableFact's `stacked`
                   mode. This card now uses it, in the same four-across grid
                   the edit page lays its fields in. */}
-              <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
+              <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,1.3fr)]">
                 <EditableFact
                   stacked
                   label="Company name"
@@ -2255,6 +2303,10 @@ export function CustomerTabs({
           </div>
         )}
 
+        {tab === "account-review" && (
+          <AccountReviewTab customerId={customer.id} initialReviews={accountReviews} mayEdit={canEditFacts} />
+        )}
+
         {tab === "account-plan" && includeDemoTeam && (
           <CustomerAccountPlanTab
             customer={customer}
@@ -2325,8 +2377,8 @@ export function CustomerTabs({
               // Stretched-link card: the name link's ::after covers the whole
               // card (whole-card click → contact), while the LinkedIn icon stays
               // its own link — no nested anchors. Mirrors the main Contacts cards.
-              <Card key={c.id} className="group/contact relative hover:border-blue-subtle transition-colors">
-                <div className="flex items-center gap-3 pr-20">
+              <Card key={c.id} className="freyr-contact-card group/contact relative self-start overflow-hidden p-4">
+                <div className="flex items-center gap-3 pr-44">
                   <Avatar name={c.full_name} className="w-10 h-10 text-[14px]" />
                   <div className="min-w-0">
                     <p className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
@@ -2348,13 +2400,19 @@ export function CustomerTabs({
                   <Tooltip label={isKeyContact(c, index) ? "Remove from key contacts" : "Mark as key contact"}>
                     <button
                       type="button"
-                      onClick={() => toggleKeyContact(c, index)}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (isKeyContact(c, index)) setUnmarkingKeyContact({ contact: c, index });
+                        else void toggleKeyContact(c, index);
+                      }}
                       disabled={!canEditFacts || keySaving === c.id}
-                      aria-label={`${isKeyContact(c, index) ? "Unstar" : "Star"} ${c.full_name}`}
+                      aria-label={isKeyContact(c, index) ? `Remove ${c.full_name} from key contacts` : `Mark ${c.full_name} as a key contact`}
                       aria-pressed={isKeyContact(c, index)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-blue-primary hover:bg-blue-light disabled:cursor-default"
+                      className={cn("relative z-10 flex h-8 items-center justify-center gap-1 rounded-lg border px-2 text-[11px] font-semibold transition-colors disabled:cursor-default disabled:opacity-50", isKeyContact(c, index) ? "border-blue-subtle bg-blue-light text-blue-primary hover:bg-white" : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary")}
                     >
-                      <Star size={17} fill={isKeyContact(c, index) ? "currentColor" : "none"} />
+                      <Star size={15} fill={isKeyContact(c, index) ? "currentColor" : "none"} />
+                      {isKeyContact(c, index) ? "Key" : "Make key"}
                     </button>
                   </Tooltip>
                   {canEditFacts && (
@@ -2364,47 +2422,46 @@ export function CustomerTabs({
                       </button>
                     </Tooltip>
                   )}
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  {c.role_bucket ? (
-                    <Badge label={c.role_bucket} bg="rgba(0,113,227,0.10)" color="var(--ink-blue)" className="!normal-case tracking-normal shrink-0" />
-                  ) : (
-                    <span />
-                  )}
-                  <span className="flex min-w-0 items-center gap-2">
-                    {c.email && (
-                      <span className="flex items-center gap-1.5 min-w-0 text-[12px] text-text-tertiary">
-                        <Mail size={12} strokeWidth={1.6} className="shrink-0" />
-                        <span className="break-all">{c.email}</span>
-                      </span>
-                    )}
-                    {/* z-10, because the card is a stretched link: without it
-                        the name's ::after swallows this click and opens the
-                        contact instead of asking to remove them. */}
-                    {canDeleteContacts && (
+                  {canDeleteContacts && (
+                    <Tooltip label={`Remove ${c.full_name}`}>
                       <button
                         type="button"
-                        title={`Remove ${c.full_name}`}
                         aria-label={`Remove ${c.full_name}`}
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           setRemovingContact({ id: c.id, name: c.full_name });
                         }}
-                        className="relative z-10 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md bg-white text-error shadow-sm ring-1 ring-border-light transition-all sm:translate-y-0.5 sm:opacity-0 sm:group-hover/contact:translate-y-0 sm:group-hover/contact:opacity-100 sm:focus-visible:translate-y-0 sm:focus-visible:opacity-100 hover:bg-red-50"
+                        className="relative z-10 flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-red-50 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error"
                       >
-                        <Trash2 size={14} strokeWidth={2.2} />
+                        <Trash2 size={15} />
                       </button>
-                    )}
-                  </span>
+                    </Tooltip>
+                  )}
                 </div>
+                {(c.role_bucket || c.email) && (
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    {c.role_bucket && (
+                      <Badge label={c.role_bucket} bg="rgba(0,113,227,0.10)" color="var(--ink-blue)" className="!normal-case tracking-normal shrink-0" />
+                    )}
+                    <span className="flex min-w-0 items-center gap-2">
+                    {c.email && (
+                      <span className="flex items-center gap-1.5 min-w-0 text-[12px] text-text-tertiary">
+                        <Mail size={12} strokeWidth={1.6} className="shrink-0" />
+                        <span className="break-all">{c.email}</span>
+                      </span>
+                    )}
+                    </span>
+                  </div>
+                )}
               </Card>
             ))}
             {filteredContacts.length === 0 && (
               <EmptyState
                 icon={Users}
-                title={contacts.length === 0 ? "No contacts yet" : "No matching contacts"}
-                description={contacts.length === 0 ? "Add the people you work with at this account and they'll show up here." : "Try another search or turn off the key contacts filter."}
+                title={contacts.length === 0 ? "No contacts yet" : keyOnly ? "No key contacts shown" : "No matching contacts"}
+                description={contacts.length === 0 ? "Add the people you work with at this account and they'll show up here." : keyOnly ? "Show everyone to mark a contact as key." : "Try another search."}
+                action={keyOnly ? <Button variant="secondary" onClick={() => setKeyOnly(false)}>Show all contacts</Button> : undefined}
                 className="md:col-span-2"
               />
             )}
@@ -3409,10 +3466,9 @@ export function CustomerTabs({
                 </div>
                 <div>
                   <label className={lbl}>Expected close<OptionalMark /></label>
-                  <input
-                    type="date"
+                  <DateField
                     value={dealForm.close_date}
-                    onChange={(e) => set("close_date", e.target.value)}
+                    onChange={(e) => set("close_date", e)}
                     className={fld}
                   />
                   <DateEcho value={dealForm.close_date} />
@@ -3485,6 +3541,24 @@ export function CustomerTabs({
         detail="Meetings and requests that named them keep that name. Only the person's record on this account is removed."
         confirmLabel="Remove contact"
         onConfirm={removeContact}
+      />
+
+      <ConfirmDialog
+        open={!!unmarkingKeyContact}
+        person={unmarkingKeyContact?.contact.full_name}
+        busy={keySaving === unmarkingKeyContact?.contact.id}
+        onClose={() => setUnmarkingKeyContact(null)}
+        title="Remove key-contact status?"
+        body={<><b>{unmarkingKeyContact?.contact.full_name}</b> will no longer be marked as a key contact on this account.</>}
+        detail="Their contact record stays on the account. You can mark them as key again anytime."
+        confirmLabel="Remove key status"
+        tone="primary"
+        onConfirm={() => {
+          if (!unmarkingKeyContact) return;
+          void toggleKeyContact(unmarkingKeyContact.contact, unmarkingKeyContact.index).then((saved) => {
+            if (saved) setUnmarkingKeyContact(null);
+          });
+        }}
       />
 
       <Modal
@@ -3757,10 +3831,9 @@ export function CustomerTabs({
               />
             </Field>
             <Field label="Follow-up date">
-              <Input
-                type="date"
+              <DateField
                 value={noteFollow}
-                onChange={(e) => setNoteFollow(e.target.value)}
+                onChange={(e) => setNoteFollow(e)}
               />
               <DateEcho value={noteFollow} />
             </Field>

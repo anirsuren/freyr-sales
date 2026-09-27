@@ -14,7 +14,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
-import { formatMoney, STAGE_COLOR, STAGE_PROBABILITY } from "@/lib/pipeline";
+import { formatMoney, STAGE_COLOR, STAGE_FILL, STAGE_PROBABILITY } from "@/lib/pipeline";
 import { tint } from "@/lib/tint";
 
 interface StageStat {
@@ -290,7 +290,7 @@ export function AnalyticsView({
                           ? "border-transparent text-white"
                           : "border-border-light text-text-secondary hover:border-blue-subtle"
                       }`}
-                      style={active ? { background: color } : undefined}
+                      style={active ? { background: STAGE_FILL[s.stage as keyof typeof STAGE_FILL] || "var(--stage-fill-engaged)" } : undefined}
                     >
                       <span
                         className="w-2 h-2 rounded-full shrink-0"
@@ -497,7 +497,7 @@ export function AnalyticsView({
                     className="h-9 rounded-md flex items-center justify-end pr-3 text-white text-[13px] font-semibold tnum shrink-0"
                     style={{
                       width: `${Math.max(8, (s.count / maxFunnel) * 100)}%`,
-                      background: color,
+                      background: STAGE_FILL[s.stage as keyof typeof STAGE_FILL] || "var(--stage-fill-engaged)",
                     }}
                   >
                     {s.count}

@@ -131,16 +131,16 @@ export function nextLeadRef(existing: Lead[]): string {
    in between wears a working colour. */
 export function leadStatusColor(status: LeadStatus): string {
   return status === "Converted"
-    ? "#16A34A"
+    ? "var(--ink-green)"
     : status === "Disqualified"
-      ? "#DC2626"
+      ? "var(--ink-red)"
       : status === "Qualifying"
         ? "var(--ink-bright-blue)"
         : status === "Contacted"
-          ? "#0891B2"
+          ? "var(--ink-teal)"
           : status === "Nurturing"
             ? "var(--ink-violet-soft)"
-            : "#4338CA";
+            : "var(--ink-indigo)";
 }
 
 export function leadSourceColor(source: LeadSource): string {
@@ -149,12 +149,12 @@ export function leadSourceColor(source: LeadSource): string {
     Conference: "var(--ink-magenta)",
     Referral: "var(--ink-teal-deep)",
     Campaign: "var(--ink-violet-soft)",
-    "Inbound email": "#0891B2",
+    "Inbound email": "var(--ink-teal)",
     Partner: "var(--ink-orange)",
-    Outbound: "#4338CA",
-    Other: "#8E98A8",
+    Outbound: "var(--ink-indigo)",
+    Other: "var(--ink-neutral)",
   };
-  return map[source] ?? "#8E98A8";
+  return map[source] ?? "var(--ink-neutral)";
 }
 
 /** How long this has been sitting, in whole days. Ageing is the whole point

@@ -92,6 +92,19 @@ env['MARKET_INTEL_AUTO_COLLECTION_ENABLED']='1'
 # both modes; Real remains the default whenever a session has no Mock cookie.
 env['DEFAULT_DATA_MODE']='live'
 env['DATA_MODE_LOCKED']='0'
+# The agent runs on Vertex in production too (Anir, Sep 26): one provider for
+# both environments. Production has its own identity-pool provider
+# (freyr-sales-ecs-prod, AWS account 966427768186) and its own credential
+# file, because a Google AWS provider is bound to a single AWS account. If the
+# federation ever fails, /api/health shows vertexBrain failing and every
+# question falls back to Anthropic, so nothing goes dark.
+env['AGENT_PROVIDER']='vertex'
+env['GOOGLE_CLOUD_PROJECT']='sound-fastness-480519-a6'
+env['GOOGLE_CLOUD_LOCATION']='global'
+env['GOOGLE_GENAI_USE_ENTERPRISE']='true'
+env['VERTEX_AI_MODEL']='gemini-3.5-flash'
+env['VERTEX_VERIFY_ON_STARTUP']='1'
+env['GOOGLE_APPLICATION_CREDENTIALS']='/app/config/gcp-aws-wif-prod.json'
 c['environment']=[{'name':k,'value':v} for k,v in env.items()]
 for k in ('taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy'):
     td.pop(k,None)

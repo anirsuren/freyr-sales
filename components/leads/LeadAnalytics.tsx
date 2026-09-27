@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useId, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlarmClock,
@@ -25,7 +25,7 @@ import {
   UserRoundCheck,
   type LucideIcon,
 } from "lucide-react";
-import { AreaChart, DonutChart, type TipItem } from "@/components/charts/Charts";
+import { AreaChart, DonutChart, donutSyncBroadcast, type TipItem } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
@@ -119,6 +119,8 @@ function LeadRowDetails({ lead, columns, companyHref }: { lead: Lead; columns: n
 
 export function LeadAnalytics({ leads }: { leads: Lead[] }) {
   const companyHref = (lead: Lead) => companyDestination(lead.company, lead.customerId);
+  const summaryStatusSyncId = useId();
+  const workspaceStatusSyncId = useId();
   const [statusWorkspaceOpen, setStatusWorkspaceOpen] = useState(false);
   const [statusWorkspaceFilter, setStatusWorkspaceFilter] = useState<
     LeadStatus | "all"
@@ -412,16 +414,20 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 size={132}
                 thickness={15}
                 format="number"
+                syncId={summaryStatusSyncId}
                 onSegmentClick={(index) => openStatusWorkspace(activeStatusSegments[index].label as LeadStatus)}
-                tooltipOnHover={false}
               />
             </div>
             <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">
-              {activeStatusSegments.map((segment) => (
+              {activeStatusSegments.map((segment, index) => (
                 <button
                   type="button"
                   key={segment.label}
                   onClick={() => openStatusWorkspace(segment.label as LeadStatus)}
+                  onMouseEnter={() => donutSyncBroadcast(summaryStatusSyncId, index)}
+                  onMouseLeave={() => donutSyncBroadcast(summaryStatusSyncId, null)}
+                  onFocus={() => donutSyncBroadcast(summaryStatusSyncId, index)}
+                  onBlur={() => donutSyncBroadcast(summaryStatusSyncId, null)}
                   aria-label={`Open ${segment.value} ${segment.label} leads`}
                   className="group flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1 text-left text-[11.5px] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
                 >
@@ -469,9 +475,9 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                   openSourceWorkspace(bar.label);
                 }}
                 aria-label={`Open all ${bar.value} ${bar.label} leads`}
-                className="group grid w-full grid-cols-[minmax(150px,1fr)_72px_154px_14px] grid-rows-[auto_8px] items-center gap-x-3 gap-y-1.5 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
+                className="group grid w-full grid-cols-[minmax(150px,1fr)_72px_154px_14px] grid-rows-[auto_8px] items-center gap-x-3 gap-y-1.5 rounded-lg px-2 py-2 text-left transition-[background-color,box-shadow,transform] duration-150 hover:translate-x-0.5 hover:bg-blue-light hover:shadow-[inset_3px_0_0_var(--blue-primary),0_2px_10px_-2px_rgba(0,64,160,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary"
               >
-                <span className="col-start-1 row-start-1 block min-w-0 truncate text-[11.5px] font-medium leading-5 text-text-secondary">
+                <span className="col-start-1 row-start-1 block min-w-0 truncate text-[11.5px] font-medium leading-5 text-text-secondary transition-colors group-hover:text-blue-primary">
                   {bar.label}
                 </span>
                 <strong className="col-start-2 row-start-1 self-center text-[12px] font-semibold leading-5 text-text-primary tnum">
@@ -533,6 +539,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 size={210}
                 thickness={24}
                 format="number"
+                syncId={workspaceStatusSyncId}
                 selectedIndex={statusWorkspaceFilter === "all" ? null : activeStatusSegments.findIndex((segment) => segment.label === statusWorkspaceFilter)}
                 onSegmentClick={(index) => {
                   const status = activeStatusSegments[index].label as LeadStatus;
@@ -555,13 +562,17 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
                 <span className="flex-1 text-[13px] font-semibold">All leads</span>
                 <span className="text-[12px] font-bold tnum">{leads.length}</span>
               </button>
-              {activeStatusSegments.map((segment) => (
+              {activeStatusSegments.map((segment, index) => (
                 <button
                   type="button"
                   key={segment.label}
                   onClick={() =>
                     setStatusWorkspaceFilter(segment.label as LeadStatus)
                   }
+                  onMouseEnter={() => donutSyncBroadcast(workspaceStatusSyncId, index)}
+                  onMouseLeave={() => donutSyncBroadcast(workspaceStatusSyncId, null)}
+                  onFocus={() => donutSyncBroadcast(workspaceStatusSyncId, index)}
+                  onBlur={() => donutSyncBroadcast(workspaceStatusSyncId, null)}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
                     statusWorkspaceFilter === segment.label
                       ? "bg-white shadow-sm ring-1 ring-border-light"

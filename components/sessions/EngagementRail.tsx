@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { useState } from "react";
 import { DateEcho } from "@/components/ui/DateEcho";
@@ -127,11 +128,10 @@ export function EngagementRail({
             </div>
             <div>
               <label className={labelCls}>Next step</label>
-              <input
-                type="date"
+              <DateField
                 className={fieldCls}
                 value={followUp}
-                onChange={(e) => setFollowUp(e.target.value)}
+                onChange={(e) => setFollowUp(e)}
               />
               <DateEcho value={followUp} />
             </div>

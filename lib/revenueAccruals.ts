@@ -2,6 +2,7 @@ import { signDateOf, type Opportunity } from "./opportunitiesShared";
 import "server-only";
 
 import { getDataMode } from "./dataMode";
+import { mockDated } from "./mockDates";
 import {
   DEVIATION_ORIGINS,
   EMPTY_ACCRUALS,
@@ -594,7 +595,7 @@ function seedPlan(deal: SeedDeal, now: string): AccrualPlan | null {
       origin: "original",
       lines: original,
       by,
-      at: seedStamp("2026-02", h),
+      at: seedStamp("2026-07", h),
     },
   ];
 
@@ -612,7 +613,7 @@ function seedPlan(deal: SeedDeal, now: string): AccrualPlan | null {
       lines: seedSlip(original, 1 + ((h >>> 17) % 3)),
       reason: SEED_SLIP_REASONS[h % SEED_SLIP_REASONS.length],
       by: SEED_PLANNERS[(h + 2) % SEED_PLANNERS.length],
-      at: seedStamp("2026-06", h),
+      at: seedStamp("2026-08", h),
     });
   }
   if (story >= 78 && story < 90) {
@@ -684,20 +685,20 @@ function seedPlan(deal: SeedDeal, now: string): AccrualPlan | null {
 }
 
 /**
- * THE FROZEN SHEETS. Five of them, one per month, each holding what every plan
+ * THE FROZEN SHEETS. One for July and August, each holding what every plan
  * SAID at the end of that month rather than a second invented set of figures:
  * for each plan, the last version written before the sheet was taken.
  *
  * That is what makes the month-on-month gap honest here. A deviation stamped
- * in June is inside July's sheet and outside April's, so the gap between any
+ * in August is inside August's sheet and outside July's, so the gap between any
  * two sheets is exactly the re-planning that happened between them, and the
  * deals the report names are the deals that really moved.
  */
 function seedSnapshots(plans: AccrualPlan[]): AccrualSnapshot[] {
-  /* THREE, NOT A YEAR OF THEM. Only the newest sheet before this month is ever
+  /* TWO, NOT A YEAR OF THEM. Only the newest sheet before this month is ever
      read, and each one photographs every plan — five of them doubled the size
      of a row that is read, modified and written back on every single save. */
-  const months = ["2026-06", "2026-07", "2026-08"];
+  const months = ["2026-07", "2026-08"];
   return months.map((id) => {
     const [y, m] = id.split("-").map(Number);
     const takenAt = new Date(Date.UTC(y, m, 0, 18, 0, 0)).toISOString();
@@ -724,6 +725,47 @@ function seedSnapshots(plans: AccrualPlan[]): AccrualSnapshot[] {
         .filter((r): r is AccrualSnapshot["rows"][number] => r !== null),
     };
   });
+}
+
+/** Older showroom plans can have a month-by-month schedule beginning before
+ * July 2026. Move each plan's whole schedule together, including its versions
+ * and frozen comparisons, so the figures and their order stay intact. */
+function mockAccrualTimeline(state: RevenueAccrualsState): RevenueAccrualsState {
+  const shiftMonth = (month: string, offset: number) => {
+    const [year, number] = month.split("-").map(Number);
+    return new Date(Date.UTC(year, number - 1 + offset, 1)).toISOString().slice(0, 7);
+  };
+  const offsetFor = (months: string[]) => {
+    const first = months.filter((m) => /^\d{4}-\d{2}$/.test(m)).sort()[0];
+    if (!first || first >= "2026-07") return 0;
+    const [year, month] = first.split("-").map(Number);
+    return 2026 * 12 + 7 - (year * 12 + month);
+  };
+  const shifts = new Map<string, number>();
+  for (const plan of state.plans) {
+    const offset = offsetFor([
+      ...plan.lines.map((line) => line.month),
+      ...(plan.versions ?? []).flatMap((version) => version.lines.map((line) => line.month)),
+    ]);
+    if (!offset) continue;
+    shifts.set(plan.opportunityId, offset);
+    plan.lines = plan.lines.map((line) => ({ ...line, month: shiftMonth(line.month, offset) }));
+    plan.versions = plan.versions?.map((version) => ({
+      ...version,
+      lines: version.lines.map((line) => ({ ...line, month: shiftMonth(line.month, offset) })),
+    }));
+  }
+  state.snapshots = state.snapshots.filter((snapshot) => snapshot.id >= "2026-07");
+  for (const snapshot of state.snapshots) {
+    for (const row of snapshot.rows) {
+      const offset = shifts.get(row.opportunityId) ?? offsetFor(Object.keys(row.byMonth));
+      if (!offset) continue;
+      row.byMonth = Object.fromEntries(
+        Object.entries(row.byMonth).map(([month, amount]) => [shiftMonth(month, offset), amount])
+      );
+    }
+  }
+  return mockDated(state);
 }
 
 /**
@@ -784,11 +826,11 @@ export async function readRevenueAccruals(): Promise<RevenueAccrualsState> {
   if (getDataMode() !== "mock") return readRow();
   const existing = await readRowRaw();
   if (!existing) {
-    const seeded = await sampleAccruals();
+    const seeded = mockAccrualTimeline(await sampleAccruals());
     await writeRow(seeded).catch(() => undefined);
     return seeded;
   }
-  const state = normalize(existing);
+  const state = mockAccrualTimeline(normalize(existing));
   if (state.seedVersion === SEED_VERSION) return state;
 
   /* A ROW BUILT BY AN OLDER SEED, TOPPED UP ONCE.
@@ -801,7 +843,7 @@ export async function readRevenueAccruals(): Promise<RevenueAccrualsState> {
      any month a person froze themselves is kept. */
   const kept = state.plans.filter((p) => !SEED_OWNED.test(p.id));
   const claimed = new Set(kept.map((p) => p.opportunityId));
-  const fresh = await sampleAccruals();
+  const fresh = mockAccrualTimeline(await sampleAccruals());
   const seedMonths = new Set(fresh.snapshots.map((s) => s.id));
   const merged: RevenueAccrualsState = {
     plans: [...kept, ...fresh.plans.filter((p) => !claimed.has(p.opportunityId))],

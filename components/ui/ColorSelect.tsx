@@ -1544,10 +1544,11 @@ export function MultiColorSelect({
                 {/* The checkbox — the literal ask ("checkboxes before them"). */}
                 <span
                   className={cn(
-                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                    "color-select-checkbox flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
                     on ? "text-white" : "border-border bg-white"
                   )}
-                  style={on ? { background: accent, borderColor: accent } : undefined}
+                  data-selected={on}
+                  style={on ? { "--filter-color": accent, background: accent, borderColor: accent } as CSSProperties : undefined}
                 >
                   {on && <Check size={11} strokeWidth={3} />}
                 </span>

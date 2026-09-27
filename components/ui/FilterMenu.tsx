@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -276,7 +276,7 @@ export function FilterMenu({
                              with a rail down its left: the two panes read as
                              one shape rather than a highlight beside a list. */
                           ? "bg-white font-semibold text-blue-primary [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-                          : "text-text-secondary hover:bg-white/70 hover:text-text-primary"
+                          : "text-text-secondary hover:bg-canvas/70 hover:text-text-primary"
                       )}
                     >
                       <span className="min-w-0 flex-1 break-words">{group.label}</span>
@@ -353,8 +353,9 @@ export function FilterMenu({
                                 a colour dot never did. */}
                             <span
                               aria-hidden="true"
-                              className="grid h-[15px] w-[15px] shrink-0 place-items-center rounded-[4px] border border-border bg-white transition-colors"
-                              style={on ? { borderColor: option.color || "var(--blue-primary)", background: option.color || "var(--blue-primary)", color: "white" } : undefined}
+                              data-selected={on}
+                              className="filter-option-checkbox grid h-[15px] w-[15px] shrink-0 place-items-center rounded-[4px] border border-border bg-white transition-colors"
+                              style={on ? { "--filter-color": option.color || "var(--blue-primary)", borderColor: option.color || "var(--blue-primary)", background: option.color || "var(--blue-primary)", color: "white" } as CSSProperties : undefined}
                             >
                               {on && <Check size={11} strokeWidth={3} />}
                             </span>
@@ -386,8 +387,9 @@ export function FilterMenu({
                               </span>
                             ) : null}
                             <span
-                              className={cn("min-w-0 flex-1 break-words", option.color && !option.icon && "font-semibold")}
-                              style={option.color && !option.icon ? { color: option.color } : undefined}
+                              data-color={Boolean(option.color && !option.icon)}
+                              className={cn("filter-option-label min-w-0 flex-1 break-words", option.color && !option.icon && "font-semibold")}
+                              style={option.color && !option.icon ? { "--filter-color": option.color, color: option.color } as CSSProperties : undefined}
                             >{option.label}</span>
                           </button>
                         );

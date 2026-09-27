@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -2012,10 +2013,9 @@ export function RequestDetail({
               <span className="text-[12px] font-semibold text-text-primary">
                 Needed by<OptionalMark />
               </span>
-              <input
-                type="date"
+              <DateField
                 value={editNeededBy}
-                onChange={(e) => setEditNeededBy(e.target.value)}
+                onChange={(e) => setEditNeededBy(e)}
                 className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
               />
             </label>

@@ -89,6 +89,21 @@ jobs:
             | set_env("DEFAULT_DATA_MODE"; "mock")
             | set_env("DATA_MODE_LOCKED"; "0")
             | set_env("AUTO_APPROVE_EMAIL_DOMAINS"; "freyrsolutions.com")
+            # THE AGENT RUNS ON VERTEX (Anir, Sep 26: "it's definitely supposed
+            # to use Vertex"). This step inherits its environment from the live
+            # task, so the Google settings added to deploy/ecs-task-definition.json
+            # on Sep 21 never reached the running service and /api/health kept
+            # saying "vertexBrain: not configured". Set here, every deploy
+            # carries them. The federation file ships inside the image; a
+            # failed Vertex call falls back to Anthropic for that question, so a
+            # broken federation shows on /api/health without darkening the agent.
+            | set_env("AGENT_PROVIDER"; "vertex")
+            | set_env("GOOGLE_CLOUD_PROJECT"; "sound-fastness-480519-a6")
+            | set_env("GOOGLE_CLOUD_LOCATION"; "global")
+            | set_env("GOOGLE_GENAI_USE_ENTERPRISE"; "true")
+            | set_env("VERTEX_AI_MODEL"; "gemini-3.5-flash")
+            | set_env("VERTEX_VERIFY_ON_STARTUP"; "1")
+            | set_env("GOOGLE_APPLICATION_CREDENTIALS"; "/app/config/gcp-aws-wif.json")
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
                   .compatibilities, .registeredAt, .registeredBy)
           ' > taskdef.json

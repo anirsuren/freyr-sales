@@ -1714,6 +1714,7 @@ export function OfferingsBrowser({
                       aria-expanded={openRows.has(o.id)}
                       className={cn(
                         "group cursor-pointer align-middle transition-colors",
+                        rowAccent && "offering-accent-row",
                         openRows.has(o.id)
                           ? "bg-surface"
                           : "border-b border-border-light last:border-0 hover:bg-[var(--surface)]"

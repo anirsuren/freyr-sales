@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -1303,11 +1304,10 @@ export function DealOverviewEditor({
                 empty={!signs}
               />
             ) : (
-              <input
-                type="date"
+              <DateField
                 value={signs}
                 onChange={(e) => {
-                  const next = e.target.value;
+                  const next = e;
                   setSigns(next);
                   /* BOTH PLACES, SO THEY CANNOT DRIFT AGAIN. One offering per
                      opportunity since Aug 17, so the row IS the deal: writing
@@ -2193,7 +2193,7 @@ export function DealOverviewEditor({
           you think you edited. */}
       {!ro && dirtyTotal > 0 && (
         <div className="sticky bottom-0 z-30 -mx-1 mt-2 px-1 pb-1">
-          <div data-agent-dock-clearance className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-white/95 px-4 py-3 shadow-[0_-2px_18px_-6px_rgba(16,22,30,0.22)] backdrop-blur">
+          <div data-agent-dock-clearance className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-subtle bg-canvas/95 px-4 py-3 shadow-[0_-2px_18px_-6px_rgba(16,22,30,0.22)] backdrop-blur">
             <span className="text-[13px] font-semibold text-text-primary">
               {dirtyTotal} unsaved change{dirtyTotal === 1 ? "" : "s"}
             </span>

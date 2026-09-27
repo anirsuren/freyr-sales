@@ -102,10 +102,10 @@ export default async function ReportsPage() {
   // sit a quarter-turn apart on the wheel so a glance at the Type column is
   // enough (Anir, Jul 25: "it has to be distinct and easy").
   const TYPE_COLOR: Record<string, string> = {
-    annual: "#2563EB", // blue
+    annual: "var(--cat-blue)", // blue
     project: "var(--ink-violet-soft)", // violet
     annual_service: "var(--ink-orange)", // burnt orange, this colour is also the Type chip's TEXT (below), and amber was unreadable there
-    license: "#059669", // emerald
+    license: "var(--ink-emerald)", // emerald
   };
   const typeSegments = report.byType.map((t) => ({
     label: REVENUE_TYPE_META[t.type].short,

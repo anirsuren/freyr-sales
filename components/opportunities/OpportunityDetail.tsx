@@ -732,7 +732,7 @@ export function OpportunityDetail({
           >
           </DealOverviewEditor>
         ) : tab === "review" ? (
-          <OpportunityReviewView review={deal.review} mayEdit={verdict.mayEdit} dealId={deal.id} />
+          <OpportunityReviewView review={deal.review} records={deal.reviewRecords} mayEdit={verdict.mayEdit} dealId={deal.id} />
         ) : (
           <Customer360
             chromeless

@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
+import type { CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
 
 // The one stat tile (Anir, Jul 4: "just make them look better, dude").
@@ -41,9 +42,10 @@ export function StatTile({
         <span
           className={cn(
             "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+            color && "stat-tile-custom-icon",
             !color && (warn ? "bg-warning/10 text-warning" : "bg-blue-light text-blue-primary")
           )}
-          style={color ? { background: color, color: "#fff" } : undefined}
+          style={color ? { "--stat-accent": color, background: color, color: "#fff" } as CSSProperties : undefined}
         >
           <Icon size={15} strokeWidth={1.9} />
         </span>

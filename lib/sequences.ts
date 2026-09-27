@@ -1,6 +1,7 @@
 // Outbound cadence library. The seeded templates are editable working records,
 // and user-created sequences live in the same runtime store as campaigns.
 import { getDataMode } from "./dataMode";
+import { mockDated } from "./mockDates";
 
 export type SequenceChannel = "email" | "call" | "wait";
 
@@ -22,7 +23,7 @@ export interface Sequence {
   created_at: string;
 }
 
-const CREATED = "2026-06-01T12:00:00.000Z";
+const CREATED = "2026-07-01T12:00:00.000Z";
 
 export const SEQUENCES: Sequence[] = [
   {
@@ -276,7 +277,7 @@ function store(): SequenceStore {
   if (!globalStore.__freyrSequences) {
     globalStore.__freyrSequences = { sequences: cloneDefaults() };
   }
-  return globalStore.__freyrSequences;
+  return mockDated(globalStore.__freyrSequences);
 }
 
 let nextId = 0;

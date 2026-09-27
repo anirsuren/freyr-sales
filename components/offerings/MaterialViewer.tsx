@@ -1009,7 +1009,7 @@ export function MaterialViewer({
                   for a ZIP, as though the archive itself were the document.
                   This card previews the manifest layout that is about to
                   appear and uses a restrained progress line instead. */}
-              <div className="w-full max-w-[430px] rounded-2xl border border-border-light bg-white p-5 shadow-[0_12px_36px_rgba(16,24,40,0.08)] dark:bg-[var(--surface-elevated)]">
+              <div className="w-full max-w-[430px] rounded-2xl border border-border-light bg-canvas p-5 shadow-[0_12px_36px_rgba(16,24,40,0.08)] dark:bg-[var(--surface-elevated)]">
                 <div className="flex items-center gap-3.5">
                   <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
                     {extensionOf(currentPath) === "zip" ? (
@@ -1017,7 +1017,7 @@ export function MaterialViewer({
                     ) : (
                       <FileText size={20} strokeWidth={1.85} />
                     )}
-                    <span className="absolute -bottom-1 -right-1 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-blue-primary bg-white dark:border-[var(--surface-elevated)] dark:bg-[var(--surface-elevated)]" />
+                    <span className="absolute -bottom-1 -right-1 h-4 w-4 animate-spin rounded-full border-2 border-canvas border-t-blue-primary bg-canvas dark:border-[var(--surface-elevated)] dark:bg-[var(--surface-elevated)]" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13.5px] font-semibold text-text-primary">
@@ -1179,7 +1179,7 @@ export function MaterialViewer({
                     className={`inline-flex h-9 max-w-[240px] shrink-0 items-center gap-2 rounded-t-lg border border-b-0 px-3 text-[12px] font-semibold transition-all ${
                       i === sheet
                         ? "border-border-light bg-white text-blue-primary shadow-[0_-1px_2px_rgba(16,24,40,0.04)]"
-                        : "border-transparent text-text-secondary hover:bg-white/70 hover:text-text-primary"
+                        : "border-transparent text-text-secondary hover:bg-canvas/70 hover:text-text-primary"
                     }`}
                   >
                     <Table2 size={14} strokeWidth={1.9} aria-hidden="true" />

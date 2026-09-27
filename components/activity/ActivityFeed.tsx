@@ -70,23 +70,23 @@ function dueStatus(value: string): {
   if (days < 0) {
     return {
       label: `${Math.abs(days)}d overdue`,
-      color: "#B42318",
-      bg: "#FEF3F2",
+      color: "var(--activity-overdue-ink)",
+      bg: "var(--activity-overdue-bg)",
       bucket: "overdue",
     };
   }
   if (days === 0) {
     return {
       label: "Due today",
-      color: "#8A6100",
-      bg: "#FFF7D6",
+      color: "var(--activity-today-ink)",
+      bg: "var(--activity-today-bg)",
       bucket: "today",
     };
   }
   return {
     label: days === 1 ? "Tomorrow" : `In ${days}d`,
-    color: "#0057B8",
-    bg: "#EAF4FF",
+    color: "var(--activity-upcoming-ink)",
+    bg: "var(--activity-upcoming-bg)",
     bucket: "upcoming",
   };
 }
@@ -260,15 +260,15 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
       context: "total touches",
       icon: MessageSquareText,
       color: "var(--ink-bright-blue)",
-      bg: "#EAF4FF",
+      bg: "var(--activity-upcoming-bg)",
     },
     {
       label: "Replies",
       value: String(replies),
       context: `${responseRate}% response rate`,
       icon: Reply,
-      color: "#007A5A",
-      bg: "#E9F8F2",
+      color: "var(--activity-replies-ink)",
+      bg: "var(--activity-replies-bg)",
     },
     {
       label: "Meetings",
@@ -276,7 +276,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
       context: "booked",
       icon: UsersRound,
       color: "var(--ink-violet)",
-      bg: "#F3EEFF",
+      bg: "var(--activity-meetings-bg)",
     },
     {
       label: "Follow-ups",
@@ -286,8 +286,8 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
           ? `${allDueCounts.overdue} overdue`
           : "scheduled",
       icon: CalendarCheck2,
-      color: allDueCounts.overdue > 0 ? "#B42318" : "#8A6100",
-      bg: allDueCounts.overdue > 0 ? "#FEF3F2" : "#FFF7D6",
+      color: allDueCounts.overdue > 0 ? "var(--activity-overdue-ink)" : "var(--activity-today-ink)",
+      bg: allDueCounts.overdue > 0 ? "var(--activity-overdue-bg)" : "var(--activity-today-bg)",
     },
   ];
 
@@ -485,9 +485,9 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
             {scope === "followups" && (
               <div className="ml-auto flex items-center gap-2">
                 {[
-                  ["Overdue", dueCounts.overdue, "#B42318", "#FEF3F2"],
-                  ["Today", dueCounts.today, "#8A6100", "#FFF7D6"],
-                  ["Upcoming", dueCounts.upcoming, "#0057B8", "#EAF4FF"],
+                  ["Overdue", dueCounts.overdue, "var(--activity-overdue-ink)", "var(--activity-overdue-bg)"],
+                  ["Today", dueCounts.today, "var(--activity-today-ink)", "var(--activity-today-bg)"],
+                  ["Upcoming", dueCounts.upcoming, "var(--activity-upcoming-ink)", "var(--activity-upcoming-bg)"],
                 ].map(([label, value, color, bg]) => (
                   <span
                     key={String(label)}

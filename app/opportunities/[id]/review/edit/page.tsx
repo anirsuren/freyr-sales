@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: deal ? `Edit review · ${deal.name || deal.customer}` : "Edit review" };
 }
 
-export default async function EditOpportunityReviewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditOpportunityReviewPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ copy?: string }> }) {
   await requireModuleAccess("/opportunities");
   await requireServerMemberScope();
   const { id } = await params;
@@ -38,6 +38,9 @@ export default async function EditOpportunityReviewPage({ params }: { params: Pr
   ]);
   const deal = opportunities.find((item) => item.id === id);
   if (!deal) redirect("/opportunities");
+  const copyId = (await searchParams).copy;
+  const source = deal.reviewRecords?.find((item) => item.id === copyId)
+    ?? (copyId === "legacy" && deal.review ? { id: "legacy", review: deal.review } : undefined);
   const verdict = mayTouchOpportunity({
     privileges,
     teams,
@@ -71,7 +74,7 @@ export default async function EditOpportunityReviewPage({ params }: { params: Pr
     <SmartBack fallback={`/opportunities/${deal.id}?tab=review`} className="mb-4 inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-blue-primary">
       <ArrowLeft size={15} /> Back to review
     </SmartBack>
-    <PageHeader title={`Edit review · ${deal.name || deal.customer}`} subtitle="Update the decision, the people involved, and the actions agreed with the customer." />
-    <div className="mt-5"><OpportunityReviewEditScreen dealId={deal.id} review={deal.review} options={options} /></div>
+    <PageHeader title={`New review · ${deal.name || deal.customer}`} subtitle="Capture a dated discussion without changing an earlier review." />
+    <div className="mt-5"><OpportunityReviewEditScreen dealId={deal.id} review={source?.review} copiedFromId={source?.id} options={options} /></div>
   </div>;
 }

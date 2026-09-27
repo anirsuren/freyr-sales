@@ -4,16 +4,16 @@ import { useRouter } from "next/navigation";
 import type { OpportunityReview, OpportunityReviewOptions } from "@/lib/opportunitiesShared";
 import { OpportunityReviewTab } from "./OpportunityReviewTab";
 
-export function OpportunityReviewEditScreen({ dealId, review, options }: { dealId: string; review?: OpportunityReview; options: OpportunityReviewOptions }) {
+export function OpportunityReviewEditScreen({ dealId, review, options, copiedFromId }: { dealId: string; review?: OpportunityReview; options: OpportunityReviewOptions; copiedFromId?: string }) {
   const router = useRouter();
   const back = () => router.push(`/opportunities/${dealId}?tab=review`);
 
-  async function save(next: OpportunityReview) {
+  async function save(next: OpportunityReview, reviewedOn: string) {
     try {
       const response = await fetch("/api/opportunities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ op: "update", id: dealId, review: next }),
+        body: JSON.stringify({ op: "update", id: dealId, review: next, reviewDate: reviewedOn, copiedFromReviewId: copiedFromId }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) return { error: data?.error || "That didn't save." };
@@ -24,5 +24,5 @@ export function OpportunityReviewEditScreen({ dealId, review, options }: { dealI
     }
   }
 
-  return <OpportunityReviewTab review={review} mayEdit dealId={dealId} editPage onSave={save} onCancel={back} options={options} />;
+  return <OpportunityReviewTab review={review} mayEdit dealId={dealId} editPage onSave={save} onCancel={back} options={options} copiedFromId={copiedFromId} />;
 }

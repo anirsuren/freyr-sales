@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import { UploadProgress } from "@/components/ui/UploadProgress";
@@ -285,18 +286,16 @@ export function NewContractDialog({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Starts">
-            <input
-              type="date"
+            <DateField
               value={start}
-              onChange={(e) => setStart(e.target.value)}
+              onChange={(e) => setStart(e)}
               className={INPUT}
             />
           </Field>
           <Field label="Ends">
-            <input
-              type="date"
+            <DateField
               value={end}
-              onChange={(e) => setEnd(e.target.value)}
+              onChange={(e) => setEnd(e)}
               className={INPUT}
             />
           </Field>

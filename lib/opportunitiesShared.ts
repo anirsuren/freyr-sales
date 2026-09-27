@@ -325,6 +325,17 @@ export type OpportunityReview = {
   actions: { id: string; action: string; owner: string; ownerId?: string; deadline: string }[];
 };
 
+/** A completed discussion is a snapshot. A later review copies its contents
+ * into a new record instead of changing what the team agreed previously. */
+export type OpportunityReviewRecord = {
+  id: string;
+  reviewedOn: string;
+  recordedAt: string;
+  recordedBy: string;
+  copiedFromId?: string;
+  review: OpportunityReview;
+};
+
 export type OpportunityReviewOptions = {
   contacts: { id: string; name: string; title: string; linkedin: string }[];
   companies: { id: string; name: string }[];
@@ -410,6 +421,7 @@ export type Opportunity = {
   owner?: string;
   nextSteps?: string;
   review?: OpportunityReview;
+  reviewRecords?: OpportunityReviewRecord[];
   /**
    * Which goals this deal is expected to feed.
    *
@@ -778,17 +790,17 @@ export function signDateOf(deal: {
  * cool-to-warm along the lifecycle so a column of chips reads as progress.
  */
 export const OPPORTUNITY_STATUS_COLOR: Record<string, string> = {
-  Qualify: "#0891B2",
-  Pilot: "#5E5CE6",
+  Qualify: "var(--opportunity-qualify)",
+  Pilot: "var(--opportunity-pilot)",
   Propose: "var(--ink-bright-blue)",
   "Submitted to client": "var(--ink-violet-soft)",
   "Under review": "var(--ink-magenta)",
-  "On hold": "#8E98A8",
-  Won: "#16A34A",
-  Lost: "#DC2626",
+  "On hold": "var(--opportunity-on-hold)",
+  Won: "var(--opportunity-won)",
+  Lost: "var(--opportunity-lost)",
 };
 
 /** The colour for a status, or a neutral for anything unrecognised. */
 export function statusColor(status: string | null | undefined): string {
-  return OPPORTUNITY_STATUS_COLOR[String(status ?? "")] ?? "#8E98A8";
+  return OPPORTUNITY_STATUS_COLOR[String(status ?? "")] ?? "var(--text-secondary)";
 }

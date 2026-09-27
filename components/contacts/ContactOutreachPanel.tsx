@@ -163,7 +163,7 @@ export function ContactOutreachPanel({
             <p className="text-[12.5px] text-text-secondary mt-0.5">
               {classified
                 ? `Matched from ${companyName}'s portfolio to ${firstName}'s role and priorities.`
-                : `Once ${companyName} is classified, the services relevant to ${firstName}'s role will appear here.`}
+                : `Choose ${companyName}'s customer type to see offerings relevant to ${firstName}'s role.`}
             </p>
           </div>
         </div>
@@ -381,15 +381,15 @@ export function ContactOutreachPanel({
               <Package size={22} strokeWidth={1.8} />
             </span>
             <p className="text-[13.5px] text-text-secondary max-w-[360px] leading-relaxed">
-              Classify {companyName} and every offering that fits {firstName}&apos;s
-              role shows up here, ready to pitch.
+              Choose {companyName}&apos;s customer type to see offerings that fit
+              {firstName}&apos;s role, ready to pitch.
             </p>
             <Link
               href={`/customers/${customerId}?tab=offerings`}
               className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-white bg-blue-primary px-4 py-2 rounded-lg hover:bg-blue-hover transition-colors active:scale-[0.97]"
             >
               <Sparkles size={14} strokeWidth={1.9} />
-              Classify {companyName} now
+              Choose {companyName}&apos;s customer type
               <ChevronRight size={14} strokeWidth={2} />
             </Link>
           </div>

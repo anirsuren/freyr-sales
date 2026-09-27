@@ -2,16 +2,24 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import type { WorkspaceMemberScope } from "@/lib/types";
+import { DEFAULT_FONT_PRESET, isFontPreset } from "@/lib/fontPresets";
 
 export type MemberProfilePreferences = {
   title: string;
   signature: string;
+  /** Which font combination this person chose (lib/fontPresets). */
+  fontPreset: string;
 };
 
 const EMPTY_PROFILE: MemberProfilePreferences = {
   title: "",
   signature: "",
+  fontPreset: DEFAULT_FONT_PRESET,
 };
+
+function presetOf(value: unknown): string {
+  return isFontPreset(value) ? value : DEFAULT_FONT_PRESET;
+}
 
 function client() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -50,6 +58,7 @@ export async function readMemberProfile(
   return {
     title: clean(profile?.title, 160),
     signature: clean(profile?.signature, 4_000),
+    fontPreset: presetOf(profile?.fontPreset),
   };
 }
 
@@ -85,9 +94,97 @@ export async function readWorkspaceMemberProfiles(
     profiles.set(catalog.userId, {
       title: clean(catalog.profile?.title, 160),
       signature: clean(catalog.profile?.signature, 4_000),
+      fontPreset: presetOf(catalog.profile?.fontPreset),
     });
   }
   return profiles;
+}
+
+/**
+ * The stored profile object as it is, every key included. The typed reader
+ * above returns only the fields the profile form owns; other features keep
+ * their own keys on the same row (the WhatsApp link, for one) and must never
+ * be dropped by a save that did not know about them.
+ */
+export async function readRawMemberProfile(
+  scope: WorkspaceMemberScope
+): Promise<Record<string, unknown>> {
+  const db = client();
+  if (!db) return {};
+  const { data, error } = await db
+    .from("offering_catalog_state")
+    .select("catalog")
+    .eq("id", rowId(scope))
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const profile = (data?.catalog as { profile?: unknown } | null)?.profile;
+  return profile && typeof profile === "object" ? { ...(profile as Record<string, unknown>) } : {};
+}
+
+/**
+ * Members whose stored profile has `value` at a JSON path, e.g.
+ * `catalog->profile->whatsapp->>number`. Scope comes from the row body, never
+ * from parsing the id.
+ */
+export async function findMemberProfilesBy(
+  jsonPath: string,
+  value: string
+): Promise<Array<{ scope: WorkspaceMemberScope; profile: Record<string, unknown> }>> {
+  const db = client();
+  if (!db) return [];
+  const { data, error } = await db
+    .from("offering_catalog_state")
+    .select("catalog")
+    .like("id", "member-profile:%")
+    .eq(jsonPath, value);
+  if (error) throw new Error(error.message);
+  const rows: Array<{ scope: WorkspaceMemberScope; profile: Record<string, unknown> }> = [];
+  for (const row of data || []) {
+    const catalog = row.catalog as {
+      workspaceId?: unknown;
+      userId?: unknown;
+      profile?: unknown;
+    } | null;
+    if (typeof catalog?.workspaceId !== "string" || typeof catalog.userId !== "string") continue;
+    rows.push({
+      scope: { workspaceId: catalog.workspaceId, userId: catalog.userId },
+      profile:
+        catalog.profile && typeof catalog.profile === "object"
+          ? (catalog.profile as Record<string, unknown>)
+          : {},
+    });
+  }
+  return rows;
+}
+
+/**
+ * Set or remove keys on the profile that are not part of the form: a value
+ * of `undefined` deletes the key. The form's own fields are left as they are.
+ */
+export async function patchMemberProfileExtras(
+  scope: WorkspaceMemberScope,
+  patch: Record<string, unknown>
+): Promise<void> {
+  const db = client();
+  if (!db) throw new Error("Profile storage is not configured.");
+  const profile = await readRawMemberProfile(scope);
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) delete profile[key];
+    else profile[key] = value;
+  }
+  const { error } = await db.from("offering_catalog_state").upsert(
+    {
+      id: rowId(scope),
+      catalog: {
+        workspaceId: scope.workspaceId,
+        userId: scope.userId,
+        profile,
+        updatedAt: new Date().toISOString(),
+      },
+    },
+    { onConflict: "id" }
+  );
+  if (error) throw new Error(error.message);
 }
 
 export async function writeMemberProfile(
@@ -96,14 +193,21 @@ export async function writeMemberProfile(
 ): Promise<MemberProfilePreferences> {
   const db = client();
   if (!db) throw new Error("Profile storage is not configured.");
-  const current = await readMemberProfile(scope);
+  const [current, extras] = await Promise.all([
+    readMemberProfile(scope),
+    readRawMemberProfile(scope),
+  ]);
+  // Keys other features keep on this row survive a profile save.
   const profile = {
+    ...extras,
     title:
       input.title === undefined ? current.title : clean(input.title, 160),
     signature:
       input.signature === undefined
         ? current.signature
         : clean(input.signature, 4_000),
+    fontPreset:
+      input.fontPreset === undefined ? current.fontPreset : presetOf(input.fontPreset),
   };
   const { error } = await db.from("offering_catalog_state").upsert(
     {

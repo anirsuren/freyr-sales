@@ -60,8 +60,17 @@ export const STAGE_COLOR: Record<Stage, string> = {
   Prospect: "var(--ink-orange)",
   Engaged: "var(--ink-bright-blue)",
   Qualified: "var(--ink-violet-soft)",
-  "Meeting Booked": "#16A34A",
-  "Closed Lost": "#EF4444",
+  "Meeting Booked": "var(--stage-meeting)",
+  "Closed Lost": "var(--stage-lost)",
+};
+
+/** Solid stage fills stay dark enough for small white values in both themes. */
+export const STAGE_FILL: Record<Stage, string> = {
+  Prospect: "var(--stage-fill-prospect)",
+  Engaged: "var(--stage-fill-engaged)",
+  Qualified: "var(--stage-fill-qualified)",
+  "Meeting Booked": "var(--stage-fill-meeting)",
+  "Closed Lost": "var(--stage-fill-lost)",
 };
 
 // Every stage carries a colour AND an icon — a stage is a status chip, and a

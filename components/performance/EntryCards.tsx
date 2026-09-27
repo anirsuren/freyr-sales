@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { Fragment, useEffect, useState } from "react";
 import {
@@ -1859,12 +1860,11 @@ export function MyEntriesCard({
                   <span className="mb-1.5 block text-[11.5px] font-semibold text-text-secondary">
                     Date<RequiredMark />
                   </span>
-                  <input
+                  <DateField
                     required
-                    type="date"
                     value={draft.date}
                     onChange={(e) =>
-                      setDraft((d) => ({ ...d, date: e.target.value }))
+                      setDraft((d) => ({ ...d, date: e }))
                     }
                     className="h-12 w-full rounded-xl border border-border-light bg-white px-3 text-[14px] outline-none transition-shadow focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
                   />
@@ -2102,7 +2102,7 @@ export function VerifyQueueCard({
       )}
     >
       {pending && (
-        <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-[5px] bg-[color:#D97706]" />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-[5px] bg-[color:var(--status-fill-amber)]" />
       )}
       <div className="relative">
         <button
@@ -2143,7 +2143,7 @@ export function VerifyQueueCard({
           className={cn(
             "rounded-full px-2 py-0.5 text-[10.5px] font-bold",
             pending
-              ? "bg-[color:#D97706] text-white"
+              ? "bg-[color:var(--status-fill-amber)] text-white"
               : "bg-[rgba(22,163,74,0.12)] text-[color:#16A34A]"
           )}
         >

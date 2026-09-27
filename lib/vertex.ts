@@ -167,10 +167,29 @@ function normalizeTurns(
   return contents;
 }
 
+/** One model call may not hang the whole question (Anir, Sep 26: a question
+ *  ran 205 seconds and never answered; the chat gives up at 90). */
+const PER_CALL_TIMEOUT_MS = 45_000;
+
+type StepResult = {
+  text: string;
+  emitted: boolean;
+  calls: { id?: string; name?: string; args?: Record<string, unknown> }[];
+  content: Content | null;
+  finishReason: string | undefined;
+};
+
 /**
  * Gemini/Vertex equivalent of the existing Claude read-only tool loop.
  * The route can switch providers with AGENT_PROVIDER=vertex without changing
  * any data-access tool or permission boundary.
+ *
+ * WORDS ARRIVE AS THEY ARE WRITTEN, TOOLS OR NOT (Anir, Sep 26: "words don't
+ * appear as it thinks"). Every step streams when the caller listens: a step
+ * that ends in tool calls clears whatever preamble it wrote (`onReset`), and
+ * the step that ends in prose is the answer the person watched being typed.
+ * Streaming used to be reserved for tool-less questions, which in practice
+ * meant almost never.
  */
 export async function vertexConverseAgentic(
   system: string,
@@ -182,6 +201,8 @@ export async function vertexConverseAgentic(
   ) => Promise<{ content: string; did?: string }>,
   maxSteps = 4,
   onText?: (delta: string) => void,
+  onReset?: () => void,
+  signal?: AbortSignal,
 ): Promise<VertexAgentResult | null> {
   const contents = normalizeTurns(turns);
   if (!contents.length || contents[contents.length - 1].role !== "user") {
@@ -200,77 +221,89 @@ export async function vertexConverseAgentic(
   try {
     const { client: vertex, config } = getClient();
     const declarations = toolDeclarations(tools);
-    if (!declarations.length && onText) {
-      const stream = await vertex.models.generateContentStream({
-        model: config.model,
-        contents,
-        config: generationConfig(system, false),
-      });
-      let answer = "";
-      let finalChunk: Awaited<ReturnType<GoogleGenAI["models"]["generateContent"]>> | null = null;
+    const callConfig = (withTools: boolean): GenerateContentConfig => ({
+      ...generationConfig(system, withTools, declarations),
+      httpOptions: { timeout: PER_CALL_TIMEOUT_MS },
+      ...(signal ? { abortSignal: signal } : {}),
+    });
+
+    /* One step of the conversation, streamed to the listener when there is
+       one, reassembled into the same shape either way. */
+    const step = async (withTools: boolean): Promise<StepResult> => {
+      const request = { model: config.model, contents, config: callConfig(withTools) };
+      if (!onText) {
+        const response = await vertex.models.generateContent(request);
+        addUsage(usage, response);
+        return {
+          text: visibleResponseText(response),
+          emitted: false,
+          calls: response.functionCalls || [],
+          content: response.candidates?.[0]?.content ?? null,
+          finishReason: response.candidates?.[0]?.finishReason,
+        };
+      }
+      const stream = await vertex.models.generateContentStream(request);
+      const parts: NonNullable<Content["parts"]> = [];
+      let text = "";
+      let emitted = false;
+      let last: Awaited<ReturnType<GoogleGenAI["models"]["generateContent"]>> | null = null;
       for await (const chunk of stream) {
-        finalChunk = chunk;
-        // Streaming chunks are fragments, so preserve their leading/trailing
-        // spaces. visibleResponseText trims complete responses and would glue
-        // adjacent words together here.
-        const delta = (chunk.candidates?.[0]?.content?.parts || [])
-          .filter((part) => !part.thought && typeof part.text === "string")
-          .map((part) => part.text)
-          .join("");
-        if (delta) {
-          answer += delta;
-          onText(delta);
+        last = chunk;
+        for (const part of chunk.candidates?.[0]?.content?.parts || []) {
+          if (part.thought) continue;
+          parts.push(part);
+          // Chunks are fragments, so their leading and trailing spaces are
+          // real; trimming here glued adjacent words together.
+          if (typeof part.text === "string" && part.text) {
+            text += part.text;
+            emitted = true;
+            onText(part.text);
+          }
         }
       }
-      answer = answer.trim();
-      if (!answer) throw new Error("Vertex returned no written answer");
-      if (finalChunk) addUsage(usage, finalChunk);
-      noteVertexCall(true);
+      if (last) addUsage(usage, last);
       return {
-        text: answer,
-        dids,
-        truncated: finalChunk?.candidates?.[0]?.finishReason === "MAX_TOKENS",
-        usage,
+        text: text.trim(),
+        emitted,
+        calls: parts
+          .filter((part) => part.functionCall)
+          .map((part) => part.functionCall as StepResult["calls"][number]),
+        content: parts.length ? { role: "model", parts } : null,
+        finishReason: last?.candidates?.[0]?.finishReason,
       };
-    }
-    for (let step = 0; step < maxSteps; step++) {
-      const response = await vertex.models.generateContent({
-        model: config.model,
-        contents,
-        config: generationConfig(system, true, declarations),
-      });
-      addUsage(usage, response);
-      const calls = response.functionCalls || [];
-      if (!calls.length) {
-        const text = visibleResponseText(response);
-        if (!text) throw new Error("Vertex returned no written answer");
+    };
+
+    for (let round = 0; round < maxSteps; round++) {
+      const result = await step(true);
+      if (!result.calls.length) {
+        if (!result.text) throw new Error("Vertex returned no written answer");
         noteVertexCall(true);
         return {
-          text,
+          text: result.text,
           dids,
-          truncated:
-            response.candidates?.[0]?.finishReason === "MAX_TOKENS",
+          truncated: result.finishReason === "MAX_TOKENS",
           usage,
         };
       }
-
-      const modelContent = response.candidates?.[0]?.content;
-      if (modelContent) contents.push(modelContent);
+      // Anything it said before deciding to look something up is not the
+      // answer; take it off the screen so the answer starts clean.
+      if (result.emitted) onReset?.();
+      if (result.content) contents.push(result.content);
       const resultParts: NonNullable<Content["parts"]> = [];
-      for (const call of calls) {
+      for (const call of result.calls) {
         const name = call.name || "";
-        let result: { content: string; did?: string };
+        let output: { content: string; did?: string };
         try {
-          result = await runTool(name, call.args || {});
+          output = await runTool(name, call.args || {});
         } catch {
-          result = { content: `Couldn't run ${name} right now.` };
+          output = { content: `Couldn't run ${name} right now.` };
         }
-        if (result.did) dids.push(result.did);
+        if (output.did) dids.push(output.did);
         resultParts.push({
           functionResponse: {
             id: call.id,
             name,
-            response: { output: result.content },
+            response: { output: output.content },
           },
         });
       }
@@ -286,19 +319,13 @@ export async function vertexConverseAgentic(
         },
       ],
     });
-    const final = await vertex.models.generateContent({
-      model: config.model,
-      contents,
-      config: generationConfig(system, false),
-    });
-    addUsage(usage, final);
-    const text = visibleResponseText(final);
-    if (!text) throw new Error("Vertex returned no final answer");
+    const final = await step(false);
+    if (!final.text) throw new Error("Vertex returned no final answer");
     noteVertexCall(true);
     return {
-      text,
+      text: final.text,
       dids,
-      truncated: final.candidates?.[0]?.finishReason === "MAX_TOKENS",
+      truncated: final.finishReason === "MAX_TOKENS",
       usage,
     };
   } catch (error) {

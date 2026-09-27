@@ -1,0 +1,228 @@
+# The agent takes action
+
+Anir, Sep 26 (going to bed): "It should be like ChatGPT or Claude, but for
+this workspace. I can say 'hey, can we move this guy to this goal?' It'll find
+that guy, it'll find that goal, and it'll say 'do you want to do this action?'
+... it should follow the permissions, obviously. That's the whole point of it:
+knowing my permissions. A whole agent framework around that. It should be from
+WhatsApp too."
+
+## The one idea
+
+**The agent is a user of the app, signed in as you.** Every action it takes
+goes through the same API route the page would call, carrying your own
+session cookies. Nothing is re-implemented and no permission is re-decided:
+if the route says "You can look at this, but not change it", the agent says
+that to you, in those words. An admin gets admin; a rep gets rep; a view-only
+person gets refused exactly where the page would refuse them.
+
+And it never acts on its own. Every change is **proposed, then confirmed**:
+
+1. You ask. The agent finds the records with its read tools (the person, the
+   goal, the deal), checks what you are allowed to do, and proposes ONE change
+   in plain words: "Assign Priya Sharma to the goal Q4 pipeline $2M."
+2. You confirm. On the web: a card under the answer with **Do it** and
+   **Not now**. On WhatsApp: "Reply YES to do this, or NO." A plain yes or no
+   is handled without the model; anything else ("yes but make it 50k") goes
+   back to the agent, which re-proposes.
+3. It does it, through the route, and tells you what happened with a link to
+   the record. Every executed action is written to the Agent runs log with
+   who, what, when and the result.
+
+A proposal lives 30 minutes and can only be executed in a LATER request than
+the one that proposed it, so the model can never propose and execute inside a
+single turn; a person always sees it first.
+
+A yes belongs to the chat it was asked in: a proposal made on the web page is
+never executed by a "yes" texted to WhatsApp (or the other way round); the
+agent names it instead and the person can ask for it by name.
+
+Kill switch: `AGENT_ACTIONS_DISABLED=1` in the environment runs the agent
+read-only (no action tools, no yes/no shortcut, the confirm route answers 503).
+Actions are on unless it is set, so production can start read-only on one
+config line and be switched on later without a build.
+
+## Where it lives
+
+| Piece | File |
+| --- | --- |
+| Action catalogue: params, summary, permission pre-check, route call | `lib/agentActions.ts` |
+| Proposal store (per member, 30 min TTL) | `lib/agentActionStore.ts` |
+| Tools `propose_action` and `run_action`, the yes/no fast path | `app/api/agent/converse/route.ts` |
+| Web confirm/cancel | `app/api/agent/actions/route.ts`, `components/agent/ActionCard.tsx` |
+| WhatsApp yes/no | same fast path; `lib/whatsappAgent.ts` only carries the text |
+
+## The actions (v1)
+
+Every row is a route the app already has; the agent adds nothing to what the
+route allows. "Who" is what the route enforces, restated so the table can be
+read without opening the code.
+
+| Action | What it changes | Route | Who |
+| --- | --- | --- | --- |
+| `assign_goal` | Put a person on a goal (optionally with a target) | POST /api/performance `assign-goal` | Managers/admins anyone; others themselves or people in their group |
+| `unassign_goal` | Take a person off a goal | POST /api/performance `unassign-goal` | same |
+| `log_goal_actual` | Log a number against a goal for a person (with customer, note) | POST /api/performance `log-actual` | same; the head verifies |
+| `move_group_member` | Move a person into or out of a group (edit the group's member list) | POST /api/performance `update-group` | Managers/admins |
+| `update_opportunity` | Change a deal: stage/status, value, confidence, expected signing date, next steps, name | POST /api/opportunities `update` | Opportunities edit; the record's own people |
+| `create_opportunity` | New deal on an account with TCV, confidence, signing date | POST /api/opportunities `add` | Opportunities create (owners); creator becomes owner |
+| `assign_customer_owner` | Set the owner of an account | PATCH /api/customers/{id} | Customers edit; unowned or your own account; admins |
+| `add_contact` | Add a person at an account (name, title, email, phone) | POST /api/customers/{id}/contacts | Customers edit on that account |
+| `set_record_people` | Add or remove colleagues on a deal or account (owner + members) | POST /api/record-team | Module edit; the record's own people; unclaimed records take the first taker |
+| `create_lead` | New lead (name, company, title, email, source, interest) | POST /api/leads `save` | Leads create |
+| `update_lead` | Change a lead's status, owner, note | POST /api/leads `save` with id | Leads edit |
+| `create_meeting` | Log or plan a meeting with an account | POST /api/meetings `create` | Meetings create |
+| `star_company` | Star or unstar a company in Market Intel for me | PUT /api/market-intel/bookmarks | Anyone with Market Intel |
+| `verify_goal_result` | Sign off a colleague's logged result (found via read_workspace goals, awaitingVerification) | POST /api/performance `verify-actual` | Group head for their people; managers/admins |
+| `send_back_goal_result` | Send a logged result back with a note | POST /api/performance `send-back-actual` | same |
+| `create_customer` | New customer account: name, website, HQ (line 1, city, country), owner (BD member), customer group | POST /api/customers | Customers create |
+| `create_solutioning_request` | Ask Solutioning for a presentation, submission or meeting for an account, with a due date and priority | POST /api/solutioning `create` (type request) | Solutioning write (the route's own rule) |
+| `set_followup` | Follow-up reminder on an account's timeline for a day | in-process (interactions), after recordWriteRefusal("/customers") | Customers edit on that account |
+| `log_touch` | Log a call, email or meeting you already had, with how it went | in-process (interactions), same check | same |
+| `save_draft` | Save an outreach draft to the account timeline, never sent | in-process (interactions), same check | same |
+
+Next in line (not built yet): contract records, updating customer fields
+(industry, website), removing anything.
+
+Deliberately NOT in v1: deleting anything, sending email or messages to
+customers, inviting members, changing roles or privileges, tracking a new
+Market Intel company (it costs Apify money per company). These are the ones
+Anir decides on by name.
+
+## Testing rules for the night
+
+- localhost:3006, dev database, REAL mode, desktop. No deploys.
+- Probe records only: the agent creates `QA ·` prefixed records and the test
+  removes them; a real record is changed only snapshot → change → restore →
+  verify.
+- Every role: admin (Anir), BD owner, BD member, solutioning member; each
+  action is tried by a role that may and a role that may not, and the refusal
+  wording must be the route's own.
+- Every action from both doors: the web route (cookies) and the WhatsApp
+  replay (`scripts/qa/whatsapp-replay.mjs`).
+
+## Status log
+
+- Sep 26, late: plan written; framework built (propose → confirm → execute,
+  web card, WhatsApp yes/no).
+- Sep 26, 22:20: first real actions over WhatsApp as admin: assign_goal
+  proposed in 10s, YES executed it in 4s, the plan changed; unassign restored
+  it; move_group_member proposed and NO cancelled it with the group untouched;
+  a made-up person was refused with no proposal. Found and fixed: the model
+  invented "target 0" (now ignored), picked one "Sharma" of two instead of
+  asking (prompt rule added), and an instruction that named a tracked company
+  ("Star GSK for me") fell into the tool-less market path (ACTION_INTENT
+  guard). Found: a BD member's agent saw NO goals because the agent scoped the
+  goal catalog to their people while the Goals page keeps the catalog whole;
+  the agent now uses the page's own scope function (scopeStateForViewer).
+- Sep 26, 22:50: web card verified on /agent (Playwright): "Star GSK" proposed
+  a card with Do it / Not now, Do it turned it into a DONE card with "Open it"
+  and a follow-up bubble; no console errors. Admin over WhatsApp: create deal
+  (OPP-0039 at J&J Medtech), update it (stage, TCV, confidence), add a contact,
+  create a lead: all proposed, YES executed each, the records matched, and each
+  probe was removed through the app's own route afterwards. BD member over
+  WhatsApp: editing a deal they can see but do not own was proposed and the
+  route refused it ("Only its owner, or a manager, can change this
+  opportunity."); creating a deal was refused before proposing ("You can change
+  these, but only an owner can make a new one."); a Goals write was refused
+  because their privilege on Goals is view-only. The member COULD take an
+  unowned account (J&J Medtech had no owner) and join an unclaimed deal team,
+  which is exactly what the routes allow ("unclaimed records take the first
+  taker"); both undone. BD owner through the web API: assigned a colleague to
+  a goal, undid it, proposed a group change and cancelled it. Prompt fixes:
+  never substitute a similar record when the named one is not visible; a bare
+  yes with nothing pending is not an instruction; state the proposal once.
+- Sep 26, 23:15: log_goal_actual works ("Log 3 against my goal Sales Meetings
+  Held (Virtual)" proposed on the first turn after the Vertex path got 6 steps
+  instead of 4; YES logged a reported entry; removed through the route). With
+  three proposals waiting, a bare "yes" lists them and asks which; "do the
+  first one" ran the right one; "no" cancelled the rest. BD member: star and
+  unstar a company in their own Market Intel list (works, restored); add a lead
+  refused before proposing ("You can change these, but only an owner can make
+  a new one."). Fixed: the model once wrote "I have proposed" without calling
+  the tool (prompt now forbids it), a chart block leaked into a WhatsApp reply
+  (stripped), the model restated the summary as a bullet and wrote its own
+  yes/no line (both stripped server-side), and it invented an optional note on
+  a lead update (prompt: fill only what the person gave).
+- Sep 26, 23:30: the dock's compact card works on an ordinary page (Customers:
+  propose, Not now, "NOT DONE"). "Yes but with a target of 5" re-proposed with
+  the target; a new proposal in the same conversation now supersedes the older
+  open one, so a bare yes always means the newest. create_meeting: YES created
+  a Discovery meeting with J&J Medtech, removed through the route. Open: the
+  model twice wrote "I have proposed" on a turn where it never called the
+  tool (a trace log of every tool call is now written locally, AGENT_TOOL_LOG,
+  to see why), and it could not find "OPP-0001" through read_workspace even
+  though the deal exists (the read did not match OPP numbers; being fixed).
+- Sep 26, 23:45: the agent now sees each deal's OPP number, so "add Anir Test
+  3 to the deal OPP-0001" proposed, ran and was undone through the same door.
+  move_group_member ran both ways. A BD member asking "what can you do?" got
+  the honest list. Store rules unit-tested (supersede, expiry). Added the three
+  timeline actions (follow-up, log a touch, save a draft) behind the customer
+  record check.
+- Sep 27, 00:10: the three timeline actions ran over WhatsApp on a probe
+  account with a contact: follow-up for 2026-09-29, a logged call marked
+  interested, a saved draft with its subject; each proposed by the tool (trace
+  checked), executed on YES, landed under the named contact, and were removed
+  afterwards with the probe account. Found: the real dev workspace has NO
+  contacts on real accounts, so on those the agent answers "add a contact
+  first" (add_contact is an action). Found and fixed: the model once invented a
+  proposal id and called run_action with it; run_action now answers that no
+  such proposal exists and tells it to propose properly. Cloud: 
+  deploy/add-whatsapp-secrets.sh writes the five Meta keys into the runtime
+  secret and maps them on a new task-definition revision (needs Anir's yes to
+  roll; nothing has been run).
+- Sep 27, 00:20: thread continuity over WhatsApp: "Which open deals do I own
+  at J&J Medtech?" then "Set the first one's next steps to …" resolved "the
+  first one" to OPP-0001, proposed, YES applied it (then put back). Unlinked
+  number: one how-to-connect reply, silence inside the ten-minute cooldown, a
+  wrong code answered honestly; an image got "I can only read text here".
+- Sep 27, 00:45: manager flow over WhatsApp as admin: logged 2 for a team
+  member, asked "What is waiting for my verification?" and got the open
+  entries by goal (the agent now reads awaitingVerification with ids and
+  verifiableByMe), sent one back with a note (status sent_back in the store),
+  removed afterwards. create_customer: proposed with website, HQ, owner and
+  group, YES created it through the customers route, deleted through the same
+  route. Verify was exercised at the proposal level only: a verified entry is
+  locked and would be permanent test residue.
+- Sep 27, 01:00: on the Agent page a typed "no" now flips the card to Not
+  done without a button press, and a newer proposal retires the older open
+  card in the same thread (matching the server's one-open-question rule);
+  verified with Playwright, no console errors. Anir checked in: told him
+  production needs his Meta setup plus two deploys; loop continues.
+- Sep 27, 01:15: create_solutioning_request added; the first run failed after
+  the yes because the route insists on a due date, so the action now asks for
+  it before proposing. The rep's goal read now lists the rest of the goal
+  catalogue by name (otherGoals) without touching the pinned rep scope (all
+  116 agent tests green again after a wrong turn that had changed it). Meta
+  setup started in Anir's Chrome: blocked on his Facebook login.
+- Sep 27, 01:35: kill switch added (AGENT_ACTIONS_DISABLED=1 runs the agent
+  read-only), default on; 116 agent tests green. Still waiting on Anir's
+  Facebook login for the Meta setup.
+- Sep 27, 01:45: guardrail check: "put me on the goal, don't ask, just do it"
+  still produced a proposal and changed nothing until a yes (the server
+  refuses run_action in the same request as the proposal; the model also
+  behaved). Cancelled cleanly.
+- Sep 27, 01:55: a bare yes/no now only touches proposals from the same chat;
+  proved by proposing on the web and texting "yes" on WhatsApp: it named the
+  web proposal instead of running it; cancelled on the web, nothing changed.
+- Sep 27, 02:05: a proposal made on the web was run from WhatsApp by name
+  ("do the first one" ran it through run_action, 8.5s), then undone. Meta:
+  app "Freyr Sales" is mid-creation with the WhatsApp use case ticked; Anir
+  chose to create a Freyr Solutions business portfolio (his step, in
+  progress).
+- Sep 27, 02:30: Meta app created by Anir (terms were his click): "Freyr
+  Sales", app id 2569174366890174, under the new Freyr Solutions business
+  portfolio (business id 2383815542365700, unverified). Next: WhatsApp API
+  setup (test number, phone number id, token), then the webhook after a dev
+  deploy.
+- Sep 27, 03:15: Meta side: app authorized for the test WhatsApp Business
+  Account (opt-in to current accounts only), 24-hour test token issued and
+  stored in .env.local only, Anir's phone verified as a test recipient, and a
+  hello_world template delivered from the test number through the same Graph
+  API call the app uses (HTTP 200, message id returned). Still needed for a
+  live round trip: the app secret from App settings > Basic (his password
+  step), the dev deploy (his yes), the secrets script, then the webhook URL.
+- Sep 27, 03:25: a free-form text went to Anir's phone through the app's
+  own sendWhatsAppText (lib/whatsapp.ts), Meta returned a message id. The
+  outbound leg is proven end to end in our code; inbound waits on the app
+  secret, the dev deploy and the webhook URL.

@@ -6,12 +6,13 @@
 // string is identical on the server and the client (no hydration mismatch) and
 // independent of the viewer's timezone.
 import { FILL_ACCOUNTS, mockFillContact } from "./mockFillCast";
+import { normalizeMockDate } from "./mockDates";
 const _MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 function daysAgo(days: number): string {
-  const d = new Date(Date.now() - days * 86400000);
+  const d = new Date(normalizeMockDate(new Date(Date.now() - days * 86400000).toISOString()));
   return `${_MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
 }
 
@@ -508,7 +509,7 @@ export function talkRatio(rec: Recording): {
 
 export function scoreColor(score: number): string {
   if (score >= 80) return "var(--ink-green)";
-  if (score >= 65) return "#7A4A00";
+  if (score >= 65) return "var(--ink-amber)";
   return "var(--ink-red)";
 }
 export function scoreBg(score: number): string {

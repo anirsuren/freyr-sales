@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import Link from "next/link";
 import { DateEcho } from "@/components/ui/DateEcho";
@@ -1600,12 +1601,11 @@ export function CustomerOfferingHeatMap({
                 </div>
               </Field>
               <Field label="Potential closure date">
-                <Input
-                  type="date"
+                <DateField
                   value={dateValue(draft.potential_close_date)}
                   onChange={(event) => {
                     const potentialCloseDate =
-                      event.currentTarget.value || null;
+                      event || null;
                     setDraft((current) =>
                       current
                         ? {
@@ -1620,11 +1620,10 @@ export function CustomerOfferingHeatMap({
                 <DateEcho value={dateValue(draft.potential_close_date)} />
               </Field>
               <Field label="Start date">
-                <Input
-                  type="date"
+                <DateField
                   value={dateValue(draft.start_date)}
                   onChange={(event) => {
-                    const startDate = event.currentTarget.value || null;
+                    const startDate = event || null;
                     setDraft((current) =>
                       current
                         ? {
@@ -1639,11 +1638,10 @@ export function CustomerOfferingHeatMap({
                 <DateEcho value={dateValue(draft.start_date)} />
               </Field>
               <Field label="End date">
-                <Input
-                  type="date"
+                <DateField
                   value={dateValue(draft.end_date)}
                   onChange={(event) => {
-                    const endDate = event.currentTarget.value || null;
+                    const endDate = event || null;
                     setDraft((current) =>
                       current
                         ? {
@@ -2162,7 +2160,7 @@ export function CustomerOfferingHeatMap({
                             style={{
                               background:
                                 passes && meta && !isBaseline
-                                  ? meta.color
+                                  ? meta.fill
                                   : passes && isBaseline
                                     ? tint(meta?.color || "#94A3B8", 5)
                                     : "var(--surface)",

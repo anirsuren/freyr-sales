@@ -249,7 +249,7 @@ export function Sidebar({
   /** An indented child of the item above it, quieter than a top-level row. */
   const subNavLink = (
     item: { href: string; label: string; icon: LucideIcon },
-    _index?: number,
+    index = 0,
     siblings?: { href: string; label: string; icon: LucideIcon }[]
   ) => {
     /* Market Intel's rooms are query strings on one route, so comparing paths
@@ -311,11 +311,12 @@ export function Sidebar({
         href={item.href}
         onClick={onMobileClose}
         aria-current={active ? "page" : undefined}
+        style={{ animationDelay: `${Math.min(index, 5) * 35}ms` }}
         className={cn(
           /* Indent tightened so "Competitor Intel" fits WHOLE on its
              one line — an ellipsis in a four-item nav is a word nobody can
              read, not a saving. */
-          "ml-4 flex items-center gap-2 rounded-md border-l-[3px] py-1.5 pl-2.5 pr-2 text-[12.5px] transition-colors",
+          "freyr-subnav-enter ml-4 flex items-center gap-2 rounded-md border-l-[3px] py-1.5 pl-2.5 pr-2 text-[12.5px] transition-colors",
           active
             ? "border-blue-primary bg-blue-light font-semibold text-blue-primary"
             : "border-transparent text-text-secondary hover:bg-surface"

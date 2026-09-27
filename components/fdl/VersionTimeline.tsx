@@ -717,7 +717,7 @@ export function VersionTimeline({
                     <CustomerDots
                       people={faces}
                       max={facesMax}
-                      size={22}
+                      size={18}
                       reserveOpenWidth={false}
                       modalTitle={`Companies on ${withV(release.version)}`}
                       note={() =>

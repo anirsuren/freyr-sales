@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { Fragment, useMemo, useState } from "react";
 import { ViewSelect } from "@/components/ui/ViewSelect";
@@ -411,10 +412,11 @@ export function MeetingsModule({
         onQuery={setQuery}
         placeholder="Search meetings, customers, people…"
         searchAriaLabel="Search meetings"
+        filterAriaLabel="Filter meetings"
         onClearAll={() => { setQuery(""); setCustomers([]); setOwners([]); setTypes([]); setDateFrom(""); setDateTo(""); }}
         groups={[
-          { key: "customer", label: "Customer", values: customerFilter, onChange: setCustomers, options: [...new Set(all.map(m => m.customer))].map(value => ({value,label:value})) },
-          { key: "owner", label: "Owner", values: owners, onChange: setOwners, options: [...new Set(all.map(m => m.owner || ""))].map(value => ({value,label:value || "Unassigned"})) },
+          { key: "customer", label: "Customer", values: customerFilter, onChange: setCustomers, options: [...new Set(all.map(m => m.customer))].map(value => ({value,label:value,logoName:value})) },
+          { key: "owner", label: "Owner", values: owners, onChange: setOwners, options: [...new Set(all.map(m => m.owner || ""))].map(value => ({value,label:value || "Unassigned",avatarName:value || undefined})) },
           { key: "type", label: "Meeting type", values: types, onChange: setTypes, options: [...new Set(all.map(m => m.type))].map(value => ({value,label:value})) },
           {
             key: "date",
@@ -428,11 +430,11 @@ export function MeetingsModule({
               <div className="space-y-3">
                 <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
                   From
-                  <input aria-label="Meetings from" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
+                  <DateField ariaLabel="Meetings from" value={dateFrom} onChange={e => setDateFrom(e)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
                 </label>
                 <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
                   Through
-                  <input aria-label="Meetings through" type="date" min={dateFrom || undefined} value={dateTo} onChange={e => setDateTo(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
+                  <DateField ariaLabel="Meetings through" min={dateFrom || undefined} value={dateTo} onChange={e => setDateTo(e)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
                 </label>
               </div>
             ),

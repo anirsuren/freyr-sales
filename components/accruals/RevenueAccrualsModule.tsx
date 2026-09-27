@@ -650,7 +650,7 @@ function DeviationsTable({
               options: dealStatuses.map((o) => ({
                 value: o,
                 label: o,
-                color: "var(--ink-teal-deep)",
+                color: statusColor(o),
               })),
             },
         ]}
@@ -735,7 +735,7 @@ function DeviationsTable({
                   </Link>
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] font-semibold tnum text-[#7E22CE]">
+                <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] font-semibold tnum text-[color:var(--ink-violet)]">
                   v{r.summary.version}
                 </td>
                 <td className="px-3 py-2.5">
@@ -874,7 +874,7 @@ function DeviationsTable({
                 className="rounded-xl border border-border-light bg-white p-3.5"
               >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="rounded-full bg-[rgba(168,85,247,0.12)] px-2 py-0.5 text-[11.5px] font-bold text-[#7E22CE]">
+                  <span className="rounded-full bg-[rgba(168,85,247,0.12)] px-2 py-0.5 text-[11.5px] font-bold text-[color:var(--ink-violet)]">
                     v{h.version}
                   </span>
                   <span className="text-[13px] font-semibold text-text-primary">

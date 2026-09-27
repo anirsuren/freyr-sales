@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
@@ -355,7 +356,7 @@ export function CustomerAccountPlanTab({
   const [plan, setPlan] = useState<PersistedPlan>(basePlan);
   const [draft, setDraft] = useState<PersistedPlan>(basePlan);
   const [editing, setEditing] = useState(false);
-  const [expandedPlay, setExpandedPlay] = useState<string | null>(basePlan.plays[0]?.id || null);
+  const [expandedPlay, setExpandedPlay] = useState<string | null>(null);
   const [stakeholderSearch, setStakeholderSearch] = useState("");
   const [stakeholderRole, setStakeholderRole] = useState("all");
   const [stakeholderRelationship, setStakeholderRelationship] = useState("all");
@@ -374,7 +375,6 @@ export function CustomerAccountPlanTab({
       const saved = JSON.parse(raw) as PersistedPlan;
       setPlan(saved);
       setDraft(saved);
-      setExpandedPlay(saved.plays[0]?.id || null);
     } catch {
       // A malformed local mock fixture should never stop the customer page.
     }
@@ -560,12 +560,12 @@ export function CustomerAccountPlanTab({
               <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Next review
                 <OptionalMark />
-                <input type="date" value={draft.reviewDate} onChange={(e) => setDraft({ ...draft, reviewDate: e.target.value })} className="box-border h-10 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                <DateField value={draft.reviewDate} onChange={(e) => setDraft({ ...draft, reviewDate: e })} className="box-border h-10 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
               <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Target date
                 <OptionalMark />
-                <input type="date" value={draft.targetDate} onChange={(e) => setDraft({ ...draft, targetDate: e.target.value })} className="box-border h-10 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                <DateField value={draft.targetDate} onChange={(e) => setDraft({ ...draft, targetDate: e })} className="box-border h-10 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
             </div>
 
@@ -610,7 +610,7 @@ export function CustomerAccountPlanTab({
                         <label className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                           Due date
                           <OptionalMark />
-                          <input aria-label={`Due date for action ${index + 1}`} type="date" value={action.due} onChange={(e) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, due: e.target.value } : item) })} className="h-10 w-full rounded-lg border border-border bg-white px-2.5 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                          <DateField ariaLabel={`Due date for action ${index + 1}`} value={action.due} onChange={(e) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, due: e } : item) })} className="h-10 w-full rounded-lg border border-border bg-white px-2.5 text-[13px] font-medium normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
                         </label>
                         <label className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                           Status
@@ -1022,7 +1022,7 @@ export function CustomerAccountPlanTab({
           <div><div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-primary" /><h3 className="text-[15px] font-semibold text-text-primary">Next actions</h3></div><p className="mt-0.5 text-[12px] text-text-secondary">The short list that moves the account plan forward.</p></div>
           <span className="text-[12px] font-medium text-text-tertiary">{plan.actions.filter((action) => action.status !== "Done").length} open</span>
         </div>
-        <div className="divide-y divide-border-light">{plan.actions.map((action) => <div key={action.id} className="grid items-center gap-3 px-5 py-3.5 sm:grid-cols-[24px_minmax(0,1fr)_170px_130px]"><span className={cn("flex h-5 w-5 items-center justify-center rounded-full border", action.status === "Done" ? "border-[color:var(--ink-green)] bg-[color:var(--ink-green)] text-white" : "border-border bg-surface text-transparent")}><Check size={12} strokeWidth={3} /></span><div className="min-w-0"><p className={cn("text-[12.5px] font-semibold text-text-primary", action.status === "Done" && "line-through opacity-60")}>{action.action}</p><p className="mt-1 inline-flex items-center gap-1 text-[11.5px] font-medium text-blue-primary"><Link2 size={11} />{action.play}</p></div><span className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary"><Avatar name={action.owner} className="h-6 w-6" />{action.owner}</span><div className="sm:text-right"><StatusPill status={action.status} /><p className="mt-1 text-[11px] text-text-tertiary">Due {prettyDate(action.due)}</p></div></div>)}</div>
+        <div className="divide-y divide-border-light">{plan.actions.map((action) => <div key={action.id} className="grid items-center gap-3 px-5 py-3.5 sm:grid-cols-[24px_minmax(0,1fr)_170px_130px]"><span className={cn("flex h-5 w-5 items-center justify-center rounded-full border", action.status === "Done" ? "border-[color:var(--ink-green)] bg-[color:var(--ink-green)] text-white dark:bg-[#355844] dark:text-[#dff3e4]" : "border-border bg-surface text-transparent")}><Check size={12} strokeWidth={3} /></span><div className="min-w-0"><p className={cn("text-[12.5px] font-semibold text-text-primary", action.status === "Done" && "line-through opacity-60")}>{action.action}</p><p className="mt-1 inline-flex items-center gap-1 text-[11.5px] font-medium text-blue-primary"><Link2 size={11} />{action.play}</p></div><span className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary"><Avatar name={action.owner} className="h-6 w-6" />{action.owner}</span><div className="sm:text-right"><StatusPill status={action.status} /><p className="mt-1 text-[11px] text-text-tertiary">Due {prettyDate(action.due)}</p></div></div>)}</div>
       </Card>}
     </div>
   );

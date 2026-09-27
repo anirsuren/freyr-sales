@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  ArrowRight,
   ChevronRight,
   ChevronsDown,
   ChevronsUp,
@@ -95,6 +96,7 @@ export function CustomerActivityTab({
     offeringId: string,
     versions: CustomerOfferingEngagementVersion[]
   ) {
+    setPickerSelection(null);
     const existing = state.find((u) => u.offering_id === offeringId);
     const next = state.filter((u) => u.offering_id !== offeringId);
     if (versions.length || existing?.revenue_lines?.length) {
@@ -124,10 +126,10 @@ export function CustomerActivityTab({
     }
   }
 
-  /** Start a history for an offering that has none, so its card appears. */
-  /** The offering whose editor should open itself on next render — set by the
-   *  picker, consumed by that offering's OfferingActivities. */
+  /** The picker mounts a hidden editor host. The form itself uses a portal, so
+   *  the account page need not gain or unfold a card behind the dialog. */
   const [addingFor, setAddingFor] = useState<string | null>(null);
+  const [pickerSelection, setPickerSelection] = useState<string | null>(null);
   const [pickQuery, setPickQuery] = useState("");
   const pickNeedle = pickQuery.trim().toLowerCase();
   const shownOfferings = pickNeedle
@@ -138,35 +140,9 @@ export function CustomerActivityTab({
 
   function begin(offeringId: string) {
     setPicking(false);
-    /* PICKING AN OFFERING OPENS ITS EDITOR (Anir, Sep 4: "if I click on one,
-       it doesn't do anything, bro"). This used to close the dialog and, when
-       the offering was already on the account — which it is for every row
-       wearing an "N logged" badge — return without doing anything at all: no
-       scroll, no editor, no visible consequence of the click. Now the group
-       unfolds, the page walks to it, and the activity form is already open
-       when you arrive, whether the offering was on the account or not. */
-    if (!state.some((u) => u.offering_id === offeringId)) {
-      setState((prev) => [
-        ...prev,
-        {
-          offering_id: offeringId,
-          revenue_lines: [],
-          engagement_versions: [],
-          engagement_draft: null,
-        },
-      ]);
-    }
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      next.delete(offeringId);
-      return next;
-    });
+    setPickQuery("");
+    setPickerSelection(offeringId);
     setAddingFor(offeringId);
-    requestAnimationFrame(() => {
-      document
-        .querySelector(`[data-offering-group="${offeringId}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   }
 
   async function removeOffering(offeringId: string) {
@@ -409,8 +385,6 @@ export function CustomerActivityTab({
                           customerId={customerId}
                           versions={u.engagement_versions || []}
                           onSave={(versions) => void save(u.offering_id, versions)}
-                          startAdding={addingFor === u.offering_id}
-                          onStartedAdding={() => setAddingFor(null)}
                         />
                       </div>
                     )}
@@ -425,6 +399,19 @@ export function CustomerActivityTab({
           </div>
         )}
       </section>
+
+      {pickerSelection && (
+        <div className="hidden" aria-hidden="true">
+          <OfferingActivities
+            customerId={customerId}
+            versions={state.find((u) => u.offering_id === pickerSelection)?.engagement_versions || []}
+            onSave={(versions) => void save(pickerSelection, versions)}
+            startAdding={addingFor === pickerSelection}
+            onStartedAdding={() => setAddingFor(null)}
+            onEditorClosed={() => setPickerSelection(null)}
+          />
+        </div>
+      )}
 
       {children && (
         <section className="border-t border-border-light pt-5">
@@ -471,8 +458,7 @@ export function CustomerActivityTab({
         title="Which offering is this activity for?"
       >
         <p className="mb-3 text-[12.5px] text-text-secondary">
-          Every activity belongs to one offering. Pick the offering and the
-          editor opens below it.
+          Every activity belongs to one offering. Pick one to open the activity form.
         </p>
         <input
           value={pickQuery}
@@ -489,7 +475,7 @@ export function CustomerActivityTab({
             instead: 29 offerings scroll inside it, one result leaves the
             frame exactly where it was. */}
         <ScrollHint className="h-[420px]">
-          <ul className="space-y-1.5">
+          <ul className="overflow-hidden rounded-xl border border-border-light bg-white divide-y divide-border-light">
             {shownOfferings.length === 0 && (
               <li className="py-8 text-center text-[13px] text-text-tertiary">
                 Nothing in the catalogue matches “{pickQuery.trim()}”.
@@ -504,10 +490,10 @@ export function CustomerActivityTab({
                   <button
                     type="button"
                     onClick={() => begin(offering.id)}
-                    className="flex w-full cursor-pointer items-center gap-3 rounded-lg border border-border-light px-3 py-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
+                    className="freyr-choice-row group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-primary"
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[13px] font-medium text-text-primary">
+                      <span className="freyr-choice-row__title block text-[13px] font-medium text-text-primary">
                         {offering.name}
                       </span>
                       {offering.category && (
@@ -521,6 +507,7 @@ export function CustomerActivityTab({
                         {logged} logged
                       </span>
                     )}
+                    <span className="freyr-choice-row__arrow flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border-light bg-white text-text-tertiary" aria-hidden="true"><ArrowRight size={15} /></span>
                   </button>
                 </li>
               );

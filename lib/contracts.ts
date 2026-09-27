@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getDataMode } from "./dataMode";
+import { mockDated } from "./mockDates";
 import { spreadEvenly } from "./revenueAccrualsShared";
 import { mockFillContracts, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
 import { refreshMockFillNames } from "./mockFillCast";
@@ -250,7 +251,7 @@ function sampleContracts(): ContractsState {
   });
   return {
     contracts: [
-      mk(1, "Freya.Label managed service", "Meridian Pharmaceuticals", "Freya.Label", 1_200_000, "Signed", "2026-06", 12),
+      mk(1, "Freya.Label managed service", "Meridian Pharmaceuticals", "Freya.Label", 1_200_000, "Signed", "2026-07", 12),
       mk(2, "Global publishing renewal", "Aurora Biosciences", "Global Publishing", 840_000, "Signed", "2026-07", 12),
       mk(3, "RIM platform migration", "Helix Therapeutics", "Regulatory Intelligence Services", 2_400_000, "Ready for delivery", "2026-09", 18),
       mk(4, "Labeling pilot extension", "Northwind Labs", "Freya.Label", 360_000, "Draft", "2026-10", 6),
@@ -343,6 +344,40 @@ function withDerivedSchedules(state: ContractsState): ContractsState {
   };
 }
 
+/** Move an older mock contract and its revenue months together. Normalizing
+ * the date fields alone left a July start above a schedule beginning in June. */
+function mockContractTimeline(state: ContractsState): ContractsState {
+  const shiftMonth = (month: string, offset: number) => {
+    const [year, number] = month.split("-").map(Number);
+    return new Date(Date.UTC(year, number - 1 + offset, 1)).toISOString().slice(0, 7);
+  };
+  const shiftDate = (value: string | undefined, offset: number) => {
+    if (!value || !/^\d{4}-\d{2}-\d{2}/.test(value)) return value;
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return value;
+    date.setUTCMonth(date.getUTCMonth() + offset);
+    return value.length === 10 ? date.toISOString().slice(0, 10) : date.toISOString();
+  };
+  for (const contract of state.contracts) {
+    const first = contract.schedule.map((line) => line.month).sort()[0] ?? contract.startDate?.slice(0, 7);
+    if (!first || first >= "2026-07" || !/^\d{4}-\d{2}$/.test(first)) continue;
+    const [year, month] = first.split("-").map(Number);
+    const targetMonth = contract.startDate && contract.startDate >= "2026-07-01"
+      ? contract.startDate.slice(0, 7)
+      : "2026-07";
+    const [targetYear, targetNumber] = targetMonth.split("-").map(Number);
+    const offset = targetYear * 12 + targetNumber - (year * 12 + month);
+    contract.schedule = contract.schedule.map((line) => ({ ...line, month: shiftMonth(line.month, offset) }));
+    if (contract.startDate && contract.startDate < "2026-07-01")
+      contract.startDate = shiftDate(contract.startDate, offset);
+    if (contract.endDate && contract.endDate < "2026-07-01")
+      contract.endDate = shiftDate(contract.endDate, offset);
+    if (contract.signedOn && contract.signedOn < "2026-07-01")
+      contract.signedOn = shiftDate(contract.signedOn, offset);
+  }
+  return state;
+}
+
 export async function readContracts(): Promise<ContractsState> {
   if (getDataMode() !== "mock") return readRow();
   const existing = await readRowRaw();
@@ -353,9 +388,9 @@ export async function readContracts(): Promise<ContractsState> {
       !state.contracts.some((contract) => isStaleFillRow(contract.id)) &&
       !refreshMockFillNames(state.contracts)
     )
-      return withDerivedSchedules(state);
+      return mockDated(mockContractTimeline(withDerivedSchedules(state)));
   }
-  return withDerivedSchedules(await topUpMockFill());
+  return mockDated(mockContractTimeline(withDerivedSchedules(await topUpMockFill())));
 }
 
 export type ContractInput = {

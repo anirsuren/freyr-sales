@@ -44,6 +44,11 @@ function canonicalLocation(value: string): string {
   return stripMockModePrefix(value);
 }
 
+/** Linking a lead to its contact is a redirect step, not a page to revisit. */
+function isTransientLocation(value: string): boolean {
+  return /^\/leads\/[^/]+\/contact(?:\?|$)/.test(canonicalLocation(value));
+}
+
 function sameLocation(a: string, b: string): boolean {
   return canonicalLocation(a) === canonicalLocation(b);
 }
@@ -63,6 +68,7 @@ function readStack(): string[] {
     return raw
       .filter((s): s is string => typeof s === "string")
       .map(canonicalLocation)
+      .filter((s) => !isTransientLocation(s))
       .filter((s, index, all) => index === 0 || s !== all[index - 1]);
   } catch {
     return [];
@@ -90,6 +96,7 @@ export function NavHistoryTracker() {
       const here = currentSearch
         ? `${canonicalPathname}?${currentSearch}`
         : canonicalPathname;
+      if (isTransientLocation(here)) return;
       try {
         const stack = readStack();
         const wentBack = sessionStorage.getItem(BACK_FLAG) === "1";
@@ -180,6 +187,7 @@ export function sectionLabelFor(path: string): string | null {
       deals: "Deals",
       notes: "Notes",
       "account-plan": "Account plan",
+      "account-review": "Account review",
     };
     return customerTabs[band] ?? "Account";
   }

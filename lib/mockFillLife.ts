@@ -1,4 +1,5 @@
 import { getDataMode } from "./dataMode";
+import { normalizeMockDate } from "./mockDates";
 import { SALES_TEAM } from "./salesTeam";
 import {
   FILL_ACCOUNTS,
@@ -174,11 +175,11 @@ function isMock(): boolean {
 /** A fixed clock. A seed that moved with today would reshuffle on reload. */
 const ANCHOR = Date.UTC(2026, 7, 30);
 const iso = (dayOffset: number) =>
-  new Date(ANCHOR + dayOffset * 86400000).toISOString();
+  normalizeMockDate(new Date(ANCHOR + dayOffset * 86400000).toISOString());
 const day = (dayOffset: number) => iso(dayOffset).slice(0, 10);
 const month = (offset: number) => {
   const d = new Date(Date.UTC(2026, 7 + offset, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  return normalizeMockDate(d.toISOString().slice(0, 10)).slice(0, 7);
 };
 
 /** First deal position for an account in the compact generated pipeline. */

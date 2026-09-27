@@ -43,10 +43,22 @@ function cachedSystem(system: string): Anthropic.MessageCreateParams["system"] {
  *
  * Env still wins. The database is the fallback, never the override.
  */
+/* A SINGLE CALL MAY NOT HANG THE QUESTION (Anir, Sep 26). The SDK's default
+   is ten minutes per request and two silent retries; the chat gives up at
+   ninety seconds, so anything past that is work nobody sees. The loop below
+   does its own backoff, so the SDK gets one retry and forty-five seconds. */
+const PER_CALL_TIMEOUT_MS = 45_000;
+function makeClient(apiKey: string) {
+  return new Anthropic({ apiKey, timeout: PER_CALL_TIMEOUT_MS, maxRetries: 1 });
+}
 let client =
   process.env.ANTHROPIC_API_KEY && process.env.AGENT_FORCE_MOCK !== "1"
-    ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    ? makeClient(process.env.ANTHROPIC_API_KEY)
     : null;
+/** Whether an Anthropic client exists at all (env key or the stored one). */
+export function hasClaudeClient(): boolean {
+  return client !== null;
+}
 
 const KEY_ROW = "anthropic-config";
 let hydrating: Promise<void> | null = null;
@@ -74,7 +86,7 @@ export async function hydrateAnthropicKey(): Promise<void> {
         const key = (data?.catalog as { apiKey?: string } | null)?.apiKey;
         if (typeof key === "string" && key.startsWith("sk-")) {
           process.env.ANTHROPIC_API_KEY = key;
-          client = new Anthropic({ apiKey: key });
+          client = makeClient(key);
         } else {
           // Nothing stored is not a permanent answer — a key added later
           // should be picked up on the next attempt.
@@ -484,11 +496,12 @@ async function completeTextResponse(
   params: Anthropic.MessageCreateParamsNonStreaming,
   initial?: Anthropic.Message,
   maxContinuations = 3,
-  onUsage?: (usage: Anthropic.Message["usage"]) => void
+  onUsage?: (usage: Anthropic.Message["usage"]) => void,
+  signal?: AbortSignal
 ): Promise<CompletedText> {
   if (!client) return { text: "", truncated: false, stopReason: null };
   const messages = [...params.messages];
-  let response = initial ?? (await client.messages.create(params));
+  let response = initial ?? (await client.messages.create(params, { signal }));
   const pieces: string[] = [];
   let continuations = 0;
 
@@ -532,7 +545,7 @@ async function completeTextResponse(
       ...params,
       messages,
       ...(params.tools ? { tool_choice: { type: "none" } as const } : {}),
-    });
+    }, { signal });
   }
 }
 
@@ -674,7 +687,7 @@ async function adoptDatabaseKey(): Promise<boolean> {
     if (typeof key !== "string" || !key.startsWith("sk-")) return false;
     if (key === process.env.ANTHROPIC_API_KEY) return false;
     process.env.ANTHROPIC_API_KEY = key;
-    client = new Anthropic({ apiKey: key });
+    client = makeClient(key);
     console.warn("[agent] environment key rejected; adopted the stored key");
     return true;
   } catch {
@@ -739,8 +752,9 @@ export async function agentConverseAgentic(
     }
     if (!isTransientFailure(failure)) return null;
     // Overload spikes last seconds, not milliseconds. The chat client gives up
-    // at 45s, so waiting properly costs nothing a person notices and is far
-    // better than a template reply the moment the API gets busy.
+    // at 90s and the route stops the whole question at its own budget, so a
+    // short wait costs nothing a person notices and is far better than a
+    // template reply the moment the API gets busy.
     await new Promise((r) => setTimeout(r, [1500, 4000, 8000][attempt] ?? 1500));
   }
   return null;
@@ -751,7 +765,10 @@ async function agentConverseOnce(
   turns: { role: "user" | "assistant"; content: string }[],
   tools: AgentToolDef[],
   runTool: (name: string, input: any) => Promise<{ content: string; did?: string }>,
-  maxSteps = 6
+  maxSteps = 6,
+  onText?: (delta: string) => void,
+  onReset?: () => void,
+  signal?: AbortSignal
 ): Promise<{ text: string; dids: string[]; truncated: boolean; usage: {inputTokens:number;outputTokens:number;cacheReadTokens:number;cacheWriteTokens:number;modelCalls:number} } | null> {
   await hydrateAnthropicKey();
   if (!client) return null;
@@ -773,6 +790,19 @@ async function agentConverseOnce(
   const usage = {inputTokens:0,outputTokens:0,cacheReadTokens:0,cacheWriteTokens:0,modelCalls:0};
   const recordUsage = (u: Anthropic.Message["usage"]) => {usage.inputTokens+=u.input_tokens;usage.outputTokens+=u.output_tokens;usage.cacheReadTokens+=u.cache_read_input_tokens??0;usage.cacheWriteTokens+=u.cache_creation_input_tokens??0;usage.modelCalls++;};
   const dids: string[] = [];
+  /* WORDS ARRIVE AS THEY ARE WRITTEN (Anir, Sep 26). With a listener, every
+     step is streamed and its text forwarded live; a step that turns out to
+     be a tool call clears what it said so the real answer starts clean. */
+  const ask = async (params: Anthropic.MessageCreateParamsNonStreaming) => {
+    if (!onText) return { message: await client!.messages.create(params, { signal }), emitted: false };
+    let emitted = false;
+    const stream = client!.messages.stream(params, { signal });
+    stream.on("text", (delta) => {
+      emitted = true;
+      onText(delta);
+    });
+    return { message: await stream.finalMessage(), emitted };
+  };
   try {
     for (let step = 0; step < maxSteps; step++) {
       const request: Anthropic.MessageCreateParamsNonStreaming = {
@@ -782,9 +812,9 @@ async function agentConverseOnce(
         tools: tools as unknown as Anthropic.Tool[],
         messages,
       };
-      const response = await client.messages.create(request);
+      const { message: response, emitted } = await ask(request);
       if (response.stop_reason !== "tool_use") {
-        const completed = await completeTextResponse(request, response, 3, recordUsage);
+        const completed = await completeTextResponse(request, response, 3, recordUsage, signal);
         const written = completed.text.trim();
         // An empty turn is not an answer. It happens when the model stops
         // without prose — most often truncated part-way through a tool call —
@@ -798,6 +828,7 @@ async function agentConverseOnce(
         break;
       }
       recordUsage(response.usage);
+      if (emitted) onReset?.();
       // Carry the assistant's tool-call turn, then answer each tool call.
       messages.push({ role: "assistant", content: response.content });
       const results: Anthropic.ToolResultBlockParam[] = [];
@@ -842,8 +873,8 @@ async function agentConverseOnce(
       tool_choice: { type: "none" },
       messages,
     };
-    const final = await client.messages.create(finalRequest);
-    const completed = await completeTextResponse(finalRequest, final, 3, recordUsage);
+    const { message: final } = await ask(finalRequest);
+    const completed = await completeTextResponse(finalRequest, final, 3, recordUsage, signal);
     const text = completed.text.trim();
     if (!text) {
       // Still nothing written. Report it as a failure so the caller retries

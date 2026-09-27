@@ -67,13 +67,13 @@ export const GROUP_TYPE_META: Record<
   solutioning: {
     label: "Solutioning",
     short: "SOL",
-    color: "#0D9488",
+    color: "var(--ink-teal-deep)",
     blurb: "Builds what sales asks for: submissions, presentations, meetings.",
   },
   admin: {
     label: "Admin",
     short: "ADM",
-    color: "#DB2777",
+    color: "var(--ink-magenta)",
     blurb: "Runs the workspace itself.",
   },
 };
@@ -335,15 +335,15 @@ export const VIEW_ALL = "view_all";
  */
 export const PRIVILEGE_COLORS: Record<string, string> = {
   bd_owner: "var(--ink-bright-blue)",
-  bd_member: "#2C7FD0",
+  bd_member: "var(--privilege-bd-member)",
   bo_owner: "var(--ink-violet-soft)",
-  bo_member: "#6D4BC4",
-  sol_owner: "#DB2777",
-  sol_member: "#B02066",
+  bo_member: "var(--privilege-bo-member)",
+  sol_owner: "var(--privilege-sol-owner)",
+  sol_member: "var(--privilege-sol-member)",
   delivery_owner: "var(--ink-orange)",
-  delivery_member: "#9A4A16",
+  delivery_member: "var(--privilege-delivery-member)",
   admin: "var(--ink-teal-deep)",
-  view_all: "#475569",
+  view_all: "var(--privilege-view-all)",
 };
 
 /**

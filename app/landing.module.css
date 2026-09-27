@@ -568,7 +568,7 @@
 }
 .fileList svg:last-child {
   margin-left:auto;
-  color:#8593a6;
+  color:#64748b;
 }
 .marqueeFoot {
   display:flex;
@@ -631,7 +631,7 @@
   font-size:9px;
   text-transform:uppercase;
   letter-spacing:.06em;
-  color:#8593a6;
+  color:#64748b;
 }
 .demoBody {
   padding:32px;
@@ -866,7 +866,7 @@
   border-bottom:1px solid var(--line);
   padding:0 26px;
   font-size:11px;
-  color:#8593a6;
+  color:#64748b;
 }
 .previewSearch .avatar {
   margin-left:auto;
@@ -1332,7 +1332,7 @@
 .principles li>span {
   font-family:var(--landing-mono),monospace;
   font-size:12px;
-  color:#8593a6;
+  color:#64748b;
   padding-top:4px;
 }
 .principles h3 {
@@ -1548,7 +1548,7 @@
 .footerBottom {
   border-top:1px solid var(--line);
   padding:20px 0;
-  color:#8593a6;
+  color:#64748b;
   font-size:11px;
 }
 .footerBottom>.container {

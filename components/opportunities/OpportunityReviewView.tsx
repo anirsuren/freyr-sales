@@ -2,28 +2,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, CircleAlert, ExternalLink, Flag, Pencil, ShieldAlert, Target, UsersRound } from "lucide-react";
+import { CalendarDays, CircleAlert, Copy, ExternalLink, Flag, Plus, ShieldAlert, Target, UsersRound } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import type { OpportunityReview, OpportunityReviewPerson } from "@/lib/opportunitiesShared";
+import type { OpportunityReview, OpportunityReviewPerson, OpportunityReviewRecord } from "@/lib/opportunitiesShared";
 import { formatDayLabel } from "@/lib/utils";
 import { companyDestination } from "@/lib/companyDestination";
 import { repSlug } from "@/lib/team";
 import { COMPETITOR_SOURCES } from "@/lib/marketIntelSources";
 
-type ReviewSection = "decision" | "people" | "actions";
-
-const sections: { id: ReviewSection; label: string }[] = [
-  { id: "decision", label: "Decision brief" },
-  { id: "people", label: "People & influence" },
-  { id: "actions", label: "Next moves" },
-];
-
 const sentimentStyle: Record<OpportunityReviewPerson["sentiment"], string> = {
-  Positive: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  Neutral: "bg-slate-50 text-slate-600 ring-slate-200",
-  Distractor: "bg-rose-50 text-rose-700 ring-rose-200",
-  Unknown: "bg-slate-50 text-slate-500 ring-slate-200",
+  Positive: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-[#26352b] dark:text-[#a7c9ae] dark:ring-[#435949]",
+  Neutral: "bg-slate-50 text-slate-600 ring-slate-200 dark:bg-[#292b2e] dark:text-[#c6c8cd] dark:ring-[#414348]",
+  Distractor: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-[#36272b] dark:text-[#e5b0aa] dark:ring-[#5a3a3e]",
+  Unknown: "bg-slate-50 text-slate-500 ring-slate-200 dark:bg-[#292b2e] dark:text-[#aeb1b8] dark:ring-[#414348]",
 };
 
 function Sentiment({ value }: { value: OpportunityReviewPerson["sentiment"] }) {
@@ -47,24 +39,24 @@ function PersonRow({ person }: { person: OpportunityReviewPerson }) {
   </div>;
 }
 
-export function OpportunityReviewView({ review, mayEdit, dealId }: { review?: OpportunityReview; mayEdit: boolean; dealId: string }) {
-  const [section, setSection] = useState<ReviewSection>("decision");
-  const data = review;
+export function OpportunityReviewView({ review, records = [], mayEdit, dealId }: { review?: OpportunityReview; records?: OpportunityReviewRecord[]; mayEdit: boolean; dealId: string }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const history = records.length ? records : review ? [{ id: "legacy", reviewedOn: "", recordedAt: "", recordedBy: "", review }] : [];
+  const selected = history.find((item) => item.id === selectedId) ?? history[history.length - 1];
+  const data = selected?.review;
   const sponsor = data?.people.find((person) => person.name.trim().toLowerCase() === data.nextStep.stakeholderName.trim().toLowerCase());
   const people = data?.people ?? [];
   const obstacles = data?.obstacles.filter(Boolean) ?? [];
 
   return <div className="pb-12">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h2 className="text-[19px] font-semibold tracking-tight text-text-primary">Opportunity review</h2><p className="mt-1 text-[12.5px] text-text-secondary">The decision, the people shaping it, and what happens next</p></div>
-      {mayEdit && <Link href={`/opportunities/${dealId}/review/edit`} className="inline-flex items-center gap-2 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:bg-surface-secondary"><Pencil size={14} /> Edit review</Link>}
+      <div><h2 className="text-[19px] font-semibold tracking-tight text-text-primary">Opportunity reviews</h2><p className="mt-1 text-[12.5px] text-text-secondary">Each discussion keeps its own date, decisions and agreed next steps.</p></div>
+      {mayEdit && <div className="flex flex-wrap gap-2"><Link href={`/opportunities/${dealId}/review/edit?new=1`} className="inline-flex items-center gap-2 rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90"><Plus size={14} /> New review</Link>{selected && <Link href={`/opportunities/${dealId}/review/edit?copy=${encodeURIComponent(selected.id)}`} className="inline-flex items-center gap-2 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:bg-surface-secondary"><Copy size={14} /> Copy into new review</Link>}</div>}
     </div>
-
-    <div role="tablist" aria-label="Opportunity review sections" className="mt-5 flex max-w-full flex-nowrap gap-5 overflow-x-auto overflow-y-hidden border-b border-border-light [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {sections.map(({ id, label }) => <button key={id} type="button" role="tab" id={`review-tab-${id}`} aria-selected={section === id} aria-controls={`review-panel-${id}`} onClick={() => setSection(id)} className={`-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 pb-3 text-[14px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-primary ${section === id ? "border-blue-primary font-semibold text-blue-primary" : "border-transparent font-medium text-text-secondary hover:text-text-primary"}`}>{label}{id === "people" && people.length > 0 && <b className="tnum font-semibold">{people.length}</b>}{id === "actions" && !!data?.actions.length && <b className="tnum font-semibold">{data.actions.length}</b>}</button>)}
-    </div>
-
-    {section === "decision" && <div role="tabpanel" id="review-panel-decision" aria-labelledby="review-tab-decision" className="tab-panel tab-panel-stagger mt-4 space-y-4">
+    {history.length > 0 && <div className="mt-5 flex flex-wrap gap-2" aria-label="Saved opportunity reviews">{[...history].reverse().map((item, index) => <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} aria-pressed={selected?.id === item.id} className={`rounded-xl border px-3 py-2 text-left text-[12.5px] transition-colors ${selected?.id === item.id ? "border-blue-primary bg-blue-light text-blue-primary" : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"}`}><span className="block font-semibold">{item.reviewedOn ? formatDayLabel(item.reviewedOn, "en-US") : "Earlier review · date not recorded"}</span><span className="text-[11px]">{item.recordedBy || (index === 0 ? "Latest saved review" : "Saved review")}</span></button>)}</div>}
+    {!data && <div className="mt-5 rounded-2xl border border-dashed border-border-light bg-white p-8 text-center text-[13px] text-text-secondary">No reviews yet. Start one after your next customer discussion.</div>}
+    {data && <div className="tab-panel mt-5 space-y-4">
+      <h3 className="text-[15px] font-semibold text-text-primary">Decision brief</h3>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.9fr)]">
         <section className="min-w-0 rounded-2xl border border-border-light bg-white p-5 sm:p-6">
           <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-secondary"><Flag size={15} className="text-blue-primary" /> Why now</div>
@@ -86,7 +78,8 @@ export function OpportunityReviewView({ review, mayEdit, dealId }: { review?: Op
       <section className="rounded-2xl border border-border-light bg-white px-5 py-4 sm:px-6"><div className="flex flex-wrap items-center gap-x-6 gap-y-3"><div className="flex items-center gap-2 text-[13px] font-semibold text-text-primary"><CircleAlert size={17} className="text-text-secondary" /> Confirmed competitors</div>{data?.competitors.length ? <div className="flex flex-wrap gap-2">{data.competitors.map((name) => { const id = data.competitorIds?.[name] || COMPETITOR_SOURCES.find((item) => item.name.toLowerCase() === name.toLowerCase())?.id; return <Link key={name} href={id ? `/market-intel/${id}` : "/market-intel?tab=competitors"} className="inline-flex items-center gap-2 rounded-lg border border-border-light px-2.5 py-1.5 text-[12px] font-medium text-blue-primary hover:border-blue-subtle hover:bg-blue-light"><CompanyLogo name={name} className="h-6 w-6 text-[9px]" />{name}</Link>; })}</div> : <Empty>None confirmed.</Empty>}</div></section>
     </div>}
 
-    {section === "people" && <div role="tabpanel" id="review-panel-people" aria-labelledby="review-tab-people" className="tab-panel tab-panel-stagger mt-4">
+    {data && <div className="mt-8">
+      <h3 className="mb-4 text-[15px] font-semibold text-text-primary">People & influence</h3>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-2"><div><h3 className="text-[16px] font-semibold text-text-primary">People shaping the decision</h3><p className="mt-1 text-[12.5px] text-text-secondary">Their role, area, and current stance in one place</p></div><span className="text-[12px] font-medium text-text-secondary">{people.length} {people.length === 1 ? "stakeholder" : "stakeholders"} mapped</span></div>
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,0.7fr)]">
         <section className="overflow-hidden rounded-2xl border border-border-light bg-white">
@@ -97,9 +90,9 @@ export function OpportunityReviewView({ review, mayEdit, dealId }: { review?: Op
       </div>
     </div>}
 
-    {section === "actions" && <div role="tabpanel" id="review-panel-actions" aria-labelledby="review-tab-actions" className="tab-panel tab-panel-stagger mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(290px,0.7fr)]">
+    {data && <div className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(290px,0.7fr)]">
       <section className="rounded-2xl border border-border-light bg-white p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><h3 className="text-[15px] font-semibold text-text-primary">Agreed actions</h3><p className="mt-1 text-[12px] text-text-secondary">An owner and a deadline for every move</p></div><span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-primary">{data?.actions.length ?? 0}</span></div>{data?.actions.length ? <ol className="mt-4 divide-y divide-border-light">{data.actions.map((action, index) => <li key={action.id} className="flex gap-3 py-4 first:pt-0 last:pb-0"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[11px] font-bold text-blue-primary">{index + 1}</span><div className="min-w-0 flex-1"><p className="text-[13.5px] font-medium leading-6 text-text-primary">{action.action}</p><div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11.5px] text-text-secondary"><Link href={`/analytics/reps/${repSlug(action.owner)}`} className="inline-flex items-center gap-1.5 font-medium text-blue-primary hover:underline"><Avatar name={action.owner} className="h-5 w-5" />{action.owner}</Link><span className="inline-flex items-center gap-1"><CalendarDays size={13} />{formatDayLabel(action.deadline, "en-US")}</span></div></div></li>)}</ol> : <div className="mt-4"><Empty>No review actions agreed yet.</Empty></div>}</section>
-      <section className="h-fit rounded-2xl border border-border-light bg-white p-5 sm:p-6"><span className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-secondary">Next customer step</span><p className="mt-3 text-[14px] font-semibold leading-6 text-text-primary">{data?.nextStep.objective || "No next step agreed yet"}</p>{data?.nextStep.date && <p className="mt-3 inline-flex items-center gap-2 text-[12px] font-medium text-blue-primary"><CalendarDays size={15} />{formatDayLabel(data.nextStep.date, "en-US")}</p>}{data?.nextStep.stakeholderName && <div className="mt-4 flex items-center gap-2 border-t border-border-light pt-4"><Avatar name={data.nextStep.stakeholderName} className="h-8 w-8" />data.nextStep.stakeholderContactId ? <Link href={`/contacts/${data.nextStep.stakeholderContactId}`} className="text-[12.5px] font-medium text-blue-primary hover:underline">{data.nextStep.stakeholderName}</Link> : <span className="text-[12.5px] font-medium text-text-primary">{data.nextStep.stakeholderName}</span></div>}<button type="button" onClick={() => setSection("decision")} className="mt-5 inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue-primary hover:underline">See decision brief <ArrowRight size={14} /></button></section>
+      <section className="h-fit rounded-2xl border border-border-light bg-white p-5 sm:p-6"><span className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-secondary">Next customer step</span><p className="mt-3 text-[14px] font-semibold leading-6 text-text-primary">{data?.nextStep.objective || "No next step agreed yet"}</p>{data?.nextStep.date && <p className="mt-3 inline-flex items-center gap-2 text-[12px] font-medium text-blue-primary"><CalendarDays size={15} />{formatDayLabel(data.nextStep.date, "en-US")}</p>}{data?.nextStep.stakeholderName && <div className="mt-4 flex items-center gap-2 border-t border-border-light pt-4"><Avatar name={data.nextStep.stakeholderName} className="h-8 w-8" />{data.nextStep.stakeholderContactId ? <Link href={`/contacts/${data.nextStep.stakeholderContactId}`} className="text-[12.5px] font-medium text-blue-primary hover:underline">{data.nextStep.stakeholderName}</Link> : <span className="text-[12.5px] font-medium text-text-primary">{data.nextStep.stakeholderName}</span>}</div>}</section>
     </div>}
   </div>;
 }

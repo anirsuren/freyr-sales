@@ -38,9 +38,9 @@ import { tint } from "@/lib/tint";
 type ReleaseStatus = "released" | "current" | "expected";
 
 const STATUS_META: Record<ReleaseStatus, { label: string; color: string }> = {
-  released: { label: "Released", color: "#16A34A" },
-  current: { label: "Current", color: "var(--ink-bright-blue)" },
-  expected: { label: "Expected", color: "var(--ink-violet-soft)" },
+  released: { label: "Released", color: "var(--status-fill-success)" },
+  current: { label: "Current", color: "var(--blue-primary)" },
+  expected: { label: "Expected", color: "var(--status-fill-violet)" },
 };
 
 function releaseStatus(r: FdlComponent["releases"][number]): ReleaseStatus {

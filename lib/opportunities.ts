@@ -5,8 +5,10 @@ import type {
   OpportunityActivity,
   OpportunityGoalLink,
   OpportunityReview,
+  OpportunityReviewRecord,
 } from "./opportunitiesShared";
 import { getDataMode } from "./dataMode";
+import { mockDated } from "./mockDates";
 import { SEED_OPPORTUNITIES } from "./pipelineSeed";
 import { mockFillOpportunities } from "./mockFillLife";
 import { mockOpportunityReview } from "./mockOpportunityReview";
@@ -88,6 +90,29 @@ function normalizeReview(raw: unknown): OpportunityReview | undefined {
       return action ? [{ id: text(p.id, 60) || uid(), action, owner: text(p.owner, 120), ownerId: text(p.ownerId, 80) || undefined, deadline: day(p.deadline) || "" }] : [];
     }),
   };
+}
+
+function legacyReviewRecord(id: string, review: OpportunityReview): OpportunityReviewRecord {
+  return { id: `legacy-${id}`, reviewedOn: "", recordedAt: "", recordedBy: "", review };
+}
+
+function normalizeReviewRecords(raw: unknown, review: OpportunityReview | undefined, id: string): OpportunityReviewRecord[] {
+  if (!Array.isArray(raw)) return review ? [legacyReviewRecord(id, review)] : [];
+  const records = raw.flatMap((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const value = item as Record<string, unknown>;
+    const content = normalizeReview(value.review);
+    if (!content) return [];
+    return [{
+      id: str(value.id, 80) || `${id}-review-${index + 1}`,
+      reviewedOn: day(value.reviewedOn) || "",
+      recordedAt: str(value.recordedAt, 40),
+      recordedBy: str(value.recordedBy, 120),
+      copiedFromId: str(value.copiedFromId, 80) || undefined,
+      review: content,
+    }];
+  });
+  return records.length ? records : review ? [legacyReviewRecord(id, review)] : [];
 }
 
 function hasDatabase(): boolean {
@@ -322,6 +347,7 @@ function normalizeOne(raw: unknown): Opportunity | null {
     owner: str(r.owner, 120) || undefined,
     nextSteps: str(r.nextSteps, 600) || undefined,
     review: normalizeReview(r.review),
+    reviewRecords: normalizeReviewRecords(r.reviewRecords, normalizeReview(r.review), str(r.id, 60)),
     // The goal table is the source of truth once it exists: goalIds derive
     // from its rows so pacing keeps reading the field it always has.
     ...(() => {
@@ -372,10 +398,10 @@ async function readRow(): Promise<OpportunitiesState> {
   // example reviews on read, while preserving any review someone edited.
   if (mock) state.opportunities = state.opportunities.map((deal, index) =>
     !deal.review && /^(?:seed-opp-|demo-opp-|fill\d+-opp-)/.test(deal.id)
-      ? { ...deal, review: mockOpportunityReview(deal, index) }
+      ? { ...deal, review: mockOpportunityReview(deal, index), reviewRecords: [legacyReviewRecord(deal.id, mockOpportunityReview(deal, index))] }
       : deal
   );
-  return state;
+  return mock ? mockDated(state) : state;
 }
 
 async function writeRow(state: OpportunitiesState): Promise<void> {
@@ -696,6 +722,9 @@ export type OpportunityInput = {
   owner?: string;
   nextSteps?: string;
   review?: unknown;
+  reviewDate?: string;
+  reviewedBy?: string;
+  copiedFromReviewId?: string;
   goalIds?: string[];
   goalLinks?: unknown[];
   activities?: unknown[];
@@ -770,6 +799,21 @@ export async function updateOpportunity(
   const state = await readRow();
   const idx = state.opportunities.findIndex((o) => o.id === id);
   if (idx === -1) throw new Error("That opportunity no longer exists.");
+  const proposedReview = patch.reviewDate !== undefined ? normalizeReview(patch.review) : undefined;
+  if (patch.reviewDate !== undefined && (
+    !proposedReview ||
+    day(patch.reviewDate) !== patch.reviewDate ||
+    ![
+      proposedReview.compellingEvent,
+      proposedReview.strategy,
+      proposedReview.nextStep.objective,
+      ...proposedReview.obstacles,
+      ...proposedReview.actions.map((action) => action.action),
+    ].some(Boolean) ||
+    proposedReview.actions.some((action) => !action.owner || !action.deadline)
+  )) {
+    throw new Error("Choose a valid date and complete the opportunity review before saving.");
+  }
   const merged = normalizeOne({
     ...state.opportunities[idx],
     // Only fields actually sent overwrite: a form that posts three fields must
@@ -820,6 +864,19 @@ export async function updateOpportunity(
       const account = await ensureCustomerAccount(party.company, party.customerId);
       party.customerId = account.id;
     }
+  }
+  if (patch.reviewDate && merged.review) {
+    merged.reviewRecords = [
+      ...(state.opportunities[idx].reviewRecords || (state.opportunities[idx].review ? [legacyReviewRecord(id, state.opportunities[idx].review)] : [])),
+      {
+        id: `review-${crypto.randomUUID()}`,
+        reviewedOn: patch.reviewDate,
+        recordedAt: new Date().toISOString(),
+        recordedBy: str(patch.reviewedBy, 120),
+        copiedFromId: patch.copiedFromReviewId || undefined,
+        review: structuredClone(merged.review),
+      },
+    ];
   }
   /* ONE OFFERING PER OPPORTUNITY MEANS ONE CONFIDENCE. The list reads the
      line's confidence and revenue type, the overview writes the deal's; on a

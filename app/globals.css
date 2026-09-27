@@ -9,10 +9,15 @@
   --bar-veil: 255, 255, 255;
   --blue-primary: #0071e3;
   --blue-hover: #0077ed;
+  --blue-primary-rgb: 0 113 227;
+  --blue-hover-rgb: 0 119 237;
   --blue-light: #e8f1fb;
   --blue-subtle: #c7dcfa;
+  --blue-light-rgb: 232 241 251;
+  --blue-subtle-rgb: 199 220 250;
 
   --white: #ffffff;
+  --canvas-rgb: 255 255 255;
   --surface: #f9fafb;
   /* Channel form of --surface. Tailwind compiles `bg-surface/50` to
      rgb(var(--surface-rgb) / 0.5), so every opacity variant follows the
@@ -22,6 +27,8 @@
   --surface-rgb: 249 250 251;
   --border: #d2d2d7;
   --border-light: #e5e5ea;
+  --border-rgb: 210 210 215;
+  --border-light-rgb: 229 229 234;
 
   --text-primary: #1d1d1f;
   --text-secondary: #6e6e73;
@@ -30,6 +37,9 @@
      quiet grey and clears it on both (Anir, Sep 4: "you can't really have
      gray text, right?"). */
   --text-tertiary: #6e6e73;
+  --text-primary-rgb: 29 29 31;
+  --text-secondary-rgb: 110 110 115;
+  --text-tertiary-rgb: 110 110 115;
 
   --success: #34c759;
   /* Burnt orange — the old #ff9f0a rendered warning text at 2.1:1 (banned
@@ -118,6 +128,9 @@ body {
   --ink-blue-soft: #0058B0;
   --ink-violet: #6D28D9;
   --ink-violet-soft: #7C3AED;
+  --ink-indigo: #4338ca;
+  --ink-emerald: #059669;
+  --ink-neutral: #6e6e73;
   --ink-teal: #0E7490;
   --ink-teal-deep: #0F766E;
   --ink-green: #1A7A35;
@@ -126,6 +139,52 @@ body {
   --ink-red: #B02020;
   --ink-bright-blue: #0071E3;
   --ink-orange: #C2410C;
+  --opportunity-qualify: #0891B2;
+  --opportunity-pilot: #5E5CE6;
+  --opportunity-on-hold: #8E98A8;
+  --opportunity-won: #16A34A;
+  --opportunity-lost: #DC2626;
+  --status-fill-success: #15803d;
+  --status-fill-violet: #6d28d9;
+  --status-fill-amber: #b45309;
+  --privilege-bd-member: #2c7fd0;
+  --privilege-bo-member: #6d4bc4;
+  --privilege-sol-owner: #db2777;
+  --privilege-sol-member: #b02066;
+  --privilege-delivery-member: #9a4a16;
+  --privilege-view-all: #475569;
+  --heat-lead-fill: #0071e3;
+  --heat-opportunity-fill: #7c3aed;
+  --heat-pilot-fill: #0e7490;
+  --heat-contract-fill: #c2410c;
+  --heat-delivery-fill: #1a7a35;
+  --stage-meeting: #16a34a;
+  --stage-lost: #ef4444;
+  --stage-fill-prospect: #c2410c;
+  --stage-fill-engaged: #0071e3;
+  --stage-fill-qualified: #7c3aed;
+  --stage-fill-meeting: #15803d;
+  --stage-fill-lost: #dc2626;
+  --sequence-step-fill: #1d1d1f;
+  --sequence-email: #0066cc;
+  --sequence-call: #047857;
+  --sequence-wait: #475569;
+  --sequence-template-blue-bg: #eff6ff;
+  --sequence-template-blue-border: #bfdbfe;
+  --sequence-template-green-bg: #ecfdf5;
+  --sequence-template-green-border: #a7f3d0;
+  --sequence-template-orange-bg: #fff7ed;
+  --sequence-template-orange-border: #fed7aa;
+  --activity-overdue-ink: #b42318;
+  --activity-overdue-bg: #fef3f2;
+  --activity-today-ink: #8a6100;
+  --activity-today-bg: #fff7d6;
+  --activity-upcoming-ink: #0057b8;
+  --activity-upcoming-bg: #eaf4ff;
+  --activity-replies-ink: #007a5a;
+  --activity-replies-bg: #e9f8f2;
+  --activity-meetings-bg: #f3eeff;
+  --fdl-current-bg: rgba(232, 241, 251, 0.55);
   /* THE CATEGORY PALETTE, AS TOKENS.
      components/offerings/filterPalette.ts holds ten identity hues and its own
      rule says every one must clear 4.5:1 — but that rule was written against
@@ -169,48 +228,118 @@ body {
   --bar-veil: 28, 28, 30;
   color-scheme: dark;
   --white: #1c1c1e;
+  --canvas-rgb: 28 28 30;
   --surface: #26262a;
   --surface-rgb: 38 38 42;
+  --blue-light: #1e3044;
+  --blue-subtle: #365574;
+  --blue-primary: #2f6a9d;
+  --blue-hover: #3977aa;
+  --blue-primary-rgb: 47 106 157;
+  --blue-hover-rgb: 57 119 170;
+  --blue-light-rgb: 30 48 68;
+  --blue-subtle-rgb: 54 85 116;
   --border: #3a3a3d;
   --border-light: #2e2e31;
+  --border-rgb: 58 58 61;
+  --border-light-rgb: 46 46 49;
   --text-primary: #f5f5f7;
-  --text-secondary: #a1a1a6;
+  --text-secondary: #c0c0c6;
+  --text-primary-rgb: 245 245 247;
+  --text-secondary-rgb: 192 192 198;
   /* Lifted from #76767b, which sat at 3.34:1 on a card and 3.77:1 on a
      raised surface — under the 4.5:1 floor at the 11-13px this token is
      used at. #8E8E96 keeps the same grey character and clears it. */
-  --text-tertiary: #8E8E96;
+  --text-tertiary: #a9a9b0;
+  --text-tertiary-rgb: 169 169 176;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 /* The same inks, lifted for a dark ground. Each is the light hue taken up in
    lightness until it clears 4.5:1 on #1c1c1e, so a chip keeps its identity —
    blue is still blue — and becomes readable. */
 .dark {
-  --ink-blue: #7FB0FF;
-  --ink-blue-soft: #8FBBFF;
-  --ink-violet: #C4B5FD;
-  --ink-violet-soft: #CDBFFE;
-  --ink-teal: #6FD8DC;
-  --ink-teal-deep: #6FD5C4;
-  --ink-green: #7CD8A0;
-  --ink-amber: #F0BE6A;
-  --ink-magenta: #F0A6D8;
-  --ink-red: #FFB4AB;
-  --ink-bright-blue: #7FB0FF;
-  --ink-orange: #F2A57A;
+  --ink-blue: #9bbddd;
+  --ink-blue-soft: #a9c7e2;
+  --ink-violet: #bdb2d4;
+  --ink-violet-soft: #c8bddb;
+  --ink-indigo: #b6b3d9;
+  --ink-emerald: #9bc9bf;
+  --ink-neutral: #c0c0c6;
+  --ink-teal: #9cc8ca;
+  --ink-teal-deep: #9bc9bf;
+  --ink-green: #a7c9ae;
+  --ink-amber: #d6bb94;
+  --ink-magenta: #d5b4cc;
+  --ink-red: #e5b0aa;
+  --ink-bright-blue: #9bbddd;
+  --ink-orange: #d7ad92;
+  --opportunity-qualify: #9fc4cf;
+  --opportunity-pilot: #b6b3d9;
+  --opportunity-on-hold: #aeb1b8;
+  --opportunity-won: #a7c9ae;
+  --opportunity-lost: #e5b0aa;
+  --status-fill-success: #315f41;
+  --status-fill-violet: #574779;
+  --status-fill-amber: #805b2f;
+  --privilege-bd-member: #a9c7e2;
+  --privilege-bo-member: #c8bddb;
+  --privilege-sol-owner: #d5b4cc;
+  --privilege-sol-member: #d9b1c8;
+  --privilege-delivery-member: #d7ad92;
+  --privilege-view-all: #b7bec8;
+  --heat-lead-fill: #2f6a9d;
+  --heat-opportunity-fill: #574779;
+  --heat-pilot-fill: #23646a;
+  --heat-contract-fill: #855133;
+  --heat-delivery-fill: #315f41;
+  --stage-meeting: #a7c9ae;
+  --stage-lost: #e5b0aa;
+  --stage-fill-prospect: #855133;
+  --stage-fill-engaged: #2f6a9d;
+  --stage-fill-qualified: #574779;
+  --stage-fill-meeting: #315f41;
+  --stage-fill-lost: #8f3e40;
+  --sequence-step-fill: #474751;
+  --sequence-email: #9bbddd;
+  --sequence-call: #a7c9ae;
+  --sequence-wait: #c0c0c6;
+  --sequence-template-blue-bg: #243041;
+  --sequence-template-blue-border: #3d526a;
+  --sequence-template-green-bg: #26352e;
+  --sequence-template-green-border: #4b6658;
+  --sequence-template-orange-bg: #352e27;
+  --sequence-template-orange-border: #66523b;
+  --activity-overdue-ink: #e5b0aa;
+  --activity-overdue-bg: #35272b;
+  --activity-today-ink: #d6bb94;
+  --activity-today-bg: #352e27;
+  --activity-upcoming-ink: #9bbddd;
+  --activity-upcoming-bg: #243041;
+  --activity-replies-ink: #a7c9ae;
+  --activity-replies-bg: #26352e;
+  --activity-meetings-bg: #302a3a;
+  --fdl-current-bg: #202d3b;
   /* Same hue, lifted until it clears 4.5:1 on the dark card. Kept far enough
      apart that the palette's "neighbours must not look alike" rule still
      holds in this theme as well as in light. */
   /* The same red as `.dark .text-error` already uses, so the two ways the app
      says "wrong" finally agree with each other in this theme. */
-  --status-red: #FF7B74;
-  --cat-blue: #7FB0FF;
-  --cat-pink: #F7A8CE;
-  --cat-teal: #5FD3C4;
-  --cat-olive: #B6D96A;
-  --cat-cyan: #6FD0E8;
-  --cat-magenta: #F0A6D8;
-  --cat-slate: #B6C0CE;
-  --cat-purple: #C4B5FD;
+  --status-red: #e5b0aa;
+  --entry-verified: #315f41;
+  --entry-verified-ink: #a7c9ae;
+  --entry-sent-back: #8f3e40;
+  --entry-sent-back-ink: #e5b0aa;
+  --entry-waiting: #967248;
+  --entry-waiting-ink: #d6bb94;
+  --entry-waiting-bg: rgba(214, 187, 148, 0.14);
+  --cat-blue: #9bbddd;
+  --cat-pink: #d9b1c8;
+  --cat-teal: #9bc9bf;
+  --cat-olive: #b8c6a0;
+  --cat-cyan: #9fc4cf;
+  --cat-magenta: #d5b4cc;
+  --cat-slate: #b7bec8;
+  --cat-purple: #bdb2d4;
 }
 
 html.dark,
@@ -221,7 +350,14 @@ html.dark body {
 .dark .bg-white {
   background-color: #1c1c1e !important;
 }
-.dark .bg-surface {
+.dark .bg-white[class*="hover:bg-"]:hover,
+.dark .bg-white[class*="focus:bg-"]:focus,
+.dark .group:hover .bg-white[class*="group-hover:bg-"] {
+  background-color: #26262a !important;
+}
+.dark .hover\:bg-white:hover,
+.dark .focus\:bg-white:focus,
+.dark .group:hover .group-hover\:bg-white {
   background-color: #26262a !important;
 }
 /* A RING THAT MEANS "CUT ME OUT OF THE CARD", NOT "DRAW A WHITE LINE".
@@ -239,23 +375,6 @@ html.dark body {
 .dark .border-white {
   border-color: #1c1c1e !important;
 }
-.dark .text-text-primary {
-  color: #f5f5f7 !important;
-}
-.dark .text-text-secondary {
-  color: #a1a1a6 !important;
-}
-.dark .text-text-tertiary {
-  /* Lifted from #76767b (3.34:1 on a card, 3.77:1 raised) to clear the 4.5:1
-     floor at the 11-13px this token is used at (Anir, Sep 4). */
-  color: #8e8e96 !important;
-}
-.dark .border-border-light {
-  border-color: #2e2e31 !important;
-}
-.dark .border-border {
-  border-color: #3a3a3d !important;
-}
 /* Picker icons use the same category hue as their light-mode counterparts,
    but a quiet dark wash keeps pale pink and blue marks from flashing as solid
    pastel squares. The glyph is light enough to remain legible on that wash. */
@@ -263,37 +382,20 @@ html.dark body {
   background-color: color-mix(in srgb, var(--mark-accent) 20%, #1c1c1e) !important;
   color: color-mix(in srgb, var(--mark-accent) 72%, white) !important;
 }
-.dark .bg-blue-light {
-  background-color: rgba(10, 132, 255, 0.18) !important;
-}
-/* AND EVERY FADED VARIANT OF IT (found Aug 16, sweeping dark mode for
-   contrast). Tailwind emits `bg-blue-light/60` as its own class, so the rule
-   above never reached it and those panels kept the light #E8F1FB wash on the
-   dark page — while the text on top DID pick up its dark-mode colour, leaving
-   pale blue on pale blue at 1.9:1. The forecast page's "you" row was the
-   clearest case. Alpha scales with the variant so the wash stays as subtle
-   as it was designed to be. Same treatment the success/warning/error washes
-   below already get. */
-.dark .bg-blue-light\/15 { background-color: rgba(10, 132, 255, 0.03) !important; }
-.dark .bg-blue-light\/20 { background-color: rgba(10, 132, 255, 0.04) !important; }
-.dark .bg-blue-light\/25 { background-color: rgba(10, 132, 255, 0.05) !important; }
-.dark .bg-blue-light\/30 { background-color: rgba(10, 132, 255, 0.05) !important; }
-.dark .bg-blue-light\/35 { background-color: rgba(10, 132, 255, 0.06) !important; }
-.dark .bg-blue-light\/40 { background-color: rgba(10, 132, 255, 0.07) !important; }
-.dark .bg-blue-light\/45 { background-color: rgba(10, 132, 255, 0.08) !important; }
-.dark .bg-blue-light\/50 { background-color: rgba(10, 132, 255, 0.09) !important; }
-.dark .bg-blue-light\/55 { background-color: rgba(10, 132, 255, 0.10) !important; }
-.dark .bg-blue-light\/60 { background-color: rgba(10, 132, 255, 0.11) !important; }
-.dark .bg-blue-light\/70 { background-color: rgba(10, 132, 255, 0.13) !important; }
 /* #0071E3 is tuned for white. On the dark page it lands near 3.9:1, and on
    the dark blue chip wash near 2.9:1, so category chips and links read as
    smudges. This lifts it to a dark-mode blue that clears AA on both. */
 .dark .text-blue-primary {
-  color: #6fb6ff !important;
+  color: #9bbddd !important;
+}
+.dark .hover\:text-blue-primary:hover,
+.dark .focus\:text-blue-primary:focus,
+.dark .group:hover .group-hover\:text-blue-primary {
+  color: #9bbddd !important;
 }
 /* The faded text variants need the lifted blue too, for the same reason. */
-.dark .text-blue-primary\/70 { color: rgba(111, 182, 255, 0.7) !important; }
-.dark .text-blue-primary\/80 { color: rgba(111, 182, 255, 0.8) !important; }
+.dark .text-blue-primary\/70 { color: rgba(155, 189, 221, 0.7) !important; }
+.dark .text-blue-primary\/80 { color: rgba(155, 189, 221, 0.8) !important; }
 
 /* Status utilities are used by compact chips across Voice, Campaigns,
    Sequences, Settings, Sessions, and Reports. Their light-mode foregrounds
@@ -301,13 +403,16 @@ html.dark body {
    tiny green LIVE labels. Lift the semantic foreground and strengthen the
    tint once here so every status remains a status in dark mode. */
 .dark .text-success {
-  color: #73e68f !important;
+  color: #a7c9ae !important;
 }
 .dark .text-warning {
-  color: #ff9f64 !important;
+  color: #d7ad92 !important;
 }
 .dark .text-error {
-  color: #ff7b74 !important;
+  color: #e5b0aa !important;
+}
+.dark .hover\:text-error:hover {
+  color: #e5b0aa !important;
 }
 .dark .bg-success\/10 {
   background-color: rgba(52, 199, 89, 0.18) !important;
@@ -321,6 +426,55 @@ html.dark body {
 .dark .bg-error\/10 {
   background-color: rgba(255, 59, 48, 0.18) !important;
 }
+
+/* Older modules still use fixed light-theme hexes for status labels. Keep the
+   light styling while lifting their foregrounds on dark surfaces. */
+.dark :is([class~="text-[#137A3C]"], [class~="text-[#15803D]"], [class~="text-[#16A34A]"], [class~="text-[color:#15803D]"], [class~="text-[color:#159947]"], [class~="text-[color:#16A34A]"], [class~="text-[color:#16a34a]"]) { color: var(--ink-green) !important; }
+.dark [class~="text-blue-primary/70"] { color: var(--ink-blue-soft) !important; }
+.dark .sequence-template-check { background: color-mix(in srgb, var(--sequence-color) 45%, #1c1c1e) !important; }
+.dark :is([class~="text-[#B02020]"], [class~="text-[#B91C1C]"], [class~="text-[#DC2626]"], [class~="text-[color:#B02020]"], [class~="text-[color:#dc2626]"]) { color: var(--ink-red) !important; }
+.dark :is([class~="text-[#875000]"], [class~="text-[#8A5A22]"], [class~="text-[#9A7B00]"], [class~="text-[#B45309]"], [class~="text-[color:#92400E]"], [class~="text-[color:#B45309]"], [class~="text-[color:#C45312]"], [class~="text-[color:#D97706]"]) { color: var(--ink-amber) !important; }
+.dark :is([class~="text-[#7E22CE]"], [class~="text-[color:#4338CA]"]) { color: var(--ink-violet) !important; }
+.dark :is([class~="text-[color:#0369A1]"], [class~="text-[#5A6472]"]) { color: var(--ink-blue) !important; }
+.dark [class~="text-[color:#0D9488]"] { color: var(--ink-teal-deep) !important; }
+.dark :is([class~="hover:text-[#B45309]"], [class~="hover:text-[color:#B45309]"]):hover { color: var(--ink-amber) !important; }
+.dark :is([class~="hover:text-[#DC2626]"], [class~="hover:text-[color:#dc2626]"]):hover { color: var(--ink-red) !important; }
+.dark [class~="hover:text-[color:#16A34A]"]:hover { color: var(--ink-green) !important; }
+
+/* Tint utilities are scattered across feature pages. In dark mode they must
+   read as a quiet wash rather than a pale rectangle; explicit dark variants
+   on a component still take precedence. */
+.dark :is([class~="bg-blue-50"], [class~="bg-indigo-50"], [class~="bg-cyan-50"]):not([class*="dark:bg-"]) { background-color: #243041 !important; }
+.dark :is([class~="bg-green-50"], [class~="bg-emerald-50"], [class~="bg-teal-50"]):not([class*="dark:bg-"]) { background-color: #26352e !important; }
+.dark :is([class~="bg-red-50"], [class~="bg-red-50/65"], [class~="bg-rose-50"]):not([class*="dark:bg-"]) { background-color: #35272b !important; }
+.dark :is([class~="bg-amber-50"], [class~="bg-amber-50/50"], [class~="bg-amber-100"], [class~="bg-yellow-50"], [class~="bg-orange-50"]):not([class*="dark:bg-"]) { background-color: #352e27 !important; }
+.dark :is([class~="bg-violet-50"], [class~="bg-purple-50"]):not([class*="dark:bg-"]) { background-color: #302a3a !important; }
+.dark :is([class~="bg-slate-50"], [class~="bg-slate-50/70"]):not([class*="dark:bg-"]) { background-color: #292b2e !important; }
+.dark :is([class~="text-red-600"], [class~="text-red-700"], [class~="text-red-800"], [class~="text-rose-700"]):not([class*="dark:text-"]) { color: var(--ink-red) !important; }
+.dark :is([class~="text-green-700"], [class~="text-green-800"], [class~="text-emerald-700"], [class~="text-teal-700"]):not([class*="dark:text-"]) { color: var(--ink-green) !important; }
+.dark :is([class~="text-amber-600"], [class~="text-amber-700"], [class~="text-amber-800"], [class~="text-orange-700"], [class~="text-orange-800"]):not([class*="dark:text-"]) { color: var(--ink-amber) !important; }
+.dark :is([class~="text-violet-600"], [class~="text-violet-700"], [class~="text-indigo-700"]):not([class*="dark:text-"]) { color: var(--ink-violet) !important; }
+.dark :is([class~="text-cyan-700"], [class~="text-blue-900"]):not([class*="dark:text-"]) { color: var(--ink-blue) !important; }
+.dark :is([class~="text-slate-500"], [class~="text-slate-600"]):not([class*="dark:text-"]) { color: var(--text-secondary) !important; }
+.dark .saved-source-button[aria-pressed="true"] {
+  color: var(--ink-amber) !important;
+  background-color: #352e27 !important;
+  border-color: #66523b !important;
+}
+.dark :is(.filter-option-checkbox, .color-select-checkbox)[data-selected="true"] {
+  background: color-mix(in srgb, var(--filter-color) 40%, #1c1c1e) !important;
+  border-color: color-mix(in srgb, var(--filter-color) 65%, #55565c) !important;
+  color: #f5f5f7 !important;
+}
+.dark .filter-option-label[data-color="true"] {
+  color: color-mix(in srgb, var(--filter-color) 55%, #f5f5f7) !important;
+}
+.dark :is([class~="hover:bg-red-50"], [class~="hover:bg-rose-50"]):hover { background-color: #35272b !important; }
+.dark :is([class~="hover:bg-blue-50"], [class~="hover:bg-indigo-50"]):hover { background-color: #243041 !important; }
+.dark [class~="hover:bg-amber-50"]:hover { background-color: #352e27 !important; }
+.dark :is([class~="border-red-100"], [class~="border-red-200"]):not([class*="dark:border-"]) { border-color: #5a3a3e !important; }
+.dark :is([class~="border-blue-100"], [class~="border-blue-200"]):not([class*="dark:border-"]) { border-color: #3d526a !important; }
+.dark :is([class~="border-amber-200"], [class~="border-orange-200"]):not([class*="dark:border-"]) { border-color: #66523b !important; }
 
 /* Dynamic catalogue colours are chosen by admins, so a light-mode accent can
    be too dark when reused verbatim on a charcoal surface (violet was the most
@@ -341,18 +495,34 @@ html.dark body {
   background-color: var(--semantic-color);
 }
 .dark .semantic-color-pill {
-  color: color-mix(in srgb, var(--semantic-color) 46%, white) !important;
+  color: color-mix(in srgb, var(--semantic-color) 30%, #e1e3e8) !important;
   background-color: color-mix(
     in srgb,
-    var(--semantic-color) 27%,
-    #1c1c1e
+    var(--semantic-color) 9%,
+    #26262a
   ) !important;
   border-color: color-mix(
     in srgb,
-    var(--semantic-color) 68%,
-    transparent
+    var(--semantic-color) 18%,
+    #3a3a3d
   ) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  box-shadow: none;
+}
+.dark .service-tag-icon {
+  background-color: color-mix(in srgb, var(--semantic-color) 22%, #303136) !important;
+  color: color-mix(in srgb, var(--semantic-color) 48%, #f5f5f7) !important;
+}
+.dark .offering-icon {
+  background-image: none !important;
+  background-color: color-mix(in srgb, var(--offering-mark) 18%, #26262a) !important;
+  color: color-mix(in srgb, var(--offering-mark) 55%, #f5f5f7) !important;
+  border: 1px solid color-mix(in srgb, var(--offering-mark) 22%, #3a3a3d);
+  box-shadow: none;
+}
+.dark .stat-tile-custom-icon {
+  background: color-mix(in srgb, var(--stat-accent) 15%, #26262a) !important;
+  color: color-mix(in srgb, var(--stat-accent) 52%, #f5f5f7) !important;
+  border: 1px solid color-mix(in srgb, var(--stat-accent) 20%, #3a3a3d);
 }
 .dark .semantic-color-dot {
   background-color: color-mix(
@@ -1396,13 +1566,27 @@ input {
     color-scheme: light;
     --bar-veil: 255, 255, 255;
     --white: #ffffff;
+    --canvas-rgb: 255 255 255;
     --surface: #f5f5f7;
     --surface-rgb: 245 245 247;
+    --blue-light: #e8f1fb;
+    --blue-subtle: #c7dcfa;
+    --blue-primary: #0071e3;
+    --blue-hover: #0077ed;
+    --blue-primary-rgb: 0 113 227;
+    --blue-hover-rgb: 0 119 237;
+    --blue-light-rgb: 232 241 251;
+    --blue-subtle-rgb: 199 220 250;
     --border: #d2d2d7;
     --border-light: #e8e8ed;
+    --border-rgb: 210 210 215;
+    --border-light-rgb: 232 232 237;
     --text-primary: #1d1d1f;
     --text-secondary: #6e6e73;
     --text-tertiary: #86868b;
+    --text-primary-rgb: 29 29 31;
+    --text-secondary-rgb: 110 110 115;
+    --text-tertiary-rgb: 134 134 139;
     --shadow-card: none;
   }
   html.dark,
@@ -2433,7 +2617,166 @@ tr.mi-collecting-row {
 [data-agent-dock-clearance][data-agent-dock-collision] {
   padding-right: 92px !important;
 }
+
+/* Shared row affordance: a small leading rail, blue wash and moving arrow,
+   matching the Verify selector while keeping Freyr's own color tokens. */
+@keyframes freyr-subnav-enter {
+  from { opacity: 0; transform: translateY(-7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.freyr-subnav-enter {
+  animation: freyr-subnav-enter 190ms cubic-bezier(.2,.8,.2,1) both;
+}
+.freyr-choice-row {
+  position: relative;
+  isolation: isolate;
+  transition: background-color 150ms ease-out, padding-left 150ms ease-out, box-shadow 150ms ease-out;
+}
+.freyr-choice-row::before,
+.freyr-contact-card::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--blue-primary);
+  transform: scaleY(0);
+  transition: transform 150ms ease-out;
+}
+.freyr-choice-row:hover,
+.freyr-choice-row:focus-visible {
+  z-index: 1;
+  padding-left: 20px;
+  background: var(--blue-light);
+  box-shadow: 0 2px 12px -2px rgba(0, 64, 160, .2);
+}
+.freyr-choice-row:hover::before,
+.freyr-choice-row:focus-visible::before,
+.freyr-contact-card:hover::before,
+.freyr-contact-card:focus-within::before { transform: scaleY(1); }
+.freyr-choice-row__title,
+.freyr-choice-row__arrow { transition: color 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out, box-shadow 150ms ease-out; }
+.freyr-choice-row:hover .freyr-choice-row__title,
+.freyr-choice-row:focus-visible .freyr-choice-row__title { color: var(--ink-blue); }
+.freyr-choice-row:hover .freyr-choice-row__arrow,
+.freyr-choice-row:focus-visible .freyr-choice-row__arrow {
+  transform: translateX(4px);
+  color: white;
+  border-color: var(--blue-primary);
+  background: var(--blue-primary);
+  box-shadow: 0 2px 6px rgba(0, 64, 160, .18);
+}
+.freyr-contact-card {
+  transition: border-color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.freyr-contact-card:hover,
+.freyr-contact-card:focus-within {
+  border-color: var(--blue-subtle);
+  background: var(--blue-light);
+  box-shadow: 0 2px 12px -2px rgba(0, 64, 160, .16);
+}
+/* Table rows that already advertise clickability get the same quiet cue.
+   Static and editable rows retain their existing presentation. */
+main tbody tr.cursor-pointer {
+  transition: background-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+main tbody tr.cursor-pointer > td:first-child > * {
+  transition: transform 150ms ease-out, color 150ms ease-out;
+}
+main tbody tr.cursor-pointer:hover,
+main tbody tr.cursor-pointer:focus-within {
+  background: var(--blue-light);
+  box-shadow: inset 3px 0 var(--blue-primary), 0 2px 12px -2px rgba(0, 64, 160, .12);
+}
+/* Offering rows already draw their category-colored stripe in the first cell.
+   Keep the blue hover wash without laying a second blue rail beside it. */
+main tbody tr.cursor-pointer.offering-accent-row:hover,
+main tbody tr.cursor-pointer.offering-accent-row:focus-within {
+  box-shadow: 0 2px 12px -2px rgba(0, 64, 160, .12);
+}
+/* Let the first logo/name slide clear of the leading rail. A row with a logo
+   flush to its first cell otherwise makes the hover accent touch the mark. */
+main tbody tr.cursor-pointer:hover > td:first-child > *,
+main tbody tr.cursor-pointer:focus-within > td:first-child > * {
+  transform: translateX(9px);
+}
+main tbody tr.cursor-pointer:hover > td:last-child .lucide-chevron-right,
+main tbody tr.cursor-pointer:focus-within > td:last-child .lucide-chevron-right {
+  transform: translateX(3px);
+  color: var(--blue-primary);
+}
+main tbody tr.cursor-pointer > td:last-child .lucide-chevron-right {
+  transition: transform 150ms ease-out, color 150ms ease-out;
+}
 @media (prefers-reduced-motion: reduce) {
+  .freyr-subnav-enter { animation: none; }
   tr.mi-collecting-row { animation: none; background-image: none; }
   [data-agent-dock-clearance] { transition: none; }
+  .freyr-choice-row,
+  .freyr-choice-row::before,
+  .freyr-choice-row__title,
+  .freyr-choice-row__arrow,
+  .freyr-contact-card,
+  .freyr-contact-card::before,
+  main tbody tr.cursor-pointer,
+  main tbody tr.cursor-pointer > td:first-child > *,
+  main tbody tr.cursor-pointer > td:last-child .lucide-chevron-right { transition: none; }
+}
+
+/* FONT PRESETS (Anir, Sep 26: "I really think it's the font"). The faces are
+   loaded in app/layout.tsx as --font-* variables and the chosen preset is
+   stamped on <html> as data-font (from the member's profile). Each block
+   below is one preset from lib/fontPresets.ts, kept in the same order; a
+   surface opts in with `font-preset-scope`, and the "system" preset sets
+   nothing so opted-in surfaces stay exactly as they are. Offerings opts in
+   first, to judge on one page before it spreads. */
+[data-font="plex"] {
+  --font-heading: var(--font-plex-sans);
+  --font-body: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+[data-font="editorial"] {
+  --font-heading: var(--font-newsreader);
+  --font-body: var(--font-source-sans);
+  --font-mono: var(--font-plex-mono);
+}
+[data-font="inter"] {
+  --font-heading: var(--font-inter);
+  --font-body: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+[data-font="geist"] {
+  --font-heading: var(--font-geist);
+  --font-body: var(--font-geist);
+  --font-mono: var(--font-geist-mono);
+}
+[data-font="manrope"] {
+  --font-heading: var(--font-manrope);
+  --font-body: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+[data-font="fraunces"] {
+  --font-heading: var(--font-fraunces);
+  --font-body: var(--font-dm-sans);
+  --font-mono: var(--font-plex-mono);
+}
+[data-font="jakarta"] {
+  --font-heading: var(--font-jakarta);
+  --font-body: var(--font-jakarta);
+  --font-mono: var(--font-jetbrains-mono);
+}
+.font-preset-scope {
+  font-family: var(--font-body, inherit);
+}
+.font-preset-scope :is(h1, h2, h3, h4) {
+  font-family: var(--font-heading, inherit);
+}
+.font-preset-scope :is(code, pre, kbd, .font-mono) {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+/* Serif display faces sit lower and looser than a sans at the same size. */
+[data-font="editorial"] .font-preset-scope :is(h1, h2, h3, h4),
+[data-font="fraunces"] .font-preset-scope :is(h1, h2, h3, h4) {
+  letter-spacing: -0.01em;
+  font-weight: 500;
 }

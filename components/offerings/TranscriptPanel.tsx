@@ -187,7 +187,7 @@ export function TranscriptPanel({
   }
 
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col rounded-xl border border-border-light bg-white dark:bg-[var(--surface-elevated)]">
+    <aside className="flex h-full min-h-0 w-full flex-col rounded-xl border border-border-light bg-canvas dark:bg-[var(--surface-elevated)]">
       <header className="flex items-center gap-2 border-b border-border-light px-3 py-2.5">
         <h3 className="min-w-0 flex-1 text-[13px] font-semibold text-text-primary">
           Transcript

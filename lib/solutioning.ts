@@ -1,5 +1,6 @@
 import { validateSolutioningCreation } from "./solutioningValidation";
 import { getDataMode } from "./dataMode";
+import { mockDated } from "./mockDates";
 import { FILL_GENERATION, mockFillSolutioning, hasMockFillRows, isStaleFillRow } from "./mockFillLife";
 import { sampleDocPath } from "./sampleDocuments";
 import { refreshMockFillNames } from "./mockFillCast";
@@ -1126,9 +1127,9 @@ export async function readSolutioning(): Promise<SolutioningState> {
       !state.requests.some((request) => isDemoHandoff(state, request)) &&
       !refreshMockFillNames(state.requests)
     )
-      return state;
+      return mockDated(state);
   }
-  return topUpMockFill();
+  return mockDated(await topUpMockFill());
 }
 
 /**

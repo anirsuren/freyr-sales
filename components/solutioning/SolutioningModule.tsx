@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
 import { UploadProgress } from "@/components/ui/UploadProgress";
@@ -711,11 +712,11 @@ export function SolutioningModule({
                 <div className="space-y-3">
                   <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
                     From
-                    <input aria-label="Due from" type="date" value={dueFrom} onChange={e => setDueFrom(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
+                    <DateField ariaLabel="Due from" value={dueFrom} onChange={e => setDueFrom(e)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
                   </label>
                   <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
                     Through
-                    <input aria-label="Due through" type="date" min={dueFrom || undefined} value={dueTo} onChange={e => setDueTo(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
+                    <DateField ariaLabel="Due through" min={dueFrom || undefined} value={dueTo} onChange={e => setDueTo(e)} className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] text-text-primary" />
                   </label>
                 </div>
               ),
@@ -1260,15 +1261,18 @@ function RequestRow({
   const preparedBy = r.completedBy || r.owner || "Not started";
   return (
     <>
-    {/* The request title opens the full page. Only the chevron in Actions
-        toggles the inline breakdown; empty cells are not hidden controls. */}
     <tr
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest("a, button")) return;
+        onToggle();
+      }}
+      aria-expanded={open}
       /* THE RAIL RUNS THE WHOLE WAY (Anir, Aug 25: "the blue thing has to
          extend all the way"). The deal table lights the OPEN row itself — same
          tint, same 3px rail — so the row and the panel under it read as one
          block instead of a panel floating below an untouched row. */
       className={cn(
-        "group align-middle transition-colors",
+        "group cursor-pointer align-middle transition-colors",
         /* NO RULE ACROSS AN OPEN ROW (Anir, Aug 26: "there's a line... on the
            left side, there's a line separation for that blue line I was
            talking about"). The row's own border-b painted a 1px line straight
@@ -1282,13 +1286,15 @@ function RequestRow({
     >
       <td className="w-[340px] px-4 py-3">
         <span className="block whitespace-nowrap text-[10.5px] font-bold text-text-tertiary tnum">{r.ref}</span>
-        <Link
-          href={requestHref}
-          onClick={(e) => e.stopPropagation()}
-          className="mt-0.5 block w-fit max-w-full line-clamp-2 text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
-        >
-          {r.title}
-        </Link>
+        <span className="mt-0.5 block max-w-full line-clamp-2">
+          <Link
+            href={requestHref}
+            onClick={(e) => e.stopPropagation()}
+            className="text-[13px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
+          >
+            {r.title}
+          </Link>
+        </span>
         <Link
           href={requestHref}
           className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-blue-primary hover:underline"
@@ -1431,15 +1437,12 @@ function RequestRow({
       </td>
       <td className="px-4 py-3.5">
         <span className="flex items-center justify-start gap-0.5">
-        {/* THE DROPDOWN EVERY OTHER TABLE HAS (Anir, Aug 24: "you have a
-            table, it looks fine, but there should definitely be a dropdown,
-            just like all the other things you do"). The name navigates; the
-            chevron folds the breakdown open in place, same split as the
-            Opportunities and goal tables. */}
+        {/* The row and this explicit keyboard-accessible chevron both fold the
+            breakdown; only the linked text and action icon navigate away. */}
         <button
           type="button"
           aria-expanded={open}
-          aria-label={`Show the breakdown for ${r.ref}`}
+          aria-label={`${open ? "Hide" : "Show"} the breakdown for ${r.ref}`}
           onClick={(e) => {
             e.stopPropagation();
             onToggle();
@@ -2401,10 +2404,9 @@ export function NewRequestDialog({
                   <span className="text-[12px] font-semibold text-text-primary">
                     Expected to sign <span className="text-error">*</span>
                   </span>
-                  <input
-                    type="date"
+                  <DateField
                     value={subSignDate}
-                    onChange={(e) => setSubSignDate(e.target.value)}
+                    onChange={(e) => setSubSignDate(e)}
                     className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
                   />
                 </label>
@@ -2618,11 +2620,10 @@ export function NewRequestDialog({
                     beside the calendar, and nothing downstream needed a time:
                     the request is raised days ahead and the hour gets settled
                     in the invite, not here. */}
-                <input
-                  type="date"
+                <DateField
                   value={meetingAt}
                   min={todayISO()}
-                  onChange={(e) => setMeetingAt(e.target.value)}
+                  onChange={(e) => setMeetingAt(e)}
                   className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
                 />
                 <span
@@ -2763,15 +2764,14 @@ export function NewRequestDialog({
               <span className="text-[12px] font-semibold text-text-primary">
                 Due date <span className="text-error">*</span>
               </span>
-              <input
-                type="date"
+              <DateField
                 value={neededBy}
                 /* The past is not offered (Anir, Sep 6: "when I request it,
                    the needed date should always be in the future"). The
                    server refuses it too, for anything that bypasses the
                    picker. */
                 min={todayISO()}
-                onChange={(e) => setNeededBy(e.target.value)}
+                onChange={(e) => setNeededBy(e)}
                 className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
               />
               {/* Keep the validation line reserved so an error does not

@@ -4,6 +4,7 @@
 // Holds Freyr's offerings, the customer-type definitions, and the markets, plus
 // the sales-material artifacts attached to each offering.
 import { getDataMode } from "./dataMode";
+import { normalizeMockRecordDates } from "./mockDates";
 import { createClient } from "@supabase/supabase-js";
 import {
   nextRoadmapVersions,
@@ -4369,6 +4370,7 @@ healOfferings(liveStore);
 // was written stayed empty until something happened to re-hydrate it.
 healOfferings(mockStore);
 fillShowroomCatalog(mockStore);
+normalizeMockRecordDates(mockStore);
 
 // ONE offerings catalog, always — the mode switch is about which MODULES are
 // finished, not about which data is real (Anir, Jul 27: "if I add or delete a
@@ -4498,9 +4500,10 @@ export async function initializeLiveOfferings(): Promise<void> {
           // from it and persist the result — otherwise every boot would fill
           // the same gap again and the row would never catch up.
           const filled = fillShowroomCatalog(mockStore);
+          const normalized = normalizeMockRecordDates(mockStore);
           globalThis.__FREYR_OFFERINGS_MOCK_REV__ =
             mockRow.data.updated_at ?? undefined;
-          if (filled) {
+          if (filled || normalized) {
             const stamp = new Date().toISOString();
             await catalogClient().from("offering_catalog_state").upsert({
               id: "mock",
@@ -4596,6 +4599,7 @@ async function refreshStaleCatalog(): Promise<void> {
         // Same reason as the boot path: a revision written by an older build
         // is short, and the showroom must never render thinner than real mode.
         fillShowroomCatalog(mockStore);
+        normalizeMockRecordDates(mockStore);
         globalThis.__FREYR_OFFERINGS_MOCK_REV__ = mockRev;
       }
     })().catch(() => undefined);

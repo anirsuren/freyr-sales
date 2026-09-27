@@ -22,6 +22,8 @@ import { AgentResponseMarkdown } from "@/components/agent/AgentResponseMarkdown"
 import { AgentThinking } from "@/components/agent/AgentThinking";
 import { useTypewriter, trimStreamingLink } from "@/components/agent/useTypewriter";
 import { requestAgentResponse } from "@/lib/agentStreamClient";
+import { ActionCard } from "@/components/agent/ActionCard";
+import type { PendingActionPayload } from "@/lib/agentActionsShared";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 import {
@@ -37,7 +39,7 @@ import { AGENT_DOCK_ACTIVE_KEY } from "@/lib/agentNavigationHandoff";
 const CONVERSATIONS_KEY = "freyr.agent.conversations";
 const LEGACY_THREAD_KEY = "freyr.assistant.thread.v2";
 
-type Msg = { role: "user" | "agent"; text: string; ts: number; entityContext?: string[] };
+type Msg = { role: "user" | "agent"; text: string; ts: number; entityContext?: string[]; pendingAction?: PendingActionPayload };
 type Convo = {
   id: string;
   title: string;
@@ -45,6 +47,8 @@ type Convo = {
   updated: number;
   excludedSources?: string[];
   offeringContext?: AgentOfferingContext;
+  /** Where the chat came from; absent means the app. */
+  channel?: "web" | "whatsapp";
 };
 
 function uid() {
@@ -659,6 +663,50 @@ export function AgentDock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, pending, busy, historyReady]);
 
+  /* THE BUTTONS ON A PROPOSAL. Pressing one is the confirmation; the result
+     comes back as the next agent bubble so the thread reads as a thread. */
+  async function decideAction(conversationId: string, ts: number, decision: "confirm" | "cancel") {
+    const target = convos.find((c) => c.id === conversationId)?.messages.find((m) => m.ts === ts)?.pendingAction;
+    if (!target) return;
+    let outcome: { ok?: boolean; status?: string; text?: string; link?: string | null; error?: string } = {};
+    try {
+      const response = await fetch("/api/agent/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: target.id, decision }),
+      });
+      outcome = (await response.json().catch(() => ({}))) as typeof outcome;
+      if (!response.ok && !outcome.status) outcome = { ok: false, status: "failed", text: outcome.error || "That did not work." };
+    } catch {
+      outcome = { ok: false, status: "failed", text: "The app did not answer. Try again." };
+    }
+    const status = (outcome.status as PendingActionPayload["status"]) || (outcome.ok ? "done" : "failed");
+    const text = outcome.text || outcome.error || "";
+    const followUp = status === "done"
+      ? `Done. ${text}${outcome.link ? ` [Open it](${outcome.link})` : ""}`
+      : status === "cancelled"
+        ? "Okay, I won't do that."
+        : `I couldn't do that: ${text}`;
+    setConvos((previous) =>
+      previous.map((conversation) =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              messages: [
+                ...conversation.messages.map((m) =>
+                  m.ts === ts && m.pendingAction
+                    ? { ...m, pendingAction: { ...m.pendingAction, status, ...(status === "done" ? { result: text, ...(outcome.link ? { link: outcome.link } : {}) } : status === "failed" ? { result: text } : {}) } }
+                    : m
+                ),
+                { role: "agent" as const, text: followUp, ts: Date.now() },
+              ],
+              updated: Date.now(),
+            }
+          : conversation
+      )
+    );
+  }
+
   async function ask(q?: string) {
     const text = (q ?? input).trim();
     if (
@@ -729,6 +777,7 @@ export function AgentDock({
     try {
       const requestBody = {
           message: text,
+          conversationId,
           stream: true,
           history: prior,
           excludeSources: active?.excludedSources ?? [],
@@ -784,22 +833,32 @@ export function AgentDock({
           ? data.reply
           : "I couldn't answer that just now.";
       const replyTs = Date.now();
+      const arrived = data.pendingAction && typeof data.pendingAction === "object" ? (data.pendingAction as PendingActionPayload) : null;
       setConvos((previous) =>
-        previous.map((conversation) =>
-          conversation.id === conversationId
-            ? {
-                ...conversation,
-                messages: [
-                  ...conversation.messages,
-                  { role: "agent" as const, text: reply, ts: replyTs,
-                    entityContext: Array.isArray(data.entityContext)
-                      ? data.entityContext.filter((value): value is string => typeof value === "string")
-                      : [] },
-                ],
-                updated: replyTs,
-              }
-            : conversation
-        )
+        previous.map((conversation) => {
+          if (conversation.id !== conversationId) return conversation;
+          // Same rule as the Agent page: a known proposal id updates its card,
+          // a new proposal retires older open cards in this thread.
+          const known = arrived ? conversation.messages.some((m) => m.pendingAction?.id === arrived.id) : false;
+          const messages = conversation.messages.map((m) => {
+            if (!m.pendingAction) return m;
+            if (arrived && m.pendingAction.id === arrived.id) return { ...m, pendingAction: { ...m.pendingAction, ...arrived } };
+            if (arrived && !known && arrived.status === "proposed" && m.pendingAction.status === "proposed") return { ...m, pendingAction: { ...m.pendingAction, status: "cancelled" as const } };
+            return m;
+          });
+          return {
+            ...conversation,
+            messages: [
+              ...messages,
+              { role: "agent" as const, text: reply, ts: replyTs,
+                entityContext: Array.isArray(data.entityContext)
+                  ? data.entityContext.filter((value): value is string => typeof value === "string")
+                  : [],
+                ...(arrived && !known ? { pendingAction: arrived } : {}) },
+            ],
+            updated: replyTs,
+          };
+        })
       );
       setTypingTs(receivedProgress ? null : replyTs);
     } catch {
@@ -1024,7 +1083,7 @@ export function AgentDock({
                             )}
                           >
                             <MessageSquareText size={16} strokeWidth={1.8} className="shrink-0" />
-                            <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{conversation.title || "New chat"}</span>
+                            <span className="min-w-0 flex-1 truncate text-[13px] font-medium" title={conversation.channel === "whatsapp" ? "From WhatsApp" : undefined}>{conversation.title || "New chat"}</span>
                             <span className="shrink-0 text-[11px] font-normal text-text-tertiary">{conversation.updated ? listStamp(conversation.updated) : ""}</span>
                           </button>
                         </li>
@@ -1104,6 +1163,15 @@ export function AgentDock({
                         m.text
                       )}
                     </div>
+                    {m.role === "agent" && m.pendingAction ? (
+                      <div className="w-full max-w-[92%]">
+                        <ActionCard
+                          compact
+                          action={m.pendingAction}
+                          onDecide={(decision) => decideAction(activeId ?? "", m.ts, decision)}
+                        />
+                      </div>
+                    ) : null}
                     <span className="mt-0.5 px-1 text-[10px] tabular-nums text-text-tertiary">
                       {clockTime(m.ts)}
                     </span>

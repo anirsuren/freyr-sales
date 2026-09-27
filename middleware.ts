@@ -63,6 +63,10 @@ const PUBLIC_WEBHOOK_PATHS = new Set([
   // CRON_SECRET as a bearer token. Added because a digest a scheduler cannot
   // call is not a digest.
   "/api/cron/roadmap-digest",
+  // Meta's WhatsApp webhook. Meta has no session to present; the route
+  // rejects any body whose X-Hub-Signature-256 is not the app secret's HMAC
+  // over the raw bytes, which is the same bargain the voice webhooks strike.
+  "/api/whatsapp/webhook",
 ]);
 
 function isPublicPath(pathname: string): boolean {

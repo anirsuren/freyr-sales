@@ -1,4 +1,5 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { useMemo, useState } from "react";
 import { ArrowLeft, Building2, CalendarDays, CircleDashed, Clock3, Users } from "lucide-react";
@@ -462,12 +463,11 @@ export function NewMeetingDialog({
             </Field>
             <div className="grid grid-cols-[minmax(0,1fr)_150px] gap-2">
               <Field label="Date" required>
-                <Input
+                <DateField
                   required
-                  type="date"
                   value={meetingDate}
                   min={meeting ? undefined : todayISO()}
-                  onChange={(e) => setMeetingDate(e.target.value)}
+                  onChange={(e) => setMeetingDate(e)}
                 />
               </Field>
               <Field label="Time (optional)">

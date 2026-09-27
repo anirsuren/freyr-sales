@@ -95,11 +95,11 @@ const PACE_COLOR: Record<string, string> = {
      legend, and a gray slice broke the no-gray-in-a-graph rule. The two maps
      still disagree about "ahead" (green here as a chip, teal in the donut);
      that one is a choice, not a bug, so it is left as found. */
-  unscheduled: "#A855F7",
-  met: "#16A34A",
+  unscheduled: "var(--ink-violet)",
+  met: "var(--ink-green)",
   ahead: "var(--ink-teal-deep)",
   ontrack: "var(--ink-bright-blue)",
-  lagging: "#DC2626",
+  lagging: "var(--status-red)",
   unset: "#8AB4E8",
 };
 const PACE_LABEL: Record<string, string> = {
@@ -946,7 +946,7 @@ export function OrgPerformanceTab({
           icon={TrendingDown}
           label="Lagging the calendar"
           value={String(laggingCount)}
-          color="#DC2626"
+          color="var(--status-red)"
           warn={laggingCount > 0}
           sub={laggingCount > 0 ? "behind where the year is" : "nothing behind"}
         />
@@ -1394,11 +1394,11 @@ export function OrgPerformanceTab({
                   { value: "met", label: "Target met", color: "#16A34A" },
                   { value: "ahead", label: "Ahead", color: "var(--ink-teal-deep)" },
                   { value: "ontrack", label: "On track", color: "var(--ink-bright-blue)" },
-                  { value: "lagging", label: "Lagging", color: "#DC2626" },
+                  { value: "lagging", label: "Lagging", color: "var(--status-red)" },
                   /* The donut counts these and every row wears the chip, but
                      the filter had no way to ask for them — the one standing
                      you could see everywhere and select nowhere. */
-                  { value: "unscheduled", label: "No schedule", color: "#A855F7" },
+                  { value: "unscheduled", label: "No schedule", color: "var(--ink-violet)" },
                   { value: "unset", label: "No target yet", color: "#8AB4E8" },
                 ],
               },
@@ -2318,10 +2318,10 @@ function GoalRows({
                                       style={{
                                         color:
                                           share >= 85
-                                            ? "#15803D"
+                                            ? "var(--ink-green)"
                                             : share >= 55
                                               ? "var(--ink-bright-blue)"
-                                              : "#DC2626",
+                                              : "var(--status-red)",
                                       }}
                                     >
                                       {Math.round(share)}%
@@ -2737,10 +2737,10 @@ function GoalRows({
                                           style={{
                                             color:
                                               pShare >= 85
-                                                ? "#15803D"
+                                                ? "var(--ink-green)"
                                                 : pShare >= 55
                                                   ? "var(--ink-bright-blue)"
-                                                  : "#DC2626",
+                                                  : "var(--status-red)",
                                           }}
                                         >
                                           {Math.round(pShare)}%

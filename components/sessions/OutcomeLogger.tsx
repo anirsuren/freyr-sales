@@ -1,10 +1,10 @@
 "use client";
+import { DateField } from "@/components/ui/DateField";
 
 import { useState } from "react";
 import { DateEcho } from "@/components/ui/DateEcho";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
-import { Input } from "@/components/ui/Input";
 import { InteractionTimeline } from "@/components/customers/InteractionTimeline";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -114,10 +114,9 @@ export function OutcomeLogger({
             <span className="block text-[13px] font-medium text-text-primary mb-1.5">
               Follow-up date
             </span>
-            <Input
-              type="date"
+            <DateField
               value={followUp}
-              onChange={(e) => setFollowUp(e.target.value)}
+              onChange={(e) => setFollowUp(e)}
               className="w-auto"
             />
             <DateEcho value={followUp} />

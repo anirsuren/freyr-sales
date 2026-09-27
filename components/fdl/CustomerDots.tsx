@@ -19,14 +19,14 @@ export function CustomerDots({
   people,
   max = 6,
   note,
-  size = 28,
+  size = 20,
   reserveOpenWidth = true,
   modalTitle,
 }: {
   people: { id: string; name: string }[];
   max?: number;
   note?: (person: { id: string; name: string }) => string | undefined;
-  /** Mark diameter in px. The version row runs bigger than a table cell. */
+  /** Mark diameter in px. Keep dense customer rows compact. */
   size?: number;
   /** Table cells hold their open width so columns never move (Anir, Aug 9).
    *  An absolutely-positioned caller that centres itself wants the opposite:
@@ -67,10 +67,12 @@ export function CustomerDots({
   // moves under the cursor.
   const marks = visible.length + (hidden > 0 ? 1 : 0);
   const openWidth = marks > 0 ? size + (marks - 1) * (size + 4) : 0;
+  const overlap = -Math.round(size * 0.3);
+  const labelSize = Math.max(9, Math.round(size * 0.45));
   return (
     <span
-      className="inline-flex items-center rounded-lg px-1 py-0.5 transition-colors duration-200 hover:bg-surface focus-within:bg-surface"
-      style={reserveOpenWidth ? { minWidth: openWidth + 8 } : undefined}
+      className="inline-flex items-center"
+      style={reserveOpenWidth ? { minWidth: openWidth } : undefined}
       onMouseEnter={openSoon}
       onMouseLeave={closeNow}
       onFocusCapture={() => setExpanded(true)}
@@ -84,7 +86,7 @@ export function CustomerDots({
           key={person.id}
           className="relative inline-flex transition-[margin,transform] duration-200 ease-out"
           style={{
-            marginLeft: i === 0 ? 0 : expanded ? 4 : -8,
+            marginLeft: i === 0 ? 0 : expanded ? 4 : overlap,
             zIndex: expanded ? visible.length - i : i + 1,
           }}
         >
@@ -94,8 +96,8 @@ export function CustomerDots({
             delayMs={0}
             content={
               <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-light bg-white">
-                  <CompanyLogo name={person.name} className="h-6 w-6 object-contain" />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
+                  <CompanyLogo name={person.name} className="h-full w-full object-cover" />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[13px] font-semibold text-text-primary">
@@ -114,10 +116,10 @@ export function CustomerDots({
               href={`/customers/${person.id}?tab=components`}
               onClick={(event) => event.stopPropagation()}
               aria-label={`Open ${person.name}`}
-              className="flex cursor-pointer items-center justify-center overflow-hidden rounded-full bg-white ring-2 ring-white transition-transform duration-150 hover:scale-110 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-blue-primary"
-              style={{ width: size, height: size }}
+              className="flex cursor-pointer items-center justify-center overflow-hidden rounded-full focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-blue-primary"
+              style={{ width: size, height: size, fontSize: labelSize }}
             >
-              <CompanyLogo name={person.name} className="h-[72%] w-[72%] object-contain" />
+              <CompanyLogo name={person.name} className="h-full w-full object-cover" />
             </Link>
           </HoverCard>
         </span>
@@ -129,7 +131,7 @@ export function CustomerDots({
            circle to its left painted over the plus sign. */
         <span
           className="relative inline-flex transition-[margin] duration-200 ease-out"
-          style={{ marginLeft: expanded ? 4 : -8, zIndex: visible.length + 1 }}
+          style={{ marginLeft: expanded ? 4 : overlap, zIndex: visible.length + 1 }}
         >
           <HoverCard
             width={230}
@@ -144,10 +146,10 @@ export function CustomerDots({
                 <ul className="space-y-1.5">
                   {people.slice(max).map((person) => (
                     <li key={person.id} className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-light bg-white">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full">
                         <CompanyLogo
                           name={person.name}
-                          className="h-3.5 w-3.5 object-contain"
+                          className="h-full w-full object-cover"
                         />
                       </span>
                       <span className="min-w-0 text-[12.5px] text-text-primary">
@@ -167,8 +169,8 @@ export function CustomerDots({
                 setAllOpen(true);
               }}
               aria-label={`Open all ${people.length} companies`}
-              className="flex cursor-pointer items-center justify-center rounded-full bg-surface text-[11px] font-bold text-text-secondary ring-2 ring-white transition-transform duration-150 hover:scale-110 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-blue-primary tnum"
-              style={{ width: size, height: size }}
+              className="flex cursor-pointer items-center justify-center rounded-full bg-blue-primary font-bold text-white shadow-[0_1px_3px_rgba(0,64,160,0.2)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-blue-primary focus-visible:ring-offset-2 tnum"
+              style={{ width: size, height: size, fontSize: Math.max(10, labelSize) }}
             >
               +{hidden}
             </button>

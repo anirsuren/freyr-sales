@@ -530,7 +530,7 @@ export function PinnableTable({
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="fixed bottom-0 z-30 border-t border-border-light bg-white/95 backdrop-blur-sm"
+            className="fixed bottom-0 z-30 border-t border-border-light bg-canvas/95 backdrop-blur-sm"
             style={{ left: rail.left, width: rail.width, height: 18 }}
           >
             <div

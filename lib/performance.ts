@@ -1,5 +1,6 @@
 import { isCurrencyCode, normalizeRates, type CurrencyCode } from "./currency";
 import { getDataMode } from "./dataMode";
+import { mockDated } from "./mockDates";
 import { GROUP_TYPES } from "./privileges";
 import {
   DEFAULT_GOAL_TYPES,
@@ -416,7 +417,7 @@ export async function readPerformance(viewer?: string): Promise<PerformanceState
     return readRow().catch(() => structuredClone(EMPTY_PERFORMANCE));
   }
   const state = await mockState();
-  return viewer ? asViewer(state, viewer) : state;
+  return mockDated(viewer ? asViewer(state, viewer) : state);
 }
 
 /**
@@ -1770,7 +1771,7 @@ const MOCK_GOALS: MockGoal[] = [
     picked: true,
     verified: true,
     schedule: [
-      ["2026-06-30", 25_000_000],
+      ["2026-07-01", 25_000_000],
       ["2026-09-30", 50_000_000],
       ["2026-12-31", 75_000_000],
       ["2027-03-31", 100_000_000],
@@ -1838,7 +1839,7 @@ const MOCK_GOALS: MockGoal[] = [
     target: 70_000_000,
     picked: true,
     schedule: [
-      ["2026-06-30", 17_500_000],
+      ["2026-07-01", 17_500_000],
       ["2026-09-30", 35_000_000],
       ["2026-12-31", 52_500_000],
     ],
@@ -1901,7 +1902,7 @@ const MOCK_GOALS: MockGoal[] = [
     target: 1200,
     picked: true,
     schedule: [
-      ["2026-06-30", 300],
+      ["2026-07-01", 300],
       ["2026-09-30", 600],
       ["2026-12-31", 900],
     ],
@@ -1958,7 +1959,7 @@ const MOCK_GOALS: MockGoal[] = [
     target: 960,
     picked: true,
     schedule: [
-      ["2026-06-30", 240],
+      ["2026-07-01", 240],
       ["2026-09-30", 480],
       ["2026-12-31", 720],
     ],
@@ -2008,7 +2009,7 @@ const MOCK_GOALS: MockGoal[] = [
     target: 240,
     picked: true,
     schedule: [
-      ["2026-06-30", 60],
+      ["2026-07-01", 60],
       ["2026-09-30", 120],
       ["2026-12-31", 180],
     ],
@@ -2089,7 +2090,7 @@ const MOCK_GOALS: MockGoal[] = [
     picked: true,
     verified: true,
     schedule: [
-      ["2026-06-30", 7_000_000],
+      ["2026-07-01", 7_000_000],
       ["2026-09-30", 14_000_000],
       ["2026-12-31", 21_000_000],
       ["2027-03-31", 28_000_000],
@@ -2140,7 +2141,7 @@ const MOCK_GOALS: MockGoal[] = [
     target: 180_000_000,
     picked: true,
     schedule: [
-      ["2026-06-30", 45_000_000],
+      ["2026-07-01", 45_000_000],
       ["2026-09-30", 90_000_000],
       ["2026-12-31", 135_000_000],
     ],
@@ -2190,7 +2191,7 @@ const MOCK_GOALS: MockGoal[] = [
     target: 22_000_000,
     picked: true,
     schedule: [
-      ["2026-06-30", 5_500_000],
+      ["2026-07-01", 5_500_000],
       ["2026-09-30", 11_000_000],
       ["2026-12-31", 16_500_000],
     ],
@@ -2256,7 +2257,7 @@ const MOCK_GOALS: MockGoal[] = [
     target: 3_600,
     picked: true,
     schedule: [
-      ["2026-06-30", 900],
+      ["2026-07-01", 900],
       ["2026-09-30", 1_800],
       ["2026-12-31", 2_700],
     ],
@@ -2364,7 +2365,7 @@ const MOCK_GOALS: MockGoal[] = [
     picked: true,
     verified: true,
     schedule: [
-      ["2026-06-30", 180],
+      ["2026-07-01", 180],
       ["2026-09-30", 360],
       ["2026-12-31", 540],
       ["2027-03-31", 720],
@@ -2414,7 +2415,7 @@ const MOCK_GOALS: MockGoal[] = [
     target: 480,
     picked: true,
     schedule: [
-      ["2026-06-30", 120],
+      ["2026-07-01", 120],
       ["2026-09-30", 240],
       ["2026-12-31", 360],
     ],
@@ -2474,7 +2475,7 @@ const MOCK_GOALS: MockGoal[] = [
     target: 96,
     picked: true,
     schedule: [
-      ["2026-06-30", 24],
+      ["2026-07-01", 24],
       ["2026-09-30", 48],
       ["2026-12-31", 72],
     ],
@@ -3056,4 +3057,42 @@ export async function setGoalMilestones(input: {
   }
   goal.milestones = cleaned.length ? cleaned : undefined;
   await writeRow(state);
+}
+
+/**
+ * A copy of the state with other people's numbers removed. The goal catalog
+ * itself stays whole: the Goal Master is how anyone picks up more goals, so a
+ * rep must be able to see every goal even before they are on one. Lifted out
+ * of the performance route (Sep 26) so the agent shows exactly what the page
+ * shows.
+ */
+export function scopeStateForViewer(state: PerformanceState, visible: Set<string>): PerformanceState {
+  const has = (name: string) => visible.has(name.trim());
+  // The groups this caller may see at all; a group assignment is scoped the
+  // same way its group is, so a rep never learns a goal was handed to a
+  // department they are not in.
+  const visibleGroups = state.groups.filter(
+    (g) => has(g.head) || g.members.some((m) => has(m))
+  );
+  const visibleGroupIds = new Set(visibleGroups.map((g) => g.id));
+  return {
+    types: state.types,
+    goals: state.goals.map((g) => ({
+      ...g,
+      subgoals: g.subgoals.map((s) => ({
+        ...s,
+        people: s.people.filter((p) => has(p.name)),
+      })),
+      assignments: (g.assignments ?? []).filter((a) => has(a.person)),
+      groupAssignments: (g.groupAssignments ?? []).filter((a) =>
+        visibleGroupIds.has(a.groupId)
+      ),
+    })),
+    groups: visibleGroups,
+    actuals: state.actuals.filter((a) => has(a.person)),
+    /* The FX table is workspace facts, not somebody's numbers — dropping it
+       here made every scoped screen (and its CSV) count a converted entry as
+       zero the moment a save responded (Aug 23 audit). */
+    rates: state.rates,
+  };
 }

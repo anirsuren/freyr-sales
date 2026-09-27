@@ -80,6 +80,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # This external-account file contains no private key. In ECS it exchanges the
 # task role's short-lived AWS credentials for a short-lived Google token.
 COPY --from=builder --chown=nextjs:nodejs /app/deploy/gcp-aws-wif.json ./config/gcp-aws-wif.json
+# Production federates through its own provider (a Google AWS provider is tied
+# to one AWS account), so it ships its own credential config; the promotion
+# script points GOOGLE_APPLICATION_CREDENTIALS at it. Neither file holds a key.
+COPY --from=builder --chown=nextjs:nodejs /app/deploy/gcp-aws-wif-prod.json ./config/gcp-aws-wif-prod.json
 # Next's standalone tracer includes `sharp` but can omit its platform-specific
 # optional packages. Image optimization then fails at request time because the
 # Linux libvips shared library is absent. Copy the packages installed for the
