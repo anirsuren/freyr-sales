@@ -401,3 +401,14 @@ Anir decides on by name.
   later ones get nothing); proved locally with ...0009. Linked numbers are
   not counted (their six digits go to the agent) and a right code clears the
   count. In-memory per task, one task runs.
+- Sep 27, 13:20 UTC: PRODUCTION PROVED FROM ANIR'S PHONE. He signed into prod
+  in his Chrome; I pressed Connect my phone on Settings > Integrations, sent
+  the code from his WhatsApp: "Connected... answers as Anir Suren". Read:
+  "Which of our deals are closing this month?" answered with the GSK deal and
+  its prod link. Action round trip: "Star Takeda in Market Intel" was
+  proposed, YES ran it ("Done. Takeda is now starred"), then unstar was
+  proposed, YES ran it, so prod is back exactly as it was. Found on prod
+  while there: the Integrations tab showed a "CRM sync: HubSpot ... Connected
+  ... last synced just now" card in Real mode. No CRM is wired; it is the Mock
+  showroom card from V2 #5 and it now renders in Mock only (a2c687b2). Local
+  commits waiting for a push: QR + lockout (ddcdb3e1), this card (a2c687b2).
