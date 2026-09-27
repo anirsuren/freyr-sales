@@ -68,6 +68,7 @@ read without opening the code.
 | `create_opportunity` | New deal on an account with TCV, confidence, signing date | POST /api/opportunities `add` | Opportunities create (owners); creator becomes owner |
 | `assign_customer_owner` | Set the owner of an account | PATCH /api/customers/{id} | Customers edit; unowned or your own account; admins |
 | `add_contact` | Add a person at an account (name, title, email, phone) | POST /api/customers/{id}/contacts | Customers edit on that account |
+| `update_contact` | Change a person's title, email, phone, LinkedIn, department or key-contact flag | PATCH /api/contacts/{id} | Customers edit on that account |
 | `set_record_people` | Add or remove colleagues on a deal or account (owner + members) | POST /api/record-team | Module edit; the record's own people; unclaimed records take the first taker |
 | `create_lead` | New lead (name, company, title, email, source, interest) | POST /api/leads `save` | Leads create |
 | `update_lead` | Change a lead's status, owner, note | POST /api/leads `save` with id | Leads edit |
@@ -475,3 +476,8 @@ Anir decides on by name.
   trailing one. Sequence proved end to end as a BD member: propose Incyte +
   waiting line, YES, "now Vertex", proposed, NO. Every star made while testing
   was undone; the rep's starred list is back to zero.
+- Sep 27, 15:25 UTC: the use case he opened the loop with, run verbatim from
+  WhatsApp as an owner: "can we move Neha to the Cold Reachouts goal?" found
+  the person, found the goal, proposed, YES put her on it, then "take Neha off
+  the Cold Reachouts goal" + YES removed her. The goal is back to nobody and
+  the test account is back to bd_member. Nothing else on dev was touched.
