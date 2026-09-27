@@ -1569,8 +1569,9 @@ export function SettingsTabs({
               Sep 27, on prod: "why the fuck do you have a HubSpot"). Mock only. */}
           {dataMode === "mock" && <CrmSyncCard counts={crmCounts} />}
 
-          {/* System services — the engines Freyr runs on. View-only status;
-              keys are managed by your admin via secure environment config. */}
+          {/* System services: the engines Freyr runs on. Anir, Sep 27, on prod:
+              "Remove this." Real shows nothing here; the Mock showroom keeps it. */}
+          {dataMode === "mock" && (
           <Card>
             <div className="flex items-center gap-2 mb-1">
               <ShieldCheck size={18} strokeWidth={1.75} className="text-blue-primary" />
@@ -1606,6 +1607,7 @@ export function SettingsTabs({
               })}
             </div>
           </Card>
+          )}
         </div>
       )}
 
