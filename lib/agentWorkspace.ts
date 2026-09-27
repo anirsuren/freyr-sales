@@ -136,13 +136,27 @@ export async function readAgentWorkspace(
   let summary: Record<string, unknown> | undefined;
   let personal: Record<string, unknown> | undefined;
   if (key === "team") {
-    const [directory, teamState] = await Promise.all([listWorkspaceAccess(actor.workspaceId), readPerformance()]);
+    const [directory, teamState, myPrefs] = await Promise.all([
+      listWorkspaceAccess(actor.workspaceId),
+      readPerformance(),
+      /* THE ASKER'S OWN LINKEDIN, ON THEIR OWN ROW. The directory strips
+         private contact details, so a team lookup came back without one and
+         the agent reported, to the person themselves, that they had no
+         LinkedIn recorded (Anir, Sep 27, four times). Prompting the model
+         around it worked on one model and not on another; putting the truth in
+         the data works on both. Only ever the signed-in person's own row: this
+         is their own profile, not a colleague's contact details. */
+      Promise.resolve(getDb().agentPrefs?.get({ workspaceId: actor.workspaceId, userId: actor.userId })).catch(() => null),
+    ]);
     rows=directory.members.filter(member=>member.active && (!mineOnly || member.id===actor.userId)).map(member=>({
       id:member.id,name:member.name,workspaceRole:member.role,url:`/team?member=${encodeURIComponent(member.id)}`,
+      ...(member.id===actor.userId && myPrefs?.linkedin_url
+        ? { linkedin: myPrefs.linkedin_url, linkedinHeadline: myPrefs.linkedin_headline || undefined, isYou: true }
+        : member.id===actor.userId ? { isYou: true } : {}),
     }));
     const activeNames = new Set(directory.members.filter(m => m.active).map(m => m.name.trim().toLowerCase()));
     const groups = teamState.groups.map(g => ({id:g.id,name:g.name,head:g.head,members:g.members.filter(n => activeNames.has(n.trim().toLowerCase())),headedByMe:mine(g.head),includesMe:mine(g.head)||g.members.some(mine)}));
-    summary={groups,basis:"Active members and recorded groups of the signed-in workspace, as on Team. For my team, use groups headedByMe (or explicitly describe membership groups if none are headed); never equate all workspace members with direct reports. An empty headed-group list means no managed team is recorded. Workspace role is not a job title or proof of per-module privileges. Open Team and select the person to view their profile. No private profiles, invitations or access requests are included."};
+    summary={groups,basis:"Active members and recorded groups of the signed-in workspace, as on Team. For my team, use groups headedByMe (or explicitly describe membership groups if none are headed); never equate all workspace members with direct reports. An empty headed-group list means no managed team is recorded. Workspace role is not a job title or proof of per-module privileges. Open Team and select the person to view their profile. No private profiles, invitations or access requests are included. The row marked isYou is the person asking: it carries their own LinkedIn when they have connected one, and no other row carries contact details, so a missing linkedin field on someone else proves nothing about them."};
   } else if (key === "market_intel") {
     const [bookmarks, tracking] = await Promise.all([
       readMarketIntelBookmarks(actor),
