@@ -9,7 +9,7 @@ from WhatsApp.
 
 ## How a person connects
 
-1. Settings, then Profile, then WhatsApp, then "Connect my phone".
+1. Settings, then Integrations, then WhatsApp, then "Connect my phone".
 2. Freyr shows a six-digit code, good for 15 minutes.
 3. From the phone they want to use, they text that code to the workspace's
    WhatsApp number (the "Open WhatsApp with the code" button does it in one tap).

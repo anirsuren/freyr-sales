@@ -288,6 +288,16 @@ Anir decides on by name.
   webhook handshake answered from dev, the callback was verified and saved in
   Meta, and the "messages" field is Subscribed. Locally the token is kept as
   WHATSAPP_ACCESS_TOKEN_REAL so :3006 stays in trace mode for the fake QA
-  numbers. Next: Anir links his phone on dev (Settings > Profile > WhatsApp
+  numbers. Next: Anir links his phone on dev (Settings > Integrations > WhatsApp
   code, text it to +1 555 178 7823) and asks the agent something; his 24-hour
   window with the test number is open from his earlier "hi".
+- Sep 27, 05:05 UTC: while waiting for the production word, checked dev: no
+  WhatsApp traffic in the ECS log for six hours and only the two QA numbers
+  are linked (no pending code), so Anir has not texted or linked since the
+  WABA fix. Found and fixed a wording bug the move to Settings > Integrations
+  left behind: the three replies to an unlinked phone (not connected, code
+  expired, code unknown) still sent people to Settings > Profile. Local commit
+  only, not deployed; the production promotion should take this commit rather
+  than f3d433e. Gap noted, not changed: an unlinked sender who gets the
+  how-to-link reply leaves no log line, so a successful first contact is
+  invisible server-side; only a failed send is logged.

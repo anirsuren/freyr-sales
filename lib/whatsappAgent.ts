@@ -152,7 +152,7 @@ async function reply(to: string, text: string, options: InboundOptions): Promise
 }
 
 const HOW_TO_LINK =
-  "This number isn't connected to a Freyr account yet. In Freyr, open Settings, then Profile, then WhatsApp, and text the six-digit code shown there.";
+  "This number isn't connected to a Freyr account yet. In Freyr, open Settings, then Integrations, then WhatsApp, and text the six-digit code shown there.";
 
 export async function handleInboundWhatsApp(message: InboundMessage, options: InboundOptions): Promise<void> {
   const { config } = options;
@@ -165,9 +165,9 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
     if (code) {
       const claimed = await claimWhatsAppCode(code, message.from, message.name);
       if (claimed === "expired") {
-        await reply(message.from, "That code has expired. Get a new one from Settings, then Profile, then WhatsApp in Freyr.", options);
+        await reply(message.from, "That code has expired. Get a new one from Settings, then Integrations, then WhatsApp in Freyr.", options);
       } else if (!claimed) {
-        await reply(message.from, "That code doesn't match anything. Check Settings, then Profile, then WhatsApp in Freyr and text the code shown there.", options);
+        await reply(message.from, "That code doesn't match anything. Check Settings, then Integrations, then WhatsApp in Freyr and text the code shown there.", options);
       } else {
         const user = await appUser(claimed.scope.userId);
         const who = user?.display_name || user?.email || "you";
