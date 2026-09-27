@@ -608,3 +608,14 @@ Anir decides on by name.
   list also said nothing about speech to text at all, so the outage was
   invisible; `transcription` is now one of the reported services (true when
   either provider's key is present).
+- Sep 27, 23:10 UTC: two changes in one WhatsApp message, and the tidy change
+  did not eat the second one. "Put Kranthi Reddy on Cold Reachouts and also put
+  Antara Pal on Linkedin Reachouts" proposed the first and printed "Still
+  waiting: Antara Pal on the Linkedin Reachouts goal." YES ran it, "now the
+  other one" resolved the second from the conversation, YES ran that, and
+  "Take both of them back off those goals" undid them the same way. "yes do the
+  other one too" is a sentence, not a bare yes, so it went to the model and
+  proposed rather than firing the open proposal: correct. Both goals are back to
+  nobody and the admin's test link is removed. STILL OPEN as a product question:
+  a chained ask costs two round trips because a proposal holds one action; one
+  YES for several changes would need a batch proposal, which is Anir's call.
