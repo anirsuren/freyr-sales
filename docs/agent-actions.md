@@ -421,3 +421,9 @@ Anir decides on by name.
   know about me" and every draft over WhatsApp use the headline and
   background. Nobody on dev has pasted a LinkedIn yet, so verified by type
   check and the block's own output, not by a live scrape.
+- Sep 27, 13:49 UTC: ecaf15c on dev (pipeline green) and PROMOTED TO PROD
+  (task def 54, /api/health serves ecaf15c). Anir's "push" alone was the prod
+  yes this time ("I don't have to say those words"); the promotion ran from a
+  background chain the moment dev went live. In it: QR on the connect card,
+  wrong-code lockout, HubSpot and System services cards out of Real, LinkedIn
+  identity in the conversation prompt. Meta webhook unchanged (prod).
