@@ -427,3 +427,23 @@ Anir decides on by name.
   background chain the moment dev went live. In it: QR on the connect card,
   wrong-code lockout, HubSpot and System services cards out of Real, LinkedIn
   identity in the conversation prompt. Meta webhook unchanged (prod).
+- Sep 27, 14:15 UTC: Anir on prod: "this is ugly... it should be like a
+  pop-up" (the connect code on the card), "I should be able to do a voice
+  recording", "why does it say it answers as Anir Suren", "revamp the
+  LinkedIn... three sections", and "I just asked it if it has my LinkedIn
+  info, and it said no". Built: Connect my phone opens a fixed-size dialog
+  (QR left, code right, countdown, New code, turns into Connected as ... on
+  its own, closing early withdraws the code); WhatsApp voice notes are
+  downloaded from Meta and transcribed with Whisper (OPENAI_API_KEY is in the
+  prod secret already), the reply opens with Heard: "..."; the connect reply
+  reads "Connected as <name>" / "Switched to <name>"; Settings > Profile is
+  three cards (Basic info, LinkedIn with a moving progress bar and a result
+  card, Sign-in and security). ROOT CAUSE of "it said no": the profile route
+  used the thirdwatch profile-scraper actor, which returned NO headline and a
+  football news paragraph as his about, and the route saved it (cleared from
+  his prod row by hand). The route now uses apimaestro's profile-detail actor
+  (the one the lead path trusts) and refuses a profile whose name does not
+  match the signed-in person. Proved on localhost with one real read of his
+  profile: headline "Head of AI & Business Systems at Freyr Solutions", real
+  about, photo; the local agent then answered "You are Anir Suren, the
+  Workspace Admin and Head of AI & Business Systems...". Nothing deployed yet.
