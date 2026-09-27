@@ -156,7 +156,7 @@ export function Landing({entry,signedIn,heroImage}:{entry:string;signedIn:boolea
    <div className={s.navInner}>
      <nav aria-label="Primary">{[["#product","Product"],["#demo-title","Freyr AI"],["#teams","Teams"],["#faq","FAQ"]].map(([href,t])=><a key={href} href={href}>{t}</a>)}</nav>
      <Brand/>
-     <div className={s.navActions}><Link className={s.navSignIn} href={entry}>{entryLabel}</Link><a href="#product" className={s.button}>Explore Freyr</a></div>
+     <div className={s.navActions}><Link href={entry} className={s.button}>{entryLabel}</Link></div>
      <button className={s.menuToggle} type="button" aria-label={menu?"Close menu":"Open menu"} aria-expanded={menu} aria-controls="landing-menu" onClick={()=>setMenu(!menu)}>{menu?<X size={20}/>:<Menu size={20}/>}</button>
    </div>
    {menu&&<nav id="landing-menu" className={s.mobileMenu} aria-label="Mobile navigation">{[["#product","Product"],["#demo-title","Freyr AI"],["#teams","Teams"],["#faq","FAQ"]].map(([href,t])=><a key={href} href={href} onClick={()=>setMenu(false)}>{t}</a>)}<Link href={entry} className={s.button}>{entryLabel}</Link></nav>}

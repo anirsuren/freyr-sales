@@ -7,9 +7,8 @@
  * variables; a preset only says which variable fills each slot. The chosen
  * preset is stored on the member's profile and stamped on <html> as
  * data-font, and app/globals.css turns that into --font-heading, --font-body
- * and --font-mono for any surface that opts in with `font-preset-scope`.
- * Offerings opts in first, so the choice can be judged on one page before it
- * spreads.
+ * and --font-mono for any surface that opts in with `font-preset-scope`:
+ * the app shell, so every signed-in page follows the choice (Sep 27).
  */
 export type FontPreset = {
   key: string;

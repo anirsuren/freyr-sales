@@ -474,7 +474,9 @@ export function AppShell({
         >
           Skip to content
         </a>
-        <div className="flex h-screen flex-col bg-white">
+        {/* font-preset-scope: the person's chosen fonts (Settings > Appearance)
+            apply to every signed-in page from here down. */}
+        <div className="font-preset-scope flex h-screen flex-col bg-white">
           {dataMode === "mock" && <MockModeBanner />}
           <div className="flex min-h-0 flex-1">
           {/* mobile drawer backdrop */}

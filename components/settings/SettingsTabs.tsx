@@ -14,7 +14,7 @@ import {
   formatAbsolute,
 } from "@/lib/timeZone";
 import { Check, ShieldCheck, Lock, LockKeyhole, Mail, CalendarDays, MessageSquare, Building2, Link2, Settings2, PencilRuler,
-  UserRound, UsersRound, Bell, PlugZap, KeyRound, UserCheck, UserX, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
+  UserRound, UsersRound, Bell, Palette, PlugZap, KeyRound, UserCheck, UserX, Database, ArrowRight, Rocket, MonitorSmartphone, Clock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PasskeySetup } from "@/components/settings/PasskeySetup";
 import { SsoCard } from "@/components/settings/SsoCard";
@@ -65,6 +65,11 @@ const ROLE_CHANGE_OPTIONS: ColorOption[] = [
 const TABS = [
   { key: "workspace", label: "Workspace", description: "Data and behavior", icon: Settings2 },
   { key: "profile", label: "Profile", description: "Identity and preferences", icon: UserRound },
+  /* APPEARANCE AND INTEGRATIONS ARE THEIR OWN SECTIONS (Anir, Sep 27: "an
+     appearance section where the users can change their appearance and
+     stuff, an integration section too, and that's where the WhatsApp will
+     be"). Theme and fonts used to sit at the bottom of Profile. */
+  { key: "appearance", label: "Appearance", description: "Theme and fonts", icon: Palette },
   /* NO TEAM TAB IN SETTINGS. Anir, Sep 2: "I'll just remove the team page...
      if you just shift all of this to the main admin module that you have,
      that will be good, right? If you merge the two, basically."
@@ -80,13 +85,13 @@ const TABS = [
 ] as const;
 
 // Settings is one of the few pages that survives the offerings-only release, so
-// it must not become the back door to the modules that don't. These two tabs
-// are entirely about unreleased work — every notification is a deal/session
-// alert, and Integrations mirrors the CRM record counts (companies, contacts,
-// deals). They come back the moment the release opens up.
+// it must not become the back door to the modules that don't. Notifications is
+// entirely about unreleased work (every notification is a deal/session alert)
+// and stays hidden until the release opens up. Integrations came back on
+// Sep 27: it now holds WhatsApp, which is real and released; the pretend
+// connector tiles inside it are Mock-only.
 const TABS_HIDDEN_IN_OFFERINGS_ONLY: ReadonlySet<string> = new Set([
   "notifications",
-  "integrations",
 ]);
 
 // Client-facing connectors — tools a rep's org already uses (Anir, Jul 8:
@@ -1266,15 +1271,6 @@ export function SettingsTabs({
                 <Button onClick={saveProfile}>Save profile</Button>
               </div>
             )}
-            <div className="pt-4 mt-1 border-t border-border-light">
-              <ThemeSetting />
-            </div>
-            <div className="pt-4 border-t border-border-light">
-              <FontPresetSetting />
-            </div>
-            <div className="pt-4 border-t border-border-light">
-              <WhatsAppCard />
-            </div>
             <div className="flex items-center justify-between gap-5 border-t border-border-light pt-4">
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold text-text-primary">
@@ -1305,6 +1301,17 @@ export function SettingsTabs({
       {/* The Team panel that stood here moved to Admin > Team members on
           Sep 2. Two directories of the same people, from the same
           endpoint, was one too many. */}
+
+      {tab === "appearance" && (
+        <Card className="tab-panel">
+          <div className="space-y-5">
+            <ThemeSetting />
+            <div className="border-t border-border-light pt-5">
+              <FontPresetSetting />
+            </div>
+          </div>
+        </Card>
+      )}
 
       {tab === "notifications" && (
         <div className="tab-panel stagger space-y-4">
@@ -1511,6 +1518,13 @@ export function SettingsTabs({
             you stay in control of what syncs, and nothing goes out without your
             approval.
           </p>
+          <Card>
+            <WhatsAppCard />
+          </Card>
+          {/* The connect/disconnect tiles are a Mock showroom; Real shows only
+              what is actually wired (WhatsApp above, the CRM mirror and the
+              live services below). */}
+          {dataMode === "mock" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {CONNECTORS.map((c) => {
               const on = !!connectors[c.key];
@@ -1548,6 +1562,7 @@ export function SettingsTabs({
               );
             })}
           </div>
+          )}
 
           {/* Two-way CRM mirror — real counts from the app's own book */}
           <CrmSyncCard counts={crmCounts} />

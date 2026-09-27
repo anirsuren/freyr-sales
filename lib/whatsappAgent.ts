@@ -195,6 +195,9 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
   }
 
   void markWhatsAppRead(message.id, config, options.fetchImpl);
+  /* ONE LINE PER INBOUND, so a "did my text arrive?" can be answered from
+     the container log without exposing the number (Sep 27). */
+  console.log("[whatsapp] inbound", { from: `...${message.from.slice(-4)}`, member: user.display_name ?? member.scope.userId, chars: message.text.length });
 
   const latest = await latestChannelConversation(member.scope, "whatsapp");
   const continues = !!latest && Date.now() - latest.updated < CONTINUE_WITHIN_MS;
@@ -232,6 +235,7 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
   }
 
   const delivered = await reply(message.from, toWhatsAppText(answer.reply, options.publicOrigin), options);
+  console.log("[whatsapp] replied", { to: `...${message.from.slice(-4)}`, member: user.display_name ?? member.scope.userId, delivered, chars: answer.reply.length });
   if (!delivered) return;
   await appendAgentExchange(member.scope, {
     conversationId,

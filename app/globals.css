@@ -2728,8 +2728,10 @@ main tbody tr.cursor-pointer > td:last-child .lucide-chevron-right {
    stamped on <html> as data-font (from the member's profile). Each block
    below is one preset from lib/fontPresets.ts, kept in the same order; a
    surface opts in with `font-preset-scope`, and the "system" preset sets
-   nothing so opted-in surfaces stay exactly as they are. Offerings opts in
-   first, to judge on one page before it spreads. */
+   nothing so opted-in surfaces stay exactly as they are. The app shell opts
+   in (Sep 27, Anir: the Offerings-only trial read as "nothing changes"), so
+   every signed-in page follows the choice; the marketing page keeps its own
+   faces. */
 [data-font="plex"] {
   --font-heading: var(--font-plex-sans);
   --font-body: var(--font-plex-sans);
