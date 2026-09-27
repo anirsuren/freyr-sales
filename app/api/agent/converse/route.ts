@@ -1707,8 +1707,30 @@ function tidyProposalReply(reply: string, summary: string, channel: "web" | "wha
        whole-line strip took the proposal with it (Sep 27). */
     out = out.replace(/^[ \t]*\*{0,2}reply\b[^\n]*\byes\b[^\n]*$/gim, "");
     out = out.replace(/[ \t]*\breply\s+(?:with\s+)?\*{0,2}yes\b[^\n]*?(?=$|\n)/gim, "");
+    out = dropClosingConfirmQuestion(out);
   }
   return out.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/** A closing line that only asks for the go-ahead, which the bridge asks itself. */
+const CLOSING_CONFIRM_ASK =
+  /^\*{0,2}(?:so,?\s+)?(?:would you like|do you want|shall i|want me to|should i|can i|ready for me to)\b.{0,90}?\b(?:confirm|go ahead|proceed|do (?:this|that|it)|make (?:this|that|the) change|apply (?:this|that|it))\b.{0,40}\?\*{0,2}$/i;
+
+/**
+ * ASK ONCE. On WhatsApp the bridge appends "Reply YES to do this, or NO.", so a
+ * model line that closes with "Would you like to confirm this change?" makes the
+ * person read the same question twice in a row (Sep 27, Anir on the approvals:
+ * "I don't really like the way they look"). The summary sentence stays; only a
+ * final line that is nothing but the go-ahead question goes.
+ */
+function dropClosingConfirmQuestion(reply: string): string {
+  const lines = reply.split("\n");
+  let last = lines.length - 1;
+  while (last >= 0 && !lines[last].trim()) last -= 1;
+  if (last < 0) return reply;
+  if (!CLOSING_CONFIRM_ASK.test(lines[last].trim())) return reply;
+  lines.splice(last, 1);
+  return lines.join("\n");
 }
 
 /**
