@@ -188,3 +188,38 @@ test("a voice note comes through with its media id and mime type", async () => {
   assert.equal(calls[0].name, "voice-note.ogg");
   assert.equal(calls[0].model, "whisper-1");
 });
+
+test("a voice note's bytes come from Meta in two hops, and a miss is null not a crash", async () => {
+  const wa = await import("../lib/whatsapp.ts");
+  const config = { verifyToken: "v", appSecret: "s", accessToken: "tok", phoneNumberId: "PNID", businessNumber: "15551787823", graphVersion: "v22.0" };
+  const seen = [];
+  const ok = async (url, init) => {
+    seen.push({ url: String(url), auth: init?.headers?.Authorization });
+    return String(url).includes("/media-1")
+      ? new Response(JSON.stringify({ url: "https://lookaside.fb/file/abc", mime_type: "audio/ogg; codecs=opus" }), { status: 200 })
+      : new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "audio/ogg" } });
+  };
+  const got = await wa.downloadWhatsAppMedia("media-1", config, ok);
+  assert.equal(got?.mimeType, "audio/ogg; codecs=opus");
+  assert.equal(got?.bytes.length, 3);
+  assert.equal(seen.length, 2);
+  assert.ok(seen[0].url.endsWith("/v22.0/media-1"));
+  assert.equal(seen[0].auth, "Bearer tok");
+  assert.equal(seen[1].url, "https://lookaside.fb/file/abc");
+
+  // No token: nothing is fetched at all.
+  let called = 0;
+  const counted = async () => { called += 1; return new Response("{}", { status: 200 }); };
+  assert.equal(await wa.downloadWhatsAppMedia("media-1", { ...config, accessToken: "" }, counted), null);
+  assert.equal(called, 0);
+
+  // Meta says no, or the file 404s: null, never a throw.
+  assert.equal(await wa.downloadWhatsAppMedia("media-1", config, async () => new Response("no", { status: 401 })), null);
+  assert.equal(
+    await wa.downloadWhatsAppMedia("media-1", config, async (url) =>
+      String(url).includes("/media-1") ? new Response(JSON.stringify({ url: "https://lookaside.fb/file/abc" }), { status: 200 }) : new Response("gone", { status: 404 })
+    ),
+    null
+  );
+  assert.equal(await wa.downloadWhatsAppMedia("media-1", config, async () => { throw new Error("network"); }), null);
+});
