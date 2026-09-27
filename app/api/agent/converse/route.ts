@@ -69,6 +69,7 @@ import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 import { readMemberProfile } from "@/lib/memberProfile";
 import { searchMarketIntel } from "@/lib/marketIntelAgent";
 import {
+  ACTION_MODULES,
   cancelProposal,
   executeProposal,
   proposeAction,
@@ -77,8 +78,9 @@ import {
   type ActionContext,
   type ExecuteResult,
 } from "@/lib/agentActions";
+import { viewerAccessMap } from "@/lib/viewerAccess";
 import { pendingProposals } from "@/lib/agentActionStore";
-import { isAffirmative, isNegative, localDay, type ActionProposal, type PendingActionPayload } from "@/lib/agentActionsShared";
+import { actionAccessLine, isAffirmative, isNegative, localDay, summarizeActionAccess, type ActionProposal, type PendingActionPayload } from "@/lib/agentActionsShared";
 import { memberTimeZone } from "@/lib/memberTimeZone";
 import { internalAppOrigin } from "@/lib/internalOrigin";
 
@@ -1473,6 +1475,8 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     (trackingListQuestion ? prefetchedTrackingContext : offeringsInventoryQuestion ? catalogueGrounding : opportunityAggregateQuestion ? opportunityContext : leadStatusDetailQuestion ? leadStatusContext : prefetchedLeadContext);
   const agentStartedAt = performance.now();
   const pendingForPrompt = agentActionsEnabled() ? await pendingProposals(scope).catch(() => [] as ActionProposal[]) : [];
+  /* WHAT THEY MAY DO, up front: the same module checks propose_action applies, summarised per module, so the model refuses in one line instead of looking records up first and never suggests what the gate would refuse. */
+  const accessLine = agentActionsEnabled() ? actionAccessLine(firstName, summarizeActionAccess(ACTION_MODULES, actor.role, await viewerAccessMap().catch(() => null))) : "";
   const actionsSystem = !agentActionsEnabled() ? "\nACTIONS are switched off on this workspace: you can read and explain, but you cannot change anything; say so plainly if asked to." :
     `\nACTIONS. You can change the workspace for ${firstName}, in two steps and never fewer: ` +
     "(1) propose_action, which checks their permissions and records exactly what will change; " +
@@ -1488,7 +1492,8 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     "'Log 3 meetings', 'log 2 demos', 'log $50k' against a goal that counts that thing means log_goal_actual on that goal; create_meeting is for one specific meeting with a title and a time. " +
     "Never say something is done unless run_action returned DONE, and never say 'I have proposed' unless propose_action returned PROPOSED in this very turn; if you have not called it yet, call it. Proposal ids exist only in propose_action results; never make one up. " +
     "If propose_action answers 'Not proposed', say why in its words; a permission refusal is final, do not look for another way around it. " +
-    "If they ask what you can do, list the actions in plain words (goals, groups, deals, accounts, contacts, leads, meetings, Market Intel stars). " +
+    "If they ask what you can do, list only the actions within their level, in plain words (goals, groups, deals, accounts, contacts, leads, meetings, Market Intel stars). " +
+    accessLine + " " +
     (pendingForPrompt.length
       ? `PENDING PROPOSALS awaiting their answer: ${pendingForPrompt.map((p) => `[${p.id}] ${p.summary}`).join(" | ")}. If this message confirms one of them, call run_action with its id; if it changes the details, propose again.`
       : "No proposals are pending.");

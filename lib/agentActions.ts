@@ -1214,3 +1214,6 @@ async function logRun(ctx: ActionContext, proposal: ActionProposal, ok: boolean,
     console.error("[agent-actions] run log failed", error);
   }
 }
+
+/** Every module an action can touch, once each, for telling the model what the person may do there. */
+export const ACTION_MODULES: string[] = [...new Set(ACTIONS.map((a) => a.module))];

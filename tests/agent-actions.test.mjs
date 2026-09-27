@@ -84,3 +84,22 @@ test("days are answered on the person's own calendar, and weekday phrases resolv
   assert.equal(shared.parseDay("Monday", now, "Not/AZone"), "2026-09-28");
 });
 
+
+test("what a person may do is summarised per module from the same checks the gates use", () => {
+  const modules = ["/performance", "/opportunities", "/customers", "/leads", "/meetings", "/solutioning", "/market-intel"];
+  const member = { goals: "view", opportunities: "edit", customers: "edit", contacts: "edit", leads: "edit", meetings: "edit", solution_requests: "edit", market_intel: "create" };
+  const s = shared.summarizeActionAccess(modules, "bd_member", member);
+  assert.deepEqual(s.view, ["goals and groups"]);
+  assert.deepEqual(s.create, ["Market Intel stars"]);
+  assert.equal(s.edit.length, 5);
+  assert.deepEqual(s.none, []);
+  const admin = shared.summarizeActionAccess(modules, "admin", member);
+  assert.equal(admin.create.length, 7);
+  const sol = shared.summarizeActionAccess(modules, "sol_member", member);
+  assert.ok(sol.none.includes("goals and groups"));
+  assert.ok(sol.none.includes("deals"));
+  const line = shared.actionAccessLine("Neha", s);
+  assert.match(line, /look only, never change: goals and groups/);
+  assert.match(line, /make new and change: Market Intel stars/);
+  assert.match(line, /^WHAT Neha MAY DO/);
+});

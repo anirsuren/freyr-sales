@@ -6,6 +6,10 @@
  * reading a yes or a no, matching a person's name, parsing money and dates.
  */
 
+import { canAccessModuleWith, canCreateModuleWith, canWriteModuleWith } from "./moduleAccess";
+import type { Access } from "./privileges";
+import type { UserIdentityRole } from "./userIdentity";
+
 export type ProposalStatus = "proposed" | "done" | "cancelled" | "failed" | "expired";
 
 export type ActionProposal = {
@@ -185,4 +189,57 @@ export function parseDay(value: unknown, now = new Date(), zone = "UTC"): string
 
 export function shortId(prefix = "act"): string {
   return `${prefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+}
+
+/* ------------------------------------------------ what this person may do */
+
+/** Plain words for each module an action can touch. */
+export const ACTION_MODULE_LABELS: Record<string, string> = {
+  "/performance": "goals and groups",
+  "/opportunities": "deals",
+  "/customers": "accounts and contacts (owners, follow-ups, touches, drafts)",
+  "/leads": "leads",
+  "/meetings": "meetings",
+  "/solutioning": "solutioning requests",
+  "/market-intel": "Market Intel stars",
+};
+
+export type ActionAccessSummary = { create: string[]; edit: string[]; view: string[]; none: string[] };
+
+/**
+ * The person's level in every module an action can touch, from the same
+ * checks the gates use, so the model can say no before it looks anything up
+ * and never offers what propose_action would refuse anyway. View-only is a
+ * level a person holds in a module, not a role: a BD member looks at goals
+ * and changes deals, so the summary is per module.
+ */
+export function summarizeActionAccess(
+  modules: string[],
+  role: string,
+  access: Partial<Record<string, Access>> | null
+): ActionAccessSummary {
+  const out: ActionAccessSummary = { create: [], edit: [], view: [], none: [] };
+  const r = role as UserIdentityRole;
+  for (const path of [...new Set(modules)]) {
+    const label = ACTION_MODULE_LABELS[path] ?? path.replace(/^\//, "").replace(/-/g, " ");
+    if (!canAccessModuleWith(path, r, access)) out.none.push(label);
+    else if (canCreateModuleWith(path, r, access)) out.create.push(label);
+    else if (canWriteModuleWith(path, r, access)) out.edit.push(label);
+    else out.view.push(label);
+  }
+  return out;
+}
+
+/** The prompt line built from the summary. */
+export function actionAccessLine(firstName: string, s: ActionAccessSummary): string {
+  const parts: string[] = [];
+  if (s.create.length) parts.push(`make new and change: ${s.create.join(", ")}`);
+  if (s.edit.length) parts.push(`change existing only, never make new ones: ${s.edit.join(", ")}`);
+  if (s.view.length) parts.push(`look only, never change: ${s.view.join(", ")}`);
+  if (s.none.length) parts.push(`not open to them at all: ${s.none.join(", ")}`);
+  return (
+    `WHAT ${firstName} MAY DO, decided by their privileges and final: ${parts.join("; ") || "nothing can be changed"}. ` +
+    "When a request needs more than they have, say so first in one plain line, before any lookup or clarifying question, and name who can (an owner or admin); " +
+    "never offer, suggest or list an action above their level, and never point them at a page button for it."
+  );
 }

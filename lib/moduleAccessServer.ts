@@ -64,6 +64,8 @@ export async function moduleCreateRefusal(path: string): Promise<string | null> 
   const [user, access] = await Promise.all([getCurrentUser(), viewerAccessMap()]);
   if (!canAccessModuleWith(path, user.role, access))
     return "Not available on this account.";
+  if (!canWriteModuleWith(path, user.role, access))
+    return "You can look at this, but not change it.";
   if (!canCreateModuleWith(path, user.role, access))
     return "You can change these, but only an owner can make a new one.";
   return null;
@@ -80,6 +82,8 @@ export async function moduleDeleteRefusal(path: string): Promise<string | null> 
   const [user, access] = await Promise.all([getCurrentUser(), viewerAccessMap()]);
   if (!canAccessModuleWith(path, user.role, access))
     return "Not available on this account.";
+  if (!canWriteModuleWith(path, user.role, access))
+    return "You can look at this, but not change it.";
   if (!canDeleteModuleWith(path, user.role, access))
     return "Only an owner can delete this.";
   return null;
