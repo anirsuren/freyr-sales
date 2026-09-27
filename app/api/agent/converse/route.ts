@@ -81,8 +81,7 @@ import {
 } from "@/lib/agentActions";
 import { viewerAccessMap } from "@/lib/viewerAccess";
 import { pendingProposals, readProposals } from "@/lib/agentActionStore";
-import { actionAccessLine, isAffirmative, isNegative, localDay, summarizeActionAccess, type ActionProposal, type PendingActionPayload,
-  proposalEntities,
+import { actionAccessLine, isAffirmative, isNegative, localDay, summarizeActionAccess, type ActionProposal, type PendingActionPayload
 } from "@/lib/agentActionsShared";
 import { memberTimeZone } from "@/lib/memberTimeZone";
 import { internalAppOrigin } from "@/lib/internalOrigin";
@@ -234,7 +233,6 @@ export async function POST(req: NextRequest) {
     status: p.status,
     ...(p.result ? { result: p.result } : {}),
     ...(p.link ? { link: p.link } : {}),
-    entities: proposalEntities(p.action, p.params),
   });
   /* A BARE YES OR NO NEEDS NO MODEL. The proposal is stored; the answer is
      deterministic; the same words work from the web and from WhatsApp. */

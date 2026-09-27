@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Briefcase, Check, CircleSlash, Clock, FileText, Target, TriangleAlert, Users, Zap } from "lucide-react";
-import { Avatar } from "@/components/ui/Avatar";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { ArrowRight, Check, CircleSlash, Clock, TriangleAlert, Zap } from "lucide-react";
+import { AgentResponseMarkdown } from "@/components/agent/AgentResponseMarkdown";
+import type { Entity } from "@/components/agent/EntityPills";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { actionLabel, type PendingActionPayload } from "@/lib/agentActionsShared";
@@ -85,10 +85,13 @@ export function ActionCard({
   action,
   onDecide,
   compact = false,
+  entities = [],
 }: {
   action: PendingActionPayload;
   onDecide?: (decision: "confirm" | "cancel") => Promise<void>;
   compact?: boolean;
+  /** The workspace entity index, so names in the sentence become pills. */
+  entities?: Entity[];
 }) {
   const [busy, setBusy] = useState<"confirm" | "cancel" | null>(null);
   const open = action.status === "proposed" && !!onDecide;
@@ -134,49 +137,13 @@ export function ActionCard({
       </div>
 
       <div className={cn(compact ? "px-3 py-2.5" : "px-3.5 py-3")}>
-        <p className={cn("leading-snug text-text-primary", compact ? "text-[13px]" : "text-[13.5px]")}>
-          {action.summary}
-        </p>
-
-        {/* THE RECORDS BEHIND THE SENTENCE, drawn the way the rest of the app
-            draws them: a face for a person, a mark for a company, a chip for a
-            goal or a deal. Read the sentence for what changes, the row for who. */}
-        {action.entities && (action.entities.people.length || action.entities.goal || action.entities.group || action.entities.company || action.entities.deal || action.entities.record) ? (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {action.entities.people.map((name) => (
-              <span key={name} className="inline-flex items-center gap-1.5 rounded-full border border-border-light bg-white py-0.5 pl-0.5 pr-2 text-[12px] font-medium text-text-primary">
-                <Avatar name={name} className="h-5 w-5 text-[8px]" />
-                {name}
-              </span>
-            ))}
-            {action.entities.company ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border-light bg-white py-0.5 pl-0.5 pr-2 text-[12px] font-medium text-text-primary">
-                <CompanyLogo name={action.entities.company} className="h-5 w-5 text-[7px]" />
-                {action.entities.company}
-              </span>
-            ) : null}
-            {action.entities.goal ? (
-              <Link href={action.entities.goal.id ? `/performance/goal/${encodeURIComponent(action.entities.goal.id)}` : "/performance"} className="inline-flex items-center gap-1 rounded-full border border-blue-subtle bg-blue-light/40 px-2 py-0.5 text-[12px] font-semibold text-blue-primary hover:underline">
-                <Target size={12} strokeWidth={2.2} aria-hidden="true" /> {action.entities.goal.name}
-              </Link>
-            ) : null}
-            {action.entities.group ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-blue-subtle bg-blue-light/40 px-2 py-0.5 text-[12px] font-semibold text-blue-primary">
-                <Users size={12} strokeWidth={2.2} aria-hidden="true" /> {action.entities.group}
-              </span>
-            ) : null}
-            {action.entities.deal ? (
-              <Link href={action.entities.deal.id ? `/opportunities/${encodeURIComponent(action.entities.deal.id)}` : "/opportunities"} className="inline-flex items-center gap-1 rounded-full border border-blue-subtle bg-blue-light/40 px-2 py-0.5 text-[12px] font-semibold text-blue-primary hover:underline">
-                <Briefcase size={12} strokeWidth={2.2} aria-hidden="true" /> {action.entities.deal.name}
-              </Link>
-            ) : null}
-            {action.entities.record ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-blue-subtle bg-blue-light/40 px-2 py-0.5 text-[12px] font-semibold text-blue-primary">
-                <FileText size={12} strokeWidth={2.2} aria-hidden="true" /> {action.entities.record.name}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
+        {/* THE SENTENCE, RENDERED LIKE EVERY OTHER MESSAGE, so a person's name
+            is a face and a goal is a chip right where it is said (Anir, Sep 27:
+            "you put it in the pill shape everywhere else in the messages, you
+            might as well just do it there. Why are you saying it twice?"). */}
+        <div className={cn("leading-snug text-text-primary", compact ? "text-[13px]" : "text-[13.5px]")}>
+          <AgentResponseMarkdown text={action.summary} entities={entities} />
+        </div>
 
         {action.result && (action.status === "done" || action.status === "failed") ? (
           <p className="mt-1.5 leading-snug text-[12.5px] text-text-secondary">{action.result}</p>

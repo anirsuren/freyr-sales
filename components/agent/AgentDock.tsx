@@ -1165,7 +1165,7 @@ export function AgentDock({
                     </div>
                     {m.role === "agent" && m.pendingAction ? (
                       <div className="w-full max-w-[92%]">
-                        <ActionCard
+                        <ActionCard entities={entities}
                           compact
                           action={m.pendingAction}
                           onDecide={(decision) => decideAction(activeId ?? "", m.ts, decision)}

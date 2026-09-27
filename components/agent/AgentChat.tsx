@@ -1004,7 +1004,7 @@ export function AgentChat({
                             />
                           </div>
                           {msg.pendingAction ? (
-                            <ActionCard
+                            <ActionCard entities={entities}
                               action={msg.pendingAction}
                               onDecide={(decision) => decideAction(active.id, msg.ts, decision)}
                             />
