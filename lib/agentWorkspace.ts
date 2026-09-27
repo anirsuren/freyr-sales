@@ -735,10 +735,29 @@ export async function readAgentWorkspace(
         scheduleScope: teamOnly || mineOnly || visible ? "No independent schedule is recorded for these scoped shares. This does not mean the organization goal has no schedule." : "organization goal schedule",
         organizationScheduleExists: Boolean(state.goals.find(original => original.id === g.id)?.milestones?.length),
         ...(due ? { dueMilestone: due } : {}),
-        assignedPeople: new Set([
-          ...(g.assignments || []).map((a) => a.person),
-          ...g.subgoals.flatMap((sub) => sub.people.map((p) => p.name)),
-        ]).size,
+        /* THE NAMES, not only how many (Sep 27: "who is on the Cold Reachouts
+           goal?" got "1 person assigned... I would need to open the goal page
+           to see the specific name", which is the page the person is trying not
+           to open). Capped so a goal carrying the whole company cannot crowd
+           out the rest of the answer. */
+        ...(() => {
+          const names = [
+            ...new Set([
+              ...(g.assignments || []).map((a) => a.person),
+              ...g.subgoals.flatMap((sub) => sub.people.map((p) => p.name)),
+            ]),
+          ].filter(Boolean);
+          /* Names only when a goal was named. Listing the whole plan with every
+             assignee attached blows the compact-payload budget the goals
+             summary is tested against, and nobody asks "who is on all 34
+             goals" in one breath. */
+          const shown = query.trim() ? names.slice(0, 25) : [];
+          return {
+            assignedPeople: names.length,
+            ...(shown.length ? { assignedNames: shown } : {}),
+            ...(shown.length && names.length > shown.length ? { assignedNamesTruncated: names.length - shown.length } : {}),
+          };
+        })(),
         /* WHAT IS WAITING FOR A SIGN-OFF, with ids, so a group head can ask
            "what's waiting for my verification?" and then verify or send back
            by name from wherever they are (Sep 27). Entries are the scoped

@@ -642,3 +642,14 @@ Anir decides on by name.
   says the team directory holds no LinkedIn, so its absence there proves
   nothing. Same question now answers with the headline and the URL, and "what
   do you know about me" answers from the background. Suites still 12/11/120.
+- Sep 28, 00:35 UTC: proved the agent reads live, then found what it could not
+  say. A goal assignment made through /api/performance (the same route the page
+  posts to) was visible to the agent 17 seconds later over WhatsApp, with no
+  restart and no cache to clear. But it answered "1 person assigned... I would
+  need to open the goal page to see the specific name", because read_workspace
+  goals returned assignedPeople as a COUNT and nothing else. It now returns the
+  names too, capped at 25, and only when a goal was actually named: attaching
+  every assignee to a 34-goal listing breaks the compact-payload test
+  (tests/agent-goal-summary.test.mjs holds the whole goals answer under 20k
+  characters). "Who is on the Sales Meetings Held (In-Person) goal" now lists
+  the five people. Probe assignment reverted, goal back to nobody.
