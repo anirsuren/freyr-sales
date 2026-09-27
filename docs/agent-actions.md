@@ -557,3 +557,10 @@ Anir decides on by name.
   scrape. Residue removed: the test rep's list is back to empty. Anir's own
   admin list (takeda, novartis, incyte, gilead, ...) predates today and was
   left alone.
+- Sep 27, 18:15 UTC: checked the same class across every action, "does it do
+  more than the summary says". Only the star did (tracking, now said). None of
+  the write paths the actions call (performance, solutioning, opportunities,
+  customers, leads) import the mailer or the notification helpers, so no agent
+  action sends an email or pings a colleague behind the person's back; the
+  only notifiers in the app are the privilege-change admin email and the
+  scheduled announcement and digest runs, none of which an action touches.
