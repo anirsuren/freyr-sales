@@ -280,7 +280,7 @@ function buildTree(
 }
 
 function DimensionMark({ dim, label }: { dim: SummaryDimension; label: string }) {
-  if (dim === "customer") return <CompanyLogo name={label} className="h-6 w-6 shrink-0" />;
+  if (dim === "customer") return <CompanyLogo name={label} className="h-6 w-6 shrink-0 text-[9px]" />;
 
   /* A PERSON GETS THEIR FACE, the way an account gets its logo two lines up.
      Anir, Sep 1: "for the owner, I need the profile pictures to show up for
@@ -303,7 +303,7 @@ function DimensionMark({ dim, label }: { dim: SummaryDimension; label: string })
           aria-hidden="true"
         />
       );
-    return <Avatar name={label} className="h-6 w-6 shrink-0" />;
+    return <Avatar name={label} className="h-6 w-6 shrink-0 text-[9px]" />;
   }
 
   const Icon = dim === "offering" ? Package : dim === "group" ? Layers : TrendingUp;
@@ -379,6 +379,24 @@ function ConfidencePill({ pct }: { pct: number }) {
       {pct}%
     </span>
   );
+}
+
+/* HOW A LEVEL READS AS A LEVEL (Anir, Sep 28: "make the indent more clear,
+   it's really not clear"). Eighteen pixels a level was a nudge, not a
+   structure. Each level now steps 28px and leaves a hairline rail behind it,
+   one per open ancestor, so the eye can follow a branch back up without
+   counting chevrons. Drawn as a background so the sticky first column keeps
+   its own paint and nothing shifts when a row is hovered. */
+const LEVEL_PX = 28;
+function treeIndent(level: number): React.CSSProperties {
+  if (level <= 0) return { paddingLeft: "12px" };
+  return {
+    paddingLeft: `${12 + level * LEVEL_PX}px`,
+    backgroundImage: "repeating-linear-gradient(90deg, transparent 0 11px, var(--border-light) 11px 12px, transparent 12px 28px)",
+    backgroundPosition: "12px 0",
+    backgroundSize: `${level * LEVEL_PX}px 100%`,
+    backgroundRepeat: "no-repeat",
+  };
 }
 
 export function OpportunitySummary({
@@ -904,7 +922,7 @@ export function OpportunitySummary({
         <th
           scope="row"
           className={cn("bg-white px-3 py-2 text-left font-normal", pinFirstColumn && "sticky left-0 z-[1]")}
-          style={{ ...nameCol, paddingLeft: `${12 + depth * 18}px` }}
+          style={{ ...nameCol, ...treeIndent(depth) }}
         >
           {/* Read once, because the button above the name needs to know
              whether the name is a door before it decides to disable itself. */}
@@ -1109,7 +1127,7 @@ export function OpportunitySummary({
                 <th
                   scope="row"
                   className={cn("bg-white px-3 py-1.5 text-left font-normal", pinFirstColumn && "sticky left-0 z-[1]")}
-                  style={{ ...nameCol, paddingLeft: `${12 + (depth + 1) * 18}px` }}
+                  style={{ ...nameCol, ...treeIndent(depth + 1) }}
                 >
                   <button
                     type="button"
@@ -1488,7 +1506,7 @@ export function OpportunitySummary({
                             >
                               <CompanyLogo
                                 name={d.customer}
-                                className="h-5 w-5 shrink-0"
+                                className="text-[9px] h-5 w-5 shrink-0"
                               />
                               <span
                                 className="min-w-0 truncate text-[13px] text-text-secondary"
