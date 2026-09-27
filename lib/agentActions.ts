@@ -9,6 +9,7 @@ import { OPPORTUNITY_LEVELS, OPPORTUNITY_STATUSES } from "@/lib/opportunitiesSha
 import { MEETING_TYPES } from "@/lib/meetings";
 import { readRecordTeams, teamFor } from "@/lib/recordTeams";
 import { readCustomerGroups } from "@/lib/customerGroups";
+import { readMarketIntelBookmarks } from "@/lib/marketIntelBookmarks";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { moduleCreateRefusal, moduleWriteRefusal, recordWriteRefusal } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -885,11 +886,17 @@ export const ACTIONS: ActionDef[] = [
       star: { type: "boolean", description: "true to star, false to unstar." },
     },
     required: ["company", "star"],
-    async prepare(params) {
+    async prepare(params, ctx) {
       const company = await resolveTrackedCompany(params.company);
       if (!company.ok) return { error: company.error };
       const star = params.star !== false && String(params.star).toLowerCase() !== "false";
-      return { summary: `${star ? "Star" : "Unstar"} ${company.value.name} in Market Intel for you.`, params: { id: company.value.id, name: company.value.name, star } };
+      /* STARRING ALSO TICKS THE COMPANY ONTO THEIR LIST (the route sends
+         on: true with the star), so a summary that only says "star" hides
+         half of what happens (Sep 27). Say it when it is actually new. */
+      const mine = await readMarketIntelBookmarks(ctx.scope).catch(() => null);
+      const alreadyMine = !!mine?.companyIds?.includes(company.value.id);
+      const joins = star && !alreadyMine ? ", which also adds it to your tracked companies" : "";
+      return { summary: `${star ? "Star" : "Unstar"} ${company.value.name} in Market Intel for you${joins}.`, params: { id: company.value.id, name: company.value.name, star } };
     },
     call: (p) => ({ method: "PUT", path: "/api/market-intel/bookmarks", body: { changes: [{ id: p.id, on: true, star: p.star === true }] } }),
     done: (p) => ({ text: `${p.name} is ${p.star ? "now starred" : "no longer starred"}.`, link: `/market-intel/${encodeURIComponent(String(p.id))}` }),

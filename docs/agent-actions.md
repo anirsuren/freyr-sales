@@ -546,3 +546,14 @@ Anir decides on by name.
   and takes the tracked company with the SAME name, when exactly one matches,
   so it is the same company seen from another module rather than a substitute.
   Undo then worked over WhatsApp and the rep is back to zero starred.
+- Sep 27, 18:05 UTC: starring a company sends on: true as well as star: true,
+  so "Star Incyte in Market Intel for you" also put Incyte on that person's
+  tracked list without saying so, and unstarring left it there. The summary
+  now says "which also adds it to your tracked companies" when the company is
+  not already on their list. Checked the cost question while I was in there:
+  the route only wakes collection for a company that is not activeByDefault
+  and has no follower, and every company I touched today (Incyte, Roche,
+  Takeda, Vertex, GSK) is activeByDefault, so none of this testing started a
+  scrape. Residue removed: the test rep's list is back to empty. Anir's own
+  admin list (takeda, novartis, incyte, gilead, ...) predates today and was
+  left alone.
