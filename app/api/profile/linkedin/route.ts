@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { scrapeLinkedInProfile } from "@/lib/apify";
+import { scrapeLeadLinkedInProfile } from "@/lib/apify";
+import { getCurrentUser } from "@/lib/currentUser";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 
 // The rep pastes their LinkedIn URL in Settings > Profile; this turns it into
@@ -78,12 +79,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  /* THE SAME ACTOR THE LEAD PATH TRUSTS. The old "profile scraper" actor came
+     back for Anir (Sep 27, prod) with no headline and a football news
+     paragraph as his "about", and the route saved it; the agent then carried
+     that as his background. apimaestro's profile-detail actor is the one
+     Market Intel already relies on, and its answer is checked against the
+     person's own name before a word of it is stored. */
   let profile: Record<string, unknown>;
   try {
-    profile = (await scrapeLinkedInProfile(linkedinUrl)) as Record<
-      string,
-      unknown
-    >;
+    profile = await scrapeLeadLinkedInProfile(linkedinUrl);
   } catch (error) {
     // Save the URL even when the lookup fails, so the rep's input is not lost
     // and a later retry has something to work from.
@@ -98,21 +102,37 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const headline =
-    typeof profile.headline === "string" && profile.headline.trim()
-      ? profile.headline.trim()
-      : null;
+  const basic = (profile.basic_info ?? {}) as Record<string, unknown>;
+  const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+  const tokens = (value: string) =>
+    value.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z]+/).filter((t) => t.length > 1);
+  const me = await getCurrentUser();
+  const fullName = text(basic.fullname) ?? "";
+  const mine = tokens(me.name ?? "");
+  const theirs = tokens(fullName);
+  const looksLikeMe = mine.length > 0 && theirs.some((t) => mine.includes(t));
+  if (!looksLikeMe) {
+    await db.agentPrefs.update(scope, { linkedin_url: linkedinUrl });
+    return NextResponse.json(
+      {
+        error: `That address belongs to ${fullName || "someone else"}, not to ${me.name}. Saved the link; check it and try again.`,
+      },
+      { status: 422 }
+    );
+  }
+  const headline = text(basic.headline) ?? text(profile.headline);
   const photo =
-    typeof profile.profilePicture === "string"
-      ? profile.profilePicture
-      : typeof profile.photoUrl === "string"
-        ? profile.photoUrl
-        : null;
+    text(basic.profile_picture_url) ??
+    text(basic.profile_picture) ??
+    text(basic.profilePicture) ??
+    text(profile.profilePicture) ??
+    text(profile.photoUrl);
+  const about = text(basic.about) ?? text(basic.summary) ?? text(profile.about);
 
   const saved = await db.agentPrefs.update(scope, {
     linkedin_url: linkedinUrl,
     linkedin_headline: headline,
-    linkedin_about: trimAbout(profile.about),
+    linkedin_about: trimAbout(about),
     linkedin_photo: photo,
     linkedin_synced_at: new Date().toISOString(),
   });
