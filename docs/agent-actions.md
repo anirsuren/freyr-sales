@@ -412,3 +412,12 @@ Anir decides on by name.
   ... last synced just now" card in Real mode. No CRM is wired; it is the Mock
   showroom card from V2 #5 and it now renders in Mock only (a2c687b2). Local
   commits waiting for a push: QR + lockout (ddcdb3e1), this card (a2c687b2).
+- Sep 27, 13:50 UTC: Anir asked whether the agents know his LinkedIn once it is
+  pasted in Settings > Profile. The paste is scraped (Apify, live on prod) and
+  stored on his row (linkedin_url, linkedin_headline, linkedin_photo, and the
+  headline/about in his agent prefs). The draft and chat routes already read
+  it through repIdentityBlock; the converse route (Agent page and WhatsApp)
+  only had the Settings title. It now carries the same block, so "what do you
+  know about me" and every draft over WhatsApp use the headline and
+  background. Nobody on dev has pasted a LinkedIn yet, so verified by type
+  check and the block's own output, not by a live scrape.

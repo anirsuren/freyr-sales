@@ -67,6 +67,7 @@ import {
 import type { Contact, PitchSession } from "@/lib/types";
 import { rejectRealModeAgentMutation } from "@/lib/agentMutationPolicy";
 import { readMemberProfile } from "@/lib/memberProfile";
+import { repIdentityBlock } from "@/lib/repIdentity";
 import { searchMarketIntel } from "@/lib/marketIntelAgent";
 import {
   ACTION_MODULES,
@@ -962,6 +963,11 @@ export async function POST(req: NextRequest) {
   const memberIdentity = memberProfile.title
     ? `${firstName}, whose role is ${memberProfile.title}`
     : firstName;
+  /* What Settings > Profile knows about the person from their LinkedIn
+     (headline, background): the same block the draft and chat routes read,
+     so the Agent page and WhatsApp answer "what do you know about me" from
+     the profile row and write in their voice (Anir, Sep 27). */
+  const identityBlock = repIdentityBlock({ name: actorName, title: memberProfile.title }, prefs);
   // One prompt, six short sections. Every reactive "NEVER do X" patch that
   // accumulated here has been folded into plain statements of how to behave —
   // a stack of prohibitions reads like a form and produces a bot that sounds
@@ -980,6 +986,7 @@ export async function POST(req: NextRequest) {
   }
   const agentSystem =
     `You are Freyr's AI sales assistant, working for ${memberIdentity} in regulatory life-sciences.\n\n` +
+    (identityBlock ? `${identityBlock}\n\n` : "") +
 
     "VOICE. Talk like a friend who works here: warm, direct, plain English, no jargon, no filler. " +
     "Answer the question in your first sentence. A greeting gets a short, friendly greeting back, nothing more. " +
