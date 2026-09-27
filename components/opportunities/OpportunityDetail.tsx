@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { fmtMoney, type CurrencyCode } from "@/lib/currency";
+import { BASE_CURRENCY, currencyMeta, fmtMoney, rateFor, setFxRates, type CurrencyCode } from "@/lib/currency";
+import { fetchFxDay } from "@/lib/fxClient";
+import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import Link from "next/link";
 import {
   CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, GitCompareArrows, Pencil, Plus, Target } from "lucide-react";
@@ -188,6 +190,42 @@ export function OpportunityDetail({
   /** The accrual planner, open on THIS deal. Mounted only while it is open, so
    *  it seeds itself from the plan the server just handed us. */
   const [planningAccrual, setPlanningAccrual] = useState(false);
+
+  /**
+   * READ THE SCHEDULE IN THE DEAL'S OWN MONEY (Anir, Sep 27, looking at a euro
+   * deal whose plan reads in dollars: "we should have the option to see the
+   * currency").
+   *
+   * Accruals are stored in USD and stay stored in USD, which is Suren's rule
+   * from Sep 1. This converts for READING only and writes nothing, the same
+   * bargain the plan dialog already offers, on the same rate keyed to the
+   * deal's signing date so the two screens never disagree.
+   */
+  const dealCurrency = ((deal.currency || BASE_CURRENCY) as string).toUpperCase();
+  const hasLocalMoney = dealCurrency !== BASE_CURRENCY;
+  const accrualSignDate = signDateOf(deal) || undefined;
+  const [readAccrualLocal, setReadAccrualLocal] = useState(false);
+  const [accrualFx, setAccrualFx] = useState<"off" | "loading" | "ready" | "failed">("off");
+  useEffect(() => {
+    if (!hasLocalMoney) return setAccrualFx("off");
+    let live = true;
+    setAccrualFx("loading");
+    fetchFxDay(accrualSignDate).then((day) => {
+      if (!live) return;
+      if (!day?.date || !day?.rates) return setAccrualFx("failed");
+      setFxRates(accrualSignDate, day);
+      setAccrualFx("ready");
+    });
+    return () => { live = false; };
+  }, [hasLocalMoney, accrualSignDate]);
+  /** Dollars unless the switch is on the deal's money AND a rate is on hand. */
+  const readingAccrualLocal = readAccrualLocal && hasLocalMoney && accrualFx === "ready";
+  function accrualMoney(usd: number, bandKey: string): string {
+    if (bandKey !== "revenueAccruals" || !readingAccrualLocal) return money(usd);
+    const rate = rateFor(dealCurrency as CurrencyCode, accrualSignDate);
+    if (!rate) return money(usd);
+    return money(Math.round(usd * rate), dealCurrency as CurrencyCode);
+  }
   const trail = useBackTrail();
   const trailSection = trail ? sectionLabelFor(trail) : null;
   const backLabel =
@@ -747,6 +785,9 @@ export function OpportunityDetail({
             forceKey={tab}
             company={deal.customer}
             bands={shownBands}
+            /* The accrual schedule follows the USD / local switch above it;
+               every other band stays in dollars. */
+            formatAmount={accrualMoney}
             /* An add button in every tab, beside the way out to the module.
                The tab that tells you there are none is the place you look for
                the way to make one. */
@@ -772,6 +813,28 @@ export function OpportunityDetail({
                    server's answer to the same question the API asks. */
                 b.key === "revenueAccruals" ? (
                   <span key={b.key} className="flex flex-wrap items-center gap-2">
+                    {hasLocalMoney && (
+                      <span className="flex items-center gap-2">
+                        <ViewSwitch
+                          ariaLabel="Currency to read the schedule in"
+                          className="inline-flex"
+                          value={readAccrualLocal}
+                          onChange={setReadAccrualLocal}
+                          options={[
+                            { key: false, label: BASE_CURRENCY, mark: currencyMeta(BASE_CURRENCY).flag },
+                            { key: true, label: dealCurrency, mark: currencyMeta(dealCurrency).flag },
+                          ] as const}
+                        />
+                        {/* HONEST WHEN IT CANNOT CONVERT, never a stale rate
+                            dressed as a fresh one. The dollars still read. */}
+                        {readAccrualLocal && accrualFx === "loading" && (
+                          <span className="text-[11.5px] text-text-tertiary">Getting the rate.</span>
+                        )}
+                        {readAccrualLocal && accrualFx === "failed" && (
+                          <span className="text-[11.5px] text-text-tertiary">No rate for that day, so these stay in dollars.</span>
+                        )}
+                      </span>
+                    )}
                     <Link
                       href={`/opportunities?tab=deviations&opportunity=${encodeURIComponent(deal.id)}`}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"

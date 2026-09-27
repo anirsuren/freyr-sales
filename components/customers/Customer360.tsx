@@ -246,6 +246,7 @@ export function Customer360({
   unboxed = false,
   forceKey,
   solutioningControls = false,
+  formatAmount,
 }: {
   company: string;
   bands: Customer360Band[];
@@ -276,6 +277,13 @@ export function Customer360({
    * this component only knows where to put it.
    */
   bandActions?: Record<string, React.ReactNode>;
+  /**
+   * HOW THIS SCREEN WANTS ITS MONEY WRITTEN, per band. The deal page offers a
+   * USD / local switch over its accrual schedule (Anir, Sep 27: "we should
+   * have the option to see the currency"), and only that band converts, so the
+   * band key comes with the number. Absent, everything stays in dollars.
+   */
+  formatAmount?: (value: number, bandKey: string) => string;
   /**
    * ONE PAGE, ONE TAB ROW (Suren, Aug 28: "all the tabs have to be on one
    * line... I think he just doesn't want there to be a box, bro... maybe just
@@ -538,7 +546,7 @@ export function Customer360({
                       className="text-[24px] font-bold leading-none tracking-[-0.01em] tnum"
                       style={{ color: active.color }}
                     >
-                      {formatMoney(active.total)}
+                      {(formatAmount ?? ((n: number) => formatMoney(n)))(active.total, active.key)}
                     </span>
                     <span className="text-[13px] text-text-secondary">
                       {active.key === "revenueAccruals" ? "scheduled total" : "total value"}
@@ -1045,7 +1053,11 @@ export function Customer360({
                         </td>
                         {cols.length > 0
                           ? cols.map((c) => {
-                              const v = item.cells?.[c.key] || "—";
+                              const raw = item.amounts?.[c.key];
+                              const v =
+                                formatAmount && typeof raw === "number"
+                                  ? formatAmount(raw, active.key)
+                                  : item.cells?.[c.key] || "—";
                               /* A NAME WEARS ITS FACE, A COMPANY ITS MARK
                                  (Anir, Sep 4). Only when the cell actually
                                  names one: an em-dash or "Unassigned" gets no
@@ -1159,7 +1171,7 @@ export function Customer360({
                                 className="text-[13px] font-semibold tnum"
                                 style={{ color: active.color }}
                               >
-                                {formatMoney(item.amount)}
+                                {(formatAmount ?? ((n: number) => formatMoney(n)))(item.amount, active.key)}
                               </b>
                             ) : (
                               <span className="text-[12.5px] text-text-tertiary">—</span>
@@ -1253,7 +1265,7 @@ export function Customer360({
                           className="tnum text-[12.5px] font-semibold"
                           style={{ color: active.color }}
                         >
-                          {formatMoney(item.amount)}
+                          {(formatAmount ?? ((n: number) => formatMoney(n)))(item.amount, active.key)}
                         </b>
                       )}
                     </p>
