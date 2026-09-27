@@ -564,3 +564,38 @@ Anir decides on by name.
   action sends an email or pings a colleague behind the person's back; the
   only notifiers in the app are the privilege-change admin email and the
   scheduled announcement and digest runs, none of which an action touches.
+- Sep 27, 22:30 UTC: tested a VOICE NOTE for the first time with real speech,
+  not a unit stub. Recorded "Can we move Kranthi to the cold reachouts goal?",
+  fed the file through the same transcribeVoiceNote() the webhook calls, and it
+  came back 429 `insufficient_quota`: "You have no credits remaining." So voice
+  notes were dead on arrival, and so is everything else on that key
+  (lib/videoTranscribe meeting recordings, lib/companyNewsDiscovery). ANIR MUST
+  TOP UP the OpenAI balance for meeting transcription. Voice notes themselves no
+  longer depend on it: transcribeVoiceNote now tries Whisper, then ElevenLabs
+  Scribe (ELEVENLABS_API_KEY, already in the runtime and in credit), and
+  voiceNoteConfigured() is true when either key exists. The same recording then
+  transcribed word for word through the app helper. Untested link: Meta's
+  two-hop media download, which needs a real access token and so cannot run on
+  the local server; it stays covered by its unit test.
+- Sep 27, 22:40 UTC: ran Anir's own canonical sentence end to end, from the
+  transcript of that recording, over WhatsApp.
+  - As a BD member (...0002): refused in the route's own words, "Only managers
+    and admins can change goal plans, assignments, or groups", with the admin
+    named and the Goals page linked. Nothing was proposed.
+  - As an admin (...0001, linked and unlinked for the test): two people match
+    "Kranthi", so it asked which, resolved "cold Reachout's" (the
+    transcription's apostrophe) to the Cold Reachouts goal, proposed, ran on
+    YES, and the assignment was in the database. "Actually take her back off
+    that goal" proposed the unassign and YES removed it. Goal is back to
+    nobody; the admin's WhatsApp link is back to none; the three pre-existing
+    links are untouched.
+  - Asked for a goal that does not exist ("the Japan filings goal"): said it
+    could not find one and asked, never substituted. It does call three
+    unrelated goals "the closest matches", which they are not; noted, not
+    changed, since it asks before doing anything.
+- Sep 27, 22:45 UTC: on WhatsApp the bridge appends "Reply YES to do this, or
+  NO." and the model was also closing with "Would you like to confirm this
+  change?", so the person read the same question twice. tidyProposalReply now
+  drops a final line that is nothing but the go-ahead question. Verified live:
+  the proposal is one sentence plus one instruction line. Gate after all of it:
+  tsc clean, whatsapp 12, actions 11, agent 120.
