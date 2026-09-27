@@ -258,6 +258,7 @@ export const ACTION_LABELS: Record<string, string> = {
   create_opportunity: "New deal",
   assign_customer_owner: "Account owner",
   add_contact: "New contact",
+  update_contact: "Update contact",
   set_record_people: "Record team",
   create_lead: "New lead",
   update_lead: "Update lead",

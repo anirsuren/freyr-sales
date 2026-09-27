@@ -103,6 +103,8 @@ async function people(ctx: ActionContext): Promise<Person[]> {
   return directory.members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name, role: m.role }));
 }
 
+type ContactMatch = { id: string; name: string; plain: string; customerId: string; company: string };
+
 async function resolvePerson(query: unknown, ctx: ActionContext): Promise<Match<Person>> {
   const q = str(query, 120);
   const members = await people(ctx);
@@ -152,6 +154,34 @@ async function resolveCustomer(query: unknown) {
     str(query, 200),
     customers.map((c) => ({ id: c.id, name: c.company_name, owner: c.owner, owner_user_id: c.owner_user_id })),
     "account"
+  );
+}
+
+/**
+ * A person at an account. Two people can share a name across accounts, so the
+ * account is part of the name the matcher sees and an ambiguous first name
+ * comes back as a question rather than a guess.
+ */
+async function resolveContact(query: unknown, customerQuery?: unknown) {
+  const db = getDb();
+  let onlyCustomer: string | undefined;
+  if (str(customerQuery)) {
+    const customer = await resolveCustomer(customerQuery);
+    if (!customer.ok) return customer as unknown as Match<ContactMatch>;
+    onlyCustomer = customer.value.id;
+  }
+  const [contacts, customers] = await Promise.all([db.contacts.list(onlyCustomer), db.customers.list()]);
+  const company = new Map(customers.map((c) => [c.id, c.company_name]));
+  return matchOne<ContactMatch>(
+    str(query, 200),
+    contacts.map((c) => ({
+      id: c.id,
+      name: `${c.full_name}${company.get(c.customer_id) ? ` (${company.get(c.customer_id)})` : ""}`,
+      plain: c.full_name,
+      customerId: c.customer_id,
+      company: company.get(c.customer_id) ?? "",
+    })),
+    "contact"
   );
 }
 
@@ -563,8 +593,62 @@ export const ACTIONS: ActionDef[] = [
         company: customer.value.name,
       };
     },
-    call: (p) => ({ method: "POST", path: `/api/customers/${encodeURIComponent(String(p.customerId))}/contacts`, body: { full_name: p.full_name, title: p.title, email: p.email, phone: p.phone, linkedin_url: p.linkedin_url } }),
+    call: (p) => ({ method: "POST", path: `/api/customers/${encodeURIComponent(String(p.customerId))}/contacts`, body: { full_name: p.full_name, job_title: p.title, email: p.email, phone: p.phone, linkedin_url: p.linkedin_url } }),
     done: (p) => ({ text: `${p.full_name} is now a contact at ${p.customer}.`, link: `/customers/${encodeURIComponent(String(p.customerId))}` }),
+  },
+  {
+    key: "update_contact",
+    title: "Change a contact's details",
+    description:
+      "Correct or fill in a person already at an account: job title, email, phone, LinkedIn, department, or mark them as a key contact. Only the fields the person names.",
+    module: "/customers",
+    gate: "write",
+    fields: {
+      contact: { type: "string", description: "The contact's name or id." },
+      customer: { type: "string", description: "Optional: the account they work at, when two people share a name." },
+      title: { type: "string", description: "New job title." },
+      email: { type: "string", description: "New email address." },
+      phone: { type: "string", description: "New phone number." },
+      linkedin: { type: "string", description: "New LinkedIn profile URL." },
+      department: { type: "string", description: "New department." },
+      key: { type: "boolean", description: "true to mark them a key contact, false to unmark." },
+    },
+    required: ["contact"],
+    async prepare(params) {
+      const contact = await resolveContact(params.contact, params.customer);
+      if (!contact.ok) return { error: contact.error };
+      const patch: Params = {};
+      const changes: string[] = [];
+      const set = (field: string, value: string, label: string) => {
+        if (!value) return;
+        patch[field] = value;
+        changes.push(`${label} → ${value}`);
+      };
+      set("job_title", str(params.title, 160), "title");
+      set("email", str(params.email, 254), "email");
+      set("phone", str(params.phone, 60), "phone");
+      set("linkedin_url", str(params.linkedin, 500), "LinkedIn");
+      set("department", str(params.department, 120), "department");
+      if (typeof params.key === "boolean") {
+        patch.is_key = params.key;
+        changes.push(params.key ? "mark as a key contact" : "no longer a key contact");
+      }
+      if (!changes.length) return { error: "What should change about them: title, email, phone, LinkedIn, department, or key contact?" };
+      return {
+        summary: `Update ${contact.value.plain}${contact.value.company ? ` at ${contact.value.company}` : ""}: ${changes.join(", ")}.`,
+        params: { contactId: contact.value.id, name: contact.value.plain, customerId: contact.value.customerId, company: contact.value.company, patch },
+        ...(contact.value.customerId ? { customerId: contact.value.customerId, company: contact.value.company } : {}),
+      };
+    },
+    call: (p) => ({
+      method: "PATCH",
+      path: `/api/contacts/${encodeURIComponent(String(p.contactId))}`,
+      body: (p.patch ?? {}) as Record<string, unknown>,
+    }),
+    done: (p) => ({
+      text: `${p.name}${p.company ? ` at ${p.company}` : ""} is updated.`,
+      link: `/customers/${encodeURIComponent(String(p.customerId))}`,
+    }),
   },
   {
     key: "set_record_people",

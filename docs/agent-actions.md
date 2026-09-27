@@ -447,3 +447,18 @@ Anir decides on by name.
   profile: headline "Head of AI & Business Systems at Freyr Solutions", real
   about, photo; the local agent then answered "You are Anir Suren, the
   Workspace Admin and Head of AI & Business Systems...". Nothing deployed yet.
+- Sep 27, 14:35 UTC: approval card redesigned ("the confirmations don't look
+  good"): a tinted header carrying the state (needs your approval / done /
+  not done / expired / couldn't do it) with a chip naming the kind of change,
+  the summary, then Yes, do it / Not now and "Nothing has changed yet". The
+  web reply no longer repeats the summary the card already shows (the rule is
+  channel-aware now; WhatsApp still states it in full and takes YES/NO), so
+  the bubble reads "Want me to go ahead?" above the card. New action
+  update_contact, mapped to the existing PATCH /api/contacts/[id] (title,
+  email, phone, LinkedIn, department, key contact), which the agent itself
+  named as a gap. BUG FOUND AND FIXED while testing it: add_contact sent
+  `title`, the create route reads `job_title`, so every job title given to the
+  agent was summarised back and then silently dropped. Both proved over
+  WhatsApp as a BD member on dev (add with a title, change phone and title,
+  read back from the database); both probe contacts deleted afterwards, no
+  residue. Action tests 10/10, WhatsApp tests 11/11.
