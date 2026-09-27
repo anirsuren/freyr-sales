@@ -523,23 +523,25 @@ export function Customer360({
               longer a summary. */}
           {chromeless && (
             <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
-              {activeCount > 0 && <div className="flex items-end gap-6">
+              {/* THE HEAD IS ALWAYS THERE (Anir, Sep 28: "header on the left
+                  and the button on the right... keep it consistent"). It used
+                  to vanish at zero, which left the action floating alone on
+                  the left of an empty tab while the review tab kept its title. */}
+              <div className="flex items-end gap-6">
+                <div>
+                  <h2 className="text-[19px] font-semibold tracking-tight text-text-primary">{active.label}</h2>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-[13px] text-text-secondary">
+                      {activeCount ? `${activeCount} ${countNoun(active.label, activeCount).toLowerCase()}` : `No ${active.label.toLowerCase()} yet`}
+                    </span>
+                  </div>
+                </div>
                 {/* THE SAME NUMBER THE REST OF THE APP WRITES (Anir, Aug 28:
                     "this 298K, that doesn't look like a font that we've used").
                     It was 30px semibold at -0.02em, invented here; every stat
                     tile in the app is 24px BOLD at -0.01em. Matched, so a
                     number on this page reads as the same kind of number as one
                     on the tiles above it. */}
-                <span className="flex items-baseline gap-2">
-                  <span className="text-[24px] font-bold leading-none tracking-[-0.01em] tnum text-text-primary">
-                    {activeCount}
-                  </span>
-                  <span className="text-[13px] text-text-secondary">
-                    {/* "1 opportunities" was wrong on every band holding one
-                        of anything. */}
-                    {countNoun(active.label, activeCount).toLowerCase()}
-                  </span>
-                </span>
                 {active.total !== undefined && active.total > 0 && (
                   <span className="flex items-baseline gap-2 border-l border-border-light pl-5">
                     <span
@@ -553,7 +555,7 @@ export function Customer360({
                     </span>
                   </span>
                 )}
-              </div>}
+              </div>
               {bandActions?.[active.key] && (
                 <div className="flex shrink-0 items-center gap-2">{bandActions[active.key]}</div>
               )}
@@ -840,11 +842,15 @@ export function Customer360({
                   <p className="mx-auto mt-1 max-w-lg text-[12.5px] leading-5 text-text-secondary">{active.empty}</p>
                 </div>
               ) : (
-                <p className={cn("mt-1 text-[12.5px] text-text-secondary", unboxed ? "py-5" : "py-6 text-center")}>
-                  {bandEmpty
+                <div className="rounded-xl border border-dashed border-border-light bg-surface/30 px-6 py-12 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-blue-light/40 text-blue-primary">
+                    <ActiveIcon size={19} strokeWidth={1.9} />
+                  </div>
+                  <h3 className="mt-4 text-[15px] font-semibold text-text-primary">No {active.label.toLowerCase()} yet</h3>
+                  <p className="mx-auto mt-1 max-w-lg text-[12.5px] leading-5 text-text-secondary">{bandEmpty
                     ? active.empty
-                    : `Nothing on ${active.label.toLowerCase()} for ${company} yet.`}
-                </p>
+                    : `Nothing on ${active.label.toLowerCase()} for ${company} yet.`}</p>
+                </div>
               )
             ) : active.key === "solutionRequests" &&
               solutioningControls &&

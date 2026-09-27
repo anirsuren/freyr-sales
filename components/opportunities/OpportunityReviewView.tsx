@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, CircleAlert, Copy, ExternalLink, Flag, Plus, ShieldAlert, Target, UsersRound } from "lucide-react";
+import { CalendarDays, CircleAlert, Copy, ExternalLink, Flag, Plus, ShieldAlert, Target, UsersRound, ClipboardList } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import type { OpportunityReview, OpportunityReviewPerson, OpportunityReviewRecord } from "@/lib/opportunitiesShared";
@@ -54,7 +54,13 @@ export function OpportunityReviewView({ review, records = [], mayEdit, dealId }:
       {mayEdit && <div className="flex flex-wrap gap-2"><Link href={`/opportunities/${dealId}/review/edit?new=1`} className="inline-flex items-center gap-2 rounded-lg bg-blue-primary px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90"><Plus size={14} /> New review</Link>{selected && <Link href={`/opportunities/${dealId}/review/edit?copy=${encodeURIComponent(selected.id)}`} className="inline-flex items-center gap-2 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:bg-surface-secondary"><Copy size={14} /> Copy into new review</Link>}</div>}
     </div>
     {history.length > 0 && <div className="mt-5 flex flex-wrap gap-2" aria-label="Saved opportunity reviews">{[...history].reverse().map((item, index) => <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} aria-pressed={selected?.id === item.id} className={`rounded-xl border px-3 py-2 text-left text-[12.5px] transition-colors ${selected?.id === item.id ? "border-blue-primary bg-blue-light text-blue-primary" : "border-border-light bg-white text-text-secondary hover:border-blue-subtle"}`}><span className="block font-semibold">{item.reviewedOn ? formatDayLabel(item.reviewedOn, "en-US") : "Earlier review · date not recorded"}</span><span className="text-[11px]">{item.recordedBy || (index === 0 ? "Latest saved review" : "Saved review")}</span></button>)}</div>}
-    {!data && <div className="mt-5 rounded-2xl border border-dashed border-border-light bg-white p-8 text-center text-[13px] text-text-secondary">No reviews yet. Start one after your next customer discussion.</div>}
+    {/* THE SAME EMPTY BOX EVERY TAB ON A RECORD USES (Anir, Sep 28: "I like
+        the box for solution requests better... keep it consistent"). */}
+    {!data && <div className="mt-5 rounded-xl border border-dashed border-border-light bg-surface/30 px-6 py-12 text-center">
+      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-blue-light/40 text-blue-primary"><ClipboardList size={19} strokeWidth={1.9} /></div>
+      <h3 className="mt-4 text-[15px] font-semibold text-text-primary">No reviews yet</h3>
+      <p className="mx-auto mt-1 max-w-lg text-[12.5px] leading-5 text-text-secondary">Start one after your next customer discussion.</p>
+    </div>}
     {data && <div className="tab-panel mt-5 space-y-4">
       <h3 className="text-[15px] font-semibold text-text-primary">Decision brief</h3>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.9fr)]">
