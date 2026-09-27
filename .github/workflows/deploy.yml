@@ -74,6 +74,16 @@ jobs:
       - name: Register task definition (image + version only; auth inherited)
         run: |
           set -euo pipefail
+          # THE AGENT RUNS ON VERTEX (Anir, Sep 26: it is definitely supposed to
+          # use Vertex). This step inherits its environment from the live task,
+          # so the Google settings added to deploy/ecs-task-definition.json on
+          # Sep 21 never reached the running service and /api/health kept saying
+          # vertexBrain not configured. Set below, every deploy carries them.
+          # The federation file ships inside the image; a failed Vertex call
+          # falls back to Anthropic for that question, so a broken federation
+          # shows on /api/health without darkening the agent.
+          # (Keep comments OUT of the single-quoted jq program: an apostrophe in
+          # one broke the Sep 27 deploy, "jq: Could not open file definitely".)
           aws ecs describe-task-definition --task-definition "$FAMILY" \
             --query taskDefinition --output json \
           | jq --arg IMG "${{ steps.meta.outputs.registry }}/$REPO:${{ steps.meta.outputs.tag }}" \
@@ -89,14 +99,6 @@ jobs:
             | set_env("DEFAULT_DATA_MODE"; "mock")
             | set_env("DATA_MODE_LOCKED"; "0")
             | set_env("AUTO_APPROVE_EMAIL_DOMAINS"; "freyrsolutions.com")
-            # THE AGENT RUNS ON VERTEX (Anir, Sep 26: "it's definitely supposed
-            # to use Vertex"). This step inherits its environment from the live
-            # task, so the Google settings added to deploy/ecs-task-definition.json
-            # on Sep 21 never reached the running service and /api/health kept
-            # saying "vertexBrain: not configured". Set here, every deploy
-            # carries them. The federation file ships inside the image; a
-            # failed Vertex call falls back to Anthropic for that question, so a
-            # broken federation shows on /api/health without darkening the agent.
             | set_env("AGENT_PROVIDER"; "vertex")
             | set_env("GOOGLE_CLOUD_PROJECT"; "sound-fastness-480519-a6")
             | set_env("GOOGLE_CLOUD_LOCATION"; "global")
