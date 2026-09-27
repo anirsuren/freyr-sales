@@ -22,7 +22,7 @@ type Status = {
   canSend: boolean;
   businessNumber: string;
   link: { number: string; linkedAt: string; name: string } | null;
-  pending: { code: string; expires: string; waMe: string | null } | null;
+  pending: { code: string; expires: string; waMe: string | null; qr: string | null } | null;
 };
 
 const POLL_MS = 4_000;
@@ -153,7 +153,8 @@ export function WhatsAppCard() {
           </Button>
         </div>
       ) : status?.pending ? (
-        <div className="mt-2.5 rounded-xl border border-blue-primary/30 bg-blue-light/60 p-4">
+        <div className="mt-2.5 flex items-start justify-between gap-5 rounded-xl border border-blue-primary/30 bg-blue-light/60 p-4">
+         <div className="min-w-0">
           <p className="text-[12.5px] text-text-secondary">
             From your phone, text this code to{" "}
             <span className="font-medium tabular-nums text-text-primary">
@@ -181,6 +182,19 @@ export function WhatsAppCard() {
             </Button>
             <span className="text-[11.5px] text-text-tertiary">Waiting for your text…</span>
           </div>
+         </div>
+          {status.pending.qr ? (
+            <figure className="shrink-0 text-center">
+              <img
+                src={status.pending.qr}
+                alt="QR code that opens WhatsApp with the code filled in"
+                width={132}
+                height={132}
+                className="rounded-lg border border-border-light bg-white p-1"
+              />
+              <figcaption className="mt-1.5 w-[132px] text-[11px] leading-snug text-text-tertiary">Scan with your phone: WhatsApp opens with the code typed in.</figcaption>
+            </figure>
+          ) : null}
         </div>
       ) : (
         <div className="mt-2.5 flex items-center justify-between gap-4">

@@ -37,6 +37,9 @@ const CONTINUE_WITHIN_MS = 6 * 60 * 60_000;
 const CONVERSE_TIMEOUT_MS = 240_000;
 const SLOW_NOTICE_MS = 60_000;
 const HISTORY_TURNS = 20;
+/** Wrong codes from an UNLINKED number: this many inside an hour and the number is ignored for the rest of that hour. Five guesses an hour against a six-digit code that lives fifteen minutes is nothing. */
+const CODE_FAILS_LIMIT = 5;
+const CODE_LOCK_MS = 60 * 60_000;
 /** Unknown numbers get the how-to-link reply at most this often. */
 const UNLINKED_REPLY_COOLDOWN_MS = 10 * 60_000;
 const SEEN_LIMIT = 2_000;
@@ -46,6 +49,8 @@ declare global {
   var __FREYR_WA_SEEN__: Map<string, number> | undefined;
   // eslint-disable-next-line no-var
   var __FREYR_WA_UNLINKED__: Map<string, number> | undefined;
+  // eslint-disable-next-line no-var
+  var __FREYR_WA_CODE_FAILS__: Map<string, { count: number; first: number }> | undefined;
 }
 
 /** Meta retries a delivery it did not get a 200 for; the same text must not be answered twice. */
@@ -58,6 +63,29 @@ export function alreadyHandled(messageId: string): boolean {
     for (const [id] of oldest) seen.delete(id);
   }
   return false;
+}
+
+type CodeFailures = { count: number; first: number };
+function codeFailures(number: string): CodeFailures {
+  const map = (globalThis.__FREYR_WA_CODE_FAILS__ ??= new Map<string, CodeFailures>());
+  const entry = map.get(number);
+  if (!entry || Date.now() - entry.first > CODE_LOCK_MS) {
+    const fresh = { count: 0, first: Date.now() };
+    map.set(number, fresh);
+    return fresh;
+  }
+  return entry;
+}
+function codeLocked(number: string): boolean {
+  return codeFailures(number).count >= CODE_FAILS_LIMIT;
+}
+function noteCodeFailure(number: string): number {
+  const entry = codeFailures(number);
+  entry.count += 1;
+  return entry.count;
+}
+function clearCodeFailures(number: string): void {
+  globalThis.__FREYR_WA_CODE_FAILS__?.delete(number);
 }
 
 function unlinkedReplyDue(number: string): boolean {
@@ -171,12 +199,15 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
      code is just typing a number (an amount, say), so that goes to the agent. */
   const code = linkCodeIn(message.text);
   if (code) {
+    // A locked-out number is ignored outright: no reply, nothing to probe with.
+    if (!member && codeLocked(message.from)) return;
     const claimed = await claimWhatsAppCode(code, message.from, message.name);
     if (claimed === "expired") {
       await reply(message.from, "That code has expired. Get a new one from Settings, then Integrations, then WhatsApp in Freyr.", options);
       return;
     }
     if (claimed) {
+      clearCodeFailures(message.from);
       const user = await appUser(claimed.scope.userId);
       const who = user?.display_name || user?.email || "you";
       await reply(
@@ -187,6 +218,10 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
       return;
     }
     if (!member) {
+      if (noteCodeFailure(message.from) >= CODE_FAILS_LIMIT) {
+        await reply(message.from, "Too many wrong codes from this phone. Try again in an hour with a fresh code from Settings, then Integrations, then WhatsApp in Freyr.", options);
+        return;
+      }
       await reply(message.from, "That code doesn't match anything. Check Settings, then Integrations, then WhatsApp in Freyr and text the code shown there.", options);
       return;
     }

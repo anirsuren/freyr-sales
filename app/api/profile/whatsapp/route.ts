@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import QRCode from "qrcode";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { canSendWhatsApp, displayPhone, waMeLink, whatsappConfig } from "@/lib/whatsapp";
 import {
@@ -20,7 +21,12 @@ async function status(scope: NonNullable<Awaited<ReturnType<typeof verifiedReque
     businessNumber: config?.businessNumber ? displayPhone(config.businessNumber) : "",
     link: link ? { number: displayPhone(link.number), linkedAt: link.linkedAt, name: link.name } : null,
     pending: pending
-      ? { code: pending.code, expires: pending.expires, waMe: config?.businessNumber ? waMeLink(config.businessNumber, pending.code) : null }
+      ? await (async () => {
+          const waMe = config?.businessNumber ? waMeLink(config.businessNumber, pending.code) : null;
+          /* The same link as a QR code: scanned from the phone, WhatsApp opens with the code typed in, one tap to send. */
+          const qr = waMe ? await QRCode.toDataURL(waMe, { margin: 1, width: 176 }) : null;
+          return { code: pending.code, expires: pending.expires, waMe, qr };
+        })()
       : null,
   };
 }

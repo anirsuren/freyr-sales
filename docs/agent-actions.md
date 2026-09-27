@@ -392,3 +392,12 @@ Anir decides on by name.
   in chat: no attempt limit on codes, links never expire, Meta sees message
   text, test number reaches five phones; first two are the fixes to build on
   his word.
+- Sep 27, 13:10 UTC: Anir: "how does the AI work" (answered in chat) and "can
+  we do a QR code". Built: Settings > Integrations shows a QR of the wa.me
+  link beside the code (scan, WhatsApp opens with the code typed in, one tap
+  to send; qrcode package, data URL from the route). Security he asked for:
+  an UNLINKED number that texts five wrong codes inside an hour is ignored for
+  the rest of that hour (the fifth wrong code gets "Too many wrong codes",
+  later ones get nothing); proved locally with ...0009. Linked numbers are
+  not counted (their six digits go to the agent) and a right code clears the
+  count. In-memory per task, one task runs.
