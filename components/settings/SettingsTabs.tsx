@@ -1564,8 +1564,10 @@ export function SettingsTabs({
           </div>
           )}
 
-          {/* Two-way CRM mirror — real counts from the app's own book */}
-          <CrmSyncCard counts={crmCounts} />
+          {/* The CRM mirror is a Mock showroom card (V2 #5). No CRM is wired, so
+              in Real it claimed a HubSpot connection that does not exist (Anir,
+              Sep 27, on prod: "why the fuck do you have a HubSpot"). Mock only. */}
+          {dataMode === "mock" && <CrmSyncCard counts={crmCounts} />}
 
           {/* System services — the engines Freyr runs on. View-only status;
               keys are managed by your admin via secure environment config. */}
