@@ -271,6 +271,15 @@ export async function buildOpportunity360(
           id: `${opportunityId}:${line.month}`,
           title: monthLabel(line.month),
           amount: line.amount,
+          /* The same figures as numbers, so the deal page can offer its
+             USD / local switch over them. The last month's "All of it" is
+             deliberately absent: it is a phrase, not an amount. */
+          amounts: {
+            ...(anyOts && line.ots ? { ots: line.ots } : {}),
+            ...(anyArr && line.arr ? { arr: line.arr } : {}),
+            ...(anyMrr && line.mrr ? { mrr: line.mrr } : {}),
+            ...(i === lines.length - 1 && planTotal > 0 ? {} : { running }),
+          },
           cells: {
             ...(anyOts ? { ots: line.ots ? formatMoney(line.ots) : "·" } : {}),
             ...(anyArr ? { arr: line.arr ? formatMoney(line.arr) : "·" } : {}),

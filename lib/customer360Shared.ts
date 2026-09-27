@@ -49,6 +49,14 @@ export type Customer360Item = {
   sub?: string;
   when?: string;
   amount?: number;
+  /**
+   * THE RAW NUMBER BEHIND A MONEY CELL, so a screen that can read in a second
+   * currency has something to convert. `cells` holds finished strings, which
+   * cannot be re-read in another money (Anir, Sep 27: "we should have the
+   * option to see the currency"). Keyed by column, and only for columns whose
+   * text is really an amount.
+   */
+  amounts?: Record<string, number>;
   href?: string;
   tone?: string;
   /**
