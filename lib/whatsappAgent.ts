@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { APP_SESSION_COOKIE, signAppSession } from "@/lib/appSession";
 import { ACCESS_COOKIE, normalizeWorkspaceRole, signAccessGrant } from "@/lib/accessControl";
+import { DATA_MODE_COOKIE } from "@/lib/dataMode";
 import {
   appendAgentExchange,
   latestChannelConversation,
@@ -106,7 +107,10 @@ async function cookiesFor(user: AppUserRow, scope: WorkspaceMemberScope): Promis
       workspaceId: scope.workspaceId,
     }),
   ]);
-  return `${APP_SESSION_COOKIE}=${session}; ${ACCESS_COOKIE}=${grant}`;
+  /* REAL MODE, ALWAYS (Anir, Sep 27: "it should just be real mode"). A phone
+     has no Mock switch: the data-view cookie is pinned to live here so the
+     agent answers from the real workspace whatever this server's default is. */
+  return `${APP_SESSION_COOKIE}=${session}; ${ACCESS_COOKIE}=${grant}; ${DATA_MODE_COOKIE}=live`;
 }
 
 type ConverseReply = {
