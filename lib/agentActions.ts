@@ -9,6 +9,11 @@ import { OPPORTUNITY_LEVELS, OPPORTUNITY_STATUSES } from "@/lib/opportunitiesSha
 import { MEETING_TYPES } from "@/lib/meetings";
 import { readRecordTeams, teamFor } from "@/lib/recordTeams";
 import { readCustomerGroups } from "@/lib/customerGroups";
+import { readMeetings } from "@/lib/meetings";
+import { readSolutioning } from "@/lib/solutioning";
+import { readContracts } from "@/lib/contracts";
+import { CONTRACT_STATUSES } from "@/lib/contractsShared";
+import { readRevenueAccruals } from "@/lib/revenueAccruals";
 import { readMarketIntelBookmarks } from "@/lib/marketIntelBookmarks";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { moduleCreateRefusal, moduleWriteRefusal, recordWriteRefusal } from "@/lib/moduleAccessServer";
@@ -68,7 +73,7 @@ type Prepared = {
 };
 
 type Call =
-  | { method: "POST" | "PUT" | "PATCH"; path: string; body: unknown }
+  | { method: "POST" | "PUT" | "PATCH" | "DELETE"; path: string; body?: unknown }
   /* A few writes have no route of their own (the account timeline the old
      agent wrote to directly). They run in-process, after the same
      recordWriteRefusal question the customer routes ask. */
@@ -218,6 +223,65 @@ async function resolveTrackedCompany(query: unknown) {
 }
 
 /** A logged goal result that is still open: by its id, or the newest one for a person on a goal. */
+/* THE RECORDS THE FULL AUDIT FOUND NO WAY TO NAME (Anir, Sep 27: "the agent
+   has to be able to do literally anything I can do in the app"). Each one is
+   the same bargain as the resolvers above it: exact name, then a unique
+   partial, and two partials is a question back, never a guess. */
+async function resolveMeeting(query: unknown) {
+  const state = await readMeetings();
+  return matchOne(
+    str(query, 200),
+    state.meetings.map((m) => ({ id: m.id, name: `${m.title}${m.customer ? ` (${m.customer})` : ""}`, plain: m.title, status: m.status, meetingAt: m.meetingAt, customer: m.customer })),
+    "meeting",
+    (m) => [m.plain]
+  );
+}
+
+async function resolveRequest(query: unknown) {
+  const state = await readSolutioning();
+  return matchOne(
+    str(query, 200),
+    state.requests.filter((r) => (r.type ?? "request") === "request").map((r) => ({
+      id: r.id, name: `${r.title}${r.customer ? ` (${r.customer})` : ""}`, plain: r.title, status: r.status, customer: r.customer, owner: (r as { owner?: string | null }).owner ?? null, requestedBy: r.requestedBy,
+    })),
+    "solutioning request",
+    (r) => [r.plain]
+  );
+}
+
+async function resolveContract(query: unknown) {
+  const state = await readContracts();
+  return matchOne(
+    str(query, 200),
+    state.contracts.map((c) => ({ id: c.id, name: `${c.name}${c.customer ? ` (${c.customer})` : ""}`, plain: c.name, reference: c.reference, status: c.status, customer: c.customer, value: c.value, record: c })),
+    "contract",
+    (c) => [c.reference, c.plain]
+  );
+}
+
+async function resolveCustomerGroup(query: unknown) {
+  const state = await readCustomerGroups();
+  return matchOne(str(query, 200), state.groups.map((g) => ({ id: g.id, name: g.name, customerIds: g.customerIds })), "customer group");
+}
+
+async function resolveSubgoal(goalQuery: unknown, query: unknown) {
+  const goal = await resolveGoal(goalQuery);
+  if (!goal.ok) return goal as unknown as Match<{ id: string; name: string; goalId: string; goalName: string }>;
+  const state = await readPerformance();
+  const parent = state.goals.find((g) => g.id === goal.value.id);
+  const subs = (parent?.subgoals ?? []).map((sg) => ({ id: sg.id, name: sg.name, goalId: goal.value.id, goalName: goal.value.name }));
+  return matchOne(str(query, 200), subs, "subgoal");
+}
+
+async function resolvePlan(query: unknown) {
+  const opp = await resolveOpportunity(query);
+  if (!opp.ok) return opp as unknown as Match<{ id: string; name: string; opportunityId: string; months: number }>;
+  const state = await readRevenueAccruals();
+  const plan = state.plans.find((pl) => pl.opportunityId === opp.value.id);
+  if (!plan) return { ok: false as const, error: `"${opp.value.name}" has no accrual plan.` };
+  return { ok: true as const, value: { id: plan.id, name: opp.value.name, opportunityId: opp.value.id, months: plan.lines.length } };
+}
+
 async function resolveOpenEntry(params: Params) {
   const state = await readPerformance();
   const open = state.actuals.filter((a) => (a.status ?? "verified") !== "verified");
@@ -376,7 +440,7 @@ export const ACTIONS: ActionDef[] = [
       const named = [...new Set(people)];
       return {
         summary: `Put the group "${group.value.name}" on the goal "${goal.value.name}"${target !== undefined ? ` with a target of ${target.toLocaleString("en-US")}` : ""}. That is ${named.length} ${named.length === 1 ? "person" : "people"}: ${named.join(", ")}.`,
-        params: { goalId: goal.value.id, goalName: goal.value.name, groupId: group.value.id, groupName: group.value.name, ...(target !== undefined ? { target } : {}) },
+        params: { goalId: goal.value.id, goalName: goal.value.name, groupId: group.value.id, groupName: group.value.name, people: named, ...(target !== undefined ? { target } : {}) },
       };
     },
     call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "assign-goal-group", goalId: p.goalId, groupId: p.groupId, ...(p.target !== undefined ? { target: p.target } : {}) } }),
@@ -400,7 +464,7 @@ export const ACTIONS: ActionDef[] = [
       if (!group.ok) return { error: group.error };
       return {
         summary: `Take the group "${group.value.name}" off the goal "${goal.value.name}".`,
-        params: { goalId: goal.value.id, goalName: goal.value.name, groupId: group.value.id, groupName: group.value.name },
+        params: { goalId: goal.value.id, goalName: goal.value.name, groupId: group.value.id, groupName: group.value.name, people: [...new Set([group.value.head, ...(group.value.members ?? [])].filter(Boolean))] },
       };
     },
     call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "unassign-goal-group", goalId: p.goalId, groupId: p.groupId } }),
@@ -1243,6 +1307,919 @@ export const ACTIONS: ActionDef[] = [
     }),
     done: (p) => ({ text: `Draft saved to ${p.customer}'s timeline. Nothing was sent.`, link: `/customers/${encodeURIComponent(String(p.customerId))}` }),
   },
+  /* ====================================================================== */
+  /* THE FULL AUDIT (Anir, Sep 27: "the agent has to be able to do literally
+     anything I can do in the app... I don't want to keep updating it").
+     Every write the app's own routes offer in real mode, mapped once. Each
+     one is a thin door onto a route that already checks who may pass: the
+     agent never re-implements a permission, it forwards the person's cookies
+     and repeats the route's refusal in the route's words. */
+  /* ====================================================================== */
+
+  /* ---------------------------------------------------------- Goals plan */
+  {
+    key: "create_goal",
+    title: "Create a goal",
+    description: "Add a new goal to the Goals plan: a name, what it counts (count, currency or percent), the target and the year.",
+    module: "/performance",
+    gate: "create",
+    fields: {
+      name: { type: "string", description: "The goal's name." },
+      unit: { type: "string", description: "count, currency or percent." },
+      target: { type: "number", description: "The target in that unit. Omit if none was given." },
+      year: { type: "number", description: "Fiscal year, e.g. 2026. Defaults to this year." },
+      type: { type: "string", description: "Goal type (category) name, if the person named one." },
+    },
+    required: ["name", "unit"],
+    async prepare(params) {
+      const name = str(params.name, 160);
+      if (!name) return { error: "What should the goal be called?" };
+      const unit = pickEnum(params.unit, ["count", "currency", "percent"], "unit");
+      if (!unit.ok) return { error: unit.error };
+      const target = params.target === undefined || params.target === null || params.target === "" ? undefined : parseMoney(params.target);
+      if (params.target !== undefined && params.target !== null && params.target !== "" && target === null) return { error: "The target must be a number." };
+      const year = Number(str(params.year, 8)) || new Date().getFullYear();
+      const type = str(params.type, 120) || undefined;
+      return {
+        summary: `Create the goal "${name}" (${unit.value}${target ? `, target ${target.toLocaleString("en-US")}` : ""}, ${year})${type ? ` under ${type}` : ""}.`,
+        params: { name, unit: unit.value, ...(target ? { target } : {}), year, ...(type ? { type } : {}) },
+      };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "add-goal", name: p.name, unit: p.unit, target: p.target ?? 0, year: p.year, ...(p.type ? { type: p.type } : {}) } }),
+    done: (p) => ({ text: `The goal "${p.name}" is in the plan.`, link: "/performance" }),
+  },
+  {
+    key: "update_goal",
+    title: "Change a goal",
+    description: "Rename a goal or change its target or year. Only the fields given change.",
+    module: "/performance",
+    gate: "write",
+    fields: {
+      goal: { type: "string", description: "Goal id or name." },
+      name: { type: "string", description: "New name." },
+      target: { type: "number", description: "New target." },
+      year: { type: "number", description: "New fiscal year." },
+    },
+    required: ["goal"],
+    async prepare(params) {
+      const goal = await resolveGoal(params.goal);
+      if (!goal.ok) return { error: goal.error };
+      const patch: Params = {};
+      const changes: string[] = [];
+      if (str(params.name, 160)) { patch.name = str(params.name, 160); changes.push(`rename it to "${patch.name}"`); }
+      if (params.target !== undefined && params.target !== null && params.target !== "") {
+        const t = parseMoney(params.target); if (t === null) return { error: "The target must be a number." };
+        patch.target = t; changes.push(`set the target to ${t.toLocaleString("en-US")}`);
+      }
+      if (str(params.year, 8)) { patch.year = Number(str(params.year, 8)); changes.push(`move it to ${patch.year}`); }
+      if (!changes.length) return { error: "Say what should change: the name, the target or the year." };
+      return { summary: `On the goal "${goal.value.name}": ${changes.join(", ")}.`, params: { goalId: goal.value.id, goalName: goal.value.name, patch } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "update-goal", goalId: p.goalId, ...(p.patch as Params) } }),
+    done: (p) => ({ text: `"${(p.patch as Params).name ?? p.goalName}" is updated.`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
+  },
+  {
+    key: "delete_goal",
+    title: "Delete a goal",
+    description: "Remove a goal from the plan, with its subgoals and unverified entries. Verified entries are locked and stay.",
+    module: "/performance",
+    gate: "create",
+    fields: { goal: { type: "string", description: "Goal id or name." } },
+    required: ["goal"],
+    async prepare(params) {
+      const goal = await resolveGoal(params.goal);
+      if (!goal.ok) return { error: goal.error };
+      return { summary: `Delete the goal "${goal.value.name}" and everything under it. This cannot be undone.`, params: { goalId: goal.value.id, goalName: goal.value.name } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "remove-goal", goalId: p.goalId } }),
+    done: (p) => ({ text: `The goal "${p.goalName}" is gone.`, link: "/performance" }),
+  },
+  {
+    key: "create_subgoal",
+    title: "Add a subgoal under a goal",
+    description: "Carve a share of a goal out as a named subgoal, optionally with its own target and the people on it.",
+    module: "/performance",
+    gate: "write",
+    fields: {
+      goal: { type: "string", description: "Parent goal id or name." },
+      name: { type: "string", description: "The subgoal's name." },
+      target: { type: "number", description: "Its target, in the parent's unit." },
+      people: { type: "array", items: { type: "string" }, description: "Colleagues to put on it." },
+    },
+    required: ["goal", "name"],
+    async prepare(params, ctx) {
+      const goal = await resolveGoal(params.goal);
+      if (!goal.ok) return { error: goal.error };
+      const name = str(params.name, 160);
+      if (!name) return { error: "What should the subgoal be called?" };
+      const target = params.target === undefined || params.target === null || params.target === "" ? undefined : parseMoney(params.target);
+      if (params.target !== undefined && params.target !== null && params.target !== "" && target === null) return { error: "The target must be a number." };
+      const names: string[] = [];
+      for (const q of list(params.people)) { const person = await resolvePerson(q, ctx); if (!person.ok) return { error: person.error }; names.push(person.value.name); }
+      return {
+        summary: `Add the subgoal "${name}" under "${goal.value.name}"${target ? ` with a target of ${target.toLocaleString("en-US")}` : ""}${names.length ? `, with ${names.join(", ")} on it` : ""}.`,
+        params: { goalId: goal.value.id, goalName: goal.value.name, name, ...(target ? { target } : {}), people: names },
+      };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "add-subgoal", goalId: p.goalId, name: p.name, target: p.target ?? 0, people: (p.people as string[]).map((n) => ({ name: n })) } }),
+    done: (p) => ({ text: `"${p.name}" now sits under "${p.goalName}".`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
+  },
+  {
+    key: "delete_subgoal",
+    title: "Remove a subgoal",
+    description: "Delete one subgoal from under its goal.",
+    module: "/performance",
+    gate: "create",
+    fields: { goal: { type: "string", description: "Parent goal id or name." }, subgoal: { type: "string", description: "Subgoal id or name." } },
+    required: ["goal", "subgoal"],
+    async prepare(params) {
+      const sub = await resolveSubgoal(params.goal, params.subgoal);
+      if (!sub.ok) return { error: sub.error };
+      return { summary: `Remove the subgoal "${sub.value.name}" from "${sub.value.goalName}". This cannot be undone.`, params: { goalId: sub.value.goalId, subgoalId: sub.value.id, name: sub.value.name } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "remove-subgoal", goalId: p.goalId, subgoalId: p.subgoalId } }),
+    done: (p) => ({ text: `The subgoal "${p.name}" is gone.`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
+  },
+  {
+    key: "update_goal_result",
+    title: "Correct a logged result",
+    description: "Change the amount, date, account or note on a result that is still waiting for verification. Verified results are locked.",
+    module: "/performance",
+    gate: "write",
+    fields: {
+      entry: { type: "string", description: "The entry id from awaitingVerification, if known." },
+      person: { type: "string", description: "Otherwise: whose entry." },
+      goal: { type: "string", description: "Otherwise: which goal." },
+      amount: { type: "number", description: "The corrected amount." },
+      date: { type: "string", description: "The corrected date." },
+      note: { type: "string", description: "A corrected note." },
+    },
+    required: [],
+    async prepare(params, ctx) {
+      const entry = await resolveOpenEntry(params);
+      if (!entry.ok) return { error: entry.error };
+      const goalName = entry.state.goals.find((g) => g.id === entry.value.goalId)?.name ?? entry.value.goalId;
+      const patch: Params = {}; const changes: string[] = [];
+      if (params.amount !== undefined && params.amount !== null && params.amount !== "") { const a = parseMoney(params.amount); if (a === null) return { error: "The amount must be a number." }; patch.amount = a; changes.push(`amount to ${a.toLocaleString("en-US")}`); }
+      if (str(params.date)) { const d = parseDay(params.date, new Date(), ctx.timeZone); if (!d) return { error: "I could not read that date." }; patch.date = d; changes.push(`date to ${readableDay(d)}`); }
+      if (str(params.note, 600)) { patch.note = str(params.note, 600); changes.push("the note"); }
+      if (!changes.length) return { error: "Say what to correct: the amount, the date or the note." };
+      return { summary: `Correct ${entryLabel(entry.value, goalName)}: ${changes.join(", ")}.`, params: { actualId: entry.value.id, goalId: entry.value.goalId, label: entryLabel(entry.value, goalName), patch } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "update-actual", actualId: p.actualId, ...(p.patch as Params) } }),
+    done: (p) => ({ text: `Corrected ${p.label}.`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
+  },
+  {
+    key: "remove_goal_result",
+    title: "Remove a logged result",
+    description: "Delete a result that is still waiting for verification. Verified results are locked and cannot be removed.",
+    module: "/performance",
+    gate: "write",
+    fields: {
+      entry: { type: "string", description: "The entry id from awaitingVerification, if known." },
+      person: { type: "string", description: "Otherwise: whose entry." },
+      goal: { type: "string", description: "Otherwise: which goal." },
+    },
+    required: [],
+    async prepare(params) {
+      const entry = await resolveOpenEntry(params);
+      if (!entry.ok) return { error: entry.error };
+      const goalName = entry.state.goals.find((g) => g.id === entry.value.goalId)?.name ?? entry.value.goalId;
+      return { summary: `Remove ${entryLabel(entry.value, goalName)}. This cannot be undone.`, params: { actualId: entry.value.id, goalId: entry.value.goalId, label: entryLabel(entry.value, goalName) } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "remove-actual", actualId: p.actualId } }),
+    done: (p) => ({ text: `Removed ${p.label}.`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
+  },
+  {
+    key: "create_group",
+    title: "Create a group",
+    description: "Start a new group in the Goals plan with a head and, optionally, members.",
+    module: "/performance",
+    gate: "create",
+    fields: {
+      name: { type: "string", description: "The group's name." },
+      head: { type: "string", description: "Colleague who heads it, or 'me'." },
+      members: { type: "array", items: { type: "string" }, description: "Colleagues in it." },
+    },
+    required: ["name", "head"],
+    async prepare(params, ctx) {
+      const name = str(params.name, 120);
+      if (!name) return { error: "What should the group be called?" };
+      const head = await resolvePerson(params.head, ctx);
+      if (!head.ok) return { error: head.error };
+      const members: string[] = [];
+      for (const q of list(params.members)) { const person = await resolvePerson(q, ctx); if (!person.ok) return { error: person.error }; if (person.value.name !== head.value.name) members.push(person.value.name); }
+      return { summary: `Create the group "${name}", headed by ${head.value.name}${members.length ? `, with ${members.join(", ")}` : ""}.`, params: { name, head: head.value.name, members } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "add-group", name: p.name, head: p.head, members: p.members } }),
+    done: (p) => ({ text: `The group "${p.name}" exists, headed by ${p.head}.`, link: "/performance?view=groups" }),
+  },
+  {
+    key: "update_group",
+    title: "Rename a group or change its head",
+    description: "Rename a group in the Goals plan, or make someone else its head. To move people in or out, use move_group_member.",
+    module: "/performance",
+    gate: "write",
+    fields: {
+      group: { type: "string", description: "Group id or name." },
+      name: { type: "string", description: "New name." },
+      head: { type: "string", description: "New head, a colleague's name or 'me'." },
+    },
+    required: ["group"],
+    async prepare(params, ctx) {
+      const group = await resolveGroup(params.group);
+      if (!group.ok) return { error: group.error };
+      const patch: Params = {}; const changes: string[] = [];
+      if (str(params.name, 120)) { patch.name = str(params.name, 120); changes.push(`rename it to "${patch.name}"`); }
+      if (str(params.head)) { const head = await resolvePerson(params.head, ctx); if (!head.ok) return { error: head.error }; patch.head = head.value.name; changes.push(`make ${head.value.name} its head`); }
+      if (!changes.length) return { error: "Say what should change: the name or the head." };
+      return { summary: `On the group "${group.value.name}": ${changes.join(" and ")}.`, params: { groupId: group.value.id, groupName: group.value.name, patch } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "update-group", groupId: p.groupId, ...(p.patch as Params) } }),
+    done: (p) => ({ text: `The group "${(p.patch as Params).name ?? p.groupName}" is updated.`, link: "/performance?view=groups" }),
+  },
+  {
+    key: "delete_group",
+    title: "Delete a group",
+    description: "Remove a group from the Goals plan. The people stay; only the grouping goes.",
+    module: "/performance",
+    gate: "create",
+    fields: { group: { type: "string", description: "Group id or name." } },
+    required: ["group"],
+    async prepare(params) {
+      const group = await resolveGroup(params.group);
+      if (!group.ok) return { error: group.error };
+      return { summary: `Delete the group "${group.value.name}". Its people stay in the workspace. This cannot be undone.`, params: { groupId: group.value.id, groupName: group.value.name } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "remove-group", groupId: p.groupId } }),
+    done: (p) => ({ text: `The group "${p.groupName}" is gone.`, link: "/performance?view=groups" }),
+  },
+
+  /* ------------------------------------------------- Deals and leads */
+  {
+    key: "delete_opportunity",
+    title: "Delete a deal",
+    description: "Remove an opportunity for good, with its accrual plan and its unverified goal entries. Only someone who can create deals may delete one.",
+    module: "/opportunities",
+    gate: "create",
+    fields: { opportunity: { type: "string", description: "Deal name, id or OPP reference." } },
+    required: ["opportunity"],
+    async prepare(params) {
+      const opp = await resolveOpportunity(params.opportunity);
+      if (!opp.ok) return { error: opp.error };
+      return { summary: `Delete the deal "${opp.value.name}", its accrual plan and its unverified goal entries. This cannot be undone.`, params: { id: opp.value.id, name: opp.value.name } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/opportunities", body: { op: "remove", id: p.id } }),
+    done: (p) => ({ text: `The deal "${p.name}" is gone.`, link: "/opportunities" }),
+  },
+  {
+    key: "convert_lead",
+    title: "Mark a lead as converted",
+    description: "Record that a lead became a deal: the lead is marked converted and linked to the opportunity it turned into. Create the opportunity first if it does not exist yet.",
+    module: "/leads",
+    gate: "write",
+    fields: {
+      lead: { type: "string", description: "Lead name, ref or id." },
+      opportunity: { type: "string", description: "The deal it became: name, id or OPP reference." },
+    },
+    required: ["lead", "opportunity"],
+    async prepare(params) {
+      const lead = await resolveLead(params.lead);
+      if (!lead.ok) return { error: lead.error };
+      const opp = await resolveOpportunity(params.opportunity);
+      if (!opp.ok) return { error: opp.error };
+      return { summary: `Mark the lead ${lead.value.plain} as converted into the deal "${opp.value.name}".`, params: { id: lead.value.id, leadName: lead.value.plain, opportunityId: opp.value.id, oppName: opp.value.name } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/leads", body: { op: "convert", id: p.id, opportunityId: p.opportunityId } }),
+    done: (p) => ({ text: `${p.leadName} is now a converted lead, linked to "${p.oppName}".`, link: `/leads/${encodeURIComponent(String(p.id))}` }),
+  },
+  {
+    key: "delete_lead",
+    title: "Delete a lead",
+    description: "Remove a lead for good.",
+    module: "/leads",
+    gate: "create",
+    fields: { lead: { type: "string", description: "Lead name, ref or id." } },
+    required: ["lead"],
+    async prepare(params) {
+      const lead = await resolveLead(params.lead);
+      if (!lead.ok) return { error: lead.error };
+      return { summary: `Delete the lead ${lead.value.plain}. This cannot be undone.`, params: { id: lead.value.id, leadName: lead.value.plain } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/leads", body: { op: "delete", id: p.id } }),
+    done: (p) => ({ text: `The lead ${p.leadName} is gone.`, link: "/leads" }),
+  },
+  {
+    key: "refresh_lead_linkedin",
+    title: "Re-read a lead's LinkedIn profile",
+    description: "Fetch the lead's public LinkedIn profile again and replace what is stored. This is a paid lookup, so only when the person asks for it.",
+    module: "/leads",
+    gate: "write",
+    fields: { lead: { type: "string", description: "Lead name, ref or id." } },
+    required: ["lead"],
+    async prepare(params) {
+      const lead = await resolveLead(params.lead);
+      if (!lead.ok) return { error: lead.error };
+      return { summary: `Read ${lead.value.plain}'s LinkedIn profile again and replace what is stored on the lead. This is a paid lookup.`, params: { id: lead.value.id, leadName: lead.value.plain } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/leads", body: { op: "enrich-linkedin", id: p.id } }),
+    done: (p) => ({ text: `${p.leadName}'s LinkedIn profile has been read again.`, link: `/leads/${encodeURIComponent(String(p.id))}` }),
+  },
+
+  /* ------------------------------------------------------- Solutioning */
+  {
+    key: "update_solutioning_request",
+    title: "Change a solutioning request",
+    description: "Edit a request's title, details or needed-by date. Only the fields given change.",
+    module: "/solutioning",
+    gate: "write",
+    fields: {
+      request: { type: "string", description: "Request title or id." },
+      title: { type: "string", description: "New title." },
+      details: { type: "string", description: "New details." },
+      neededBy: { type: "string", description: "New needed-by date." },
+    },
+    required: ["request"],
+    async prepare(params, ctx) {
+      const req = await resolveRequest(params.request);
+      if (!req.ok) return { error: req.error };
+      const patch: Params = {}; const changes: string[] = [];
+      if (str(params.title, 200)) { patch.title = str(params.title, 200); changes.push(`retitle it "${patch.title}"`); }
+      if (str(params.details, 4000)) { patch.details = str(params.details, 4000); changes.push("replace the details"); }
+      if (str(params.neededBy)) { const d = parseDay(params.neededBy, new Date(), ctx.timeZone); if (!d) return { error: "I could not read that date." }; patch.neededBy = d; changes.push(`move the needed-by date to ${readableDay(d)}`); }
+      if (!changes.length) return { error: "Say what should change: the title, the details or the needed-by date." };
+      return { summary: `On the request "${req.value.plain}": ${changes.join(", ")}.`, params: { requestId: req.value.id, title: req.value.plain, patch } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/solutioning", body: { op: "update", requestId: p.requestId, patch: p.patch } }),
+    done: (p) => ({ text: `The request "${(p.patch as Params).title ?? p.title}" is updated.`, link: `/solutioning?request=${encodeURIComponent(String(p.requestId))}` }),
+  },
+  {
+    key: "assign_solutioning_request",
+    title: "Assign a solutioning request to someone",
+    description: "Give a request an owner on the solutioning side. Only a solutioning owner or admin may do this.",
+    module: "/solutioning",
+    gate: "write",
+    fields: { request: { type: "string", description: "Request title or id." }, owner: { type: "string", description: "Colleague's name, or 'me'." } },
+    required: ["request", "owner"],
+    async prepare(params, ctx) {
+      const req = await resolveRequest(params.request);
+      if (!req.ok) return { error: req.error };
+      const owner = await resolvePerson(params.owner, ctx);
+      if (!owner.ok) return { error: owner.error };
+      return { summary: `Assign the request "${req.value.plain}" to ${owner.value.name}.`, params: { requestId: req.value.id, title: req.value.plain, owner: owner.value.name } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/solutioning", body: { op: "assign-request", requestId: p.requestId, owner: p.owner } }),
+    done: (p) => ({ text: `"${p.title}" is assigned to ${p.owner}.`, link: `/solutioning?request=${encodeURIComponent(String(p.requestId))}` }),
+  },
+  {
+    key: "pick_up_solutioning_request",
+    title: "Pick up a solutioning request",
+    description: "Take a request yourself: you become its owner and it moves to in progress.",
+    module: "/solutioning",
+    gate: "write",
+    fields: { request: { type: "string", description: "Request title or id." } },
+    required: ["request"],
+    async prepare(params, ctx) {
+      const req = await resolveRequest(params.request);
+      if (!req.ok) return { error: req.error };
+      return { summary: `Pick up the request "${req.value.plain}" as ${ctx.actorName}.`, params: { requestId: req.value.id, title: req.value.plain } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/solutioning", body: { op: "pick-up", requestId: p.requestId } }),
+    done: (p) => ({ text: `You have picked up "${p.title}".`, link: `/solutioning?request=${encodeURIComponent(String(p.requestId))}` }),
+  },
+  {
+    key: "complete_solutioning_request",
+    title: "Mark a solutioning request complete",
+    description: "Close a request as completed.",
+    module: "/solutioning",
+    gate: "write",
+    fields: { request: { type: "string", description: "Request title or id." } },
+    required: ["request"],
+    async prepare(params) {
+      const req = await resolveRequest(params.request);
+      if (!req.ok) return { error: req.error };
+      if (req.value.status === "completed") return { error: `"${req.value.plain}" is already completed.` };
+      return { summary: `Mark the request "${req.value.plain}" as completed.`, params: { requestId: req.value.id, title: req.value.plain } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/solutioning", body: { op: "complete", requestId: p.requestId } }),
+    done: (p) => ({ text: `"${p.title}" is completed.`, link: `/solutioning?request=${encodeURIComponent(String(p.requestId))}` }),
+  },
+  {
+    key: "cancel_solutioning_request",
+    title: "Cancel a solutioning request",
+    description: "Cancel a request, with a reason if one was given.",
+    module: "/solutioning",
+    gate: "write",
+    fields: { request: { type: "string", description: "Request title or id." }, reason: { type: "string", description: "Why, if said." } },
+    required: ["request"],
+    async prepare(params) {
+      const req = await resolveRequest(params.request);
+      if (!req.ok) return { error: req.error };
+      if (req.value.status === "cancelled") return { error: `"${req.value.plain}" is already cancelled.` };
+      const reason = str(params.reason, 600) || undefined;
+      return { summary: `Cancel the request "${req.value.plain}"${reason ? ` (${reason})` : ""}.`, params: { requestId: req.value.id, title: req.value.plain, ...(reason ? { reason } : {}) } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/solutioning", body: { op: "cancel", requestId: p.requestId, ...(p.reason ? { reason: p.reason } : {}) } }),
+    done: (p) => ({ text: `"${p.title}" is cancelled.`, link: `/solutioning?request=${encodeURIComponent(String(p.requestId))}` }),
+  },
+  {
+    key: "reopen_solutioning_request",
+    title: "Reopen a solutioning request",
+    description: "Reopen a completed or cancelled request. Only the requester or a manager may.",
+    module: "/solutioning",
+    gate: "write",
+    fields: { request: { type: "string", description: "Request title or id." } },
+    required: ["request"],
+    async prepare(params) {
+      const req = await resolveRequest(params.request);
+      if (!req.ok) return { error: req.error };
+      if (!["completed", "cancelled"].includes(req.value.status)) return { error: `"${req.value.plain}" is still open (${req.value.status.replace("_", " ")}).` };
+      return { summary: `Reopen the request "${req.value.plain}".`, params: { requestId: req.value.id, title: req.value.plain } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/solutioning", body: { op: "reopen", requestId: p.requestId } }),
+    done: (p) => ({ text: `"${p.title}" is open again.`, link: `/solutioning?request=${encodeURIComponent(String(p.requestId))}` }),
+  },
+  {
+    key: "comment_on_solutioning_request",
+    title: "Comment on a solutioning request",
+    description: "Leave a comment on a request. Anyone who can see the request may comment.",
+    module: "/solutioning",
+    gate: "write",
+    fields: { request: { type: "string", description: "Request title or id." }, text: { type: "string", description: "The comment, in the person's words." } },
+    required: ["request", "text"],
+    async prepare(params) {
+      const req = await resolveRequest(params.request);
+      if (!req.ok) return { error: req.error };
+      const text = str(params.text, 2000);
+      if (!text) return { error: "What should the comment say?" };
+      return { summary: `Comment on "${req.value.plain}": "${text}"`, params: { requestId: req.value.id, title: req.value.plain, text } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/solutioning", body: { op: "comment", requestId: p.requestId, text: p.text } }),
+    done: (p) => ({ text: `Your comment is on "${p.title}".`, link: `/solutioning?request=${encodeURIComponent(String(p.requestId))}` }),
+  },
+  {
+    key: "set_solutioning_priority",
+    title: "Set a request's priority",
+    description: "High, Medium or Low.",
+    module: "/solutioning",
+    gate: "write",
+    fields: { request: { type: "string", description: "Request title or id." }, priority: { type: "string", description: "High, Medium or Low." } },
+    required: ["request", "priority"],
+    async prepare(params) {
+      const req = await resolveRequest(params.request);
+      if (!req.ok) return { error: req.error };
+      const priority = pickEnum(params.priority, ["High", "Medium", "Low"], "priority");
+      if (!priority.ok) return { error: priority.error };
+      return { summary: `Set the priority of "${req.value.plain}" to ${priority.value}.`, params: { requestId: req.value.id, title: req.value.plain, priority: priority.value } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/solutioning", body: { op: "set-priority", requestId: p.requestId, priority: p.priority } }),
+    done: (p) => ({ text: `"${p.title}" is now ${p.priority} priority.`, link: `/solutioning?request=${encodeURIComponent(String(p.requestId))}` }),
+  },
+  {
+    key: "delete_solutioning_request",
+    title: "Delete a solutioning request",
+    description: "Remove a request for good. An admin may delete any; the requester may delete their own while it is still initiated.",
+    module: "/solutioning",
+    gate: "write",
+    fields: { request: { type: "string", description: "Request title or id." } },
+    required: ["request"],
+    async prepare(params) {
+      const req = await resolveRequest(params.request);
+      if (!req.ok) return { error: req.error };
+      return { summary: `Delete the request "${req.value.plain}". This cannot be undone.`, params: { requestId: req.value.id, title: req.value.plain } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/solutioning", body: { op: "delete", requestId: p.requestId } }),
+    done: (p) => ({ text: `The request "${p.title}" is gone.`, link: "/solutioning" }),
+  },
+
+  /* ---------------------------------------------- Contracts and meetings */
+  {
+    key: "create_contract",
+    title: "Record a contract",
+    description: "Enter a contract: name, customer, value in USD, and optionally the deal it closed, its status and dates.",
+    module: "/contracts",
+    gate: "create",
+    fields: {
+      name: { type: "string", description: "Contract name." },
+      customer: { type: "string", description: "Account name or id." },
+      value: { type: "number", description: "Total contract value in USD." },
+      opportunity: { type: "string", description: "The deal it closed, if any." },
+      status: { type: "string", description: "Draft, Ready for delivery, Signed or Cancelled. Defaults to Draft." },
+      signedOn: { type: "string", description: "Signing date, if signed." },
+      startDate: { type: "string", description: "Start date." },
+      endDate: { type: "string", description: "End date." },
+    },
+    required: ["name", "customer"],
+    async prepare(params, ctx) {
+      const name = str(params.name, 200);
+      if (!name) return { error: "What is the contract called?" };
+      const customer = await resolveCustomer(params.customer);
+      if (!customer.ok) return { error: customer.error };
+      const value = params.value === undefined || params.value === null || params.value === "" ? 0 : parseMoney(params.value);
+      if (value === null) return { error: "The value must be a number." };
+      const status = str(params.status) ? pickEnum(params.status, CONTRACT_STATUSES, "status") : { ok: true as const, value: "Draft" };
+      if (!status.ok) return { error: status.error };
+      const contract: Params = { name, customer: customer.value.name, customerId: customer.value.id, value, status: status.value };
+      if (str(params.opportunity)) { const opp = await resolveOpportunity(params.opportunity); if (!opp.ok) return { error: opp.error }; contract.opportunityId = opp.value.id; contract.opportunityName = opp.value.name; }
+      for (const k of ["signedOn", "startDate", "endDate"] as const) { if (str(params[k])) { const d = parseDay(params[k], new Date(), ctx.timeZone); if (!d) return { error: `I could not read the ${k === "signedOn" ? "signing" : k === "startDate" ? "start" : "end"} date.` }; contract[k] = d; } }
+      return { summary: `Record the contract "${name}" for ${customer.value.name}${value ? `, ${money(value)}` : ""}, as ${status.value}${contract.opportunityName ? `, closing "${contract.opportunityName}"` : ""}.`, params: { contract } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/contracts", body: { op: "save", contract: p.contract } }),
+    done: (p, res) => { const saved = (res.contract ?? res.saved ?? {}) as { id?: string; reference?: string }; return { text: `The contract "${(p.contract as Params).name}" is recorded${saved.reference ? ` as ${saved.reference}` : ""}.`, link: saved.id ? `/contracts?contract=${encodeURIComponent(saved.id)}` : "/contracts" }; },
+  },
+  {
+    key: "update_contract",
+    title: "Change a contract",
+    description: "Change a contract's status, value, name or dates. Only the fields given change.",
+    module: "/contracts",
+    gate: "write",
+    fields: {
+      contract: { type: "string", description: "Contract name, reference (FR-C-...) or id." },
+      status: { type: "string", description: "Draft, Ready for delivery, Signed or Cancelled." },
+      value: { type: "number", description: "New total value in USD." },
+      name: { type: "string", description: "New name." },
+      signedOn: { type: "string", description: "Signing date." },
+      startDate: { type: "string", description: "Start date." },
+      endDate: { type: "string", description: "End date." },
+    },
+    required: ["contract"],
+    async prepare(params, ctx) {
+      const found = await resolveContract(params.contract);
+      if (!found.ok) return { error: found.error };
+      const current = found.value.record as unknown as Params;
+      const patch: Params = {}; const changes: string[] = [];
+      if (str(params.status)) { const st = pickEnum(params.status, CONTRACT_STATUSES, "status"); if (!st.ok) return { error: st.error }; patch.status = st.value; changes.push(`mark it ${st.value}`); }
+      if (params.value !== undefined && params.value !== null && params.value !== "") { const v = parseMoney(params.value); if (v === null) return { error: "The value must be a number." }; patch.value = v; changes.push(`set the value to ${money(v)}`); }
+      if (str(params.name, 200)) { patch.name = str(params.name, 200); changes.push(`rename it "${patch.name}"`); }
+      for (const k of ["signedOn", "startDate", "endDate"] as const) { if (str(params[k])) { const d = parseDay(params[k], new Date(), ctx.timeZone); if (!d) return { error: "I could not read that date." }; patch[k] = d; changes.push(`set the ${k === "signedOn" ? "signing" : k === "startDate" ? "start" : "end"} date to ${readableDay(d)}`); } }
+      if (!changes.length) return { error: "Say what should change on the contract." };
+      return { summary: `On the contract "${found.value.plain}" (${found.value.reference}): ${changes.join(", ")}.`, params: { contract: { ...current, ...patch }, id: found.value.id, name: (patch.name as string) ?? found.value.plain } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/contracts", body: { op: "save", contract: p.contract } }),
+    done: (p) => ({ text: `The contract "${p.name}" is updated.`, link: `/contracts?contract=${encodeURIComponent(String(p.id))}` }),
+  },
+  {
+    key: "delete_contract",
+    title: "Delete a contract",
+    description: "Remove a contract record for good.",
+    module: "/contracts",
+    gate: "create",
+    fields: { contract: { type: "string", description: "Contract name, reference or id." } },
+    required: ["contract"],
+    async prepare(params) {
+      const found = await resolveContract(params.contract);
+      if (!found.ok) return { error: found.error };
+      return { summary: `Delete the contract "${found.value.plain}" (${found.value.reference}). This cannot be undone.`, params: { id: found.value.id, name: found.value.plain } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/contracts", body: { op: "delete", id: p.id } }),
+    done: (p) => ({ text: `The contract "${p.name}" is gone.`, link: "/contracts" }),
+  },
+  {
+    key: "update_meeting",
+    title: "Change a meeting",
+    description: "Rename, retype, reschedule or re-point a meeting at another account. Only the fields given change.",
+    module: "/meetings",
+    gate: "write",
+    fields: {
+      meeting: { type: "string", description: "Meeting title or id." },
+      title: { type: "string", description: "New title." },
+      type: { type: "string", description: `New type: ${MEETING_TYPES.join(", ")}.` },
+      when: { type: "string", description: "New date and time." },
+      customer: { type: "string", description: "New account." },
+    },
+    required: ["meeting"],
+    async prepare(params, ctx) {
+      const m = await resolveMeeting(params.meeting);
+      if (!m.ok) return { error: m.error };
+      const patch: Params = {}; const changes: string[] = [];
+      if (str(params.title, 200)) { patch.title = str(params.title, 200); changes.push(`retitle it "${patch.title}"`); }
+      if (str(params.type)) { const t = pickEnum(params.type, MEETING_TYPES, "meeting type"); if (!t.ok) return { error: t.error }; patch.type = t.value; changes.push(`make it a ${t.value}`); }
+      if (str(params.when)) { const d = parseDay(params.when, new Date(), ctx.timeZone); if (!d) return { error: "I could not read that date." }; patch.meetingAt = d; changes.push(`move it to ${readableDay(d)}`); }
+      if (str(params.customer)) { const c = await resolveCustomer(params.customer); if (!c.ok) return { error: c.error }; patch.customer = c.value.name; patch.customerId = c.value.id; changes.push(`put it under ${c.value.name}`); }
+      if (!changes.length) return { error: "Say what should change: the title, the type, the time or the account." };
+      return { summary: `On the meeting "${m.value.plain}": ${changes.join(", ")}.`, params: { id: m.value.id, title: m.value.plain, patch } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/meetings", body: { op: "update", id: p.id, patch: p.patch } }),
+    done: (p) => ({ text: `The meeting "${(p.patch as Params).title ?? p.title}" is updated.`, link: `/meetings/${encodeURIComponent(String(p.id))}` }),
+  },
+  {
+    key: "set_meeting_status",
+    title: "Mark a meeting held or cancelled",
+    description: "Set a meeting to planned, completed or cancelled.",
+    module: "/meetings",
+    gate: "write",
+    fields: { meeting: { type: "string", description: "Meeting title or id." }, status: { type: "string", description: "planned, completed or cancelled." } },
+    required: ["meeting", "status"],
+    async prepare(params) {
+      const m = await resolveMeeting(params.meeting);
+      if (!m.ok) return { error: m.error };
+      const st = pickEnum(params.status, ["planned", "completed", "cancelled"], "status");
+      if (!st.ok) return { error: st.error };
+      if (m.value.status === st.value) return { error: `"${m.value.plain}" is already ${st.value}.` };
+      return { summary: `Mark the meeting "${m.value.plain}" as ${st.value}.`, params: { id: m.value.id, title: m.value.plain, status: st.value } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/meetings", body: { op: "status", id: p.id, status: p.status } }),
+    done: (p) => ({ text: `"${p.title}" is ${p.status}.`, link: `/meetings/${encodeURIComponent(String(p.id))}` }),
+  },
+  {
+    key: "add_meeting_note",
+    title: "Add a note to a meeting",
+    description: "Record an outcome, a decision or a comment on a meeting.",
+    module: "/meetings",
+    gate: "write",
+    fields: { meeting: { type: "string", description: "Meeting title or id." }, text: { type: "string", description: "The note, in the person's words." }, kind: { type: "string", description: "outcome, decision or comment. Defaults to comment." } },
+    required: ["meeting", "text"],
+    async prepare(params) {
+      const m = await resolveMeeting(params.meeting);
+      if (!m.ok) return { error: m.error };
+      const text = str(params.text, 2000);
+      if (!text) return { error: "What should the note say?" };
+      const kind = str(params.kind) ? pickEnum(params.kind, ["outcome", "decision", "comment"], "note kind") : { ok: true as const, value: "comment" };
+      if (!kind.ok) return { error: kind.error };
+      return { summary: `Add ${kind.value === "comment" ? "a note" : `an ${kind.value}`} to "${m.value.plain}": "${text}"`, params: { id: m.value.id, title: m.value.plain, text, kind: kind.value } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/meetings", body: { op: "add-note", id: p.id, kind: p.kind, text: p.text } }),
+    done: (p) => ({ text: `The note is on "${p.title}".`, link: `/meetings/${encodeURIComponent(String(p.id))}` }),
+  },
+  {
+    key: "delete_meeting",
+    title: "Delete a meeting",
+    description: "Remove a meeting for good.",
+    module: "/meetings",
+    gate: "create",
+    fields: { meeting: { type: "string", description: "Meeting title or id." } },
+    required: ["meeting"],
+    async prepare(params) {
+      const m = await resolveMeeting(params.meeting);
+      if (!m.ok) return { error: m.error };
+      return { summary: `Delete the meeting "${m.value.plain}". This cannot be undone.`, params: { id: m.value.id, title: m.value.plain } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/meetings", body: { op: "delete", id: p.id } }),
+    done: (p) => ({ text: `The meeting "${p.title}" is gone.`, link: "/meetings" }),
+  },
+
+  /* ------------------ Accruals, customer groups, accounts, market intel */
+  {
+    key: "delete_accrual_plan",
+    title: "Delete a deal's accrual plan",
+    description: "Remove the revenue accrual plan on a deal. The deal stays.",
+    module: "/opportunities",
+    gate: "create",
+    fields: { opportunity: { type: "string", description: "Deal name, id or OPP reference." } },
+    required: ["opportunity"],
+    async prepare(params) {
+      const plan = await resolvePlan(params.opportunity);
+      if (!plan.ok) return { error: plan.error };
+      return { summary: `Delete the accrual plan on "${plan.value.name}" (${plan.value.months} months). The deal itself stays. This cannot be undone.`, params: { opportunityId: plan.value.opportunityId, name: plan.value.name } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/revenue-accruals", body: { op: "delete", opportunityId: p.opportunityId } }),
+    done: (p) => ({ text: `The accrual plan on "${p.name}" is gone.`, link: `/opportunities/${encodeURIComponent(String(p.opportunityId))}?tab=revenueAccruals` }),
+  },
+  {
+    key: "freeze_accrual_month",
+    title: "Freeze a month of accruals",
+    description: "Lock a reporting month so its accrual figures stop moving. Admin.",
+    module: "/opportunities",
+    gate: "create",
+    fields: { month: { type: "string", description: "The month as YYYY-MM, e.g. 2026-09." } },
+    required: ["month"],
+    async prepare(params) {
+      const month = str(params.month, 7);
+      if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Give the month as YYYY-MM, like 2026-09." };
+      return { summary: `Freeze the accrual figures for ${month}.`, params: { month } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/revenue-accruals", body: { op: "freeze", month: p.month } }),
+    done: (p) => ({ text: `${p.month} is frozen.`, link: "/opportunities?tab=accrual" }),
+  },
+  {
+    key: "unfreeze_accrual_month",
+    title: "Unfreeze a month of accruals",
+    description: "Unlock a frozen reporting month. Admin.",
+    module: "/opportunities",
+    gate: "create",
+    fields: { month: { type: "string", description: "The month as YYYY-MM." } },
+    required: ["month"],
+    async prepare(params) {
+      const month = str(params.month, 7);
+      if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Give the month as YYYY-MM, like 2026-09." };
+      return { summary: `Unfreeze the accrual figures for ${month}.`, params: { month } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/revenue-accruals", body: { op: "unfreeze", month: p.month } }),
+    done: (p) => ({ text: `${p.month} is unfrozen.`, link: "/opportunities?tab=accrual" }),
+  },
+  {
+    key: "create_customer_group",
+    title: "Create a customer group",
+    description: "Start a new customer group, optionally with accounts in it.",
+    module: "/customers",
+    gate: "create",
+    fields: { name: { type: "string", description: "Group name." }, description: { type: "string", description: "What it is for." }, customers: { type: "array", items: { type: "string" }, description: "Accounts to put in it." } },
+    required: ["name"],
+    async prepare(params) {
+      const name = str(params.name, 120);
+      if (!name) return { error: "What should the group be called?" };
+      const ids: string[] = []; const names: string[] = [];
+      for (const q of list(params.customers)) { const c = await resolveCustomer(q); if (!c.ok) return { error: c.error }; ids.push(c.value.id); names.push(c.value.name); }
+      const description = str(params.description, 300) || undefined;
+      return { summary: `Create the customer group "${name}"${names.length ? ` with ${names.join(", ")}` : ""}.`, params: { name, ...(description ? { description } : {}), customerIds: ids } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/customer-groups", body: { op: "create", name: p.name, ...(p.description ? { description: p.description } : {}), customerIds: p.customerIds } }),
+    done: (p) => ({ text: `The customer group "${p.name}" exists.`, link: "/customers" }),
+  },
+  {
+    key: "update_customer_group",
+    title: "Rename a customer group",
+    description: "Change a customer group's name or description.",
+    module: "/customers",
+    gate: "write",
+    fields: { group: { type: "string", description: "Group name or id." }, name: { type: "string", description: "New name." }, description: { type: "string", description: "New description." } },
+    required: ["group"],
+    async prepare(params) {
+      const g = await resolveCustomerGroup(params.group);
+      if (!g.ok) return { error: g.error };
+      const patch: Params = {}; const changes: string[] = [];
+      if (str(params.name, 120)) { patch.name = str(params.name, 120); changes.push(`rename it "${patch.name}"`); }
+      if (str(params.description, 300)) { patch.description = str(params.description, 300); changes.push("change its description"); }
+      if (!changes.length) return { error: "Say what should change: the name or the description." };
+      return { summary: `On the customer group "${g.value.name}": ${changes.join(" and ")}.`, params: { id: g.value.id, name: (patch.name as string) ?? g.value.name, patch } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/customer-groups", body: { op: "update", id: p.id, patch: p.patch } }),
+    done: (p) => ({ text: `The customer group "${p.name}" is updated.`, link: "/customers" }),
+  },
+  {
+    key: "add_customer_to_group",
+    title: "Put an account in a customer group",
+    description: "Add one account to a customer group.",
+    module: "/customers",
+    gate: "write",
+    fields: { group: { type: "string", description: "Group name or id." }, customer: { type: "string", description: "Account name or id." } },
+    required: ["group", "customer"],
+    async prepare(params) {
+      const g = await resolveCustomerGroup(params.group);
+      if (!g.ok) return { error: g.error };
+      const c = await resolveCustomer(params.customer);
+      if (!c.ok) return { error: c.error };
+      if (g.value.customerIds.includes(c.value.id)) return { error: `${c.value.name} is already in "${g.value.name}".` };
+      return { summary: `Put ${c.value.name} in the customer group "${g.value.name}".`, params: { id: g.value.id, group: g.value.name, customerId: c.value.id, customer: c.value.name } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/customer-groups", body: { op: "toggle-member", id: p.id, customerId: p.customerId } }),
+    done: (p) => ({ text: `${p.customer} is in "${p.group}".`, link: "/customers" }),
+  },
+  {
+    key: "remove_customer_from_group",
+    title: "Take an account out of a customer group",
+    description: "Remove one account from a customer group. The account itself is untouched.",
+    module: "/customers",
+    gate: "write",
+    fields: { group: { type: "string", description: "Group name or id." }, customer: { type: "string", description: "Account name or id." } },
+    required: ["group", "customer"],
+    async prepare(params) {
+      const g = await resolveCustomerGroup(params.group);
+      if (!g.ok) return { error: g.error };
+      const c = await resolveCustomer(params.customer);
+      if (!c.ok) return { error: c.error };
+      if (!g.value.customerIds.includes(c.value.id)) return { error: `${c.value.name} is not in "${g.value.name}".` };
+      return { summary: `Take ${c.value.name} out of the customer group "${g.value.name}".`, params: { id: g.value.id, group: g.value.name, customerId: c.value.id, customer: c.value.name } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/customer-groups", body: { op: "toggle-member", id: p.id, customerId: p.customerId } }),
+    done: (p) => ({ text: `${p.customer} is out of "${p.group}".`, link: "/customers" }),
+  },
+  {
+    key: "delete_customer_group",
+    title: "Delete a customer group",
+    description: "Remove a customer group. The accounts in it stay.",
+    module: "/customers",
+    gate: "create",
+    fields: { group: { type: "string", description: "Group name or id." } },
+    required: ["group"],
+    async prepare(params) {
+      const g = await resolveCustomerGroup(params.group);
+      if (!g.ok) return { error: g.error };
+      return { summary: `Delete the customer group "${g.value.name}". Its ${g.value.customerIds.length} accounts stay. This cannot be undone.`, params: { id: g.value.id, name: g.value.name } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/customer-groups", body: { op: "delete", id: p.id } }),
+    done: (p) => ({ text: `The customer group "${p.name}" is gone.`, link: "/customers" }),
+  },
+  {
+    key: "update_customer",
+    title: "Change an account's details",
+    description: "Change an account's name, website, industry, location, customer type, revenue or main competitor. Only the fields given change.",
+    module: "/customers",
+    gate: "write",
+    fields: {
+      customer: { type: "string", description: "Account name or id." },
+      name: { type: "string", description: "New account name." },
+      website: { type: "string", description: "Website." },
+      industry: { type: "string", description: "Industry." },
+      location: { type: "string", description: "HQ location." },
+      customerType: { type: "string", description: "Customer type." },
+      revenue: { type: "string", description: "Revenue, as text." },
+      competitor: { type: "string", description: "Main competitor." },
+    },
+    required: ["customer"],
+    async prepare(params) {
+      const c = await customerForWrite(params.customer);
+      if (!c.ok) return { error: c.error };
+      const patch: Params = {}; const changes: string[] = [];
+      const map: [keyof typeof params, string, string][] = [["name", "company_name", "name"], ["website", "website_url", "website"], ["industry", "industry", "industry"], ["location", "geography", "location"], ["customerType", "customer_type", "customer type"], ["revenue", "revenue", "revenue"], ["competitor", "competitor", "competitor"]];
+      for (const [from, to, label] of map) { const v = str(params[from], 500); if (v) { patch[to] = v; changes.push(`${label} to "${v}"`); } }
+      if (!changes.length) return { error: "Say what should change on the account." };
+      return { summary: `On ${c.value.name}: set ${changes.join(", ")}.`, params: { id: c.value.id, name: (patch.company_name as string) ?? c.value.name, patch } };
+    },
+    call: (p) => ({ method: "PATCH", path: `/api/customers/${encodeURIComponent(String(p.id))}`, body: p.patch as Params }),
+    done: (p) => ({ text: `${p.name} is updated.`, link: `/customers/${encodeURIComponent(String(p.id))}` }),
+  },
+  {
+    key: "add_customer_note",
+    title: "Add a note to an account",
+    description: "Record a call, email, meeting or note on an account's timeline, optionally with a next step.",
+    module: "/customers",
+    gate: "write",
+    fields: { customer: { type: "string", description: "Account name or id." }, text: { type: "string", description: "The note, in the person's words." }, kind: { type: "string", description: "call, email, meeting or note. Defaults to note." }, nextStep: { type: "string", description: "The next step, if said." } },
+    required: ["customer", "text"],
+    async prepare(params) {
+      const c = await customerForWrite(params.customer);
+      if (!c.ok) return { error: c.error };
+      const text = str(params.text, 2000);
+      if (!text) return { error: "What should the note say?" };
+      const kind = str(params.kind) ? pickEnum(params.kind, ["call", "email", "meeting", "note"], "kind") : { ok: true as const, value: "note" };
+      if (!kind.ok) return { error: kind.error };
+      const nextStep = str(params.nextStep, 300) || undefined;
+      return { summary: `Add a ${kind.value} to ${c.value.name}'s timeline: "${text}"${nextStep ? ` Next step: ${nextStep}.` : ""}`, params: { id: c.value.id, name: c.value.name, text, kind: kind.value, ...(nextStep ? { nextStep } : {}) } };
+    },
+    call: (p) => ({ method: "PATCH", path: `/api/customers/${encodeURIComponent(String(p.id))}`, body: { addNote: { body: p.text, kind: p.kind, ...(p.nextStep ? { next_step: p.nextStep } : {}) } } }),
+    done: (p) => ({ text: `The ${p.kind} is on ${p.name}'s timeline.`, link: `/customers/${encodeURIComponent(String(p.id))}` }),
+  },
+  {
+    key: "delete_contact",
+    title: "Delete a contact",
+    description: "Remove a person from an account for good.",
+    module: "/customers",
+    gate: "create",
+    fields: { contact: { type: "string", description: "The contact's name or id." }, customer: { type: "string", description: "Their account, if the name alone is ambiguous." } },
+    required: ["contact"],
+    async prepare(params) {
+      const c = await resolveContact(params.contact, params.customer);
+      if (!c.ok) return { error: c.error };
+      return { summary: `Delete the contact ${c.value.plain}${c.value.company ? ` at ${c.value.company}` : ""}. This cannot be undone.`, params: { id: c.value.id, name: c.value.plain, customerId: c.value.customerId } };
+    },
+    call: (p) => ({ method: "DELETE", path: `/api/contacts/${encodeURIComponent(String(p.id))}` }),
+    done: (p) => ({ text: `The contact ${p.name} is gone.`, link: p.customerId ? `/customers/${encodeURIComponent(String(p.customerId))}` : "/customers" }),
+  },
+  {
+    key: "track_company",
+    title: "Track a new company in Market Intel",
+    description: "Add a company to the Market Intel catalogue and start following its news. Adding a company nobody tracks yet starts paid collection, so only when asked.",
+    module: "/market-intel",
+    gate: "write",
+    fields: { name: { type: "string", description: "Company name." }, website: { type: "string", description: "Its website, if known." }, group: { type: "string", description: "customer or competitor. Defaults to customer." } },
+    required: ["name"],
+    async prepare(params) {
+      const name = str(params.name, 120);
+      if (!name) return { error: "Which company?" };
+      const existing = await resolveTrackedCompany(name);
+      if (existing.ok) return { error: `${existing.value.name} is already tracked. Star it to add it to your list.` };
+      const group = str(params.group) ? pickEnum(params.group, ["customer", "competitor"], "group") : { ok: true as const, value: "customer" };
+      if (!group.ok) return { error: group.error };
+      const website = str(params.website, 300) || undefined;
+      return { summary: `Track ${name} in Market Intel as a ${group.value}${website ? ` (${website})` : ""}. This starts collecting its news, which costs money.`, params: { name, group: group.value, ...(website ? { website } : {}) } };
+    },
+    call: (p) => ({ method: "POST", path: "/api/market-intel/tracking", body: { kind: "company", name: p.name, group: p.group, ...(p.website ? { website: p.website } : {}) } }),
+    done: (p) => ({ text: `${p.name} is now tracked in Market Intel.`, link: "/market-intel" }),
+  },
+  {
+    key: "remove_from_my_list",
+    title: "Take a company off your Market Intel list",
+    description: "Stop following a company yourself. It stays in the catalogue for everyone else.",
+    module: "/market-intel",
+    gate: "write",
+    fields: { company: { type: "string", description: "Company name or id." } },
+    required: ["company"],
+    async prepare(params) {
+      const c = await resolveTrackedCompany(params.company);
+      if (!c.ok) return { error: c.error };
+      return { summary: `Take ${c.value.name} off your Market Intel list. Everyone else keeps it.`, params: { id: c.value.id, name: c.value.name } };
+    },
+    call: (p) => ({ method: "PUT", path: "/api/market-intel/bookmarks", body: { changes: [{ id: p.id, on: false, star: false }] } }),
+    done: (p) => ({ text: `${p.name} is off your list.`, link: "/market-intel" }),
+  },
+  {
+    key: "delete_tracked_company",
+    title: "Delete a company from Market Intel for everyone",
+    description: "Remove a company from the catalogue, with its people, its news and every follow. Admin only; everyone else uses remove_from_my_list.",
+    module: "/market-intel",
+    gate: "create",
+    fields: { company: { type: "string", description: "Company name or id." } },
+    required: ["company"],
+    async prepare(params) {
+      const c = await resolveTrackedCompany(params.company);
+      if (!c.ok) return { error: c.error };
+      return { summary: `Delete ${c.value.name} from Market Intel for everyone, with its people, its news and every follow. This cannot be undone.`, params: { id: c.value.id, name: c.value.name } };
+    },
+    call: (p) => ({ method: "DELETE", path: "/api/market-intel/tracking", body: { kind: "company", id: p.id } }),
+    done: (p) => ({ text: `${p.name} is gone from Market Intel.`, link: "/market-intel" }),
+  },
+
 ];
 
 export const ACTION_BY_KEY = new Map(ACTIONS.map((a) => [a.key, a]));
