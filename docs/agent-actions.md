@@ -349,3 +349,14 @@ Anir decides on by name.
   one. Ask again, or break it into smaller steps.") instead of blaming a
   hiccup. Timer is cleared on every path, so the tests still finish in a
   second.
+- Sep 27, 12:25 UTC: FIRST REAL CLOUD TEST of the WhatsApp path, by replaying a
+  signed Meta delivery from the linked QA number at deployed dev and reading
+  the container log: the bridge received it ("[whatsapp] inbound ... Anir Test
+  Rep") and then "converse unreachable ... connect ECONNREFUSED
+  127.0.0.1:3000". Next's standalone server binds to HOSTNAME when set, and
+  ECS sets HOSTNAME to the task's own hostname, so nothing listens on
+  loopback. internalAppOrigin() now follows the same HOSTNAME rule the server
+  uses (explicit APP_INTERNAL_ORIGIN / WHATSAPP_INTERNAL_ORIGIN still win,
+  loopback stays for `next dev`), and the webhook route uses that helper
+  instead of its own copy. The same origin carries every executed action, so
+  web-card "Do it" on the cloud would have failed the same way.

@@ -155,3 +155,13 @@ test("configuration needs the verify token and the app secret; sending needs the
   const full = wa.whatsappConfig({ WHATSAPP_VERIFY_TOKEN: "v", WHATSAPP_APP_SECRET: "s", WHATSAPP_ACCESS_TOKEN: "t", WHATSAPP_PHONE_NUMBER_ID: "p" });
   assert.equal(wa.canSendWhatsApp(full), true);
 });
+
+test("the app reaches itself on the address the server is bound to", async () => {
+  const { internalAppOrigin } = await import("../lib/internalOrigin.ts");
+  assert.equal(internalAppOrigin({ PORT: "3000" }), "http://127.0.0.1:3000");
+  assert.equal(internalAppOrigin({ PORT: "3000", HOSTNAME: "0.0.0.0" }), "http://127.0.0.1:3000");
+  assert.equal(internalAppOrigin({ PORT: "3000", HOSTNAME: "ip-10-0-1-23.ec2.internal" }), "http://ip-10-0-1-23.ec2.internal:3000");
+  assert.equal(internalAppOrigin({ PORT: "8080", HOSTNAME: "ip-10-0-1-23" }), "http://ip-10-0-1-23:8080");
+  assert.equal(internalAppOrigin({ PORT: "3000", HOSTNAME: "ip-10-0-1-23", APP_INTERNAL_ORIGIN: "http://localhost:3000/" }), "http://localhost:3000");
+  assert.equal(internalAppOrigin({}), "http://127.0.0.1:3000");
+});

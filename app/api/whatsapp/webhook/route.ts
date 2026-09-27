@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from "next/server";
+import { internalAppOrigin } from "@/lib/internalOrigin";
 import { configuredAuthOrigin } from "@/lib/authOrigin";
 import {
   parseInboundMessages,
@@ -48,8 +49,7 @@ export async function POST(request: NextRequest) {
   }
   const messages = parseInboundMessages(payload).filter((message) => !alreadyHandled(message.id));
   if (messages.length > 0) {
-    const internalOrigin =
-      process.env.WHATSAPP_INTERNAL_ORIGIN?.trim() || `http://127.0.0.1:${process.env.PORT || "3000"}`;
+    const internalOrigin = internalAppOrigin();
     const publicOrigin = configuredAuthOrigin() || request.nextUrl.origin;
     after(async () => {
       for (const message of messages) {
