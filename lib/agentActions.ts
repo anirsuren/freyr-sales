@@ -336,7 +336,7 @@ async function customerForWrite(query: unknown) {
  */
 async function contactForTimeline(customerId: string, customerName: string, query: unknown): Promise<Match<{ id: string; name: string }>> {
   const contacts = (await getDb().contacts.list()).filter((c) => c.customer_id === customerId).map((c) => ({ id: c.id, name: c.full_name }));
-  if (!contacts.length) return { ok: false, error: `${customerName} has no contacts yet, and a touch is logged against a contact. To put this on the account's own timeline instead, propose add_customer_note with the same words.` };
+  if (!contacts.length) return { ok: false, error: `${customerName} has no contacts yet, and a touch is logged against a contact.` };
   const q = str(query, 120);
   if (q) return matchOne(q, contacts, "contact");
   return { ok: true, value: contacts[0] };
@@ -1248,10 +1248,26 @@ export const ACTIONS: ActionDef[] = [
     async prepare(params, ctx) {
       const customer = await customerForWrite(params.customer);
       if (!customer.ok) return { error: customer.error };
-      const contact = await contactForTimeline(customer.value.id, customer.value.name, params.contact);
-      if (!contact.ok) return { error: contact.error };
       const notes = str(params.notes, 4000);
       if (!notes) return { error: "What happened?" };
+      const contact = await contactForTimeline(customer.value.id, customer.value.name, params.contact);
+      if (!contact.ok) {
+        /* NOBODY TO HANG IT ON, SO IT GOES ON THE ACCOUNT. "Log a call on
+           Acme: spoke to the CFO" names no contact, and an account with none
+           used to get "add a contact first" three times running (sweep, Sep
+           28): pointing the model at add_customer_note did not make it go
+           there. The same proposal now becomes the account's own note, which
+           is what the person meant. A contact that was NAMED and not found is
+           still a question, never a silent downgrade. */
+        if (str(params.contact)) return { error: contact.error };
+        const kind = /\bemail/i.test(notes) ? "email" : /\bmeet/i.test(notes) ? "meeting" : /\bcall/i.test(notes) || /\bspoke|\bphoned|\brang/i.test(notes) ? "call" : "note";
+        return {
+          summary: `Add a ${kind} to ${customer.value.name}'s timeline: "${notes.slice(0, 140)}${notes.length > 140 ? "…" : ""}"`,
+          params: { mode: "account", customerId: customer.value.id, customer: customer.value.name, notes, kind },
+          customerId: customer.value.id,
+          company: customer.value.name,
+        };
+      }
       const outcome = ["interested", "meeting_booked", "in_progress"].includes(str(params.outcome)) ? str(params.outcome) : "in_progress";
       return {
         summary: `Log on ${customer.value.name}'s timeline (${contact.value.name}): "${notes.slice(0, 140)}${notes.length > 140 ? "…" : ""}" (${outcome.replace("_", " ")}).`,
@@ -1260,7 +1276,7 @@ export const ACTIONS: ActionDef[] = [
         company: customer.value.name,
       };
     },
-    call: (p) => ({
+    call: (p) => p.mode === "account" ? ({ method: "PATCH", path: `/api/customers/${encodeURIComponent(String(p.customerId))}`, body: { addNote: { body: p.notes, kind: p.kind } } }) : ({
       local: async (ctx) => {
         const interaction = await getDb().interactions.create({
           customer_id: String(p.customerId),
@@ -1274,7 +1290,7 @@ export const ACTIONS: ActionDef[] = [
         return { interactionId: interaction.id };
       },
     }),
-    done: (p) => ({ text: `Logged on ${p.customer}'s timeline.`, link: `/customers/${encodeURIComponent(String(p.customerId))}` }),
+    done: (p) => ({ text: p.mode === "account" ? `The ${p.kind} is on ${p.customer}'s timeline.` : `Logged on ${p.customer}'s timeline.`, link: `/customers/${encodeURIComponent(String(p.customerId))}` }),
   },
   {
     key: "save_draft",
