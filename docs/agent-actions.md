@@ -599,3 +599,12 @@ Anir decides on by name.
   drops a final line that is nothing but the go-ahead question. Verified live:
   the proposal is one sentence plus one instruction line. Gate after all of it:
   tsc clean, whatsapp 12, actions 11, agent 120.
+- Sep 27, 22:55 UTC: the fallback does NOT reach the cloud yet. Both
+  /api/health endpoints report `elevenlabs: false`, so neither the dev nor the
+  prod runtime secret holds ELEVENLABS_API_KEY, and with the OpenAI balance
+  empty a voice note sent to either environment still comes back "I couldn't
+  make out that voice note." Two ways out, both Anir's call: top up OpenAI, or
+  add ELEVENLABS_API_KEY to freyr-sales/runtime in both accounts. The status
+  list also said nothing about speech to text at all, so the outage was
+  invisible; `transcription` is now one of the reported services (true when
+  either provider's key is present).
