@@ -619,3 +619,13 @@ Anir decides on by name.
   nobody and the admin's test link is removed. STILL OPEN as a product question:
   a chained ask costs two round trips because a proposal holds one action; one
   YES for several changes would need a batch proposal, which is Anir's call.
+- Sep 27, 23:30 UTC: Anir topped up the OpenAI balance and asked why ElevenLabs
+  is in the picture at all. Answer: it is second in line and never runs while
+  Whisper answers, and the key was already in the app for the /voice calling
+  module, so it is not a new dependency. Same recording through each provider
+  alone, twice each: Whisper "Can we move Cranthy to the cold Reachart's goal?"
+  in ~2s, Scribe "Can we move Kranthi to the cold Reachout's goal?" in ~0.9s.
+  Scribe is more accurate on this workspace's names and faster, but it does not
+  matter: the agent recovered from Whisper's version too, finding both Kranthis
+  and the Cold Reachouts goal from the mis-heard words. Driver
+  scripts/qa/voice-note-ab.mts <file> whisper|scribe.
