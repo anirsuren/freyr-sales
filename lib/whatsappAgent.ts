@@ -33,6 +33,9 @@ import type { WorkspaceMemberScope } from "@/lib/types";
 
 /** A text within six hours continues the same thread; later starts a new one. */
 const CONTINUE_WITHIN_MS = 6 * 60 * 60_000;
+/** How long the bridge waits for the agent, and when it tells the person the answer is still coming. */
+const CONVERSE_TIMEOUT_MS = 240_000;
+const SLOW_NOTICE_MS = 60_000;
 const HISTORY_TURNS = 20;
 /** Unknown numbers get the how-to-link reply at most this often. */
 const UNLINKED_REPLY_COOLDOWN_MS = 10 * 60_000;
@@ -214,6 +217,15 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
 
   const fetchImpl = options.fetchImpl ?? fetch;
   let answer: ConverseReply | null = null;
+  let timedOut = false;
+  /* A slow model turn is not a failure. After a minute the person hears that
+     the answer is still coming, and the bridge waits up to four minutes before
+     it gives up: the 90 seconds it used to allow was shorter than a tool-heavy
+     turn on a slow day, and an answer that lands after the abort is lost for
+     good, since only this bridge sends and stores it. */
+  const slowNotice = setTimeout(() => {
+    void reply(message.from, "Still on it. This one is taking a moment.", options);
+  }, SLOW_NOTICE_MS);
   try {
     const response = await fetchImpl(`${options.internalOrigin.replace(/\/+$/, "")}/api/agent/converse`, {
       method: "POST",
@@ -222,7 +234,7 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
         Cookie: await cookiesFor(user, member.scope),
       },
       body: JSON.stringify({ message: message.text, history, path: "/agent", channel: "whatsapp", conversationId }),
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(CONVERSE_TIMEOUT_MS),
     });
     answer = (await response.json().catch(() => null)) as ConverseReply | null;
     if (!response.ok) {
@@ -237,11 +249,18 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
       answer = null;
     }
   } catch (error) {
+    timedOut = error instanceof Error && error.name === "TimeoutError";
     console.error("[whatsapp] converse unreachable", error);
+  } finally {
+    clearTimeout(slowNotice);
   }
 
   if (!answer?.ok || !answer.reply) {
-    await reply(message.from, "I couldn't answer that just now. Try again in a minute.", options);
+    await reply(
+      message.from,
+      timedOut ? "I ran out of time on that one. Ask again, or break it into smaller steps." : "I couldn't answer that just now. Try again in a minute.",
+      options
+    );
     return;
   }
 

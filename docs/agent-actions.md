@@ -341,3 +341,11 @@ Anir decides on by name.
   entry is still empty. Two probes in a row before that got "I couldn't answer
   that just now": the model turn ran past the WhatsApp bridge's 90-second
   abort (Vertex was slow for a spell), then a retry answered in 15 seconds.
+- Sep 27, 12:30 UTC: the WhatsApp bridge waited 90 seconds for the agent and
+  then said "try again in a minute", while the agent's turn kept running and
+  its answer was lost (only the bridge sends and stores WhatsApp replies). It
+  now waits four minutes, sends "Still on it. This one is taking a moment."
+  after one minute, and a real timeout says so ("I ran out of time on that
+  one. Ask again, or break it into smaller steps.") instead of blaming a
+  hiccup. Timer is cleared on every path, so the tests still finish in a
+  second.
