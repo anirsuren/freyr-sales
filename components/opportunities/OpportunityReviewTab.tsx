@@ -8,7 +8,6 @@ import { FormRoom } from "@/components/ui/FormRoom";
 import { Field as UiField, Input } from "@/components/ui/Input";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import type { OpportunityReview, OpportunityReviewOptions, OpportunityReviewPerson } from "@/lib/opportunitiesShared";
 import { MultiPicker, type MultiPickerOption } from "@/components/ui/MultiPicker";
 import { formatDayLabel } from "@/lib/utils";
@@ -32,7 +31,7 @@ const FUNCTIONS = [
    people to work on in that square. Said once, in the hint, rather than as a
    paragraph nobody reads. */
 const PEOPLE_HINT =
-  "The customer's buying committee, as a map.\nRows: how senior the person is.\nColumns: the part of the business they sit in.\nPut each person in the square that fits, then give them a decision role and how they feel about Freyr.";
+  "The customer’s buying committee, as a map.\nRows: how senior the person is.\nColumns: the part of the business they sit in.\nPut each person in the square that fits, then give them a decision role and how they feel about Freyr.";
 
 function blankReview(): OpportunityReview {
   return {
@@ -178,7 +177,7 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
     </FormRoom>
 
     <FormRoom icon={Target} title="How Freyr wins" summary={winSummary}>
-      <UiField label="Freyr's strategy to win" hint="The overarching positioning that guides decisions through the sales cycle. Keep short-term tasks in Agreed actions.">
+      <UiField label="Freyr’s strategy to win" hint="The overarching positioning that guides decisions through the sales cycle. Keep short-term tasks in Agreed actions.">
         {editing ? <textarea className={`${field} min-h-24 resize-y`} value={draft.strategy} onChange={(e) => update({ strategy: e.target.value })} placeholder="How Freyr will win and sustain its advantage" /> : <ReviewValue value={draft.strategy} empty="No strategy recorded yet" />}
       </UiField>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -194,7 +193,7 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
     </FormRoom>
 
     <FormRoom icon={Users} title="People to influence" summary={peopleSummary}>
-      <div className="mb-3 flex items-center gap-2"><span className="text-[12px] text-text-secondary">The customer's buying committee, as a map.</span><InfoHint text={PEOPLE_HINT} /></div>
+      <div className="mb-3 flex items-center gap-2"><span className="text-[12px] text-text-secondary">The customer’s buying committee, as a map.</span><InfoHint text={PEOPLE_HINT} /></div>
       <div className="grid gap-3 grid-cols-[176px_repeat(3,minmax(0,1fr))]">
         <div />{FUNCTIONS.map((kind) => <div key={kind.key} className="flex items-center gap-1.5 px-1 pb-1 text-[12px] font-semibold text-text-primary"><kind.Icon size={14} className="text-blue-primary" aria-hidden="true" />{kind.label}</div>)}
         {SENIORITY.map((seniority) => <div key={seniority.key} className="contents">

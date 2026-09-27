@@ -37,10 +37,6 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <p className="text-[13px] leading-6 text-text-tertiary">{children}</p>;
 }
 
-/** The uppercase eyebrow every record page labels a fact with. */
-function Eyebrow({ children }: { children: React.ReactNode }) {
-  return <span className="block text-[11px] font-bold uppercase tracking-[0.06em] text-text-tertiary">{children}</span>;
-}
 
 /**
  * A REVIEW SOMEBODY ACTUALLY WROTE. A blank review object is what the store
@@ -139,7 +135,7 @@ export function OpportunityReviewView({ review, records = [], mayEdit, dealId }:
         <SectionCard title="Why now" icon={Flag}>
           {data.compellingEvent
             ? <p className="max-w-[75ch] whitespace-pre-wrap text-[15px] font-medium leading-7 text-text-primary">{data.compellingEvent}</p>
-            : <Empty>No compelling event recorded. Add the customer's deadline or consequence in a new review.</Empty>}
+            : <Empty>No compelling event recorded. Add the customer’s deadline or consequence in a new review.</Empty>}
         </SectionCard>
         <SectionCard title="Customer commitment" icon={CalendarDays}>
           {data.nextStep.date && <p className="text-[20px] font-semibold tracking-tight text-text-primary">{formatDayLabel(data.nextStep.date, "en-US")}</p>}
