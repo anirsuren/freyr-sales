@@ -5,7 +5,7 @@ import { readPerformance } from "@/lib/performance";
 import { readOpportunities } from "@/lib/opportunities";
 import { readLeads } from "@/lib/leads";
 import { LEAD_STATUSES } from "@/lib/leadsShared";
-import { OPPORTUNITY_LEVELS, OPPORTUNITY_STATUSES } from "@/lib/opportunitiesShared";
+import { OPPORTUNITY_LEVELS, OPPORTUNITY_STATUSES, estimatedTcvOf } from "@/lib/opportunitiesShared";
 import { MEETING_TYPES } from "@/lib/meetings";
 import { readRecordTeams, teamFor } from "@/lib/recordTeams";
 import { readCustomerGroups } from "@/lib/customerGroups";
@@ -98,6 +98,8 @@ export type ActionDef = {
 const str = (v: unknown, max = 500) => (typeof v === "string" ? v.trim().slice(0, max) : typeof v === "number" ? String(v) : "");
 const list = (v: unknown) => (Array.isArray(v) ? v.map((x) => str(x, 200)).filter(Boolean) : typeof v === "string" && v.trim() ? [v.trim()] : []);
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+/** "2027-01" as "Jan 2027", for a schedule read line by line. */
+const readableMonth = (yearMonth: string) => { const [y, m] = yearMonth.split("-").map(Number); return `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][(m || 1) - 1]} ${y}`; };
 
 /* ------------------------------------------------------------------------ */
 /* Lookups: names to records, always against what the workspace holds now.  */
@@ -1341,7 +1343,13 @@ export const ACTIONS: ActionDef[] = [
      Every write the app's own routes offer in real mode, mapped once. Each
      one is a thin door onto a route that already checks who may pass: the
      agent never re-implements a permission, it forwards the person's cookies
-     and repeats the route's refusal in the route's words. */
+     and repeats the route's refusal in the route's words.
+
+     NO DELETES, BY DECISION (Anir, Sep 28: "I don't think the agent should
+     delete anything. It should not have delete capabilities."). Thirteen
+     delete actions were built, verified and then removed on his call. Taking
+     a person off a goal, a company off your own list or an account out of a
+     group is a change of membership, not a deletion, and stays. */
   /* ====================================================================== */
 
   /* ---------------------------------------------------------- Goals plan */
@@ -1411,22 +1419,6 @@ export const ACTIONS: ActionDef[] = [
     done: (p) => ({ text: `"${(p.patch as Params).name ?? p.goalName}" is updated.`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
   },
   {
-    key: "delete_goal",
-    title: "Delete a goal",
-    description: "Remove a goal from the plan, with its subgoals and unverified entries. Verified entries are locked and stay.",
-    module: "/performance",
-    gate: "create",
-    fields: { goal: { type: "string", description: "Goal id or name." } },
-    required: ["goal"],
-    async prepare(params) {
-      const goal = await resolveGoal(params.goal);
-      if (!goal.ok) return { error: goal.error };
-      return { summary: `Delete the goal "${goal.value.name}" and everything under it. This cannot be undone.`, params: { goalId: goal.value.id, goalName: goal.value.name } };
-    },
-    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "remove-goal", goalId: p.goalId } }),
-    done: (p) => ({ text: `The goal "${p.goalName}" is gone.`, link: "/performance" }),
-  },
-  {
     key: "create_subgoal",
     title: "Add a subgoal under a goal",
     description: "Carve a share of a goal out as a named subgoal, optionally with its own target and the people on it.",
@@ -1457,22 +1449,6 @@ export const ACTIONS: ActionDef[] = [
     done: (p) => ({ text: `"${p.name}" now sits under "${p.goalName}".`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
   },
   {
-    key: "delete_subgoal",
-    title: "Remove a subgoal",
-    description: "Delete one subgoal from under its goal.",
-    module: "/performance",
-    gate: "create",
-    fields: { goal: { type: "string", description: "Parent goal id or name." }, subgoal: { type: "string", description: "Subgoal id or name." } },
-    required: ["goal", "subgoal"],
-    async prepare(params) {
-      const sub = await resolveSubgoal(params.goal, params.subgoal);
-      if (!sub.ok) return { error: sub.error };
-      return { summary: `Remove the subgoal "${sub.value.name}" from "${sub.value.goalName}". This cannot be undone.`, params: { goalId: sub.value.goalId, subgoalId: sub.value.id, name: sub.value.name } };
-    },
-    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "remove-subgoal", goalId: p.goalId, subgoalId: p.subgoalId } }),
-    done: (p) => ({ text: `The subgoal "${p.name}" is gone.`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
-  },
-  {
     key: "update_goal_result",
     title: "Correct a logged result",
     description: "Change the amount, date, account or note on a result that is still waiting for verification. Verified results are locked.",
@@ -1500,27 +1476,6 @@ export const ACTIONS: ActionDef[] = [
     },
     call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "update-actual", actualId: p.actualId, ...(p.patch as Params) } }),
     done: (p) => ({ text: `Corrected ${p.label}.`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
-  },
-  {
-    key: "remove_goal_result",
-    title: "Remove a logged result",
-    description: "Delete a result that is still waiting for verification. Verified results are locked and cannot be removed.",
-    module: "/performance",
-    gate: "write",
-    fields: {
-      entry: { type: "string", description: "The entry id from awaitingVerification, if known." },
-      person: { type: "string", description: "Otherwise: whose entry." },
-      goal: { type: "string", description: "Otherwise: which goal." },
-    },
-    required: [],
-    async prepare(params) {
-      const entry = await resolveOpenEntry(params);
-      if (!entry.ok) return { error: entry.error };
-      const goalName = entry.state.goals.find((g) => g.id === entry.value.goalId)?.name ?? entry.value.goalId;
-      return { summary: `Remove ${entryLabel(entry.value, goalName)}. This cannot be undone.`, params: { actualId: entry.value.id, goalId: entry.value.goalId, label: entryLabel(entry.value, goalName) } };
-    },
-    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "remove-actual", actualId: p.actualId } }),
-    done: (p) => ({ text: `Removed ${p.label}.`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
   },
   {
     key: "create_group",
@@ -1570,40 +1525,8 @@ export const ACTIONS: ActionDef[] = [
     call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "update-group", groupId: p.groupId, ...(p.patch as Params) } }),
     done: (p) => ({ text: `The group "${(p.patch as Params).name ?? p.groupName}" is updated.`, link: "/performance?view=groups" }),
   },
-  {
-    key: "delete_group",
-    title: "Delete a group",
-    description: "Remove a group from the Goals plan. The people stay; only the grouping goes.",
-    module: "/performance",
-    gate: "create",
-    fields: { group: { type: "string", description: "Group id or name." } },
-    required: ["group"],
-    async prepare(params) {
-      const group = await resolveGroup(params.group);
-      if (!group.ok) return { error: group.error };
-      return { summary: `Delete the group "${group.value.name}". Its people stay in the workspace. This cannot be undone.`, params: { groupId: group.value.id, groupName: group.value.name } };
-    },
-    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "remove-group", groupId: p.groupId } }),
-    done: (p) => ({ text: `The group "${p.groupName}" is gone.`, link: "/performance?view=groups" }),
-  },
 
   /* ------------------------------------------------- Deals and leads */
-  {
-    key: "delete_opportunity",
-    title: "Delete a deal",
-    description: "Remove an opportunity for good, with its accrual plan and its unverified goal entries. Only someone who can create deals may delete one.",
-    module: "/opportunities",
-    gate: "create",
-    fields: { opportunity: { type: "string", description: "Deal name, id or OPP reference." } },
-    required: ["opportunity"],
-    async prepare(params) {
-      const opp = await resolveOpportunity(params.opportunity);
-      if (!opp.ok) return { error: opp.error };
-      return { summary: `Delete the deal "${opp.value.name}", its accrual plan and its unverified goal entries. This cannot be undone.`, params: { id: opp.value.id, name: opp.value.name } };
-    },
-    call: (p) => ({ method: "POST", path: "/api/opportunities", body: { op: "remove", id: p.id } }),
-    done: (p) => ({ text: `The deal "${p.name}" is gone.`, link: "/opportunities" }),
-  },
   {
     key: "convert_lead",
     title: "Mark a lead as converted",
@@ -1624,22 +1547,6 @@ export const ACTIONS: ActionDef[] = [
     },
     call: (p) => ({ method: "POST", path: "/api/leads", body: { op: "convert", id: p.id, opportunityId: p.opportunityId } }),
     done: (p) => ({ text: `${p.leadName} is now a converted lead, linked to "${p.oppName}".`, link: `/leads/${encodeURIComponent(String(p.id))}` }),
-  },
-  {
-    key: "delete_lead",
-    title: "Delete a lead",
-    description: "Remove a lead for good.",
-    module: "/leads",
-    gate: "create",
-    fields: { lead: { type: "string", description: "Lead name, ref or id." } },
-    required: ["lead"],
-    async prepare(params) {
-      const lead = await resolveLead(params.lead);
-      if (!lead.ok) return { error: lead.error };
-      return { summary: `Delete the lead ${lead.value.plain}. This cannot be undone.`, params: { id: lead.value.id, leadName: lead.value.plain } };
-    },
-    call: (p) => ({ method: "POST", path: "/api/leads", body: { op: "delete", id: p.id } }),
-    done: (p) => ({ text: `The lead ${p.leadName} is gone.`, link: "/leads" }),
   },
   {
     key: "refresh_lead_linkedin",
@@ -1807,22 +1714,6 @@ export const ACTIONS: ActionDef[] = [
     call: (p) => ({ method: "POST", path: "/api/solutioning", body: { op: "set-priority", requestId: p.requestId, priority: p.priority } }),
     done: (p) => ({ text: `"${p.title}" is now ${p.priority} priority.`, link: `/solutioning?request=${encodeURIComponent(String(p.requestId))}` }),
   },
-  {
-    key: "delete_solutioning_request",
-    title: "Delete a solutioning request",
-    description: "Remove a request for good. An admin may delete any; the requester may delete their own while it is still initiated.",
-    module: "/solutioning",
-    gate: "write",
-    fields: { request: { type: "string", description: "Request title or id." } },
-    required: ["request"],
-    async prepare(params) {
-      const req = await resolveRequest(params.request);
-      if (!req.ok) return { error: req.error };
-      return { summary: `Delete the request "${req.value.plain}". This cannot be undone.`, params: { requestId: req.value.id, title: req.value.plain } };
-    },
-    call: (p) => ({ method: "POST", path: "/api/solutioning", body: { op: "delete", requestId: p.requestId } }),
-    done: (p) => ({ text: `The request "${p.title}" is gone.`, link: "/solutioning" }),
-  },
 
   /* ---------------------------------------------- Contracts and meetings */
   {
@@ -1891,22 +1782,6 @@ export const ACTIONS: ActionDef[] = [
     done: (p) => ({ text: `The contract "${p.name}" is updated.`, link: `/contracts?contract=${encodeURIComponent(String(p.id))}` }),
   },
   {
-    key: "delete_contract",
-    title: "Delete a contract",
-    description: "Remove a contract record for good.",
-    module: "/contracts",
-    gate: "create",
-    fields: { contract: { type: "string", description: "Contract name, reference or id." } },
-    required: ["contract"],
-    async prepare(params) {
-      const found = await resolveContract(params.contract);
-      if (!found.ok) return { error: found.error };
-      return { summary: `Delete the contract "${found.value.plain}" (${found.value.reference}). This cannot be undone.`, params: { id: found.value.id, name: found.value.plain } };
-    },
-    call: (p) => ({ method: "POST", path: "/api/contracts", body: { op: "delete", id: p.id } }),
-    done: (p) => ({ text: `The contract "${p.name}" is gone.`, link: "/contracts" }),
-  },
-  {
     key: "update_meeting",
     title: "Change a meeting",
     description: "Rename, retype, reschedule or re-point a meeting at another account. Only the fields given change.",
@@ -1973,40 +1848,8 @@ export const ACTIONS: ActionDef[] = [
     call: (p) => ({ method: "POST", path: "/api/meetings", body: { op: "add-note", id: p.id, kind: p.kind, text: p.text } }),
     done: (p) => ({ text: `The note is on "${p.title}".`, link: `/meetings/${encodeURIComponent(String(p.id))}` }),
   },
-  {
-    key: "delete_meeting",
-    title: "Delete a meeting",
-    description: "Remove a meeting for good.",
-    module: "/meetings",
-    gate: "create",
-    fields: { meeting: { type: "string", description: "Meeting title or id." } },
-    required: ["meeting"],
-    async prepare(params) {
-      const m = await resolveMeeting(params.meeting);
-      if (!m.ok) return { error: m.error };
-      return { summary: `Delete the meeting "${m.value.plain}". This cannot be undone.`, params: { id: m.value.id, title: m.value.plain } };
-    },
-    call: (p) => ({ method: "POST", path: "/api/meetings", body: { op: "delete", id: p.id } }),
-    done: (p) => ({ text: `The meeting "${p.title}" is gone.`, link: "/meetings" }),
-  },
 
   /* ------------------ Accruals, customer groups, accounts, market intel */
-  {
-    key: "delete_accrual_plan",
-    title: "Delete a deal's accrual plan",
-    description: "Remove the revenue accrual plan on a deal. The deal stays.",
-    module: "/opportunities",
-    gate: "create",
-    fields: { opportunity: { type: "string", description: "Deal name, id or OPP reference." } },
-    required: ["opportunity"],
-    async prepare(params) {
-      const plan = await resolvePlan(params.opportunity);
-      if (!plan.ok) return { error: plan.error };
-      return { summary: `Delete the accrual plan on "${plan.value.name}" (${plan.value.months} months). The deal itself stays. This cannot be undone.`, params: { opportunityId: plan.value.opportunityId, name: plan.value.name } };
-    },
-    call: (p) => ({ method: "POST", path: "/api/revenue-accruals", body: { op: "delete", opportunityId: p.opportunityId } }),
-    done: (p) => ({ text: `The accrual plan on "${p.name}" is gone.`, link: `/opportunities/${encodeURIComponent(String(p.opportunityId))}?tab=revenueAccruals` }),
-  },
   {
     key: "freeze_accrual_month",
     title: "Freeze a month of accruals",
@@ -2117,22 +1960,6 @@ export const ACTIONS: ActionDef[] = [
     done: (p) => ({ text: `${p.customer} is out of "${p.group}".`, link: "/customers" }),
   },
   {
-    key: "delete_customer_group",
-    title: "Delete a customer group",
-    description: "Remove a customer group. The accounts in it stay.",
-    module: "/customers",
-    gate: "create",
-    fields: { group: { type: "string", description: "Group name or id." } },
-    required: ["group"],
-    async prepare(params) {
-      const g = await resolveCustomerGroup(params.group);
-      if (!g.ok) return { error: g.error };
-      return { summary: `Delete the customer group "${g.value.name}". Its ${g.value.customerIds.length} accounts stay. This cannot be undone.`, params: { id: g.value.id, name: g.value.name } };
-    },
-    call: (p) => ({ method: "POST", path: "/api/customer-groups", body: { op: "delete", id: p.id } }),
-    done: (p) => ({ text: `The customer group "${p.name}" is gone.`, link: "/customers" }),
-  },
-  {
     key: "update_customer",
     title: "Change an account's details",
     description: "Change an account's name, website, industry, location, customer type, revenue or main competitor. Only the fields given change.",
@@ -2183,22 +2010,6 @@ export const ACTIONS: ActionDef[] = [
     done: (p) => ({ text: `The ${p.kind} is on ${p.name}'s timeline.`, link: `/customers/${encodeURIComponent(String(p.id))}` }),
   },
   {
-    key: "delete_contact",
-    title: "Delete a contact",
-    description: "Remove a person from an account for good.",
-    module: "/customers",
-    gate: "create",
-    fields: { contact: { type: "string", description: "The contact's name or id." }, customer: { type: "string", description: "Their account, if the name alone is ambiguous." } },
-    required: ["contact"],
-    async prepare(params) {
-      const c = await resolveContact(params.contact, params.customer);
-      if (!c.ok) return { error: c.error };
-      return { summary: `Delete the contact ${c.value.plain}${c.value.company ? ` at ${c.value.company}` : ""}. This cannot be undone.`, params: { id: c.value.id, name: c.value.plain, customerId: c.value.customerId } };
-    },
-    call: (p) => ({ method: "DELETE", path: `/api/contacts/${encodeURIComponent(String(p.id))}` }),
-    done: (p) => ({ text: `The contact ${p.name} is gone.`, link: p.customerId ? `/customers/${encodeURIComponent(String(p.customerId))}` : "/customers" }),
-  },
-  {
     key: "track_company",
     title: "Track a new company in Market Intel",
     description: "Add a company to the Market Intel catalogue and start following its news. Adding a company nobody tracks yet starts paid collection, so only when asked.",
@@ -2235,21 +2046,97 @@ export const ACTIONS: ActionDef[] = [
     call: (p) => ({ method: "PUT", path: "/api/market-intel/bookmarks", body: { changes: [{ id: p.id, on: false, star: false }] } }),
     done: (p) => ({ text: `${p.name} is off your list.`, link: "/market-intel" }),
   },
+
+  /* --------------------------------------------- Accrual plan by chat */
   {
-    key: "delete_tracked_company",
-    title: "Delete a company from Market Intel for everyone",
-    description: "Remove a company from the catalogue, with its people, its news and every follow. Admin only; everyone else uses remove_from_my_list.",
-    module: "/market-intel",
-    gate: "create",
-    fields: { company: { type: "string", description: "Company name or id." } },
-    required: ["company"],
-    async prepare(params) {
-      const c = await resolveTrackedCompany(params.company);
-      if (!c.ok) return { error: c.error };
-      return { summary: `Delete ${c.value.name} from Market Intel for everyone, with its people, its news and every follow. This cannot be undone.`, params: { id: c.value.id, name: c.value.name } };
+    /* Anir, Sep 28: "accrual plan by chat sounds good too." A plan is the
+       months a deal's money lands in. Said as a sentence it is either a spread
+       ("$120K across January to June 2027, evenly") or a list ("Jan 30K, Feb
+       20K, then 10K a month to June"). The proposal always prints every month
+       with its amount, because a schedule is the one thing a person should
+       read line by line before saying yes. Amounts are USD, which is the
+       rule for accruals everywhere in the app. */
+    key: "set_accrual_plan",
+    title: "Plan the months a deal's revenue lands in",
+    description: "Create or replace a deal's revenue accrual plan: the total in USD and which months it lands in, spread evenly or with amounts named per month. Replaces the plan's months if one already exists.",
+    module: "/revenue-accruals",
+    gate: "write",
+    fields: {
+      opportunity: { type: "string", description: "Deal name, id or OPP reference." },
+      total: { type: "number", description: "Total to schedule, in USD. Omit to use the deal's estimated TCV when the deal is in USD." },
+      from: { type: "string", description: "First month, e.g. 'January 2027'." },
+      to: { type: "string", description: "Last month, e.g. 'June 2027'. Give this or months." },
+      months: { type: "number", description: "How many months from the first month, if no last month was given." },
+      amounts: { type: "array", items: { type: "string" }, description: "Only when amounts were named per month: entries like 'January 2027: 30000'. Months not listed share the remainder evenly." },
+      note: { type: "string", description: "A note on the plan, if said." },
     },
-    call: (p) => ({ method: "DELETE", path: "/api/market-intel/tracking", body: { kind: "company", id: p.id } }),
-    done: (p) => ({ text: `${p.name} is gone from Market Intel.`, link: "/market-intel" }),
+    required: ["opportunity", "from"],
+    async prepare(params, ctx) {
+      const opp = await resolveOpportunity(params.opportunity);
+      if (!opp.ok) return { error: opp.error };
+      const record = (await readOpportunities()).opportunities.find((o) => o.id === opp.value.id);
+      if (!record) return { error: "That deal is gone." };
+      const dealCurrency = (record.currency || "USD").toUpperCase();
+      let total = params.total === undefined || params.total === null || params.total === "" ? null : parseMoney(params.total);
+      if (params.total !== undefined && params.total !== null && params.total !== "" && total === null) return { error: "The total must be a number, in USD." };
+      if (total === null) {
+        const tcv = estimatedTcvOf(record);
+        if (!tcv) return { error: `What total should the plan carry, in USD? "${opp.value.name}" has no estimated TCV to fall back on.` };
+        if (dealCurrency !== "USD") return { error: `"${opp.value.name}" is in ${dealCurrency}. Accrual plans are kept in USD, so say the USD total to schedule.` };
+        total = tcv;
+      }
+      if (total <= 0) return { error: "The total has to be more than zero." };
+      const firstDay = parseDay(params.from, new Date(), ctx.timeZone);
+      if (!firstDay) return { error: "Which month does it start? Say it like 'January 2027'." };
+      const ym = (day: string) => day.slice(0, 7);
+      const addMonths = (yearMonth: string, n: number) => { const [y, m] = yearMonth.split("-").map(Number); const idx = y * 12 + (m - 1) + n; return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, "0")}`; };
+      const first = ym(firstDay);
+      let count = 0;
+      if (str(params.to)) {
+        const lastDay = parseDay(params.to, new Date(), ctx.timeZone);
+        if (!lastDay) return { error: "Which month does it end? Say it like 'June 2027'." };
+        const last = ym(lastDay);
+        const [fy, fm] = first.split("-").map(Number); const [ly, lm] = last.split("-").map(Number);
+        count = (ly * 12 + lm) - (fy * 12 + fm) + 1;
+        if (count < 1) return { error: "The last month is before the first one." };
+      } else if (Number(str(params.months, 4)) > 0) {
+        count = Math.floor(Number(str(params.months, 4)));
+      } else {
+        return { error: "How many months, or which month does it end?" };
+      }
+      if (count > 60) return { error: "That is more than five years of months. Say a shorter range." };
+      const months = Array.from({ length: count }, (_, k) => addMonths(first, k));
+      /* Named amounts pin their months; the rest share what is left, evenly,
+         in whole dollars, the odd dollars on the last open month. */
+      const pinned = new Map<string, number>();
+      for (const entry of list(params.amounts)) {
+        const m = entry.match(/^(.*?)[:=]\s*([\s\S]+)$/);
+        if (!m) return { error: `I could not read "${entry}". Say it like "January 2027: 30000".` };
+        const day = parseDay(m[1].trim(), new Date(), ctx.timeZone);
+        const amt = parseMoney(m[2].trim());
+        if (!day || amt === null || amt < 0) return { error: `I could not read "${entry}". Say it like "January 2027: 30000".` };
+        const key = ym(day);
+        if (!months.includes(key)) return { error: `${m[1].trim()} is outside ${readableMonth(first)} to ${readableMonth(months[months.length - 1])}.` };
+        pinned.set(key, amt);
+      }
+      const pinnedTotal = [...pinned.values()].reduce((a, b) => a + b, 0);
+      if (pinnedTotal > total) return { error: `The named months add up to ${money(pinnedTotal)}, more than the ${money(total)} total.` };
+      const open = months.filter((m) => !pinned.has(m));
+      const remainder = total - pinnedTotal;
+      if (!open.length && remainder !== 0) return { error: `Every month is named but they add up to ${money(pinnedTotal)}, not ${money(total)}.` };
+      const share = open.length ? Math.floor(remainder / open.length) : 0;
+      const lines = months.map((month, k) => ({ month, amount: pinned.has(month) ? pinned.get(month)! : share }));
+      if (open.length) { const lastOpen = open[open.length - 1]; const line = lines.find((l) => l.month === lastOpen)!; line.amount += remainder - share * open.length; }
+      const existing = (await readRevenueAccruals()).plans.find((pl) => pl.opportunityId === opp.value.id);
+      const schedule = lines.map((l) => `${readableMonth(l.month)} ${money(l.amount)}`).join(", ");
+      const note = str(params.note, 600) || undefined;
+      return {
+        summary: `${existing ? "Replace" : "Set"} the accrual plan on "${opp.value.name}": ${money(total)} over ${count} ${count === 1 ? "month" : "months"}: ${schedule}.${note ? ` Note: ${note}` : ""}`,
+        params: { opportunityId: opp.value.id, opportunityName: opp.value.name, customer: record.customer, customerId: record.customerId, contractValue: total, lines, ...(record.estSignDate ? { signDateAtPlan: record.estSignDate } : {}), ...(note ? { note } : {}), months: count },
+      };
+    },
+    call: (p) => ({ method: "POST", path: "/api/revenue-accruals", body: { op: "save", plan: { opportunityId: p.opportunityId, opportunityName: p.opportunityName, /* offering backfilled from the deal by saveAccrualPlan */ customer: p.customer, customerId: p.customerId, contractValue: p.contractValue, lines: p.lines, ...(p.signDateAtPlan ? { signDateAtPlan: p.signDateAtPlan } : {}), ...(p.note ? { note: p.note } : {}) } } }),
+    done: (p) => ({ text: `"${p.opportunityName}" now has a ${p.months}-month accrual plan for ${money(Number(p.contractValue))}.`, link: `/opportunities/${encodeURIComponent(String(p.opportunityId))}?tab=revenueAccruals` }),
   },
 
 ];

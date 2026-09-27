@@ -72,48 +72,36 @@ config line and be switched on later without a build.
 | 22 | `save_draft` | Save an outreach draft | /customers | edit |
 | 23 | `create_goal` | Create a goal | /performance | create |
 | 24 | `update_goal` | Change a goal | /performance | edit |
-| 25 | `delete_goal` | Delete a goal | /performance | create |
-| 26 | `create_subgoal` | Add a subgoal under a goal | /performance | edit |
-| 27 | `delete_subgoal` | Remove a subgoal | /performance | create |
-| 28 | `update_goal_result` | Correct a logged result | /performance | edit |
-| 29 | `remove_goal_result` | Remove a logged result | /performance | edit |
-| 30 | `create_group` | Create a group | /performance | create |
-| 31 | `update_group` | Rename a group or change its head | /performance | edit |
-| 32 | `delete_group` | Delete a group | /performance | create |
-| 33 | `delete_opportunity` | Delete a deal | /opportunities | create |
-| 34 | `convert_lead` | Mark a lead as converted | /leads | edit |
-| 35 | `delete_lead` | Delete a lead | /leads | create |
-| 36 | `refresh_lead_linkedin` | Re-read a lead's LinkedIn profile | /leads | edit |
-| 37 | `update_solutioning_request` | Change a solutioning request | /solutioning | edit |
-| 38 | `assign_solutioning_request` | Assign a solutioning request to someone | /solutioning | edit |
-| 39 | `pick_up_solutioning_request` | Pick up a solutioning request | /solutioning | edit |
-| 40 | `complete_solutioning_request` | Mark a solutioning request complete | /solutioning | edit |
-| 41 | `cancel_solutioning_request` | Cancel a solutioning request | /solutioning | edit |
-| 42 | `reopen_solutioning_request` | Reopen a solutioning request | /solutioning | edit |
-| 43 | `comment_on_solutioning_request` | Comment on a solutioning request | /solutioning | edit |
-| 44 | `set_solutioning_priority` | Set a request's priority | /solutioning | edit |
-| 45 | `delete_solutioning_request` | Delete a solutioning request | /solutioning | edit |
-| 46 | `create_contract` | Record a contract | /contracts | create |
-| 47 | `update_contract` | Change a contract | /contracts | edit |
-| 48 | `delete_contract` | Delete a contract | /contracts | create |
-| 49 | `update_meeting` | Change a meeting | /meetings | edit |
-| 50 | `set_meeting_status` | Mark a meeting held or cancelled | /meetings | edit |
-| 51 | `add_meeting_note` | Add a note to a meeting | /meetings | edit |
-| 52 | `delete_meeting` | Delete a meeting | /meetings | create |
-| 53 | `delete_accrual_plan` | Delete a deal's accrual plan | /opportunities | create |
-| 54 | `freeze_accrual_month` | Freeze a month of accruals | /opportunities | create |
-| 55 | `unfreeze_accrual_month` | Unfreeze a month of accruals | /opportunities | create |
-| 56 | `create_customer_group` | Create a customer group | /customers | create |
-| 57 | `update_customer_group` | Rename a customer group | /customers | edit |
-| 58 | `add_customer_to_group` | Put an account in a customer group | /customers | edit |
-| 59 | `remove_customer_from_group` | Take an account out of a customer group | /customers | edit |
-| 60 | `delete_customer_group` | Delete a customer group | /customers | create |
-| 61 | `update_customer` | Change an account's details | /customers | edit |
-| 62 | `add_customer_note` | Add a note to an account | /customers | edit |
-| 63 | `delete_contact` | Delete a contact | /customers | create |
-| 64 | `track_company` | Track a new company in Market Intel | /market-intel | edit |
-| 65 | `remove_from_my_list` | Take a company off your Market Intel list | /market-intel | edit |
-| 66 | `delete_tracked_company` | Delete a company from Market Intel for everyone | /market-intel | create |
+| 25 | `create_subgoal` | Add a subgoal under a goal | /performance | edit |
+| 26 | `update_goal_result` | Correct a logged result | /performance | edit |
+| 27 | `create_group` | Create a group | /performance | create |
+| 28 | `update_group` | Rename a group or change its head | /performance | edit |
+| 29 | `convert_lead` | Mark a lead as converted | /leads | edit |
+| 30 | `refresh_lead_linkedin` | Re-read a lead's LinkedIn profile | /leads | edit |
+| 31 | `update_solutioning_request` | Change a solutioning request | /solutioning | edit |
+| 32 | `assign_solutioning_request` | Assign a solutioning request to someone | /solutioning | edit |
+| 33 | `pick_up_solutioning_request` | Pick up a solutioning request | /solutioning | edit |
+| 34 | `complete_solutioning_request` | Mark a solutioning request complete | /solutioning | edit |
+| 35 | `cancel_solutioning_request` | Cancel a solutioning request | /solutioning | edit |
+| 36 | `reopen_solutioning_request` | Reopen a solutioning request | /solutioning | edit |
+| 37 | `comment_on_solutioning_request` | Comment on a solutioning request | /solutioning | edit |
+| 38 | `set_solutioning_priority` | Set a request's priority | /solutioning | edit |
+| 39 | `create_contract` | Record a contract | /contracts | create |
+| 40 | `update_contract` | Change a contract | /contracts | edit |
+| 41 | `update_meeting` | Change a meeting | /meetings | edit |
+| 42 | `set_meeting_status` | Mark a meeting held or cancelled | /meetings | edit |
+| 43 | `add_meeting_note` | Add a note to a meeting | /meetings | edit |
+| 44 | `freeze_accrual_month` | Freeze a month of accruals | /opportunities | create |
+| 45 | `unfreeze_accrual_month` | Unfreeze a month of accruals | /opportunities | create |
+| 46 | `create_customer_group` | Create a customer group | /customers | create |
+| 47 | `update_customer_group` | Rename a customer group | /customers | edit |
+| 48 | `add_customer_to_group` | Put an account in a customer group | /customers | edit |
+| 49 | `remove_customer_from_group` | Take an account out of a customer group | /customers | edit |
+| 50 | `update_customer` | Change an account's details | /customers | edit |
+| 51 | `add_customer_note` | Add a note to an account | /customers | edit |
+| 52 | `track_company` | Track a new company in Market Intel | /market-intel | edit |
+| 53 | `remove_from_my_list` | Take a company off your Market Intel list | /market-intel | edit |
+| 54 | `set_accrual_plan` | Plan the months a deal's revenue lands in | /revenue-accruals | edit |
 
 ## The actions (v1)
 
@@ -776,3 +764,17 @@ Anir decides on by name.
   removed what it made, the three pre-existing WhatsApp links are untouched,
   Cold Reachouts is back to nobody. The contract test now reads a call that
   branches, so the touch action's route half is still checked.
+- Sep 28, 06:10 UTC, ANIR'S THREE CALLS on the audit's open items. (1) "I
+  don't think the agent should delete anything." All thirteen delete actions
+  are removed: goals, subgoals, logged results, groups, deals, leads,
+  solutioning requests, contracts, meetings, accrual plans, customer groups,
+  contacts, tracked companies. Membership changes stay (off a goal, out of a
+  group, off your own list), because nothing is destroyed. The sweep chains no
+  longer clean up through the agent; `probe-residue.mts --clean` does it
+  through the routes. (2) Messaging a contact: held until there is real
+  outbound to send. (3) "Accrual plan by chat sounds good": `set_accrual_plan`
+  creates or replaces a deal's plan from a sentence, an even spread or named
+  months with the rest shared evenly, whole dollars, odd dollars on the last
+  open month; the proposal prints every month and its amount so the schedule
+  is read line by line before YES. USD only, the accruals rule; a non-USD deal
+  with no total named is asked for the USD total rather than guessed at.

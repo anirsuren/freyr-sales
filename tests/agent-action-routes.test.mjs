@@ -71,5 +71,5 @@ test("every action's method is one the route exports", () => {
 
 test("the action count is what the audit left", () => {
   const n = inventory().length;
-  assert.ok(n >= 67, `expected at least 67 actions, found ${n}`);
+  assert.ok(n >= 54, `expected at least 54 actions, found ${n}`);
 });

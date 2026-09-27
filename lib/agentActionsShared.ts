@@ -33,61 +33,6 @@ export type ActionProposal = {
 };
 
 /** What a chat message carries so the web card can draw itself. */
-/**
- * WHO AND WHAT A PROPOSAL TOUCHES, as records rather than words, so the web
- * card can draw faces, logos and chips the way every other page does (Anir,
- * Sep 27: "it would be nice if you showed the tags and stuff on the Needs Your
- * Approval screen and the profile pictures"). Derived from the proposal's own
- * params, which every action already fills with resolved names and ids.
- */
-export type ActionEntities = {
-  people: string[];
-  goal?: { id: string; name: string };
-  group?: string;
-  company?: string;
-  deal?: { id?: string; name: string };
-  record?: { kind: string; name: string };
-};
-
-const asStr = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
-const asList = (v: unknown): string[] => (Array.isArray(v) ? v.map(asStr).filter(Boolean) : []);
-
-export function proposalEntities(action: string, params: Record<string, unknown>): ActionEntities {
-  const people = [
-    ...asList(params.people),
-    ...asList(params.members),
-    asStr(params.person),
-    asStr(params.head),
-    /* `owner` is a person on record-team, solutioning and customer-owner
-       actions; on a contract it is also a person. Never a company. */
-    asStr(params.owner),
-  ].filter(Boolean);
-  const out: ActionEntities = { people: [...new Set(people)] };
-  const goalId = asStr(params.goalId); const goalName = asStr(params.goalName);
-  if (goalName) out.goal = { id: goalId, name: goalName };
-  const groupName = asStr(params.groupName);
-  if (groupName) out.group = groupName;
-  else if (/customer_group|_to_group|_from_group/.test(action) && asStr(params.group)) out.group = asStr(params.group);
-  const company = asStr(params.customer) || asStr(params.company) || asStr(params.__company) || asStr((params.contract as Record<string, unknown> | undefined)?.customer);
-  if (company) out.company = company;
-  const dealName = asStr(params.oppName) || asStr(params.opportunityName) || asStr((params.contract as Record<string, unknown> | undefined)?.opportunityName);
-  if (dealName) out.deal = { id: asStr(params.opportunityId) || undefined, name: dealName };
-  else if (/opportunity/.test(action) && asStr(params.name) && asStr(params.id)) out.deal = { id: asStr(params.id), name: asStr(params.name) };
-  const recordKinds: [RegExp, string, string[]][] = [
-    [/solutioning/, "request", ["title"]],
-    [/meeting/, "meeting", ["title"]],
-    [/contract/, "contract", ["name"]],
-    [/lead/, "lead", ["leadName"]],
-    [/^(create_goal|delete_goal)$/, "goal", ["name", "goalName"]],
-  ];
-  for (const [re, kind, keys] of recordKinds) {
-    if (!re.test(action)) continue;
-    const name = keys.map((k) => asStr(params[k]) || asStr((params.contract as Record<string, unknown> | undefined)?.[k])).find(Boolean);
-    if (name && !(kind === "goal" && out.goal)) { out.record = { kind, name }; break; }
-  }
-  return out;
-}
-
 export type PendingActionPayload = {
   id: string;
   action: string;
@@ -95,7 +40,6 @@ export type PendingActionPayload = {
   status: ProposalStatus;
   result?: string;
   link?: string;
-  entities?: ActionEntities;
 };
 
 /** A proposal is good for this long; then it must be asked for again. */
@@ -330,17 +274,11 @@ export const ACTION_LABELS: Record<string, string> = {
   log_touch: "Log a touch",
   create_goal: "New goal",
   update_goal: "Change goal",
-  delete_goal: "Delete goal",
   create_subgoal: "New subgoal",
-  delete_subgoal: "Delete subgoal",
   update_goal_result: "Correct result",
-  remove_goal_result: "Remove result",
   create_group: "New group",
   update_group: "Change group",
-  delete_group: "Delete group",
-  delete_opportunity: "Delete deal",
   convert_lead: "Convert lead",
-  delete_lead: "Delete lead",
   refresh_lead_linkedin: "Re-read LinkedIn",
   update_solutioning_request: "Change request",
   assign_solutioning_request: "Assign request",
@@ -350,28 +288,22 @@ export const ACTION_LABELS: Record<string, string> = {
   reopen_solutioning_request: "Reopen request",
   comment_on_solutioning_request: "Comment",
   set_solutioning_priority: "Request priority",
-  delete_solutioning_request: "Delete request",
   create_contract: "New contract",
   update_contract: "Change contract",
-  delete_contract: "Delete contract",
   update_meeting: "Change meeting",
   set_meeting_status: "Meeting status",
   add_meeting_note: "Meeting note",
-  delete_meeting: "Delete meeting",
-  delete_accrual_plan: "Delete accrual plan",
   freeze_accrual_month: "Freeze month",
   unfreeze_accrual_month: "Unfreeze month",
   create_customer_group: "New customer group",
   update_customer_group: "Change customer group",
   add_customer_to_group: "Add to customer group",
   remove_customer_from_group: "Remove from customer group",
-  delete_customer_group: "Delete customer group",
   update_customer: "Change account",
   add_customer_note: "Account note",
-  delete_contact: "Delete contact",
   track_company: "Track company",
   remove_from_my_list: "Off my list",
-  delete_tracked_company: "Delete tracked company",
+  set_accrual_plan: "Accrual plan",
   save_draft: "Save draft",
 };
 
