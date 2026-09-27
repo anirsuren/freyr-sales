@@ -601,6 +601,17 @@ export const ACTIONS: ActionDef[] = [
         customerId = opp.value.customerId;
         company = opp.value.customer;
       }
+      /* The record-team route's own two questions, asked now: may they change this module, and may they change THIS record (an unclaimed one accepts its first owner). Same words as the route, so the answer does not change between proposal and YES. */
+      const owningModule = type === "customer" ? "/customers" : "/opportunities";
+      const scoped =
+        type === "customer"
+          ? await getDb()
+              .customers.get(id)
+              .then((c) => (c ? { id: c.id, owner: c.owner, owner_user_id: c.owner_user_id, created_by: c.created_by } : { id }))
+              .catch(() => ({ id }))
+          : { id };
+      const denied = await recordWriteRefusal(owningModule, scoped);
+      if (denied) return { error: denied };
       const team = teamFor(await readRecordTeams(), type, id);
       let owner = team?.owner;
       let members = [...(team?.members ?? [])];

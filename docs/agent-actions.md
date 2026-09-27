@@ -332,3 +332,12 @@ Anir decides on by name.
   set_record_people was left alone on purpose: /api/record-team decides by
   record-team membership, a different rule, so a pre-check there would have to
   be that rule and not this one.
+- Sep 27, 12:15 UTC: set_record_people now asks the record-team route's own two
+  questions before proposing (module write, then recordWriteRefusal on the
+  scoped record, an unclaimed record still accepting its first owner), so the
+  answer cannot differ between the proposal and the YES. Verified as Anir Test
+  Rep over WhatsApp: OPP-0002 has no team entry, so adding Neha Sharma was
+  proposed exactly as the route would allow, then cancelled with NO; the team
+  entry is still empty. Two probes in a row before that got "I couldn't answer
+  that just now": the model turn ran past the WhatsApp bridge's 90-second
+  abort (Vertex was slow for a spell), then a retry answered in 15 seconds.
