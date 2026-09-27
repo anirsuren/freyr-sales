@@ -136,3 +136,29 @@ chunking, and the Graph API call shape.
   permanent one comes from a System User on the Freyr Solutions portfolio
   (Business settings > Users > System users) with whatsapp_business_messaging
   and whatsapp_business_management.
+
+## Meta setup as of Sep 27, 03:40 (dev is wired)
+
+- System user **Freyr Sales Integration** (id 61594532863950, Employee) on the
+  Freyr Solutions portfolio, assigned the Freyr Sales app (Manage app) and the
+  Test WhatsApp Business Account (Everything). Its token never expires and has
+  `whatsapp_business_messaging` + `whatsapp_business_management`.
+- Where the token lives: the dev runtime secret (`freyr-sales/runtime`, key
+  `WHATSAPP_ACCESS_TOKEN`, mapped on task definition freyr-sales:408) and, on
+  Anir's Mac, `.env.local` as `WHATSAPP_ACCESS_TOKEN_REAL`. The LOCAL server
+  deliberately has no `WHATSAPP_ACCESS_TOKEN`, so it stays in trace mode: the
+  QA fake numbers (15550100001-4) cannot receive a real send, and a failed
+  send means nothing is stored (see below). Rename the key locally only for a
+  deliberate real-send check (`scripts/qa/whatsapp-say-app.mts`).
+- Webhook: callback `https://freyrsales.dev.freyrapps.com/api/whatsapp/webhook`
+  verified and saved (Use cases > Customize > Step 2 > Configure Webhooks);
+  the `messages` field must be Subscribed there.
+- Known behaviour: with an invalid or expired token the inbound leg goes
+  silent. `handleInboundWhatsApp` stores the exchange only after a delivered
+  send, so the person sees nothing on the phone and nothing in the web
+  history. Anir to decide whether an undelivered reply should still be kept
+  in history and surfaced on /api/health.
+- Still Anir's: business verification of Freyr Solutions, a real company
+  number (the test number can only reach verified test recipients), and
+  publishing the app (Meta warns unpublished apps only receive test webhooks
+  from the dashboard; the test number's inbound is checked empirically).

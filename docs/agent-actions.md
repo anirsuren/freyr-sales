@@ -276,3 +276,18 @@ Anir decides on by name.
   which ended the shell string; the image was built, dev still runs d8f8bbf.
   Fix committed locally (e3e0dd5b): comments moved above the jq call. Waiting
   for Anir's yes to push it.
+- Sep 27, 03:45 UTC: dev is wired for WhatsApp end to end. Second push
+  (e3e0dd5b workflow fix + 2b5bc924 agent work) deployed green; /api/health on
+  dev says 2b5bc924, agentProvider vertex, vertexBrain working. Anir accepted
+  Meta's non-discrimination policy himself; I created system user "Freyr Sales
+  Integration" (Employee), assigned the app (Manage app) and the test WABA
+  (Everything), and generated a never-expiring token with
+  whatsapp_business_messaging + whatsapp_business_management (debug_token:
+  SYSTEM_USER, is_valid, expires_at 0). deploy/add-whatsapp-secrets.sh dev put
+  the five keys into freyr-sales/runtime and rolled freyr-sales:408; the
+  webhook handshake answered from dev, the callback was verified and saved in
+  Meta, and the "messages" field is Subscribed. Locally the token is kept as
+  WHATSAPP_ACCESS_TOKEN_REAL so :3006 stays in trace mode for the fake QA
+  numbers. Next: Anir links his phone on dev (Settings > Profile > WhatsApp
+  code, text it to +1 555 178 7823) and asks the agent something; his 24-hour
+  window with the test number is open from his earlier "hi".
