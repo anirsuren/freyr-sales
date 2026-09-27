@@ -530,3 +530,12 @@ Anir decides on by name.
   straight back out. The access line now also forbids linking a page inside a
   module that is not open to them; the same question now answers with the
   three names and no dead link.
+- Sep 27, 17:35 UTC: a mixed message ("how is Incyte doing, and star them for
+  me") answers the question and proposes the star, which is right. It exposed
+  a bug I had introduced an hour earlier: the WhatsApp tidier stripped any
+  LINE containing "reply ... yes", and the model writes "I have proposed X.
+  Reply YES to confirm." on one line, so the proposal sentence went with it.
+  The strip is now surgical: a line that is only the canned instruction, or
+  the phrase itself inside a line. Checked against three shapes, then live.
+  The expired-proposal messages now quote the summary instead of running its
+  full stop into the next word.

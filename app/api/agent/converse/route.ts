@@ -300,8 +300,8 @@ export async function POST(req: NextRequest) {
           ok: true,
           reply:
             decision === "confirm"
-              ? `That one expired before you answered: ${recent.summary} Proposals last 30 minutes. Say "do it again" and I'll put it back up.`
-              : `Nothing is waiting: ${recent.summary} had already expired, so nothing happened.`,
+              ? `That one expired before you answered: "${recent.summary.replace(/\.$/, "")}". Proposals last 30 minutes. Say "do it again" and I'll put it back up.`
+              : `Nothing is waiting: "${recent.summary.replace(/\.$/, "")}" had already expired, so nothing happened.`,
           suggestions: [],
           entityContext: [],
           source: "action",
@@ -1702,7 +1702,11 @@ function tidyProposalReply(reply: string, summary: string, channel: "web" | "wha
     /* Every one of them, not only a trailing one: the bridge appends its own
        "Reply YES to do this, or NO." and the model sometimes writes one in the
        middle when there is a line after it (Sep 27). */
-    out = out.replace(/\n*[^\n]*\breply\b[^\n]*\byes\b[^\n]*(?=\n|$)/gi, "");
+    /* Only the canned instruction itself, never the line it sits on: the model
+       writes "I have proposed X. Reply YES to confirm." on ONE line, and a
+       whole-line strip took the proposal with it (Sep 27). */
+    out = out.replace(/^[ \t]*\*{0,2}reply\b[^\n]*\byes\b[^\n]*$/gim, "");
+    out = out.replace(/[ \t]*\breply\s+(?:with\s+)?\*{0,2}yes\b[^\n]*?(?=$|\n)/gim, "");
   }
   return out.replace(/\n{3,}/g, "\n\n").trim();
 }
