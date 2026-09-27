@@ -2068,7 +2068,7 @@ export const ACTIONS: ActionDef[] = [
       to: { type: "string", description: "Last month, e.g. 'June 2027'. Give this or months." },
       months: { type: "number", description: "How many months from the first month, if no last month was given." },
       amounts: { type: "array", items: { type: "string" }, description: "ONLY when the person named an amount for a specific month, as 'January 2027: 30000'. Leave empty for an even spread; never work out the per-month figure yourself." },
-      note: { type: "string", description: "A note on the plan, if said." },
+      note: { type: "string", description: "Only a note the person asked to record on the plan. Never restate the amounts or the spread here." },
     },
     required: ["opportunity", "from"],
     async prepare(params, ctx) {
