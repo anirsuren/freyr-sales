@@ -344,6 +344,69 @@ export const ACTIONS: ActionDef[] = [
     done: (p) => ({ text: `${p.person} is no longer on the goal "${p.goalName}".`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
   },
   {
+    /* A WHOLE GROUP GOES ON A GOAL IN ONE MOVE. The Goals page has done this
+       since groups existed (POST /api/performance op assign-goal-group), but
+       the agent had no tool for it, so asked to put group 2 on Renewals it
+       announced that "the system requires assigning individual people" and
+       offered to add the five of them one by one. A missing tool became a
+       false statement about the product (Anir, Sep 27: "is this true?"). */
+    key: "assign_goal_group",
+    title: "Put a whole group on a goal",
+    description: "Assign every member of a group to a goal in one move, optionally with a target for the group. Use this when the person names a group rather than a colleague.",
+    module: "/performance",
+    gate: "write",
+    fields: {
+      goal: { type: "string", description: "Goal id or name from read_workspace goals." },
+      group: { type: "string", description: "Group id or name from read_workspace team." },
+      target: { type: "number", description: "The group's target in the goal's unit. Omit unless the person gave one; never invent 0." },
+    },
+    required: ["goal", "group"],
+    async prepare(params) {
+      const goal = await resolveGoal(params.goal);
+      if (!goal.ok) return { error: goal.error };
+      const group = await resolveGroup(params.group);
+      if (!group.ok) return { error: group.error };
+      const wantsTarget = params.target !== undefined && params.target !== null && params.target !== "" && Number(params.target) !== 0;
+      const parsedTarget = wantsTarget ? parseMoney(params.target) : null;
+      if (wantsTarget && parsedTarget === null) return { error: "The target must be a number." };
+      const target = wantsTarget && parsedTarget !== null ? parsedTarget : undefined;
+      /* Say who that is. "Put group 2 on Renewals" is five people changing
+         work, and the person confirming should see the five names. */
+      const people = [group.value.head, ...(group.value.members ?? [])].filter(Boolean);
+      const named = [...new Set(people)];
+      return {
+        summary: `Put the group "${group.value.name}" on the goal "${goal.value.name}"${target !== undefined ? ` with a target of ${target.toLocaleString("en-US")}` : ""}. That is ${named.length} ${named.length === 1 ? "person" : "people"}: ${named.join(", ")}.`,
+        params: { goalId: goal.value.id, goalName: goal.value.name, groupId: group.value.id, groupName: group.value.name, ...(target !== undefined ? { target } : {}) },
+      };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "assign-goal-group", goalId: p.goalId, groupId: p.groupId, ...(p.target !== undefined ? { target: p.target } : {}) } }),
+    done: (p) => ({ text: `The group "${p.groupName}" is now on the goal "${p.goalName}".`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
+  },
+  {
+    key: "unassign_goal_group",
+    title: "Take a whole group off a goal",
+    description: "Remove a group from a goal in the Goals plan.",
+    module: "/performance",
+    gate: "write",
+    fields: {
+      goal: { type: "string", description: "Goal id or name." },
+      group: { type: "string", description: "Group id or name." },
+    },
+    required: ["goal", "group"],
+    async prepare(params) {
+      const goal = await resolveGoal(params.goal);
+      if (!goal.ok) return { error: goal.error };
+      const group = await resolveGroup(params.group);
+      if (!group.ok) return { error: group.error };
+      return {
+        summary: `Take the group "${group.value.name}" off the goal "${goal.value.name}".`,
+        params: { goalId: goal.value.id, goalName: goal.value.name, groupId: group.value.id, groupName: group.value.name },
+      };
+    },
+    call: (p) => ({ method: "POST", path: "/api/performance", body: { op: "unassign-goal-group", goalId: p.goalId, groupId: p.groupId } }),
+    done: (p) => ({ text: `The group "${p.groupName}" is no longer on the goal "${p.goalName}".`, link: `/performance/goal/${encodeURIComponent(String(p.goalId))}` }),
+  },
+  {
     key: "log_goal_actual",
     title: "Log a result against a goal",
     description: "Record a number (revenue, meetings, whatever the goal counts) for a person on a goal, optionally tied to an account and dated. It is logged as reported and waits for the group head to verify.",

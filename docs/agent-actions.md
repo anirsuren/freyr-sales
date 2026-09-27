@@ -653,3 +653,17 @@ Anir decides on by name.
   (tests/agent-goal-summary.test.mjs holds the whole goals answer under 20k
   characters). "Who is on the Sales Meetings Held (In-Person) goal" now lists
   the five people. Probe assignment reverted, goal back to nobody.
+- Sep 28, 01:10 UTC: asked on production to "assign group 2 to the renewals
+  goal", the agent answered "I cannot assign a group directly to a goal, as the
+  system requires assigning individual people" and offered to add the five
+  members one at a time. That is FALSE about the product: /api/performance has
+  had assign-goal-group and unassign-goal-group since groups existed, and the
+  Renewals goal already carries assignments stamped assignedBy "group". The
+  agent simply had no tool for it and turned its own gap into a statement about
+  the app, which is the worst shape an agent error can take. Actions 22 and 23,
+  assign_goal_group and unassign_goal_group, map to those two ops. The summary
+  names the people, because putting a group on a goal is five people's work
+  changing and the person confirming should see who. Proven end to end over
+  WhatsApp on an empty goal and undone; Renewals was snapshotted and never
+  written to, since its existing group-sourced assignments made a clean restore
+  uncertain.

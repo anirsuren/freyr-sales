@@ -252,6 +252,8 @@ export function actionAccessLine(firstName: string, s: ActionAccessSummary): str
 export const ACTION_LABELS: Record<string, string> = {
   assign_goal: "Assign goal",
   unassign_goal: "Unassign goal",
+  assign_goal_group: "Assign group to goal",
+  unassign_goal_group: "Unassign group from goal",
   log_goal_actual: "Log goal result",
   move_group_member: "Move group member",
   update_opportunity: "Update deal",
