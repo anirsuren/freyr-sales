@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { APP_SESSION_COOKIE, signAppSession } from "@/lib/appSession";
 import { ACCESS_COOKIE, normalizeWorkspaceRole, signAccessGrant } from "@/lib/accessControl";
 import { DATA_MODE_COOKIE } from "@/lib/dataMode";
+import { downloadWhatsAppMedia } from "@/lib/whatsapp";
+import { transcribeVoiceNote, voiceNoteConfigured } from "@/lib/voiceNote";
 import {
   appendAgentExchange,
   latestChannelConversation,
@@ -212,7 +214,7 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
       const who = user?.display_name || user?.email || "you";
       await reply(
         message.from,
-        `${member ? "Switched" : "Connected"}. This is your Freyr agent, and it answers as ${who}. Ask about your accounts, deals, offerings or market news.`,
+        `${member ? "Switched to" : "Connected as"} ${who}. Ask your Freyr agent about your accounts, deals, offerings or market news. It works for you, with your access.`,
         options
       );
       return;
@@ -231,8 +233,28 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
     return;
   }
 
-  if (message.type !== "text" || !message.text) {
-    await reply(message.from, "I can only read text here for now. Type your question.", options);
+  /* A VOICE NOTE IS A QUESTION TOO (Anir, Sep 27). Meta hands over the file
+     by id; it is transcribed and then treated exactly like typed text, and the
+     reply opens with what was heard so a mis-hearing is obvious. */
+  let incomingText = message.text;
+  let heard: string | null = null;
+  if (message.type === "audio" && message.mediaId) {
+    if (!voiceNoteConfigured()) {
+      await reply(message.from, "Voice notes aren't switched on here yet. Type your question.", options);
+      return;
+    }
+    const media = await downloadWhatsAppMedia(message.mediaId, config, options.fetchImpl);
+    const speech = media ? await transcribeVoiceNote(media.bytes, media.mimeType, options.fetchImpl) : null;
+    if (!speech?.ok) {
+      console.warn("[whatsapp] voice note not transcribed", { from: `...${message.from.slice(-4)}`, reason: media ? speech?.reason : "download failed" });
+      await reply(message.from, "I couldn't make out that voice note. Try again, or type it.", options);
+      return;
+    }
+    heard = speech.text;
+    incomingText = speech.text;
+  }
+  if (!incomingText) {
+    await reply(message.from, "I can read text and voice notes here. Type or record your question.", options);
     return;
   }
 
@@ -249,7 +271,7 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
   void markWhatsAppRead(message.id, config, options.fetchImpl);
   /* ONE LINE PER INBOUND, so a "did my text arrive?" can be answered from
      the container log without exposing the number (Sep 27). */
-  console.log("[whatsapp] inbound", { from: `...${message.from.slice(-4)}`, member: user.display_name ?? member.scope.userId, chars: message.text.length });
+  console.log("[whatsapp] inbound", { from: `...${message.from.slice(-4)}`, member: user.display_name ?? member.scope.userId, chars: incomingText.length, voice: !!heard });
 
   const latest = await latestChannelConversation(member.scope, "whatsapp");
   const continues = !!latest && Date.now() - latest.updated < CONTINUE_WITHIN_MS;
@@ -278,7 +300,7 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
         "Content-Type": "application/json",
         Cookie: await cookiesFor(user, member.scope),
       },
-      body: JSON.stringify({ message: message.text, history, path: "/agent", channel: "whatsapp", conversationId }),
+      body: JSON.stringify({ message: incomingText, history, path: "/agent", channel: "whatsapp", conversationId }),
       signal: AbortSignal.timeout(CONVERSE_TIMEOUT_MS),
     });
     answer = (await response.json().catch(() => null)) as ConverseReply | null;
@@ -309,13 +331,13 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
     return;
   }
 
-  const delivered = await reply(message.from, toWhatsAppText(answer.reply, options.publicOrigin), options);
+  const delivered = await reply(message.from, `${heard ? `Heard: "${heard}"\n\n` : ""}${toWhatsAppText(answer.reply, options.publicOrigin)}`, options);
   console.log("[whatsapp] replied", { to: `...${message.from.slice(-4)}`, member: user.display_name ?? member.scope.userId, delivered, chars: answer.reply.length });
   if (!delivered) return;
   await appendAgentExchange(member.scope, {
     conversationId,
     channel: "whatsapp",
-    userText: message.text,
+    userText: incomingText,
     agentText: answer.reply,
     suggestions: Array.isArray(answer.suggestions) ? answer.suggestions : [],
     entityContext: Array.isArray(answer.entityContext) ? answer.entityContext : [],

@@ -44,7 +44,7 @@ test("messages come out of Meta's envelope; receipts and other fields do not", (
   const messages = wa.parseInboundMessages(payload);
   assert.equal(messages.length, 2);
   assert.deepEqual(messages[0], {
-    id: "wamid.A", from: "15550100001", name: "Anir", timestamp: 1758900000000, phoneNumberId: "PNID", type: "text", text: "How is GSK doing?",
+    id: "wamid.A", from: "15550100001", name: "Anir", timestamp: 1758900000000, phoneNumberId: "PNID", type: "text", text: "How is GSK doing?", mediaId: "", mimeType: "",
   });
   assert.equal(messages[1].type, "image");
   assert.equal(messages[1].text, "");
@@ -164,4 +164,27 @@ test("the app reaches itself on the address the server is bound to", async () =>
   assert.equal(internalAppOrigin({ PORT: "8080", HOSTNAME: "ip-10-0-1-23" }), "http://ip-10-0-1-23:8080");
   assert.equal(internalAppOrigin({ PORT: "3000", HOSTNAME: "ip-10-0-1-23", APP_INTERNAL_ORIGIN: "http://localhost:3000/" }), "http://localhost:3000");
   assert.equal(internalAppOrigin({}), "http://127.0.0.1:3000");
+});
+
+test("a voice note comes through with its media id and mime type", async () => {
+  const wa = await import("../lib/whatsapp.ts");
+  const messages = wa.parseInboundMessages({
+    object: "whatsapp_business_account",
+    entry: [{ changes: [{ field: "messages", value: { metadata: { phone_number_id: "PNID" }, contacts: [], messages: [
+      { from: "15550100001", id: "wamid.V", timestamp: "1758900002", type: "audio", audio: { id: "media-1", mime_type: "audio/ogg; codecs=opus", voice: true } },
+    ] } }] }],
+  });
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].type, "audio");
+  assert.equal(messages[0].text, "");
+  assert.equal(messages[0].mediaId, "media-1");
+  assert.equal(messages[0].mimeType, "audio/ogg; codecs=opus");
+  const voice = await import("../lib/voiceNote.ts");
+  assert.equal(voice.voiceNoteConfigured({}), false);
+  const calls = [];
+  const fetchImpl = async (url, init) => { calls.push({ url, name: init.body.get("file").name, model: init.body.get("model") }); return new Response("  hello from the road  ", { status: 200 }); };
+  const out = await voice.transcribeVoiceNote(Buffer.from("ogg-bytes"), "audio/ogg; codecs=opus", fetchImpl, { OPENAI_API_KEY: "k" });
+  assert.deepEqual(out, { ok: true, text: "hello from the road" });
+  assert.equal(calls[0].name, "voice-note.ogg");
+  assert.equal(calls[0].model, "whisper-1");
 });

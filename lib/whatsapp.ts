@@ -88,6 +88,9 @@ export type InboundMessage = {
   type: string;
   /** Empty for anything that is not a text message. */
   text: string;
+  /** For a voice note (type "audio"): Meta's media id and the file's mime type. */
+  mediaId: string;
+  mimeType: string;
 };
 
 /**
@@ -117,6 +120,7 @@ export function parseInboundMessages(payload: unknown): InboundMessage[] {
         const from = normalizePhone(String(message.from));
         const type = String(message.type ?? "unknown");
         const text = (message.text ?? {}) as Record<string, unknown>;
+        const audio = (message.audio ?? {}) as Record<string, unknown>;
         const seconds = Number(message.timestamp);
         out.push({
           id: String(message.id),
@@ -126,6 +130,8 @@ export function parseInboundMessages(payload: unknown): InboundMessage[] {
           phoneNumberId,
           type,
           text: type === "text" ? String(text.body ?? "").trim() : "",
+          mediaId: type === "audio" ? String(audio.id ?? "") : "",
+          mimeType: type === "audio" ? String(audio.mime_type ?? "") : "",
         });
       }
     }
@@ -312,4 +318,29 @@ export async function markWhatsAppRead(
 export function waMeLink(businessNumber: string, code: string): string | null {
   const digits = normalizePhone(businessNumber);
   return digits ? `https://wa.me/${digits}?text=${encodeURIComponent(code)}` : null;
+}
+
+/**
+ * A VOICE NOTE'S BYTES. Meta hands over media in two hops, both with the
+ * access token: the media record (a short-lived download URL) and then the
+ * file itself. Null when there is no token or either hop fails.
+ */
+export async function downloadWhatsAppMedia(
+  mediaId: string,
+  config: WhatsAppConfig,
+  fetchImpl: typeof fetch = fetch
+): Promise<{ bytes: Buffer; mimeType: string } | null> {
+  if (!config.accessToken || !mediaId) return null;
+  const headers = { Authorization: `Bearer ${config.accessToken}` };
+  try {
+    const record = await fetchImpl(`https://graph.facebook.com/${config.graphVersion}/${encodeURIComponent(mediaId)}`, { headers });
+    if (!record.ok) return null;
+    const meta = (await record.json().catch(() => null)) as { url?: string; mime_type?: string } | null;
+    if (!meta?.url) return null;
+    const file = await fetchImpl(meta.url, { headers });
+    if (!file.ok) return null;
+    return { bytes: Buffer.from(await file.arrayBuffer()), mimeType: meta.mime_type || file.headers.get("content-type") || "audio/ogg" };
+  } catch {
+    return null;
+  }
 }

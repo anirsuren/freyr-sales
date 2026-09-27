@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessageCircle, RefreshCw } from "lucide-react";
+import { CheckCircle2, MessageCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 
 /**
@@ -15,6 +16,12 @@ import { useToast } from "@/components/ui/Toast";
  * it to the workspace's WhatsApp number from their own phone, and the number
  * the text came from is the one that gets connected. Proof of possession, no
  * formatting arguments, no wrong digits.
+ *
+ * The code lives in a POP-UP, not on the card (Anir, Sep 27, on prod: "this
+ * is ugly... it should be like a pop-up"): Connect opens a fixed-size dialog
+ * with the QR on one side and the code on the other, and the dialog turns
+ * into "Connected" on its own when the text lands. The card only ever says
+ * connected or not.
  */
 
 type Status = {
@@ -38,12 +45,22 @@ function fmtDay(iso: string) {
     : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** mm:ss until the code stops working; "0:00" once it has. */
+function remaining(expires: string, now: number) {
+  const left = Math.max(0, Math.floor((Date.parse(expires) - now) / 1000));
+  return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+}
+
 export function WhatsAppCard() {
   const { toast } = useToast();
   const [status, setStatus] = useState<Status | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  /* The dialog keeps showing "Connected" after the text lands, until Done. */
+  const [linkedInDialog, setLinkedInDialog] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const hadPending = useRef(false);
 
   const load = useCallback(async () => {
@@ -64,8 +81,8 @@ export function WhatsAppCard() {
     void load();
   }, [load]);
 
-  /* While a code is out there, watch for the text to arrive so the card flips
-     to Connected on its own; the phone is in the other hand. */
+  /* While a code is out there, watch for the text to arrive so the dialog and
+     the card flip to Connected on their own; the phone is in the other hand. */
   useEffect(() => {
     if (!status?.pending) {
       hadPending.current = false;
@@ -76,11 +93,19 @@ export function WhatsAppCard() {
       const next = await load();
       if (next?.link && hadPending.current) {
         hadPending.current = false;
+        setLinkedInDialog(true);
         toast(`WhatsApp connected: ${next.link.number}.`);
       }
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [status?.pending, load, toast]);
+
+  /* The countdown only ticks while the dialog shows a code. */
+  useEffect(() => {
+    if (!dialogOpen || !status?.pending) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [dialogOpen, status?.pending]);
 
   async function start() {
     setBusy(true);
@@ -89,14 +114,22 @@ export function WhatsAppCard() {
       const data = (await response.json().catch(() => null)) as (Status & { error?: string }) | null;
       if (!response.ok || !data) throw new Error(data?.error || "Could not start.");
       setStatus(data);
+      setNow(Date.now());
     } catch (error) {
       toast(error instanceof Error ? error.message : "Could not start the link.", "error");
+      setDialogOpen(false);
     } finally {
       setBusy(false);
     }
   }
 
-  async function disconnect() {
+  function openConnect() {
+    setLinkedInDialog(false);
+    setDialogOpen(true);
+    if (!status?.pending || Date.parse(status.pending.expires) <= Date.now()) void start();
+  }
+
+  async function disconnect(quiet = false) {
     setBusy(true);
     try {
       const response = await fetch("/api/profile/whatsapp", { method: "DELETE" });
@@ -104,12 +137,19 @@ export function WhatsAppCard() {
       if (!response.ok || !data) throw new Error("Could not disconnect.");
       setStatus(data);
       setConfirmOpen(false);
-      toast("WhatsApp disconnected.");
+      if (!quiet) toast("WhatsApp disconnected.");
     } catch {
       toast("Could not disconnect. Try again.", "error");
     } finally {
       setBusy(false);
     }
+  }
+
+  /* Closing the dialog while a code is still out there withdraws the code, so
+     nothing is left waiting for a text nobody will send. */
+  function closeDialog() {
+    setDialogOpen(false);
+    if (status?.pending && !status.link) void disconnect(true);
   }
 
   const configured = !!status?.configured;
@@ -120,6 +160,9 @@ export function WhatsAppCard() {
       : !configured
         ? "Freyr's WhatsApp number is not set up yet. An admin adds Meta's keys on the server."
         : null;
+  const pending = status?.pending ?? null;
+  const expired = !!pending && Date.parse(pending.expires) <= now;
+  const showConnected = !!status?.link && (linkedInDialog || !pending);
 
   return (
     <div>
@@ -127,7 +170,7 @@ export function WhatsAppCard() {
         <span className="flex items-center gap-1.5 text-[13px] font-medium text-text-primary">
           <MessageCircle size={15} strokeWidth={1.9} className="text-blue-primary" aria-hidden="true" />
           WhatsApp
-          <InfoHint text="Text your Freyr agent from your own phone. It answers with your access, nothing more, and every WhatsApp chat also appears on the Agent page. Connecting takes one text: send the code shown here to Freyr's WhatsApp number from the phone you want to use." />
+          <InfoHint text="Text your Freyr agent from your own phone. It answers with your access, nothing more, and every WhatsApp chat also appears on the Agent page. Connecting takes one text: scan the code shown when you press Connect, or type it, from the phone you want to use." />
         </span>
         <span className="text-[12px] font-medium text-text-secondary">
           {!status ? "" : status.link ? "Connected" : configured ? "Not connected" : "Not set up"}
@@ -152,50 +195,6 @@ export function WhatsAppCard() {
             Disconnect
           </Button>
         </div>
-      ) : status?.pending ? (
-        <div className="mt-2.5 flex items-start justify-between gap-5 rounded-xl border border-blue-primary/30 bg-blue-light/60 p-4">
-         <div className="min-w-0">
-          <p className="text-[12.5px] text-text-secondary">
-            From your phone, text this code to{" "}
-            <span className="font-medium tabular-nums text-text-primary">
-              {status.businessNumber || "Freyr's WhatsApp number"}
-            </span>
-            . It works for 15 minutes.
-          </p>
-          <p className="mt-2 font-mono text-[30px] font-semibold tracking-[0.18em] tabular-nums text-text-primary">
-            {fmtCode(status.pending.code)}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {status.pending.waMe ? (
-              <a
-                href={status.pending.waMe}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white hover:bg-blue-hover"
-              >
-                Open WhatsApp with the code
-              </a>
-            ) : null}
-            <Button type="button" variant="ghost" className="px-3 py-2 text-[13px]" onClick={() => void start()} disabled={busy}>
-              <RefreshCw size={13} strokeWidth={2} aria-hidden="true" />
-              New code
-            </Button>
-            <span className="text-[11.5px] text-text-tertiary">Waiting for your text…</span>
-          </div>
-         </div>
-          {status.pending.qr ? (
-            <figure className="shrink-0 text-center">
-              <img
-                src={status.pending.qr}
-                alt="QR code that opens WhatsApp with the code filled in"
-                width={132}
-                height={132}
-                className="rounded-lg border border-border-light bg-white p-1"
-              />
-              <figcaption className="mt-1.5 w-[132px] text-[11px] leading-snug text-text-tertiary">Scan with your phone: WhatsApp opens with the code typed in.</figcaption>
-            </figure>
-          ) : null}
-        </div>
       ) : (
         <div className="mt-2.5 flex items-center justify-between gap-4">
           <p className="text-[12.5px] leading-relaxed text-text-secondary">
@@ -205,15 +204,105 @@ export function WhatsAppCard() {
             type="button"
             variant="secondary"
             className="shrink-0 px-3.5 py-2 text-[13px]"
-            onClick={() => void start()}
+            onClick={openConnect}
             disabled={busy || !!startBlockedBecause}
             title={startBlockedBecause ?? undefined}
-            loading={busy}
           >
             Connect my phone
           </Button>
         </div>
       )}
+
+      <Modal
+        open={dialogOpen}
+        onClose={showConnected ? () => setDialogOpen(false) : closeDialog}
+        title={showConnected ? "WhatsApp connected" : "Connect your phone"}
+        size="wide"
+        bodyClassName="h-[360px]"
+      >
+        {showConnected && status?.link ? (
+          <div className="flex h-full flex-col items-center justify-center text-center">
+            <CheckCircle2 size={44} strokeWidth={1.6} className="text-success" aria-hidden="true" />
+            <p className="mt-4 text-[17px] font-semibold text-text-primary">
+              Connected as {status.link.name || status.link.number}
+            </p>
+            <p className="mt-1.5 max-w-[380px] text-[13px] leading-relaxed text-text-secondary">
+              Text {status.businessNumber || "Freyr's number"} from{" "}
+              <span className="font-medium tabular-nums text-text-primary">{status.link.number}</span> and your agent answers.
+              Every chat also shows up on the Agent page.
+            </p>
+            <Button type="button" variant="primary" className="mt-6 px-5 py-2 text-[13px]" onClick={() => setDialogOpen(false)}>
+              Done
+            </Button>
+          </div>
+        ) : !pending ? (
+          <div className="flex h-full items-center justify-center text-[13px] text-text-secondary">Getting your code…</div>
+        ) : (
+          <div className="flex h-full flex-col">
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              One text from the phone you want to use connects it. Scan the code with your phone, or type it into WhatsApp yourself.
+            </p>
+            <div className="mt-4 grid flex-1 grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] gap-6">
+              <section className="flex flex-col items-center justify-center text-center">
+                {pending.qr ? (
+                  <img
+                    src={pending.qr}
+                    alt="QR code that opens WhatsApp with the code filled in"
+                    width={184}
+                    height={184}
+                    className="rounded-xl border border-border-light bg-white p-1.5"
+                  />
+                ) : null}
+                <p className="mt-3 text-[13px] font-medium text-text-primary">Scan with your phone</p>
+                <p className="mt-0.5 max-w-[220px] text-[12px] leading-snug text-text-secondary">
+                  WhatsApp opens with the code typed in. Press send.
+                </p>
+              </section>
+              <div className="bg-border-light" aria-hidden="true" />
+              <section className="flex flex-col items-center justify-center text-center">
+                <p className="text-[13px] font-medium text-text-primary">Or text this code</p>
+                <p className="mt-0.5 text-[12px] text-text-secondary">
+                  to <span className="font-medium tabular-nums text-text-primary">{status?.businessNumber || "Freyr's WhatsApp number"}</span>
+                </p>
+                <p
+                  className={`mt-3 font-mono text-[34px] font-semibold tracking-[0.2em] tabular-nums ${expired ? "text-text-tertiary line-through" : "text-text-primary"}`}
+                >
+                  {fmtCode(pending.code)}
+                </p>
+                {pending.waMe ? (
+                  <a
+                    href={pending.waMe}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex items-center justify-center rounded-md bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white hover:bg-blue-hover"
+                  >
+                    Open WhatsApp with the code
+                  </a>
+                ) : null}
+              </section>
+            </div>
+            <div className="mt-4 flex items-center justify-between border-t border-border-light pt-3 text-[12px] text-text-tertiary">
+              <span className="flex items-center gap-2">
+                {expired ? (
+                  "This code has expired."
+                ) : (
+                  <>
+                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-blue-primary" aria-hidden="true" />
+                    Waiting for your text… this flips to Connected on its own.
+                  </>
+                )}
+              </span>
+              <span className="flex items-center gap-3">
+                {!expired ? <span className="tabular-nums">Code works for {remaining(pending.expires, now)}</span> : null}
+                <Button type="button" variant="ghost" className="px-2.5 py-1.5 text-[12px]" onClick={() => void start()} disabled={busy}>
+                  <RefreshCw size={12} strokeWidth={2} aria-hidden="true" />
+                  New code
+                </Button>
+              </span>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <ConfirmDialog
         open={confirmOpen}
