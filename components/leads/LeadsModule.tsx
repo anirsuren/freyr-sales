@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   BadgeCheck,
+  Check,
   Ban,
   CalendarDays,
   CheckCircle2,
@@ -216,6 +217,13 @@ export function LeadsModule({
   const [editing, setEditing] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
+  /* A PROFILE THAT HAS ALREADY BEEN READ IS NOT A TEXT BOX (Anir, Sep 27:
+     "why am I able to change this LinkedIn profile? It's already scraped and
+     ingested that"). Changing the link re-reads the profile and replaces what
+     is stored, so it takes a deliberate press, not a stray keystroke in a form
+     opened to fix a phone number. Resets every time the dialog opens. */
+  const [linkedinUnlocked, setLinkedinUnlocked] = useState(false);
+  useEffect(() => { setLinkedinUnlocked(false); }, [editing?.id, editing === null]);
   const [confirmDelete, setConfirmDelete] = useState<Lead | null>(null);
   /** Which lead is folded open. Same mechanic as every other list here. */
   const [openRow, setOpenRow] = useState<string | null>(null);
@@ -1352,19 +1360,37 @@ export function LeadsModule({
               })()}
             </Field>
             <div className="sm:col-span-2">
-              <Field label="LinkedIn profile" hint="Add a personal profile URL. Available public profile facts are saved on this lead for AI answers; lookup may be incomplete.">
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"><LinkedInIcon size={18} /></span>
-                  <Input
-                    type="url"
-                    value={editing.linkedinUrl}
-                    maxLength={300}
-                    onChange={(e) => setEditing({ ...editing, linkedinUrl: e.target.value })}
-                    placeholder="https://www.linkedin.com/in/name"
-                    className="pl-10"
-                  />
-                </div>
-              </Field>
+              {(() => {
+                const savedUrl = editing.id ? state.leads.find((lead) => lead.id === editing.id)?.linkedinUrl || "" : "";
+                const locked = Boolean(savedUrl) && !linkedinUnlocked;
+                return <Field label="LinkedIn profile" hint={locked
+                  ? "This profile has already been read and its public facts are stored on the lead. Press Change to point at a different profile; saving then reads the new one and replaces what is stored."
+                  : "Add a personal profile URL. Available public profile facts are saved on this lead for AI answers; lookup may be incomplete."}>
+                  {locked ? (
+                    <div className="flex min-h-[40px] items-center gap-2 rounded-xl border border-border-light bg-blue-light/25 px-3 py-2">
+                      <LinkedInIcon size={18} />
+                      <a href={savedUrl} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate text-[13px] font-medium text-blue-primary hover:underline">{savedUrl}</a>
+                      <span className="hidden shrink-0 items-center gap-1 text-[11.5px] font-semibold text-text-secondary sm:inline-flex"><Check size={13} strokeWidth={2.4} /> Read</span>
+                      <button type="button" onClick={() => setLinkedinUnlocked(true)}
+                        className="shrink-0 cursor-pointer rounded-lg border border-border-light bg-white px-2.5 py-1 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary">
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"><LinkedInIcon size={18} /></span>
+                      <Input
+                        type="url"
+                        value={editing.linkedinUrl}
+                        maxLength={300}
+                        onChange={(e) => setEditing({ ...editing, linkedinUrl: e.target.value })}
+                        placeholder="https://www.linkedin.com/in/name"
+                        className="pl-10"
+                      />
+                    </div>
+                  )}
+                </Field>;
+              })()}
             </div>
             <Field label="Source">
               <ColorSelect
