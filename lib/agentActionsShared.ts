@@ -243,3 +243,35 @@ export function actionAccessLine(firstName: string, s: ActionAccessSummary): str
     "never offer, suggest or list an action above their level, and never point them at a page button for it."
   );
 }
+
+/**
+ * THE CHIP ON THE APPROVAL CARD: what kind of change this is, in two or three
+ * words, so the card says "Assign goal" above the sentence rather than making
+ * the sentence carry everything. Pure, because the card is a client component.
+ */
+export const ACTION_LABELS: Record<string, string> = {
+  assign_goal: "Assign goal",
+  unassign_goal: "Unassign goal",
+  log_goal_actual: "Log goal result",
+  move_group_member: "Move group member",
+  update_opportunity: "Update deal",
+  create_opportunity: "New deal",
+  assign_customer_owner: "Account owner",
+  add_contact: "New contact",
+  set_record_people: "Record team",
+  create_lead: "New lead",
+  update_lead: "Update lead",
+  create_meeting: "Meeting",
+  star_company: "Market Intel star",
+  verify_goal_result: "Verify result",
+  send_back_goal_result: "Send result back",
+  create_customer: "New customer",
+  create_solutioning_request: "Solutioning request",
+  set_followup: "Follow-up",
+  log_touch: "Log a touch",
+  save_draft: "Save draft",
+};
+
+export function actionLabel(action: string): string {
+  return ACTION_LABELS[action] ?? action.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+}

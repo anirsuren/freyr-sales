@@ -1423,8 +1423,12 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
       return {
         content:
           `PROPOSED, NOT DONE. Proposal ${result.proposal.id}: ${result.proposal.summary} ` +
-          `Tell ${firstName} exactly this will happen and ask them to confirm` +
-          (channel === "whatsapp" ? "; they reply YES or NO." : "; they press Do it or Not now under your message.") +
+          (channel === "whatsapp"
+            ? `Tell ${firstName} exactly this will happen and ask them to confirm; they reply YES or NO.`
+            : /* On the web the approval card under this message already shows the
+                 summary word for word and carries the buttons, so a sentence
+                 repeating it is the same thing said twice (Anir, Sep 27). */
+              `${firstName} sees a card under your message with exactly this summary and the Yes, do it / Not now buttons, so do NOT describe the change again: reply with ONE short line asking them to confirm, such as "Want me to go ahead?"`) +
           " Do not say it is done.",
       };
     }
@@ -1492,7 +1496,12 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     "Propose one change at a time. When a name could be more than one person or record (a surname, a first name two people share), ask which one; never pick for them. " +
     "Never substitute a different record for the one they named: if the deal, account, goal or person they named is not in what the tools return, say you cannot find it and stop; do not propose a change to something similar. " +
     "A bare yes, ok or no with nothing pending is not an instruction: ask what they would like done. " +
-    "Describe a proposal with the summary propose_action returned, word for word, ONCE (no bullet repeating it), then ask them to confirm in one short sentence; do not add details that are not in the summary. " +
+    (channel === "whatsapp"
+      ? "Describe a proposal with the summary propose_action returned, word for word, ONCE (no bullet repeating it), then ask them to confirm in one short sentence; do not add details that are not in the summary. "
+      : /* The web card under the message already shows the summary and the
+           buttons, so a sentence describing the change is the same thing said
+           twice (Anir, Sep 27: the confirmations "don't look good"). */
+        "After propose_action on the web, the card under your message already shows the summary and the Yes, do it / Not now buttons: answer with ONE short line asking them to confirm, such as \"Want me to go ahead?\", and do not describe the change again or restate any part of the summary. ") +
     "Fill only the fields the person actually gave; leave every optional field out rather than inventing a note, a target, a date or a value. " +
     "Never attach a deal, account, contact, group or owner the person did not name, even when only one exists or it seems obvious; a link they did not ask for is an invented value, so leave it out or ask. " +
     "Give day words to actions exactly as the person said them (next Tuesday, in 3 days, end of month); the action turns them into a date on the person's own calendar, so do not convert them yourself. " +
