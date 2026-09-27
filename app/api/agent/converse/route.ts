@@ -1429,7 +1429,11 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
                  summary word for word and carries the buttons, so a sentence
                  repeating it is the same thing said twice (Anir, Sep 27). */
               `${firstName} sees a card under your message with exactly this summary and the Yes, do it / Not now buttons, so do NOT describe the change again: reply with ONE short line asking them to confirm, such as "Want me to go ahead?"`) +
-          " Do not say it is done.",
+          " Do not say it is done." +
+          /* The strongest place to say it: the tool result is what the model
+             follows word for word. A second change asked for in the same
+             message must be named here or it is quietly dropped. */
+          " If they asked for more than one change in that message, end with one line naming the ones still waiting, in this shape: \"Still waiting: Vertex. Tell me after this one and I'll propose it.\" Never say another change is next or queued as if it will happen on its own.",
       };
     }
     if (name === "run_action") {
@@ -1493,7 +1497,12 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     "(1) propose_action, which checks their permissions and records exactly what will change; " +
     "(2) ONLY after they confirm in a LATER message, run_action with that proposal id. " +
     "Before proposing, find the exact records with the read tools (read_workspace team for people and groups, goals for goals, opportunities, get_account_detail or list_accounts for accounts) and use the names and ids they return; when the person gives an exact reference (OPP-0001, LEAD-0002, a full name), pass it straight to propose_action, which resolves it itself. " +
-    "Propose one change at a time. When a name could be more than one person or record (a surname, a first name two people share), ask which one; never pick for them. " +
+    /* A yes is executed without the model (the deterministic path above), so the
+   agent cannot queue the second change itself: what it must never do is take
+   two instructions and quietly act on one (Anir, Sep 27 — "star Roche and
+   Novartis" proposed Novartis alone and said nothing about Roche). */
+    "Propose one change at a time, and NEVER drop the rest: when they ask for more than one change in one message, propose the first and add one line in exactly this shape, naming the others: \"Still waiting: Novartis. Tell me after this one and I'll propose it.\" Never say a change is next or queued as if it will happen on its own. " +
+    "When a name could be more than one person or record (a surname, a first name two people share), ask which one; never pick for them. " +
     "Never substitute a different record for the one they named: if the deal, account, goal or person they named is not in what the tools return, say you cannot find it and stop; do not propose a change to something similar. " +
     "A bare yes, ok or no with nothing pending is not an instruction: ask what they would like done. " +
     (channel === "whatsapp"
@@ -1664,7 +1673,10 @@ function tidyProposalReply(reply: string, summary: string, channel: "web" | "wha
   out = out.replace(new RegExp(`\\n+[^\\n]*here (?:is|'s) the proposal[^\\n]*\\n+(?:[*-]\\s*)?\\*{0,2}${escaped}\\.?\\*{0,2}[ \\t]*(?=\\n|$)`, "i"), "");
   out = out.replace(new RegExp(`\\n+(?:[*-]\\s*)\\*{0,2}${escaped}\\.?\\*{0,2}[ \\t]*(?=\\n|$)`, "i"), "");
   if (channel === "whatsapp") {
-    out = out.replace(/\n+[^\n]*\breply\b[^\n]*\byes\b[^\n]*$/i, "");
+    /* Every one of them, not only a trailing one: the bridge appends its own
+       "Reply YES to do this, or NO." and the model sometimes writes one in the
+       middle when there is a line after it (Sep 27). */
+    out = out.replace(/\n*[^\n]*\breply\b[^\n]*\byes\b[^\n]*(?=\n|$)/gi, "");
   }
   return out.replace(/\n{3,}/g, "\n\n").trim();
 }

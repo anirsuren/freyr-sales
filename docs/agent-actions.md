@@ -462,3 +462,16 @@ Anir decides on by name.
   WhatsApp as a BD member on dev (add with a title, change phone and title,
   read back from the database); both probe contacts deleted afterwards, no
   residue. Action tests 10/10, WhatsApp tests 11/11.
+- Sep 27, 15:05 UTC: two real bugs found by testing, both fixed. (1) "Star
+  Roche and Novartis in Market Intel" proposed Novartis alone and never
+  mentioned Roche: two instructions, one quietly dropped. The propose_action
+  tool result now requires a line naming what is still waiting ("Still
+  waiting: Vertex. Tell me after this one and I'll propose it."), and forbids
+  saying another change is queued as if it will run on its own, because a YES
+  is executed deterministically without the model and cannot pull the next one
+  through. (2) With that line present, WhatsApp showed "Reply YES to do this,
+  or NO." twice, since the model wrote one mid-message and the bridge appends
+  its own; tidyProposalReply now strips every canned yes/no line, not only a
+  trailing one. Sequence proved end to end as a BD member: propose Incyte +
+  waiting line, YES, "now Vertex", proposed, NO. Every star made while testing
+  was undone; the rep's starred list is back to zero.
