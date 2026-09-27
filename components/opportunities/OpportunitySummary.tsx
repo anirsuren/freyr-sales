@@ -381,21 +381,16 @@ function ConfidencePill({ pct }: { pct: number }) {
   );
 }
 
-/* HOW A LEVEL READS AS A LEVEL (Anir, Sep 28: "make the indent more clear,
-   it's really not clear"). Eighteen pixels a level was a nudge, not a
-   structure. Each level now steps 28px and leaves a hairline rail behind it,
-   one per open ancestor, so the eye can follow a branch back up without
-   counting chevrons. Drawn as a background so the sticky first column keeps
-   its own paint and nothing shifts when a row is hovered. */
+/* HOW A LEVEL READS AS A LEVEL (Anir, Sep 28: "make the indent more clear").
+   Each level steps 28px. The hairline rails per open ancestor are a CHOICE,
+   off unless Settings > Appearance turns them on (his second word on it:
+   "that should be an option"); they are drawn by CSS from --tree-level, so
+   the sticky first column keeps its own paint either way. */
 const LEVEL_PX = 28;
 function treeIndent(level: number): React.CSSProperties {
-  if (level <= 0) return { paddingLeft: "12px" };
   return {
-    paddingLeft: `${12 + level * LEVEL_PX}px`,
-    backgroundImage: "repeating-linear-gradient(90deg, transparent 0 11px, var(--border-light) 11px 12px, transparent 12px 28px)",
-    backgroundPosition: "12px 0",
-    backgroundSize: `${level * LEVEL_PX}px 100%`,
-    backgroundRepeat: "no-repeat",
+    paddingLeft: `${12 + Math.max(0, level) * LEVEL_PX}px`,
+    ["--tree-level" as string]: String(Math.max(0, level)),
   };
 }
 
@@ -921,7 +916,7 @@ export function OpportunitySummary({
       >
         <th
           scope="row"
-          className={cn("bg-white px-3 py-2 text-left font-normal", pinFirstColumn && "sticky left-0 z-[1]")}
+          className={cn("tree-guided bg-white px-3 py-2 text-left font-normal", pinFirstColumn && "sticky left-0 z-[1]")}
           style={{ ...nameCol, ...treeIndent(depth) }}
         >
           {/* Read once, because the button above the name needs to know
@@ -1126,7 +1121,7 @@ export function OpportunitySummary({
               >
                 <th
                   scope="row"
-                  className={cn("bg-white px-3 py-1.5 text-left font-normal", pinFirstColumn && "sticky left-0 z-[1]")}
+                  className={cn("tree-guided bg-white px-3 py-1.5 text-left font-normal", pinFirstColumn && "sticky left-0 z-[1]")}
                   style={{ ...nameCol, ...treeIndent(depth + 1) }}
                 >
                   <button

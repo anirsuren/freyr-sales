@@ -39,12 +39,13 @@ const FONT_VARIABLE_CLASSES = [plexSans, plexMono, newsreader, sourceSans, inter
   .join(" ");
 
 /** The signed-in person's chosen preset, or the default when nobody is signed in. */
-async function fontPresetForRequest(): Promise<string> {
+async function fontPresetForRequest(): Promise<{ fontPreset: string; treeGuides: boolean }> {
   try {
     const scope = await requireServerMemberScope();
-    return (await readMemberProfile(scope)).fontPreset;
+    const profile = await readMemberProfile(scope);
+    return { fontPreset: profile.fontPreset, treeGuides: profile.treeGuides };
   } catch {
-    return DEFAULT_FONT_PRESET;
+    return { fontPreset: DEFAULT_FONT_PRESET, treeGuides: false };
   }
 }
 import { AppShell } from "@/components/layout/AppShell";
@@ -126,9 +127,9 @@ export default async function RootLayout({
       : ["people"];
   }
 
-  const fontPreset = await fontPresetForRequest();
+  const { fontPreset, treeGuides } = await fontPresetForRequest();
   return (
-    <html lang="en" suppressHydrationWarning className={FONT_VARIABLE_CLASSES} data-font={fontPreset}>
+    <html lang="en" suppressHydrationWarning className={FONT_VARIABLE_CLASSES} data-font={fontPreset} {...(treeGuides ? { "data-tree-guides": "on" } : {})}>
       <head>
         {/* Apply persisted visual preferences before paint to avoid a flash. */}
         <script

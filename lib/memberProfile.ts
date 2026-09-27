@@ -9,12 +9,16 @@ export type MemberProfilePreferences = {
   signature: string;
   /** Which font combination this person chose (lib/fontPresets). */
   fontPreset: string;
+  /** Guide rails on the summary trees (Opportunities, Customers). Off unless
+   *  asked for (Anir, Sep 28: "that should be an option... a setting somewhere"). */
+  treeGuides: boolean;
 };
 
 const EMPTY_PROFILE: MemberProfilePreferences = {
   title: "",
   signature: "",
   fontPreset: DEFAULT_FONT_PRESET,
+  treeGuides: false,
 };
 
 function presetOf(value: unknown): string {
@@ -59,6 +63,7 @@ export async function readMemberProfile(
     title: clean(profile?.title, 160),
     signature: clean(profile?.signature, 4_000),
     fontPreset: presetOf(profile?.fontPreset),
+    treeGuides: profile?.treeGuides === true,
   };
 }
 
@@ -95,6 +100,7 @@ export async function readWorkspaceMemberProfiles(
       title: clean(catalog.profile?.title, 160),
       signature: clean(catalog.profile?.signature, 4_000),
       fontPreset: presetOf(catalog.profile?.fontPreset),
+      treeGuides: catalog.profile?.treeGuides === true,
     });
   }
   return profiles;
@@ -208,6 +214,8 @@ export async function writeMemberProfile(
         : clean(input.signature, 4_000),
     fontPreset:
       input.fontPreset === undefined ? current.fontPreset : presetOf(input.fontPreset),
+    treeGuides:
+      input.treeGuides === undefined ? current.treeGuides : input.treeGuides === true,
   };
   const { error } = await db.from("offering_catalog_state").upsert(
     {

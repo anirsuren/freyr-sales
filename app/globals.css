@@ -1574,6 +1574,16 @@ select:focus-visible {
   .summary-figure > * { transition: none; transform: none !important; }
 }
 
+/* GUIDE RAILS ON A SUMMARY TREE, only when the person switched them on in
+   Settings > Appearance (html[data-tree-guides="on"]). One hairline per open
+   ancestor level, 28px apart, under the chevron column of that level. */
+html[data-tree-guides="on"] .tree-guided {
+  background-image: repeating-linear-gradient(90deg, transparent 0 11px, var(--border-light) 11px 12px, transparent 12px 28px);
+  background-position: 12px 0;
+  background-size: calc(var(--tree-level, 0) * 28px) 100%;
+  background-repeat: no-repeat;
+}
+
 /* One user-controlled delay for help tooltips and other CSS hover popups. */
 .freyr-hover-trigger:hover .freyr-hover-popup {
   transition-delay: var(--freyr-hover-delay, 250ms);

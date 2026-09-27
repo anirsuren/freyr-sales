@@ -26,6 +26,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Avatar } from "@/components/ui/Avatar";
 import { ThemeSetting } from "@/components/settings/ThemeSetting";
 import { FontPresetSetting } from "@/components/settings/FontPresetSetting";
+import { TreeGuidesSetting } from "@/components/settings/TreeGuidesSetting";
 import { WhatsAppCard } from "@/components/settings/WhatsAppCard";
 import { CrmSyncCard } from "@/components/settings/CrmSyncCard";
 import { useToast } from "@/components/ui/Toast";
@@ -1437,6 +1438,7 @@ export function SettingsTabs({
             <ThemeSetting />
             <div className="border-t border-border-light pt-5">
               <FontPresetSetting />
+              <div className="mt-6 border-t border-border-light pt-6"><TreeGuidesSetting /></div>
             </div>
           </div>
         </Card>

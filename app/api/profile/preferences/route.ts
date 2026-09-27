@@ -44,6 +44,17 @@ export async function PUT(request: NextRequest) {
   if (fontOnly && !isFontPreset(body.fontPreset)) {
     return NextResponse.json({ error: "Unknown font preset." }, { status: 400 });
   }
+  /* THE TREE GUIDES SAVE ON THEIR OWN TOO, a single boolean from Appearance. */
+  const guidesOnly = body.treeGuides !== undefined && body.title === undefined && body.signature === undefined && body.fontPreset === undefined;
+  if (guidesOnly) {
+    if (typeof body.treeGuides !== "boolean") return NextResponse.json({ error: "Tree guides must be on or off." }, { status: 400 });
+    try {
+      const profile = await writeMemberProfile(scope, { treeGuides: body.treeGuides });
+      return NextResponse.json({ ok: true, profile });
+    } catch {
+      return NextResponse.json({ error: "Profile settings could not be saved." }, { status: 503 });
+    }
+  }
   if (!fontOnly && (typeof body.title !== "string" || typeof body.signature !== "string")) {
     return NextResponse.json(
       { error: "Title and signature must be text." },
