@@ -12,7 +12,7 @@ import { ViewSwitch } from "@/components/ui/ViewSwitch";
  * the pointer, and saves to the account so every device follows, the same
  * bargain as the font choice above it.
  */
-export function TreeGuidesSetting() {
+export function TreeGuidesSetting({ compact = false }: { compact?: boolean }) {
   const { toast } = useToast();
   const [on, setOn] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -46,6 +46,26 @@ export function TreeGuidesSetting() {
     }
   }
 
+  /* ON THE VIEW BAR ITSELF (Anir, Sep 28: "where is the option to make the
+     lines disappear and appear? It should be in line with this on the right
+     side"): a label and the switch, sitting where the tree is. */
+  if (compact) {
+    return (
+      <span className="ml-auto inline-flex items-center gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Guide lines</span>
+        <ViewSwitch
+          ariaLabel="Guide lines on the summary tree"
+          className="inline-flex"
+          value={on}
+          onChange={(next) => void choose(next)}
+          options={[
+            { key: false, label: "Off" },
+            { key: true, label: "On" },
+          ] as const}
+        />
+      </span>
+    );
+  }
   return (
     <div className="flex items-start justify-between gap-4">
       <div>

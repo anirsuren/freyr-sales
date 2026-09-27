@@ -99,7 +99,9 @@ export function FilterMenu({
      "search bar on these filters that are really long, this applies to all
      the pages"). One shared menu, so one box serves every page. It only
      appears past a handful of options, resets when another group opens, and
-     takes focus so the person can type the moment the list is in view. */
+     takes focus so the person can type the moment the list is in view. It
+     scrolls with the list rather than pinning (Anir, Sep 28: "the search bar
+     shouldn't be sticky here"). */
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -345,7 +347,7 @@ export function FilterMenu({
                       )}
                     </div>
                     {!current.content && current.options.length > SEARCH_FROM && (
-                      <div className="sticky top-[37px] z-10 border-b border-border-light bg-white px-2 py-1.5">
+                      <div className="border-b border-border-light bg-white px-2 py-1.5">
                         <div className="relative">
                           <Search size={13} strokeWidth={2.2} aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
                           <input

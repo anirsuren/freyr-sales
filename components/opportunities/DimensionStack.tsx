@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { TreeGuidesSetting } from "@/components/settings/TreeGuidesSetting";
 import { GripVertical, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SummaryDimension } from "./OpportunitySummary";
@@ -390,6 +391,7 @@ export function DimensionStack({
             ? "no grouping — every deal on its own line"
             : "drag to rearrange"}
       </span>
+      <TreeGuidesSetting compact />
     </div>
   );
 }
