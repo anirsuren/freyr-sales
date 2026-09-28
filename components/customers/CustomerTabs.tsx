@@ -3562,7 +3562,6 @@ export function CustomerTabs({
         body={<><b>{unmarkingKeyContact?.contact.full_name}</b> will no longer be marked as a key contact on this account.</>}
         detail="Their contact record stays on the account. You can mark them as key again anytime."
         confirmLabel="Remove key status"
-        tone="primary"
         onConfirm={() => {
           if (!unmarkingKeyContact) return;
           void toggleKeyContact(unmarkingKeyContact.contact, unmarkingKeyContact.index).then((saved) => {

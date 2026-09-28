@@ -137,7 +137,10 @@ export function MyListToggle({
       onClose={() => !busy && setConfirm(null)}
       onConfirm={() => void (confirm === "remove" ? toggleMine() : toggleStar())}
       busy={busy}
-      tone="primary"
+      /* RED, BECAUSE IT TAKES SOMETHING AWAY (Anir, Sep 28, on Stop tracking:
+         "should probably be red, by the way. It's a negative action"). Both
+         answers here remove something: one takes the company off the page,
+         the other takes its star off. */
       title={confirm === "remove" ? "Stop tracking?" : "Remove star?"}
       subject={{ name: companyName, kind: "company", imageUrl: companyLogoUrl }}
       body={confirm === "remove" ? `${companyName} will leave your Market Intel page and starred list. You can add it again from Manage ${group === "competitor" ? "competitors" : "customers"}.` : `${companyName} will no longer be starred. It will stay on your page.`}

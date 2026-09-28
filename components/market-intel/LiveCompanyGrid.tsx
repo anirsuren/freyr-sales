@@ -659,7 +659,6 @@ export function LiveCompanyGrid({
         subject={unstar ? { name: unstar.name, kind: "company", imageUrl: unstar.logoUrl } : null}
         onClose={() => setUnstar(null)}
         onConfirm={() => { if (unstar) void setStar(unstar.id, false); setUnstar(null); }}
-        tone="primary"
         title="Remove star?"
         body={`${unstar?.name ?? "This company"} will no longer be starred. It will stay on your page.`}
         confirmLabel="Remove star"
