@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { ListTree } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /**
  * GUIDE RAILS ON THE SUMMARY TREES, AS A CHOICE (Anir, Sep 28, seeing them on
@@ -50,20 +53,27 @@ export function TreeGuidesSetting({ compact = false }: { compact?: boolean }) {
      lines disappear and appear? It should be in line with this on the right
      side"): a label and the switch, sitting where the tree is. */
   if (compact) {
+    /* A VERY SUBTLE BUTTON (Anir, Sep 28, on the labelled switch: "no, no, no,
+       it should just be a very subtle button"). One quiet icon at the right
+       end of the bar, grey at rest, blue when the lines are on, with the
+       explanation in the hover. */
     return (
-      <span className="ml-auto inline-flex items-center gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Guide lines</span>
-        <ViewSwitch
-          ariaLabel="Guide lines on the summary tree"
-          className="inline-flex"
-          value={on}
-          onChange={(next) => void choose(next)}
-          options={[
-            { key: false, label: "Off" },
-            { key: true, label: "On" },
-          ] as const}
-        />
-      </span>
+      <Tooltip label={on ? "Hide the guide lines" : "Show guide lines down each open level"} className="ml-auto">
+        <button
+          type="button"
+          onClick={() => void choose(!on)}
+          aria-pressed={on}
+          aria-label={on ? "Hide guide lines" : "Show guide lines"}
+          disabled={busy}
+          className={cn(
+            "inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors",
+            on ? "bg-blue-light text-blue-primary" : "text-text-tertiary hover:bg-surface-secondary hover:text-text-secondary",
+            busy && "opacity-60"
+          )}
+        >
+          <ListTree size={15} strokeWidth={2} aria-hidden="true" />
+        </button>
+      </Tooltip>
     );
   }
   return (
