@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, ListChecks } from "lucide-react";
+import { ChevronDown, ChevronUp, LayoutGrid, ListChecks, Rows3 } from "lucide-react";
 import { CollapsibleDescription } from "@/components/offerings/CollapsibleDescription";
 import {
   renderBriefInline,
@@ -12,6 +12,8 @@ import type { ServiceCardStyle } from "@/lib/serviceCardStyle";
 import { componentGroupRank, componentNoun } from "@/lib/componentGroups";
 import { AgentAvatar, agentLeading } from "@/components/ui/AgentAvatar";
 import { cn } from "@/lib/utils";
+import { ViewSwitch } from "@/components/ui/ViewSwitch";
+import { useStoredView } from "@/lib/useStoredView";
 import { tint } from "@/lib/tint";
 
 // ---------------------------------------------------------------------------
@@ -261,6 +263,82 @@ export function parseCapabilities(text: string): ParsedBrief {
 // The card
 // ---------------------------------------------------------------------------
 
+/**
+ * WHAT IS INCLUDED, AS A TABLE. Same chrome as Related offerings, which he
+ * pointed at: a rounded card, a grey head row, one line per component, and
+ * the parts it covers in their own column instead of wrapped under a tile.
+ */
+function CapabilityTable({ items }: { items: { item: Capability; style?: ServiceCardStyle }[] }) {
+  const anyParts = items.some(({ item }) => item.subItems.length > 0);
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left">
+          <thead className="bg-surface">
+            <tr>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Component</th>
+              {anyParts && <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">What it covers</th>}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border-light">
+            {items.map(({ item, style }, index) => {
+              const displayTitle = stripBriefFormatting(item.title);
+              const { icon: Icon, color } = serviceCardMark(displayTitle, style);
+              const agent = agentLeading(displayTitle);
+              return (
+                <tr key={`${index}-${item.title}`} className="align-top transition-colors hover:bg-surface/60">
+                  <td className={cn("px-4 py-3", anyParts && "w-[46%]")}>
+                    <span className="flex items-start gap-2.5">
+                      {agent ? (
+                        <AgentAvatar name={agent} size={22} className="mt-[1px] shrink-0" />
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          /* The same tint every chip and tile in the app uses,
+                             not the palette's heavy light value, which came out
+                             as a solid block (Anir, Sep 28: "what happened to
+                             the colours of the tag? Can you fix that on the
+                             icons?"). */
+                          className="mt-[1px] flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md"
+                          style={{ background: tint(color, 10), color }}
+                        >
+                          <Icon size={13} strokeWidth={2.1} />
+                        </span>
+                      )}
+                      <span className="min-w-0 text-[13.5px] font-semibold leading-snug text-text-primary">
+                        {renderBriefInline(item.title, `row-${index}`)}
+                      </span>
+                    </span>
+                  </td>
+                  {anyParts && (
+                    <td className="px-4 py-3">
+                      {item.subItems.length === 0 ? (
+                        <span className="text-[12.5px] text-text-tertiary">·</span>
+                      ) : (
+                        <span className="flex flex-wrap gap-1.5">
+                          {item.subItems.map((part, partIndex) => (
+                            <span
+                              key={`${partIndex}-${part}`}
+                              className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+                              style={{ background: tint(color, 8), color }}
+                            >
+                              {stripBriefFormatting(part)}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function CapabilityCard({
   item,
   style,
@@ -328,7 +406,13 @@ function CapabilityCard({
             Aug 7: "keep that entire font and font style the same as the text
             here, let's just make that uniform"). The lead-in label stays bold
             because the source text marks it bold. */}
-        <span className="block break-words text-[14px] leading-relaxed text-text-secondary">
+        {/* THE MAIN LINE IS NOT GREY (Anir, Sep 28: "what's with this grey-ass
+            text? If it's the main thing and there's no header text, I need it
+            to be black or whatever the usual colour is"). It was matched to
+            the brief paragraph above it on Aug 7, back when the section was
+            prose; each card is a record now, and a record's own name reads in
+            the primary ink. */}
+        <span className="block break-words text-[14px] font-medium leading-relaxed text-text-primary">
           {item.listStyle === "number" && (
             <span className="mr-1.5 text-blue-primary tnum">
               {item.ordinal ?? 1}.
@@ -383,6 +467,8 @@ export function OfferingCapabilities({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  /* Remembered per reader, like every other view choice in the app. */
+  const [view, setView] = useStoredView("freyr.offering.included.view", "table", ["table", "cards"] as const);
   const parsed = parseCapabilities(text);
 
   // Plain prose keeps the behaviour it always had, Show more and all.
@@ -442,6 +528,21 @@ export function OfferingCapabilities({
         >
           {parsed.count} {componentNoun(parsed.count)}
         </span>
+        {/* A TABLE OR THE CARDS (Anir, Sep 28: "the related offerings look
+            good. Do the same thing for the offering brief, or at least put the
+            option for a table"). The table is what opens, because that is what
+            he asked to see; the cards stay one click away, since Saras wrote
+            the card rules for this section on Aug 26. */}
+        <ViewSwitch
+          className="ml-auto inline-flex"
+          ariaLabel="How to read what is included"
+          value={view}
+          onChange={setView}
+          options={[
+            { key: "table" as const, label: "Table", icon: Rows3 },
+            { key: "cards" as const, label: "Cards", icon: LayoutGrid },
+          ]}
+        />
       </div>
 
       <div className="mt-3 space-y-4">
@@ -469,20 +570,24 @@ export function OfferingCapabilities({
                   of it (Saras, Aug 26: "If there's only 1 single component
                   card within a group, the card should automatically extend &
                   utilize the whole whitespace in view mode"). */}
-              <ul
-                className={cn(
-                  "grid grid-cols-1 items-stretch gap-2.5",
-                  group.items.length > 1 && "md:grid-cols-2"
-                )}
-              >
-                {group.items.map(({ item, style }, ii) => (
-                  <CapabilityCard
-                    key={`${ii}-${item.title}`}
-                    item={item}
-                    style={style}
-                  />
-                ))}
-              </ul>
+              {view === "cards" ? (
+                <ul
+                  className={cn(
+                    "grid grid-cols-1 items-stretch gap-2.5",
+                    group.items.length > 1 && "md:grid-cols-2"
+                  )}
+                >
+                  {group.items.map(({ item, style }, ii) => (
+                    <CapabilityCard
+                      key={`${ii}-${item.title}`}
+                      item={item}
+                      style={style}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <CapabilityTable items={group.items} />
+              )}
             </div>
           )
         )}
