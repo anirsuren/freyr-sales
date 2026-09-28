@@ -530,7 +530,7 @@ export function LiveCompanyBriefing({
                     title={source.title}
                     className="group block max-w-full rounded px-2 py-1.5 transition-colors hover:bg-blue-light/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
                   >
-                    <span className="flex min-w-0 items-start gap-1.5 text-[11.5px] font-semibold leading-4 text-blue-primary group-hover:underline">
+                    <span className="flex min-w-0 items-start gap-1.5 text-[11.5px] font-semibold leading-4 text-text-primary transition-colors group-hover:text-blue-primary group-hover:underline">
                       <span className="min-w-0 [overflow-wrap:anywhere]">{source.title}</span>
                       <ExternalLink size={10} className="mt-0.5 shrink-0 opacity-50 transition-opacity group-hover:opacity-100" />
                     </span>
@@ -614,7 +614,7 @@ export function LiveCompanyBriefing({
               </span>
             </p>
             <h3 className="mt-1.5 text-[14px] font-semibold leading-snug text-text-primary">
-              <a href={safeHref(post.url) as string} target="_blank" rel="noreferrer" className="text-blue-primary hover:underline">{headline || item.title}</a>
+              <a href={safeHref(post.url) as string} target="_blank" rel="noreferrer" className="text-text-primary transition-colors hover:text-blue-primary hover:underline">{headline || item.title}</a>
             </h3>
             {postRemainder && <p className={cn("mt-1 whitespace-pre-line text-[12.5px] leading-relaxed text-text-secondary", isLong && !open && "overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]")}>
               {postRemainder}
@@ -944,7 +944,12 @@ export function LiveCompanyBriefing({
                               href={safeHref(item.url) as string}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex h-7 max-w-full items-center gap-1.5 text-[12px] font-semibold text-blue-primary hover:underline"
+                              /* BLUE ONLY UNDER THE CURSOR (Anir, Sep 28: "why
+                                 is everything blue? It should only be blue
+                                 when I'm hovering over the article name").
+                                 A table where every cell is painted blue says
+                                 nothing about where the doors are. */
+                              className="flex h-7 max-w-full items-center gap-1.5 text-[12px] font-semibold text-text-primary transition-colors hover:text-blue-primary hover:underline"
                               title={sourceName}
                             >
                               <RowIcon size={12} strokeWidth={2} className="shrink-0" />
@@ -966,7 +971,7 @@ export function LiveCompanyBriefing({
                               href={safeHref(item.url) as string}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex max-w-full items-start text-[13px] font-semibold leading-snug text-blue-primary hover:underline"
+                              className="inline-flex max-w-full items-start text-[13px] font-semibold leading-snug text-text-primary transition-colors hover:text-blue-primary hover:underline"
                             >
                               <span className="overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">{item.title}</span>
                             </a>
