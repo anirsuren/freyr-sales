@@ -44,6 +44,8 @@ import {
   type LeadStatus,
 } from "@/lib/leadsShared";
 import { repSlug } from "@/lib/team";
+import { LeadJourney } from "@/components/leads/LeadJourney";
+import { geographyWithFlag } from "@/lib/countryFlags";
 import { tint } from "@/lib/tint";
 import { companyDestination } from "@/lib/companyDestination";
 import { formatPhoneNumber } from "@/lib/phone";
@@ -96,16 +98,21 @@ function LeadRowDetails({ lead, columns, companyHref }: { lead: Lead; columns: n
               <p className="mt-1 text-[12.5px] leading-5 text-text-primary">
                 {lead.title && <>{lead.title} · </>}
                 <Link href={companyHref} className="font-semibold text-text-primary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{lead.company}</Link>
-                {lead.country && <> · {lead.country}</>}
+                {lead.country && <> · {geographyWithFlag(lead.country)}</>}
               </p>
               {lead.note ? <p className="mt-2 whitespace-pre-wrap text-[12px] leading-5 text-text-secondary">{lead.note}</p> : null}
               {lead.disqualifiedReason ? <p className="mt-2 text-[12px] leading-5 text-text-secondary">Reason: {lead.disqualifiedReason}</p> : null}
             </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Timeline</p>
-              <p className="mt-1 text-[12px] text-text-secondary">Came in <LocalTime value={lead.createdAt} /></p>
-              <p className="mt-1 text-[12px] text-text-secondary">Last moved <LocalTime value={lead.updatedAt || lead.createdAt} /></p>
-              <p className="mt-1 text-[12px] text-text-secondary">Owner: {lead.owner ? <Link href={`/analytics/reps/${repSlug(lead.owner)}`} className="text-text-secondary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{lead.owner}</Link> : "Unassigned"}</p>
+            {/* THE REAL TIMELINE (Anir, Sep 28: "why does the timeline not
+                show up as it should be?"). This column printed three flat
+                sentences while the leads table itself draws the journey, with
+                its rail, its dots and a dashed step for a decision that has
+                not happened. One timeline, drawn one way. */}
+            <div className="min-w-0">
+              <LeadJourney lead={lead} />
+              <p className="mt-3 text-[12px] text-text-secondary">
+                Owner: {lead.owner ? <Link href={`/analytics/reps/${repSlug(lead.owner)}`} className="text-text-secondary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{lead.owner}</Link> : "Unassigned"}
+              </p>
             </div>
           </div>
           <Link href={`/leads?lead=${encodeURIComponent(lead.ref)}`} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-primary hover:underline">
