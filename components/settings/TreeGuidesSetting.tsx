@@ -38,7 +38,8 @@ export function TreeGuidesSetting({ compact = false }: { compact?: boolean }) {
         body: JSON.stringify({ treeGuides: next }),
       });
       if (!response.ok) throw new Error("not saved");
-      toast(next ? "Guide rails on." : "Guide rails off.");
+      /* No "on"/"off" toast (Anir, Sep 28: "I don't need this pop-up, it's
+         useless"): the lines change under the pointer, which is the receipt. */
     } catch {
       setOn(previous);
       if (previous) document.documentElement.dataset.treeGuides = "on";
