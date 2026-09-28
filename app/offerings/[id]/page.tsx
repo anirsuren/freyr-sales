@@ -452,7 +452,12 @@ export default async function OfferingDetailPage({
       <OfferingBackButton />
 
       {/* Header: identity on the left, primary actions on the right */}
-      <div className="rise-in relative z-50 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+      {/* BELOW THE TOP BAR, NOT LEVEL WITH IT (Anir, Sep 28, with the account
+          menu open and these two buttons painted across it). The bar is z-50
+          and this row is later in the DOM, so at the same z the row won.
+          z-40 keeps this row's own menu above the page and under the bar,
+          which is the rule TopBar already writes down. */}
+      <div className="rise-in relative z-40 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
         <div className="min-w-0">
           {/* NO GLYPH BESIDE THE NAME (Anir, Sep 2: "can you just remove
               these icons from all the offering names? They're not really
