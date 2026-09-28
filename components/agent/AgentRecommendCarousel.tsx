@@ -22,6 +22,8 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { AgentDraftModal, type AgentDraft } from "@/components/agent/AgentDraftModal";
 import { cn } from "@/lib/utils";
 import { DRAFTABLE, type AgentAction, type AgentActionKind } from "@/lib/agent";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 const META: Record<
   AgentActionKind,
@@ -348,10 +350,12 @@ export function AgentRecommendCarousel({ actions }: { actions: AgentAction[] }) 
                   )}
                 >
                   {x.company ? (
-                    <CompanyLogo
-                      name={x.company}
-                      className="w-6 h-6 text-[8px] shrink-0"
-                    />
+                    <EntityLink nested href={customerHref(null, x.company)} className="shrink-0" title={x.company}>
+                      <CompanyLogo
+                        name={x.company}
+                        className="w-6 h-6 text-[8px] shrink-0"
+                      />
+                    </EntityLink>
                   ) : (
                     <span
                       className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"

@@ -26,6 +26,8 @@ import {
 import { cn } from "@/lib/utils";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { tint } from "@/lib/tint";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 export type AttentionRow = AgentAction & {
   value: string;
@@ -142,7 +144,9 @@ export function AgentAttentionQueue({ actions }: { actions: AttentionRow[] }) {
                 <div>
                   <div className="flex items-start gap-3">
                     <span className="relative shrink-0">
-                      <CompanyLogo name={action.company || action.title} className="h-11 w-11 text-[9px]" />
+                      <EntityLink href={action.company ? customerHref(null, action.company) : null} className="block" title={action.company || undefined}>
+                        <CompanyLogo name={action.company || action.title} className="h-11 w-11 text-[9px]" />
+                      </EntityLink>
                       <span
                         className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white"
                         style={{ background: preview.bg, color: preview.color }}
@@ -216,7 +220,9 @@ export function AgentAttentionQueue({ actions }: { actions: AttentionRow[] }) {
                   index === 0 ? "bg-error/10 text-error" : index === 1 ? "bg-warning/15 text-[#875000]" : "bg-blue-light text-blue-primary"
                 )}>{index + 1}</span>
                 <div className="flex min-w-0 items-center gap-3">
-                  <CompanyLogo name={action.company || action.title} className="h-8 w-8 shrink-0 text-[9px]" />
+                  <EntityLink nested href={action.company ? customerHref(null, action.company) : null} className="shrink-0" title={action.company || undefined}>
+                    <CompanyLogo name={action.company || action.title} className="h-8 w-8 shrink-0 text-[9px]" />
+                  </EntityLink>
                   <div className="min-w-0">
                     <p className="truncate text-[13px] font-semibold text-text-primary">{action.title}</p>
                     <p className="truncate text-[11.5px] text-text-secondary">{action.rationale}</p>

@@ -78,7 +78,6 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { companyDestination } from "@/lib/companyDestination";
-import { Avatar } from "@/components/ui/Avatar";
 import { StatTile } from "@/components/ui/StatTile";
 import { useStickyValue } from "@/lib/useStickyValue";
 import {
@@ -134,6 +133,8 @@ import { Customer360 } from "@/components/customers/Customer360";
 import type { Customer360Band } from "@/lib/customer360Shared";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref, teammateHref } from "@/lib/entityHref";
 
 /**
  * OPPORTUNITIES — Suren's pipeline, as records you can change.
@@ -2085,13 +2086,7 @@ export function OpportunitiesBrowser({
                                     Owner
                                   </span>
                                   {o.owner ? (
-                                    <span className="mt-1.5 flex items-center gap-2 text-[13px] font-semibold text-text-primary">
-                                      <Avatar
-                                        name={o.owner}
-                                        className="h-6 w-6 shrink-0 text-[8px]"
-                                      />
-                                      {o.owner}
-                                    </span>
+                                    <PersonLink name={o.owner} avatarClassName="h-6 w-6 shrink-0 text-[8px]" className="mt-1.5 flex gap-2 text-[13px] font-semibold text-text-primary" />
                                   ) : (
                                     <span className="mt-1.5 block text-[12.5px] text-text-tertiary">
                                       Nobody yet
@@ -2707,6 +2702,17 @@ export function OpportunitiesBrowser({
                walked the eye to the row in the TABLE view; in the tree that row
                does not exist yet, because it is four collapsed folds down. */
             revealDealId={flashId}
+            /* THE NAME ON A GROUP ROW IS A DOOR (Anir, Sep 28: "throughout the
+               entire app, I should be able to click on these guys and any
+               other assets"): an account row opens the account, an owner row
+               opens the person. The chevron still folds the row. */
+            rowHref={(dim, label) =>
+              dim === "customer"
+                ? customerHref(null, label)
+                : dim === "owner"
+                  ? teammateHref(label)
+                  : null
+            }
             /* A SEARCH THAT FINDS A DEAL SHOULD SHOW THE DEAL. The tree is
                collapsed on arrival by design; once the list has been narrowed
                to a handful, staying collapsed hides the very thing that was
@@ -2812,8 +2818,12 @@ export function OpportunitiesBrowser({
                   />
                   {groupBy === "customer" ? (
                     <>
-                      <CompanyLogo name={key} className="h-6 w-6 shrink-0 text-[8px]" />
-                      <b className="text-[13px] text-text-primary">{key}</b>
+                      <EntityLink nested href={customerHref(null, key)} className="shrink-0" title={key}>
+                        <CompanyLogo name={key} className="h-6 w-6 shrink-0 text-[8px]" />
+                      </EntityLink>
+                      <EntityLink nested href={customerHref(null, key)}>
+                        <b className={cn("text-[13px] text-text-primary", ENTITY_NAME)}>{key}</b>
+                      </EntityLink>
                     </>
                   ) : (
                     <OfferingChip name={key} color={lineColor({ id: "g", offeringLabel: key, value: 0 }) ?? "var(--ink-magenta)"} size="xs" />

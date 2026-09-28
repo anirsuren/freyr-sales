@@ -11,9 +11,10 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { tint } from "@/lib/tint";
+import { CompanyLink, EntityLink } from "@/components/ui/EntityLink";
+import { contactHref } from "@/lib/entityHref";
 
 // Icons arrive as KEY STRINGS, never as components — the page that feeds this
 // card is a server component and React can't serialise a function across the
@@ -140,17 +141,15 @@ export function CallQualityCard({
                       <div className="mt-2.5 space-y-1.5 border-t border-border-light pt-2.5">
                         {bucket.calls.slice(0, 5).map((call) => (
                           <div key={call.id} className="flex items-center gap-2 text-[12px]">
-                            <Avatar name={call.name} className="h-6 w-6 shrink-0 text-[8px]" />
+                            <EntityLink href={contactHref(null, call.name)} className="shrink-0 rounded-full" title={call.name}>
+                              <Avatar name={call.name} className="h-6 w-6 shrink-0 text-[8px]" />
+                            </EntityLink>
                             <span className="min-w-0 flex-1 leading-tight">
-                              <span className="block font-medium text-text-primary">
+                              <EntityLink href={contactHref(null, call.name)} className="block font-medium text-text-primary">
                                 {call.name}
-                              </span>
+                              </EntityLink>
                               <span className="flex items-center gap-1 text-[10.5px] text-text-tertiary">
-                                <CompanyLogo
-                                  name={call.company}
-                                  className="h-[14px] w-[14px] shrink-0 text-[6px]"
-                                />
-                                {call.company}
+                                <CompanyLink name={call.company} logoClassName="h-[14px] w-[14px] shrink-0 text-[6px]" className="gap-1" />
                               </span>
                             </span>
                             <span className="shrink-0 tnum text-text-secondary">

@@ -68,6 +68,8 @@ import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { withCommas } from "@/lib/currency";
 import { repSlug } from "@/lib/team";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref, teammateHref } from "@/lib/entityHref";
 
 /**
  * CONTRACTS (Suren, Aug 25): "where we are logically closing."
@@ -695,7 +697,9 @@ export function ContractsModule({
             )}
             {awaitingShown.map((d) => (
               <div key={d.id} className="flex items-center gap-3 py-2.5" data-awaiting-contract={d.id}>
-                <CompanyLogo name={d.customer} className="h-7 w-7 shrink-0" />
+                <EntityLink href={customerHref(null, d.customer)} className="shrink-0" title={d.customer}>
+                  <CompanyLogo name={d.customer} className="h-7 w-7 shrink-0" />
+                </EntityLink>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-semibold text-text-primary">
                     {d.name}
@@ -860,7 +864,9 @@ export function ContractsModule({
                   className="group flex w-full items-center gap-2.5 rounded-lg border border-border-light bg-white px-3 py-2 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/25"
                 >
                   {groupBy === "customer" ? (
-                    <CompanyLogo name={g.key} className="h-6 w-6 shrink-0" />
+                    <EntityLink nested href={customerHref(null, g.key)} className="shrink-0" title={g.key}>
+                      <CompanyLogo name={g.key} className="h-6 w-6 shrink-0" />
+                    </EntityLink>
                   ) : (
                     <span
                       className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -900,7 +906,9 @@ export function ContractsModule({
                   aria-expanded={isOpen}
                   className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-blue-light/25"
                 >
-                  <CompanyLogo name={c.customer} className="h-8 w-8 shrink-0" />
+                  <EntityLink nested href={customerHref(null, c.customer)} className="shrink-0" title={c.customer}>
+                    <CompanyLogo name={c.customer} className="h-8 w-8 shrink-0" />
+                  </EntityLink>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13.5px] font-semibold text-text-primary">
                       {c.name}
@@ -1257,11 +1265,13 @@ export function ContractsModule({
                         the meter above it. */}
                     <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-light pt-3">
                       <span className="flex min-w-0 items-center gap-2 text-[12px] text-text-secondary">
-                        <Avatar
-                          name={c.updatedBy || "Unknown"}
-                          className="h-6 w-6 shrink-0 text-[8px]"
-                          tooltip={`Last updated by ${c.updatedBy || "Unknown"}`}
-                        />
+                        <EntityLink href={teammateHref(c.updatedBy)} className="shrink-0 rounded-full">
+                          <Avatar
+                            name={c.updatedBy || "Unknown"}
+                            className="h-6 w-6 shrink-0 text-[8px]"
+                            tooltip={`Last updated by ${c.updatedBy || "Unknown"}`}
+                          />
+                        </EntityLink>
                         <span className="min-w-0">
                           <span className="block text-[10.5px] text-text-tertiary">
                             Last updated by

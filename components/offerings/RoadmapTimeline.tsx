@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { GitBranch } from "lucide-react";
-import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import type { RoadmapVersion } from "@/lib/roadmapVersions";
+import { PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * THE VERSION HISTORY AS A TIMELINE, SPACED BY ORDER RATHER THAN BY DATE.
@@ -151,8 +151,7 @@ export function RoadmapTimeline({ versions }: { versions: RoadmapVersion[] }) {
             )}
           </div>
           <p className="mt-1 flex items-center gap-1.5 text-[12px] text-text-secondary">
-            <Avatar name={current.savedBy} className="h-4 w-4 text-[7px]" />
-            {current.savedBy}
+            <PersonLink name={current.savedBy} avatarClassName="h-4 w-4 shrink-0 text-[7px]" className="gap-1.5" />
             <span className="text-text-tertiary">
               · {fullStamp(current.savedAt)}
             </span>

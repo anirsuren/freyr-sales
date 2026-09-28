@@ -31,6 +31,8 @@ import type { PickablePerson } from "@/components/ui/PeoplePicker";
 import type { OwnerRow } from "@/components/offerings/OfferingOwners";
 import { cn } from "@/lib/utils";
 import type { OfferingContact } from "@/lib/offerings";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 // What a person DOES on an offering. A colour and an icon each, like every
 // other picker in the app.
@@ -380,12 +382,14 @@ export function OfferingContacts({
               email={c.email}
               phone={c.phone}
             >
-              <Avatar name={c.name} className="h-10 w-10 shrink-0 text-[14px]" />
-            </PersonHoverCard>
-            <div className="min-w-0 flex-1">
-              <p className="break-words text-[14px] font-semibold text-text-primary">
-                {c.name}
-              </p>
+              <EntityLink href={teammateHref(c.name)} className="block rounded-full" title={c.name}>
+                <Avatar name={c.name} className="h-10 w-10 shrink-0 text-[14px]" />
+              </EntityLink>
+              </PersonHoverCard>
+              <div className="min-w-0 flex-1">
+                <p className="break-words text-[14px] font-semibold text-text-primary">
+                  <EntityLink href={teammateHref(c.name)}>{c.name}</EntityLink>
+                </p>
               {/* An owner can change what someone does here without removing
                   and re-adding them. Everyone else just reads it. Role is a
                   coloured tag and the channels are chips, because "Commercial

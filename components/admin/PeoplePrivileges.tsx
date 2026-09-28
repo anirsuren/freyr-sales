@@ -16,6 +16,8 @@ import {
   privilegesForMember,
   type PrivilegeMember,
 } from "@/lib/memberPrivilegeBindings";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 /**
  * WHICH PRIVILEGES EACH PERSON HOLDS.
@@ -291,14 +293,16 @@ export function PeoplePrivileges() {
                 <tr key={person.id}>
                   <td className="sticky left-0 z-10 bg-white px-4 py-2.5 align-middle">
                     <span className="flex items-center gap-2.5">
-                      <Avatar
-                        name={person.name}
-                        className="h-7 w-7 shrink-0 text-[9px]"
-                      />
+                      <EntityLink href={teammateHref(person.name)} className="shrink-0 rounded-full" title={person.name}>
+                        <Avatar
+                          name={person.name}
+                          className="h-7 w-7 shrink-0 text-[9px]"
+                        />
+                      </EntityLink>
                       <span className="min-w-0">
-                        <span className="block truncate text-[13px] font-semibold text-text-primary">
+                        <EntityLink href={teammateHref(person.name)} className="block truncate text-[13px] font-semibold text-text-primary">
                           {person.name}
-                        </span>
+                        </EntityLink>
                         <span className="block truncate text-[11px] text-text-secondary">
                           {person.email}
                         </span>

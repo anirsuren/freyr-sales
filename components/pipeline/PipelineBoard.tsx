@@ -49,6 +49,8 @@ import { tint } from "@/lib/tint";
 import { withCommas } from "@/lib/currency";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { contactHref, customerHref } from "@/lib/entityHref";
 
 const WIP_KEY = "freyr.pipeline.wip.v1";
 const VIEWS_KEY = "freyr.pipeline.views.v1";
@@ -884,10 +886,12 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                           )}
                         </button>
                       )}
-                      <CompanyLogo
-                        name={d.company}
-                        className="w-7 h-7 text-[10px] shrink-0"
-                      />
+                      <EntityLink nested href={customerHref(null, d.company)} className="shrink-0" title={d.company}>
+                        <CompanyLogo
+                          name={d.company}
+                          className="w-7 h-7 text-[10px] shrink-0"
+                        />
+                      </EntityLink>
                       {/* Names wrap rather than truncate — "Cortexa Biophar…"
                           tells a rep nothing, and a board of ellipses is the
                           fastest way to look unfinished. */}
@@ -918,10 +922,12 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
                   {d.contactName && d.contactName !== "-" ? (
                     isManual ? (
                       <div className="flex items-center gap-2 mt-2.5 min-w-0">
-                        <Avatar name={d.contactName} className="w-7 h-7 text-[10px] shrink-0" />
+                        <EntityLink nested href={contactHref(null, d.contactName)} className="shrink-0 rounded-full" title={d.contactName}>
+                          <Avatar name={d.contactName} className="w-7 h-7 text-[10px] shrink-0" />
+                        </EntityLink>
                         <div className="min-w-0">
                           <p className="text-[12px] font-semibold text-text-primary leading-snug">
-                            {d.contactName}
+                            <EntityLink nested href={contactHref(null, d.contactName)}>{d.contactName}</EntityLink>
                           </p>
                           {d.title && (
                             <p className="text-[11px] text-text-secondary leading-snug mt-0.5">

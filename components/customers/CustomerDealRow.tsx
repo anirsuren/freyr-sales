@@ -8,7 +8,6 @@ import {
   UserRound,
 } from "lucide-react";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
-import { Avatar } from "@/components/ui/Avatar";
 import {
   STAGES,
   STAGE_COLOR,
@@ -16,9 +15,11 @@ import {
   formatMoney,
   type Stage,
 } from "@/lib/pipeline";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { ENTITY_NAME, PersonLink } from "@/components/ui/EntityLink";
+import { contactHref, teammateHref } from "@/lib/entityHref";
 
 export type CustomerDealRowData = {
   id: string;
@@ -106,13 +107,18 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
       </span>
 
       <span className="min-w-0">
-        <span className="flex min-w-0 items-center gap-2 text-[11.5px] text-text-secondary">
-          <Avatar
-            name={deal.contact || deal.owner || "Unassigned"}
-            className="h-7 w-7 shrink-0 text-[9px]"
-          />
-          <span className="min-w-0 break-words">{deal.contact || deal.owner || "No contact"}</span>
-        </span>
+        {/* A DOOR ON THE CARD (Anir, Sep 28): the contact opens their page, or the
+            owner theirs when no contact is named. The card is itself a link, so
+            this navigates from a span rather than nesting an anchor. */}
+        <PersonLink
+          name={deal.contact || deal.owner || "Unassigned"}
+          href={deal.contact ? contactHref(null, deal.contact) : teammateHref(deal.owner)}
+          avatarClassName="h-7 w-7 shrink-0 text-[9px]"
+          className="flex text-[11.5px] text-text-secondary"
+          nested
+        >
+          <span className={cn("min-w-0 break-words", ENTITY_NAME)}>{deal.contact || deal.owner || "No contact"}</span>
+        </PersonLink>
         <span className="mt-1 flex items-center gap-1.5 text-[10.5px] text-text-tertiary">
           <Clock3 size={11} strokeWidth={1.8} className="shrink-0" />
           <span className="truncate">
@@ -201,13 +207,14 @@ export function CustomerDealRow({ deal }: { deal: CustomerDealRowData }) {
             <span className="flex min-h-[14px] items-center gap-1 text-[9.5px] uppercase tracking-[0.04em] text-text-tertiary">
               <UserRound size={11} /> Owner
             </span>
-            <span className="mt-1.5 flex min-h-[26px] min-w-0 items-center gap-2 text-[11.5px] font-semibold text-text-primary">
-              <Avatar
-                name={deal.owner || "Unassigned"}
-                className="h-6 w-6 shrink-0 text-[8px]"
-              />
-              <span className="min-w-0 break-words">{deal.owner || "Unassigned"}</span>
-            </span>
+            <PersonLink
+              name={deal.owner || "Unassigned"}
+              avatarClassName="h-6 w-6 shrink-0 text-[8px]"
+              className="mt-1.5 flex min-h-[26px] text-[11.5px] font-semibold text-text-primary"
+              nested
+            >
+              <span className={cn("min-w-0 break-words", ENTITY_NAME)}>{deal.owner || "Unassigned"}</span>
+            </PersonLink>
           </span>
         </div>
         <p className="mt-3 line-clamp-2 text-[11.5px] leading-relaxed text-text-secondary">

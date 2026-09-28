@@ -13,6 +13,9 @@ import { ExpandedChartControl } from "@/components/charts/ExpandedChartModal";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { formatMoney } from "@/lib/pipeline";
 import { VIZ, VIZ_SERIES } from "@/components/charts/Charts";
+import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref, teammateHref } from "@/lib/entityHref";
+import { cn } from "@/lib/utils";
 
 export type ByRep = {
   identityKey: string;
@@ -215,10 +218,12 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
           const hover = (
             <div>
               <div className="flex items-center gap-2.5 mb-2.5">
-                <Avatar name={r.name} className="w-9 h-9 text-[12px]" />
+                <EntityLink href={teammateHref(r.name)} className="shrink-0 rounded-full" title={r.name}>
+                  <Avatar name={r.name} className="w-9 h-9 text-[12px]" />
+                </EntityLink>
                 <div className="min-w-0">
                   <p className="text-[13.5px] font-semibold text-text-primary truncate">
-                    {r.name}
+                    <EntityLink href={teammateHref(r.name)}>{r.name}</EntityLink>
                     {you && <span className="text-blue-primary font-semibold"> · you</span>}
                   </p>
                   <p className="text-[11.5px] text-text-tertiary">Account executive</p>
@@ -247,23 +252,21 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                         key={`${d.company}-${d.contact}`}
                         className="flex items-center gap-2 text-[12px]"
                       >
-                        <CompanyLogo name={d.company} className="w-[18px] h-[18px] text-[7px] shrink-0" />
+                        <EntityLink href={customerHref(null, d.company)} className="shrink-0" title={d.company}>
+                          <CompanyLogo name={d.company} className="w-[18px] h-[18px] text-[7px] shrink-0" />
+                        </EntityLink>
                         <span className="min-w-0 flex-1 leading-tight">
                           {/* Names wrap, never truncate — "Aether Medical
                               Devic…" told a rep nothing. And the person gets
                               their face: a name on screen always carries its
                               avatar (Anir, Jul 28: "People? Profile
                               pictures?"). */}
-                          <span className="block break-words font-medium text-text-primary">
+                          <EntityLink href={customerHref(null, d.company)} className="block break-words font-medium text-text-primary">
                             {d.company}
-                          </span>
-                          <span className="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-text-secondary">
-                            <Avatar
-                              name={d.contact}
-                              className="h-[15px] w-[15px] shrink-0 text-[6px]"
-                            />
-                            <span className="min-w-0 whitespace-nowrap">{d.contact}</span>
-                          </span>
+                          </EntityLink>
+                          <PersonLink kind="contact" name={d.contact} avatarClassName="h-[15px] w-[15px] shrink-0 text-[6px]" className="mt-0.5 flex gap-1.5 text-[10.5px] text-text-secondary">
+                            <span className={cn("min-w-0 whitespace-nowrap", ENTITY_NAME)}>{d.contact}</span>
+                          </PersonLink>
                         </span>
                         <span className="tnum text-text-secondary shrink-0">
                           {formatMoney(d.value)}
@@ -341,12 +344,14 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                   </div>
                 </HoverCard>
               </div>
-              <Avatar
-                name={r.name}
-                className={`w-6 h-6 text-[8px] shrink-0 transition-all ${
-                  you ? "ring-2 ring-blue-primary" : "group-hover:ring-2 group-hover:ring-blue-subtle"
-                }`}
-              />
+              <EntityLink nested href={teammateHref(r.name)} className="shrink-0 rounded-full" title={r.name}>
+                <Avatar
+                  name={r.name}
+                  className={`w-6 h-6 text-[8px] shrink-0 transition-all ${
+                    you ? "ring-2 ring-blue-primary" : "group-hover:ring-2 group-hover:ring-blue-subtle"
+                  }`}
+                />
+              </EntityLink>
               <span
                 className={`text-[10px] text-center truncate w-full shrink-0 ${
                   you ? "font-bold text-blue-primary" : "text-text-tertiary group-hover:text-blue-primary"

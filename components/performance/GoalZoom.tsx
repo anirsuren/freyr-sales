@@ -66,6 +66,8 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useOpportunities } from "@/lib/useOpportunities";
 import type { RunOp } from "./PerformanceModule";
 import { tint } from "@/lib/tint";
+import { CompanyLink, ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref, teammateHref } from "@/lib/entityHref";
 
 /**
  * ONE GOAL DONE PROPERLY — the screen Suren approved on Aug 13: the composite
@@ -993,10 +995,7 @@ export function GoalZoom({
                   // worth saying, not worth greying the card for.
                   <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-text-tertiary">
                     {owners.slice(0, 3).map((n) => (
-                      <span key={n} className="flex items-center gap-1">
-                        <Avatar name={n} className="h-[18px] w-[18px] text-[7px]" />
-                        {n}
-                      </span>
+                      <PersonLink key={n} nested name={n} avatarClassName="h-[18px] w-[18px] shrink-0 text-[7px]" className="flex gap-1" />
                     ))}
                     {owners.length > 3 && <span className="tnum">+{owners.length - 3}</span>}
                     <span>· outside this group</span>
@@ -1256,10 +1255,12 @@ export function GoalZoom({
                           />
                         )}
                         {account ? (
-                          <CompanyLogo
-                            name={account}
-                            className="h-5 w-5 shrink-0 text-[7px]"
-                          />
+                          <EntityLink nested href={customerHref(null, account)} className="shrink-0" title={account}>
+                            <CompanyLogo
+                              name={account}
+                              className="h-5 w-5 shrink-0 text-[7px]"
+                            />
+                          </EntityLink>
                         ) : (
                           /* No account on the row is not a reason to leave a
                              hole where every neighbour has a mark (Anir,
@@ -1304,11 +1305,7 @@ export function GoalZoom({
                       <span className="flex flex-wrap items-center gap-1.5 pl-7 text-[9.5px] text-text-tertiary">
                         {!indent && (
                           <>
-                            <Avatar
-                              name={a.person}
-                              className="h-3.5 w-3.5 shrink-0 text-[6px]"
-                            />
-                            <span className="truncate">{a.person}</span>
+                            <PersonLink nested name={a.person} avatarClassName="h-3.5 w-3.5 shrink-0 text-[6px]" className="gap-1.5" />
                             <span>·</span>
                           </>
                         )}
@@ -1365,10 +1362,7 @@ export function GoalZoom({
                         <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
                           <span className="min-w-0">
                             <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Logged by</span>
-                            <span className="mt-1 flex min-w-0 items-center gap-1.5 font-medium text-text-primary">
-                              <Avatar name={a.person} className="h-5 w-5 shrink-0 text-[7px]" />
-                              <span className="truncate">{a.person}</span>
-                            </span>
+                            <PersonLink nested name={a.person} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="mt-1 flex gap-1.5 font-medium text-text-primary" />
                           </span>
                           <span>
                             <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Result date</span>
@@ -1377,10 +1371,7 @@ export function GoalZoom({
                           {account && (
                             <span className="min-w-0">
                               <span className="block text-[9px] font-bold uppercase tracking-[0.05em] text-text-tertiary">Customer</span>
-                              <span className="mt-1 flex min-w-0 items-center gap-1.5 text-text-primary">
-                                <CompanyLogo name={account} className="h-5 w-5 shrink-0 text-[7px]" />
-                                <span className="truncate">{account}</span>
-                              </span>
+                              <CompanyLink nested name={account} logoClassName="h-5 w-5 shrink-0 text-[7px]" className="mt-1 flex gap-1.5 text-text-primary" />
                             </span>
                           )}
                           {opp && (
@@ -1820,7 +1811,9 @@ export function GoalZoom({
                             )}
                           >
                             <span className="flex w-full items-center gap-2.5">
-                              <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
+                              <EntityLink nested href={teammateHref(r2.group.head)} className="shrink-0 rounded-full" title={r2.group.head}>
+                                <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
+                              </EntityLink>
                               <span className="min-w-0 flex-1">
                                 <GroupPill name={r2.group.name} size="sm" />
                               </span>
@@ -1913,7 +1906,9 @@ export function GoalZoom({
                               something to draw, since the dash beside the name
                               already says zero. */}
                           <span className="flex w-full items-center gap-2.5">
-                            <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
+                            <EntityLink nested href={teammateHref(r2.group.head)} className="shrink-0 rounded-full" title={r2.group.head}>
+                              <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
+                            </EntityLink>
                             <span className="min-w-0 flex-1">
                               <GroupPill name={r2.group.name} size="sm" />
                             </span>
@@ -2022,11 +2017,13 @@ export function GoalZoom({
                                           i > 0 && "-ml-1.5 group-hover/show-members:ml-1 group-focus-visible/show-members:ml-1"
                                         )}
                                       >
-                                        <Avatar
-                                          name={n}
-                                          tooltip={n}
-                                          className="h-4 w-4 text-[6.5px] ring-1 ring-white"
-                                        />
+                                        <EntityLink nested href={teammateHref(n)} className="rounded-full">
+                                          <Avatar
+                                            name={n}
+                                            tooltip={n}
+                                            className="h-4 w-4 text-[6.5px] ring-1 ring-white"
+                                          />
+                                        </EntityLink>
                                       </span>
                                     ))}
                                     {r2.members.length > 5 && (
@@ -2090,13 +2087,11 @@ export function GoalZoom({
                                       className="shrink-0 text-[color:var(--ink-violet-soft)]"
                                     />
                                   )}
-                                  <Avatar
-                                    name={name}
-                                    className="h-5 w-5 shrink-0 text-[7.5px]"
-                                  />
-                                  <span className="min-w-0 flex-1 truncate text-[11px] text-text-secondary">
-                                    {name}
-                                  </span>
+                                  <PersonLink nested name={name} avatarClassName="h-5 w-5 shrink-0 text-[7.5px]" className="min-w-0 flex-1 gap-2">
+                                    <span className={cn("min-w-0 flex-1 truncate text-[11px] text-text-secondary", ENTITY_NAME)}>
+                                      {name}
+                                    </span>
+                                  </PersonLink>
                                   <RowTotals unit={goal.unit} verified={v} />
                                   </span>
                                   {(() => {
@@ -2303,10 +2298,11 @@ export function GoalZoom({
                             : "rounded-lg hover:bg-surface"
                         )}
                       >
-                        <Avatar name={p.name} className="h-6 w-6 shrink-0 text-[9px]" />
-                        <span className="min-w-0 flex-1 text-[11.5px] font-medium leading-tight text-text-primary">
-                          {p.name}
-                        </span>
+                        <PersonLink nested name={p.name} avatarClassName="h-6 w-6 shrink-0 text-[9px]" className="min-w-0 flex-1 gap-2.5">
+                          <span className={cn("min-w-0 flex-1 text-[11.5px] font-medium leading-tight text-text-primary", ENTITY_NAME)}>
+                            {p.name}
+                          </span>
+                        </PersonLink>
                         <b className="shrink-0 text-right text-[11.5px] tnum text-text-tertiary">
                           {fmtAmount(goal.unit, 0)}
                         </b>
@@ -2379,10 +2375,11 @@ export function GoalZoom({
                             className="shrink-0 text-[color:var(--ink-violet-soft)]"
                           />
                         )}
-                        <Avatar name={p.name} className="h-6 w-6 shrink-0 text-[9px]" />
-                        <span className="min-w-0 flex-1 text-[11.5px] font-medium leading-tight text-text-primary">
-                          {p.name}
-                        </span>
+                        <PersonLink nested name={p.name} avatarClassName="h-6 w-6 shrink-0 text-[9px]" className="min-w-0 flex-1 gap-2.5">
+                          <span className={cn("min-w-0 flex-1 text-[11.5px] font-medium leading-tight text-text-primary", ENTITY_NAME)}>
+                            {p.name}
+                          </span>
+                        </PersonLink>
                         <RowTotals unit={goal.unit} verified={p.verified} />
                         </span>
                         {/* Same as the group rows: full width underneath, and
@@ -2543,8 +2540,9 @@ export function GoalZoom({
               return (
                 <div key={a.id} className="py-2.5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Avatar name={a.person} className="h-6 w-6 text-[9px]" />
-                    <b className="text-[12.5px]">{a.person}</b>
+                    <PersonLink name={a.person} avatarClassName="h-6 w-6 shrink-0 text-[9px]" className="gap-2">
+                      <b className={cn("text-[12.5px]", ENTITY_NAME)}>{a.person}</b>
+                    </PersonLink>
                     {ci >= 0 && (() => {
                       // Same rule as the cards above: the mark belongs to the
                       // goal, not to its place in the list.
@@ -2639,20 +2637,13 @@ export function GoalZoom({
                   strokeWidth={2.4}
                   className="shrink-0 text-[#16A34A]"
                 />
-                <Avatar
-                  name={a.person}
-                  className="h-[18px] w-[18px] shrink-0 text-[8px]"
-                />
-                <b>{a.person}</b> · {fmtAmount(goal.unit, a.amount)}
+                <PersonLink name={a.person} avatarClassName="h-[18px] w-[18px] shrink-0 text-[8px]" className="gap-1.5">
+                  <b className={ENTITY_NAME}>{a.person}</b>
+                </PersonLink>
+                {" "}· {fmtAmount(goal.unit, a.amount)}
                 {a.customer ? ` · ${a.customer}` : ""}. Verified by
                 {a.verifiedBy ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Avatar
-                      name={a.verifiedBy}
-                      className="h-[18px] w-[18px] shrink-0 text-[8px]"
-                    />
-                    {a.verifiedBy}
-                  </span>
+                  <PersonLink name={a.verifiedBy} avatarClassName="h-[18px] w-[18px] shrink-0 text-[8px]" className="gap-1" />
                 ) : (
                   " the group owner"
                 )}

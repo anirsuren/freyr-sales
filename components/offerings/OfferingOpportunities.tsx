@@ -8,13 +8,13 @@ import {
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Avatar } from "@/components/ui/Avatar";
 import { formatMoney } from "@/lib/pipeline";
 import { revenueTypeRule } from "@/lib/opportunitiesShared";
 import type { Opportunity } from "@/lib/opportunitiesShared";
 import { cn, formatDate, plural } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * EVERY DEAL RUNNING ON THIS OFFERING, ON THE OFFERING'S OWN PAGE.
@@ -217,10 +217,7 @@ export function OfferingOpportunities({
                 </td>
                 <td className="py-2.5 pr-4">
                   {row.owner ? (
-                    <span className="flex items-center gap-1.5 text-[12.5px] text-text-secondary">
-                      <Avatar name={row.owner} className="h-5 w-5 shrink-0 text-[8px]" />
-                      <span className="truncate">{row.owner}</span>
-                    </span>
+                    <PersonLink name={row.owner} avatarClassName="h-5 w-5 shrink-0 text-[8px]" className="flex gap-1.5 text-[12.5px] text-text-secondary" />
                   ) : (
                     <span className="text-[12px] text-text-tertiary">Unassigned</span>
                   )}

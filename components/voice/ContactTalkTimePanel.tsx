@@ -6,11 +6,12 @@ import { Maximize2, Search } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { formatDateTime, OUTCOME_META } from "@/lib/utils";
+import { CompanyLink, EntityLink } from "@/components/ui/EntityLink";
+import { contactHref } from "@/lib/entityHref";
 
 export type TalkTimeCall = {
   id: string;
@@ -99,15 +100,13 @@ export function ContactTalkTimePanel({ calls, color }: { calls: TalkTimeCall[]; 
                       content={
                         <div>
                           <div className="flex items-center gap-2.5">
-                            <Avatar name={call.name} className="h-8 w-8 shrink-0 text-[10px]" />
+                            <EntityLink href={contactHref(null, call.name)} className="shrink-0 rounded-full" title={call.name}>
+                              <Avatar name={call.name} className="h-8 w-8 shrink-0 text-[10px]" />
+                            </EntityLink>
                             <div className="min-w-0">
-                              <p className="text-[13px] font-semibold text-text-primary">{call.name}</p>
+                              <p className="text-[13px] font-semibold text-text-primary"><EntityLink href={contactHref(null, call.name)}>{call.name}</EntityLink></p>
                               <p className="flex items-center gap-1 text-[11px] text-text-tertiary">
-                                <CompanyLogo
-                                  name={call.company}
-                                  className="h-[15px] w-[15px] shrink-0 text-[6px]"
-                                />
-                                {call.company}
+                                <CompanyLink name={call.company} logoClassName="h-[15px] w-[15px] shrink-0 text-[6px]" className="gap-1" />
                               </p>
                             </div>
                             <span className="ml-auto text-[13px] font-bold text-text-primary tnum">{fmtLength(call.value)}</span>
@@ -136,10 +135,12 @@ export function ContactTalkTimePanel({ calls, color }: { calls: TalkTimeCall[]; 
                 </div>
                 {/* Every headshot on one bottom row, name wrapped under it —
                     names never truncate to "…". */}
-                <Avatar name={call.name} className="mt-2 h-7 w-7 shrink-0 text-[9px]" />
-                <span className="mt-1 min-h-[24px] w-full break-words text-center text-[10px] leading-tight text-text-tertiary">
+                <EntityLink href={contactHref(null, call.name)} className="mt-2 shrink-0 rounded-full" title={call.name}>
+                  <Avatar name={call.name} className="h-7 w-7 shrink-0 text-[9px]" />
+                </EntityLink>
+                <EntityLink href={contactHref(null, call.name)} className="mt-1 block min-h-[24px] w-full break-words text-center text-[10px] leading-tight text-text-tertiary">
                   {call.name}
-                </span>
+                </EntityLink>
               </div>
             );
           })}

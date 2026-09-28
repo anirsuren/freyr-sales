@@ -25,6 +25,8 @@ import { REVIEW_META } from "@/lib/review";
 import type { ReviewStatus } from "@/lib/types";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { DateText } from "@/components/ui/DateText";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { contactHref, customerHref } from "@/lib/entityHref";
 
 export interface SessionRow {
   id: string;
@@ -274,9 +276,11 @@ export function SessionsBrowser({
                         content={
                           <div>
                             <div className="flex items-center gap-2.5">
-                              <CompanyLogo name={r.company} className="h-10 w-10 shrink-0 text-[10px]" />
+                              <EntityLink href={customerHref(null, r.company)} className="shrink-0" title={r.company}>
+                                <CompanyLogo name={r.company} className="h-10 w-10 shrink-0 text-[10px]" />
+                              </EntityLink>
                               <div className="min-w-0">
-                                <p className="text-[13px] font-semibold leading-snug text-text-primary">{r.company}</p>
+                                <p className="text-[13px] font-semibold leading-snug text-text-primary"><EntityLink href={customerHref(null, r.company)}>{r.company}</EntityLink></p>
                                 <p className="text-[10.5px] text-text-tertiary">
                                   {[r.companyMeta?.industry, r.companyMeta?.geography].filter(Boolean).join(" · ") || "Account"}
                                 </p>
@@ -336,9 +340,11 @@ export function SessionsBrowser({
                         content={
                           <div>
                             <div className="flex items-center gap-2.5">
-                              <Avatar name={r.contact} className="h-10 w-10 shrink-0 text-[11px]" />
+                              <EntityLink href={contactHref(null, r.contact)} className="shrink-0 rounded-full" title={r.contact}>
+                                <Avatar name={r.contact} className="h-10 w-10 shrink-0 text-[11px]" />
+                              </EntityLink>
                               <div className="min-w-0">
-                                <p className="text-[13px] font-semibold leading-snug text-text-primary">{r.contact}</p>
+                                <p className="text-[13px] font-semibold leading-snug text-text-primary"><EntityLink href={contactHref(null, r.contact)}>{r.contact}</EntityLink></p>
                                 <p className="text-[10.5px] text-text-tertiary">
                                   {[r.title, r.company].filter(Boolean).join(" · ")}
                                 </p>

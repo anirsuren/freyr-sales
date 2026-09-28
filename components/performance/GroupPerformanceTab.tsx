@@ -22,6 +22,8 @@ import { Modal } from "@/components/ui/Modal";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { cn } from "@/lib/utils";
 import type { RunOp } from "./PerformanceModule";
+import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 /**
  * GROUP PERFORMANCE — the Org screen pointed at one group (Suren, Aug 15:
@@ -304,8 +306,7 @@ export function GroupPerformanceTab({
                   aria-label="Group owner"
                   className="shrink-0 text-[color:var(--ink-violet-soft)]"
                 />
-                <Avatar name={g.head} className="h-4 w-4 shrink-0 text-[6px]" />
-                <span className="truncate">{g.head}</span>
+                <PersonLink nested name={g.head} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="gap-1" />
                 <span className="shrink-0 text-text-tertiary">
                   · {count} {count === 1 ? "person" : "people"}
                 </span>
@@ -557,7 +558,9 @@ export function GroupPerformanceTab({
                     className="flex min-w-0 items-center gap-3 rounded-xl border border-border-light bg-white p-3 text-left shadow-[0_1px_1px_rgba(15,23,42,0.02)]"
                     >
                       <span className="relative shrink-0">
-                        <Avatar name={m} className="h-10 w-10 text-[11px]" />
+                        <EntityLink href={teammateHref(m)} className="block rounded-full" title={m}>
+                          <Avatar name={m} className="h-10 w-10 text-[11px]" />
+                        </EntityLink>
                         {owner && (
                           <span
                             className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-[color:var(--ink-violet-soft)] text-white dark:bg-[#574779] dark:text-[#f0eaff]"
@@ -572,9 +575,9 @@ export function GroupPerformanceTab({
                         )}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13.5px] font-semibold text-text-primary">
+                        <EntityLink href={teammateHref(m)} className="block truncate text-[13.5px] font-semibold text-text-primary">
                           {m}
-                        </span>
+                        </EntityLink>
                         <span className="mt-0.5 block truncate text-[11.5px] text-text-tertiary">
                           {owner ? "Group owner" : "Group member"}
                         </span>
@@ -604,13 +607,11 @@ export function GroupPerformanceTab({
                             aria-label="Group owner"
                           />
                         )}
-                        <Avatar
-                          name={m}
-                          className="h-6 w-6 shrink-0 text-[8px]"
-                        />
-                        <span className="truncate text-[13px] font-semibold text-text-primary">
-                          {m}
-                        </span>
+                        <PersonLink name={m} avatarClassName="h-6 w-6 shrink-0 text-[8px]" className="gap-2">
+                          <span className={cn("truncate text-[13px] font-semibold text-text-primary", ENTITY_NAME)}>
+                            {m}
+                          </span>
+                        </PersonLink>
                       </span>
                       <span className="whitespace-nowrap text-[12px] text-text-secondary tnum">
                         {theirs.length}

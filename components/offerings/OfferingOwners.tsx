@@ -28,6 +28,8 @@ import { RequiredMark } from "@/components/ui/RequiredMark";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { DateText } from "@/components/ui/DateText";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 export type OwnerRow = {
   memberId: string;
@@ -96,10 +98,12 @@ function OwnerHoverCard({
       content={
         <div className="w-[360px] p-3.5">
           <div className="flex items-center gap-2.5">
-            <Avatar name={owner.name} className="h-11 w-11 shrink-0 text-[14px]" />
+            <EntityLink href={teammateHref(owner.name)} className="shrink-0 rounded-full" title={owner.name}>
+              <Avatar name={owner.name} className="h-11 w-11 shrink-0 text-[14px]" />
+            </EntityLink>
             <div className="min-w-0">
               <p className="text-[14px] font-semibold leading-tight text-text-primary">
-                {owner.name}
+                <EntityLink href={teammateHref(owner.name)}>{owner.name}</EntityLink>
                 {isYou && (
                   <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-light px-1.5 py-[1px] align-[1px] text-[9.5px] font-bold uppercase tracking-[0.04em] text-blue-primary">
                     You
@@ -384,15 +388,17 @@ export function OfferingOwners({
                   is on the list. */}
               <OwnerHoverCard owner={o} isYou={o.memberId === myMemberId}>
                 <span className="flex min-w-0 flex-1 items-center gap-2.5">
-                  <Avatar
-                    name={o.name}
-                    className="h-8 w-8 shrink-0 text-[11px]"
-                  />
+                  <EntityLink href={teammateHref(o.name)} className="shrink-0 rounded-full" title={o.name}>
+                    <Avatar
+                      name={o.name}
+                      className="h-8 w-8 shrink-0 text-[11px]"
+                    />
+                  </EntityLink>
                   <span className="flex min-w-0 flex-col leading-tight">
                     <span className="flex flex-wrap items-center gap-1.5">
-                      <span className="break-words text-[13px] font-semibold text-text-primary">
+                      <EntityLink href={teammateHref(o.name)} className="break-words text-[13px] font-semibold text-text-primary">
                         {o.name}
-                      </span>
+                      </EntityLink>
                       {/* Which row is ME. Two colleagues can share a first
                           name, and the list is the thing you scan before
                           removing somebody (Anir, Jul 29: "put a nice little
@@ -453,11 +459,13 @@ export function OfferingOwners({
             key={o.memberId}
             className="flex items-center gap-2.5 rounded-lg border border-border-light bg-[var(--surface)] px-2.5 py-2"
           >
-            <Avatar name={o.name} className="h-7 w-7 shrink-0 text-[10px]" />
+            <EntityLink href={teammateHref(o.name)} className="shrink-0 rounded-full" title={o.name}>
+              <Avatar name={o.name} className="h-7 w-7 shrink-0 text-[10px]" />
+            </EntityLink>
             <span className="flex min-w-0 flex-col leading-tight">
-              <span className="break-words text-[12.5px] font-semibold text-text-primary">
+              <EntityLink href={teammateHref(o.name)} className="break-words text-[12.5px] font-semibold text-text-primary">
                 {o.name}
-              </span>
+              </EntityLink>
               <span className="inline-flex items-center gap-1 text-[11px] text-[color:var(--ink-orange)]">
                 <Clock3 size={10} strokeWidth={2.2} />
                 Asked <DateText value={o.claimed_at} />, waiting on an admin

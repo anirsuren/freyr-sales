@@ -51,6 +51,8 @@ import { PrioritySearchInput, SearchPriority } from "@/components/ui/SearchPrior
 import { cn, formatDateTime } from "@/lib/utils";
 import { shortPersonName } from "@/lib/personName";
 import { tint } from "@/lib/tint";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 export type MaterialRow = {
   material: OfferingMaterial;
@@ -567,10 +569,12 @@ const TABLE_CLASS =
                   <td className="whitespace-nowrap px-3 py-3 align-middle">
                     {row.material.addedBy ? (
                       <span className="flex min-w-0 items-center gap-2">
-                        <Avatar
-                          name={row.material.addedBy}
-                          className="h-6 w-6 shrink-0 text-[8px]"
-                        />
+                        <EntityLink href={teammateHref(row.material.addedBy)} className="shrink-0 rounded-full" title={row.material.addedBy}>
+                          <Avatar
+                            name={row.material.addedBy}
+                            className="h-6 w-6 shrink-0 text-[8px]"
+                          />
+                        </EntityLink>
                         {/* First name, last initial — the same cut the
                             offering's own table takes (Anir, Aug 28). */}
                         <span

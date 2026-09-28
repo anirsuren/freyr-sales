@@ -36,6 +36,7 @@ import type {
 } from "@/lib/opportunitiesShared";
 import { tint } from "@/lib/tint";
 import { todayISO } from "@/lib/utils";
+import { PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * ACTIVITIES ON THE DEAL (Suren, Aug 17 answers: "the activity on the
@@ -256,10 +257,11 @@ export function OpportunityActivities({
                     </td>
                     <td className="px-3 py-2">
                       {a.person ? (
-                        <span className="inline-flex items-center gap-1.5 text-[12px] text-text-primary">
-                          <Avatar name={a.person} className="h-5 w-5 text-[7px]" />
-                          {a.person}
-                        </span>
+                        <PersonLink
+                          name={a.person}
+                          avatarClassName="h-5 w-5 shrink-0 text-[7px]"
+                          className="gap-1.5 text-[12px] text-text-primary"
+                        />
                       ) : (
                         <span className="text-[12px] text-text-tertiary">·</span>
                       )}

@@ -51,6 +51,8 @@ import { linkedInUrl, safeHref } from "@/lib/safeUrl";
 import { cn } from "@/lib/utils";
 import { fmtWhen } from "@/lib/whenLabel";
 import type { FeedPost } from "@/lib/marketIntelFeed";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 /**
  * The dashboard's card grid plus its toolbar (Anir, Aug 11: "We need search
@@ -293,9 +295,11 @@ export function PeoplePopup({ panel, onClose }: { panel: PeoplePanel | null; onC
           </label>
           {matchingPeople.map(person => (
             <div key={person.id} className="flex items-center gap-3 rounded-xl border border-border-light bg-white p-3">
-              <Avatar name={person.name} className="h-10 w-10 shrink-0 text-[12px]" />
+              <EntityLink href={teammateHref(person.name)} className="shrink-0 rounded-full" title={person.name}>
+                <Avatar name={person.name} className="h-10 w-10 shrink-0 text-[12px]" />
+              </EntityLink>
               <div className="min-w-0 flex-1">
-                <p className="text-[13.5px] font-semibold text-text-primary">{person.name}</p>
+                <p className="text-[13.5px] font-semibold text-text-primary"><EntityLink href={teammateHref(person.name)}>{person.name}</EntityLink></p>
                 <p className="text-[11.5px] text-text-secondary">{person.email || "Workspace member"}</p>
               </div>
             </div>

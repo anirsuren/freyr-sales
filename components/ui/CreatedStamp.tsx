@@ -1,7 +1,7 @@
 "use client";
 
-import { Avatar } from "@/components/ui/Avatar";
 import { stampedAt } from "@/lib/performanceShared";
+import { PersonLink } from "@/components/ui/EntityLink";
 
 /* "use client" IS THE TIMEZONE FIX (Anir, Sep 6: "why is it saying 1:23 PM?
    It's 9:26 PM for me... it should always show whatever time the device is
@@ -51,8 +51,7 @@ export function CreatedStamp({
       {who ? (
         <>
           <span>by</span>
-          <Avatar name={who} className="h-5 w-5 shrink-0 text-[9px]" />
-          <span className="font-semibold text-text-secondary">{who}</span>
+          <PersonLink name={who} avatarClassName="h-5 w-5 shrink-0 text-[9px]" className="gap-1.5" nameClassName="font-semibold text-text-secondary" />
         </>
       ) : null}
       {/* THE CLOCK IS THE READER'S. `stampedAt` renders "3 September 2026 at

@@ -22,6 +22,7 @@ import { RequiredMark } from "@/components/ui/RequiredMark";
 import { formatDateTime, cn } from "@/lib/utils";
 import type { Campaign, CampaignObjective } from "@/lib/campaigns";
 import { tint } from "@/lib/tint";
+import { PersonLink } from "@/components/ui/EntityLink";
 
 type MiniOffering = { id: string; name: string };
 type MiniContact = {
@@ -534,10 +535,7 @@ export function CampaignsView({
             <div className="mt-6 rounded-md border border-border-light bg-surface/50 p-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Campaign owner</p>
               <div className="mt-2 flex items-center gap-2">
-                <Avatar name={currentUser.name} className="h-7 w-7 text-[9px]" />
-                <span className="text-[12px] font-semibold text-text-primary">
-                  {currentUser.name}
-                </span>
+                <PersonLink name={currentUser.name} avatarClassName="h-7 w-7 shrink-0 text-[9px]" className="gap-2" nameClassName="text-[12px] font-semibold text-text-primary" />
               </div>
             </div>
           </aside>

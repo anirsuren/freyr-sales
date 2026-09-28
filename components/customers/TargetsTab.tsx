@@ -17,7 +17,6 @@ import { Card } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-import { Avatar } from "@/components/ui/Avatar";
 import { FilterMenu } from "@/components/ui/FilterMenu";
 import { PrioritySearchInput } from "@/components/ui/SearchPriority";
 import { cn } from "@/lib/utils";
@@ -28,6 +27,7 @@ import {
   type TargetAccount,
 } from "@/lib/targetsShared";
 import { tint } from "@/lib/tint";
+import { PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * THE TARGET LIST — companies to go win, one step before Opportunities.
@@ -509,10 +509,11 @@ export function TargetsTab({
                       </td>
                       <td className="px-2 py-2.5">
                         {t.owner && inApp(t.owner) ? (
-                          <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-primary">
-                            <Avatar name={t.owner} className="h-5 w-5 shrink-0 text-[7px]" />
-                            <span className="truncate">{t.owner}</span>
-                          </span>
+                          <PersonLink
+                            name={t.owner}
+                            avatarClassName="h-5 w-5 shrink-0 text-[7px]"
+                            className="flex gap-1.5 text-[12.5px] text-text-primary"
+                          />
                         ) : (
                           /* Not an app member = no owner, full stop (Anir,
                              Aug 17: "if these people don't exist, just say

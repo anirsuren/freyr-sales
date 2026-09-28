@@ -17,6 +17,8 @@ import type {
   VoiceLifecycleStatus,
 } from "@/lib/voiceEvents";
 import { cn, formatDateTime } from "@/lib/utils";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { contactHref, customerHref } from "@/lib/entityHref";
 
 const STATUS: Record<
   VoiceLifecycleStatus,
@@ -78,7 +80,9 @@ export function VoiceLifecyclePanel() {
           const href = item.conversation_id ? `/voice/c/${item.conversation_id}` : null;
           const content = (
             <div className="group flex items-center gap-3 px-4 py-3 hover:bg-surface transition-colors">
-              <Avatar name={item.contact_name || item.external_number || "Caller"} className="w-9 h-9" />
+              <EntityLink nested href={item.contact_name ? contactHref(null, item.contact_name) : null} className="shrink-0 rounded-full" title={item.contact_name || undefined}>
+                <Avatar name={item.contact_name || item.external_number || "Caller"} className="w-9 h-9" />
+              </EntityLink>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="truncate text-[13.5px] font-semibold text-text-primary">
@@ -91,7 +95,7 @@ export function VoiceLifecyclePanel() {
                   )}
                 </div>
                 <p className="flex items-center gap-1.5 truncate text-[12px] text-text-secondary">
-                  {item.company && <CompanyLogo name={item.company} className="w-4 h-4 text-[7px]" />}
+                  {item.company && <EntityLink nested href={customerHref(null, item.company)} className="shrink-0" title={item.company}><CompanyLogo name={item.company} className="w-4 h-4 text-[7px]" /></EntityLink>}
                   {item.company || item.category || item.offering_name || "Voice agent call"}
                   {item.started_at ? ` · ${formatDateTime(item.started_at)}` : ""}
                 </p>

@@ -41,6 +41,8 @@ import { getDb } from "@/lib/db";
 import { formatDateTime, formatPhone, cn } from "@/lib/utils";
 import { VoiceLifecyclePanel } from "@/components/voice/VoiceLifecyclePanel";
 import { listStoredVoiceConversations, storedVoiceCall } from "@/lib/voiceEvents";
+import { CompanyLink, EntityLink } from "@/components/ui/EntityLink";
+import { contactHref } from "@/lib/entityHref";
 
 export const metadata = { title: "Voice agents" };
 export const dynamic = "force-dynamic";
@@ -799,13 +801,7 @@ export default async function VoicePage() {
                       </td>
                       <td className="px-5 py-3.5 text-[13px] text-text-secondary whitespace-nowrap transition-colors duration-200 group-hover:text-text-primary">
                         {q.company ? (
-                          <span className="flex items-center gap-2.5">
-                            <CompanyLogo
-                              name={q.company}
-                              className="h-7 w-7 rounded-lg text-[7px] transition-transform duration-200 group-hover:scale-105"
-                            />
-                            <span>{q.company}</span>
-                          </span>
+                          <CompanyLink name={q.company} logoClassName="h-7 w-7 shrink-0 rounded-lg text-[7px] transition-transform duration-200 group-hover:scale-105" className="flex gap-2.5" />
                         ) : (
                           "-"
                         )}
@@ -1050,7 +1046,9 @@ export default async function VoicePage() {
                   <ul className="min-h-0 flex-1 divide-y divide-border-light overflow-y-auto -mr-2 pr-2">
                     {callbacks.map((q) => (
                       <li key={q.id} className="group/callback -mx-2 flex items-start gap-3 rounded-md px-2 py-2.5 transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-blue-light/30">
-                        <Avatar name={q.contact_name} className="w-9 h-9 text-[12px] shrink-0 transition-[transform,box-shadow] duration-150 group-hover/callback:scale-105 group-hover/callback:shadow-sm" />
+                        <EntityLink href={contactHref(null, q.contact_name)} className="shrink-0 rounded-full" title={q.contact_name}>
+                          <Avatar name={q.contact_name} className="w-9 h-9 text-[12px] shrink-0 transition-[transform,box-shadow] duration-150 group-hover/callback:scale-105 group-hover/callback:shadow-sm" />
+                        </EntityLink>
                         {/* Three lines, one fact each. The company used to be
                             `truncate`d next to the phone and came out as a
                             single letter, "S…", "C…", which is both the

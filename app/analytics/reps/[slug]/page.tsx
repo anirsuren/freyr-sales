@@ -51,6 +51,8 @@ import { Customer360 } from "@/components/customers/Customer360";
 import { opportunityValue } from "@/lib/opportunitiesShared";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 /**
  * The teammate's own name in the tab. A static "Rep" label made every open profile
@@ -270,10 +272,12 @@ export default async function RepPage({
             <ul className="divide-y divide-border-light">
               {myOpen.map((deal) => (
                 <li key={deal.id} className="flex items-center gap-3 px-4 py-3">
-                  <CompanyLogo
-                    name={deal.customer}
-                    className="h-8 w-8 shrink-0 text-[9px]"
-                  />
+                  <EntityLink href={customerHref(null, deal.customer)} className="shrink-0" title={deal.customer}>
+                    <CompanyLogo
+                      name={deal.customer}
+                      className="h-8 w-8 shrink-0 text-[9px]"
+                    />
+                  </EntityLink>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-baseline gap-x-2">
                       <span className="truncate text-[13px] font-semibold text-text-primary">

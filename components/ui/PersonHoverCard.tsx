@@ -8,6 +8,8 @@ import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { OpenInNewTab } from "@/components/ui/ColorSelect";
 import { ROLE_META, RoleTag, type WorkspaceRoleKey } from "@/components/ui/RoleTag";
 import { repEmail, repSlug, teamsChatUrl } from "@/lib/team";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 /**
  * THE ROLE IS A TAG, NOT A WORD (Anir, Aug 30: "it says admin, shouldn't it be
@@ -171,10 +173,12 @@ export function PersonHoverCard({
       content={
         <div>
           <div className="group/opt flex items-start gap-2.5">
-            <Avatar name={name} className="h-10 w-10 shrink-0 text-[12px]" />
+            <EntityLink href={teammateHref(name)} className="shrink-0 rounded-full" title={name}>
+              <Avatar name={name} className="h-10 w-10 shrink-0 text-[12px]" />
+            </EntityLink>
             <div className="min-w-0">
               <p className="break-words text-[13.5px] font-semibold leading-tight text-text-primary">
-                {name}
+                <EntityLink href={teammateHref(name)}>{name}</EntityLink>
               </p>
               {/* Role on its own line, directly under the name: it is the
                   first thing you want after knowing who someone is (Anir,

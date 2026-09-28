@@ -78,6 +78,8 @@ import { DateText } from "@/components/ui/DateText";
 import { repSlug } from "@/lib/team";
 import { companyDestination } from "@/lib/companyDestination";
 import { formatFromFilename, type OfferingMaterial } from "@/lib/offeringMaterials";
+import { CompanyLink, ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { contactHref, customerHref, teammateHref } from "@/lib/entityHref";
 
 /**
  * THE SOLUTIONING ROOM (Suren, Aug 24). Sales creates requests here or from a
@@ -556,12 +558,20 @@ export function SolutioningModule({
           <CircleDashed size={16} strokeWidth={2} />
         </span>
       ) : (
-        <Avatar name={label} className="h-8 w-8 shrink-0 text-[10px]" />
-      );
-    }
-    if (groupBy === "customer") {
-      return <CompanyLogo name={label} className="h-8 w-8 shrink-0 text-[9px]" />;
-    }
+        /* The mark is a door (Anir, Sep 28); the bar it sits in folds the
+           group, so this navigates from a span. */
+        <EntityLink nested href={teammateHref(label)} className="shrink-0 rounded-full" title={label}>
+          <Avatar name={label} className="h-8 w-8 shrink-0 text-[10px]" />
+        </EntityLink>
+        );
+        }
+        if (groupBy === "customer") {
+        return (
+          <EntityLink nested href={customerHref(null, label)} className="shrink-0" title={label}>
+            <CompanyLogo name={label} className="h-8 w-8 shrink-0 text-[9px]" />
+          </EntityLink>
+        );
+        }
     const statusMeta = SOLUTION_STATUS_DISPLAY[label] ?? {
       color: "var(--text-tertiary)",
       icon: CircleDot,
@@ -928,10 +938,12 @@ export function SolutioningModule({
                       : "hover:bg-surface"
                   )}
                 >
-                  <CompanyLogo
-                    name={r.customer}
-                    className="mt-0.5 h-7 w-7 shrink-0 text-[9px]"
-                  />
+                  <EntityLink nested href={customerHref(null, r.customer)} className="mt-0.5 shrink-0" title={r.customer}>
+                    <CompanyLogo
+                      name={r.customer}
+                      className="h-7 w-7 shrink-0 text-[9px]"
+                    />
+                  </EntityLink>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5">
                       <span className="truncate text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary tnum">
@@ -976,10 +988,12 @@ export function SolutioningModule({
                 {/* The header the fold does not need, because in the table the
                     row above it is the header. */}
                 <div className="flex flex-wrap items-center gap-2.5 border-b border-border-light bg-surface px-4 py-3">
-                  <CompanyLogo
-                    name={picked.customer}
-                    className="h-8 w-8 shrink-0 text-[10px]"
-                  />
+                  <EntityLink href={customerHref(null, picked.customer)} className="shrink-0" title={picked.customer}>
+                    <CompanyLogo
+                      name={picked.customer}
+                      className="h-8 w-8 shrink-0 text-[10px]"
+                    />
+                  </EntityLink>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-tertiary tnum">
@@ -1636,7 +1650,9 @@ function RequestPanel({
               <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px] text-text-primary">
                 <span className="flex shrink-0 -space-x-1.5">
                   {r.contactNames.slice(0, 3).map((name) => (
-                    <Avatar key={name} name={name} className="h-[20px] w-[20px] border-2 border-white text-[7px]" />
+                    <EntityLink key={name} href={contactHref(null, name)} className="shrink-0 rounded-full" title={name}>
+                      <Avatar name={name} className="h-[20px] w-[20px] border-2 border-white text-[7px]" />
+                    </EntityLink>
                   ))}
                 </span>
                 <span className="truncate font-medium">{r.contactNames.slice(0, 2).join(", ")}</span>
@@ -1706,12 +1722,11 @@ function RequestPanel({
                     </td>
                     <td className="px-3 py-2.5">
                       {doc.assignedTo ? (
-                        <span className="flex min-w-0 items-center gap-2" title={doc.assignedTo}>
-                          <Avatar name={doc.assignedTo} className="h-6 w-6 shrink-0 text-[8px]" />
-                          <span className="truncate text-[11.5px] font-medium text-text-primary">
+                        <PersonLink name={doc.assignedTo} title={doc.assignedTo} avatarClassName="h-6 w-6 shrink-0 text-[8px]" className="flex gap-2">
+                          <span className={cn("truncate text-[11.5px] font-medium text-text-primary", ENTITY_NAME)}>
                             {doc.assignedTo}
                           </span>
-                        </span>
+                        </PersonLink>
                       ) : (
                         <span className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
                           <CircleDashed size={13} strokeWidth={2} className="shrink-0" />
@@ -1784,8 +1799,7 @@ function RequestPanel({
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 text-[12px] font-medium leading-[17px] text-text-primary">{a.what}</p>
                     <p className="mt-1 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-tertiary">
-                      <Avatar name={a.by} className="h-[14px] w-[14px] shrink-0 text-[6px]" />
-                      <span className="min-w-0 truncate">{a.by}</span>
+                      <PersonLink name={a.by} avatarClassName="h-[14px] w-[14px] shrink-0 text-[6px]" className="gap-1.5" />
                       <span className="shrink-0 tnum">· <DateText value={a.at} /></span>
                     </p>
                   </div>
@@ -2314,10 +2328,12 @@ export function NewRequestDialog({
               the form back to the reader, which he called AI slop — one plain
               line about what this IS replaces it. */}
           <div className="mb-1 flex items-center gap-2">
-            <CompanyLogo
-              name={customer?.name ?? ""}
-              className="h-6 w-6 shrink-0 text-[8px]"
-            />
+            <EntityLink href={customer ? customerHref(customer.id, customer.name) : null} className="shrink-0" title={customer?.name}>
+              <CompanyLogo
+                name={customer?.name ?? ""}
+                className="h-6 w-6 shrink-0 text-[8px]"
+              />
+            </EntityLink>
             <p className="text-[14px] font-semibold text-text-primary">
               {sub === "opportunity" ? "New opportunity" : "New contact"} for{" "}
               {customer?.name}
@@ -2644,8 +2660,7 @@ export function NewRequestDialog({
               <div className="mt-1.5">
                 {sourceOpportunity ? (
                   <div className="flex h-10 items-center gap-2 rounded-lg border border-border-light bg-surface px-3 text-[13px] font-medium text-text-primary">
-                    <CompanyLogo name={sourceCompany} className="h-5 w-5 shrink-0 text-[7px]" />
-                    <span className="truncate">{sourceCompany}</span>
+                    <CompanyLink name={sourceCompany} logoClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-2" />
                   </div>
                 ) : (
                 <ColorSelect
@@ -2796,8 +2811,7 @@ export function NewRequestDialog({
               <div className="mt-1.5 flex items-center gap-2">
                 {prefillLead && customerId === sourceCustomerId && prefillLeadName ? (
                   <div className="flex h-10 items-center gap-2 rounded-lg border border-border-light bg-surface px-3 text-[13px] font-medium text-text-primary">
-                    <Avatar name={prefillLeadName} className="h-5 w-5 shrink-0 text-[7px]" />
-                    <span>{prefillLeadName}</span>
+                    <PersonLink kind="contact" name={prefillLeadName} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-2" />
                     <span className="text-[11px] font-normal text-text-tertiary">From this lead</span>
                   </div>
                 ) : <>

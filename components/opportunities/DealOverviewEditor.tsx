@@ -23,7 +23,6 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react";
-import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { AlertTriangle, CalendarRange } from "lucide-react";
@@ -55,6 +54,8 @@ import { cn } from "@/lib/utils";
 import { ConfidenceSlider } from "./ConfidenceSlider";
 import { DealPeople, type DealTeam } from "./DealPeople";
 import { tint } from "@/lib/tint";
+import { EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 /**
  * THE OVERVIEW TAB IS THE EDIT FORM.
@@ -1123,18 +1124,24 @@ export function DealOverviewEditor({
                   account name from inside an existing deal would re-parent a
                   live record onto an account nobody created. */}
               {ro || customers.length === 0 ? (
-                <ReadValue
-                  text={deal.customer || "No account"}
-                  empty={!deal.customer}
-                  leading={
-                    deal.customer ? (
-                      <CompanyLogo
-                        name={deal.customer}
-                        className="h-7 w-7 shrink-0 text-[9px]"
-                      />
-                    ) : undefined
-                  }
-                />
+                /* The account is a door even when it cannot be changed here. */
+                <EntityLink
+                  href={customerHref(resolvedCustomerId || null, deal.customer)}
+                  className="block"
+                >
+                  <ReadValue
+                    text={deal.customer || "No account"}
+                    empty={!deal.customer}
+                    leading={
+                      deal.customer ? (
+                        <CompanyLogo
+                          name={deal.customer}
+                          className="h-7 w-7 shrink-0 text-[9px]"
+                        />
+                      ) : undefined
+                    }
+                  />
+                </EntityLink>
               ) : (
                 <ColorSelect
                   value={resolvedCustomerId || "__current"}
@@ -2016,12 +2023,14 @@ export function DealOverviewEditor({
                  never for the placeholder, because Avatar resolves a photo from
                  the NAME and "Nobody yet" would go and find somebody's. */
               owner ? (
-                <span className="flex h-10 items-center gap-2">
-                  <Avatar name={owner} className="h-7 w-7 shrink-0 text-[10px]" />
-                  <span className="truncate text-[13px] font-medium text-text-primary">
-                    {owner}
-                  </span>
-                </span>
+                /* A DOOR, not just a face (Anir, Sep 28): the owner's own profile,
+                   the one the Team roster opens. */
+                <PersonLink
+                  name={owner}
+                  avatarClassName="h-7 w-7 shrink-0 text-[10px]"
+                  className="flex h-10 gap-2"
+                  nameClassName="text-[13px] font-medium text-text-primary"
+                />
               ) : (
                 <ReadValue text="Nobody yet" empty />
               )

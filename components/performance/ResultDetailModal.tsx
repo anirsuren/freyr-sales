@@ -2,8 +2,6 @@
 
 import { CircleDollarSign, Briefcase } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
-import { Avatar } from "@/components/ui/Avatar";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { EvidenceLinkRow } from "./EvidenceViewer";
 import { EntryTimeline, stamp } from "./EntryCards";
 import {
@@ -16,6 +14,8 @@ import {
   type PrimaryGoal,
   resultWhen,
 } from "@/lib/performanceShared";
+import { CompanyLink, ENTITY_NAME, PersonLink } from "@/components/ui/EntityLink";
+import { cn } from "@/lib/utils";
 
 /**
  * ONE LOGGED RESULT, IN FULL (Anir, Aug 20, clicking a row in the goal drill:
@@ -85,10 +85,7 @@ export function ResultDetailModal({
         <div className="min-w-0 flex-1">
       <div className="grid gap-3 sm:grid-cols-2">
         <Fact label="Logged by">
-          <span className="flex items-center gap-1.5">
-            <Avatar name={entry.person} className="h-5 w-5 shrink-0 text-[8px]" />
-            <span className="truncate">{entry.person}</span>
-          </span>
+          <PersonLink name={entry.person} avatarClassName="h-5 w-5 shrink-0 text-[8px]" className="flex gap-1.5" />
         </Fact>
         <Fact label="Result date">
           {/* resultWhen already says the day AND when it was entered, so the
@@ -97,13 +94,9 @@ export function ResultDetailModal({
         </Fact>
         {entry.customer && (
           <Fact label="Customer">
-            <span className="flex items-center gap-1.5">
-              <CompanyLogo
-                name={entry.customer}
-                className="h-5 w-5 shrink-0 text-[7px]"
-              />
-              <span className="truncate">{entry.customer}</span>
-            </span>
+            <CompanyLink name={entry.customer} logoClassName="h-5 w-5 shrink-0 text-[7px]" className="flex gap-1.5">
+              <span className={cn("truncate", ENTITY_NAME)}>{entry.customer}</span>
+            </CompanyLink>
           </Fact>
         )}
         {dealName && (

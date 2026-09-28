@@ -1,6 +1,5 @@
 import { Briefcase, Compass, Fingerprint, type LucideIcon } from "lucide-react";
 import { NotificationMark } from "@/components/notifications/NotificationMark";
-import { Avatar } from "@/components/ui/Avatar";
 import { DateText } from "@/components/ui/DateText";
 import { cn } from "@/lib/utils";
 import type {
@@ -8,6 +7,7 @@ import type {
   NotificationUrgency,
   SetupMark,
 } from "@/lib/notifications";
+import { PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * One notification, drawn the same way in the bell panel and on the
@@ -147,10 +147,7 @@ export function NotificationRow({
             actually needed a name went unprinted. */}
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
           {n.person && (
-            <span className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary">
-              <Avatar name={n.person} className="h-[18px] w-[18px] shrink-0 text-[8px]" />
-              {n.person}
-            </span>
+            <PersonLink nested name={n.person} avatarClassName="h-[18px] w-[18px] shrink-0 text-[8px]" className="shrink-0 gap-1.5 text-[12px] font-semibold text-text-primary" />
           )}
           <span className="min-w-0 text-[12px] text-text-secondary leading-snug break-words">
             {n.detail || n.body}

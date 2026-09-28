@@ -54,6 +54,8 @@ import {
   asMaterialKind,
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
+import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { contactHref } from "@/lib/entityHref";
 
 type PlanStatus = "Active" | "Needs review" | "Draft";
 type PlayStage = "Explore" | "Shape" | "Validate" | "Commit";
@@ -494,8 +496,9 @@ export function CustomerAccountPlanTab({
 
         <div className="grid border-t border-border-light sm:grid-cols-3 sm:divide-x sm:divide-border-light">
           <div className="flex items-center gap-2.5 px-5 py-3">
-            <Avatar name={plan.owner} className="h-8 w-8 shrink-0" />
-            <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">Plan owner</p><p className="truncate text-[12.5px] font-semibold text-text-primary">{plan.owner}</p></div>
+            <PersonLink name={plan.owner} avatarClassName="h-8 w-8 shrink-0" className="gap-2.5">
+              <span className="min-w-0"><span className="block text-[10px] font-semibold uppercase tracking-[0.07em] text-text-tertiary">Plan owner</span><span className={cn("block truncate text-[12.5px] font-semibold text-text-primary", ENTITY_NAME)}>{plan.owner}</span></span>
+            </PersonLink>
           </div>
           <div className="flex items-center gap-2.5 border-t border-border-light px-5 py-3 sm:border-t-0">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(124,58,237,0.09)] text-[color:var(--ink-violet-soft)]"><Target size={16} /></span>
@@ -816,7 +819,7 @@ export function CustomerAccountPlanTab({
                                 <div className="min-w-0">
                                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">People & linked work</p>
                                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-                                    {play.contacts.map((name) => <span key={name} className="inline-flex min-w-0 items-center gap-2 text-[12.5px] font-semibold text-text-primary"><Avatar name={name} className="h-7 w-7 shrink-0" /><span className="truncate">{name}</span></span>)}
+                                    {play.contacts.map((name) => <PersonLink key={name} kind="contact" name={name} avatarClassName="h-7 w-7 shrink-0" className="gap-2 text-[12.5px] font-semibold text-text-primary" />)}
                                   </div>
                                   {linkedOpportunity || linkedActivities.length > 0 ? (
                                     <div className="mt-3 overflow-hidden rounded-xl border border-border-light bg-white">
@@ -960,7 +963,7 @@ export function CustomerAccountPlanTab({
                     <div className="mt-2 flex h-12 items-center justify-center">
                       {node.mapped ? (
                         <div className="relative rounded-full bg-white p-[3px]" style={{ boxShadow: `0 0 0 2px ${node.color}, 0 6px 18px rgba(15,23,42,0.14)` }}>
-                          <Avatar name={node.name} className="h-10 w-10" />
+                          <EntityLink href={contactHref(null, node.name)} className="block rounded-full" title={node.name}><Avatar name={node.name} className="h-10 w-10" /></EntityLink>
                           <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white text-white" style={{ background: node.color }}>
                             {index === mappedDecisionSteps - 1 ? <Target size={8} strokeWidth={3} /> : <Check size={8} strokeWidth={3.5} />}
                           </span>
@@ -1008,8 +1011,8 @@ export function CustomerAccountPlanTab({
             <tbody>{visibleStakeholders.length === 0 && <tr><td colSpan={5} className="px-5 py-10 text-center text-[12.5px] text-text-secondary">No stakeholders match these filters.</td></tr>}{visibleStakeholders.map((person) => {
               const expanded = expandedStakeholder === person.id;
               return <Fragment key={person.id}>
-                <tr tabIndex={0} aria-expanded={expanded} onClick={() => setExpandedStakeholder(expanded ? null : person.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setExpandedStakeholder(expanded ? null : person.id); } }} className={cn("cursor-pointer border-b border-border-light text-[12px] outline-none transition-colors focus-visible:bg-blue-light/55 focus-visible:[box-shadow:inset_3px_0_0_0_var(--ink-teal-deep)]", expanded ? "bg-blue-light/45" : "hover:bg-surface/60")}><td className="px-5 py-3"><div className="flex items-center gap-2.5"><Avatar name={person.name} className="h-8 w-8" /><div><p className="font-semibold text-text-primary">{person.name}</p><p className="text-[11px] text-text-secondary">{person.title}</p></div></div></td><td className="px-3 py-3"><RolePill role={person.buyingRole} /></td><td className="px-3 py-3"><p className="font-semibold text-text-primary">{person.relationship}</p><p className="text-[11px] text-text-tertiary">{person.position} · {person.priority} priority</p></td><td className="max-w-[260px] px-3 py-3 font-medium text-blue-primary">{person.nextAction}</td><td className="px-3 py-3"><button aria-label={`${expanded ? "Collapse" : "Expand"} ${person.name}`} aria-expanded={expanded} onClick={(event) => { event.stopPropagation(); setExpandedStakeholder(expanded ? null : person.id); }} className={cn("inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white transition-colors", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/50 hover:text-blue-primary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></button></td></tr>
-                {expanded && <tr key={`${person.id}-detail`} className="border-b border-border-light bg-white"><td colSpan={5} className="px-5 pb-5 pt-3 [box-shadow:inset_3px_0_0_0_var(--ink-teal-deep)]"><div className="tab-panel grid gap-x-8 gap-y-4 sm:grid-cols-[0.8fr_0.9fr_1.7fr]"><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Reports to</p><p className="mt-1.5 text-[12.5px] font-semibold text-text-primary">{person.reportsTo}</p></div><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Introduced by</p><p className="mt-1.5 inline-flex min-w-0 items-center gap-2 text-[12.5px] font-semibold text-text-primary"><Avatar name={person.introducer} className="h-6 w-6 shrink-0" /><span className="truncate">{person.introducer}</span></p></div><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Recommended approach</p><p className="mt-1.5 text-[12.5px] leading-5 text-text-primary">{person.approach}</p></div></div></td></tr>}
+                <tr tabIndex={0} aria-expanded={expanded} onClick={() => setExpandedStakeholder(expanded ? null : person.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setExpandedStakeholder(expanded ? null : person.id); } }} className={cn("cursor-pointer border-b border-border-light text-[12px] outline-none transition-colors focus-visible:bg-blue-light/55 focus-visible:[box-shadow:inset_3px_0_0_0_var(--ink-teal-deep)]", expanded ? "bg-blue-light/45" : "hover:bg-surface/60")}><td className="px-5 py-3"><PersonLink kind="contact" name={person.name} avatarClassName="h-8 w-8 shrink-0" className="flex gap-2.5"><span><span className={cn("block font-semibold text-text-primary", ENTITY_NAME)}>{person.name}</span><span className="block text-[11px] text-text-secondary">{person.title}</span></span></PersonLink></td><td className="px-3 py-3"><RolePill role={person.buyingRole} /></td><td className="px-3 py-3"><p className="font-semibold text-text-primary">{person.relationship}</p><p className="text-[11px] text-text-tertiary">{person.position} · {person.priority} priority</p></td><td className="max-w-[260px] px-3 py-3 font-medium text-blue-primary">{person.nextAction}</td><td className="px-3 py-3"><button aria-label={`${expanded ? "Collapse" : "Expand"} ${person.name}`} aria-expanded={expanded} onClick={(event) => { event.stopPropagation(); setExpandedStakeholder(expanded ? null : person.id); }} className={cn("inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white transition-colors", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/50 hover:text-blue-primary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></button></td></tr>
+                {expanded && <tr key={`${person.id}-detail`} className="border-b border-border-light bg-white"><td colSpan={5} className="px-5 pb-5 pt-3 [box-shadow:inset_3px_0_0_0_var(--ink-teal-deep)]"><div className="tab-panel grid gap-x-8 gap-y-4 sm:grid-cols-[0.8fr_0.9fr_1.7fr]"><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Reports to</p><p className="mt-1.5 text-[12.5px] font-semibold text-text-primary">{person.reportsTo}</p></div><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Introduced by</p><PersonLink kind="contact" name={person.introducer} avatarClassName="h-6 w-6 shrink-0" className="mt-1.5 text-[12.5px] font-semibold text-text-primary" /></div><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Recommended approach</p><p className="mt-1.5 text-[12.5px] leading-5 text-text-primary">{person.approach}</p></div></div></td></tr>}
               </Fragment>;
             })}</tbody>
           </table>

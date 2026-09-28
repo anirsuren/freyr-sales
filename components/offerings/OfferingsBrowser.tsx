@@ -83,6 +83,8 @@ import type {
   OfferingCategory,
 } from "@/lib/offerings";
 import { tint } from "@/lib/tint";
+import { CompanyLink, ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 // Canonical family order so the "who it's for" chips read consistently.
 // Offering descriptions arrive from Suren's Excel as bullet LISTS ("• item\n•
@@ -262,15 +264,11 @@ function OwnerRows({
                 role={owner.role || "Owns this offering"}
                 context={offeringName}
               >
-                <span className="inline-flex min-w-0 items-center gap-1.5 rounded-lg py-0.5 pr-1 transition-colors hover:bg-surface">
-                  <Avatar
-                    name={owner.name}
-                    className="h-[20px] w-[20px] shrink-0 text-[7px]"
-                  />
-                  <span className="min-w-0 break-words">
+                <PersonLink nested name={owner.name} avatarClassName="h-[20px] w-[20px] shrink-0 text-[7px]" className="gap-1.5 rounded-lg py-0.5 pr-1 transition-colors hover:bg-surface">
+                  <span className={cn("min-w-0 break-words", ENTITY_NAME)}>
                     {shortPersonName(owner.name)}
                   </span>
-                </span>
+                </PersonLink>
               </PersonHoverCard>
             </span>
           ))}
@@ -1045,11 +1043,12 @@ export function OfferingsBrowser({
                     <div className="flex shrink-0 items-center">
                       <span className="flex items-center -space-x-1.5">
                         {payingCustomers.map((c) => (
-                          <CompanyLogo
-                            key={c.id}
-                            name={c.name}
-                            className="w-5 h-5 text-[7px] ring-2 ring-[color:var(--white)]"
-                          />
+                          <EntityLink key={c.id} nested href={customerHref(c.id, c.name)} className="shrink-0" title={c.name}>
+                            <CompanyLogo
+                              name={c.name}
+                              className="w-5 h-5 text-[7px] ring-2 ring-[color:var(--white)]"
+                            />
+                          </EntityLink>
                         ))}
                         {tailAccounts > 0 && (
                           <span className="flex h-5 w-5 items-center justify-center rounded-xl bg-blue-light text-[8px] font-semibold text-blue-primary ring-2 ring-[color:var(--white)] tnum">
@@ -1108,9 +1107,8 @@ export function OfferingsBrowser({
                         key={c.id}
                         className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-blue-light/60 px-1.5 py-0.5 text-[11px] font-medium text-text-primary"
                       >
-                        <CompanyLogo name={c.name} className="w-4 h-4 text-[6px]" />
-                        {c.name}
-                      </span>
+                        <CompanyLink nested name={c.name} customerId={c.id} logoClassName="w-4 h-4 shrink-0 text-[6px]" className="gap-1.5" />
+                        </span>
                     ))}
                   </div>
                   <p className="mt-1.5 text-[10.5px] leading-snug text-text-tertiary">
@@ -1787,15 +1785,11 @@ export function OfferingsBrowser({
                                 role={owner.role || "Owns this offering"}
                                 context={o.offering_name}
                               >
-                                <span className="hover-yield inline-flex min-w-0 items-center gap-1.5">
-                                  <Avatar
-                                    name={owner.name}
-                                    className="h-5 w-5 shrink-0 text-[7px]"
-                                  />
-                                  <span className="min-w-0 break-words text-[12.5px] text-text-primary">
+                                <PersonLink name={owner.name} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="hover-yield gap-1.5">
+                                  <span className={cn("min-w-0 break-words text-[12.5px] text-text-primary", ENTITY_NAME)}>
                                     {shortPersonName(owner.name)}
                                   </span>
-                                </span>
+                                </PersonLink>
                               </PersonHoverCard>
                             ))}
                           </span>

@@ -26,6 +26,8 @@ import {
 import type { OfferingReport } from "@/lib/revenue";
 import { REVENUE_TYPE_META } from "@/lib/revenue";
 import { formatDate } from "@/lib/utils";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 // The availability comment arrives from Suren's sheet as one middot-joined
 // run-on ("Available in various markets via in-house delivery team / FreyrX /
@@ -537,16 +539,18 @@ export function OfferingOverviewMain({
                                     key={`${entry.customer}-${entry.line.id}`}
                                     className="flex items-center gap-2 text-[11.5px]"
                                   >
-                                    <CompanyLogo
-                                      name={entry.customer}
-                                      className="h-[18px] w-[18px] shrink-0 text-[7px]"
-                                    />
+                                    <EntityLink href={customerHref(null, entry.customer)} className="shrink-0" title={entry.customer}>
+                                      <CompanyLogo
+                                        name={entry.customer}
+                                        className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                                      />
+                                    </EntityLink>
                                     {/* Wraps, never truncates — a full account
                                         name is the point of the breakdown. */}
                                     <span className="min-w-0 flex-1 leading-tight">
-                                      <span className="block break-words font-medium text-text-primary">
+                                      <EntityLink href={customerHref(null, entry.customer)} className="block break-words font-medium text-text-primary">
                                         {entry.customer}
-                                      </span>
+                                      </EntityLink>
                                       <span className="block text-[10px] text-text-tertiary">
                                         {REVENUE_TYPE_META[entry.line.revenue_type]?.short}
                                       </span>
@@ -656,9 +660,11 @@ export function OfferingOverviewMain({
                   const hover = (
                     <div>
                       <div className="flex items-center gap-2.5">
-                        <CompanyLogo name={customer.name} className="h-9 w-9 shrink-0 text-[9px]" />
+                        <EntityLink href={customerHref(customer.id, customer.name)} className="shrink-0" title={customer.name}>
+                          <CompanyLogo name={customer.name} className="h-9 w-9 shrink-0 text-[9px]" />
+                        </EntityLink>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13.5px] font-semibold text-text-primary">{customer.name}</p>
+                          <EntityLink href={customerHref(customer.id, customer.name)} className="block truncate text-[13.5px] font-semibold text-text-primary">{customer.name}</EntityLink>
                           <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">
                             <Check size={11} strokeWidth={2.4} />
                             Using this offering
@@ -731,11 +737,13 @@ export function OfferingOverviewMain({
                         className="group grid min-h-[62px] grid-cols-[minmax(190px,1.45fr)_88px_70px_minmax(118px,.85fr)] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--surface)]"
                       >
                         <span className="flex min-w-0 items-center gap-2.5">
-                          <CompanyLogo name={customer.name} className="h-8 w-8 shrink-0 text-[8px]" />
+                          <EntityLink nested href={customerHref(customer.id, customer.name)} className="shrink-0" title={customer.name}>
+                            <CompanyLogo name={customer.name} className="h-8 w-8 shrink-0 text-[8px]" />
+                          </EntityLink>
                           <span className="min-w-0">
-                            <span className="block text-[12.5px] font-semibold leading-tight text-text-primary group-hover:text-blue-primary">
+                            <EntityLink nested href={customerHref(customer.id, customer.name)} className="block text-[12.5px] font-semibold leading-tight text-text-primary group-hover:text-blue-primary">
                               {customer.name}
-                            </span>
+                            </EntityLink>
                             <span className="mt-0.5 block text-[9.5px] leading-tight text-text-tertiary">
                               {customer.lines.length} commercial {customer.lines.length === 1 ? "line" : "lines"}
                               {nextRenewal ? ` · renews ${formatDate(nextRenewal)}` : " · ongoing"}

@@ -24,6 +24,8 @@ import {
 } from "./EntryCards";
 import { RoleChip } from "./bits";
 import type { RunOp } from "./PerformanceModule";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 /**
  * PEOPLE PERFORMANCE — the Org screen pointed at one person (Suren, Aug 15:
@@ -176,7 +178,9 @@ export function PeopleTab({
           as filtering YOUR goals, not switching person. So the name itself is
           the control now. */}
       <span className="relative flex items-center gap-2.5">
-        <Avatar name={person} className="h-9 w-9 text-[12px]" />
+        <EntityLink href={teammateHref(person)} className="shrink-0 rounded-full" title={`Open ${person}`}>
+          <Avatar name={person} className="h-9 w-9 text-[12px]" />
+        </EntityLink>
         <span className="min-w-0">
           <button
             type="button"

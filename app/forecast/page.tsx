@@ -42,6 +42,8 @@ import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { contactHref, customerHref } from "@/lib/entityHref";
 
 export const metadata = { title: "Forecast" };
 export const dynamic = "force-dynamic";
@@ -399,11 +401,13 @@ export default async function ForecastPage() {
                                   key={`${d.company}-${d.contact}`}
                                   className="flex items-center gap-2 text-[12px]"
                                 >
-                                  <CompanyLogo name={d.company} className="w-[18px] h-[18px] text-[7px] shrink-0" />
+                                  <EntityLink href={customerHref(null, d.company)} className="shrink-0" title={d.company}>
+                                    <CompanyLogo name={d.company} className="w-[18px] h-[18px] text-[7px] shrink-0" />
+                                  </EntityLink>
                                   <span className="min-w-0 flex-1 leading-tight">
-                                    <span className="block truncate font-medium text-text-primary">
+                                    <EntityLink href={customerHref(null, d.company)} className="block truncate font-medium text-text-primary">
                                       {d.company}
-                                    </span>
+                                    </EntityLink>
                                     <span className="block truncate text-[10.5px] text-text-tertiary">
                                       {d.contact}
                                     </span>
@@ -728,11 +732,15 @@ export default async function ForecastPage() {
                           restatement of the visible numbers (Anir: "the
                           pop-ups don't show me anything of value"). */}
                       <div className="flex items-start gap-2.5">
-                        <CompanyLogo name={deal.company} className="h-9 w-9 shrink-0 text-[8px]" />
+                        <EntityLink href={customerHref(null, deal.company)} className="shrink-0" title={deal.company}>
+                          <CompanyLogo name={deal.company} className="h-9 w-9 shrink-0 text-[8px]" />
+                        </EntityLink>
                         <div className="min-w-0">
-                          <p className="text-[13px] font-semibold leading-snug text-text-primary">{deal.company}</p>
+                          <p className="text-[13px] font-semibold leading-snug text-text-primary"><EntityLink href={customerHref(null, deal.company)}>{deal.company}</EntityLink></p>
                           <div className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[10.5px] text-text-tertiary">
-                            <Avatar name={deal.contactName} className="mt-[1px] h-4 w-4 shrink-0 text-[6px]" />
+                            <EntityLink href={contactHref(null, deal.contactName)} className="mt-[1px] shrink-0 rounded-full" title={deal.contactName}>
+                              <Avatar name={deal.contactName} className="h-4 w-4 shrink-0 text-[6px]" />
+                            </EntityLink>
                             <span className="min-w-0 leading-snug break-normal">
                               {deal.contactName} · {deal.service}
                             </span>
@@ -758,13 +766,17 @@ export default async function ForecastPage() {
                       company name… it kind of ruins the vibe and it's a space
                       issue too"). Nothing here truncates. */}
                   <span className="flex min-w-0 items-center gap-2.5">
-                    <CompanyLogo name={deal.company} className="h-8 w-8 shrink-0 text-[8px]" />
+                    <EntityLink nested href={customerHref(null, deal.company)} className="shrink-0" title={deal.company}>
+                      <CompanyLogo name={deal.company} className="h-8 w-8 shrink-0 text-[8px]" />
+                    </EntityLink>
                     <span className="min-w-0">
-                      <span className="block text-[12.5px] font-semibold leading-snug text-text-primary">
+                      <EntityLink nested href={customerHref(null, deal.company)} className="block text-[12.5px] font-semibold leading-snug text-text-primary">
                         {deal.company}
-                      </span>
+                      </EntityLink>
                       <span className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[11px] text-text-secondary">
-                        <Avatar name={deal.contactName} className="mt-[1px] h-4 w-4 shrink-0 text-[6px]" />
+                        <EntityLink nested href={contactHref(null, deal.contactName)} className="mt-[1px] shrink-0 rounded-full" title={deal.contactName}>
+                          <Avatar name={deal.contactName} className="h-4 w-4 shrink-0 text-[6px]" />
+                        </EntityLink>
                         {/* Wraps instead of truncating — "Dr. Arun P…" tells a
                             rep nothing (Anir: "I can't even see the full name
                             of the guy or the category"). */}

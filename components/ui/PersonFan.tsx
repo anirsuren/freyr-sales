@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
 import { HoverCard } from "@/components/ui/HoverCard";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 export type FanPerson = {
   name: string;
@@ -80,12 +82,14 @@ export function PersonFan({
             <span
               className="relative isolate inline-flex overflow-hidden rounded-full bg-[var(--surface)] outline-none ring-2 ring-[color:var(--white)] transition-[transform,filter] duration-150 hover:z-20 hover:-translate-y-0.5 hover:scale-110 hover:drop-shadow-md"
             >
-              <Avatar
-                name={p.name}
-                className={avatarClassName}
-              />
-            </span>
-          </PersonHoverCard>
+              <EntityLink href={teammateHref(p.name)} className="block rounded-full" title={p.name}>
+                <Avatar
+                  name={p.name}
+                  className={avatarClassName}
+                />
+              </EntityLink>
+              </span>
+              </PersonHoverCard>
         </span>
       ))}
       {hidden > 0 && (
@@ -103,11 +107,13 @@ export function PersonFan({
               <ul className="space-y-1.5">
                 {people.slice(max).map((p) => (
                   <li key={p.name} className="flex items-center gap-2">
-                    <Avatar name={p.name} className="h-5 w-5 shrink-0 text-[7px]" />
+                    <EntityLink href={teammateHref(p.name)} className="shrink-0 rounded-full" title={p.name}>
+                      <Avatar name={p.name} className="h-5 w-5 shrink-0 text-[7px]" />
+                    </EntityLink>
                     <span className="min-w-0">
-                      <span className="block text-[12.5px] font-medium text-text-primary">
+                      <EntityLink href={teammateHref(p.name)} className="block text-[12.5px] font-medium text-text-primary">
                         {p.name}
-                      </span>
+                      </EntityLink>
                       {p.role && (
                         <span className="block text-[11px] text-text-secondary">
                           {p.role}

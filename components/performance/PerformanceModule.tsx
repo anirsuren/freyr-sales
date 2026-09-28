@@ -114,6 +114,8 @@ import { PeopleTab } from "./PeopleTab";
 import { GroupPerformanceTab } from "./GroupPerformanceTab";
 import { tint } from "@/lib/tint";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
+import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref, teammateHref } from "@/lib/entityHref";
 
 /**
  * THE PERFORMANCE MANAGEMENT MODULE (Suren, Aug 11 — voice notes +
@@ -1348,12 +1350,13 @@ function MasterTab({
                         {owners.length > 0 ? (
                           <span className="flex -space-x-1.5">
                             {owners.slice(0, 4).map((o) => (
-                              <Avatar
-                                key={o}
-                                name={o}
-                                tooltip={"Goal owner: " + o}
-                                className="h-6 w-6 border-2 border-white text-[9px]"
-                              />
+                              <EntityLink key={o} href={teammateHref(o)} className="rounded-full">
+                                <Avatar
+                                  name={o}
+                                  tooltip={"Goal owner: " + o}
+                                  className="h-6 w-6 border-2 border-white text-[9px]"
+                                />
+                              </EntityLink>
                             ))}
                           </span>
                         ) : (
@@ -1758,10 +1761,11 @@ function GroupSplitPanel({
                 className="shrink-0 text-[color:var(--ink-violet-soft)]"
               />
             )}
-            <Avatar name={m} className="h-7 w-7 shrink-0 text-[10px]" />
-            <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
-              {m}
-            </span>
+            <PersonLink name={m} avatarClassName="h-7 w-7 shrink-0 text-[10px]" className="min-w-0 flex-1 gap-2.5">
+              <span className={cn("min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary", ENTITY_NAME)}>
+                {m}
+              </span>
+            </PersonLink>
             {/* WHAT THEY HAVE AGAINST WHAT THEY CARRY, not a bare count
                 (Anir, Aug 30: "why am I not seeing a progress bar that says
                 100%... there can't be any holes here"). Same block as the
@@ -1862,10 +1866,11 @@ function GroupSplitPanel({
                 key={m}
                 className="flex items-center gap-2.5 rounded-lg border border-dashed border-border-light px-2.5 py-2"
               >
-                <Avatar name={m} className="h-7 w-7 shrink-0 text-[10px] opacity-60" />
-                <span className="min-w-0 flex-1 truncate text-[12.5px] text-text-secondary">
-                  {m}
-                </span>
+                <PersonLink name={m} avatarClassName="h-7 w-7 shrink-0 text-[10px] opacity-60" className="min-w-0 flex-1 gap-2.5">
+                  <span className={cn("min-w-0 flex-1 truncate text-[12.5px] text-text-secondary", ENTITY_NAME)}>
+                    {m}
+                  </span>
+                </PersonLink>
                 {live && (
                   <button
                     type="button"
@@ -2184,11 +2189,7 @@ function AssignGroupModal({
                         <GroupPill name={g.name} />
                         <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
                           led by
-                          <Avatar
-                            name={g.head}
-                            className="h-[18px] w-[18px] shrink-0 text-[8px]"
-                          />
-                          {g.head}
+                          <PersonLink name={g.head} avatarClassName="h-[18px] w-[18px] shrink-0 text-[8px]" className="gap-1.5" />
                         </span>
                       </span>
                       {/* One line closed: faces plus the count. A real button,
@@ -2220,14 +2221,15 @@ function AssignGroupModal({
                         {roster.length === 1 ? "person" : "people"}
                         <span className="ml-auto flex items-center pl-1.5">
                           {roster.slice(0, 5).map((n, i) => (
-                            <Avatar
+                            <EntityLink
                               key={n}
-                              name={n}
-                              className={cn(
-                                "h-5 w-5 text-[7px] ring-1 ring-white",
-                                i > 0 && "-ml-1.5"
-                              )}
-                            />
+                              nested
+                              href={teammateHref(n)}
+                              title={n}
+                              className={cn("rounded-full", i > 0 && "-ml-1.5")}
+                            >
+                              <Avatar name={n} className="h-5 w-5 text-[7px] ring-1 ring-white" />
+                            </EntityLink>
                           ))}
                           {roster.length > 5 && (
                             <span className="ml-1 text-[10px] font-semibold text-text-tertiary tnum">
@@ -2254,10 +2256,11 @@ function AssignGroupModal({
                                   className="shrink-0 text-[color:var(--ink-violet-soft)]"
                                 />
                               )}
-                              <Avatar name={name} className="h-6 w-6 shrink-0 text-[8px]" />
-                              <span className="min-w-0 truncate text-[12px] text-text-primary">
-                                {name}
-                              </span>
+                              <PersonLink name={name} avatarClassName="h-6 w-6 shrink-0 text-[8px]" className="gap-2">
+                                <span className={cn("min-w-0 truncate text-[12px] text-text-primary", ENTITY_NAME)}>
+                                  {name}
+                                </span>
+                              </PersonLink>
                             </span>
                           ))}
                         </span>
@@ -2703,13 +2706,11 @@ function GoalPopupBody({
       {goalAuthor(goal.createdBy) && (
         <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-tertiary">
           Set by
-          <Avatar
-            name={goalAuthor(goal.createdBy)!}
-            className="h-4 w-4 shrink-0 text-[7px]"
-          />
-          <b className="font-semibold text-text-secondary">
-            {goalAuthor(goal.createdBy)}
-          </b>
+          <PersonLink name={goalAuthor(goal.createdBy)!} avatarClassName="h-4 w-4 shrink-0 text-[7px]" className="gap-1.5">
+            <b className={cn("font-semibold text-text-secondary", ENTITY_NAME)}>
+              {goalAuthor(goal.createdBy)}
+            </b>
+          </PersonLink>
           {goalCreatedOn(goal.createdAt) && (
             <span className="tnum">on {goalCreatedOn(goal.createdAt)}</span>
           )}
@@ -2915,12 +2916,13 @@ function GoalPopupBody({
                 {s.owners.length > 0 && (
                   <span className="flex items-center gap-1">
                     {s.owners.slice(0, 3).map((o) => (
-                      <Avatar
-                        key={o}
-                        name={o}
-                        tooltip={"Goal owner: " + o}
-                        className="h-5 w-5 text-[8px]"
-                      />
+                      <EntityLink key={o} nested href={teammateHref(o)} className="rounded-full">
+                        <Avatar
+                          name={o}
+                          tooltip={"Goal owner: " + o}
+                          className="h-5 w-5 text-[8px]"
+                        />
+                      </EntityLink>
                     ))}
                   </span>
                 )}
@@ -3008,10 +3010,11 @@ function GoalPopupBody({
                       ) : (
                         s.people.map((p) => (
                           <div key={p.name} className="flex items-center gap-2">
-                            <Avatar name={p.name} className="h-6 w-6 text-[9px]" />
-                            <span className="flex-1 text-[12.5px] font-medium text-text-primary">
-                              {p.name}
-                            </span>
+                            <PersonLink name={p.name} avatarClassName="h-6 w-6 shrink-0 text-[9px]" className="min-w-0 flex-1 gap-2">
+                              <span className={cn("flex-1 text-[12.5px] font-medium text-text-primary", ENTITY_NAME)}>
+                                {p.name}
+                              </span>
+                            </PersonLink>
                             <span className="text-[12px] text-text-secondary tnum">
                               {p.target > 0
                                 ? fmtAmount(goal.unit, p.target)
@@ -3334,11 +3337,13 @@ function GoalPopupBody({
                   isOpen ? "text-blue-primary" : "-rotate-90 text-text-tertiary"
                 )}
               />
-              <Avatar name={a.person} className="h-7 w-7 shrink-0 text-[10px]" />
+              <EntityLink href={teammateHref(a.person)} className="shrink-0 rounded-full" title={a.person}>
+                <Avatar name={a.person} className="h-7 w-7 shrink-0 text-[10px]" />
+              </EntityLink>
               <span className="flex min-w-[150px] flex-1 items-center gap-2">
-                <span className="truncate text-[13px] font-semibold text-text-primary">
+                <EntityLink href={teammateHref(a.person)} className="truncate text-[13px] font-semibold text-text-primary">
                   {a.person}
-                </span>
+                </EntityLink>
                 {/* Who they are, not just what they are called (Anir, Aug 15). */}
                 {memberRoles?.[a.person.trim()] && (
                   <RoleChip role={memberRoles[a.person.trim()]} />
@@ -4501,10 +4506,7 @@ function SubgoalEditorFields({
                     aria-label="Goal owner"
                     className="shrink-0 text-[color:var(--ink-violet-soft)]"
                   />
-                  <Avatar name={o} className="h-5 w-5 text-[8px]" />
-                  <span className="text-[12.5px] font-medium text-text-primary">
-                    {o}
-                  </span>
+                  <PersonLink name={o} avatarClassName="h-5 w-5 shrink-0 text-[8px]" className="gap-2" nameClassName="text-[12.5px] font-medium text-text-primary" />
                 </span>
                 {/* AN X, AND IT ASKS (Anir, Aug 15: "can you make it just an
                     X instead of a delete icon... obviously it should ask me
@@ -4617,11 +4619,7 @@ function SubgoalEditorFields({
                         {g && (
                           <>
                             led by
-                            <Avatar
-                              name={g.head}
-                              className="h-[18px] w-[18px] shrink-0 text-[8px]"
-                            />
-                            <span className="truncate">{g.head}</span>
+                            <PersonLink name={g.head} avatarClassName="h-[18px] w-[18px] shrink-0 text-[8px]" className="gap-1.5" />
                           </>
                         )}
                       </span>
@@ -4746,10 +4744,7 @@ function SubgoalEditorFields({
                       className="shrink-0 text-[color:var(--ink-violet-soft)]"
                     />
                   )}
-                  <Avatar name={r.name} className="h-5 w-5 text-[8px]" />
-                  <span className="text-[12.5px] font-medium text-text-primary">
-                    {r.name}
-                  </span>
+                  <PersonLink name={r.name} avatarClassName="h-5 w-5 shrink-0 text-[8px]" className="gap-2" nameClassName="text-[12.5px] font-medium text-text-primary" />
                 </span>
                 {(() => {
                   // ONE PROGRESS BAR IN THIS BOX (Anir, Aug 20: "why are there
@@ -5719,10 +5714,12 @@ function LogActualModal({
               onClick={() => editOpportunity(linkedOpp)}
               className="mt-2 flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border-light bg-white px-3 py-2.5 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/20"
             >
-              <CompanyLogo
-                name={linkedOpp.customer}
-                className="h-7 w-7 shrink-0 text-[8px]"
-              />
+              <EntityLink nested href={customerHref(null, linkedOpp.customer)} className="shrink-0" title={linkedOpp.customer}>
+                <CompanyLogo
+                  name={linkedOpp.customer}
+                  className="h-7 w-7 shrink-0 text-[8px]"
+                />
+              </EntityLink>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[12.5px] font-semibold text-text-primary">
                   {linkedOpp.name}

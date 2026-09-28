@@ -31,6 +31,7 @@ import { getCampaign } from "@/lib/campaigns";
 import { getOffering } from "@/lib/offerings";
 import { listVoiceQueue } from "@/lib/voice";
 import { formatDateTime, cn } from "@/lib/utils";
+import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
 
 export const metadata = { title: "Campaign" };
 export const dynamic = "force-dynamic";
@@ -458,11 +459,7 @@ export default async function CampaignDetailPage({
                     />
                     {/* The slice IS a company — it carries the account's logo,
                         not just a colour square. */}
-                    <CompanyLogo
-                      name={company}
-                      className="w-5 h-5 text-[8px] shrink-0"
-                    />
-                    <span className="text-text-secondary">{company}</span>
+                    <CompanyLink nested name={company} logoClassName="w-5 h-5 text-[8px] shrink-0" className="gap-2" nameClassName="text-text-secondary" />
                     <span className="text-text-primary font-medium tnum ml-auto pl-2">
                       {n}
                     </span>
@@ -594,10 +591,7 @@ export default async function CampaignDetailPage({
               const row = (
                 <>
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-                    <span className="inline-flex items-center gap-2.5 whitespace-nowrap">
-                      <Avatar name={q.contact_name} className="w-7 h-7 text-[10px] shrink-0" />
-                      <span className="font-medium text-text-primary">{q.contact_name}</span>
-                    </span>
+                    <PersonLink nested kind="contact" name={q.contact_name} avatarClassName="w-7 h-7 text-[10px] shrink-0" className="gap-2.5 whitespace-nowrap" nameClassName="font-medium text-text-primary" />
                     {/* The service they were called about wears its own mark and
                         colour instead of trailing gray text. */}
                     <ServiceTag name={q.offering_name} className="text-[11.5px]" />

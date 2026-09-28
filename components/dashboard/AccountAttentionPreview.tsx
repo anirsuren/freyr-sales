@@ -14,6 +14,8 @@ import {
   type Stage,
 } from "@/lib/pipeline";
 import { OUTCOME_META } from "@/lib/utils";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { contactHref, customerHref } from "@/lib/entityHref";
 
 export type AccountAttentionPreviewProps = {
   company: string;
@@ -41,11 +43,13 @@ export function AccountAttentionPreview(
   return (
     <div>
       <div className="flex items-start gap-3">
-        <CompanyLogo name={account.company} className="h-11 w-11 shrink-0 text-[9px]" />
+        <EntityLink href={customerHref(null, account.company)} className="shrink-0" title={account.company}>
+          <CompanyLogo name={account.company} className="h-11 w-11 shrink-0 text-[9px]" />
+        </EntityLink>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-semibold text-text-primary">
+          <EntityLink href={customerHref(null, account.company)} className="block truncate text-[14px] font-semibold text-text-primary">
             {account.company}
-          </p>
+          </EntityLink>
           <p className="mt-0.5 truncate text-[10.5px] text-text-tertiary">
             {account.industry} · {account.segment}
           </p>
@@ -150,11 +154,13 @@ export function AccountAttentionPreview(
       )}
 
       <div className="mt-3 flex items-center gap-2 border-t border-border-light pt-3">
-        <Avatar name={account.primaryContact} className="h-7 w-7 shrink-0 text-[8px]" />
+        <EntityLink href={contactHref(null, account.primaryContact)} className="shrink-0 rounded-full" title={account.primaryContact}>
+          <Avatar name={account.primaryContact} className="h-7 w-7 shrink-0 text-[8px]" />
+        </EntityLink>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[10.5px] font-semibold text-text-primary">
+          <EntityLink href={contactHref(null, account.primaryContact)} className="block truncate text-[10.5px] font-semibold text-text-primary">
             {account.primaryContact}
-          </span>
+          </EntityLink>
           <span className="block truncate text-[9.5px] text-text-tertiary">
             {account.primaryContactTitle} · {account.contactCount} mapped contacts
           </span>

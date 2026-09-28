@@ -7,8 +7,6 @@ import {
 import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { Avatar } from "@/components/ui/Avatar";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AgentActions } from "@/components/agent/AgentActions";
 import { AutopilotPanel } from "@/components/agent/AutopilotPanel";
@@ -17,6 +15,7 @@ import { ReworkActions } from "@/components/agent/ReworkActions";
 import { nextBestActions, DRAFTABLE, focusActions } from "@/lib/agent";
 import { getCurrentUser } from "@/lib/currentUser";
 import { requireServerMemberScope } from "@/lib/memberScope";
+import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
 
 export const metadata = { title: "Agent Inbox" };
 export const dynamic = "force-dynamic";
@@ -129,10 +128,7 @@ export default async function AgentInboxPage() {
                         thing a rep can't act on. */}
                     <p className="text-[14px] font-semibold text-text-primary">
                       Rework the pitch for{" "}
-                      <span className="inline-flex items-center gap-1.5 align-middle whitespace-nowrap">
-                        <CompanyLogo name={r.company} className="w-5 h-5 text-[9px]" />
-                        {r.company}
-                      </span>
+                      <CompanyLink nested name={r.company} logoClassName="w-5 h-5 shrink-0 text-[9px]" className="gap-1.5 align-middle whitespace-nowrap" />
                     </p>
                     {r.note && (
                       <p className="text-[12px] text-text-secondary mt-0.5">
@@ -145,10 +141,7 @@ export default async function AgentInboxPage() {
                     {r.reviewer && (
                       <p className="text-[11px] text-text-tertiary mt-0.5">
                         Sent back by{" "}
-                        <span className="inline-flex items-center gap-1 align-middle whitespace-nowrap">
-                          <Avatar name={r.reviewer} className="w-4 h-4 text-[7px]" />
-                          {r.reviewer}
-                        </span>
+                        <PersonLink nested name={r.reviewer} avatarClassName="w-4 h-4 shrink-0 text-[7px]" className="gap-1 align-middle whitespace-nowrap" />
                       </p>
                     )}
                   </div>

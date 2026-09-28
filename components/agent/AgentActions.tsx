@@ -20,6 +20,8 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { AgentDraftModal, type AgentDraft } from "@/components/agent/AgentDraftModal";
 import { useToast } from "@/components/ui/Toast";
 import { DRAFTABLE, type AgentAction, type AgentActionKind } from "@/lib/agent";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 type DraftView = AgentDraft;
 
@@ -158,10 +160,12 @@ export function AgentActions({
                   // about at a glance, with a small badge for the action type
                   // (Suren: "profile picture that applies… what is Cortexa").
                   <span className="relative shrink-0">
-                    <CompanyLogo
-                      name={a.company}
-                      className={compact ? "w-9 h-9 text-[12px]" : "w-10 h-10 text-[13px]"}
-                    />
+                    <EntityLink nested href={customerHref(null, a.company)} className="block" title={a.company}>
+                      <CompanyLogo
+                        name={a.company}
+                        className={compact ? "w-9 h-9 text-[12px]" : "w-10 h-10 text-[13px]"}
+                      />
+                    </EntityLink>
                     <span
                       className="absolute -bottom-1.5 -right-1.5 flex h-[19px] w-[19px] items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-border-light"
                       style={{ color: m.color }}

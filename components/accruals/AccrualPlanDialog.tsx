@@ -53,6 +53,8 @@ import {
 } from "@/lib/revenueAccrualsShared";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 /**
  * THE ONE SCREEN AN ACCRUAL IS WRITTEN ON.
@@ -1745,10 +1747,12 @@ export function AccrualPlanDialog({
         dealId ? (
           <Field label="Deal" required>
             <div className="flex h-11 items-center gap-2.5 rounded-md border border-border bg-surface px-3.5">
-              <CompanyLogo
-                name={dealById.get(editing.opportunityId)?.customer ?? "Deal"}
-                className="h-6 w-6 shrink-0 text-[8px]"
-              />
+              <EntityLink href={customerHref(null, dealById.get(editing.opportunityId)?.customer)} className="shrink-0" title={dealById.get(editing.opportunityId)?.customer}>
+                <CompanyLogo
+                  name={dealById.get(editing.opportunityId)?.customer ?? "Deal"}
+                  className="h-6 w-6 shrink-0 text-[8px]"
+                />
+              </EntityLink>
               <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-text-primary">
                 {dealById.get(editing.opportunityId)?.name ?? "This deal"}
               </span>
@@ -2780,13 +2784,7 @@ export function AccrualPlanDialog({
                                 handing it a placeholder is how somebody
                                 else's face lands on a row that has none. */}
                             {row.by ? (
-                              <span className="flex min-w-0 items-center gap-1.5">
-                                <Avatar
-                                  name={row.by}
-                                  className="h-5 w-5 shrink-0 text-[9px]"
-                                />
-                                <span className="truncate">{row.by}</span>
-                              </span>
+                              <PersonLink name={row.by} avatarClassName="h-5 w-5 shrink-0 text-[9px]" className="flex gap-1.5" />
                             ) : (
                               "Unknown"
                             )}

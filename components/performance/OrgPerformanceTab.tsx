@@ -79,6 +79,8 @@ import type { CurrencyCode, CurrencyRates } from "@/lib/currency";
 import { GroupPill, MetPill, MiniBar, PacePill, PersonGoalPanel, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
 import { DateText } from "@/components/ui/DateText";
+import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 /**
  * ORG PERFORMANCE — his words, verbatim: "list the primary goals which I've
@@ -1309,7 +1311,9 @@ export function OrgPerformanceTab({
                   className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface"
                 >
                   {j.kind === "person" ? (
-                    <Avatar name={j.name} className="h-7 w-7 shrink-0 text-[10px]" />
+                    <EntityLink nested href={teammateHref(j.name)} className="shrink-0 rounded-full" title={j.name}>
+                      <Avatar name={j.name} className="h-7 w-7 shrink-0 text-[10px]" />
+                    </EntityLink>
                   ) : (
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-light">
                       <UsersRound size={13} strokeWidth={2.2} className="text-blue-primary" />
@@ -1828,11 +1832,7 @@ function GoalRows({
                      came off the sheet say nothing at all — see goalAuthor. */
                   <span className="flex min-w-0 items-center gap-1 text-[10.5px] text-text-tertiary">
                     <span aria-hidden="true">·</span> set by
-                    <Avatar
-                      name={goalAuthor(goal.createdBy)!}
-                      className="h-3.5 w-3.5 shrink-0 text-[6px]"
-                    />
-                    <span className="truncate">{goalAuthor(goal.createdBy)}</span>
+                    <PersonLink nested name={goalAuthor(goal.createdBy)!} avatarClassName="h-3.5 w-3.5 shrink-0 text-[6px]" className="gap-1" />
                     {/* Show the goal's creation date here; keep its full
                         timestamp in the record for views that need it. */}
                     {goalCreatedOn(goal.createdAt) && (
@@ -2263,11 +2263,13 @@ function GoalRows({
                                   open ? "text-blue-primary" : "-rotate-90 text-text-tertiary"
                                 )}
                               />
-                              <Avatar name={a.person} className="h-6 w-6 shrink-0 text-[9px]" />
+                              <EntityLink nested href={teammateHref(a.person)} className="shrink-0 rounded-full" title={a.person}>
+                                <Avatar name={a.person} className="h-6 w-6 shrink-0 text-[9px]" />
+                              </EntityLink>
                               <span className="min-w-0">
-                                <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                                <EntityLink nested href={teammateHref(a.person)} className="block truncate text-[12.5px] font-semibold text-text-primary">
                                   {a.person}
-                                </span>
+                                </EntityLink>
                                 {/* WHO PUT THIS ON THEM (Anir, Aug 19, reading
                                     his own goal as a rep: "I don't know who
                                     assigned it to me, so I don't know who to
@@ -2287,13 +2289,7 @@ function GoalRows({
                                             name, have my profile picture.
                                             It's not that hard for any
                                             user"). */}
-                                        <span className="inline-flex items-center gap-1 font-semibold text-text-secondary">
-                                          <Avatar
-                                            name={a.assignedBy}
-                                            className="h-[15px] w-[15px] shrink-0 text-[6px]"
-                                          />
-                                          {a.assignedBy}
-                                        </span>
+                                        <PersonLink nested name={a.assignedBy} avatarClassName="h-[15px] w-[15px] shrink-0 text-[6px]" className="gap-1 font-semibold text-text-secondary" />
                                       </>
                                     )}
                                     {a.assignedAt ? (
@@ -2473,14 +2469,9 @@ function GoalRows({
                                 <DateText value={e.date} />
                               </span>
                             </span>
-                            <span className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[10.5px] text-text-secondary">
-                              <Avatar
-                                name={e.person}
-                                tooltip={`Reported by ${e.person}`}
-                                className="h-4 w-4 shrink-0 text-[7px]"
-                              />
-                              <span className="truncate">Reported by {e.person}</span>
-                            </span>
+                            <PersonLink nested name={e.person} avatarClassName="h-4 w-4 shrink-0 text-[7px]" className="mt-1.5 flex gap-1.5 text-[10.5px] text-text-secondary">
+                              <span className={cn("truncate", ENTITY_NAME)}>Reported by {e.person}</span>
+                            </PersonLink>
                           </div>
                         ))}
                       </div>
@@ -2595,16 +2586,7 @@ function GoalRows({
                               className="shrink-0 text-[color:var(--ink-violet-soft)]"
                             />
                             {s.owners.map((o) => (
-                              <span key={o} className="inline-flex items-center gap-1">
-                                <Avatar
-                                  name={o}
-                                  tooltip={`Goal owner: ${o}`}
-                                  className="h-5 w-5 text-[8px]"
-                                />
-                                <span className="text-[10.5px] font-medium text-text-secondary">
-                                  {o}
-                                </span>
-                              </span>
+                              <PersonLink key={o} nested name={o} avatarClassName="h-5 w-5 shrink-0 text-[8px]" className="gap-1" nameClassName="text-[10.5px] font-medium text-text-secondary" />
                             ))}
                           </span>
                         )}
@@ -2720,12 +2702,11 @@ function GoalRows({
                                 key={p.name}
                                 className="flex flex-wrap items-center gap-3 rounded-xl border border-border-light bg-white px-3 py-2.5"
                               >
-                                <span className="flex min-w-[170px] flex-1 items-center gap-2">
-                                  <Avatar name={p.name} className="h-6 w-6 shrink-0 text-[9px]" />
-                                  <span className="truncate text-[12.5px] font-semibold text-text-primary">
+                                <PersonLink name={p.name} avatarClassName="h-6 w-6 shrink-0 text-[9px]" className="flex min-w-[170px] flex-1 gap-2">
+                                  <span className={cn("truncate text-[12.5px] font-semibold text-text-primary", ENTITY_NAME)}>
                                     {p.name}
                                   </span>
-                                </span>
+                                </PersonLink>
 
                                 <span className="block min-w-[210px] flex-1">
                                   <span className="flex items-baseline gap-1.5 text-[12.5px] font-bold text-blue-primary tnum">

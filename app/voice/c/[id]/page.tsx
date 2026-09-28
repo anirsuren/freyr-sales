@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BackButton, SmartBack } from "@/components/ui/BackButton";
@@ -35,6 +34,8 @@ import {
   mapElevenLabsStatus,
   type VoiceLifecycleStatus,
 } from "@/lib/voiceEvents";
+import { CompanyLink, EntityLink } from "@/components/ui/EntityLink";
+import { contactHref } from "@/lib/entityHref";
 
 export const metadata = { title: "Call transcript" };
 export const dynamic = "force-dynamic";
@@ -388,7 +389,7 @@ export default async function ConversationPage({
           {/* Who was on the call */}
           <Card>
             <div className="flex items-center gap-3">
-              {vm.contactName && <Avatar name={vm.contactName} className="w-12 h-12 text-[15px]" />}
+              {vm.contactName && <EntityLink href={contactHref(null, vm.contactName)} className="shrink-0 rounded-full" title={vm.contactName}><Avatar name={vm.contactName} className="w-12 h-12 text-[15px]" /></EntityLink>}
               <div className="min-w-0">
                 <p className="flex items-center gap-1.5 text-[15px] font-semibold text-text-primary">
                   <span className="truncate">{vm.contactName || vm.title}</span>
@@ -403,8 +404,7 @@ export default async function ConversationPage({
                 )}
                 {vm.company && (
                   <p className="text-[12.5px] text-text-secondary truncate flex items-center gap-1.5">
-                    <CompanyLogo name={vm.company} className="w-4 h-4 text-[7px]" />
-                    {vm.company}
+                    <CompanyLink name={vm.company} logoClassName="w-4 h-4 shrink-0 text-[7px]" className="gap-1.5" />
                   </p>
                 )}
               </div>

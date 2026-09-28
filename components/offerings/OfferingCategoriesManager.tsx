@@ -18,6 +18,8 @@ import type { OfferingCategory } from "@/lib/offerings";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { listAccent } from "./filterPalette";
 import { tint } from "@/lib/tint";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 const FIELD =
   "w-full rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
@@ -272,11 +274,13 @@ export function OfferingCategoriesManager({
                     {/* Offering owner — the role Suren wants per category */}
                     {c.owner ? (
                       <p className="mt-1.5 inline-flex items-center gap-1.5 text-[12px] text-text-secondary">
-                        <Avatar name={c.owner} className="h-6 w-6 text-[8px]" />
+                        <EntityLink href={teammateHref(c.owner)} className="shrink-0 rounded-full" title={c.owner}>
+                          <Avatar name={c.owner} className="h-6 w-6 text-[8px]" />
+                        </EntityLink>
                         Owner:{" "}
-                        <b className="font-semibold text-text-primary">
+                        <EntityLink href={teammateHref(c.owner)} className="font-semibold text-text-primary">
                           {c.owner}
-                        </b>
+                        </EntityLink>
                       </p>
                     ) : canEdit ? (
                       <button

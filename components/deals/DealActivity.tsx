@@ -1,7 +1,6 @@
 import { CalendarClock, MessageSquareText } from "lucide-react";
 import { LocalTime } from "@/components/ui/LocalTime";
 import { Card } from "@/components/ui/Card";
-import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { formatDate, formatDateTime } from "@/lib/utils";
@@ -9,6 +8,7 @@ import type { Interaction } from "@/lib/types";
 import { daysSince, whenLabel } from "./dealTime";
 import { outcomeMark } from "./dealOutcome";
 import { DateText } from "@/components/ui/DateText";
+import { PersonLink } from "@/components/ui/EntityLink";
 
 /* ---------------------------------------------------------------------------
    THE ACTIVITY COLUMN, AND IT IS A VERTICAL TIMELINE.
@@ -133,13 +133,7 @@ export function DealActivity({
                   {(it.logged_by || it.follow_up_date) && (
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
                       {it.logged_by ? (
-                        <span className="inline-flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
-                          <Avatar
-                            name={it.logged_by}
-                            className="h-5 w-5 text-[7px]"
-                          />
-                          {it.logged_by}
-                        </span>
+                        <PersonLink name={it.logged_by} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5 text-[11.5px] text-text-tertiary" />
                       ) : (
                         <span />
                       )}

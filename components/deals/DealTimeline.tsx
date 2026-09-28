@@ -18,6 +18,8 @@ import { daysLabel, daysSince, whenLabel } from "./dealTime";
 import { outcomeMark } from "./dealOutcome";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 /* ---------------------------------------------------------------------------
    ONE AXIS, AND IT IS THE FUNNEL IN TIME.
@@ -381,10 +383,12 @@ function TouchRow({
   const Icon = m.icon;
   return (
     <div className="flex items-start gap-2">
-      <Avatar
-        name={interaction.logged_by}
-        className="mt-[1px] h-[22px] w-[22px] shrink-0 text-[7px]"
-      />
+      <EntityLink href={teammateHref(interaction.logged_by)} className="mt-[1px] shrink-0 rounded-full" title={interaction.logged_by}>
+        <Avatar
+          name={interaction.logged_by}
+          className="h-[22px] w-[22px] shrink-0 text-[7px]"
+        />
+      </EntityLink>
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-semibold leading-snug text-text-primary">
           {lead}

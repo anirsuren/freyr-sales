@@ -22,12 +22,12 @@ import { getDb } from "@/lib/db";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { OutcomeBadge } from "@/components/ui/Badge";
-import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { RunDetailActions } from "@/components/agent/RunDetailActions";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/utils";
 import type { AgentRun, AgentStepStatus, Interaction } from "@/lib/types";
+import { ENTITY_NAME, PersonLink } from "@/components/ui/EntityLink";
 
 export const metadata = { title: "Agent run" };
 export const dynamic = "force-dynamic";
@@ -319,13 +319,9 @@ export default async function AgentRunDetailPage({
                         {/* Same shape the account timeline uses: the person's
                             face travels with their name, and the pair never
                             breaks across two lines. */}
-                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                          <Avatar
-                            name={it.logged_by}
-                            className="h-5 w-5 text-[7px]"
-                          />
-                          Logged by {it.logged_by}
-                        </span>
+                        <PersonLink name={it.logged_by} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5 whitespace-nowrap">
+                          <span className={ENTITY_NAME}>Logged by {it.logged_by}</span>
+                        </PersonLink>
                       </p>
                     )}
                   </Card>

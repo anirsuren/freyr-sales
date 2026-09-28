@@ -16,6 +16,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
 import { formatMoney, STAGE_COLOR, STAGE_FILL, STAGE_PROBABILITY } from "@/lib/pipeline";
 import { tint } from "@/lib/tint";
+import { CompanyLink } from "@/components/ui/EntityLink";
 
 interface StageStat {
   stage: string;
@@ -541,8 +542,7 @@ export function AnalyticsView({
                           <div className="space-y-1.5">
                             {funnelDeals.slice(0, 6).map((d, di) => (
                               <div key={d.customerId + di} className="flex items-center gap-2 text-[12.5px]">
-                                <CompanyLogo name={d.company} className="w-5 h-5 text-[7px] shrink-0" />
-                                <span className="min-w-0 flex-1 truncate text-text-primary">{d.company}</span>
+                                <CompanyLink name={d.company} customerId={d.customerId} logoClassName="w-5 h-5 text-[7px] shrink-0" className="min-w-0 flex-1 gap-2" nameClassName="text-text-primary" />
                                 <span className="tnum text-text-secondary shrink-0">{formatMoney(d.value)}</span>
                               </div>
                             ))}
@@ -575,10 +575,7 @@ export function AnalyticsView({
                       ) : (
                         stageDeals![s.stage].map((d, di) => (
                           <div key={d.customerId + di} className="flex items-center gap-2.5 px-1.5 py-1">
-                            <CompanyLogo name={d.company} className="w-5 h-5 text-[7px] shrink-0" />
-                            <span className="text-[12.5px] font-medium text-text-primary truncate">
-                              {d.company}
-                            </span>
+                            <CompanyLink name={d.company} customerId={d.customerId} logoClassName="w-5 h-5 text-[7px] shrink-0" className="gap-2.5" nameClassName="text-[12.5px] font-medium text-text-primary" />
                             <span className="text-[11.5px] text-text-tertiary truncate">· {d.contact}</span>
                             <span className="text-[12px] font-semibold text-text-primary tnum ml-auto shrink-0">
                               {formatMoney(d.value)}

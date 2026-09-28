@@ -17,6 +17,7 @@ import {
   type Customer360Band,
   type Customer360Item,
 } from "@/lib/customer360Shared";
+import { teammateHref } from "@/lib/entityHref";
 
 /**
  * ONE READ THAT ANSWERS "WHAT IS GOING ON AT THIS ACCOUNT" (Suren, Aug 25:
@@ -458,6 +459,8 @@ export async function buildCustomer360(
           title: p.name,
           sub: p.how.join(" · "),
           face: p.name,
+          /* Their own profile (Anir, Sep 28: every person is a door). */
+          href: teammateHref(p.name) ?? undefined,
           cells: {
             standing,
             openDeals: open > 0 ? String(open) : "·",

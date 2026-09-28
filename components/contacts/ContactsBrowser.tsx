@@ -26,6 +26,8 @@ import { toCSV, downloadCSV } from "@/lib/csv";
 import { cn, formatDateTime } from "@/lib/utils";
 import { contactPhoneDisplay } from "@/lib/contactPhoneDisplay";
 import { countryFlag } from "@/lib/countries";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { contactHref } from "@/lib/entityHref";
 
 export interface ContactRow {
   id: string;
@@ -407,9 +409,11 @@ export function ContactsBrowser({
                         )}
                       </span>
                     )}
-                    <Avatar name={c.name} className="w-9 h-9 text-[13px] shrink-0" />
-                  </span>
-                  {/* Identity reads top-down: name, role, then how to reach
+                    <EntityLink href={contactHref(c.id)} className="shrink-0 rounded-full" title={c.name}>
+                      <Avatar name={c.name} className="w-9 h-9 text-[13px] shrink-0" />
+                    </EntityLink>
+                    </span>
+                    {/* Identity reads top-down: name, role, then how to reach
                       them (Anir: "the email should go right under the role"). */}
                   <div className="min-w-0">
                     <p className="text-[13.5px] font-semibold text-text-primary truncate">

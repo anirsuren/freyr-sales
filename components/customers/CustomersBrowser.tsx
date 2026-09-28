@@ -52,6 +52,8 @@ import type { Customer } from "@/lib/types";
 import type { TipItem } from "@/components/charts/Charts";
 import { geographyWithFlag } from "@/lib/countryFlags";
 import { repSlug } from "@/lib/team";
+import { ENTITY_NAME, EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 type EnrichedCustomer = Customer & {
   contact_count: number;
@@ -1540,14 +1542,24 @@ filtered.length === 0 ? (
                         <Users size={14} strokeWidth={1.8} />
                       </span>
                     ) : (
-                      <Avatar name={g.name} className="h-7 w-7 text-[10px]" />
-                    )
-                  ) : (
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
+                      /* THE OWNER IS A DOOR (Anir, Sep 28), the rest of the bar folds.
+                         Inside a <button>, so it navigates from a span. */
+                      <EntityLink nested href={teammateHref(g.name)} className="shrink-0 rounded-full" title={g.name}>
+                        <Avatar name={g.name} className="h-7 w-7 text-[10px]" />
+                      </EntityLink>
+                      )
+                      ) : (
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
                       <Building2 size={14} strokeWidth={1.8} />
-                    </span>
-                  )}
-                  <b className="text-[13.5px] text-text-primary">{g.name}</b>
+                      </span>
+                      )}
+                      {groupBy === "owner" && g.name !== UNASSIGNED_OWNER ? (
+                        <EntityLink nested href={teammateHref(g.name)}>
+                          <b className={cn("text-[13.5px] text-text-primary", ENTITY_NAME)}>{g.name}</b>
+                        </EntityLink>
+                      ) : (
+                        <b className="text-[13.5px] text-text-primary">{g.name}</b>
+                      )}
                   <span className="text-[12px] font-medium text-text-secondary tnum">
                     {g.rows.length} {g.rows.length === 1 ? "account" : "accounts"}
                   </span>

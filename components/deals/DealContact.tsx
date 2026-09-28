@@ -17,6 +17,8 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { formatPhone } from "@/lib/utils";
 import type { Contact } from "@/lib/types";
 import { tint } from "@/lib/tint";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { contactHref } from "@/lib/entityHref";
 
 /* ---------------------------------------------------------------------------
    WHO YOU'RE SELLING TO.
@@ -71,11 +73,13 @@ export function DealContact({ contact }: { contact: Contact }) {
 
       <Card className="p-4">
         <div className="flex items-start gap-3">
-          <Avatar
-            name={contact.full_name}
-            className="h-12 w-12 shrink-0 text-[15px]"
-            tooltip={`${contact.full_name}${contact.job_title ? ` · ${contact.job_title}` : ""}`}
-          />
+          <EntityLink href={contactHref(contact.id)} className="shrink-0 rounded-full">
+            <Avatar
+              name={contact.full_name}
+              className="h-12 w-12 shrink-0 text-[15px]"
+              tooltip={`${contact.full_name}${contact.job_title ? ` · ${contact.job_title}` : ""}`}
+            />
+          </EntityLink>
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               {/* Wraps rather than truncating — a person's name is never cut. */}

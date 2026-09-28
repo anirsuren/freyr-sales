@@ -92,6 +92,8 @@ import {
 } from "@/components/accruals/AccrualPlanDialog";
 import { tint } from "@/lib/tint";
 import { DeviationOpportunityCard } from "./DeviationOpportunityCard";
+import { CompanyLink, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 /**
  * REVENUE ACCRUALS (Suren, Aug 25): the month-by-month plan for money that has
@@ -707,10 +709,7 @@ function DeviationsTable({
                       </span>
                     </Link>
                   ) : (
-                    <span className="flex min-w-0 items-center gap-2">
-                      <CompanyLogo name={r.plan.customer} className="h-5 w-5 shrink-0 text-[7px]" />
-                      <span className="truncate text-[12.5px] text-text-secondary">{r.plan.customer}</span>
-                    </span>
+                    <CompanyLink name={r.plan.customer} logoClassName="h-5 w-5 shrink-0 text-[7px]" className="flex gap-2" nameClassName="text-[12.5px] text-text-secondary" />
                   )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-[12px] tnum text-text-tertiary">
@@ -740,10 +739,7 @@ function DeviationsTable({
                 </td>
                 <td className="px-3 py-2.5">
                   {r.owner ? (
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <Avatar name={r.owner} className="h-5 w-5 shrink-0 text-[8px]" />
-                      <span className="truncate text-[12.5px] text-text-secondary">{r.owner}</span>
-                    </span>
+                    <PersonLink name={r.owner} avatarClassName="h-5 w-5 shrink-0 text-[8px]" className="flex gap-1.5" nameClassName="text-[12.5px] text-text-secondary" />
                   ) : (
                     <span className="text-[12px] text-text-tertiary">Unassigned</span>
                   )}
@@ -2054,8 +2050,10 @@ export function RevenueAccrualsModule({
                       key={d.id}
                       className="flex items-center gap-3 py-2.5"
                       data-missing-plan={d.id}
-                    >
-                      <CompanyLogo name={d.customer} className="h-7 w-7 shrink-0" />
+                      >
+                        <EntityLink href={customerHref(null, d.customer)} className="shrink-0" title={d.customer}>
+                          <CompanyLogo name={d.customer} className="h-7 w-7 shrink-0" />
+                        </EntityLink>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[13px] font-semibold text-text-primary">
                           {d.name}

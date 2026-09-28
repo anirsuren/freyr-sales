@@ -15,7 +15,6 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
-import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { GroupGoalsDrilldown } from "./GroupGoalsDrilldown";
@@ -41,6 +40,7 @@ import {
   isPending,
   scopeStateToPeople,
 } from "@/lib/performanceShared";
+import { ENTITY_NAME, PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * USER GROUPS LIVE IN ADMIN, NOT IN PERFORMANCE (Suren, Aug 12: "creating
@@ -426,8 +426,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                     key={m}
                     className="flex items-center gap-1.5 rounded-full border border-border-light bg-white py-0.5 pl-1 pr-2 text-[12px] font-medium text-text-primary"
                   >
-                    <Avatar name={m} className="h-5 w-5 text-[8px]" />
-                    {m}
+                    <PersonLink name={m} avatarClassName="h-5 w-5 shrink-0 text-[8px]" className="gap-1.5" />
                     {m === head && (
                       <Crown size={10} strokeWidth={2.6} className="text-[color:var(--ink-violet-soft)]" />
                     )}
@@ -747,13 +746,11 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                                 strokeWidth={2.6}
                                 className="shrink-0 text-[color:var(--ink-violet-soft)]"
                               />
-                              <Avatar
-                                name={g.head}
-                                className="h-5 w-5 shrink-0 text-[7.5px]"
-                              />
-                              <span className="truncate text-[12.5px] font-semibold text-text-primary">
-                                {g.head}
-                              </span>
+                              <PersonLink name={g.head} avatarClassName="h-5 w-5 shrink-0 text-[7.5px]" className="gap-1.5">
+                                <span className={cn("truncate text-[12.5px] font-semibold text-text-primary", ENTITY_NAME)}>
+                                  {g.head}
+                                </span>
+                              </PersonLink>
                             </span>
                           </td>
                           <td className="px-4 py-3.5">
@@ -876,13 +873,11 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                                       key={m}
                                       className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
                                     >
-                                      <Avatar
-                                        name={m}
-                                        className="h-7 w-7 shrink-0 text-[10px]"
-                                      />
-                                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
-                                        {m}
-                                      </span>
+                                      <PersonLink name={m} avatarClassName="h-7 w-7 shrink-0 text-[10px]" className="min-w-0 flex-1 gap-2.5">
+                                        <span className={cn("min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary", ENTITY_NAME)}>
+                                          {m}
+                                        </span>
+                                      </PersonLink>
                                       {m === g.head ? (
                                         /* HIS WORD IS GROUP OWNER (Suren, Aug
                                            29: "don't say admin, you say owner

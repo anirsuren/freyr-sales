@@ -4,7 +4,6 @@ import { SmartBack } from "@/components/ui/BackButton";
 import { ArrowUpRight, ChevronRight, SearchX, ArrowLeft } from "lucide-react";
 import { getDb } from "@/lib/db";
 import { SizeBadge } from "@/components/ui/Badge";
-import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -28,6 +27,8 @@ import {
 import type { RecommendedService } from "@/lib/types";
 import { getCurrentUser } from "@/lib/currentUser";
 import { tint } from "@/lib/tint";
+import { EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 export const metadata = { title: "Deal" };
 export const dynamic = "force-dynamic";
@@ -204,18 +205,20 @@ export default async function DealDetailPage({
             {/* ONE identity line: who it's for, how big they are, who you talk
                 to. Nothing else belongs in a header. */}
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <CompanyLogo
-                name={customer?.company_name || "?"}
-                className="w-6 h-6 text-[9px] shrink-0"
-              />
+              <EntityLink href={customer ? customerHref(customer.id, customer.company_name) : null} className="shrink-0" title={customer?.company_name}>
+                <CompanyLogo
+                  name={customer?.company_name || "?"}
+                  className="w-6 h-6 text-[9px] shrink-0"
+                />
+              </EntityLink>
               <h2 className="text-[15px] font-semibold text-text-primary">
-                {companyName}
+                <EntityLink href={customer ? customerHref(customer.id, customer.company_name) : null}>{companyName}</EntityLink>
               </h2>
               <SizeBadge tier={customer?.size_tier || null} />
               {contact?.full_name && (
                 <span className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary">
-                  <Avatar name={contact.full_name} className="w-5 h-5 text-[9px]" />
-                  {contact.full_name} · {contact.job_title}
+                  <PersonLink kind="contact" contactId={contact.id} name={contact.full_name} avatarClassName="w-5 h-5 shrink-0 text-[9px]" className="gap-1.5" />
+                  · {contact.job_title}
                 </span>
               )}
             </div>

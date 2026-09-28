@@ -5,7 +5,6 @@ import {
   Search, Play, Pause, SkipBack, SkipForward, Gauge, Download, Share2, CheckCircle2, AlertTriangle, Lightbulb, Sparkles, Send, Clock, Flag, Plus, Upload, Phone, MessageSquarePlus, CalendarClock, Trophy, Timer } from "lucide-react";
 import { cn, OUTCOME_META } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -26,6 +25,7 @@ import {
   type Recording,
   type TalkSegment,
 } from "@/lib/recordings";
+import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
 
 const TABS = [
   { key: "summary", label: "Summary" },
@@ -403,9 +403,8 @@ export function RecordingsWorkspace({ empty = false }: { empty?: boolean }) {
                   {r.score < 65 && (
                     <Flag size={12} className="text-error shrink-0" strokeWidth={2} />
                   )}
-                  <CompanyLogo name={r.company} className="w-5 h-5 text-[9px]" />
-                  {r.company}
-                </span>
+                  <CompanyLink nested name={r.company} logoClassName="w-5 h-5 shrink-0 text-[9px]" className="gap-1.5" />
+                  </span>
                 <ScorePill score={r.score} />
               </div>
               {/* The person the call was WITH gets their face, same as the rep
@@ -413,10 +412,7 @@ export function RecordingsWorkspace({ empty = false }: { empty?: boolean }) {
                   profile picture next to it"). Name + avatar stay on one line;
                   the title wraps beneath rather than truncating. */}
               <p className="text-[12px] text-text-secondary">
-                <span className="inline-flex items-center gap-1.5 align-middle whitespace-nowrap">
-                  <Avatar name={r.contact} className="w-5 h-5 text-[9px]" />
-                  {r.contact}
-                </span>
+                <PersonLink nested kind="contact" name={r.contact} avatarClassName="w-5 h-5 shrink-0 text-[9px]" className="gap-1.5 align-middle whitespace-nowrap" />
                 <span className="align-middle"> · {r.contactTitle}</span>
               </p>
               <p className="text-[11px] text-text-tertiary mt-1 flex items-center gap-2">
@@ -467,15 +463,9 @@ export function RecordingsWorkspace({ empty = false }: { empty?: boolean }) {
                   the contact was bare text. Each avatar+name pair is nowrap so a
                   name never breaks across two lines; the row wraps between pairs. */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-2 text-[13px] text-text-secondary">
-                <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                  <Avatar name={rec.rep} className="w-6 h-6 text-[10px]" />
-                  {rec.rep}
-                </span>
+                <PersonLink name={rec.rep} avatarClassName="w-6 h-6 shrink-0 text-[10px]" className="gap-1.5 whitespace-nowrap" />
                 <span className="text-text-tertiary">·</span>
-                <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                  <Avatar name={rec.contact} className="w-6 h-6 text-[10px]" />
-                  {rec.contact}
-                </span>
+                <PersonLink kind="contact" name={rec.contact} avatarClassName="w-6 h-6 shrink-0 text-[10px]" className="gap-1.5 whitespace-nowrap" />
                 <span>({rec.contactTitle})</span>
                 <span className="text-text-tertiary">·</span>
                 <span>{rec.date}</span>
@@ -746,10 +736,7 @@ export function RecordingsWorkspace({ empty = false }: { empty?: boolean }) {
                         {/* Whoever left the coaching note is a person — their
                             face travels with their name. */}
                         <p className="text-[12px] text-text-tertiary mt-1">
-                          <span className="inline-flex items-center gap-1.5 align-middle whitespace-nowrap">
-                            <Avatar name={c.author} className="w-4 h-4 text-[7px]" />
-                            {c.author}
-                          </span>
+                          <PersonLink name={c.author} avatarClassName="w-4 h-4 shrink-0 text-[7px]" className="gap-1.5 align-middle whitespace-nowrap" />
                         </p>
                       </div>
                     </li>

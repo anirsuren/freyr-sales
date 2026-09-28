@@ -20,6 +20,8 @@ import { useToast } from "@/components/ui/Toast";
 import { tint } from "@/lib/tint";
 import { AccessHistory } from "@/components/admin/AccessHistory";
 import { DateText } from "@/components/ui/DateText";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 
 type Member = {
@@ -328,12 +330,14 @@ export function MemberRoles() {
                   <tr key={m.id} className="align-middle transition-colors hover:bg-surface/60">
                     <td className="px-4 py-2.5">
                       <span className="flex min-w-0 items-center gap-3">
-                        <Avatar name={m.name} className="h-8 w-8 shrink-0 text-[10px]" />
+                        <EntityLink href={teammateHref(m.name)} className="shrink-0 rounded-full" title={m.name}>
+                          <Avatar name={m.name} className="h-8 w-8 shrink-0 text-[10px]" />
+                        </EntityLink>
                         <span className="min-w-0">
                           <span className="flex items-center gap-2">
-                            <span className="truncate text-[13px] font-semibold text-text-primary">
+                            <EntityLink href={teammateHref(m.name)} className="truncate text-[13px] font-semibold text-text-primary">
                               {m.name}
-                            </span>
+                            </EntityLink>
                             {/* WHICH ONE OF THESE IS ME (Anir, Aug 29:
                                 "whoever I am needs to have a proper label on
                                 this page, like it should say You"). */}

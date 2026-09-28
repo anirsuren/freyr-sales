@@ -17,6 +17,8 @@ import {
   type RepStat,
   type Stage,
 } from "@/lib/pipeline";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref, teammateHref } from "@/lib/entityHref";
 
 export type { RepStat };
 
@@ -66,13 +68,15 @@ function RepPipelineBar({
           const content = (
             <div data-testid="rep-stage-hover-card">
               <div className="flex items-center gap-2.5">
-                <Avatar
-                  name={rep.name}
-                  className="h-10 w-10 shrink-0 text-[10px]"
-                />
+                <EntityLink href={teammateHref(rep.name)} className="shrink-0 rounded-full" title={rep.name}>
+                  <Avatar
+                    name={rep.name}
+                    className="h-10 w-10 shrink-0 text-[10px]"
+                  />
+                </EntityLink>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-semibold text-text-primary">
-                    {rep.name}
+                    <EntityLink href={teammateHref(rep.name)}>{rep.name}</EntityLink>
                   </p>
                   <p className="mt-0.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                     <span
@@ -127,14 +131,16 @@ function RepPipelineBar({
                         key={`${deal.company}-${deal.contact}-${index}`}
                         className="flex min-w-0 items-center gap-1.5 rounded-md bg-surface/60 px-1.5 py-1.5"
                       >
-                        <CompanyLogo
-                          name={deal.company}
-                          className="h-6 w-6 shrink-0 text-[6px]"
-                        />
+                        <EntityLink href={customerHref(null, deal.company)} className="shrink-0" title={deal.company}>
+                          <CompanyLogo
+                            name={deal.company}
+                            className="h-6 w-6 shrink-0 text-[6px]"
+                          />
+                        </EntityLink>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[9.5px] font-semibold text-text-primary">
+                          <EntityLink href={customerHref(null, deal.company)} className="block truncate text-[9.5px] font-semibold text-text-primary">
                             {deal.company}
-                          </span>
+                          </EntityLink>
                           <span className="block truncate text-[8.5px] text-text-tertiary">
                             {formatMoney(deal.value)}
                           </span>
@@ -330,13 +336,15 @@ export function RepAnalytics({
                   <span className="w-5 text-[15px] font-bold text-text-tertiary tnum text-center shrink-0">
                     {i + 1}
                   </span>
-                  <Avatar name={rep.name} className="w-11 h-11 text-[14px] shrink-0" />
+                  <EntityLink nested href={teammateHref(rep.name)} className="shrink-0 rounded-full" title={rep.name}>
+                    <Avatar name={rep.name} className="w-11 h-11 text-[14px] shrink-0" />
+                  </EntityLink>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[14.5px] font-semibold text-text-primary truncate">
+                      <EntityLink nested href={teammateHref(rep.name)} className="text-[14.5px] font-semibold text-text-primary truncate">
                         {rep.name}
-                      </span>
+                      </EntityLink>
                       {you && (
                         <span className="text-[10px] font-bold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded bg-blue-light text-blue-primary shrink-0">
                           You

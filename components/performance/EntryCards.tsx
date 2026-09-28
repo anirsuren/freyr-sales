@@ -53,6 +53,8 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
+import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 /**
  * THE EVIDENCE-AND-VERIFICATION SURFACES (Suren, Aug 13).
@@ -241,10 +243,12 @@ export function StatusPill({
             "I can't see who sent it back. I can see the reason, though"). The
             reason without the author is an instruction from nobody. */}
         {entry.sentBackBy && (
-          <Avatar
-            name={entry.sentBackBy}
-            className="h-[17px] w-[17px] shrink-0 text-[7.5px]"
-          />
+          <EntityLink nested href={teammateHref(entry.sentBackBy)} className="shrink-0 rounded-full" title={entry.sentBackBy}>
+            <Avatar
+              name={entry.sentBackBy}
+              className="h-[17px] w-[17px] shrink-0 text-[7.5px]"
+            />
+          </EntityLink>
         )}
       </>
     );
@@ -339,11 +343,12 @@ export function StatusPill({
       {!waitingOnMe && heads.length > 0 && (
         <span className="flex shrink-0 items-center -space-x-1.5">
           {heads.slice(0, 2).map((n) => (
-            <Avatar
-              key={n}
-              name={n}
-              className="h-[18px] w-[18px] shrink-0 text-[7px] ring-2 ring-[color:#E4EFFC]"
-            />
+            <EntityLink key={n} nested href={teammateHref(n)} className="shrink-0 rounded-full" title={n}>
+              <Avatar
+                name={n}
+                className="h-[18px] w-[18px] shrink-0 text-[7px] ring-2 ring-[color:#E4EFFC]"
+              />
+            </EntityLink>
           ))}
         </span>
       )}
@@ -589,13 +594,7 @@ export function EntryTimeline({
                 )}
               </span>
               {step.who && (
-                <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-                  <Avatar
-                    name={step.who}
-                    className="h-[18px] w-[18px] shrink-0 text-[8px]"
-                  />
-                  {step.who}
-                </span>
+                <PersonLink nested name={step.who} avatarClassName="h-[18px] w-[18px] shrink-0 text-[8px]" className="mt-0.5 flex gap-1.5 text-[11.5px] text-text-secondary" />
               )}
               {step.note && (
                 <span className="mt-0.5 block text-[11.5px] text-text-secondary">
@@ -827,11 +826,13 @@ export function SentBackWatchCard({
                     </td>
                     <td className="px-4 py-3.5">
                       <span className="flex min-w-0 items-center gap-2.5">
-                        <Avatar name={a.person} className="h-8 w-8 shrink-0 text-[10px]" />
+                        <EntityLink href={teammateHref(a.person)} className="shrink-0 rounded-full" title={a.person}>
+                          <Avatar name={a.person} className="h-8 w-8 shrink-0 text-[10px]" />
+                        </EntityLink>
                         <span className="min-w-0">
-                          <span className="block truncate text-[13px] font-semibold text-text-primary">
+                          <EntityLink href={teammateHref(a.person)} className="block truncate text-[13px] font-semibold text-text-primary">
                             {a.person}
-                          </span>
+                          </EntityLink>
                           <span className="mt-0.5 block text-[10.5px] font-semibold text-[color:var(--ink-amber)]">
                             Their move
                           </span>
@@ -945,13 +946,7 @@ export function SentBackCard({
                   <Rule />
                   {/* Who refused it, with their face — the first question
                       anyone holding a rejection asks. */}
-                  <span className="inline-flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
-                    <Avatar
-                      name={a.sentBackBy}
-                      className="h-[20px] w-[20px] shrink-0 text-[8px]"
-                    />
-                    {a.sentBackBy}
-                  </span>
+                  <PersonLink name={a.sentBackBy} avatarClassName="h-[20px] w-[20px] shrink-0 text-[8px]" className="shrink-0 gap-1.5 text-[12.5px] font-semibold text-text-primary" />
                 </>
               )}
               {a.sentBackAt && (
@@ -1252,12 +1247,11 @@ export function MyEntriesCard({
                       )}
                     >
                       <td className="px-4 py-3.5">
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          <Avatar name={a.person} className="h-8 w-8 shrink-0 text-[11px]" />
-                          <span className="truncate text-[13.5px] font-semibold text-text-primary">
+                        <PersonLink name={a.person} avatarClassName="h-8 w-8 shrink-0 text-[11px]" className="flex gap-2.5">
+                          <span className={cn("truncate text-[13.5px] font-semibold text-text-primary", ENTITY_NAME)}>
                             {a.person}
                           </span>
-                        </span>
+                        </PersonLink>
                       </td>
                       <td className="px-4 py-3.5">{goalChip(state, a.goalId)}</td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-[14px] font-semibold text-text-primary tnum">
@@ -1463,13 +1457,7 @@ export function MyEntriesCard({
                                     {a.sentBackBy && (
                                       <>
                                         by
-                                        <span className="inline-flex items-center gap-1.5 font-semibold text-text-primary">
-                                          <Avatar
-                                            name={a.sentBackBy}
-                                            className="h-[18px] w-[18px] shrink-0 text-[8px]"
-                                          />
-                                          {a.sentBackBy}
-                                        </span>
+                                        <PersonLink name={a.sentBackBy} avatarClassName="h-[18px] w-[18px] shrink-0 text-[8px]" className="gap-1.5 font-semibold text-text-primary" />
                                       </>
                                     )}
                                     {a.sentBackAt && (
@@ -1775,13 +1763,7 @@ export function MyEntriesCard({
                           Reviewer&apos;s feedback
                         </span>
                         {a.sentBackBy && (
-                          <span className="mt-0.5 inline-flex items-center gap-1.5 text-[12px] font-semibold text-text-primary">
-                            <Avatar
-                              name={a.sentBackBy}
-                              className="h-[18px] w-[18px] text-[8px]"
-                            />
-                            {a.sentBackBy}
-                          </span>
+                          <PersonLink name={a.sentBackBy} avatarClassName="h-[18px] w-[18px] shrink-0 text-[8px]" className="mt-0.5 gap-1.5 text-[12px] font-semibold text-text-primary" />
                         )}
                       </div>
                     </div>
@@ -2340,12 +2322,11 @@ export function VerifyQueueCard({
                         {i + 1}
                       </td>
                       <td className="px-2.5 py-3">
-                        <span className="flex min-w-0 items-center gap-2" title={a.person}>
-                          <Avatar name={a.person} className="h-7 w-7 shrink-0 text-[10px]" />
-                          <span className="truncate text-[13px] font-semibold text-text-primary">
+                        <PersonLink name={a.person} title={a.person} avatarClassName="h-7 w-7 shrink-0 text-[10px]" className="flex gap-2">
+                          <span className={cn("truncate text-[13px] font-semibold text-text-primary", ENTITY_NAME)}>
                             {compactPersonName(a.person)}
                           </span>
-                        </span>
+                        </PersonLink>
                       </td>
                       <td className="min-w-0 px-2.5 py-3">{goalChip(state, a.goalId, { compact: true })}</td>
                       <td className="whitespace-nowrap px-2.5 py-3 text-[13px] font-semibold text-text-primary tnum">
@@ -2444,11 +2425,12 @@ export function VerifyQueueCard({
                   key={q.id}
                   className="flex items-center gap-2 rounded-lg bg-surface px-2.5 py-1.5 text-[12.5px]"
                 >
-                  <Avatar name={q.person} className="h-5 w-5 shrink-0 text-[7px]" />
-                  <span className="min-w-0 flex-1 truncate text-text-primary">
-                    {q.person}
-                    {q.customer ? ` · ${q.customer}` : ""}
-                  </span>
+                  <PersonLink name={q.person} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="min-w-0 flex-1 gap-2">
+                    <span className={cn("min-w-0 flex-1 truncate text-text-primary", ENTITY_NAME)}>
+                      {q.person}
+                      {q.customer ? ` · ${q.customer}` : ""}
+                    </span>
+                  </PersonLink>
                   <b className="shrink-0 text-text-primary tnum">
                     {fmtAmount(
                       state.goals.find((g) => g.id === q.goalId)?.unit ?? "currency",
@@ -2751,11 +2733,13 @@ export function ClaimReviewDialog({
               );
             })()}
             <div className="flex items-center gap-3 rounded-xl bg-surface px-3.5 py-3">
-              <Avatar name={a.person} className="h-10 w-10 text-[13px]" />
+              <EntityLink href={teammateHref(a.person)} className="shrink-0 rounded-full" title={a.person}>
+                <Avatar name={a.person} className="h-10 w-10 text-[13px]" />
+              </EntityLink>
               <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-bold text-text-primary">
+                <EntityLink href={teammateHref(a.person)} className="block text-[15px] font-bold text-text-primary">
                   {a.person}
-                </span>
+                </EntityLink>
                 <span className="block text-[12px] text-text-secondary">
                   claimed on <DateText value={a.date} />
                 </span>

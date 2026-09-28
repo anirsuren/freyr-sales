@@ -47,6 +47,8 @@ import { formatMoney } from "@/lib/pipeline";
 import { flagForGeography } from "@/lib/countryFlags";
 import { cn, formatDate } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref, teammateHref } from "@/lib/entityHref";
 
 export type RosterRep = {
   identityKey: string;
@@ -276,11 +278,13 @@ function PipelineInspector({
   return (
     <div>
       <div className="flex items-center gap-3 border-b border-border-light pb-2.5">
-        <Avatar name={rep.name} className="h-9 w-9 shrink-0 text-[11px]" />
+        <EntityLink href={teammateHref(rep.name)} className="shrink-0 rounded-full" title={rep.name}>
+          <Avatar name={rep.name} className="h-9 w-9 shrink-0 text-[11px]" />
+        </EntityLink>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13.5px] font-semibold text-text-primary">
+          <EntityLink href={teammateHref(rep.name)} className="block truncate text-[13.5px] font-semibold text-text-primary">
             {rep.name}{rep.you ? " · you" : ""}
-          </p>
+          </EntityLink>
           <p className="truncate text-[10.5px] text-text-tertiary">{selected ? STAGE_DETAIL[selected.stage] : `${rep.openCount} open deals by stage`}</p>
         </div>
         <div className="shrink-0 text-right">
@@ -382,11 +386,13 @@ function ActivityInspector({ rep }: { rep: RosterRep }) {
   return (
     <div>
       <div className="flex items-center gap-3 border-b border-border-light pb-2.5">
-        <Avatar name={rep.name} className="h-9 w-9 shrink-0 text-[11px]" />
+        <EntityLink href={teammateHref(rep.name)} className="shrink-0 rounded-full" title={rep.name}>
+          <Avatar name={rep.name} className="h-9 w-9 shrink-0 text-[11px]" />
+        </EntityLink>
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Sales activity · last 10 weeks</p>
           <h3 className="mt-0.5 truncate text-[14px] font-semibold text-text-primary">
-            {rep.name}{rep.you ? " · you" : ""}
+            <EntityLink href={teammateHref(rep.name)}>{rep.name}{rep.you ? " · you" : ""}</EntityLink>
           </h3>
         </div>
       </div>
@@ -1017,13 +1023,12 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                                                       itself"). Overlapping the two marks
                                                       read as one blob and attached the face
                                                       to the wrong label. */}
-                                                  <CompanyLogo name={d.company} className="h-[20px] w-[20px] shrink-0 text-[7px]" />
+                                                  <EntityLink nested href={customerHref(null, d.company)} className="shrink-0" title={d.company}>
+                                                    <CompanyLogo name={d.company} className="h-[20px] w-[20px] shrink-0 text-[7px]" />
+                                                  </EntityLink>
                                                   <span className="min-w-0 flex-1">
-                                                    <span className="block truncate text-[10.5px] font-medium text-text-primary">{d.company}</span>
-                                                    <span className="mt-0.5 flex min-w-0 items-center gap-1">
-                                                      <Avatar name={d.contact} className="h-[14px] w-[14px] shrink-0 text-[6px]" />
-                                                      <span className="min-w-0 truncate text-[9px] text-text-tertiary">{d.contact}</span>
-                                                    </span>
+                                                    <EntityLink nested href={customerHref(null, d.company)} className="block truncate text-[10.5px] font-medium text-text-primary">{d.company}</EntityLink>
+                                                    <PersonLink nested kind="contact" name={d.contact} avatarClassName="h-[14px] w-[14px] shrink-0 text-[6px]" className="mt-0.5 flex gap-1" nameClassName="text-[9px] text-text-tertiary" />
                                                   </span>
                                                   <span className="shrink-0 text-[9.5px] text-text-secondary tnum">{formatMoney(d.value)}</span>
                                                 </div>

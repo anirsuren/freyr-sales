@@ -106,6 +106,8 @@ import { LeadJourney } from "@/components/leads/LeadJourney";
 import { LeadLinkedInProfile } from "@/components/leads/LeadLinkedInProfile";
 import { repSlug } from "@/lib/team";
 import { companyDestination } from "@/lib/companyDestination";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { contactHref, teammateHref } from "@/lib/entityHref";
 
 type CustomerOption = { id: string; name: string };
 
@@ -713,7 +715,7 @@ export function LeadsModule({
               {groupBy === "owner" ? (
                 sec.key === "No owner"
                   ? <UserRound size={20} className="text-text-tertiary" />
-                  : <Avatar name={sec.key} className="h-8 w-8 shrink-0 text-[10px]" />
+                  : <EntityLink nested href={teammateHref(sec.key)} className="shrink-0 rounded-full" title={sec.key}><Avatar name={sec.key} className="h-8 w-8 shrink-0 text-[10px]" /></EntityLink>
               ) : (() => {
                 const groupedByStatus = groupBy === "status";
                 const color = groupedByStatus
@@ -787,11 +789,13 @@ export function LeadsModule({
                     >
                       <td className="px-4 py-2.5">
                         <span className="flex items-center gap-2">
-                          <Avatar
-                            name={lead.name || lead.company}
-                            initialsOnly
-                            className="h-7 w-7 shrink-0 text-[9px]"
-                          />
+                          <EntityLink href={lead.name ? (lead.contactId ? contactHref(lead.contactId) : `/leads/${lead.id}/contact`) : null} className="shrink-0 rounded-full" title={lead.name || undefined}>
+                            <Avatar
+                              name={lead.name || lead.company}
+                              initialsOnly
+                              className="h-7 w-7 shrink-0 text-[9px]"
+                            />
+                          </EntityLink>
                           <span className="min-w-0">
                             {lead.name ? <Link href={lead.contactId ? `/contacts/${lead.contactId}` : `/leads/${lead.id}/contact`} onClick={(event) => event.stopPropagation()} className="block truncate text-[13px] font-semibold text-text-primary hover:text-blue-primary hover:underline">{lead.name}</Link> : <span className="block truncate text-[13px] font-semibold text-text-primary">—</span>}
                             {lead.title && (

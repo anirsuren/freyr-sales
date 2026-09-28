@@ -18,6 +18,8 @@ import {
 import { tint } from "@/lib/tint";
 import { AccessHistory } from "@/components/admin/AccessHistory";
 import { DateText } from "@/components/ui/DateText";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 /**
  * ONE PERSON AT A TIME: names down the left, everything about them on the right.
@@ -429,10 +431,12 @@ export function PeopleSplit() {
           className="tab-panel min-w-0 rounded-xl border border-border-light p-4"
         >
           <div className="flex flex-wrap items-center gap-3">
-            <Avatar name={selected.name} className="h-11 w-11 shrink-0 text-[13px]" />
+            <EntityLink href={teammateHref(selected.name)} className="shrink-0 rounded-full" title={selected.name}>
+              <Avatar name={selected.name} className="h-11 w-11 shrink-0 text-[13px]" />
+            </EntityLink>
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-2 truncate text-[17px] font-semibold tracking-[-0.01em] text-text-primary">
-                {selected.name}
+                <EntityLink href={teammateHref(selected.name)}>{selected.name}</EntityLink>
                 {/* The same pill as the list, so opening a suspended person
                     does not lose the one fact that changes what you can do. */}
                 {!selected.active && <SuspendedPill />}

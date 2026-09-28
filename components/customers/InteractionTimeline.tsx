@@ -3,10 +3,10 @@ import { LocalTime } from "@/components/ui/LocalTime";
 import { Card } from "@/components/ui/Card";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Avatar } from "@/components/ui/Avatar";
-import { formatDate, formatDateTime, OUTCOME_CHART_COLOR } from "@/lib/utils";
+import { formatDate, formatDateTime, OUTCOME_CHART_COLOR, cn } from "@/lib/utils";
 import type { Interaction } from "@/lib/types";
 import { DateText } from "@/components/ui/DateText";
+import { ENTITY_NAME, PersonLink } from "@/components/ui/EntityLink";
 
 /** The agent stamps its own rows into the same interactions store. A touch log
  *  is a record of what a PERSON did with the account, and agent surfaces belong
@@ -64,13 +64,15 @@ export function InteractionTimeline({
                   <div className="flex items-center gap-2 min-w-0">
                     <OutcomeBadge outcome={it.outcome} />
                     {contactNames?.[it.contact_id] && (
-                      <span className="flex min-w-0 items-center gap-2 text-[13px] text-text-primary font-medium">
-                        <Avatar
-                          name={contactNames[it.contact_id]}
-                          className="h-7 w-7 shrink-0 text-[9px]"
-                        />
-                        <span className="min-w-0 break-words">{contactNames[it.contact_id]}</span>
-                      </span>
+                      <PersonLink
+                        kind="contact"
+                        contactId={it.contact_id}
+                        name={contactNames[it.contact_id]}
+                        avatarClassName="h-7 w-7 shrink-0 text-[9px]"
+                        className="flex text-[13px] text-text-primary font-medium"
+                      >
+                        <span className={cn("min-w-0 break-words", ENTITY_NAME)}>{contactNames[it.contact_id]}</span>
+                      </PersonLink>
                     )}
                   </div>
                   <span className="text-[11.5px] text-text-tertiary tnum whitespace-nowrap shrink-0">
@@ -90,10 +92,9 @@ export function InteractionTimeline({
                     </span>
                   )}
                   {it.logged_by && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Avatar name={it.logged_by} className="h-5 w-5 text-[7px]" />
-                      Logged by {it.logged_by}
-                    </span>
+                    <PersonLink name={it.logged_by} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5">
+                      <span className={ENTITY_NAME}>Logged by {it.logged_by}</span>
+                    </PersonLink>
                   )}
                 </div>
               </li>

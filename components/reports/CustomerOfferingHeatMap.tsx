@@ -86,6 +86,8 @@ import type {
 } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 type DisplayMode =
   | "activity"
@@ -1141,14 +1143,16 @@ export function CustomerOfferingHeatMap({
         {!draft && selectedCustomer && selectedOffering && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 rounded-xl border border-border-light bg-surface/70 p-3">
-              <CompanyLogo
-                name={selectedCustomer.company_name}
-                className="h-10 w-10 shrink-0"
-              />
+              <EntityLink href={customerHref(selectedCustomer.id, selectedCustomer.company_name)} className="shrink-0" title={selectedCustomer.company_name}>
+                <CompanyLogo
+                  name={selectedCustomer.company_name}
+                  className="h-10 w-10 shrink-0"
+                />
+              </EntityLink>
               <div className="min-w-0">
-                <p className="truncate text-[14px] font-semibold text-text-primary">
+                <EntityLink href={customerHref(selectedCustomer.id, selectedCustomer.company_name)} className="block truncate text-[14px] font-semibold text-text-primary">
                   {selectedCustomer.company_name}
-                </p>
+                </EntityLink>
                 <p className="truncate text-[11px] text-text-tertiary">
                   {selectedOffering.name}
                 </p>
@@ -1173,14 +1177,16 @@ export function CustomerOfferingHeatMap({
           <div className="space-y-4">
             <div className="flex flex-col gap-3 rounded-xl border border-border-light bg-surface/70 p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">
-                <CompanyLogo
-                  name={selectedCustomer.company_name}
-                  className="h-10 w-10 shrink-0"
-                />
+                <EntityLink href={customerHref(selectedCustomer.id, selectedCustomer.company_name)} className="shrink-0" title={selectedCustomer.company_name}>
+                  <CompanyLogo
+                    name={selectedCustomer.company_name}
+                    className="h-10 w-10 shrink-0"
+                  />
+                </EntityLink>
                 <div className="min-w-0">
-                  <p className="truncate text-[14px] font-semibold text-text-primary">
+                  <EntityLink href={customerHref(selectedCustomer.id, selectedCustomer.company_name)} className="block truncate text-[14px] font-semibold text-text-primary">
                     {selectedCustomer.company_name}
-                  </p>
+                  </EntityLink>
                   <p className="truncate text-[11px] text-text-tertiary">
                     {selectedOffering.name}
                   </p>
@@ -2079,10 +2085,12 @@ export function CustomerOfferingHeatMap({
                       )}
                     >
                       <div className="flex items-center gap-2.5">
-                        <CompanyLogo
-                          name={customer.company_name}
-                          className="h-6 w-6 shrink-0"
-                        />
+                        <EntityLink nested href={customerHref(customer.id, customer.company_name)} className="shrink-0" title={customer.company_name}>
+                          <CompanyLogo
+                            name={customer.company_name}
+                            className="h-6 w-6 shrink-0"
+                          />
+                        </EntityLink>
                         <div className="min-w-0">
                           <p
                             className={cn(

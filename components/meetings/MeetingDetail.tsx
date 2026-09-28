@@ -52,6 +52,8 @@ import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { repSlug } from "@/lib/team";
 import { RequiredMark } from "@/components/ui/RequiredMark";
+import { EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 /**
  * ONE MEETING.
@@ -277,7 +279,9 @@ export function MeetingDetail({
       <div className="rise-in flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
         <div className="min-w-0">
           <h1 className="flex min-w-0 items-center gap-3 text-[30px] font-semibold leading-tight tracking-[-0.02em] text-text-primary">
-            <CompanyLogo name={m.customer} className="h-11 w-11 shrink-0 text-[12px]" />
+            <EntityLink href={customerHref(null, m.customer)} className="shrink-0" title={m.customer}>
+              <CompanyLogo name={m.customer} className="h-11 w-11 shrink-0 text-[12px]" />
+            </EntityLink>
             <span className="min-w-0 break-words">{m.title}</span>
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -420,10 +424,7 @@ export function MeetingDetail({
                           <Icon size={10} strokeWidth={2.6} />
                           {meta.label}
                         </span>
-                        <Avatar name={n.by} className="h-[18px] w-[18px] text-[7px]" />
-                        <span className="text-[11.5px] font-medium text-text-secondary">
-                          {n.by}
-                        </span>
+                        <PersonLink name={n.by} avatarClassName="h-[18px] w-[18px] shrink-0 text-[7px]" className="gap-1.5" nameClassName="text-[11.5px] font-medium text-text-secondary" />
                         <span className="text-[11px] text-text-tertiary">
                           {stampedAt(n.at)}
                         </span>

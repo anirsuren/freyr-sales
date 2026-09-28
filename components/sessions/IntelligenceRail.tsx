@@ -7,6 +7,8 @@ import { SizeBadge } from "@/components/ui/Badge";
 import { IndustryTag } from "@/components/ui/IndustryTag";
 import type { Customer, Contact, RecommendedService } from "@/lib/types";
 import { GeographyText } from "@/components/ui/GeographyText";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 function MatchBar({ pct }: { pct: number }) {
   return (
@@ -48,10 +50,12 @@ export function IntelligenceRail({
               {customer.company_name}
             </Link>
           </div>
-          <CompanyLogo
-            name={customer.company_name}
-            className="w-10 h-10 text-[13px] rounded-lg"
-          />
+          <EntityLink href={customerHref(customer.id)} className="shrink-0" title={customer.company_name}>
+            <CompanyLogo
+              name={customer.company_name}
+              className="w-10 h-10 text-[13px] rounded-lg"
+            />
+          </EntityLink>
         </div>
         {/* Identity chips carry colour AND an icon — the industry used to be a
             gray outline pill and the size a bare blue one (Anir, Jul 26: "there

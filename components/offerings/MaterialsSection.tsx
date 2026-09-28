@@ -74,6 +74,8 @@ import {
 } from "@/lib/offeringMaterials";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 // Rows run Video → Presentation → Document → Others, and within a format they
 // keep the order the offering owner put them in. A sort (not a per-kind loop)
@@ -1570,10 +1572,12 @@ export function MaterialsSection({
                     <td className="px-4 py-4 align-middle">
                       <div className="flex min-w-[145px] items-center gap-2">
                         {material.addedBy ? (
-                          <Avatar
-                            name={material.addedBy}
-                            className="h-7 w-7 shrink-0 text-[9px]"
-                          />
+                          <EntityLink href={teammateHref(material.addedBy)} className="shrink-0 rounded-full" title={material.addedBy}>
+                            <Avatar
+                              name={material.addedBy}
+                              className="h-7 w-7 shrink-0 text-[9px]"
+                            />
+                          </EntityLink>
                         ) : (
                           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-light text-blue-primary">
                             <FileText size={13} strokeWidth={1.9} />
@@ -1861,12 +1865,14 @@ export function MaterialsSection({
                   >
                     {material.addedBy ? (
                       <>
-                        <Avatar
-                          name={material.addedBy}
-                          className="h-5 w-5 text-[8px]"
-                        />
+                        <EntityLink href={teammateHref(material.addedBy)} className="shrink-0 rounded-full" title={material.addedBy}>
+                          <Avatar
+                            name={material.addedBy}
+                            className="h-5 w-5 text-[8px]"
+                          />
+                        </EntityLink>
                         <span className="flex items-center gap-1 truncate">
-                          Added by {material.addedBy}
+                          Added by <EntityLink href={teammateHref(material.addedBy)}>{material.addedBy}</EntityLink>
                           {uploaderIsOwner(material.addedBy) && (
                             <span title="Offering owner" className="inline-flex shrink-0">
                               <Crown size={10} strokeWidth={2.6} aria-label="Offering owner" className="text-[color:var(--ink-violet-soft)]" />

@@ -75,6 +75,8 @@ import {
   type OfferingCustomerRow,
 } from "@/components/offerings/OfferingCustomers";
 import { tint } from "@/lib/tint";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 export const dynamic = "force-dynamic";
 
@@ -612,9 +614,11 @@ export default async function OfferingDetailPage({
                    elsewhere in the app, resolved by name. */
                 label={
                   <span className="inline-flex items-center gap-2">
-                    <Avatar name={o.created_by} className="h-5 w-5 shrink-0 text-[8px]" />
+                    <EntityLink href={teammateHref(o.created_by)} className="shrink-0 rounded-full" title={o.created_by}>
+                      <Avatar name={o.created_by} className="h-5 w-5 shrink-0 text-[8px]" />
+                    </EntityLink>
                     <span>
-                      Added by {o.created_by}
+                      Added by <EntityLink href={teammateHref(o.created_by)}>{o.created_by}</EntityLink>
                       {o.created_at
                         ? ` on ${new Date(o.created_at).toLocaleDateString("en-US", {
                             day: "numeric",

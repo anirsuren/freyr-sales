@@ -33,6 +33,8 @@ import type {
   CompetitorProduct,
 } from "@/lib/offeringCompetition";
 import { tint } from "@/lib/tint";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { marketCompanyHref } from "@/lib/entityHref";
 
 /**
  * THE COMPETITION TAB (Suren, Aug 11): who competes with this offering, with
@@ -237,14 +239,16 @@ export function OfferingCompetition({
 
   const logoFor = (row: CompetitorProduct) =>
     row.marketIntelId && logos[row.marketIntelId] ? (
-      <MiLogo
-        name={row.company}
-        logoUrl={logos[row.marketIntelId]}
-        className="h-10 w-10 shrink-0"
-      />
-    ) : (
+      <EntityLink nested href={marketCompanyHref(row.marketIntelId)} className="shrink-0" title={row.company}>
+        <MiLogo
+          name={row.company}
+          logoUrl={logos[row.marketIntelId]}
+          className="h-10 w-10 shrink-0"
+        />
+      </EntityLink>
+      ) : (
       <CompanyLogo name={row.company} className="h-10 w-10 shrink-0" />
-    );
+      );
 
   const kindChips = (row: CompetitorProduct, size: "sm" | "md" = "md") => {
     const counts = row.materials.reduce<Record<string, number>>(

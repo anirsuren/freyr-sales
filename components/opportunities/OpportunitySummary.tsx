@@ -22,6 +22,8 @@ import {
   type EstimateMeasure,
   type Opportunity,
 } from "@/lib/opportunitiesShared";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref, teammateHref } from "@/lib/entityHref";
 
 /**
  * THE OPPORTUNITY SUMMARY — Suren's own sheet, in this app's language.
@@ -1176,14 +1178,16 @@ export function OpportunitySummary({
                     {!order.includes("customer") &&
                       !order.includes("group") &&
                       d.customer && (
-                        <CompanyLogo
-                          name={d.customer}
-                          className="h-[18px] w-[18px] shrink-0 text-[7px]"
-                        />
-                      )}
-                    <span className="min-w-0 truncate" title={d.name}>
-                      {d.name}
-                    </span>
+                        <EntityLink nested href={customerHref(null, d.customer)} className="shrink-0" title={d.customer}>
+                          <CompanyLogo
+                            name={d.customer}
+                            className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                          />
+                        </EntityLink>
+                        )}
+                        <span className="min-w-0 truncate" title={d.name}>
+                          {d.name}
+                        </span>
                     {/* WHOSE DEAL IT IS, AS A FACE (Anir, Sep 3: "put the
                         profile picture — not the name, just pfp is enough —
                         somewhere on the row, in line, if I created it for
@@ -1205,12 +1209,14 @@ export function OpportunitySummary({
                         the face is here is to answer it where nothing else
                         does. */}
                     {d.owner && !order.includes("owner") && (
-                      <Avatar
-                        name={d.owner}
-                        /* The component owns its own hover label. */
-                        tooltip
-                        className="h-[18px] w-[18px] shrink-0 text-[7px]"
-                      />
+                      <EntityLink nested href={teammateHref(d.owner)} className="shrink-0 rounded-full">
+                        <Avatar
+                          name={d.owner}
+                          /* The component owns its own hover label. */
+                          tooltip
+                          className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                        />
+                      </EntityLink>
                     )}
                     {/* ONLY ON THE DEAL, never on the rows above it. A group's
                         confidence would have to be an average of the deals
@@ -1499,10 +1505,12 @@ export function OpportunitySummary({
                               onClick={() => onOpenDeal(d.id)}
                               className="flex w-full cursor-pointer items-center gap-2 text-left"
                             >
-                              <CompanyLogo
-                                name={d.customer}
-                                className="text-[9px] h-5 w-5 shrink-0"
-                              />
+                              <EntityLink nested href={customerHref(null, d.customer)} className="shrink-0" title={d.customer}>
+                                <CompanyLogo
+                                  name={d.customer}
+                                  className="text-[9px] h-5 w-5 shrink-0"
+                                />
+                              </EntityLink>
                               <span
                                 className="min-w-0 truncate text-[13px] text-text-secondary"
                                 title={d.name}

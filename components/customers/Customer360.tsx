@@ -89,6 +89,8 @@ import {
   type LeadSource,
   type LeadStatus,
 } from "@/lib/leadsShared";
+import { CompanyLink, ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 const OPPORTUNITY_LEVEL_COLOR: Record<string, string> = {
   Pipeline: "var(--ink-bright-blue)",
@@ -994,16 +996,22 @@ export function Customer360({
                       >
                         <td className="py-3 pr-4">
                           <span className="flex items-center gap-2.5">
+                            {/* THE MARK IS A DOOR TOO (Anir, Sep 28): a face opens the record it
+                                belongs to, a logo opens the account. */}
                             {item.face ? (
-                              <Avatar
-                                name={item.face}
-                                className="h-7 w-7 shrink-0 text-[9px]"
-                              />
+                              <EntityLink href={item.href} className="shrink-0" title={item.face}>
+                                <Avatar
+                                  name={item.face}
+                                  className="h-7 w-7 shrink-0 text-[9px]"
+                                />
+                              </EntityLink>
                             ) : item.logo ? (
-                              <CompanyLogo
-                                name={item.logo}
-                                className="h-7 w-7 shrink-0 text-[8px]"
-                              />
+                              <EntityLink href={customerHref(null, item.logo)} className="shrink-0" title={item.logo}>
+                                <CompanyLogo
+                                  name={item.logo}
+                                  className="h-7 w-7 shrink-0 text-[8px]"
+                                />
+                              </EntityLink>
                             ) : (
                               <span
                                 aria-hidden="true"
@@ -1142,21 +1150,19 @@ export function Customer360({
                                       <span className="min-w-0 break-words">{v}</span>
                                     </span>
                                   ) : c.kind === "person" && named ? (
-                                    <span className="flex min-w-0 items-center gap-1.5">
-                                      <Avatar
-                                        name={v}
-                                        className="h-5 w-5 shrink-0 text-[7px]"
-                                      />
-                                      <span className={customerContractTable ? "break-words" : "truncate"}>{v}</span>
-                                    </span>
+                                    <PersonLink
+                                      name={v}
+                                      avatarClassName="h-5 w-5 shrink-0 text-[7px]"
+                                      className="flex gap-1.5"
+                                    >
+                                      <span className={cn(customerContractTable ? "break-words" : "truncate", ENTITY_NAME)}>{v}</span>
+                                    </PersonLink>
                                   ) : c.kind === "company" && named ? (
-                                    <span className="flex min-w-0 items-center gap-1.5">
-                                      <CompanyLogo
-                                        name={v}
-                                        className="h-5 w-5 shrink-0 text-[7px]"
-                                      />
-                                      <span className="truncate">{v}</span>
-                                    </span>
+                                    <CompanyLink
+                                      name={v}
+                                      logoClassName="h-5 w-5 shrink-0 text-[7px]"
+                                      className="flex gap-1.5"
+                                    />
                                   ) : (
                                     <span className={c.key === "signs" ? "whitespace-nowrap" : undefined}>
                                       {v}
@@ -1220,15 +1226,19 @@ export function Customer360({
                       an offering its category-coloured tile, a person
                       their headshot. */}
                   {item.face ? (
-                    <Avatar
-                      name={item.face}
-                      className="mt-0.5 h-7 w-7 shrink-0 text-[9px]"
-                    />
+                    <EntityLink href={item.href} className="shrink-0" title={item.face}>
+                      <Avatar
+                        name={item.face}
+                        className="mt-0.5 h-7 w-7 shrink-0 text-[9px]"
+                      />
+                    </EntityLink>
                   ) : item.logo ? (
-                    <CompanyLogo
-                      name={item.logo}
-                      className="mt-0.5 h-7 w-7 shrink-0 text-[8px]"
-                    />
+                    <EntityLink href={customerHref(null, item.logo)} className="shrink-0" title={item.logo}>
+                      <CompanyLogo
+                        name={item.logo}
+                        className="mt-0.5 h-7 w-7 shrink-0 text-[8px]"
+                      />
+                    </EntityLink>
                   ) : item.tone ? (
                     <span
                       aria-hidden="true"

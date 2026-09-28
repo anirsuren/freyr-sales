@@ -27,6 +27,8 @@ import {
 } from "@/lib/agent";
 import { buildDeals, formatMoney } from "@/lib/pipeline";
 import { formatDateTime, cn } from "@/lib/utils";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 export const metadata = { title: "Agent Impact" };
 export const dynamic = "force-dynamic";
@@ -240,14 +242,16 @@ export default async function AgentImpactPage({
                       </span>
                       {/* The rank stays; the account's own mark sits beside it
                           so the row reads as a company, not a number. */}
-                      <CompanyLogo
-                        name={r.company}
-                        className="w-7 h-7 text-[9px]"
-                      />
+                      <EntityLink nested href={customerHref(null, r.company)} className="shrink-0" title={r.company}>
+                        <CompanyLogo
+                          name={r.company}
+                          className="w-7 h-7 text-[9px]"
+                        />
+                      </EntityLink>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[13px] font-semibold text-text-primary">
+                        <EntityLink nested href={customerHref(null, r.company)} className="block text-[13px] font-semibold text-text-primary">
                           {r.company}
-                        </span>
+                        </EntityLink>
                         <span className="block text-[12px] text-text-secondary">
                           {parts.join(" · ") || "activity logged"} · last{" "}
                           <LocalTime value={r.lastAt} />

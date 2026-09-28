@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ClipboardList,
 } from "lucide-react";
-import { Avatar } from "@/components/ui/Avatar";
 import {
   PersonGoalPanel,
   TypeIconTile,
@@ -23,6 +22,7 @@ import {
   type PrimaryGoal,
 } from "@/lib/performanceShared";
 import { tint } from "@/lib/tint";
+import { ENTITY_NAME, PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * WHAT THIS GROUP IS ACTUALLY CARRYING, TWO CLICKS DEEP (Anir, Aug 25: "I
@@ -372,13 +372,11 @@ export function GroupGoalsDrilldown({
                                       mine && "rotate-90 text-blue-primary"
                                     )}
                                   />
-                                  <Avatar
-                                    name={r.person}
-                                    className="h-6 w-6 shrink-0 text-[8px]"
-                                  />
-                                  <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
-                                    {r.person}
-                                  </span>
+                                  <PersonLink nested name={r.person} avatarClassName="h-6 w-6 shrink-0 text-[8px]" className="min-w-0 flex-1 gap-2">
+                                    <span className={cn("min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary", ENTITY_NAME)}>
+                                      {r.person}
+                                    </span>
+                                  </PersonLink>
                                   {theirPct !== null && (
                                     <>
                                       <span className="hidden h-1.5 w-20 shrink-0 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] sm:flex">

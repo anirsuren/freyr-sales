@@ -111,6 +111,8 @@ import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { withCommas } from "@/lib/currency";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
+import { EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { contactHref } from "@/lib/entityHref";
 
 const CUSTOMER_OUTCOMES: Outcome[] = [
   "interested",
@@ -2663,10 +2665,12 @@ export function CustomerTabs({
                       {/* Who the pitch is for — their headshot leads, so the row
                           reads like a real person, not a blank strip. */}
                       {sessContact ? (
-                        <Avatar
-                          name={sessContact.full_name}
-                          className="w-12 h-12 text-[15px] shrink-0"
-                        />
+                        <EntityLink nested href={contactHref(sessContact.id)} className="shrink-0 rounded-full" title={sessContact.full_name}>
+                          <Avatar
+                            name={sessContact.full_name}
+                            className="w-12 h-12 text-[15px] shrink-0"
+                          />
+                        </EntityLink>
                       ) : (
                         <span className="w-12 h-12 rounded-xl bg-blue-light text-blue-primary flex items-center justify-center shrink-0">
                           <CalendarClock size={22} strokeWidth={1.7} />
@@ -2881,10 +2885,11 @@ export function CustomerTabs({
                           {meta.label}
                         </span>
                       )}
-                      <Avatar name={n.author} className="w-6 h-6 text-[11px]" />
-                      <span className="text-[13px] font-semibold text-text-primary">
-                        {n.author}
-                      </span>
+                      <PersonLink
+                        name={n.author}
+                        avatarClassName="w-6 h-6 shrink-0 text-[11px]"
+                        nameClassName="text-[13px] font-semibold text-text-primary"
+                      />
                       <span className="text-[12px] text-text-tertiary tnum">
                         · {formatDateTime(n.created_at)}
                       </span>
@@ -3222,8 +3227,13 @@ export function CustomerTabs({
                 />
               ) : (
                 <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
-                  <Avatar name={owner || "Unassigned"} className="h-7 w-7 shrink-0" />
-                  <span className={cn("min-w-0 truncate text-[13px] font-semibold", owner ? "text-text-primary" : "text-text-tertiary")}>{owner || "Unassigned"}</span>
+                  {/* The owner is a door to their profile (Anir, Sep 28); "Unassigned" is not. */}
+                  <PersonLink
+                    name={owner || "Unassigned"}
+                    avatarClassName="h-7 w-7 shrink-0"
+                    className="gap-2.5"
+                    nameClassName={cn("text-[13px] font-semibold", owner ? "text-text-primary" : "text-text-tertiary")}
+                  />
                 </div>
               )}
             </div>

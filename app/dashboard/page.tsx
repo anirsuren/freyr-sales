@@ -23,7 +23,7 @@ import {
   VIZ,
 } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
-import { formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
+import { cn, OUTCOME_CHART_COLOR, OUTCOME_META, formatDateTime } from "@/lib/utils";
 import {
   buildDeals,
   pipelineGrowthSeries,
@@ -48,6 +48,8 @@ import type { RecommendedService } from "@/lib/types";
 import { getCurrentUser } from "@/lib/currentUser";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { firstNameForUser } from "@/lib/userIdentity";
+import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { contactHref, customerHref, teammateHref } from "@/lib/entityHref";
 
 export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
@@ -700,9 +702,11 @@ export default async function DashboardPage({
                     content={
                       <div>
                         <div className="flex items-center gap-3">
-                          <CompanyLogo name={deal.company} className="h-10 w-10 shrink-0 text-[9px]" />
+                          <EntityLink href={customerHref(null, deal.company)} className="shrink-0" title={deal.company}>
+                            <CompanyLogo name={deal.company} className="h-10 w-10 shrink-0 text-[9px]" />
+                          </EntityLink>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[13px] font-semibold text-text-primary">{deal.company}</p>
+                            <EntityLink href={customerHref(null, deal.company)} className="block truncate text-[13px] font-semibold text-text-primary">{deal.company}</EntityLink>
                             <p className="mt-0.5 truncate text-[10.5px] text-text-tertiary">{deal.service}</p>
                           </div>
                           <span className="text-[17px] font-bold text-text-primary tnum">{formatMoney(deal.value)}</span>
@@ -715,10 +719,12 @@ export default async function DashboardPage({
                           <div><p className={deal.staleDays > 14 ? "text-[12px] font-bold text-error tnum" : "text-[12px] font-bold text-text-primary tnum"}>{deal.staleDays}d</p><p className="text-[9px] text-text-tertiary">Since activity</p></div>
                         </div>
                         <div className="mt-3 flex items-center gap-2">
-                          <Avatar name={deal.contactName} className="h-7 w-7 text-[8px]" />
+                          <EntityLink href={contactHref(null, deal.contactName)} className="shrink-0 rounded-full" title={deal.contactName}>
+                            <Avatar name={deal.contactName} className="h-7 w-7 text-[8px]" />
+                          </EntityLink>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[11px] font-semibold text-text-primary">{deal.contactName}</p>
-                            <p className="truncate text-[10px] text-text-tertiary">Owned by {deal.owner}</p>
+                            <EntityLink href={contactHref(null, deal.contactName)} className="block truncate text-[11px] font-semibold text-text-primary">{deal.contactName}</EntityLink>
+                            <p className="truncate text-[10px] text-text-tertiary">Owned by <EntityLink href={teammateHref(deal.owner)}>{deal.owner}</EntityLink></p>
                           </div>
                         </div>
                         <div className="mt-3 rounded-md border border-blue-subtle bg-blue-light/40 px-3 py-2.5">
@@ -847,9 +853,11 @@ export default async function DashboardPage({
                           content={
                             <div>
                               <div className="flex items-center gap-3">
-                                <Avatar name={a.contact} className="h-10 w-10 shrink-0 text-[10px]" />
+                                <EntityLink href={contactHref(activityContact?.id, a.contact)} className="shrink-0 rounded-full" title={a.contact}>
+                                  <Avatar name={a.contact} className="h-10 w-10 shrink-0 text-[10px]" />
+                                </EntityLink>
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-[13px] font-semibold text-text-primary">{a.contact}</p>
+                                  <p className="text-[13px] font-semibold text-text-primary"><EntityLink href={contactHref(activityContact?.id, a.contact)}>{a.contact}</EntityLink></p>
                                   {/* Role + email — the card is where a rep decides
                                       to reach out, so the address belongs here
                                       (Anir: the hover card needs the email). */}
@@ -859,13 +867,17 @@ export default async function DashboardPage({
                                   </p>
                                   {/* Full company name — never cut short. */}
                                   <div className="mt-0.5 flex items-center gap-1.5">
-                                    <CompanyLogo name={a.company} className="h-4 w-4 shrink-0 text-[6px]" />
-                                    <span className="text-[10px] text-text-tertiary">{a.company} · {activityCustomer?.industry || "Industry not set"}</span>
+                                    <EntityLink href={customerHref(activityCustomer?.id, a.company)} className="shrink-0" title={a.company}>
+                                      <CompanyLogo name={a.company} className="h-4 w-4 shrink-0 text-[6px]" />
+                                    </EntityLink>
+                                    <span className="text-[10px] text-text-tertiary"><EntityLink href={customerHref(activityCustomer?.id, a.company)}>{a.company}</EntityLink> · {activityCustomer?.industry || "Industry not set"}</span>
                                   </div>
                                   {activityCustomer?.owner && (
                                     <div className="mt-1 flex items-center gap-1.5">
-                                      <Avatar name={activityCustomer.owner} className="h-4 w-4 shrink-0 text-[6px]" />
-                                      <span className="text-[10px] text-text-tertiary">Owner · {activityCustomer.owner}</span>
+                                      <EntityLink href={teammateHref(activityCustomer.owner)} className="shrink-0 rounded-full" title={activityCustomer.owner}>
+                                        <Avatar name={activityCustomer.owner} className="h-4 w-4 shrink-0 text-[6px]" />
+                                      </EntityLink>
+                                      <span className="text-[10px] text-text-tertiary">Owner · <EntityLink href={teammateHref(activityCustomer.owner)}>{activityCustomer.owner}</EntityLink></span>
                                     </div>
                                   )}
                                 </div>
@@ -895,8 +907,9 @@ export default async function DashboardPage({
                                 <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">{nextMove}</p>
                               </div>
                               <div className="mt-3 flex items-center gap-2 border-t border-border-light pt-3">
-                                <Avatar name={a.loggedBy} className="h-6 w-6 text-[7px]" />
-                                <span className="text-[10.5px] text-text-secondary">Logged by {a.loggedBy}</span>
+                                <PersonLink name={a.loggedBy} avatarClassName="h-6 w-6 shrink-0 text-[7px]" className="gap-2">
+                                  <span className={cn("text-[10.5px] text-text-secondary", ENTITY_NAME)}>Logged by {a.loggedBy}</span>
+                                </PersonLink>
                                 <span className="ml-auto text-[11px] font-semibold text-blue-primary">Open account</span>
                               </div>
                             </div>
@@ -909,10 +922,12 @@ export default async function DashboardPage({
                             {/* The person's headshot leads (Suren: "why are there no
                                 profile pictures here?"), with a small outcome dot. */}
                             <span className="relative shrink-0 z-10">
-                              <Avatar
-                                name={a.contact || a.company}
-                                className="w-9 h-9 text-[12px] border-2 border-white"
-                              />
+                              <EntityLink nested href={a.contact ? contactHref(null, a.contact) : null} className="block rounded-full" title={a.contact || undefined}>
+                                <Avatar
+                                  name={a.contact || a.company}
+                                  className="w-9 h-9 text-[12px] border-2 border-white"
+                                />
+                              </EntityLink>
                               <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border-2 border-white ${positive ? "bg-blue-primary text-white" : "bg-surface text-text-tertiary"}`}>
                                 <Icon size={9} strokeWidth={2.2} />
                               </span>
@@ -988,14 +1003,16 @@ export default async function DashboardPage({
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex min-w-[190px] items-center gap-2.5">
-                          <Avatar
-                            name={contact?.full_name || "Primary contact"}
-                            className="h-8 w-8 shrink-0 text-[9px]"
-                          />
+                          <EntityLink href={contact ? contactHref(contact.id, contact.full_name) : null} className="shrink-0 rounded-full" title={contact?.full_name}>
+                            <Avatar
+                              name={contact?.full_name || "Primary contact"}
+                              className="h-8 w-8 shrink-0 text-[9px]"
+                            />
+                          </EntityLink>
                           <div className="min-w-0">
-                            <div className="truncate text-[13px] font-medium text-text-primary">
+                            <EntityLink href={contact ? contactHref(contact.id, contact.full_name) : null} className="block truncate text-[13px] font-medium text-text-primary">
                               {contact?.full_name || "-"}
-                            </div>
+                            </EntityLink>
                             <div className="truncate text-[11px] text-text-tertiary">
                               {contact?.job_title || ""}
                             </div>

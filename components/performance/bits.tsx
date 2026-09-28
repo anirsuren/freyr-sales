@@ -57,6 +57,8 @@ import { BarChart } from "@/components/charts/Charts";
 import { tint } from "@/lib/tint";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { withCommas } from "@/lib/currency";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 /**
  * Shared chips, pills and bars for the Performance module. Goal types are
@@ -1889,10 +1891,12 @@ export function PersonGoalPanel({
                       <td className="px-4 py-3">
                         <span className="flex min-w-0 items-center gap-2 text-[12px] text-text-secondary">
                           {a.customer && (
-                            <CompanyLogo
-                              name={a.customer}
-                              className="h-5 w-5 shrink-0 text-[7px]"
-                            />
+                            <EntityLink href={customerHref(null, a.customer)} className="shrink-0" title={a.customer}>
+                              <CompanyLogo
+                                name={a.customer}
+                                className="h-5 w-5 shrink-0 text-[7px]"
+                              />
+                            </EntityLink>
                           )}
                           <span className="truncate">{detail || "—"}</span>
                         </span>

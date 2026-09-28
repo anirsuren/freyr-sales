@@ -105,6 +105,7 @@ import {
 import { formatFromFilename } from "@/lib/offeringMaterials";
 import type { OfferingMaterial } from "@/lib/offeringMaterials";
 import { tint } from "@/lib/tint";
+import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * Which mark a timeline event wears, read off the sentence the store wrote.
@@ -996,10 +997,7 @@ export function RequestDetail({
                       <ArrowUpRight size={12} className="shrink-0 text-text-tertiary" />
                     </Link>
                   ) : (
-                    <p className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
-                      <CompanyLogo name={r.customer} className="h-5 w-5 shrink-0 text-[7px]" />
-                      <span className="truncate">{r.customer}</span>
-                    </p>
+                    <CompanyLink name={r.customer} logoClassName="h-5 w-5 shrink-0 text-[7px]" className="flex gap-2 text-[13px] font-semibold text-text-primary" />
                   )}
                 </div>
 
@@ -1236,8 +1234,7 @@ export function RequestDetail({
                                 key={c}
                                 className="inline-flex items-center gap-1.5 rounded-full bg-surface py-1 pl-1.5 pr-1 text-[12px] font-medium text-text-primary"
                               >
-                                <Avatar name={c} className="h-[16px] w-[16px] text-[6px]" />
-                                {c}
+                                <PersonLink name={c} avatarClassName="h-[16px] w-[16px] shrink-0 text-[6px]" className="gap-1.5" />
                                 {canWrite && may.assign && (
                                   <button
                                     type="button"
@@ -1281,9 +1278,8 @@ export function RequestDetail({
                           key={a}
                           className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-primary"
                         >
-                          <Avatar name={a} className="h-[16px] w-[16px] text-[6px]" />
-                          {a}
-                        </span>
+                          <PersonLink name={a} avatarClassName="h-[16px] w-[16px] shrink-0 text-[6px]" className="gap-1.5" />
+                          </span>
                       ))}
                     </div>
                   )}
@@ -1518,8 +1514,7 @@ export function RequestDetail({
                           </span>
                         )}
                         <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-text-tertiary">
-                          <Avatar name={a.by} className="h-[15px] w-[15px] text-[6px]" />
-                          <span className="font-medium text-text-secondary">{a.by}</span>
+                          <PersonLink name={a.by} avatarClassName="h-[15px] w-[15px] shrink-0 text-[6px]" className="gap-1.5" nameClassName="font-medium text-text-secondary" />
                           <span aria-hidden="true">·</span>
                           <span suppressHydrationWarning>{stampedAt(a.at)}</span>
                         </span>
@@ -1815,20 +1810,14 @@ export function RequestDetail({
             <>
               <div className="min-w-0 flex-1">
                 <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">Current owner</span>
-                <span className="mt-1.5 flex min-w-0 items-center gap-2">
-                  <Avatar name={r.owner} className="h-7 w-7 shrink-0" />
-                  <span className="truncate text-[12.5px] font-medium text-text-secondary">{r.owner}</span>
-                </span>
+                <PersonLink name={r.owner} avatarClassName="h-7 w-7 shrink-0" className="mt-1.5 flex gap-2" nameClassName="text-[12.5px] font-medium text-text-secondary" />
               </div>
               <ArrowRight size={16} className="mb-1.5 shrink-0 self-end text-blue-primary" aria-hidden="true" />
             </>
           )}
           <div className="min-w-0 flex-1">
             <span className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">New owner</span>
-            <span className="mt-1.5 flex min-w-0 items-center gap-2">
-              <Avatar name={confirmOwner ?? ""} className="h-7 w-7 shrink-0" />
-              <span className="truncate text-[12.5px] font-semibold text-text-primary">{confirmOwner}</span>
-            </span>
+            <PersonLink name={confirmOwner ?? ""} avatarClassName="h-7 w-7 shrink-0" className="mt-1.5 flex gap-2" nameClassName="text-[12.5px] font-semibold text-text-primary" />
           </div>
         </div>
 
@@ -2419,10 +2408,7 @@ function DocRow({
             ]}
           />
         ) : d.assignedTo ? (
-          <span className="flex items-center gap-1.5 text-[12px] text-text-secondary">
-            <Avatar name={d.assignedTo} className="h-5 w-5 text-[7px]" />
-            {d.assignedTo}
-          </span>
+          <PersonLink name={d.assignedTo} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="flex gap-1.5 text-[12px] text-text-secondary" />
         ) : null}
         {d.url && (
           <a

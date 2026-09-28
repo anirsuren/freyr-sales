@@ -28,6 +28,8 @@ import {
   OUTCOME_META,
 } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 export type ActivityItem = {
   id: string;
@@ -647,9 +649,11 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                         </div>
 
                         <div className="flex min-w-0 items-center gap-2">
-                          <Avatar name={item.owner} className="h-7 w-7 shrink-0 text-[8px]" />
+                          <EntityLink href={teammateHref(item.owner)} className="shrink-0 rounded-full" title={item.owner}>
+                            <Avatar name={item.owner} className="h-7 w-7 shrink-0 text-[8px]" />
+                          </EntityLink>
                           <span className="min-w-0">
-                            <span className="block truncate text-[10.5px] font-semibold text-text-secondary">{item.owner}</span>
+                            <EntityLink href={teammateHref(item.owner)} className="block truncate text-[10.5px] font-semibold text-text-secondary">{item.owner}</EntityLink>
                             <Tooltip label={formatDateTime(item.created_at)} side="bottom" align="right">
                               <span className="mt-0.5 inline-flex cursor-pointer items-center gap-1 text-[9.5px] text-text-tertiary tnum">
                                 <Clock3 size={11} strokeWidth={1.8} />

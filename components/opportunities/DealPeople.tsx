@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronDown, ExternalLink, Loader2, Plus, Search, Trash2, Users } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { ENTITY_NAME, PersonLink } from "@/components/ui/EntityLink";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -102,10 +103,17 @@ function PersonRow({
 }) {
   return (
     <li className="flex items-center gap-3 rounded-xl border border-border-light bg-surface/60 px-3 py-2.5">
-      <Avatar name={name} className="h-9 w-9 shrink-0 text-[12px]" />
+      {/* THE FACE AND THE NAME ARE A DOOR (Anir, Sep 28: "why can't I click
+          on these guys?"): their own profile, the one the Team roster opens.
+          The remove button stays outside it. */}
+      <PersonLink
+        name={name}
+        avatarClassName="h-9 w-9 shrink-0 text-[12px]"
+        className="min-w-0 flex-1 gap-3"
+      >
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-[13.5px] font-semibold text-text-primary">
+          <span className={cn("truncate text-[13.5px] font-semibold text-text-primary", ENTITY_NAME)}>
             {name}
           </span>
           {you && (
@@ -126,6 +134,7 @@ function PersonRow({
           {role}
         </span>
       </span>
+      </PersonLink>
       {action}
     </li>
   );

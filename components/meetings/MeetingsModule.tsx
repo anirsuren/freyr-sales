@@ -42,6 +42,8 @@ import {
 } from "@/lib/meetings";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 export type CustomerOption = { id: string; name: string };
 export type ContactOption = {
@@ -571,10 +573,12 @@ export function MeetingsModule({
                             : "hover:bg-surface"
                         )}
                       >
-                        <CompanyLogo
-                          name={m.customer}
-                          className="mt-0.5 h-7 w-7 shrink-0 text-[9px]"
-                        />
+                        <EntityLink nested href={customerHref(null, m.customer)} className="mt-0.5 shrink-0" title={m.customer}>
+                          <CompanyLogo
+                            name={m.customer}
+                            className="h-7 w-7 shrink-0 text-[9px]"
+                          />
+                        </EntityLink>
                         <span className="min-w-0 flex-1">
                           <span
                             className={cn(
@@ -628,10 +632,12 @@ export function MeetingsModule({
             {picked ? (
               <>
                 <div className="flex flex-wrap items-center gap-2.5 border-b border-border-light bg-surface px-4 py-3">
-                  <CompanyLogo
-                    name={picked.customer}
-                    className="h-8 w-8 shrink-0 text-[10px]"
-                  />
+                  <EntityLink href={customerHref(null, picked.customer)} className="shrink-0" title={picked.customer}>
+                    <CompanyLogo
+                      name={picked.customer}
+                      className="h-8 w-8 shrink-0 text-[10px]"
+                    />
+                  </EntityLink>
                   <span className="min-w-0 flex-1">
                     {/* THE REFERENCE, WHICH ONLY THE TABLE HAD (Anir, Sep 3:
                         "as with every page make sure the data points in table
@@ -717,7 +723,9 @@ export function MeetingsModule({
                         }}
                         className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-surface/60"
                       >
-                        <CompanyLogo name={m.customer} className="h-8 w-8 shrink-0 text-[9px]" />
+                        <EntityLink href={customerHref(null, m.customer)} className="shrink-0" title={m.customer}>
+                          <CompanyLogo name={m.customer} className="h-8 w-8 shrink-0 text-[9px]" />
+                        </EntityLink>
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span className="text-[10.5px] font-bold tnum text-text-tertiary">

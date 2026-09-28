@@ -39,6 +39,8 @@ import {
   type AccrualPlan,
 } from "@/lib/revenueAccrualsShared";
 import { cn } from "@/lib/utils";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 /**
  * PLANNING ONE DEAL'S ACCRUAL, AS A PAGE.
@@ -293,7 +295,9 @@ export function AccrualPlanPage({
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
-          <CompanyLogo name={deal.customer} className="mt-0.5 h-11 w-11 shrink-0" />
+          <EntityLink href={customerHref(null, deal.customer)} className="mt-0.5 shrink-0" title={deal.customer}>
+            <CompanyLogo name={deal.customer} className="h-11 w-11 shrink-0" />
+          </EntityLink>
           <div className="min-w-0">
             <h1 className="truncate text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
               {deal.name}

@@ -29,7 +29,6 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
-import { Avatar } from "@/components/ui/Avatar";
 import { PdfViewer } from "@/components/offerings/PdfViewer";
 import { VideoPlayer } from "@/components/offerings/VideoPlayer";
 import { TranscriptPanel } from "@/components/offerings/TranscriptPanel";
@@ -43,6 +42,7 @@ import {
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 import { tint } from "@/lib/tint";
+import { PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * THE FILE AS IT WAS UPLOADED — not a summary of it.
@@ -1635,10 +1635,11 @@ export function MaterialViewer({
                 <div className="flex items-center gap-1.5">
                   <dt className="font-medium text-text-tertiary">Added by</dt>
                   <dd className="flex items-center gap-1.5 font-semibold text-text-primary">
-                    {material.addedBy && (
-                      <Avatar name={material.addedBy} className="h-5 w-5 text-[8px]" />
+                    {material.addedBy ? (
+                      <PersonLink name={material.addedBy} avatarClassName="h-5 w-5 shrink-0 text-[8px]" className="gap-1.5" />
+                    ) : (
+                      "Not recorded"
                     )}
-                    {material.addedBy || "Not recorded"}
                   </dd>
                 </div>
               </>

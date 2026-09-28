@@ -23,11 +23,13 @@ import {
   Sparkline,
   type TipItem,
 } from "@/components/charts/Charts";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
 import { geographyWithFlag } from "@/lib/countryFlags";
 import { tint } from "@/lib/tint";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 type MixSlice = { label: string; value: number; color: string; tip: TipItem[] };
 
@@ -71,10 +73,14 @@ function FactTile({
   avatar?: string;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-lg bg-surface px-2.5 py-2">
-      {avatar ? (
-        <Avatar name={avatar} className="h-[26px] w-[26px] shrink-0 text-[9px]" />
-      ) : (
+    /* A TILE WITH A FACE IS A DOOR to that person (Anir, Sep 28). */
+    <EntityLink
+      href={avatar ? teammateHref(avatar) : null}
+      className={cn("flex min-w-0 items-center gap-2 rounded-lg bg-surface px-2.5 py-2", avatar && "hover:bg-blue-light/60")}
+    >
+    {avatar ? (
+      <Avatar name={avatar} className="h-[26px] w-[26px] shrink-0 text-[9px]" />
+    ) : (
         <span
           className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md"
           style={{ color, background: bg }}
@@ -94,11 +100,11 @@ function FactTile({
           style={{ color }}
         >
           {value}
-        </span>
-      </span>
-    </div>
-  );
-}
+          </span>
+          </span>
+          </EntityLink>
+          );
+          }
 
 export function CustomerCard({
   customer,

@@ -6,6 +6,8 @@ import { ArrowUpRight, Building2, Search } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { Modal } from "@/components/ui/Modal";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 /**
  * THE OVERLAPPING-LOGOS FAN, exactly the campaigns "Going to" mechanic: marks
@@ -96,13 +98,13 @@ export function CustomerDots({
             delayMs={0}
             content={
               <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
+                <EntityLink href={customerHref(null, person.name)} className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full" title={person.name}>
                   <CompanyLogo name={person.name} className="h-full w-full object-cover" />
-                </span>
+                </EntityLink>
                 <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold text-text-primary">
+                  <EntityLink href={customerHref(null, person.name)} className="block text-[13px] font-semibold text-text-primary">
                     {person.name}
-                  </span>
+                  </EntityLink>
                   {note?.(person) && (
                     <span className="block text-[11.5px] text-text-secondary">
                       {note(person)}
@@ -146,15 +148,15 @@ export function CustomerDots({
                 <ul className="space-y-1.5">
                   {people.slice(max).map((person) => (
                     <li key={person.id} className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full">
+                      <EntityLink href={customerHref(null, person.name)} className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full" title={person.name}>
                         <CompanyLogo
                           name={person.name}
                           className="h-full w-full object-cover"
                         />
-                      </span>
-                      <span className="min-w-0 text-[12.5px] text-text-primary">
+                      </EntityLink>
+                      <EntityLink href={customerHref(null, person.name)} className="min-w-0 text-[12.5px] text-text-primary">
                         {person.name}
-                      </span>
+                      </EntityLink>
                     </li>
                   ))}
                 </ul>

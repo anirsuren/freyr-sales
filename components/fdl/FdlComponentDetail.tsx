@@ -90,6 +90,7 @@ import { RoadmapVersionHistory } from "@/components/offerings/RoadmapVersionHist
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { tint } from "@/lib/tint";
+import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * ONE COMPONENT, THE WHOLE STORY — Suren's model (Aug 8, via Anir): "first
@@ -1433,13 +1434,7 @@ export function FdlComponentDetail({
                                         key={customer.id}
                                         className="flex items-center gap-1.5"
                                       >
-                                        <CompanyLogo
-                                          name={customer.name}
-                                          className="h-4 w-4 shrink-0 object-contain"
-                                        />
-                                        <span className="truncate text-[11.5px] text-text-primary">
-                                          {customer.name}
-                                        </span>
+                                        <CompanyLink name={customer.name} customerId={customer.id} logoClassName="h-4 w-4 shrink-0 object-contain" className="gap-1.5" nameClassName="text-[11.5px] text-text-primary" />
                                       </li>
                                     ))}
                                   </ul>
@@ -1462,13 +1457,7 @@ export function FdlComponentDetail({
                                               key={customer.id}
                                               className="flex items-center gap-1.5 text-[11.5px]"
                                             >
-                                              <CompanyLogo
-                                                name={customer.name}
-                                                className="h-4 w-4 shrink-0 object-contain"
-                                              />
-                                              <span className="truncate text-text-primary">
-                                                {customer.name}
-                                              </span>
+                                              <CompanyLink name={customer.name} customerId={customer.id} logoClassName="h-4 w-4 shrink-0 object-contain" className="gap-1.5" nameClassName="text-text-primary" />
                                               <span className="ml-auto shrink-0 text-text-tertiary tnum">
                                                 {theirs ? theirs.version : "No version"}
                                               </span>
@@ -4337,8 +4326,7 @@ function ReleaseDateChip({
                             "I need profile pictures, bro, when u say my name
                             or whoever"). */}
                         <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-text-secondary">
-                          <Avatar name={move.by} className="h-4 w-4 text-[7px]" />
-                          {move.by}
+                          <PersonLink name={move.by} avatarClassName="h-4 w-4 shrink-0 text-[7px]" className="gap-1.5" />
                           <span className="text-text-tertiary">
                             · <DateText value={move.at.slice(0, 10)} />
                           </span>

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { GitBranch, ChevronDown } from "lucide-react";
-import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import type { RoadmapVersion } from "@/lib/roadmapVersions";
+import { PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * THE ROADMAP'S OWN HISTORY (product owner, Aug 20: "Every time there is a
@@ -128,8 +128,7 @@ export function RoadmapVersionHistory({
                     the performance timeline uses, so the app tells this kind of
                     fact one way everywhere. */}
                 <span className="mt-1 flex items-center gap-1.5 text-[12px] text-text-secondary">
-                  <Avatar name={v.savedBy} className="h-4 w-4 text-[7px]" />
-                  {v.savedBy}
+                  <PersonLink name={v.savedBy} avatarClassName="h-4 w-4 shrink-0 text-[7px]" className="gap-1.5" />
                   <span className="text-text-tertiary">· {stamp(v.savedAt)}</span>
                 </span>
               </span>

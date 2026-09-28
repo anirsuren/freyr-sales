@@ -38,6 +38,8 @@ import {
 } from "@/components/performance/bits";
 import { actualValue } from "@/lib/performanceShared";
 import type { PerformanceState, PrimaryGoal } from "@/lib/performanceShared";
+import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 /**
  * INSIDE ONE GROUP: its people, its goals, and each person's number.
@@ -285,8 +287,9 @@ export function GroupDetail({
           <span className="inline-flex items-center gap-1.5 text-[12.5px] text-text-secondary">
             <Crown size={11} strokeWidth={2.6} className="text-[color:var(--ink-violet-soft)]" />
             Group owner
-            <Avatar name={group.head} className="h-5 w-5 text-[7.5px]" />
-            <b className="font-semibold text-text-primary">{group.head}</b>
+            <PersonLink name={group.head} avatarClassName="h-5 w-5 shrink-0 text-[7.5px]" className="gap-1.5">
+              <b className={cn("font-semibold text-text-primary", ENTITY_NAME)}>{group.head}</b>
+            </PersonLink>
           </span>
           <span className="text-[12.5px] text-text-tertiary">·</span>
           <span className="text-[12.5px] text-text-secondary">
@@ -345,10 +348,11 @@ export function GroupDetail({
               key={m}
               className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
             >
-              <Avatar name={m} className="h-7 w-7 shrink-0 text-[10px]" />
-              <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary">
-                {m}
-              </span>
+              <PersonLink name={m} avatarClassName="h-7 w-7 shrink-0 text-[10px]" className="min-w-0 flex-1 gap-2.5">
+                <span className={cn("min-w-0 flex-1 truncate text-[12.5px] font-semibold text-text-primary", ENTITY_NAME)}>
+                  {m}
+                </span>
+              </PersonLink>
               {m === group.head ? (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(124,58,237,0.10)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--ink-violet-soft)]">
                   <Crown size={9} strokeWidth={2.6} />
@@ -612,14 +616,16 @@ export function GroupDetail({
                                       key={person}
                                       className="flex items-center gap-2.5 rounded-lg border border-border-light bg-white px-2.5 py-2"
                                     >
-                                      <Avatar
-                                        name={person}
-                                        className="h-7 w-7 shrink-0 text-[9px]"
-                                      />
+                                      <EntityLink href={teammateHref(person)} className="shrink-0 rounded-full" title={person}>
+                                        <Avatar
+                                          name={person}
+                                          className="h-7 w-7 shrink-0 text-[9px]"
+                                        />
+                                      </EntityLink>
                                       <span className="min-w-[110px] flex-1">
-                                        <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                                        <EntityLink href={teammateHref(person)} className="block truncate text-[12.5px] font-semibold text-text-primary">
                                           {person}
-                                        </span>
+                                        </EntityLink>
                                       </span>
                                       {/* WHERE THEY STAND, NOT JUST WHAT THEY
                                           LOGGED (Anir, Aug 30: "why am I not

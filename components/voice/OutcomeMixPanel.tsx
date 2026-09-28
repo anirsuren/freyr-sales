@@ -7,11 +7,12 @@ import {
   type TipItem,
 } from "@/components/charts/Charts";
 import { Avatar } from "@/components/ui/Avatar";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { cn, OUTCOME_META } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { CompanyLink, EntityLink } from "@/components/ui/EntityLink";
+import { contactHref } from "@/lib/entityHref";
 
 export type OutcomeSlice = {
   /** OUTCOME_META key — the colour + icon come from the app's own outcome map. */
@@ -192,20 +193,15 @@ export function OutcomeMixPanel({
                                     key={person.id}
                                     className="flex items-center gap-2 text-[12px]"
                                   >
-                                    <Avatar
-                                      name={person.name}
-                                      className="h-6 w-6 shrink-0 text-[8px]"
-                                    />
+                                    <EntityLink href={contactHref(null, person.name)} className="shrink-0 rounded-full" title={person.name}>
+                                      <Avatar name={person.name} className="h-6 w-6 shrink-0 text-[8px]" />
+                                    </EntityLink>
                                     <span className="min-w-0 flex-1 leading-tight">
-                                      <span className="block font-medium text-text-primary">
+                                      <EntityLink href={contactHref(null, person.name)} className="block font-medium text-text-primary">
                                         {person.name}
-                                      </span>
+                                      </EntityLink>
                                       <span className="flex items-center gap-1 text-[10.5px] text-text-tertiary">
-                                        <CompanyLogo
-                                          name={person.company}
-                                          className="h-[14px] w-[14px] shrink-0 text-[6px]"
-                                        />
-                                        {person.company}
+                                        <CompanyLink name={person.company} logoClassName="h-[14px] w-[14px] shrink-0 text-[6px]" className="gap-1" />
                                       </span>
                                     </span>
                                     <OutcomeBadge outcome={person.outcome} />

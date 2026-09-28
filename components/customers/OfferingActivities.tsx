@@ -50,9 +50,9 @@ import {formatDate, todayISO} from "@/lib/utils";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { LocalTime } from "@/components/ui/LocalTime";
-import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { currencyFlag, withCommas } from "@/lib/currency";
+import { PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * ACTIVITIES ON THE OFFERING THE CUSTOMER HAS (Suren, Aug 8, via Anir): "once
@@ -513,13 +513,11 @@ export function OfferingActivities({
                         className="block whitespace-nowrap text-[11.5px] font-medium text-text-secondary tnum"
                       />
                       {version.created_by ? (
-                        <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[11.5px] text-text-secondary">
-                          <Avatar
-                            name={version.created_by}
-                            className="h-5 w-5 shrink-0 text-[8px]"
-                          />
-                          <span className="truncate">{version.created_by}</span>
-                        </span>
+                        <PersonLink
+                          name={version.created_by}
+                          avatarClassName="h-5 w-5 shrink-0 text-[8px]"
+                          className="mt-1 flex gap-1.5 text-[11.5px] text-text-secondary"
+                        />
                       ) : (
                         <span className="mt-1 block text-[11px] text-text-tertiary">
                           Person not recorded

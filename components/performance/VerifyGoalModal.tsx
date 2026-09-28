@@ -22,8 +22,9 @@ import { Modal } from "@/components/ui/Modal";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 import { EvidenceLinkRow } from "./EvidenceViewer";
-import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import type { RunOp } from "./PerformanceModule";
+import { CompanyLink, EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 
 /**
  * SIGNING OFF A GOAL IS A DECISION, NOT A TOGGLE (Anir, Aug 15: "when I press
@@ -329,20 +330,16 @@ export function VerifyGoalModal({
                     money and its verdict. The middle stopped being a bag of
                     fragments fighting for one line. */}
                 <div className="flex items-start gap-2.5 rounded-xl bg-surface px-3 py-2.5">
-                  <Avatar name={a.person} className="mt-0.5 h-7 w-7 shrink-0 text-[10px]" />
+                  <EntityLink href={teammateHref(a.person)} className="mt-0.5 shrink-0 rounded-full" title={a.person}>
+                    <Avatar name={a.person} className="h-7 w-7 shrink-0 text-[10px]" />
+                  </EntityLink>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+                    <EntityLink href={teammateHref(a.person)} className="block truncate text-[12.5px] font-semibold text-text-primary">
                       {a.person}
-                    </span>
+                    </EntityLink>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-text-secondary">
                       {a.customer && (
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <CompanyLogo
-                            name={a.customer}
-                            className="h-[16px] w-[16px] shrink-0 text-[6px]"
-                          />
-                          <span className="min-w-0 truncate">{a.customer}</span>
-                        </span>
+                        <CompanyLink name={a.customer} logoClassName="h-[16px] w-[16px] shrink-0 text-[6px]" className="flex gap-1.5" />
                       )}
                       <span className="shrink-0 text-text-tertiary tnum">
                         {a.customer ? "· " : ""}

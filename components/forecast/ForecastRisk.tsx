@@ -16,8 +16,10 @@ import {
   type Deal,
   type Stage,
 } from "@/lib/pipeline";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import { tint } from "@/lib/tint";
+import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { contactHref, customerHref } from "@/lib/entityHref";
 
 /* ---------------------------------------------------------------------------
    FORECAST RISK, rebuilt to the standard of the By-stage block directly above
@@ -263,14 +265,16 @@ export function ForecastRisk({
         <div className="mt-2.5 space-y-1.5 border-t border-border-light pt-2.5">
           {list.slice(0, 6).map((d) => (
             <div key={d.sessionId} className="flex items-center gap-2 text-[12px]">
-              <CompanyLogo
-                name={d.company}
-                className="h-[18px] w-[18px] shrink-0 text-[7px]"
-              />
+              <EntityLink href={customerHref(null, d.company)} className="shrink-0" title={d.company}>
+                <CompanyLogo
+                  name={d.company}
+                  className="h-[18px] w-[18px] shrink-0 text-[7px]"
+                />
+              </EntityLink>
               <span className="min-w-0 flex-1 leading-tight">
-                <span className="block font-medium text-text-primary">
+                <EntityLink href={customerHref(null, d.company)} className="block font-medium text-text-primary">
                   {d.company}
-                </span>
+                </EntityLink>
                 <span className="block text-[10.5px] text-text-secondary tnum">
                   {d.staleDays === 0 ? "touched today" : `${d.staleDays}d inactive`}
                 </span>
@@ -298,19 +302,23 @@ export function ForecastRisk({
     return (
       <div>
         <div className="flex items-start gap-2.5">
-          <CompanyLogo
-            name={d.company}
-            className="h-9 w-9 shrink-0 text-[8px]"
-          />
+          <EntityLink href={customerHref(null, d.company)} className="shrink-0" title={d.company}>
+            <CompanyLogo
+              name={d.company}
+              className="h-9 w-9 shrink-0 text-[8px]"
+            />
+          </EntityLink>
           <div className="min-w-0">
             <p className="text-[13px] font-semibold leading-snug text-text-primary">
-              {d.company}
+              <EntityLink href={customerHref(null, d.company)}>{d.company}</EntityLink>
             </p>
             <p className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[10.5px] text-text-secondary">
-              <Avatar
-                name={d.contactName}
-                className="mt-[1px] h-4 w-4 shrink-0 text-[6px]"
-              />
+              <EntityLink href={contactHref(null, d.contactName)} className="mt-[1px] shrink-0 rounded-full" title={d.contactName}>
+                <Avatar
+                  name={d.contactName}
+                  className="h-4 w-4 shrink-0 text-[6px]"
+                />
+              </EntityLink>
               <span className="min-w-0 leading-snug break-normal">
                 {d.contactName}
                 {d.title ? ` · ${d.title}` : ""}
@@ -345,13 +353,7 @@ export function ForecastRisk({
         <div className="mt-2.5 space-y-1.5 text-[11px]">
           <div className="flex items-center justify-between gap-3">
             <span className="text-text-secondary">Owner</span>
-            <span className="flex min-w-0 items-center gap-1.5 font-medium text-text-primary">
-              <Avatar
-                name={d.owner}
-                className="h-4 w-4 shrink-0 text-[6px]"
-              />
-              {d.owner}
-            </span>
+            <PersonLink name={d.owner} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="flex gap-1.5 font-medium text-text-primary" />
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-text-secondary">Last logged touch</span>
@@ -833,14 +835,16 @@ export function ForecastRisk({
                             {/* The row names its own deal — a plot of anonymous
                                 dots would be the same failure again. */}
                             <span className="flex min-w-0 items-center gap-1.5">
-                              <CompanyLogo
-                                name={deal.company}
-                                className="h-[18px] w-[18px] shrink-0 text-[6px]"
-                              />
+                              <EntityLink nested href={customerHref(null, deal.company)} className="shrink-0" title={deal.company}>
+                                <CompanyLogo
+                                  name={deal.company}
+                                  className="h-[18px] w-[18px] shrink-0 text-[6px]"
+                                />
+                              </EntityLink>
                               <span className="flex min-w-0 flex-col leading-tight">
-                                <span className="min-w-0 break-normal text-[10.5px] font-medium text-text-primary">
+                                <EntityLink nested href={customerHref(null, deal.company)} className="min-w-0 break-normal text-[10.5px] font-medium text-text-primary">
                                   {deal.company}
-                                </span>
+                                </EntityLink>
                                 {disambiguator && (
                                   <span className="min-w-0 break-normal text-[9px] text-text-tertiary">
                                     {disambiguator}
@@ -1019,19 +1023,23 @@ export function ForecastRisk({
                             owns it, the odds arithmetic, and exactly when it
                             last moved, never a restatement of the row. */}
                         <div className="flex items-start gap-2.5">
-                          <CompanyLogo
-                            name={deal.company}
-                            className="h-9 w-9 shrink-0 text-[8px]"
-                          />
+                          <EntityLink href={customerHref(null, deal.company)} className="shrink-0" title={deal.company}>
+                            <CompanyLogo
+                              name={deal.company}
+                              className="h-9 w-9 shrink-0 text-[8px]"
+                            />
+                          </EntityLink>
                           <div className="min-w-0">
                             <p className="text-[13px] font-semibold leading-snug text-text-primary">
-                              {deal.company}
+                              <EntityLink href={customerHref(null, deal.company)}>{deal.company}</EntityLink>
                             </p>
                             <p className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[10.5px] text-text-secondary">
-                              <Avatar
-                                name={deal.contactName}
-                                className="mt-[1px] h-4 w-4 shrink-0 text-[6px]"
-                              />
+                              <EntityLink href={contactHref(null, deal.contactName)} className="mt-[1px] shrink-0 rounded-full" title={deal.contactName}>
+                                <Avatar
+                                  name={deal.contactName}
+                                  className="h-4 w-4 shrink-0 text-[6px]"
+                                />
+                              </EntityLink>
                               <span className="min-w-0 leading-snug break-normal">
                                 {deal.contactName}
                                 {deal.title ? ` · ${deal.title}` : ""}
@@ -1071,13 +1079,7 @@ export function ForecastRisk({
                         <div className="mt-2.5 space-y-1.5 text-[11px]">
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-text-secondary">Owner</span>
-                            <span className="flex min-w-0 items-center gap-1.5 font-medium text-text-primary">
-                              <Avatar
-                                name={deal.owner}
-                                className="h-4 w-4 shrink-0 text-[6px]"
-                              />
-                              {deal.owner}
-                            </span>
+                            <PersonLink name={deal.owner} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="flex gap-1.5 font-medium text-text-primary" />
                           </div>
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-text-secondary">
@@ -1124,15 +1126,11 @@ export function ForecastRisk({
                         </span>
                         {/* Line 2 — the person, headshot and name on one
                             unbroken line, wrapping rather than truncating. */}
-                        <span className="mt-0.5 flex min-w-0 items-start gap-1.5 text-[11px] text-text-secondary">
-                          <Avatar
-                            name={deal.contactName}
-                            className="mt-[1px] h-4 w-4 shrink-0 text-[6px]"
-                          />
-                          <span className="min-w-0 leading-snug break-normal">
+                        <PersonLink nested kind="contact" name={deal.contactName} avatarClassName="mt-[1px] h-4 w-4 shrink-0 text-[6px]" className="mt-0.5 flex items-start gap-1.5 text-[11px] text-text-secondary">
+                          <span className={cn("min-w-0 leading-snug break-normal", ENTITY_NAME)}>
                             {deal.contactName}
                           </span>
-                        </span>
+                        </PersonLink>
                         {/* Line 3 — the offering, the stage and the quiet time,
                             each carrying its own colour and glyph. */}
                         <span className="mt-1 flex flex-wrap items-center gap-1.5">

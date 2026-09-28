@@ -16,6 +16,8 @@ import { formatDate, formatDateTime } from "@/lib/utils";
 import { daysLabel, daysSince } from "./dealTime";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref, teammateHref } from "@/lib/entityHref";
 
 /* ---------------------------------------------------------------------------
    THE FACTS BAND.
@@ -109,11 +111,13 @@ export function DealFacts({
             <Tile color={MEASURE} Icon={UserRound} />
           </div>
           <span className="mt-2.5 flex min-w-0 items-center gap-2">
-            <Avatar
-              name={owner}
-              className="h-6 w-6 shrink-0 text-[9px]"
-              tooltip={`Owner: ${owner}${isCurrentOwner ? ", that's you" : ""}`}
-            />
+            <EntityLink href={teammateHref(owner)} className="shrink-0 rounded-full">
+              <Avatar
+                name={owner}
+                className="h-6 w-6 shrink-0 text-[9px]"
+                tooltip={`Owner: ${owner}${isCurrentOwner ? ", that's you" : ""}`}
+              />
+            </EntityLink>
             {/* Wraps rather than truncating — a rep is never "Patricia M…". */}
             <span className={`${VALUE} min-w-0 break-normal`}>
               {owner}
@@ -135,10 +139,12 @@ export function DealFacts({
         <section className={PANEL}>
           <div className="flex items-start justify-between gap-2">
             <span className={EYEBROW}>Account</span>
-            <CompanyLogo
-              name={companyName}
-              className="h-7 w-7 shrink-0 text-[9px]"
-            />
+            <EntityLink href={customerId ? customerHref(customerId) : null} className="shrink-0" title={companyName}>
+              <CompanyLogo
+                name={companyName}
+                className="h-7 w-7 shrink-0 text-[9px]"
+              />
+            </EntityLink>
           </div>
           {customerId ? (
             <Link
