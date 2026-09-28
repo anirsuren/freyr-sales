@@ -21,7 +21,7 @@ import { COMPETITOR_SOURCES } from "@/lib/marketIntelSources";
  * SectionCard, so this does too, and the two can no longer drift apart.
  */
 
-const sentimentStyle: Record<OpportunityReviewPerson["sentiment"], string> = {
+const sentimentStyle: Record<Exclude<OpportunityReviewPerson["sentiment"], "">, string> = {
   Positive: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-[#26352b] dark:text-[#a7c9ae] dark:ring-[#435949]",
   Neutral: "bg-slate-50 text-slate-600 ring-slate-200 dark:bg-[#292b2e] dark:text-[#c6c8cd] dark:ring-[#414348]",
   Distractor: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-[#36272b] dark:text-[#e5b0aa] dark:ring-[#5a3a3e]",
@@ -29,6 +29,8 @@ const sentimentStyle: Record<OpportunityReviewPerson["sentiment"], string> = {
 };
 
 function Sentiment({ value }: { value: OpportunityReviewPerson["sentiment"] }) {
+  /* Nothing chosen, nothing claimed. */
+  if (!value) return <span className="text-[11.5px] text-text-tertiary">Not said yet</span>;
   return <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${sentimentStyle[value]}`}>{value}</span>;
 }
 

@@ -373,14 +373,26 @@ function DropdownPicker({
               const c = o?.color ?? "var(--ink-bright-blue)";
               return (
                 <span className="flex min-w-0 items-center gap-2 text-text-primary">
-                  {Icon && (
+                  {/* THE SAME THREE MARKS THE MENU DRAWS (Anir, Sep 28: "make
+                      sure wherever there needs to be a profile picture or an
+                      icon, it shows up, because it doesn't seem to be showing
+                      up"). The single-choice trigger only ever drew a generic
+                      icon, so a company picked from a list of logos came back
+                      as bare text. */}
+                  {o?.agentName ? (
+                    <AgentAvatar name={o.agentName} size={20} className="shrink-0" />
+                  ) : o?.avatarName ? (
+                    <Avatar name={o.avatarName} className="h-5 w-5 shrink-0 text-[8px]" />
+                  ) : o?.logoName ? (
+                    <CompanyLogo name={o.logoName} src={o.logoSrc} className="h-5 w-5 shrink-0 text-[7px]" />
+                  ) : Icon ? (
                     <span
                       className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
                       style={{ background: c, color: "#fff" }}
                     >
                       <Icon size={12} strokeWidth={2.2} />
                     </span>
-                  )}
+                  ) : null}
                   <span className="truncate">{o?.label ?? selected[0]}</span>
                 </span>
               );
@@ -470,7 +482,20 @@ function DropdownPicker({
                        shortcut must never see this keystroke. */
                     e.stopPropagation();
                     e.nativeEvent?.stopImmediatePropagation?.();
-                    if (!searching || !enterPick) return;
+                    if (!searching) return;
+                    /* NOTHING MATCHED, BUT A NAME WAS TYPED. Enter takes it
+                       (found Sep 28 in the review's person dialog: an account
+                       with no contacts yet swallowed every typed name, because
+                       there was no row to commit). */
+                    if (!enterPick) {
+                      const typed = query.trim();
+                      if (onCreate && typed.length > 1 && !options.some((o) => o.label.trim().toLowerCase() === typed.toLowerCase())) {
+                        onCreate(typed);
+                        setQuery("");
+                        if (single) setOpen(false);
+                      }
+                      return;
+                    }
                     pick(enterPick.id);
                     // A single-pick menu closes itself in `pick`; a multi
                     // stays up, so clear the box and type the next name.

@@ -42,10 +42,16 @@ export const ENTITY_NAME = "transition-colors group-hover/entity:text-blue-prima
  * of that kind.
  */
 function rowClasses(className: string | undefined, extra?: string): string {
-  const given = className ?? "";
+  /* THE TARGET IS THE THING, NOT THE ROW (Anir, Sep 28: "every clickable
+     element only when my cursor is over the text. This goes for literally
+     everything in the app"). A link that stretches turns a whole cell into a
+     hit area, so the stretch classes a caller passes for layout are dropped
+     here: the anchor hugs its face and its name, and the space around it
+     belongs to the row again. */
+  const given = (className ?? "").replace(/\b(?:flex-1|grow|w-full|self-stretch|flex-auto)\b/g, "").trim();
   const display = /\b(?:inline-)?(?:flex|block|grid)\b|\binline\b|\bcontents\b/.test(given) ? "" : "inline-flex";
   const gap = /\bgap-/.test(given) ? "" : "gap-2";
-  return cn(display, "min-w-0 max-w-full items-center", gap, extra, given);
+  return cn(display, "w-fit min-w-0 max-w-full items-center", gap, extra, given);
 }
 
 export function EntityLink({

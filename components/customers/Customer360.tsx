@@ -243,6 +243,7 @@ export function Customer360({
   bands,
   emptyLine,
   bandActions,
+  bandAddActions,
   bandEmpty = false,
   chromeless = false,
   unboxed = false,
@@ -279,6 +280,14 @@ export function Customer360({
    * this component only knows where to put it.
    */
   bandActions?: Record<string, React.ReactNode>;
+  /**
+   * THE WAY IN, IN THE MIDDLE OF AN EMPTY TAB (Anir, Sep 28: "for all of these
+   * tabs, when there's nothing there, also in the center there has to be a
+   * button to add it"). Just the add control, without the filters and links
+   * that sit beside it in the head; a caller that gives none falls back to
+   * whatever the head holds.
+   */
+  bandAddActions?: Record<string, React.ReactNode>;
   /**
    * HOW THIS SCREEN WANTS ITS MONEY WRITTEN, per band. The deal page offers a
    * USD / local switch over its accrual schedule (Anir, Sep 27: "we should
@@ -842,6 +851,7 @@ export function Customer360({
                   </div>
                   <h3 className="mt-4 text-[15px] font-semibold text-text-primary">No {active.label.toLowerCase()} yet</h3>
                   <p className="mx-auto mt-1 max-w-lg text-[12.5px] leading-5 text-text-secondary">{active.empty}</p>
+                  {(bandAddActions?.[active.key] ?? bandActions?.[active.key]) && <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{bandAddActions?.[active.key] ?? bandActions?.[active.key]}</div>}
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-border-light bg-surface/30 px-6 py-12 text-center">
@@ -852,6 +862,7 @@ export function Customer360({
                   <p className="mx-auto mt-1 max-w-lg text-[12.5px] leading-5 text-text-secondary">{bandEmpty
                     ? active.empty
                     : `Nothing on ${active.label.toLowerCase()} for ${company} yet.`}</p>
+                  {(bandAddActions?.[active.key] ?? bandActions?.[active.key]) && <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{bandAddActions?.[active.key] ?? bandActions?.[active.key]}</div>}
                 </div>
               )
             ) : active.key === "solutionRequests" &&

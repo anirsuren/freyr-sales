@@ -867,6 +867,26 @@ export function OpportunityDetail({
                 ),
               ])
             )}
+            /* In the middle of an empty tab, only the way IN, not the
+               filters and links that ride beside it in the head. */
+            bandAddActions={Object.fromEntries(
+              shownBands.map((b) => [
+                b.key,
+                b.key === "revenueAccruals"
+                  ? (accrual?.mayPlan ? (
+                      <button
+                        key={b.key}
+                        type="button"
+                        onClick={() => setPlanningAccrual(true)}
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90"
+                      >
+                        <Plus size={13} strokeWidth={2.4} />
+                        Add accrual
+                      </button>
+                    ) : null)
+                  : <AddToBandButton key={b.key} bandKey={b.key} label={b.label} onAdd={setCreating} />,
+              ])
+            )}
             emptyLine="Nothing is connected to this deal yet."
           />
         )}

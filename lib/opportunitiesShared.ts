@@ -310,7 +310,10 @@ export type OpportunityReviewPerson = {
   title: string;
   role: string;
   linkedin: string;
-  sentiment: "Positive" | "Neutral" | "Distractor" | "Unknown";
+  /** Empty until somebody says (Anir, Sep 28: "why is it automatically on
+   *  unknown?"). "Unknown" is a verdict a person reaches; nothing preselects
+   *  it for them. */
+  sentiment: "" | "Positive" | "Neutral" | "Distractor" | "Unknown";
 };
 
 export type OpportunityReview = {
