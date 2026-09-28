@@ -1111,10 +1111,14 @@ export function CustomersBrowser({
             value={sort}
             onChange={setSort}
             ariaLabel="Sort customers"
-            minWidth={185}
+            /* Sized to what it currently shows, not the longest option in
+               the menu: the fixed 185 box was a third of why this cluster
+               wrapped under the search row (Anir, Sep 28: "filters sort etc
+               all that supposed to be on one just row"). */
+            minWidth={130}
             dense
             collapsible={false}
-            className="w-[185px] shrink-0"
+            className="shrink-0"
             options={[
               // Icons alone rendered as a gray list — every option needs its
               // colour (standing rule: chips and dropdowns are never gray).
@@ -1142,7 +1146,7 @@ export function CustomersBrowser({
                 value={groupBy}
                 onChange={(v) => setGroupBy(v as "none" | "owner" | "group")}
                 ariaLabel="Group customers"
-                minWidth={150}
+                minWidth={118}
                 dense
                 collapsible={false}
                 className="shrink-0"
@@ -1195,7 +1199,7 @@ export function CustomersBrowser({
               options={[
                 {
                   value: "all",
-                  label: "All on one page",
+                  label: "All rows",
                   icon: Rows3,
                   short: "All",
                   color: "var(--ink-bright-blue)",
