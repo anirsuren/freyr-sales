@@ -229,7 +229,6 @@ function DeviationsTable({
   opportunities,
   opportunityId,
   onOpportunityId,
-  onOpen,
   viewControl,
 }: {
   plans: AccrualPlan[];
@@ -237,7 +236,6 @@ function DeviationsTable({
   opportunities: Opportunity[];
   opportunityId: string;
   onOpportunityId: (id: string) => void;
-  onOpen: (plan: AccrualPlan) => void;
   viewControl?: ReactNode;
 }) {
   const [statusFilter, setStatusFilter] = useState<TabAccrualStatus[]>([]);
@@ -688,20 +686,20 @@ function DeviationsTable({
           </thead>
           <tbody className="divide-y divide-border-light">
             {shown.map((r) => (
+              /* NO POP-UP ON A RECORD (Anir, Sep 28: "I don't think there
+                 should be a pop-up when I click on it"). The row is a row: the
+                 deal's name opens the deal, the version opens its plan, the
+                 customer opens the account. A pop-up is for adding something,
+                 not for opening something that already exists. */
               <tr
                 key={r.plan.opportunityId}
-                onClick={(event) => {
-                  if ((event.target as Element).closest("a,button,input,select,textarea,[role='button']")) return;
-                  onOpen(r.plan);
-                }}
-                className="cursor-pointer align-middle transition-colors hover:bg-surface/60"
+                className="align-middle transition-colors hover:bg-surface/60"
               >
                 <td className="px-3 py-2.5" title={r.plan.customer}>
                   {r.customerId ? (
                     <Link
                       href={`/customers/${r.customerId}`}
-                      onClick={(event) => event.stopPropagation()}
-                      className="group/customer flex min-w-0 items-center gap-2"
+                      className="group/customer flex w-fit min-w-0 items-center gap-2"
                     >
                       <CompanyLogo name={r.plan.customer} className="h-5 w-5 shrink-0 text-[7px]" />
                       <span className="truncate text-[12.5px] text-text-secondary transition-colors group-hover/customer:text-blue-primary group-hover/customer:underline">
@@ -726,7 +724,6 @@ function DeviationsTable({
                     ) : null}
                   <Link
                     href={`/opportunities/${r.plan.opportunityId}`}
-                    onClick={(event) => event.stopPropagation()}
                     className="w-fit max-w-full truncate text-left text-[13px] font-semibold text-text-primary hover:text-blue-primary"
                     title={r.plan.opportunityName}
                   >
@@ -734,8 +731,14 @@ function DeviationsTable({
                   </Link>
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] font-semibold tnum text-[color:var(--ink-violet)]">
-                  v{r.summary.version}
+                <td className="whitespace-nowrap px-3 py-2.5">
+                  <Link
+                    href={`/opportunities?tab=accrual&deal=${encodeURIComponent(r.plan.opportunityId)}`}
+                    title="Open this deal’s accrual plan"
+                    className="w-fit text-[12.5px] font-semibold tnum text-[color:var(--ink-violet)] hover:underline"
+                  >
+                    v{r.summary.version}
+                  </Link>
                 </td>
                 <td className="px-3 py-2.5">
                   {r.owner ? (
@@ -2442,7 +2445,6 @@ export function RevenueAccrualsModule({
               opportunities={opportunities}
               opportunityId={opportunityFilter}
               onOpportunityId={setOpportunityFilter}
-              onOpen={(plan) => setPlanning({ dealId: plan.opportunityId })}
               viewControl={deviationViewControl}
             />
           )}
