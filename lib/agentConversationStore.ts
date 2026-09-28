@@ -20,6 +20,8 @@ export type StoredMessage = {
   role: "user" | "agent";
   text: string;
   ts: number;
+  /** Door a user message came through; absent means the app itself. */
+  via?: "whatsapp";
   suggestions?: string[];
   entityContext?: string[];
   /** A change the agent proposed under this message, and what became of it. */
@@ -94,6 +96,7 @@ export function sanitizeConversation(value: unknown): StoredConversation | null 
       ...(Array.isArray(message.entityContext)
         ? { entityContext: message.entityContext.filter((v): v is string => typeof v === "string" && v.startsWith("/")).slice(0, 12).map((v) => v.slice(0, 200)) }
         : {}),
+      ...(message.role === "user" && message.via === "whatsapp" ? { via: "whatsapp" as const } : {}),
       role: message.role,
       text,
       ts: typeof message.ts === "number" ? message.ts : Date.now(),
@@ -265,7 +268,12 @@ export async function appendAgentExchange(
         updated: at,
         channel: input.channel,
       };
-  next.messages.push({ role: "user", text: input.userText.slice(0, MAX_TEXT_LENGTH), ts: at });
+  next.messages.push({
+    role: "user",
+    text: input.userText.slice(0, MAX_TEXT_LENGTH),
+    ts: at,
+    ...(input.channel === "whatsapp" ? { via: "whatsapp" as const } : {}),
+  });
   next.messages.push({
     role: "agent",
     text: input.agentText.slice(0, MAX_TEXT_LENGTH),

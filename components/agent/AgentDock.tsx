@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Sparkles,
   ArrowUp,
+  Smartphone,
   X,
   MessageCircle,
   Menu,
@@ -17,6 +18,7 @@ import { cn, POPOVER_SURFACE } from "@/lib/utils";
 import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { putConversations } from "@/lib/saveConversations";
 import { bucketByDay, clockTime, dayLabel, listStamp, sameDay } from "@/lib/chatTime";
+import { sentFromWhatsApp } from "@/lib/messageVia";
 import { useEntityIndex, type Entity } from "@/components/agent/EntityPills";
 import { AgentResponseMarkdown } from "@/components/agent/AgentResponseMarkdown";
 import { AgentThinking } from "@/components/agent/AgentThinking";
@@ -54,7 +56,7 @@ function clampDockSize(w: number, h: number): { w: number; h: number } {
 const CONVERSATIONS_KEY = "freyr.agent.conversations";
 const LEGACY_THREAD_KEY = "freyr.assistant.thread.v2";
 
-type Msg = { role: "user" | "agent"; text: string; ts: number; entityContext?: string[]; pendingAction?: PendingActionPayload };
+type Msg = { role: "user" | "agent"; text: string; ts: number; entityContext?: string[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp" };
 type Convo = {
   id: string;
   title: string;
@@ -1262,7 +1264,14 @@ export function AgentDock({
                         />
                       </div>
                     ) : null}
-                    <span className="mt-0.5 px-1 text-[10px] tabular-nums text-text-tertiary">
+                    <span className="mt-0.5 inline-flex items-center gap-1 px-1 text-[10px] tabular-nums text-text-tertiary">
+                      {sentFromWhatsApp(m, visibleMsgs[i + 1], active?.channel) && (
+                        <span title="Sent from WhatsApp on their phone" className="inline-flex items-center gap-1">
+                          <Smartphone size={10} strokeWidth={2.1} aria-hidden />
+                          From WhatsApp
+                          <span aria-hidden>·</span>
+                        </span>
+                      )}
                       {clockTime(m.ts)}
                     </span>
                   </div>

@@ -17,6 +17,7 @@ import {
   Trash2,
   MessageSquareText,
   MessageCircle,
+  Smartphone,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ import {
   listStamp,
   sameDay,
 } from "@/lib/chatTime";
+import { sentFromWhatsApp } from "@/lib/messageVia";
 import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { putConversations } from "@/lib/saveConversations";
 import { useEntityIndex, type Entity } from "@/components/agent/EntityPills";
@@ -42,7 +44,7 @@ import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 import { queueAgentNavigationHandoff } from "@/lib/agentNavigationHandoff";
 
-type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[]; pendingAction?: PendingActionPayload };
+type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp" };
 type OfferingContext = { id: string; name: string };
 type Convo = {
   id: string;
@@ -978,7 +980,14 @@ export function AgentChat({
                         <div className="max-w-[78%] bg-blue-primary text-white rounded-2xl rounded-br-md px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap shadow-sm">
                           {msg.text}
                         </div>
-                        <span className="mt-1 mr-1 text-[11px] tabular-nums text-text-tertiary">
+                        <span className="mt-1 mr-1 inline-flex items-center gap-1 text-[11px] tabular-nums text-text-tertiary">
+                          {sentFromWhatsApp(msg, active.messages[i + 1], active.channel) && (
+                            <span title="Sent from WhatsApp on their phone" className="inline-flex items-center gap-1">
+                              <Smartphone size={11} strokeWidth={2.1} aria-hidden />
+                              From WhatsApp
+                              <span aria-hidden>·</span>
+                            </span>
+                          )}
                           {clockTime(msg.ts)}
                         </span>
                       </div>
