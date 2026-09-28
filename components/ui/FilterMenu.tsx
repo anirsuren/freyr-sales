@@ -98,7 +98,9 @@ export function FilterMenu({
      "search bar on these filters that are really long, this applies to all
      the pages"). One shared menu, so one box serves every page. It only
      appears past a handful of options, resets when another group opens, and
-     takes focus so the person can type the moment the list is in view. It
+     takes focus so the person can type the moment the list is in view. The
+     box sits INSIDE the scroller, first row of the list, so it rides away
+     with the options instead of pinning over them. It
      scrolls with the list rather than pinning (Anir, Sep 28: "the search bar
      shouldn't be sticky here"). */
   const [query, setQuery] = useState("");
@@ -345,28 +347,29 @@ export function FilterMenu({
                         </button>
                       )}
                     </div>
-                    {!current.content && current.options.length > SEARCH_FROM && (
-                      <div className="border-b border-border-light bg-white px-2 py-1.5">
-                        <div className="relative">
-                          <Search size={13} strokeWidth={2.2} aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
-                          <input
-                            ref={searchRef}
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Escape" && query) { e.stopPropagation(); setQuery(""); } }}
-                            placeholder={`Search ${current.label.toLowerCase()}`}
-                            aria-label={`Search ${current.label}`}
-                            className="h-8 w-full rounded-lg border border-border-light bg-white pl-8 pr-7 text-[12.5px] text-text-primary outline-none placeholder:text-text-tertiary focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
-                          />
-                          {query && (
-                            <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-text-tertiary hover:text-text-primary">
-                              <X size={12} strokeWidth={2.2} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
                     <div className="min-h-0 flex-1 overflow-y-auto py-1">
+                      {!current.content && current.options.length > SEARCH_FROM && (
+                        <div className="border-b border-border-light bg-white px-2 py-1.5">
+                          <div className="relative">
+                            <Search size={13} strokeWidth={2.2} aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                            <input
+                              ref={searchRef}
+                              value={query}
+                              onChange={(e) => setQuery(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === "Escape" && query) { e.stopPropagation(); setQuery(""); } }}
+                              placeholder={`Search ${current.label.toLowerCase()}`}
+                              aria-label={`Search ${current.label}`}
+                              className="h-8 w-full rounded-lg border border-border-light bg-white pl-8 pr-7 text-[12.5px] text-text-primary outline-none placeholder:text-text-tertiary focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
+                            />
+                            {query && (
+                              <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-text-tertiary hover:text-text-primary">
+                                <X size={12} strokeWidth={2.2} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       {current.content ? (
                         <div className="p-3">{current.content}</div>
                       ) : visibleOptions(current.options, query).length === 0 ? (
