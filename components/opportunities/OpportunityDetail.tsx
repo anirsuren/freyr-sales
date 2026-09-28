@@ -317,6 +317,8 @@ export function OpportunityDetail({
       {creating === "contracts" && (
         <NewContractDialog
           deal={deal}
+          people={people}
+          meName={meName}
           onClose={() => setCreating(null)}
           onCreated={() => router.refresh()}
         />

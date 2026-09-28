@@ -95,10 +95,16 @@ export function NewContractDialog({
   onCreated,
   chromeless = false,
   onBack,
+  people = [],
+  meName = "",
 }: {
   deal: Opportunity;
   onClose: () => void;
   onCreated: () => void;
+  /** The roster the owner is picked from. Empty falls back to a typed name. */
+  people?: string[];
+  /** Whoever is looking, so they are first on the owner list. */
+  meName?: string;
   /**
    * RENDER THE FORM WITHOUT ITS OWN FRAME.
    *
@@ -302,12 +308,43 @@ export function NewContractDialog({
         </div>
 
         <Field label="Owner">
-          <input
-            value={owner}
-            onChange={(e) => setOwner(e.target.value)}
-            className={INPUT}
-            placeholder="Nobody yet"
-          />
+          {/* A PICKER, not a typed name (Anir, Sep 28: "owner should be
+              select"): the same roster dropdown the deal editor uses, faces
+              on, you first, Unassigned as the honest empty. The typed input
+              stays only for the roster-less case, the way imported deals
+              arrived. */}
+          {people.length > 0 || owner ? (
+            <ColorSelect
+              value={owner}
+              ariaLabel="Contract owner"
+              fill
+              collapsible={false}
+              searchable
+              onChange={setOwner}
+              options={[
+                { value: "", label: "Unassigned", color: "var(--ink-bright-blue)" },
+                ...[...new Set([...people, ...(owner ? [owner] : [])])]
+                  .sort(
+                    (a, b) =>
+                      Number(b === meName) - Number(a === meName) ||
+                      a.localeCompare(b)
+                  )
+                  .map((n) => ({
+                    value: n,
+                    label: n,
+                    tag: n === meName ? "You" : undefined,
+                    avatarName: n,
+                  })),
+              ]}
+            />
+          ) : (
+            <input
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              className={INPUT}
+              placeholder="Nobody yet"
+            />
+          )}
         </Field>
 
         <Field label="Note">
