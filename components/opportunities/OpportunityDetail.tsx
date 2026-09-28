@@ -887,7 +887,6 @@ export function OpportunityDetail({
                   : <AddToBandButton key={b.key} bandKey={b.key} label={b.label} onAdd={setCreating} />,
               ])
             )}
-            emptyLine="Nothing is connected to this deal yet."
           />
         )}
       </div>

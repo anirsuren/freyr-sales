@@ -241,7 +241,6 @@ function singularLabel(label: string): string {
 export function Customer360({
   company,
   bands,
-  emptyLine,
   bandActions,
   bandAddActions,
   bandEmpty = false,
@@ -253,7 +252,6 @@ export function Customer360({
 }: {
   company: string;
   bands: Customer360Band[];
-  emptyLine?: string;
   /**
    * LET AN EMPTY BAND SAY ITS OWN SENTENCE.
    *
@@ -422,14 +420,10 @@ export function Customer360({
           a strip that already names every area it counts, on a page whose
           title is the person or the company — three ways of saying whose page
           this is, stacked. The tabs are the heading. */}
-      {/* The strip below counts every area, so restating "1 of 7 areas have
-          something here" underneath it was a second way of saying the same
-          thing. Only the genuinely empty account still needs a sentence. */}
-      {!chromeless && live.length === 0 && (
-        <p className="mt-0.5 text-[12.5px] text-text-secondary">
-          {emptyLine ?? "Nothing is connected to this account yet."}
-        </p>
-      )}
+      {/* NO SENTENCE ABOVE THE TABS (Anir, Sep 28, on a rep with nothing yet:
+          "you don't need to say that sentence"). The strip already reads a
+          zero on every tab and the open tab draws its own empty state, so the
+          line said the same thing a third time. */}
 
       {ordered.length > 0 && active && (
         <>

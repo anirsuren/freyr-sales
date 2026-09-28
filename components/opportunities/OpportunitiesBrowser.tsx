@@ -2150,7 +2150,6 @@ export function OpportunitiesBrowser({
                                   <Customer360
                                     bands={bandsByDeal[o.id] ?? []}
                                     company={o.customer}
-                                    emptyLine="Nothing is connected to this deal yet."
                                   />
                                 </div>
                               )}

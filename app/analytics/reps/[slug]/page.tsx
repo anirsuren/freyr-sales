@@ -244,7 +244,6 @@ export default async function RepPage({
         {person360.length > 0 && (
           <Customer360
             company={member.name}
-            emptyLine={`Nothing across the app carries ${member.name.split(" ")[0]}'s name yet.`}
             bands={person360}
             unboxed
           />
