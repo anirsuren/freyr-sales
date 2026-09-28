@@ -835,8 +835,10 @@ export function LiveCompanyBriefing({
               { value: "90", label: "Past 3 months", color: "var(--ink-teal-deep)", icon: History },
             ]}
         />
+        {/* ONE CALENDAR, NOT TWO (Anir, Sep 28: "can you remove the icon on
+            the left?"). The date field draws its own, so the icon outside it
+            was the same mark twice in a row. */}
         <div className="relative flex h-10 items-center gap-2 rounded-lg border border-border-light bg-white px-3 text-[12px] font-semibold text-text-secondary focus-within:border-blue-subtle">
-          <CalendarDays size={14} className="text-blue-primary" />
           <label htmlFor="briefing-exact-date" className="sr-only">Show updates from an exact date</label>
           <DateField id="briefing-exact-date" value={exactDate} onChange={(event) => setExactDate(event)} className="cursor-pointer bg-transparent text-[12px] text-text-primary outline-none" />
           {exactDate && <button type="button" onClick={() => setExactDate("")} className="cursor-pointer text-blue-primary hover:underline">Clear</button>}
