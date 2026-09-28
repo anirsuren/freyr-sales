@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import {
   Sparkles,
@@ -32,6 +32,21 @@ import {
   type AskAgentDetail,
 } from "@/lib/agentEvents";
 import { AGENT_DOCK_ACTIVE_KEY } from "@/lib/agentNavigationHandoff";
+
+/** Remembered dock size (device preference, not identity data). */
+const DOCK_SIZE_KEY = "freyr.agent.dock.size";
+const DOCK_MIN_WIDTH = 360;
+const DOCK_MIN_HEIGHT = 440;
+
+/** Keep a chosen size usable: never smaller than readable, never past the window. */
+function clampDockSize(w: number, h: number): { w: number; h: number } {
+  const maxW = Math.max(DOCK_MIN_WIDTH, window.innerWidth - 40);
+  const maxH = Math.max(DOCK_MIN_HEIGHT, window.innerHeight - 40);
+  return {
+    w: Math.round(Math.min(Math.max(w, DOCK_MIN_WIDTH), maxW)),
+    h: Math.round(Math.min(Math.max(h, DOCK_MIN_HEIGHT), maxH)),
+  };
+}
 
 // The dock and the full Agent page deliberately use the SAME account-backed
 // conversation model. A rep can start beside an offering, then continue that
@@ -878,6 +893,73 @@ export function AgentDock({
   const launcherRef = useRef<HTMLButtonElement | null>(null);
 
   /**
+   * User-driven dock size. The panel is pinned to the bottom-right corner, so
+   * dragging the top edge changes height and dragging the left edge changes
+   * width; the top-left corner drags both. The size is remembered on this
+   * device and a double-click on any edge returns the default.
+   */
+  const [dockSize, setDockSize] = useState<{ w: number; h: number } | null>(null);
+  const dockSizeRef = useRef(dockSize);
+  dockSizeRef.current = dockSize;
+  useEffect(() => {
+    if (embedded) return;
+    try {
+      const raw = localStorage.getItem(DOCK_SIZE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { w?: number; h?: number };
+      if (typeof parsed.w === "number" && typeof parsed.h === "number") {
+        setDockSize(clampDockSize(parsed.w, parsed.h));
+      }
+    } catch {
+      /* Size preference unavailable; the default size still works. */
+    }
+  }, [embedded]);
+
+  const startDockResize = (axes: "x" | "y" | "xy") => (event: ReactPointerEvent<HTMLDivElement>) => {
+    const panel = floatPanelRef.current;
+    if (!panel || event.button !== 0) return;
+    event.preventDefault();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const rect = panel.getBoundingClientRect();
+    const startW = rect.width;
+    const startH = rect.height;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+    let latest = dockSizeRef.current ?? clampDockSize(startW, startH);
+    const move = (moveEvent: globalThis.PointerEvent) => {
+      latest = clampDockSize(
+        axes === "y" ? startW : startW + (startX - moveEvent.clientX),
+        axes === "x" ? startH : startH + (startY - moveEvent.clientY)
+      );
+      setDockSize(latest);
+    };
+    const finish = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+      document.body.style.userSelect = previousUserSelect;
+      try {
+        localStorage.setItem(DOCK_SIZE_KEY, JSON.stringify(latest));
+      } catch {
+        /* Falls back to a per-session size. */
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+  };
+
+  const resetDockSize = () => {
+    setDockSize(null);
+    try {
+      localStorage.removeItem(DOCK_SIZE_KEY);
+    } catch {
+      /* Nothing stored to clear. */
+    }
+  };
+
+  /**
    * Sticky form actions share the launcher's corner. Measure the real rendered
    * rectangles instead of reserving a permanent empty gutter: the action bar
    * only moves its controls left at the exact point the launcher reaches it.
@@ -984,7 +1066,15 @@ export function AgentDock({
               ? "h-full w-full border-l border-border-light shadow-[-8px_0_30px_rgba(16,24,40,0.06)]"
               : `fixed bottom-5 right-5 z-[120] w-[min(480px,calc(100vw-2.5rem))] rounded-2xl slide-in-right print:hidden ${POPOVER_SURFACE}`
           )}
+          style={!embedded && dockSize ? { width: dockSize.w, height: dockSize.h } : undefined}
         >
+          {!embedded && (
+            <>
+              <div role="presentation" onPointerDown={startDockResize("y")} onDoubleClick={resetDockSize} title="Drag to resize. Double-click for the default size." className="absolute inset-x-0 top-0 z-[5] h-2 cursor-ns-resize touch-none rounded-t-2xl transition-colors hover:bg-blue-primary/15" />
+              <div role="presentation" onPointerDown={startDockResize("x")} onDoubleClick={resetDockSize} title="Drag to resize. Double-click for the default size." className="absolute inset-y-0 left-0 z-[5] w-2 cursor-ew-resize touch-none rounded-l-2xl transition-colors hover:bg-blue-primary/15" />
+              <div role="presentation" onPointerDown={startDockResize("xy")} onDoubleClick={resetDockSize} title="Drag to resize. Double-click for the default size." className="absolute left-0 top-0 z-[6] h-5 w-5 cursor-nwse-resize touch-none rounded-tl-2xl" />
+            </>
+          )}
           {/* Header */}
           <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border-light bg-gradient-to-b from-white to-surface/40 shrink-0">
             <span className="w-8 h-8 rounded-xl bg-blue-primary text-white flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(0,113,227,0.35)]">
@@ -1054,7 +1144,7 @@ export function AgentDock({
           {historySyncFailed && <p role="status" className="mx-4 mt-2 rounded-md bg-warning/10 px-3 py-2 text-xs text-text-primary">Your changes are saved on this device. Account history could not sync; another tab may have changed this chat.</p>}
 
           {historyOpen ? (
-            <div className={cn("agent-dock-history-enter min-h-0 flex-1 overflow-y-auto px-3 py-3", embedded ? "" : "h-[520px] max-h-[72vh]")}>
+            <div className={cn("agent-dock-history-enter min-h-0 flex-1 overflow-y-auto px-3 py-3", embedded || dockSize ? "" : "h-[520px] max-h-[72vh]")}>
               <button
                 type="button"
                 onClick={startNewChat}
@@ -1106,7 +1196,7 @@ export function AgentDock({
             }}
             className={cn(
               "flex-1 overflow-y-auto px-4 py-4",
-              embedded ? "min-h-0" : "h-[460px] max-h-[66vh]"
+              embedded || dockSize ? "min-h-0" : "h-[460px] max-h-[66vh]"
             )}
           >
             <div ref={messageContentRef} className="space-y-2.5">
