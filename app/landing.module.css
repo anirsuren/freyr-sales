@@ -2554,3 +2554,265 @@
   .heroCopy>p { font-size:17px; }
   .heroActions .button { min-width:0; height:48px; }
 }
+
+/* ------------------------------------------------------------------------
+   DARK MODE (Anir, Sep 28: "add a dark mode thing on this in the top right
+   or something. Make sure it looks good in dark mode. If you have to change
+   anything else, change it, like the image, font colors, etc.").
+
+   Keyed on <html data-landing-theme="dark">, which the inline script in
+   Landing.tsx sets before first paint. The six variables carry most of the
+   page; everything below them is a rule that hardcoded white or a light
+   hex and needs its own night value. The hero keeps the same statue,
+   darkened and faded into the page instead of into white.
+   ------------------------------------------------------------------------ */
+.navActions {
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.themeToggle {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:40px;
+  height:40px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:transparent;
+  color:var(--muted);
+  transition:background .2s,color .2s,border-color .2s,transform .2s;
+}
+.themeToggle:hover {
+  color:var(--ink);
+  background:var(--panel);
+  border-color:#cfd7e3;
+  transform:translateY(-1px);
+}
+:global(html[data-landing-theme="dark"]) .page {
+  --ink:#e7edf7;
+  --muted:#9cadc5;
+  --line:#22304a;
+  --panel:#0f1727;
+  --navy:#9fc2ff;
+  --blue:#82b1ff;
+  background:#0a111d;
+  color-scheme:dark;
+}
+:global(html[data-landing-theme="dark"]) .themeToggle:hover {
+  border-color:#33456a;
+}
+:global(html[data-landing-theme="dark"]) .button {
+  background:#1f62d2;
+  border-color:#1f62d2;
+}
+:global(html[data-landing-theme="dark"]) .button:hover {
+  background:#2a72e6;
+}
+:global(html[data-landing-theme="dark"]) .secondary {
+  background:transparent;
+  border-color:#33456a;
+  color:var(--ink);
+}
+:global(html[data-landing-theme="dark"]) .secondary:hover {
+  background:var(--panel);
+}
+:global(html[data-landing-theme="dark"]) .header {
+  background:rgba(10,17,29,.92);
+}
+:global(html[data-landing-theme="dark"]) .header[data-scrolled=true] {
+  background:rgba(10,17,29,.82);
+}
+:global(html[data-landing-theme="dark"]) .heroVisual {
+  background:#0a111d;
+}
+:global(html[data-landing-theme="dark"]) .heroVisual>div {
+  background:linear-gradient(to bottom,rgba(10,17,29,.42),rgba(10,17,29,.12) 32%,rgba(10,17,29,.88) 70%,#0a111d 100%);
+}
+:global(html[data-landing-theme="dark"]) .heroCopy:before {
+  background:rgba(10,17,29,.38);
+}
+:global(html[data-landing-theme="dark"]) .heroCopy>p,
+:global(html[data-landing-theme="dark"]) .heroCopy ul,
+:global(html[data-landing-theme="dark"]) .standards strong,
+:global(html[data-landing-theme="dark"]) .fileList span,
+:global(html[data-landing-theme="dark"]) .demoAnswer {
+  color:#c9d4e6;
+}
+:global(html[data-landing-theme="dark"]) .blue {
+  background:#13305f;
+  color:#a3c4ff;
+}
+:global(html[data-landing-theme="dark"]) .green {
+  background:#0f3a2a;
+  color:#62d69c;
+}
+:global(html[data-landing-theme="dark"]) .purple {
+  background:#2a2150;
+  color:#c3b3ff;
+}
+:global(html[data-landing-theme="dark"]) .amber {
+  background:#3d2a08;
+  color:#f2bb63;
+}
+:global(html[data-landing-theme="dark"]) .iconBox {
+  border-color:#27395a;
+  background:#132242;
+  color:#9fc2ff;
+}
+:global(html[data-landing-theme="dark"]) .record,
+:global(html[data-landing-theme="dark"]) .card,
+:global(html[data-landing-theme="dark"]) .widget,
+:global(html[data-landing-theme="dark"]) .trustCard li,
+:global(html[data-landing-theme="dark"]) .chrome,
+:global(html[data-landing-theme="dark"]) .marqueeFoot button,
+:global(html[data-landing-theme="dark"]) .pause,
+:global(html[data-landing-theme="dark"]) .faqTabs button {
+  background:#141f33;
+}
+:global(html[data-landing-theme="dark"]) .record {
+  box-shadow:0 2px 4px rgba(0,0,0,.35);
+}
+:global(html[data-landing-theme="dark"]) .donut span {
+  background:#141f33;
+}
+:global(html[data-landing-theme="dark"]) .progress,
+:global(html[data-landing-theme="dark"]) .goalTrack {
+  background:#22304a;
+}
+:global(html[data-landing-theme="dark"]) .avatar {
+  border-color:#141f33;
+}
+:global(html[data-landing-theme="dark"]) .fileList svg:last-child,
+:global(html[data-landing-theme="dark"]) .sample,
+:global(html[data-landing-theme="dark"]) .footerBottom {
+  color:var(--muted);
+}
+:global(html[data-landing-theme="dark"]) .demoCard {
+  border-color:#22304a;
+  background:#0f1727;
+  box-shadow:0 24px 48px -16px rgba(0,0,0,.6);
+}
+:global(html[data-landing-theme="dark"]) .chrome i {
+  background:#3a4a66;
+}
+:global(html[data-landing-theme="dark"]) .thinking i {
+  background:#82b1ff;
+}
+:global(html[data-landing-theme="dark"]) .linkPills>span {
+  border-color:#2b4670;
+  background:#132242;
+  color:#a3c4ff;
+}
+:global(html[data-landing-theme="dark"]) .dots>button:not(.pause) {
+  background:#3a4a66;
+}
+:global(html[data-landing-theme="dark"]) .faqTabs button[aria-pressed=true] {
+  background:#1f62d2;
+  border-color:#1f62d2;
+  color:white;
+}
+:global(html[data-landing-theme="dark"]) .cta:before {
+  background-image:radial-gradient(#2b3a52 .8px,transparent .8px);
+}
+:global(html[data-landing-theme="dark"]) .footer {
+  background:#0a111d;
+}
+:global(html[data-landing-theme="dark"]) .page button:focus-visible,
+:global(html[data-landing-theme="dark"]) .page a:focus-visible {
+  outline-color:#82b1ff;
+}
+@media (hover: hover) {
+  :global(html[data-landing-theme="dark"]) .card:hover,
+  :global(html[data-landing-theme="dark"]) .record:hover,
+  :global(html[data-landing-theme="dark"]) .trustCard:hover {
+    box-shadow:0 6px 20px -8px rgba(0,0,0,.6),0 2px 6px -2px rgba(0,0,0,.4);
+  }
+}
+
+/* The two hero pictures. Only the one in use is displayed, and the other is
+   lazy, so the browser never downloads both. */
+.heroDark {
+  display:none;
+}
+:global(html[data-landing-theme="dark"]) .heroLight {
+  display:none;
+}
+:global(html[data-landing-theme="dark"]) .heroDark {
+  display:block;
+}
+
+/* The page chrome and the hero words at night. These override the literal
+   light values set further up, which variables alone cannot reach. */
+:global(html[data-landing-theme="dark"]) .header {
+  background:rgba(8,13,22,.94);
+  color:var(--ink);
+}
+:global(html[data-landing-theme="dark"]) .header[data-scrolled=true] {
+  background:rgba(8,13,22,.84);
+  box-shadow:0 1px 0 var(--line);
+}
+:global(html[data-landing-theme="dark"]) .header .brand,
+:global(html[data-landing-theme="dark"]) .header .brand strong,
+:global(html[data-landing-theme="dark"]) .navSignIn,
+:global(html[data-landing-theme="dark"]) .menuToggle {
+  color:var(--ink);
+}
+:global(html[data-landing-theme="dark"]) .header .brand small,
+:global(html[data-landing-theme="dark"]) .navInner nav {
+  color:var(--muted);
+}
+:global(html[data-landing-theme="dark"]) .navInner nav a:hover,
+:global(html[data-landing-theme="dark"]) .navSignIn:hover {
+  color:#a9c8ff;
+}
+:global(html[data-landing-theme="dark"]) .navActions .button,
+:global(html[data-landing-theme="dark"]) .heroActions .button,
+:global(html[data-landing-theme="dark"]) .mobileMenu .button {
+  border-color:#2f6fdd;
+  background:#2464cf;
+  box-shadow:none;
+}
+:global(html[data-landing-theme="dark"]) .navActions .button:hover,
+:global(html[data-landing-theme="dark"]) .heroActions .button:hover {
+  background:#3277e6;
+}
+:global(html[data-landing-theme="dark"]) .mobileMenu {
+  border-color:var(--line);
+  background:#080d16;
+  color:var(--ink);
+}
+:global(html[data-landing-theme="dark"]) .heroVisual {
+  background:#070c15;
+}
+:global(html[data-landing-theme="dark"]) .heroVisual>div {
+  background:linear-gradient(to bottom,rgba(10,17,29,.30) 0%,rgba(10,17,29,0) 30%,rgba(10,17,29,.72) 64%,#0a111d 92%);
+}
+:global(html[data-landing-theme="dark"]) .heroCopy:before {
+  background:rgba(7,12,21,.55);
+}
+:global(html[data-landing-theme="dark"]) .hero h1 {
+  color:#eef3fb;
+}
+:global(html[data-landing-theme="dark"]) .hero h1 em {
+  color:#8cb8ff;
+}
+:global(html[data-landing-theme="dark"]) .heroCopy>p {
+  color:#ccd8ea;
+}
+:global(html[data-landing-theme="dark"]) .heroCopy ul {
+  color:#b9c7dd;
+}
+:global(html[data-landing-theme="dark"]) .heroCopy li svg,
+:global(html[data-landing-theme="dark"]) .heroActions p a {
+  color:#8cb8ff;
+}
+:global(html[data-landing-theme="dark"]) .heroActions p {
+  color:var(--muted);
+}
+:global(html[data-landing-theme="dark"]) .standards strong {
+  color:#b9c7dd;
+}
+:global(html[data-landing-theme="dark"]) .standards li+li:before {
+  color:#4a5c76;
+}

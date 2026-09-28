@@ -5,15 +5,38 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, MotionConfig, motion, useInView, useReducedMotion } from "motion/react";
 import { CountUp, Reveal, ease, reveal } from "./Motion";
-import { ArrowDown, ArrowRight, BookOpenText, BriefcaseBusiness, CalendarDays, Check, CheckCircle2, ChevronRight, CircleDot, FileText, Globe2, Layers, Link2, LockKeyhole, Menu, Pause, Play, Plus, Sparkles, Target, UsersRound, X } from "lucide-react";
+import { ArrowDown, ArrowRight, BookOpenText, BriefcaseBusiness, CalendarDays, Check, CheckCircle2, ChevronRight, CircleDot, FileText, Globe2, Layers, Link2, LockKeyhole, Menu, Moon, Pause, Play, Plus, Sparkles, Sun, Target, UsersRound, X } from "lucide-react";
 import mark from "@/public/freyr-mark.png";
 import hero from "@/public/landing/heroes/13-roman-freyr-hero.png";
+import heroDark from "@/public/landing/heroes/13-roman-freyr-hero-dark.jpg";
 import gracePhoto from "@/public/avatars/grace-liu.png";
 import danielPhoto from "@/public/avatars/daniel-foster.png";
 import hannahPhoto from "@/public/avatars/hannah-schmidt.png";
 import ninaPhoto from "@/public/avatars/nina-kowalski.png";
 import claraPhoto from "@/public/avatars/clara-mendez.png";
 import s from "@/app/landing.module.css";
+
+/**
+ * DARK MODE ON THE LANDING (Anir, Sep 28: "add a dark mode thing on this in
+ * the top right or something. Make sure it looks good in dark mode").
+ *
+ * The choice lives on <html data-landing-theme> so the stylesheet can key on
+ * it, and this script runs while the HTML is still being parsed, before the
+ * first paint, so a dark reader never sees a white flash. Order of truth: the
+ * reader's own switch (localStorage), then the workspace's dark class, then
+ * the OS setting. The button below only mirrors that state after hydration,
+ * so the server and the client render the same markup.
+ */
+const THEME_KEY = "freyr-landing-theme";
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.stringify(THEME_KEY)});if(t!=="dark"&&t!=="light"){t=(document.documentElement.classList.contains("dark")||window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}document.documentElement.dataset.landingTheme=t;}catch(e){}})();`;
+type LandingTheme = "light" | "dark";
+function readTheme(): LandingTheme {
+  return document.documentElement.dataset.landingTheme === "dark" ? "dark" : "light";
+}
+function ThemeToggle({ theme, onToggle }: { theme: LandingTheme; onToggle: () => void }) {
+  const dark = theme === "dark";
+  return <button type="button" className={s.themeToggle} onClick={onToggle} aria-pressed={dark} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Light mode" : "Dark mode"}>{dark ? <Sun size={17} /> : <Moon size={17} />}</button>;
+}
 
 function Brand() { return <Link href="/" className={s.brand} aria-label="Freyr Sales Intelligence home"><Image src={mark} width={30} height={30} alt="" /><span><strong>Freyr</strong><small>Sales Intelligence</small></span></Link>; }
 function Head({ eyebrow, title, text, centered = false, id }: { eyebrow: string; title: ReactNode; text?: string; centered?: boolean; id?: string }) {
@@ -149,21 +172,30 @@ function Footer({entry,entryLabel}:{entry:string;entryLabel:string}) {
 
 export function Landing({entry,signedIn,heroImage}:{entry:string;signedIn:boolean;heroImage?:StaticImageData}) {
  const [menu,setMenu]=useState(false);const [scrolled,setScrolled]=useState(false);
+ const [theme,setTheme]=useState<LandingTheme>("light");
+ useEffect(()=>{setTheme(readTheme());},[]);
+ const toggleTheme=()=>{const next:LandingTheme=theme==="dark"?"light":"dark";setTheme(next);document.documentElement.dataset.landingTheme=next;try{localStorage.setItem(THEME_KEY,next);}catch{}};
  useEffect(()=>{const update=()=>setScrolled(window.scrollY>8);update();window.addEventListener("scroll",update,{passive:true});return()=>window.removeEventListener("scroll",update);},[]);
  const entryLabel=signedIn?"Open workspace":"Sign in";
  return <MotionConfig reducedMotion="user" transition={{duration:.6,ease}}>
+ <script dangerouslySetInnerHTML={{__html:THEME_SCRIPT}}/>
  <header className={s.header} data-scrolled={scrolled||menu}>
    <div className={s.navInner}>
      <nav aria-label="Primary">{[["#product","Product"],["#demo-title","Freyr AI"],["#teams","Teams"],["#faq","FAQ"]].map(([href,t])=><a key={href} href={href}>{t}</a>)}</nav>
      <Brand/>
-     <div className={s.navActions}><Link href={entry} className={s.button}>{entryLabel}</Link></div>
+     <div className={s.navActions}><ThemeToggle theme={theme} onToggle={toggleTheme}/><Link href={entry} className={s.button}>{entryLabel}</Link></div>
      <button className={s.menuToggle} type="button" aria-label={menu?"Close menu":"Open menu"} aria-expanded={menu} aria-controls="landing-menu" onClick={()=>setMenu(!menu)}>{menu?<X size={20}/>:<Menu size={20}/>}</button>
    </div>
    {menu&&<nav id="landing-menu" className={s.mobileMenu} aria-label="Mobile navigation">{[["#product","Product"],["#demo-title","Freyr AI"],["#teams","Teams"],["#faq","FAQ"]].map(([href,t])=><a key={href} href={href} onClick={()=>setMenu(false)}>{t}</a>)}<Link href={entry} className={s.button}>{entryLabel}</Link></nav>}
  </header>
  <main>
  <section className={s.hero} aria-labelledby="hero-title">
-   <motion.div className={s.heroVisual} initial={{opacity:0,scale:1.04}} animate={{opacity:1,scale:1}} transition={{duration:1.6,ease}}><Image src={heroImage ?? hero} alt="" fill priority sizes="100vw"/><div/></motion.div>
+   {/* TWO PICTURES, NOT ONE PICTURE DIMMED (Anir, Sep 28: "you got to change
+         the image, bro... the image is not going to work"). Dimming the studio
+         backdrop in CSS only made it grey; the night version is its own file,
+         with the marble lifted off the white and relit. The hidden one is lazy
+         and display:none, so the browser only fetches the picture in use. */}
+     <motion.div className={s.heroVisual} initial={{opacity:0,scale:1.04}} animate={{opacity:1,scale:1}} transition={{duration:1.6,ease}}><Image className={s.heroLight} src={heroImage ?? hero} alt="" fill priority sizes="100vw"/><Image className={s.heroDark} src={heroDark} alt="" fill sizes="100vw"/><div/></motion.div>
    <div className={s.heroInner}><div className={s.heroCopy}>
      <motion.h1 initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.15}} id="hero-title">Every account, a <em>clearer</em> next move.</motion.h1>
      <motion.p initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.24}}>Freyr brings your customers, opportunities, knowledge and market context together. Ask Freyr AI what matters, then follow the answer back to the work.</motion.p>
