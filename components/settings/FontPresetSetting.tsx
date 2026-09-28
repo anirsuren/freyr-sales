@@ -61,7 +61,10 @@ export function FontPresetSetting() {
         {current !== DEFAULT_FONT_PRESET && (
           <button
             type="button"
-            onClick={() => void choose(FONT_PRESETS[0])}
+            /* The DEFAULT, not the first card. They were the same face until
+               Plex became Freyr's default (Sep 28), and then this button
+               quietly set the old one. */
+            onClick={() => void choose(FONT_PRESETS.find((preset) => preset.key === DEFAULT_FONT_PRESET) ?? FONT_PRESETS[0])}
             disabled={busy !== null}
             className="shrink-0 text-[12px] font-medium text-blue-primary hover:underline disabled:opacity-60"
           >

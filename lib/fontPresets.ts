@@ -23,8 +23,8 @@ export type FontPreset = {
 export const FONT_PRESETS: FontPreset[] = [
   {
     key: "system",
-    label: "Freyr today",
-    note: "The Mac's own system font, as the app has always been.",
+    label: "System",
+    note: "The Mac\u2019s own system font. What Freyr used before Plex.",
     heading: "",
     body: "",
     mono: "",
@@ -32,7 +32,7 @@ export const FONT_PRESETS: FontPreset[] = [
   {
     key: "plex",
     label: "Plex",
-    note: "IBM Plex Sans throughout, Plex Mono for ids and numbers. The Verify look.",
+    note: "IBM Plex Sans throughout, Plex Mono for ids and numbers. Freyr\u2019s own face.",
     heading: "var(--font-plex-sans)",
     body: "var(--font-plex-sans)",
     mono: "var(--font-plex-mono)",
@@ -88,7 +88,10 @@ export const FONT_PRESETS: FontPreset[] = [
 ];
 
 export const FONT_PRESET_KEYS = FONT_PRESETS.map((p) => p.key);
-export const DEFAULT_FONT_PRESET = "system";
+/* PLEX FOR EVERYONE (Anir, Sep 28: "make this the default font for everyone.
+   Plex. For everyone."). Anybody who has not chosen a face reads the app in
+   Plex; the picker in Settings still overrides it, per person. */
+export const DEFAULT_FONT_PRESET = "plex";
 
 export function isFontPreset(value: unknown): value is string {
   return typeof value === "string" && FONT_PRESET_KEYS.includes(value);
