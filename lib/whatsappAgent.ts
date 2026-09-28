@@ -14,11 +14,15 @@ import {
   chunkWhatsAppText,
   linkCodeIn,
   markWhatsAppRead,
+  sendWhatsAppMedia,
   sendWhatsAppText,
   toWhatsAppText,
+  uploadWhatsAppMedia,
   type InboundMessage,
+  type OutboundMediaKind,
   type WhatsAppConfig,
 } from "@/lib/whatsapp";
+import { chartSpecsIn, renderChartPng } from "@/lib/whatsappChart";
 import type { WorkspaceMemberScope } from "@/lib/types";
 
 /**
@@ -184,6 +188,150 @@ async function reply(to: string, text: string, options: InboundOptions): Promise
   return delivered;
 }
 
+/**
+ * NOT JUST TEXT (Anir, Sep 28: "so it can actually not just text but send
+ * stuff. if Silvia can do it on iMessage i think our thing can do it on
+ * WhatsApp"). Two kinds of "stuff" ride behind the text reply:
+ *
+ * CHARTS. The agent already answers with ```chart blocks the web draws and
+ * toWhatsAppText strips. Those same specs are rendered to PNG here and sent
+ * as images, so the phone sees the picture, not a sentence about one.
+ *
+ * FILES. When the person asked for a document and the reply linked sales
+ * materials, the bytes go into the chat as real WhatsApp documents. The
+ * fetch knocks on the app's own offering + download routes with this
+ * member's cookies, so material access rules hold exactly as on the web.
+ * More than three links is a listing, not a fetch, and sends nothing.
+ */
+const CHART_LIMIT = 2;
+const ATTACH_LIMIT = 3;
+const IMAGE_CAP = 5 * 1024 * 1024;
+const VIDEO_CAP = 16 * 1024 * 1024;
+const DOC_CAP = 60 * 1024 * 1024;
+
+function wantsFileIn(text: string): boolean {
+  return (
+    /\b(send|share|attach|forward|give|get|download|drop)\b/i.test(text) &&
+    /\b(file|files|doc|docs|document|documents|deck|decks|presentation|presentations|slides?|pdf|brochure|one[- ]?pager|material|materials|video|videos|spreadsheet|excel|sheet)\b/i.test(text)
+  );
+}
+
+type ReplyMaterialLink = { offeringId: string; materialId: string; label: string };
+
+function materialLinksIn(markdown: string): ReplyMaterialLink[] {
+  const seen = new Set<string>();
+  const links: ReplyMaterialLink[] = [];
+  for (const match of String(markdown ?? "").matchAll(
+    /\[([^\]\n]+)\]\(\/offerings\/([^)?\s]+)\?[^)\s]*material=([A-Za-z0-9._~%-]+)[^)\s]*\)/g
+  )) {
+    const key = `${match[2]}::${match[3]}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    links.push({
+      label: match[1].trim(),
+      offeringId: decodeURIComponent(match[2]),
+      materialId: decodeURIComponent(match[3]),
+    });
+  }
+  return links;
+}
+
+type VisibleMaterial = { id: string; label?: string; docsPath?: string };
+
+async function sendReplyAttachments(args: {
+  to: string;
+  replyMarkdown: string;
+  userText: string;
+  cookies: string;
+  options: InboundOptions;
+}): Promise<void> {
+  const { to, replyMarkdown, userText, cookies, options } = args;
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const origin = options.internalOrigin.replace(/\/+$/, "");
+
+  for (const spec of chartSpecsIn(replyMarkdown).slice(0, CHART_LIMIT)) {
+    const png = await renderChartPng(spec);
+    if (!png) continue;
+    const uploaded = await uploadWhatsAppMedia(png, "image/png", "chart.png", options.config, fetchImpl);
+    if (uploaded.skipped) continue;
+    if (!uploaded.ok || !uploaded.mediaId) {
+      console.error("[whatsapp] chart upload failed", { error: uploaded.error });
+      continue;
+    }
+    const sent = await sendWhatsAppMedia(to, "image", uploaded.mediaId, options.config, { caption: spec.title }, fetchImpl);
+    if (!sent.ok) console.error("[whatsapp] chart send failed", { error: sent.error });
+    else console.log("[whatsapp] chart sent", { to: `...${to.slice(-4)}`, type: spec.type, title: spec.title });
+  }
+
+  if (!wantsFileIn(userText)) return;
+  const links = materialLinksIn(replyMarkdown);
+  if (links.length === 0 || links.length > ATTACH_LIMIT) return;
+
+  const offerings = new Map<string, VisibleMaterial[] | null>();
+  for (const link of links) {
+    try {
+      let materials = offerings.get(link.offeringId);
+      if (materials === undefined) {
+        const response = await fetchImpl(`${origin}/api/offerings/${encodeURIComponent(link.offeringId)}`, {
+          headers: { Cookie: cookies },
+          signal: AbortSignal.timeout(20_000),
+        });
+        const data = response.ok
+          ? ((await response.json().catch(() => null)) as { offering?: { materials?: VisibleMaterial[] } } | null)
+          : null;
+        materials = data?.offering?.materials ?? null;
+        offerings.set(link.offeringId, materials);
+      }
+      /* Only a material this member can SEE resolves: the offering route has
+         already redacted agent-only files for them. */
+      const material = materials?.find((m) => m.id === link.materialId);
+      if (!material?.docsPath) continue;
+
+      const download = await fetchImpl(
+        `${origin}/api/offerings/${encodeURIComponent(link.offeringId)}/materials/download?path=${encodeURIComponent(material.docsPath)}`,
+        { headers: { Cookie: cookies }, signal: AbortSignal.timeout(120_000) }
+      );
+      if (!download.ok) {
+        console.warn("[whatsapp] material download refused", { material: link.materialId, status: download.status });
+        continue;
+      }
+      const bytes = Buffer.from(await download.arrayBuffer());
+      const mime = (download.headers.get("content-type") || "application/octet-stream").split(";")[0].trim();
+      const label = (material.label || link.label || "Document").trim();
+      const ext = (material.docsPath.match(/\.([A-Za-z0-9]{1,8})(?:$|\?)/)?.[1] || "").toLowerCase();
+      const base = label.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Document";
+      const filename = ext && !base.toLowerCase().endsWith(`.${ext}`) ? `${base}.${ext}` : base;
+
+      let kind: OutboundMediaKind = "document";
+      if (/^image\/(png|jpe?g)$/.test(mime) && bytes.byteLength <= IMAGE_CAP) kind = "image";
+      else if (mime === "video/mp4" && bytes.byteLength <= VIDEO_CAP) kind = "video";
+      else if (bytes.byteLength > DOC_CAP) {
+        console.warn("[whatsapp] material too large to send", { material: link.materialId, bytes: bytes.byteLength });
+        continue;
+      }
+
+      const uploaded = await uploadWhatsAppMedia(bytes, mime, filename, options.config, fetchImpl);
+      if (uploaded.skipped) continue;
+      if (!uploaded.ok || !uploaded.mediaId) {
+        console.error("[whatsapp] material upload failed", { material: link.materialId, error: uploaded.error });
+        continue;
+      }
+      const sent = await sendWhatsAppMedia(
+        to,
+        kind,
+        uploaded.mediaId,
+        options.config,
+        kind === "document" ? { filename, caption: label } : { caption: label },
+        fetchImpl
+      );
+      if (!sent.ok) console.error("[whatsapp] material send failed", { material: link.materialId, error: sent.error });
+      else console.log("[whatsapp] material sent", { to: `...${to.slice(-4)}`, kind, filename, bytes: bytes.byteLength });
+    } catch (error) {
+      console.error("[whatsapp] attachment failed", { material: link.materialId, error: error instanceof Error ? error.message : error });
+    }
+  }
+}
+
 const HOW_TO_LINK =
   "This number isn't connected to a Freyr account yet. In Freyr, open Settings, then Integrations, then WhatsApp, and text the six-digit code shown there.";
 
@@ -283,6 +431,7 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
     : [];
 
   const fetchImpl = options.fetchImpl ?? fetch;
+  const memberCookies = await cookiesFor(user, member.scope);
   let answer: ConverseReply | null = null;
   let timedOut = false;
   /* A slow model turn is not a failure. After a minute the person hears that
@@ -298,7 +447,7 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Cookie: await cookiesFor(user, member.scope),
+        Cookie: memberCookies,
       },
       body: JSON.stringify({ message: incomingText, history, path: "/agent", channel: "whatsapp", conversationId }),
       signal: AbortSignal.timeout(CONVERSE_TIMEOUT_MS),
@@ -343,4 +492,17 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
     entityContext: Array.isArray(answer.entityContext) ? answer.entityContext : [],
     ...(answer.pendingAction ? { pendingAction: answer.pendingAction } : {}),
   });
+  /* After the text, the stuff: chart images and requested files. A failure
+     here never takes back the reply that already landed. */
+  try {
+    await sendReplyAttachments({
+      to: message.from,
+      replyMarkdown: answer.reply,
+      userText: incomingText,
+      cookies: memberCookies,
+      options,
+    });
+  } catch (error) {
+    console.error("[whatsapp] attachments failed", error instanceof Error ? error.message : error);
+  }
 }

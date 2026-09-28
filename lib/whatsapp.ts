@@ -291,6 +291,94 @@ export async function sendWhatsAppText(
   }
 }
 
+/**
+ * A FILE INTO THE CHAT, NOT A LINK TO ONE (Anir, Sep 28: "not just text but
+ * send stuff"). Meta wants the bytes uploaded first; the message then carries
+ * the returned media id. Same no-token behaviour as text: logged, skipped,
+ * and reported ok so a dev box without Meta still exercises the whole path.
+ */
+export async function uploadWhatsAppMedia(
+  bytes: Buffer | Uint8Array,
+  mimeType: string,
+  filename: string,
+  config: WhatsAppConfig,
+  fetchImpl: typeof fetch = fetch
+): Promise<{ ok: boolean; mediaId?: string; skipped?: boolean; error?: string }> {
+  if (!canSendWhatsApp(config)) {
+    console.info("[whatsapp] media upload (no access token, not sent)", { filename, mimeType, bytes: bytes.byteLength });
+    return { ok: true, skipped: true };
+  }
+  try {
+    const form = new FormData();
+    form.set("messaging_product", "whatsapp");
+    form.set("type", mimeType);
+    const copy = new Uint8Array(bytes.byteLength);
+    copy.set(bytes instanceof Buffer ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength) : bytes);
+    form.set("file", new File([copy], filename || "file", { type: mimeType }));
+    const response = await fetchImpl(
+      `https://graph.facebook.com/${config.graphVersion}/${config.phoneNumberId}/media`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${config.accessToken}` },
+        body: form,
+        signal: AbortSignal.timeout(60_000),
+      }
+    );
+    const data = (await response.json().catch(() => ({}))) as { id?: string; error?: { message?: string } };
+    if (!response.ok || !data.id) return { ok: false, error: data.error?.message || `HTTP ${response.status}` };
+    return { ok: true, mediaId: data.id };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+export type OutboundMediaKind = "image" | "document" | "video";
+
+export async function sendWhatsAppMedia(
+  to: string,
+  kind: OutboundMediaKind,
+  mediaId: string,
+  config: WhatsAppConfig,
+  extras: { caption?: string; filename?: string } = {},
+  fetchImpl: typeof fetch = fetch
+): Promise<SendResult> {
+  if (!canSendWhatsApp(config)) {
+    console.info("[whatsapp] media outbound (no access token, not sent)", { to: displayPhone(to), kind, filename: extras.filename });
+    return { ok: true, skipped: true };
+  }
+  const caption = extras.caption ? extras.caption.slice(0, 1024) : undefined;
+  const payload: Record<string, unknown> = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: normalizePhone(to),
+    type: kind,
+    [kind]: {
+      id: mediaId,
+      ...(caption ? { caption } : {}),
+      ...(kind === "document" && extras.filename ? { filename: extras.filename.slice(0, 240) } : {}),
+    },
+  };
+  try {
+    const response = await fetchImpl(graphUrl(config), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30_000),
+    });
+    const data = (await response.json().catch(() => ({}))) as {
+      error?: { message?: string };
+      messages?: Array<{ id?: string }>;
+    };
+    if (!response.ok) return { ok: false, error: data.error?.message || `HTTP ${response.status}` };
+    return { ok: true, messageId: data.messages?.[0]?.id };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 /** Blue ticks plus the "typing…" indicator while the agent works. Best effort. */
 export async function markWhatsAppRead(
   messageId: string,
