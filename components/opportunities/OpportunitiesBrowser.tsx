@@ -1868,7 +1868,9 @@ export function OpportunitiesBrowser({
                         <tr className="!border-t-0 bg-surface">
                           <td
                             colSpan={7}
-                            className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                            /* The open block closes before the next row, so
+                               two open deals never read as one (Anir, Sep 28). */
+                            className="border-b-[10px] border-canvas pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                           >
                             {/* THE OFFERING ROWS, IN FULL (Suren, Aug 16:
                                 "under opportunity, offering 1 value, offering

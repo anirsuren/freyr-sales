@@ -1523,7 +1523,12 @@ function RequestRow({
             the same trap the claim table hit on Aug 23. */}
         <td
           colSpan={12}
-          className="max-w-0 pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+          /* ONE RECORD ENDS BEFORE THE NEXT BEGINS (Anir, Sep 28: "you have
+             to separate it properly... if I have it like this, it looks like
+             it's just one big thing. You look at that blue line"). Two open
+             records ran their rails together into a single stripe; the block
+             now closes with a strip of the page's own colour. */
+          className="max-w-0 border-b-[10px] border-canvas pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
         >
           <div className="tab-panel sticky left-0 w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border-light bg-white sm:w-[calc(100vw-290px)]">
             <RequestPanel r={r} />

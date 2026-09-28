@@ -844,7 +844,7 @@ export function MeetingsModule({
                         </button>
                       </div>
                       {openIds.has(m.id) && (
-                        <div className="bg-surface px-4 pb-4 pl-7 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]">
+                        <div className="border-b-[10px] border-canvas bg-surface px-4 pb-4 pl-7 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]">
                           <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white px-4 py-4">
                             <MeetingPanel m={m} contacts={contacts} />
                           </div>

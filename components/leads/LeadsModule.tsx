@@ -926,7 +926,9 @@ export function LeadsModule({
                       <tr className="!border-t-0 bg-surface">
                         <td
                           colSpan={7}
-                          className="pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
+                          /* The open block closes before the next row, so two
+                             open leads never read as one (Anir, Sep 28). */
+                          className="border-b-[10px] border-canvas pb-4 pl-7 pr-4 pt-1 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
                         >
                           <div className="tab-panel overflow-hidden rounded-xl border border-border-light bg-white">
                             <div className="flex flex-col gap-4 border-b border-border-light p-4 lg:flex-row lg:items-start lg:justify-between">

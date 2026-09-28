@@ -69,6 +69,7 @@ import { DateText } from "@/components/ui/DateText";
 import { withCommas } from "@/lib/currency";
 import { repSlug } from "@/lib/team";
 import { EntityLink } from "@/components/ui/EntityLink";
+import { CompanyFan } from "@/components/ui/CompanyFan";
 import { customerHref, teammateHref } from "@/lib/entityHref";
 
 /**
@@ -207,6 +208,11 @@ export function ContractsModule({
   const [closedGroups, setClosedGroups] = useState<string[]>([]);
   const [showAllAwaiting, setShowAllAwaiting] = useState(false);
   const [awaitingQuery, setAwaitingQuery] = useState("");
+  /* THE QUEUE FOLDS AWAY (Anir, Sep 28: "I should be able to close that,
+     collapse it. Obviously, it should still say the logo and then the amount.
+     It should say that"). Shut, the header still carries who is waiting and
+     what it is worth, so folding it never hides the fact that it is there. */
+  const [awaitingOpen, setAwaitingOpen] = useState(true);
 
   const contracts = state.contracts;
   /* The schedule ON SCREEN is the schedule. A month parked past the visible
@@ -651,11 +657,52 @@ export function ContractsModule({
           always the part worth seeing first. */}
       {awaiting.length > 0 && (
         <section className="mt-4 rounded-xl border border-[rgba(180,83,9,0.3)] bg-white p-5 shadow-card">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-            <AlertTriangle size={15} strokeWidth={2} style={{ color: "var(--ink-amber)" }} />
-            Deals sitting at “Submitted to client”
-            <InfoHint text="These deals are marked “Submitted to client” and nobody has written the contract yet. That is the point where sales hands the deal to delivery: press Convert to contract on the deal. Every deal here is a handover still waiting." />
-          </h2>
+          {/* THE WHOLE ROW IS THE DROPDOWN (Anir, Sep 28: "the whole thing has
+              to be the dropdown. I should be able to click that whole top row,
+              not just the arrow"). A div with the button role, because the
+              hint inside it is itself a button and a button inside a button
+              breaks hydration; the hint keeps its own click. */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-expanded={awaitingOpen}
+            aria-label={awaitingOpen ? "Hide the deals waiting on a contract" : "Show the deals waiting on a contract"}
+            onClick={() => setAwaitingOpen((value) => !value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              setAwaitingOpen((value) => !value);
+            }}
+            className="-m-1 flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-2 rounded-lg p-1 transition-colors hover:bg-surface/70"
+          >
+            <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+              <AlertTriangle size={15} strokeWidth={2} style={{ color: "var(--ink-amber)" }} />
+              Deals sitting at “Submitted to client”
+              <span onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                <InfoHint text="These deals are marked “Submitted to client” and nobody has written the contract yet. That is the point where sales hands the deal to delivery: press Convert to contract on the deal. Every deal here is a handover still waiting." />
+              </span>
+            </h2>
+            {/* Shut, the header says who and how much. */}
+            {!awaitingOpen && (
+              <span className="flex min-w-0 items-center gap-2.5">
+                <CompanyFan
+                  companies={[...new Map(awaiting.map((d) => [d.customer, { name: d.customer, context: d.name }])).values()]}
+                  logoClassName="h-6 w-6 text-[8px]"
+                  max={5}
+                />
+                <span className="text-[13px] font-semibold tnum text-text-primary">
+                  {formatMoney(awaiting.reduce((sum, d) => sum + (d.value || 0), 0))}
+                </span>
+                <span className="text-[12.5px] text-text-secondary">
+                  {awaiting.length} {awaiting.length === 1 ? "deal" : "deals"} waiting
+                </span>
+              </span>
+            )}
+            <span aria-hidden="true" className="ml-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary">
+              <ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform", !awaitingOpen && "-rotate-90")} />
+            </span>
+          </div>
+          {awaitingOpen && <>
           {/* IT HOLDS A HUNDRED WITHOUT EATING THE PAGE (Anir, Sep 4:
               "assuming that there are 100 of these, I'm hoping it'll be in a
               container, right, and then they'll have a search bar").
@@ -737,6 +784,7 @@ export function ContractsModule({
                 : `Show all ${awaiting.length} waiting`}
             </button>
           )}
+          </>}
         </section>
       )}
 
