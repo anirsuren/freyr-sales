@@ -105,7 +105,7 @@ import {
 import { formatFromFilename } from "@/lib/offeringMaterials";
 import type { OfferingMaterial } from "@/lib/offeringMaterials";
 import { tint } from "@/lib/tint";
-import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
+import { CompanyLink, ModuleLink, PersonLink } from "@/components/ui/EntityLink";
 
 /**
  * Which mark a timeline event wears, read off the sentence the store wrote.
@@ -835,13 +835,13 @@ export function RequestDetail({
       </div>
       <p className="rise-in mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-text-tertiary">
         Requested by
-        <Link
+        <ModuleLink
           href={`/analytics/reps/${repSlug(r.requestedBy)}`}
           className="inline-flex items-center gap-1 font-semibold text-text-secondary hover:text-blue-primary hover:underline"
         >
           <Avatar name={r.requestedBy} className="h-[16px] w-[16px] text-[6px]" />
           {r.requestedBy}
-        </Link>
+        </ModuleLink>
         <span suppressHydrationWarning>on {stampedAt(r.requestedAt)}</span>
       </p>
 
@@ -977,16 +977,16 @@ export function RequestDetail({
                 title="What this is for"
                 description="The customer, and the opportunities and contacts this is for."
               />
-              {r.leadRef && <Link href={`/leads?lead=${encodeURIComponent(r.leadRef)}`} className="mt-4 ml-11 inline-flex max-w-[calc(100%-2.75rem)] items-center gap-2 rounded-lg border border-blue-subtle bg-blue-light/40 px-3 py-2 text-[12.5px] font-medium text-blue-primary hover:underline">
+              {r.leadRef && <ModuleLink href={`/leads?lead=${encodeURIComponent(r.leadRef)}`} className="mt-4 ml-11 inline-flex max-w-[calc(100%-2.75rem)] items-center gap-2 rounded-lg border border-blue-subtle bg-blue-light/40 px-3 py-2 text-[12.5px] font-medium text-blue-primary hover:underline">
                 <Avatar name={r.leadName || "Lead"} className="h-6 w-6 shrink-0 text-[8px]" />
                 <span className="truncate">From lead {r.leadName || "this lead"}</span>
                 <ArrowUpRight size={13} className="shrink-0" />
-              </Link>}
+              </ModuleLink>}
               <div className="mt-4 ml-11 grid gap-x-6 gap-y-5 rounded-xl border border-border-light bg-surface/35 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
                 <div className="min-w-0">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.07em] text-text-tertiary">Customer</p>
                   {r.customer.trim() ? (
-                    <Link
+                    <ModuleLink
                       target="_blank"
                       rel="noopener noreferrer"
                       href={companyDestination(r.customer, r.customerId)}
@@ -995,7 +995,7 @@ export function RequestDetail({
                       <CompanyLogo name={r.customer} className="h-5 w-5 shrink-0 text-[7px]" />
                       <span className="truncate group-hover/customer:text-blue-primary group-hover/customer:underline">{r.customer}</span>
                       <ArrowUpRight size={12} className="shrink-0 text-text-tertiary" />
-                    </Link>
+                    </ModuleLink>
                   ) : (
                     <CompanyLink name={r.customer} logoClassName="h-5 w-5 shrink-0 text-[7px]" className="flex gap-2 text-[13px] font-semibold text-text-primary" />
                   )}
@@ -1018,13 +1018,13 @@ export function RequestDetail({
                         </>
                       );
                       return id ? (
-                        <Link
+                        <ModuleLink
                           key={`${id}-${label}`}
                           href={`/opportunities/${id}`}
                           className="group/opportunity flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary hover:text-blue-primary"
                         >
                           {inner}
-                        </Link>
+                        </ModuleLink>
                       ) : (
                         <span
                           key={label}
@@ -1056,13 +1056,13 @@ export function RequestDetail({
                         </>
                       );
                       return contactId ? (
-                        <Link
+                        <ModuleLink
                           key={`${contactId}-${name}`}
                           href={`/contacts/${contactId}`}
                           className="group/contact flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary hover:text-blue-primary"
                         >
                           {inner}
-                        </Link>
+                        </ModuleLink>
                       ) : (
                         <span key={name} className="flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary">
                           {inner}
@@ -1106,7 +1106,7 @@ export function RequestDetail({
                           <span>{c.ref}</span>
                           <span aria-hidden="true">·</span>
                           {c.owner ? (
-                            <Link
+                            <ModuleLink
                               href={`/analytics/reps/${repSlug(c.owner)}`}
                               className="inline-flex min-w-0 items-center gap-1 text-text-secondary hover:text-blue-primary hover:underline"
                             >
@@ -1116,7 +1116,7 @@ export function RequestDetail({
                                 tooltip={`Owner: ${c.owner}`}
                               />
                               <span className="truncate">{c.owner}</span>
-                            </Link>
+                            </ModuleLink>
                           ) : (
                             <span>nobody on it yet</span>
                           )}
@@ -1353,7 +1353,7 @@ export function RequestDetail({
                   </p>
                 </div>
               ) : r.owner ? (
-                <Link
+                <ModuleLink
                   href={`/analytics/reps/${repSlug(r.owner)}`}
                   className="group/owner flex items-center gap-2.5"
                 >
@@ -1368,7 +1368,7 @@ export function RequestDetail({
                       </span>
                     )}
                   </span>
-                </Link>
+                </ModuleLink>
               ) : (
                 <p className="flex items-center gap-1.5 text-[12.5px] text-text-tertiary">
                   <CircleDashed size={14} strokeWidth={2} />

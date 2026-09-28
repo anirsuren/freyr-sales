@@ -82,13 +82,12 @@ const FOOTER_H = 44;
 export function FilterMenu({
   groups,
   onClearAll,
-  ariaLabel = "Filter offerings",
+  ariaLabel = "Filter",
 }: {
   groups: FilterGroup[];
   onClearAll: () => void;
-  /** What this particular button filters. The default is the page this
-   *  control started on; every other caller says its own noun, so a screen
-   *  reader on the Goal Master does not hear "offerings". */
+  /** What this particular button filters. The generic default stays accurate
+   * on pages that do not supply a page-specific noun. */
   ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);

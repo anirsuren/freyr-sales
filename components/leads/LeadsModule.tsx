@@ -556,6 +556,7 @@ export function LeadsModule({
         onQuery={setQuery}
         placeholder="Search leads by name, company or what they asked about"
         searchAriaLabel="Search leads"
+        filterAriaLabel="Filter leads"
         onClearAll={() => {
           setStatuses([]);
           setSources([]);

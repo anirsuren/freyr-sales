@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
+import type { ComponentProps, KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
 import { contactHref, customerHref, teammateHref } from "@/lib/entityHref";
+import { useCurrentDataMode, useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { canAccessModule } from "@/lib/moduleAccess";
+import { isReleasedPath } from "@/lib/release";
 
 /**
  * A FACE OR A LOGO YOU CAN CLICK.
@@ -71,7 +74,14 @@ export function EntityLink({
   children: ReactNode;
 }) {
   const router = useRouter();
-  if (!href) return <span className={className}>{children}</span>;
+  const { role } = useCurrentUser();
+  const dataMode = useCurrentDataMode();
+  // Solutions members may read the names referenced by their requests, but
+  // their role cannot open the customer, sales, or teammate modules. Keep the
+  // context visible without offering a link that redirects them away.
+  if (!href || (href.startsWith("/") && !isReleasedPath(href, dataMode)) ||
+      (role === "sol_member" && !canAccessModule(href, role)))
+    return <span className={inertLinkClassName(className)} onClick={(event) => event.stopPropagation()}>{children}</span>;
   if (nested) {
     const go = (e: MouseEvent | KeyboardEvent) => {
       e.preventDefault();
@@ -106,6 +116,25 @@ export function EntityLink({
       {children}
     </Link>
   );
+}
+
+/** A text link to another module that still shows its label to Solutions
+ * members when that destination is outside their permitted workspace. */
+function inertLinkClassName(className?: string): string {
+  const plain = className?.split(/\s+/).filter((token) =>
+    !token.startsWith("hover:") && !token.startsWith("group/") && token !== "text-blue-primary"
+  ).join(" ");
+  return cn(plain, "cursor-default [&_.lucide-arrow-up-right]:hidden");
+}
+
+export function ModuleLink({ href, children, className, ...props }: Omit<ComponentProps<typeof Link>, "href"> & { href: string }) {
+  const { role } = useCurrentUser();
+  const dataMode = useCurrentDataMode();
+  if ((href.startsWith("/") && !isReleasedPath(href, dataMode)) ||
+      (role === "sol_member" && !canAccessModule(href, role))) {
+    return <span className={inertLinkClassName(className)} onClick={(event) => event.stopPropagation()}>{children}</span>;
+  }
+  return <Link href={href} className={className} {...props}>{children}</Link>;
 }
 
 /**

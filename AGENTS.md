@@ -1919,3 +1919,7 @@ The first full-chat answer for Arjun Duarte at Halcyon Biosciences swapped follo
 ### Sep 25: Audit paused; real-mode scope correction
 
 The user stopped the recurring Mock Agent QA loop and clarified that Mock-only page changes are not a priority. The unfinished Voice-page edits were discarded. The committed Mock sample-pitch migration and its Mock-only test, Mock-only rep entity index, and three generated demo rep portraits were removed. The shared pitch wording and Agent/page fixes remain because they also execute in real mode, but their browser checks so far were primarily in Mock mode. Do not resume the old Voice cursor; future parity claims require checks in the real development workspace. The automation `freyr-mock-agent-qa` is paused. No deploy or push occurred.
+
+### Sep 28: Released-page tooltip, links and filter labels
+
+Shared tooltips now cancel pending hints on clicks and verify that clipped text is still hovered or keyboard-focused before showing it. The clipped-text tooltip uses contrasting ink in dark mode. Solutioning cross-module names stay visible without presenting inaccessible destinations as links to Solutions members. Released-page Filter controls have page-specific accessible names. Customer-size copy shows “Mid” while stored values remain unchanged. Typecheck, focused lint (pre-existing warnings only) and diff check passed; the released workspace was inspected in light and dark mode. The Solutions-member link behavior was checked in code but not in a signed-in Solutions-member browser session.

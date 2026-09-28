@@ -58,6 +58,13 @@ export function AutoTruncationTooltip() {
       active = element;
       timer = setTimeout(() => {
         if (active !== element || !document.body.contains(element)) return;
+        // A click or a reflow can move the label out from under a stationary
+        // pointer without a mouseout event. Never reveal a tip for a label
+        // that is no longer the thing being hovered or keyboard-focused.
+        if (!element.matches(":hover") && !element.closest(":focus-visible")) {
+          clear();
+          return;
+        }
         const rect = element.getBoundingClientRect();
         const below = rect.top < 90;
         // The card is centred on the element (translateX(-50%)), so it must
@@ -85,6 +92,7 @@ export function AutoTruncationTooltip() {
 
     const onHoverOut = (event: MouseEvent | PointerEvent) => {
       if (!active) return;
+      if (active.closest(":focus-visible")) return;
       const next = event.relatedTarget;
       if (next instanceof Node && active.contains(next)) return;
       const from = event.target;
@@ -92,13 +100,26 @@ export function AutoTruncationTooltip() {
     };
 
     const onFocusIn = (event: FocusEvent) => {
-      const target = event.target instanceof Element
-        ? event.target.closest(TRUNCATED_SELECTOR) ||
-          Array.from(event.target.querySelectorAll(TRUNCATED_SELECTOR)).find(
+      // Mouse clicks focus row controls too. Only keyboard focus may reveal a
+      // clipped descendant label; a click must never summon a different
+      // name tag elsewhere in the row.
+      if (!(event.target instanceof HTMLElement) || !event.target.matches(":focus-visible")) return;
+      const target = event.target.matches(TRUNCATED_SELECTOR)
+        ? event.target
+        : Array.from(event.target.querySelectorAll(TRUNCATED_SELECTOR)).find(
             (element) => element instanceof HTMLElement && isClipped(element)
-          ) || null
-        : null;
-      if (target instanceof HTMLElement) showFor(target);
+          ) || null;
+      if (target instanceof HTMLElement) {
+        clear();
+        showFor(target);
+      }
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!active) return;
+      if (active.closest(":focus-visible")) return;
+      const underPointer = document.elementFromPoint(event.clientX, event.clientY);
+      if (!underPointer || !active.contains(underPointer)) clear();
     };
 
     const onFocusOut = (event: FocusEvent) => {
@@ -116,6 +137,8 @@ export function AutoTruncationTooltip() {
     document.addEventListener("pointerover", onHoverIn, true);
     document.addEventListener("pointerout", onHoverOut, true);
     document.addEventListener("pointermove", onHoverIn, true);
+    document.addEventListener("pointermove", onPointerMove, true);
+    document.addEventListener("pointerdown", clear, true);
     document.addEventListener("focusin", onFocusIn, true);
     document.addEventListener("focusout", onFocusOut, true);
     window.addEventListener("scroll", clear, true);
@@ -128,6 +151,8 @@ export function AutoTruncationTooltip() {
       document.removeEventListener("pointerover", onHoverIn, true);
       document.removeEventListener("pointerout", onHoverOut, true);
       document.removeEventListener("pointermove", onHoverIn, true);
+      document.removeEventListener("pointermove", onPointerMove, true);
+      document.removeEventListener("pointerdown", clear, true);
       document.removeEventListener("focusin", onFocusIn, true);
       document.removeEventListener("focusout", onFocusOut, true);
       window.removeEventListener("scroll", clear, true);
@@ -139,7 +164,7 @@ export function AutoTruncationTooltip() {
   return createPortal(
     <div
       role="tooltip"
-      className="autotip-in pointer-events-none fixed z-[120] max-w-[min(280px,calc(100vw-24px))] whitespace-normal break-words text-pretty rounded-lg bg-text-primary px-3 py-2 text-[12px] font-normal leading-snug text-white shadow-lg"
+      className="autotip-in pointer-events-none fixed z-[120] max-w-[min(280px,calc(100vw-24px))] whitespace-normal break-words text-pretty rounded-lg bg-text-primary px-3 py-2 text-[12px] font-normal leading-snug text-[color:var(--white)] shadow-lg"
       style={{
         left: popup.x,
         top: popup.y,

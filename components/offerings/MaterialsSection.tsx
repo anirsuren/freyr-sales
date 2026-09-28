@@ -849,6 +849,7 @@ export function MaterialsSection({
             the row and pushed the view toggle and the "+" around; the two-layer
             menu is the shape Offerings, Targets and Solutioning already use. */}
         <FilterMenu
+          ariaLabel="Filter materials"
           onClearAll={() => {
             setFormats([]);
             setStages([]);

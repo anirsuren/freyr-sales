@@ -23,6 +23,7 @@ import type {
 } from "@/lib/offerings";
 import { listAccent } from "./filterPalette";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { displayCustomerSize } from "@/lib/utils";
 import {
   CUSTOMER_FAMILY_META,
   customerFamiliesPresent,
@@ -367,7 +368,7 @@ export function CustomerTypesManager({
                   onChange={(v) => setSize(v as CustomerSize)}
                   options={SIZES.map((sz) => ({
                     value: sz,
-                    label: sz,
+                    label: displayCustomerSize(sz),
                     color: SIZE_META[sz].color,
                     icon: SIZE_META[sz].icon,
                   }))}
@@ -394,7 +395,7 @@ export function CustomerTypesManager({
             </div>
             {typeExists && (
               <p className="text-[12px] text-text-tertiary -mt-1">
-                {family} · {size} already has a definition, saving will update
+                {family} · {displayCustomerSize(size)} already has a definition, saving will update
                 it.
               </p>
             )}
@@ -642,7 +643,7 @@ export function CustomerTypesManager({
                         style={{ color: sm.color, background: tint(sm.color, 8) }}
                       >
                         <SIcon size={11} strokeWidth={2} />
-                        {t.size}
+                        {displayCustomerSize(t.size)}
                       </span>
                     );
                   })()}

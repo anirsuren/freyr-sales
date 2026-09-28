@@ -255,9 +255,14 @@ export const OUTCOME_CHART_COLOR: Record<string, string> = {
 
 export const SIZE_TIER_LABEL: Record<string, string> = {
   small: "Small",
-  mid: "Mid-size",
+  mid: "Mid",
   large: "Large",
 };
+
+/** Keep legacy stored customer-type values intact while using the short UI label. */
+export function displayCustomerSize(size: string): string {
+  return size.replace(/\bmid[ -]?size\b/gi, "Mid");
+}
 
 export function titleCase(s: string): string {
   return s.replace(/\b\w/g, (c) => c.toUpperCase());

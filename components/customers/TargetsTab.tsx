@@ -318,6 +318,7 @@ export function TargetsTab({
               the two-layer Filter menu on Offerings in the first place. Same
               component, same two panes, same footer count. */}
           <FilterMenu
+            ariaLabel="Filter targets"
             onClearAll={() => {
               setDomains([]);
               setTierPick([]);

@@ -2331,6 +2331,7 @@ export function OpportunitiesBrowser({
               "Search owners…",
             ]}
             searchAriaLabel="Search opportunities"
+            filterAriaLabel="Filter opportunities"
             onClearAll={() => {
               setQuery("");
               setCustomerFilter([]);

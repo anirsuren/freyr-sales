@@ -54,6 +54,7 @@ export function Tooltip({
   const triggerRef = useRef<HTMLSpanElement>(null);
   const popupRef = useRef<HTMLSpanElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const anchorRef = useRef<Anchor | null>(null);
   const tooltipId = useId();
 
   const clearTimer = () => {
@@ -62,16 +63,28 @@ export function Tooltip({
   };
 
   const captureAnchor = () => {
+    timerRef.current = null;
     const trigger = triggerRef.current;
-    if (!trigger) return;
+    // A pending hover can outlive a click or a layout change. Only open while
+    // the trigger is still under the pointer or has keyboard focus.
+    if (!trigger || (!trigger.matches(":hover") && !trigger.querySelector(":focus-visible"))) {
+      if (anchorRef.current) {
+        anchorRef.current = null;
+        setAnchor(null);
+        setPosition(null);
+      }
+      return;
+    }
     const rect = trigger.getBoundingClientRect();
     setPosition(null);
-    setAnchor({
+    const nextAnchor = {
       left: rect.left,
       right: rect.right,
       top: rect.top,
       bottom: rect.bottom,
-    });
+    };
+    anchorRef.current = nextAnchor;
+    setAnchor(nextAnchor);
   };
 
   const show = (immediate = false) => {
@@ -83,7 +96,9 @@ export function Tooltip({
   };
 
   const hide = () => {
+    if (!timerRef.current && !anchorRef.current) return;
     clearTimer();
+    anchorRef.current = null;
     setAnchor(null);
     setPosition(null);
   };
@@ -126,12 +141,6 @@ export function Tooltip({
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
-    // A click ANYWHERE dismisses the hint (Anir, Aug 19: "I can't get rid of
-    // it") — except on its own trigger, where the press is about to refocus
-    // and re-show it, which would read as a flicker.
-    const closeOnPointerDown = (event: PointerEvent) => {
-      if (!triggerRef.current?.contains(event.target as Node)) close();
-    };
     /* THE STUCK-PILL GUARD (Anir, Aug 27: "I hovered over materials and
        literally this thing won't disappear"). mouseleave only fires when the
        POINTER moves out — when the ELEMENT moves out from under a stationary
@@ -146,18 +155,28 @@ export function Tooltip({
     window.addEventListener("resize", reposition);
     window.addEventListener("scroll", close, true);
     window.addEventListener("keydown", closeOnEscape);
-    window.addEventListener("pointerdown", closeOnPointerDown, true);
     window.addEventListener("mousemove", closeIfNotHovered, true);
     return () => {
       window.removeEventListener("resize", reposition);
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener("pointerdown", closeOnPointerDown, true);
       window.removeEventListener("mousemove", closeIfNotHovered, true);
     };
     // captureAnchor and hide deliberately read the latest refs/state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anchor]);
+
+  useEffect(() => {
+    // Also cancel hints that are still waiting for their hover delay. The
+    // visible-tooltip effect above cannot catch those because anchor is null.
+    const dismissOnPress = () => {
+      if (timerRef.current || anchorRef.current) hide();
+    };
+    window.addEventListener("pointerdown", dismissOnPress, true);
+    return () => window.removeEventListener("pointerdown", dismissOnPress, true);
+    // hide only closes this component's state and timer refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => () => clearTimer(), []);
 

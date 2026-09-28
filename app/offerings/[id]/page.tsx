@@ -55,7 +55,7 @@ import { getDb } from "@/lib/db";
 import { formatMoney } from "@/lib/pipeline";
 import { REVENUE_TYPE_META } from "@/lib/revenue";
 import { reportForOffering } from "@/lib/revenue";
-import { cn } from "@/lib/utils";
+import { cn, displayCustomerSize } from "@/lib/utils";
 import {
   getOffering,
   hydrateOffering,
@@ -925,7 +925,7 @@ export default async function OfferingDetailPage({
                                         const TierIcon = sizeStyle(c.size).icon;
                                         return <TierIcon size={10} strokeWidth={2.3} aria-hidden="true" />;
                                       })()}
-                                      {c.size}
+                                      {displayCustomerSize(c.size)}
                                     </Link>
                                   </Tooltip>
                                 ))}

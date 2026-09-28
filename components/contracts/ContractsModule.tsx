@@ -798,6 +798,7 @@ export function ContractsModule({
         onQuery={setQuery}
         placeholder="Search by reference, contract, customer or offering"
         searchAriaLabel="Search contracts"
+        filterAriaLabel="Filter contracts"
         onClearAll={() => {
           setStatuses([]);
           setGroupBy("none");

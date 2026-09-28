@@ -78,7 +78,7 @@ import { DateText } from "@/components/ui/DateText";
 import { repSlug } from "@/lib/team";
 import { companyDestination } from "@/lib/companyDestination";
 import { formatFromFilename, type OfferingMaterial } from "@/lib/offeringMaterials";
-import { CompanyLink, ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { CompanyLink, ENTITY_NAME, EntityLink, ModuleLink, PersonLink } from "@/components/ui/EntityLink";
 import { contactHref, customerHref, teammateHref } from "@/lib/entityHref";
 
 /**
@@ -1327,7 +1327,7 @@ function RequestRow({
       </td>
       <td className="px-4 py-3.5">
         {r.opportunityIds.length === 1 ? (
-          <Link
+          <ModuleLink
             href={`/opportunities/${r.opportunityIds[0]}`}
             onClick={(event) => event.stopPropagation()}
             className="inline-block max-w-full text-[12px] text-text-secondary transition-colors hover:text-blue-primary hover:underline"
@@ -1340,7 +1340,7 @@ function RequestRow({
                 {r.opportunityLabels[0]}
               </span>
             )}
-          </Link>
+          </ModuleLink>
         ) : r.opportunityIds.length > 1 ? (
           <span className="text-[12px] text-text-secondary">
             {r.opportunityIds.length} opportunities
@@ -1351,7 +1351,7 @@ function RequestRow({
       </td>
       <td className="px-4 py-3.5">
         {r.customer.trim() ? (
-          <Link
+          <ModuleLink
             href={companyDestination(r.customer, r.customerId)}
             onClick={(event) => event.stopPropagation()}
             className="group/customer inline-flex min-w-0 items-center gap-1.5"
@@ -1360,7 +1360,7 @@ function RequestRow({
             <span className="min-w-0 break-words text-[12.5px] text-text-primary transition-colors group-hover/customer:text-blue-primary group-hover/customer:underline">
               {r.customer}
             </span>
-          </Link>
+          </ModuleLink>
         ) : (
           <span className="flex min-w-0 items-center gap-1.5">
             <CompanyLogo name={r.customer} className="h-5 w-5 shrink-0 text-[7px]" />
@@ -1369,7 +1369,7 @@ function RequestRow({
         )}
       </td>
       <td className="px-4 py-3.5">
-        <Link
+        <ModuleLink
           href={`/analytics/reps/${repSlug(r.requestedBy)}`}
           onClick={(event) => event.stopPropagation()}
           className="group/person inline-flex max-w-full min-w-0 items-center gap-1.5"
@@ -1378,11 +1378,11 @@ function RequestRow({
           <span className="block truncate text-[12px] text-text-primary transition-colors group-hover/person:text-blue-primary group-hover/person:underline">
             {r.requestedBy}
           </span>
-        </Link>
+        </ModuleLink>
       </td>
       <td className="px-4 py-3.5">
         {r.owner ? (
-          <Link
+          <ModuleLink
             href={`/analytics/reps/${repSlug(r.owner)}`}
             onClick={(event) => event.stopPropagation()}
             className="group/person inline-flex max-w-full min-w-0 items-center gap-1.5"
@@ -1391,7 +1391,7 @@ function RequestRow({
             <span className="min-w-0 break-words text-[12px] text-text-primary transition-colors group-hover/person:text-blue-primary group-hover/person:underline">
               {r.owner}
             </span>
-          </Link>
+          </ModuleLink>
         ) : fulfiller && r.status !== "completed" ? (
           <button
             type="button"
@@ -1412,7 +1412,7 @@ function RequestRow({
         {preparedBy === "Not started" ? (
           <span className="text-[12px] text-text-tertiary">Not started</span>
         ) : (
-          <Link
+          <ModuleLink
             href={`/analytics/reps/${repSlug(preparedBy)}`}
             onClick={(event) => event.stopPropagation()}
             className="group/person inline-flex max-w-full min-w-0 items-center gap-1.5"
@@ -1421,7 +1421,7 @@ function RequestRow({
             <span className="truncate text-[12px] text-text-primary transition-colors group-hover/person:text-blue-primary group-hover/person:underline">
               {preparedBy}
             </span>
-          </Link>
+          </ModuleLink>
         )}
       </td>
       <td className="px-4 py-3.5 text-[12px] text-text-secondary tnum">
@@ -1620,10 +1620,10 @@ function RequestPanel({
           <div className="min-w-0">
             <span className="block text-[9.5px] font-bold uppercase tracking-[0.06em] text-text-tertiary">Customer</span>
             {r.customer.trim() ? (
-              <Link href={companyDestination(r.customer, r.customerId)} className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary hover:text-blue-primary hover:underline">
+              <ModuleLink href={companyDestination(r.customer, r.customerId)} className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary hover:text-blue-primary hover:underline">
                 <CompanyLogo name={r.customer} className="h-[18px] w-[18px] shrink-0 text-[6px]" />
                 <span className="truncate">{r.customer}</span>
-              </Link>
+              </ModuleLink>
             ) : (
               <p className="mt-1.5 text-[12px] text-text-tertiary">Not linked</p>
             )}
@@ -1638,7 +1638,7 @@ function RequestPanel({
                   const opportunityId = r.opportunityIds.length === r.opportunityLabels.length ? r.opportunityIds[index] : undefined;
                   const content = <><Briefcase size={12} strokeWidth={2} className="shrink-0 text-text-tertiary" /><span className="truncate">{label}</span></>;
                   return opportunityId ? (
-                    <Link key={`${opportunityId}-${label}`} href={`/opportunities/${opportunityId}`} className="flex min-w-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary hover:text-blue-primary hover:underline">{content}</Link>
+                    <ModuleLink key={`${opportunityId}-${label}`} href={`/opportunities/${opportunityId}`} className="flex min-w-0 items-center gap-1.5 text-[12px] font-semibold text-text-primary hover:text-blue-primary hover:underline">{content}</ModuleLink>
                   ) : (
                     <p key={label} className="flex min-w-0 items-center gap-1.5 text-[12px] text-text-secondary">{content}</p>
                   );

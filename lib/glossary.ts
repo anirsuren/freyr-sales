@@ -78,15 +78,15 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   // --- deal size -----------------------------------------------------------
   size_tier: {
     term: "Deal size",
-    def: "How big this account is: Small, Mid-size or Large. Use it to filter down to the deals that matter most.",
+    def: "How big this account is: Small, Mid or Large. Use it to filter down to the deals that matter most.",
   },
   size_small: {
     term: "Small",
     def: "A smaller account: lower deal value, usually quicker to close.",
   },
   size_mid: {
-    term: "Mid-size",
-    def: "A mid-size account: a solid, meaningful deal.",
+    term: "Mid",
+    def: "A mid-tier account: a solid, meaningful deal.",
   },
   size_large: {
     term: "Large",

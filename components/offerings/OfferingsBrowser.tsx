@@ -1256,6 +1256,7 @@ export function OfferingsBrowser({
             over-coloured" complaint, and they were on screen whether or not
             anybody was filtering. */}
         <FilterMenu
+          ariaLabel="Filter offerings"
           onClearAll={clearAll}
           groups={[
             {

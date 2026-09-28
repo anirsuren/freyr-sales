@@ -444,6 +444,7 @@ export function FdlComponentsBrowser({
           onQuery={setQuery}
           placeholder="Search components…"
           searchAriaLabel="Search components"
+          filterAriaLabel="Filter components"
           onClearAll={() => {
             setQuery("");
             setTypeFilter("");

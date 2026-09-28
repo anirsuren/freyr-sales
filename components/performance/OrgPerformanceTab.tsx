@@ -1372,6 +1372,7 @@ export function OrgPerformanceTab({
               same bridge FDL Components uses: the last pick wins, and an empty
               array is "all". */}
           <FilterMenu
+            ariaLabel="Filter performance"
             onClearAll={() => {
               setTypeFilter("all");
               setPaceFilter("all");
