@@ -214,6 +214,13 @@ export function toWhatsAppText(markdown: string, publicOrigin: string): string {
   text = text.replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, (_match, label: string, url: string) => {
     const target = url.startsWith("/") ? `${origin}${url}` : url;
     const clean = label.trim();
+    /* APP LINKS DON'T CROSS TO THE PHONE (Anir, Sep 28: "there's no point for
+       the WhatsApp agent to send links... he's not going to click it. It's on
+       his computer, and if he is on his computer, he's just going to use the
+       agent"). The record's NAME stays; the URL goes. When the person wants
+       the thing itself, the attachment pipeline sends the file. External web
+       links still pass through: those do open on a phone. */
+    if (url.startsWith("/") || target.startsWith(origin)) return clean || target;
     return clean === url || clean === target ? target : `${clean} (${target})`;
   });
   text = text.replace(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/gm, "");
