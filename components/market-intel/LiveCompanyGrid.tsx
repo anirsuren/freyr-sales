@@ -128,7 +128,7 @@ function TableStoryTicker({ card }: { card: CompanyCard }) {
         ) : (
           <p className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.055em] text-text-tertiary">{storyOutlet}</p>
         )}
-        {storyHref ? <a href={storyHref} target="_blank" rel="noreferrer" className="group/story block overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary transition-colors hover:text-blue-primary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}<ArrowUpRight size={12} className="ml-1 inline-block align-text-top opacity-0 transition-opacity group-hover/story:opacity-100" /></a> : <p className="overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">{story.title}</p>}
+        {storyHref ? <a href={storyHref} target="_blank" rel="noreferrer" className="group/story block h-[35px] overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary transition-colors hover:text-blue-primary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">{story.title}<ArrowUpRight size={12} className="ml-1 inline-block align-text-top opacity-0 transition-opacity group-hover/story:opacity-100" /></a> : <p className="h-[35px] overflow-hidden text-[12px] font-medium leading-[1.45] text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">{story.title}</p>}
       </div>
       {stories.length > 1 && (
         <div className="mt-1.5 flex items-center gap-1.5" aria-label={`Story ${index + 1} of ${stories.length} for ${card.name}`}>
@@ -458,12 +458,18 @@ export function LiveCompanyGrid({
   const untaggedCount = [...cards.map((c) => c.id), ...pending.map((c) => c.id)].filter(
     (id) => (divisions[id] ?? []).length === 0
   ).length;
-  const listColumns = [
-    "260px", "135px", "145px", "minmax(410px,1fr)",
-    ...(group === "customer" ? ["130px"] : []),
-    ...(isAdmin ? ["125px"] : []),
-    "115px",
-  ].join(" ");
+  // Track template plus each track's minimum px, so the wrapper's min-width
+  // can be derived instead of hand-tuned: a floor that undercounts the tracks
+  // lets the last column spill past the header band and row borders.
+  const listTracks: Array<[string, number]> = [
+    ["260px", 260], ["135px", 135], ["145px", 145], ["minmax(410px,1fr)", 410],
+    ...(group === "customer" ? [["130px", 130] as [string, number]] : []),
+    ...(isAdmin ? [["125px", 125] as [string, number]] : []),
+    ["115px", 115],
+  ];
+  const listColumns = listTracks.map(([track]) => track).join(" ");
+  /** gap-5 between tracks + px-5 on both sides. */
+  const listMinWidth = listTracks.reduce((sum, [, px]) => sum + px, 0) + (listTracks.length - 1) * 20 + 40;
 
   return (
     <>
@@ -566,7 +572,7 @@ export function LiveCompanyGrid({
         </div>
       ) : layout === "table" ? (
         <div key="company-list" className="mi-view-list-in overflow-x-auto rounded-2xl border border-border-light bg-white shadow-[0_12px_36px_-32px_rgba(15,23,42,0.45)]">
-          <div className={cn("min-w-[1120px]", group === "customer" && "min-w-[1270px]", isAdmin && "min-w-[1390px]")}>
+          <div style={{ minWidth: listMinWidth }}>
             <div
               className="grid items-center gap-5 border-b border-border-light bg-surface/80 px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-tertiary"
               style={{ gridTemplateColumns: listColumns }}
