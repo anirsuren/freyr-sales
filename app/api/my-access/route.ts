@@ -162,9 +162,21 @@ export async function GET(req: NextRequest) {
     "offerings",
     "digital_components",
   ]);
+  /**
+   * THE CAP IS ON CREATING, NOT ON CHANGING (found Sep 29, granting BO Member
+   * to a BD Member).
+   *
+   * canManageOfferings() gates making a NEW offering and deleting one. Editing
+   * an existing offering asks moduleWriteRefusal and then whether you are an
+   * owner of that offering, which has nothing to do with this check. Capping
+   * the whole answer at View therefore told a BO Member "You can look, but not
+   * change" on a page where they may edit every offering they own. Cap at Edit
+   * instead: it still stops the badge promising Create to somebody the server
+   * would refuse, which is what it was written for.
+   */
   const moduleLevel: Access =
     ROLE_GATED_MODULES.has(key) && !(await canManageOfferings())
-      ? weaker(fromTable, "view")
+      ? weaker(fromTable, "edit")
       : fromTable;
 
   /**
