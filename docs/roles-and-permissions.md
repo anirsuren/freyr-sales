@@ -204,6 +204,28 @@ Modules their row grants and the code refuses: Agent (edit), Offerings (view), D
 **This is Anir's call to settle**, not something to quietly change: either the
 table stops promising those modules, or the rule stops overruling it.
 
+## What View all actually does today
+
+Nothing, on a record. Since Suren's Sep 1 answer, every record in a module you
+can open is already at least viewable, so holding View all does not widen what
+you see. Measured on Sep 29: a BD Member with and without the privilege sees
+the same 19 customers and 104 opportunities, which is also what an admin sees.
+The privilege is still resolved everywhere and `lib/privileges.ts` keeps it in
+the signature, so narrowing records back to "only View all sees other people's"
+is a one-line change rather than an excavation. **Open question for Anir**,
+carried over from Sep 1.
+
+## A record nobody is on belongs to everybody
+
+If no owner, member or group has been recorded on a customer or an opportunity,
+it answers with the module row instead of the record rule. That is deliberate:
+all sixteen real customer accounts read Unassigned, and gating them would have
+frozen every account in the company the day the rule shipped. The moment
+somebody is put on a record, it starts gating.
+
+So a BD Member IS correctly offered "Edit about this account" on an unassigned
+account. It begins refusing them once that account has an owner.
+
 ## Things worth knowing
 
 - **Solutioning requests, Submissions and Presentations are three separate
@@ -213,18 +235,9 @@ table stops promising those modules, or the rule stops overruling it.
   but the Solutioning sub-items (Solutioning requests, Submissions,
   Presentations, Meetings) are drawn without asking, unlike the Opportunities
   sub-items which do ask. No role in the table currently hits that gap.
-- **Every agent action is checked on the server when it runs.** Audited all 55
-  on Sep 29 with `scripts/qa/actionguards.mjs`: 52 execute by calling one of
-  the app's own routes, and every one of those routes asks a module or record
-  permission question of its own. The other three (Set a follow-up, Log a
-  touch, Save a draft) run in-process and are checked only when the action is
-  PROPOSED, so a permission removed between proposing and confirming would not
-  be noticed. Two of the 52, Star a company and Take a company off your list,
-  reach a route that only verifies who you are, which is right: that store
-  holds one list per person and writes only to the caller's own row.
-- **The agent cannot be used by somebody who may not open it.** A Solutioning
-  Member is refused by `/api/agent/entities` and `/api/agent/converse` with
-  403, so going around the page buys nothing.
+- **Three agent actions run without a route**: Set a follow-up, Log a touch and
+  Save a draft. They are checked when proposed, and unlike every other action
+  there is no second check when they run.
 - **Creating is decided by whether the save will create**, not by whether an id
   was supplied. Leads and Contracts both used to ask the weaker question, so a
   junk id let an edit-only role start new records; fixed Sep 29.
