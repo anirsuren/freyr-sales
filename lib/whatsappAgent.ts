@@ -209,11 +209,27 @@ const IMAGE_CAP = 5 * 1024 * 1024;
 const VIDEO_CAP = 16 * 1024 * 1024;
 const DOC_CAP = 60 * 1024 * 1024;
 
-function wantsFileIn(text: string): boolean {
-  return (
-    /\b(send|share|attach|forward|give|get|download|drop)\b/i.test(text) &&
-    /\b(file|files|doc|docs|document|documents|deck|decks|presentation|presentations|slides?|pdf|brochure|one[- ]?pager|material|materials|video|videos|spreadsheet|excel|sheet)\b/i.test(text)
-  );
+/**
+ * ASKED FOR, OR PROMISED (Anir, Sep 29).
+ *
+ * This used to demand a send VERB plus a file NOUN, so "can u send that one
+ * here", right after the agent named a deck, matched nothing and no file went
+ * out. In a thread the thing being asked for is usually a pronoun, so the verb
+ * alone is the right read of the question.
+ *
+ * The agent's own sentence counts too. Now that it knows it can attach, it
+ * answers "I am sending both presentations over to you now" to a plain "are
+ * there any slides" — a promise with no send verb in the question. Delivering
+ * on what it just said is the whole point; a reply that merely mentions a
+ * material still sends nothing.
+ */
+function wantsFileIn(userText: string, replyMarkdown: string): boolean {
+  const asked = /\b(send|sent|share|attach|forward|give|gimme|get|download|drop|pull up|upload)\b/i.test(userText);
+  const promised =
+    /\b(sending|i'?ll send|i am sending|attaching|attached|here (it|they) (is|are)|on its way|coming over)\b/i.test(
+      replyMarkdown
+    );
+  return asked || promised;
 }
 
 type ReplyMaterialLink = { offeringId: string; materialId: string; label: string };
@@ -263,7 +279,7 @@ async function sendReplyAttachments(args: {
     else console.log("[whatsapp] chart sent", { to: `...${to.slice(-4)}`, type: spec.type, title: spec.title });
   }
 
-  if (!wantsFileIn(userText)) return;
+  if (!wantsFileIn(userText, replyMarkdown)) return;
   const links = materialLinksIn(replyMarkdown);
   if (links.length === 0 || links.length > ATTACH_LIMIT) return;
 

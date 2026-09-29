@@ -702,7 +702,22 @@ export function ContractsModule({
               <ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform", !awaitingOpen && "-rotate-90")} />
             </span>
           </div>
-          {awaitingOpen && <>
+          {/* IT FOLDS, IT DOES NOT BLINK (Anir, Sep 29: "make this a nice
+              animation for the dropdown"). The queue was a conditional
+              render, so the rows appeared and vanished between one frame and
+              the next. The row track animates to the content's own height,
+              which is what lets a list of unknown length open smoothly, and
+              the rows are still unmounted from the reading order when it is
+              shut. */}
+          <div
+            className={cn(
+              "grid motion-safe:transition-[grid-template-rows,opacity] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
+              awaitingOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+            )}
+            aria-hidden={!awaitingOpen}
+            inert={!awaitingOpen}
+          >
+          <div className="min-h-0 overflow-hidden">
           {/* IT HOLDS A HUNDRED WITHOUT EATING THE PAGE (Anir, Sep 4:
               "assuming that there are 100 of these, I'm hoping it'll be in a
               container, right, and then they'll have a search bar").
@@ -784,7 +799,8 @@ export function ContractsModule({
                 : `Show all ${awaiting.length} waiting`}
             </button>
           )}
-          </>}
+          </div>
+          </div>
         </section>
       )}
 

@@ -1762,8 +1762,22 @@ const ACTION_INTENT =
  * can open. Facts and permissions are unchanged: it is the same brain behind
  * the same tools for the same signed-in person.
  */
+/**
+ * WHAT THIS CHANNEL CAN ACTUALLY DO (Anir, Sep 29: "I literally explicitly
+ * told you I need to be able to do this").
+ *
+ * The agent refused to send a deck over WhatsApp, saying it could not send
+ * files, while the bridge was sitting there ready to send it. This prompt was
+ * why: it banned chart blocks and never mentioned attachments, so the model
+ * believed the channel was text-only and sent people to the app instead. The
+ * bridge renders any chart block to an image and uploads any sales material
+ * the answer links, so both are now stated as capabilities.
+ */
 const WHATSAPP_CHANNEL_PRESENTATION =
-  "\nCHANNEL: WhatsApp on a phone. Keep the whole answer under 120 words unless the person asks for detail. No tables, no headings, no chart blocks, no more than three links. Short paragraphs or a short bullet list. Numbers and names exactly as the tools returned them.";
+  "\nCHANNEL: WhatsApp on a phone. Keep the whole answer under 120 words unless the person asks for detail. No tables, no headings. Short paragraphs or a short bullet list. Numbers and names exactly as the tools returned them." +
+  "\nYOU CAN SEND FILES HERE. When the person asks for a document, deck, brochure, one-pager, video or any sales material, link that material with its canonical destination and say you are sending it. The file itself is delivered into this chat. NEVER say you cannot send or download files, and never tell somebody to open the app to get a file they just asked you for. Link at most three materials in one answer, because only the linked ones are sent; if there are more, name the ones you are sending." +
+  "\nYOU CAN SEND CHARTS HERE. A ```chart block is drawn and delivered as an image, so use one when a number is easier seen than read. Do not describe the chart's JSON, and keep a short sentence of context beside it." +
+  "\nApp links are stripped from this channel, so name a record in words rather than relying on the link text to carry meaning.";
 
 /** Still no canned answer, just the truth about why there is none. */
 function outageMessage(deadline: AbortSignal): string {
