@@ -214,9 +214,25 @@ export function LiveCompanyCard({
             key={index}
             className="mi-ticker-in pr-12 text-[12px] leading-snug text-text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden"
           >
-            <span className="font-semibold text-text-primary">
-              {outletName(story.source, story.url)}:
-            </span>{" "}
+            {/* THE SOURCE IS ITS OWN DOOR (Anir, Sep 29: "I can click on the
+                source, or I can click on the article. It should be two
+                separate things"). The outlet was plain text in front of the
+                only link on the row. */}
+            {safeHref(story.url) ? (
+              <a
+                href={safeHref(story.url) as string}
+                target="_blank"
+                rel="noreferrer"
+                title={`Open this story on ${outletName(story.source, story.url)}`}
+                className="font-semibold text-text-primary no-underline transition-colors hover:text-blue-primary hover:underline hover:underline-offset-2 focus-visible:text-blue-primary focus-visible:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+              >
+                {outletName(story.source, story.url)}:
+              </a>
+            ) : (
+              <span className="font-semibold text-text-primary">
+                {outletName(story.source, story.url)}:
+              </span>
+            )}{" "}
             {safeHref(story.url) ? <a href={safeHref(story.url) as string} target="_blank" rel="noreferrer" className="text-inherit no-underline transition-colors hover:text-blue-primary hover:underline hover:decoration-blue-primary/30 hover:underline-offset-2 focus-visible:text-blue-primary focus-visible:underline focus-visible:underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
               {story.title}
             </a> : story.title}
@@ -323,9 +339,21 @@ export function LiveCompanyCard({
           <li key={i} className="flex gap-2 text-[12px] leading-snug">
             <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#0F766E]" />
             <span className="min-w-0">
-              <span className="font-semibold text-text-primary">
-                {outletName(item.source, item.url)}:
-              </span>{" "}
+              {safeHref(item.url) ? (
+                <a
+                  href={safeHref(item.url) as string}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`Open this story on ${outletName(item.source, item.url)}`}
+                  className="font-semibold text-text-primary no-underline transition-colors hover:text-blue-primary hover:underline hover:underline-offset-2 focus-visible:text-blue-primary focus-visible:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+                >
+                  {outletName(item.source, item.url)}:
+                </a>
+              ) : (
+                <span className="font-semibold text-text-primary">
+                  {outletName(item.source, item.url)}:
+                </span>
+              )}{" "}
               {safeHref(item.url) ? <a href={safeHref(item.url) as string} target="_blank" rel="noreferrer" className="text-text-secondary no-underline transition-colors hover:text-blue-primary hover:underline hover:decoration-blue-primary/30 hover:underline-offset-2 focus-visible:text-blue-primary focus-visible:underline focus-visible:underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
                 {item.title}
               </a> : <span className="text-text-secondary">{item.title}</span>}
