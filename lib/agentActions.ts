@@ -837,13 +837,25 @@ export const ACTIONS: ActionDef[] = [
       }
       /* The record-team route's own two questions, asked now: may they change this module, and may they change THIS record (an unclaimed one accepts its first owner). Same words as the route, so the answer does not change between proposal and YES. */
       const owningModule = type === "customer" ? "/customers" : "/opportunities";
+      /* A DEAL HANDS OVER ITS OWNER TOO (Sep 29). This passed a bare { id }
+         for an opportunity, and a record with no owner fields reads as
+         unclaimed, which accepts the first person to take it. So this action
+         would have let a BD Member put themselves on somebody else's deal and
+         inherit the edit rights ownership carries, through the agent rather
+         than the UI. The same fault, and the same fix, as the record-team
+         route it copies its two questions from. */
       const scoped =
         type === "customer"
           ? await getDb()
               .customers.get(id)
               .then((c) => (c ? { id: c.id, owner: c.owner, owner_user_id: c.owner_user_id, created_by: c.created_by } : { id }))
               .catch(() => ({ id }))
-          : { id };
+          : await readOpportunities()
+              .then((state) => {
+                const deal = state.opportunities.find((o) => o.id === id);
+                return deal ? { id, owner: deal.owner ?? null } : { id };
+              })
+              .catch(() => ({ id }));
       const denied = await recordWriteRefusal(owningModule, scoped);
       if (denied) return { error: denied };
       const team = teamFor(await readRecordTeams(), type, id);
