@@ -173,9 +173,20 @@ export async function POST(req: NextRequest) {
   const op = String(body.op ?? "");
   try {
     if (op === "save") {
-      const wasId = String(body.contract?.id ?? "");
-      /* No id means a new contract, and only an owner starts one. */
-      if (!wasId) {
+      const wasId = String(body.contract?.id ?? "").trim();
+      /* No id means a new contract, and only an owner starts one.
+ 
+         AN ID THAT MATCHES NOTHING IS ALSO A NEW CONTRACT. This asked only
+         whether an id was PRESENT, while saveContract mints a fresh id and a
+         fresh reference whenever the given id matches nothing. So any junk id
+         walked past the create gate, and a member who may only edit could file
+         a new contract AND burn a reference number, which the comment on that
+         field calls the only link to the delivery platform. Same fault found
+         in the leads route on Sep 29; the question is whether this save will
+         CREATE. */
+      const makesNewContract =
+        !wasId || !(await readContracts()).contracts.some((existing) => existing.id === wasId);
+      if (makesNewContract) {
         const refusal = await moduleCreateRefusal("/contracts");
         if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       }

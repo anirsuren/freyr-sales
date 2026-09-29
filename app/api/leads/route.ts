@@ -71,8 +71,20 @@ export async function POST(req: NextRequest) {
     if (op === "save") {
       /* SAVE IS BOTH VERBS. A lead with no id is a new one, and starting one is
          the owner's right; correcting an existing one is the member's (Suren,
-         Aug 29: "owner can create, member can edit"). */
-      if (!String((body.lead as { id?: string } | undefined)?.id ?? "")) {
+         Aug 29: "owner can create, member can edit").
+ 
+         AN ID THAT MATCHES NOTHING IS STILL A NEW LEAD. This asked only
+         whether an id was PRESENT, while saveLead mints a fresh id whenever
+         the one it was given matches no existing lead. So any junk id walked
+         straight past the create gate and a member who may only edit could
+         make new leads at will. Found Sep 29 by posting a made-up id as a BD
+         Member and getting a 200 back. The question is whether this save will
+         CREATE, so that is what it asks now. */
+      const requestedLeadId = String((body.lead as { id?: string } | undefined)?.id ?? "").trim();
+      const makesNewLead =
+        !requestedLeadId ||
+        !(await readLeads()).leads.some((existing) => existing.id === requestedLeadId);
+      if (makesNewLead) {
         const refusal = await moduleCreateRefusal("/leads");
         if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       }
