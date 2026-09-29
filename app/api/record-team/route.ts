@@ -7,6 +7,41 @@ import {
   recordWriteRefusal,
 } from "@/lib/moduleAccessServer";
 import { getDb } from "@/lib/db";
+import { readOpportunities } from "@/lib/opportunities";
+import { readMeetings } from "@/lib/meetings";
+import { readSolutioning } from "@/lib/solutioning";
+
+/** The real owner of a record, so the record-level check has something to read. */
+async function recordOwnership(
+  type: TeamedRecord,
+  id: string
+): Promise<{ id: string; owner?: string | null; owner_user_id?: string | null; created_by?: string | null }> {
+  try {
+    if (type === "customer") {
+      const c = await getDb().customers.get(id);
+      return c
+        ? { id: c.id, owner: c.owner, owner_user_id: c.owner_user_id, created_by: c.created_by }
+        : { id };
+    }
+    if (type === "opportunity") {
+      const deal = (await readOpportunities()).opportunities.find((o) => o.id === id);
+      return deal ? { id, owner: deal.owner ?? null } : { id };
+    }
+    if (type === "meeting") {
+      const meeting = (await readMeetings()).meetings.find((m) => m.id === id);
+      return meeting ? { id, owner: meeting.owner ?? null } : { id };
+    }
+    if (type === "submission" || type === "presentation" || type === "solutionRequest") {
+      const request = (await readSolutioning()).requests.find((r) => r.id === id);
+      return request ? { id, owner: request.owner ?? null } : { id };
+    }
+  } catch {
+    /* A store that will not answer must not become a way in: fall through to
+       the bare id, which recordWriteRefusal reads as unclaimed only when the
+       record genuinely has nobody on it. */
+  }
+  return { id };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -63,22 +98,19 @@ export async function POST(req: NextRequest) {
    * for a record nobody is on.
    */
   {
-    const record =
-      type === "customer"
-        ? await getDb()
-            .customers.get(id)
-            .then((c) =>
-              c
-                ? {
-                    id: c.id,
-                    owner: c.owner,
-                    owner_user_id: c.owner_user_id,
-                    created_by: c.created_by,
-                  }
-                : { id }
-            )
-            .catch(() => ({ id }))
-        : { id };
+    /**
+     * EVERY TYPE HANDS OVER ITS REAL OWNER, NOT JUST A CUSTOMER.
+     *
+     * Only `customer` was loaded; every other type was passed as a bare
+     * `{ id }`. A record with no owner fields reads as UNCLAIMED, and an
+     * unclaimed record accepts the first person to take it, so this route
+     * handed any BD Member ownership of ANY opportunity, solutioning record or
+     * meeting, and with it the edit rights that ownership carries. Proved on
+     * Sep 29 by posting seed-opp-3, owned by Suren, as a BD Member: 200, and
+     * the deal was theirs. The escalation the comment above describes was real
+     * for four of the six types it guards.
+     */
+    const record = await recordOwnership(type, id);
     const denied = await recordWriteRefusal(owningModule, record);
     if (denied) return NextResponse.json({ error: denied }, { status: 403 });
   }
