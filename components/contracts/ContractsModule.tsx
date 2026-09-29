@@ -774,7 +774,14 @@ export function ContractsModule({
                 <span className="shrink-0 text-[13px] font-semibold tnum text-text-primary">
                   {formatMoney(d.value)}
                 </span>
-                {canWrite && (
+                {/* STARTING ONE IS A CREATE (Anir, Sep 29: "if there's a
+                    button that's there that another person can click, or maybe
+                    they can't click it, so the button's not supposed to even
+                    be there"). This asked the WRITE question while the button
+                    opens the editor for a brand new contract, so a BD Member,
+                    who may correct a contract but not start one, was offered
+                    it on every waiting deal and got a 403 on save. */}
+                {canCreate && (
                   <button
                     type="button"
                     onClick={() => openEditor(undefined, d)}
