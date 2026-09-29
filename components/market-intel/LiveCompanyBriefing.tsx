@@ -438,15 +438,35 @@ export function LiveCompanyBriefing({
   const signalCounts: Partial<Record<SignalId, number>> = {};
   for (const i of base) for (const kind of kindsOf(i)) signalCounts[kind] = (signalCounts[kind] ?? 0) + 1;
 
+  /**
+   * THE NUMBER IS WHAT YOU WILL SEE (Anir, Sep 29, on Sources: "I want to see
+   * all the news. I want to be able to filter by that. Same thing for company
+   * website").
+   *
+   * These counted ARTICLES while the briefing lists STORIES, and one story
+   * carried by several outlets is one card with the rest folded into "other
+   * sources". So News read 7 and showed 5, Company website read 8 and showed
+   * 7, and picking the filter looked like it had swallowed a couple. Counting
+   * the same groups the list builds, under the signal and competitor filters
+   * already in force, makes the badge a promise the page keeps.
+   */
+  const sourceCount = (key: Source) =>
+    groupStories(
+      base
+        .filter((i) => key === "all" || i.kind === key)
+        .filter((i) => selectedSignals.length === 0 || selectedSignals.some((signal) => kindsOf(i).includes(signal)))
+        .filter((i) => !selectedCompetitor || i.signal?.competitors?.includes(selectedCompetitor))
+    ).filter((group) => [group.lead, ...group.others].every((item) => !removedUrls.has(item.url))).length;
+
   const SOURCES: { key: Source; label: string; icon: LucideIcon; color: string; count: number; always: boolean }[] = [
-    { key: "all" as Source, label: "All sources", icon: Radar, color: "var(--ink-bright-blue)", count: base.length, always: true },
-    { key: "company" as Source, label: "LinkedIn posts: company", icon: Building2, color: "var(--ink-bright-blue)", count: base.filter((i) => i.kind === "company").length, always: true },
+    { key: "all" as Source, label: "All sources", icon: Radar, color: "var(--ink-bright-blue)", count: sourceCount("all" as Source), always: true },
+    { key: "company" as Source, label: "LinkedIn posts: company", icon: Building2, color: "var(--ink-bright-blue)", count: sourceCount("company" as Source), always: true },
     ...(isCompetitor
       ? []
-      : [{ key: "people" as Source, label: "LinkedIn posts: people", icon: Users, color: "var(--ink-magenta)", count: base.filter((i) => i.kind === "people").length, always: true }]),
-    { key: "news" as Source, label: "News", icon: Newspaper, color: "var(--ink-teal-deep)", count: base.filter((i) => i.kind === "news").length, always: true },
-    ...(!isCompetitor ? [{ key: "authority" as Source, label: "Health authorities", icon: ShieldAlert, color: "#C2410C", count: base.filter((i) => i.kind === "authority").length, always: true }] : []),
-    { key: "site" as Source, label: "Company website", icon: Globe2, color: "var(--ink-orange)", count: base.filter((i) => i.kind === "site").length, always: true },
+      : [{ key: "people" as Source, label: "LinkedIn posts: people", icon: Users, color: "var(--ink-magenta)", count: sourceCount("people" as Source), always: true }]),
+    { key: "news" as Source, label: "News", icon: Newspaper, color: "var(--ink-teal-deep)", count: sourceCount("news" as Source), always: true },
+    ...(!isCompetitor ? [{ key: "authority" as Source, label: "Health authorities", icon: ShieldAlert, color: "#C2410C", count: sourceCount("authority" as Source), always: true }] : []),
+    { key: "site" as Source, label: "Company website", icon: Globe2, color: "var(--ink-orange)", count: sourceCount("site" as Source), always: true },
   ].filter((s) => s.always || s.count > 0);
 
   const passesSource = (i: Item) => source === "all" || i.kind === source;
