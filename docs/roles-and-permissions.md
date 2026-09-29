@@ -47,23 +47,23 @@ that page.
 
 | Module | Page | Admin | BD Owner | BO Owner | View all | BD Member | BO Member | Solutioning Owner | Solutioning Member | Delivery Owner | Delivery Member |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Agent | `/agent` | create | create | create | view | edit | edit | create | edit | create | edit |
-| Offerings | `/offerings` | create | view | create | view | view | edit | view | view | view | view |
-| Digital components | `/components` | create | view | create | view | view | edit | view | view | view | view |
-| Opportunities | `/opportunities` | create | create | create | view | edit | edit | view | view | create | edit |
-| Customers | `/customers` | create | create | view | view | edit | view | view | view | view | view |
-| Contacts | `/contacts` | create | create | view | view | edit | view | view | view | view | view |
+| Agent | `/agent` | create | create | create | view | edit | edit | create | none | create | edit |
+| Offerings | `/offerings` | create | view | create | view | view | edit | view | none | view | view |
+| Digital components | `/components` | create | view | create | view | view | edit | view | none | view | view |
+| Opportunities | `/opportunities` | create | create | create | view | edit | edit | view | none | create | edit |
+| Customers | `/customers` | create | create | view | view | edit | view | view | none | view | view |
+| Contacts | `/contacts` | create | create | view | view | edit | view | view | none | view | view |
 | Solutioning requests | `/solutioning` | create | create | create | view | edit | edit | create | edit | create | edit |
 | Submissions | `/solutioning?tab=submissions` | create | create | create | view | edit | edit | create | create | create | edit |
 | Presentations | `/solutioning?tab=presentations` | create | create | create | view | edit | edit | create | create | create | edit |
 | Meetings | `/meetings` | create | create | create | view | edit | edit | create | edit | create | edit |
-| Leads | `/leads` | create | create | view | view | edit | view | view | view | view | view |
-| Contracts | `/contracts` | create | create | view | view | edit | view | view | view | view | view |
-| Revenue accruals | `/revenue-accruals` | create | create | view | view | edit | view | view | view | view | view |
-| Team | `/team` | create | view | view | view | view | view | view | view | view | view |
-| Goals | `/performance` | create | create | create | view | view | view | create | view | create | view |
-| Reports | `/reports` | create | view | view | view | view | view | view | view | view | view |
-| Market Intel | `/market-intel` | create | create | view | view | create | view | view | view | view | view |
+| Leads | `/leads` | create | create | view | view | edit | view | view | none | view | view |
+| Contracts | `/contracts` | create | create | view | view | edit | view | view | none | view | view |
+| Revenue accruals | `/revenue-accruals` | create | create | view | view | edit | view | view | none | view | view |
+| Team | `/team` | create | view | view | view | view | view | view | none | view | view |
+| Goals | `/performance` | create | create | create | view | view | view | create | none | create | view |
+| Reports | `/reports` | create | view | view | view | view | view | view | none | view | view |
+| Market Intel | `/market-intel` | create | create | view | view | create | view | view | none | view | view |
 | Admin | `/admin` | create | none | none | none | none | none | none | none | none | none |
 
 ## What each level puts on the page
@@ -187,6 +187,22 @@ asks again when it runs.
 | Star or unstar a company in Market Intel | write | yes | yes | no | no | yes | no | no | no | no | no |
 | Track a new company in Market Intel | write | yes | yes | no | no | yes | no | no | no | no | no |
 | Take a company off your Market Intel list | write | yes | yes | no | no | yes | no | no | no | no | no |
+
+## Where the two authorities disagree
+
+The privilege table is meant to be the authority, but one rule in
+`lib/moduleAccess.ts` runs before it is read: a **Solutioning Member** is
+refused every path that is not under `/solutioning` or `/meetings`. Their row
+in the table grants 13 other modules and the app gives them
+none of it. The table above reports what the app actually does.
+
+The gap matters most on the Agent: the table says a Solutioning Member may use
+it, and the app does not let them open it at all.
+
+Modules their row grants and the code refuses: Agent (edit), Offerings (view), Digital components (view), Opportunities (view), Customers (view), Contacts (view), Leads (view), Contracts (view), Revenue accruals (view), Team (view), Goals (view), Reports (view), Market Intel (view).
+
+**This is Anir's call to settle**, not something to quietly change: either the
+table stops promising those modules, or the rule stops overruling it.
 
 ## Things worth knowing
 
