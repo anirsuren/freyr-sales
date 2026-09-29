@@ -866,12 +866,24 @@ export function LiveCompanyBriefing({
         data-details-open={detailsOpen}
         className={cn(
           "mi-briefing-layout mt-5 grid items-start gap-4 motion-safe:transition-[grid-template-columns] motion-safe:duration-300 motion-safe:ease-out",
-          detailsOpen
-            ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]"
-            : "grid-cols-[minmax(0,1fr)_40px]"
+          /* THE RAIL SITS IN ITS OWN TRACK (Anir, Sep 29: "do you see how
+             it's coming in from the right side even though it's on the
+             left side"). Putting it on the left used to keep the DOM order
+             and shove both halves sideways with a transform tied to the rail
+             width, so opening or closing swept the whole page across by 280px
+             before it settled. The track order carries the side now, which is
+             why the right side always looked right: nothing slides, the
+             column simply changes width. */
+          detailsSide === "left"
+            ? detailsOpen
+              ? "grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)]"
+              : "grid-cols-[40px_minmax(0,1fr)]"
+            : detailsOpen
+              ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]"
+              : "grid-cols-[minmax(0,1fr)_40px]"
         )}
       >
-        <div className="mi-briefing-main min-w-0">
+        <div className={cn("mi-briefing-main min-w-0", detailsSide === "left" && "order-2")}>
           {selectedCompetitor && (
             <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-blue-subtle bg-blue-light px-3 py-2 text-[12px] text-text-primary" role="status">
               <span>Showing competitor mentions of <strong>{selectedCompetitor}</strong> · {groups.length} {groups.length === 1 ? "story" : "stories"}</span>
@@ -1013,7 +1025,7 @@ export function LiveCompanyBriefing({
         </div>
 
         {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4). */}
-        <div className="mi-briefing-rail sticky top-3 min-w-0 self-start">
+        <div className={cn("mi-briefing-rail sticky top-3 min-w-0 self-start", detailsSide === "left" && "order-1")}>
           {!detailsOpen && (
             <button
               type="button"
