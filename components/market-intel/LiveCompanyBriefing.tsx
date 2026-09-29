@@ -1021,7 +1021,7 @@ export function LiveCompanyBriefing({
               aria-expanded={false}
               aria-controls="company-details-panel"
               onClick={() => setDetailsView("open")}
-              className={cn("flex w-10 cursor-pointer flex-col items-center gap-3 border border-border-light bg-white py-4 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary", detailsSide === "left" ? "lg:rounded-r-xl lg:border-l-0" : "rounded-l-xl border-r-0")}
+              className={cn("mi-rail-handle-in flex w-10 cursor-pointer flex-col items-center gap-3 border border-border-light bg-white py-4 text-[12px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary", detailsSide === "left" ? "lg:rounded-r-xl lg:border-l-0" : "rounded-l-xl border-r-0")}
             >
               {detailsSide === "left" ? <PanelLeftOpen size={16} className="shrink-0" /> : <PanelRightOpen size={16} className="shrink-0" />}
               <span className="whitespace-nowrap [writing-mode:vertical-rl]">Company details</span>
@@ -1033,7 +1033,14 @@ export function LiveCompanyBriefing({
             aria-hidden={!detailsOpen}
             inert={!detailsOpen}
             className={cn(
-              "flex min-w-0 flex-col overflow-hidden rounded-2xl border shadow-sm motion-safe:transition-[opacity,transform] motion-safe:duration-200 motion-safe:ease-out",
+              /* ONE MOTION, NOT THREE (Anir, Sep 29: "you have to fix this
+                 animation when I hide it on the left side, it's really bad").
+                 The height used to snap from full to zero with no transition
+                 while the grid column took half a second to reslide and the
+                 collapsed rail button popped in at once. Height now rides the
+                 same duration and curve as the column, so the panel folds
+                 away instead of vanishing under a fade. */
+              "flex min-w-0 flex-col overflow-hidden rounded-2xl border shadow-sm motion-safe:transition-[opacity,transform,height] motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
               "border-blue-subtle bg-[rgba(0,113,227,0.035)]",
               detailsOpen
                 ? cn(
@@ -1042,7 +1049,7 @@ export function LiveCompanyBriefing({
                       : "h-[calc(100dvh-68px)]",
                     "min-h-[420px] translate-x-0 opacity-100"
                   )
-                : "pointer-events-none h-0 translate-x-4 opacity-0"
+                : "pointer-events-none h-0 min-h-0 translate-x-4 opacity-0"
             )}
           >
           {/* Keep the rail control outside its scrolling body. Previously the
