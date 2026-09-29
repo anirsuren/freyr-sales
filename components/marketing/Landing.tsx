@@ -28,6 +28,17 @@ import s from "@/app/landing.module.css";
  * so the server and the client render the same markup.
  */
 const THEME_KEY = "freyr-landing-theme";
+/**
+ * ONE THEME, NOT TWO (Anir, Sep 29: "why does it go from light mode to dark
+ * mode, whatever I'm on that's what it should be").
+ *
+ * The landing kept its own preference while the signed-in app and the sign-in
+ * page read `freyr.theme` and its `dark` class. Set the landing to light with
+ * the app on dark and pressing Sign in threw the reader from a white page into
+ * a black one. The switch now writes BOTH keys and the class, so the choice
+ * made here is the choice everywhere: the landing, /login, and the app.
+ */
+const APP_THEME_KEY = "freyr.theme";
 const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.stringify(THEME_KEY)});if(t!=="dark"&&t!=="light"){t=(document.documentElement.classList.contains("dark")||window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}document.documentElement.dataset.landingTheme=t;}catch(e){}})();`;
 type LandingTheme = "light" | "dark";
 function readTheme(): LandingTheme {
@@ -174,7 +185,7 @@ export function Landing({entry,signedIn,heroImage}:{entry:string;signedIn:boolea
  const [menu,setMenu]=useState(false);const [scrolled,setScrolled]=useState(false);
  const [theme,setTheme]=useState<LandingTheme>("light");
  useEffect(()=>{setTheme(readTheme());},[]);
- const toggleTheme=()=>{const next:LandingTheme=theme==="dark"?"light":"dark";setTheme(next);document.documentElement.dataset.landingTheme=next;try{localStorage.setItem(THEME_KEY,next);}catch{}};
+ const toggleTheme=()=>{const next:LandingTheme=theme==="dark"?"light":"dark";setTheme(next);const root=document.documentElement;root.dataset.landingTheme=next;root.classList.toggle("dark",next==="dark");try{localStorage.setItem(THEME_KEY,next);localStorage.setItem(APP_THEME_KEY,next);}catch{}};
  useEffect(()=>{const update=()=>setScrolled(window.scrollY>8);update();window.addEventListener("scroll",update,{passive:true});return()=>window.removeEventListener("scroll",update);},[]);
  const entryLabel=signedIn?"Open workspace":"Sign in";
  return <MotionConfig reducedMotion="user" transition={{duration:.6,ease}}>
