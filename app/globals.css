@@ -754,7 +754,7 @@ select:focus-visible {
   }
   .mi-briefing-main,
   .mi-briefing-rail {
-    transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .mi-briefing-layout[data-details-side="left"] > .mi-briefing-main {
     transform: translateX(calc(var(--mi-rail-width) + 1rem));
@@ -776,15 +776,13 @@ select:focus-visible {
 @keyframes miRailHandleIn {
   from {
     opacity: 0;
-    transform: translateX(-6px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
   }
 }
 .mi-rail-handle-in {
-  animation: miRailHandleIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: miRailHandleIn 200ms ease-out both;
 }
 @media (prefers-reduced-motion: reduce) {
   .mi-rail-handle-in {

@@ -865,7 +865,7 @@ export function LiveCompanyBriefing({
         data-details-side={detailsSide}
         data-details-open={detailsOpen}
         className={cn(
-          "mi-briefing-layout mt-5 grid items-start gap-4 motion-safe:transition-[grid-template-columns] motion-safe:duration-500 motion-safe:ease-out",
+          "mi-briefing-layout mt-5 grid items-start gap-4 motion-safe:transition-[grid-template-columns] motion-safe:duration-300 motion-safe:ease-out",
           detailsOpen
             ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]"
             : "grid-cols-[minmax(0,1fr)_40px]"
@@ -1037,7 +1037,7 @@ export function LiveCompanyBriefing({
               is actually taller than the screen. */}
           <div
             className={cn(
-              "grid motion-safe:transition-[grid-template-rows] motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "grid motion-safe:transition-[grid-template-rows] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
               detailsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
             )}
           >
@@ -1048,13 +1048,20 @@ export function LiveCompanyBriefing({
             aria-hidden={!detailsOpen}
             inert={!detailsOpen}
             className={cn(
-              "flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-surface shadow-sm motion-safe:transition-[opacity,transform] motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-surface shadow-sm motion-safe:transition-[opacity,transform] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
               dataMode === "mock"
                 ? "max-h-[calc(100dvh-114px)]"
                 : "max-h-[calc(100dvh-68px)]",
               detailsOpen
                 ? "translate-x-0 opacity-100"
-                : "pointer-events-none translate-x-4 opacity-0"
+                /* IT LEAVES TOWARD ITS OWN EDGE (Anir, Sep 29: "on the left
+                   side it's still weird because it comes in from the right,
+                   which doesn't make any sense"). The slide was hardcoded to
+                   the right, which reads correctly only while the panel sits
+                   on the right. */
+                : detailsSide === "left"
+                  ? "pointer-events-none -translate-x-4 opacity-0"
+                  : "pointer-events-none translate-x-4 opacity-0"
             )}
           >
           {/* Keep the rail control outside its scrolling body. Previously the
