@@ -557,6 +557,26 @@ export function LiveCompanyBriefing({
   /* ONE STORY, MANY SOURCES (Saras, Sep 10): the others are named under the
      card rather than shown again as cards of their own. */
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
+
+  /* CLICKING AWAY SHUTS IT (Anir, Sep 29: "when I click out, it's not
+     closing, so it's kind of annoying"). The fold had no dismiss of its own,
+     so the only way out was the same chip you opened it with. */
+  useEffect(() => {
+    if (!Object.values(expandedSources).some(Boolean)) return;
+    const closeAll = () => setExpandedSources({});
+    const onDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-sources-fold]")) return;
+      closeAll();
+    };
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") closeAll(); };
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [expandedSources]);
   const supportingSourceType = (item: Item) => {
     if (item.kind === "company") return "Company post";
     if (item.kind === "people") return "People post";
@@ -569,7 +589,7 @@ export function LiveCompanyBriefing({
     const expanded = !!expandedSources[group.lead.key];
     const panelId = `other-sources-${encodeURIComponent(group.lead.key)}`;
     return (
-      <div className={cn(inHeader ? "relative ml-auto shrink-0" : "mt-2.5")}>
+      <div data-sources-fold className={cn(inHeader ? "relative ml-auto shrink-0" : "mt-2.5")}>
         <button
           type="button"
           aria-expanded={expanded}
@@ -583,29 +603,41 @@ export function LiveCompanyBriefing({
         </button>
         <div
           id={panelId}
-          className={cn("grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none", inHeader && "absolute right-0 top-full z-30 mt-2 w-[min(22rem,80vw)] rounded-xl border border-border-light bg-white p-2 shadow-xl", expanded ? "grid-rows-[1fr] opacity-100" : inHeader ? "hidden" : "pointer-events-none grid-rows-[0fr] opacity-0")}
+          className={cn("grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none", inHeader && "absolute right-0 top-full z-30 mt-2 w-[min(28rem,86vw)] rounded-xl border border-border-light bg-white p-2 shadow-xl", expanded ? "grid-rows-[1fr] opacity-100" : inHeader ? "hidden" : "pointer-events-none grid-rows-[0fr] opacity-0")}
           aria-hidden={!expanded}
           inert={!expanded}
         >
-          <div className={cn("min-h-0 overflow-hidden", inHeader && "max-h-64 overflow-y-auto")}>
+          <div className={cn("min-h-0 overflow-hidden", inHeader && "max-h-[13.5rem] overflow-y-auto [scroll-snap-type:y_proximity]")}>
             <ul className={cn("my-1.5 space-y-1.5", !inHeader && "border-l border-border-light pl-3")}>
               {group.others.map((source, index) => (
-                <li key={`${source.key}-${index}`}>
+                <li key={`${source.key}-${index}`} className="rounded-lg px-2.5 py-2 transition-colors hover:bg-surface [scroll-snap-align:start]">
+                  {/* TWO DOORS, NOT ONE (Anir, Sep 29: "I can click on the
+                      source, or I can click on the article. It should be two
+                      separate things"). The row used to be a single anchor
+                      wrapping both lines, so the outlet was only ever a piece
+                      of the headline's hit area. */}
                   <a
                     href={safeHref(source.url) as string}
                     target="_blank"
                     rel="noreferrer"
                     title={source.title}
-                    className="group block max-w-full rounded px-2 py-1.5 transition-colors hover:bg-blue-light/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+                    className="group/title flex min-w-0 items-start gap-1.5 text-[12px] font-semibold leading-5 text-text-primary transition-colors hover:text-blue-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
                   >
-                    <span className="flex min-w-0 items-start gap-1.5 text-[11.5px] font-semibold leading-4 text-text-primary transition-colors group-hover:text-blue-primary group-hover:underline">
-                      <span className="min-w-0 [overflow-wrap:anywhere]">{source.title}</span>
-                      <ExternalLink size={10} className="mt-0.5 shrink-0 opacity-50 transition-opacity group-hover:opacity-100" />
-                    </span>
-                    <span className="mt-0.5 block text-[10.5px] leading-4 text-text-tertiary">
-                      {outletName(source.sourceLabel, source.url)} · {supportingSourceType(source)}{source.date ? ` · ${fmtDate(source.date)}` : ""}
-                    </span>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">{source.title}</span>
+                    <ExternalLink size={10} className="mt-1 shrink-0 opacity-50 transition-opacity group-hover/title:opacity-100" />
                   </a>
+                  <span className="mt-0.5 block text-[11px] leading-5 text-text-tertiary">
+                    <a
+                      href={safeHref(source.url) as string}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={`Open this story on ${outletName(source.sourceLabel, source.url)}`}
+                      className="font-semibold text-text-secondary transition-colors hover:text-blue-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+                    >
+                      {outletName(source.sourceLabel, source.url)}
+                    </a>
+                    {" · "}{supportingSourceType(source)}{source.date ? ` · ${fmtDate(source.date)}` : ""}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -744,9 +776,18 @@ export function LiveCompanyBriefing({
                 <ShieldAlert size={10} strokeWidth={2.2} /> Official source: {article.source}
               </span>
             ) : (
-              <span title={article.source} className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-blue-primary">
+              /* THE SOURCE IS ITS OWN DOOR (Anir, Sep 29), the same as the
+                 table, where the outlet cell and the headline are separate
+                 links. On a tile the chip used to be plain text. */
+              <a
+                href={safeHref(article.url) as string}
+                target="_blank"
+                rel="noreferrer"
+                title={`Open this story on ${outletName(article.source, article.url)}`}
+                className="flex items-center gap-1 rounded-full bg-blue-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.02em] text-blue-primary transition-colors hover:bg-blue-primary hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+              >
                 <Newspaper size={10} strokeWidth={2.2} /> Source of news article: {outletName(article.source, article.url)}
-              </span>
+              </a>
             )}
             {othersLine(group, true)}
           </div>
@@ -757,7 +798,7 @@ export function LiveCompanyBriefing({
             href={safeHref(article.url) as string}
             target="_blank"
             rel="noreferrer"
-            className="text-blue-primary hover:underline"
+            className="text-text-primary transition-colors hover:text-blue-primary hover:underline"
           >
             <span>{item.title}</span>
           </a>
