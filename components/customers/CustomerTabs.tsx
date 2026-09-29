@@ -90,6 +90,7 @@ import { TrendingUp, TrendingDown, Minus, Sparkles, Package } from "lucide-react
 import { AttributeTag } from "@/components/ui/AttributeTag";
 
 import { industryMeta } from "@/components/ui/IndustryTag";
+import { customerFamilyColor, customerFamilyIcon } from "@/lib/customerFamilies";
 import {
   countryOnlyGeography,
   countryNameForGeography,
@@ -383,6 +384,15 @@ function PipelineMomentumModal({
 // ONLY agent surfaces in the app are the chat bubble bottom-right and the /agent
 // pages (Anir, Jul 27). The dock still takes any of those asks.
 
+/** The family half of a customer-type name ("Pharmaceuticals - Mid size" →
+ *  "Pharmaceuticals"), so the picker can wear the family's colour and glyph.
+ *  Splits on the LAST separator: a family may contain a hyphen, a size never
+ *  does. */
+function typeFamily(name: string): string {
+  const cut = name.lastIndexOf(" - ");
+  return cut > 0 ? name.slice(0, cut) : name;
+}
+
 function GeographyValue({ value }: { value: string }) {
   const { country, city } = locationParts(value);
   const flag = flagForGeography(country);
@@ -561,7 +571,21 @@ export function CustomerTabs({
   // opens the always-on agent dock, keeping old links working.
   useEffect(() => {
     try {
-      const wanted = new URLSearchParams(window.location.search).get("tab");
+      const query = new URLSearchParams(window.location.search);
+      /* ?edit=about OPENS THE EDITOR YOU WERE SENT HERE TO USE. A contact at an
+         unclassified account offers "Choose <account>'s customer type", and
+         that link used to be ?tab=offerings — a tab that does not exist in REAL
+         mode, so the click dropped you at the top of Overview with nothing
+         changed (Anir, Sep 29: "why does it go here"). The type is set in the
+         About editor, so the link opens the About editor. */
+      /* ON THE NEXT FRAME, NOT IN THIS ONE. Opening the dialog straight from
+         this effect set the state during hydration and React dropped the
+         update — the param was read, the opener ran, and the dialog never
+         appeared. One frame later it sticks (same reason the contacts deep
+         link above already waits for a frame). */
+      if (query.get("edit") === "about" && canEditFacts)
+        requestAnimationFrame(() => openAboutEditor());
+      const wanted = query.get("tab");
       if (wanted === "ask") window.dispatchEvent(new CustomEvent("freyr:ask-agent"));
       /* A connection tab is a real tab now, so its deep link has to survive a
          reload like any other — the row writes ?tab=band:meetings and the page
@@ -574,6 +598,7 @@ export function CustomerTabs({
       )
         setTab(wanted);
     } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [includeDemoTeam]);
   // editable account fields (#55 owner, #59 competitor, #60 notes/attachments).
   // Seeded demo accounts keep their deterministic sample owner. Live and newly
@@ -3353,8 +3378,47 @@ export function CustomerTabs({
             <Field label="Website">
               <Input maxLength={500} value={aboutDraft.website_url} onChange={(event) => setAboutDraft((draft) => ({ ...draft, website_url: event.target.value }))} placeholder="example.com" />
             </Field>
+            {/* PICKED, NOT TYPED. This was a free-text Input, and a customer
+                type is not free text: it is the NAME of a catalogue row, and
+                the row's id is what decides which offerings the account sees.
+                One typed S ("Pharmaceutical - Mid size" for the catalogue's
+                "Pharmaceuticals - Mid size") matched nothing, so Opella — the
+                one real account with a type set — showed no offerings, and
+                every contact there was told to go and choose a type that was
+                already chosen (Anir, Sep 29: "why does it go here when I click
+                Choose this person's customer type"). Same rule as the contract
+                owner: a field whose values come from a known list is a select.
+
+                A value already on a record that is no longer in the catalogue
+                stays selectable, so opening this form can never silently drop
+                somebody's existing answer. */}
             <Field label="Customer type">
-              <Input maxLength={120} value={aboutDraft.customer_type} onChange={(event) => setAboutDraft((draft) => ({ ...draft, customer_type: event.target.value }))} />
+              <ColorSelect
+                ariaLabel="Customer type"
+                value={aboutDraft.customer_type}
+                onChange={(value) => setAboutDraft((draft) => ({ ...draft, customer_type: value }))}
+                fill
+                searchable
+                className="w-full"
+                options={[
+                  { value: "", label: "Not set", noMark: true },
+                  ...(offeringsCatalog?.typeOptions ?? []).map((name) => ({
+                    value: name,
+                    label: name,
+                    color: customerFamilyColor(typeFamily(name)),
+                    icon: customerFamilyIcon(typeFamily(name)),
+                  })),
+                  ...(aboutDraft.customer_type &&
+                  !(offeringsCatalog?.typeOptions ?? []).includes(aboutDraft.customer_type)
+                    ? [{
+                        value: aboutDraft.customer_type,
+                        label: `${aboutDraft.customer_type} (not in the catalogue)`,
+                        color: customerFamilyColor(typeFamily(aboutDraft.customer_type)),
+                        icon: customerFamilyIcon(typeFamily(aboutDraft.customer_type)),
+                      }]
+                    : []),
+                ]}
+              />
             </Field>
             <Field label="Ownership">
               <Input maxLength={120} value={aboutDraft.ownership} onChange={(event) => setAboutDraft((draft) => ({ ...draft, ownership: event.target.value }))} placeholder="Public or private" />

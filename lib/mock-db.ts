@@ -516,12 +516,32 @@ function seed(): MockStore {
   // "in the fake mode it has to be as if there's a ton of shit for every
   // single thing"). Derived from the industry + size already on the spec, so
   // the value always matches a row in the customer-type master list.
+  /**
+   * AN INDUSTRY IS NOT A CUSTOMER TYPE (Anir, Sep 29, from a contact page:
+   * "why does it go here when I click Choose this person's customer type").
+   *
+   * A customer's type is stored as the NAME of a row in the customer-type
+   * catalogue and matched by that exact string. This map said "Pharmaceutical"
+   * where the catalogue says "Pharmaceuticals", and the fill generator below
+   * skipped the map entirely and used the raw industry, inventing types like
+   * "Generics - Mid size" that exist nowhere. So most mock accounts read as
+   * having a type on the customer page while every contact page said the type
+   * was unchosen and offered a button that led to a page already showing one.
+   * Every industry the seed can produce maps to a family that really exists.
+   */
   const FAMILY: Record<string, string> = {
     Pharmaceutical: "Pharmaceutical",
+    Pharmaceuticals: "Pharmaceutical",
+    Generics: "Pharmaceutical",
+    "Animal Health": "Pharmaceutical",
     Biotechnology: "Biologics",
+    Biologics: "Biologics",
     "Medical Device": "Medical Devices",
     "Medical Devices": "Medical Devices",
+    Diagnostics: "Medical Devices",
     "Consumer Health": "Consumer Products",
+    "Consumer Products": "Consumer Products",
+    Nutraceuticals: "Consumer Products",
   };
   const SIZE_NAME: Record<string, string> = {
     small: "Small",
@@ -820,7 +840,7 @@ function seed(): MockStore {
       enrichment_summary: `${size === "large" ? "Global" : size === "mid" ? "Mid-size" : "Emerging"} ${industry.toLowerCase()} company headquartered in ${at(FILL_GEO, i)}. Active across ${1 + (i % 4)} regions with submissions planned through ${2026 + (i % 3)}.`,
       created_at: created,
       last_enriched_at: created,
-      customer_type: `${industry} - ${size === "large" ? "Large" : size === "mid" ? "Mid size" : "Small"}`,
+      customer_type: `${FAMILY[industry] || "Pharmaceutical"} - ${size === "large" ? "Large" : size === "mid" ? "Mid size" : "Small"}`,
       ownership: at(FILL_OWNERSHIP, i),
       revenue:
         size === "large"
@@ -1249,7 +1269,7 @@ function seed(): MockStore {
    meetings, leads and the rest of the connected mock floor. Refresh the old
    durable snapshot so a linked meeting cannot name a different person from
    the contact record it opens. */
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 const PERSIST = process.env.AGENT_FORCE_MOCK !== "1";
 const STORE_FILE = join(process.cwd(), "node_modules", ".cache", "freyr-store.json");
 

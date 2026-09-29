@@ -5,6 +5,7 @@ import {
 } from "./agentContinuation";
 import type { MatchingOutput, PitchOutput } from "./types";
 import type { AgentDigestData, WeeklyReview, AccountBriefing } from "./agent";
+import { findCustomerType } from "@/lib/customerTypeMatch";
 
 // Sonnet is the right tier for this work — Opus costs several times more for
 // answers a sales rep cannot tell apart, and Haiku drops reasoning quality on
@@ -1126,9 +1127,13 @@ Return JSON:
       rationale: string;
       confidence: "high" | "medium" | "low";
     };
-    // Guard the type to a real definition name; otherwise signal a fallback.
-    if (!out || !definitions.some((d) => d.name === out.customer_type))
-      return null;
+    // Guard the type to a real definition name. A model that spells the family
+    // singular ("Pharmaceutical - Mid size") means the catalogue row, so snap to
+    // it rather than throwing the whole researched answer away.
+    if (!out) return null;
+    const snapped = findCustomerType(definitions, out.customer_type);
+    if (!snapped) return null;
+    out.customer_type = snapped.name;
     if (out.ownership !== "Public" && out.ownership !== "Private")
       out.ownership = "Private";
     return out;
@@ -1211,8 +1216,10 @@ After researching, reply with ONLY this JSON:
       rationale: string;
       confidence: "high" | "medium" | "low";
     };
-    if (!out || !definitions.some((d) => d.name === out.customer_type))
-      return null;
+    if (!out) return null;
+    const snapped = findCustomerType(definitions, out.customer_type);
+    if (!snapped) return null;
+    out.customer_type = snapped.name;
     if (out.ownership !== "Public" && out.ownership !== "Private")
       out.ownership = "Private";
     return { ...out, sources: Array.from(new Set(sources)).slice(0, 5) };

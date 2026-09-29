@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Sparkles, Package, Mail, Copy, RefreshCw, Check, PhoneCall, ChevronRight, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -46,6 +45,7 @@ export function ContactOutreachPanel({
   firstName,
   companyName,
   classified,
+  customerTypeId,
   offerings,
   voiceWired,
 }: {
@@ -54,6 +54,9 @@ export function ContactOutreachPanel({
   firstName: string;
   companyName: string;
   classified: boolean;
+  /** The catalogue row this account resolved to, so "see all" can open the
+   *  repository already filtered to it. Null until the account is classified. */
+  customerTypeId?: string | null;
   offerings: ContactOffering[];
   voiceWired: boolean;
 }) {
@@ -179,7 +182,14 @@ export function ContactOutreachPanel({
               }`}
             >
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0A66C2] text-white">
-                <Image src="/linkedin.webp" alt="" width={16} height={16} className="rounded-[3px]" />
+                {/* A PLAIN <img>, LIKE EVERY OTHER COPY OF THIS GLYPH.
+                    next/image routes it through /_next/image, whose internal
+                    fetch carries no session cookie, so middleware — which
+                    deliberately matches file-looking paths — answered it with a
+                    307 and the optimizer reported "not a valid image". Both
+                    LinkedIn marks on this panel 400'd on every contact page. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/linkedin.webp" alt="" width={16} height={16} className="rounded-[3px]" />
               </span>
               <span>
                 <span className="block text-[11.5px] font-semibold text-text-primary">LinkedIn</span>
@@ -385,7 +395,7 @@ export function ContactOutreachPanel({
               {firstName}&apos;s role, ready to pitch.
             </p>
             <Link
-              href={`/customers/${customerId}?tab=offerings`}
+              href={`/customers/${customerId}?edit=about`}
               className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-white bg-blue-primary px-4 py-2 rounded-lg hover:bg-blue-hover transition-colors active:scale-[0.97]"
             >
               <Sparkles size={14} strokeWidth={1.9} />
@@ -434,7 +444,8 @@ export function ContactOutreachPanel({
                 onClick={() => open("linkedin", o.id)}
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#0A66C2]/20 bg-blue-light/40 px-2.5 py-1.5 text-[11px] font-semibold text-blue-primary transition-colors hover:border-[#0A66C2]/40 hover:bg-blue-light/60"
               >
-                <Image src="/linkedin.webp" alt="" width={13} height={13} className="rounded-[2px]" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/linkedin.webp" alt="" width={13} height={13} className="rounded-[2px]" />
                 Draft outreach
                 <ChevronRight size={13} strokeWidth={2} />
               </button>
@@ -444,10 +455,14 @@ export function ContactOutreachPanel({
             <p className="pt-2.5 text-[12px] text-text-tertiary">
               Showing the top 8 of {offerings.length},{" "}
               <Link
-                href={`/customers/${customerId}?tab=offerings`}
+                href={
+                  customerTypeId
+                    ? `/offerings?type=${encodeURIComponent(customerTypeId)}`
+                    : `/customers/${customerId}?tab=offerings`
+                }
                 className="font-semibold text-blue-primary hover:underline"
               >
-                see all on {companyName} →
+                see all for {companyName} →
               </Link>
             </p>
           )}

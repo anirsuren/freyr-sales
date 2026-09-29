@@ -1,3 +1,4 @@
+import { findCustomerType } from "@/lib/customerTypeMatch";
 import { ensureCustomerNumbers } from "@/lib/customerProfiles";
 import { EMPTY_CUSTOMER_PROFILES, formatAddress } from "@/lib/customerProfilesShared";
 import { Building2 as ParentCompanyIcon, MapPin } from "lucide-react";
@@ -153,7 +154,7 @@ export default async function CustomerDetailPage({
   // type, the offerings applicable to that type show automatically.
   const customerTypes = listCustomerTypes();
   const matchedType = customer.customer_type
-    ? customerTypes.find((t) => t.name === customer.customer_type)
+    ? findCustomerType(customerTypes, customer.customer_type)
     : null;
 
   // Customer⇄offering link (Suren, Jul 3): serialize the offerings applicable

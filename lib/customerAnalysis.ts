@@ -15,6 +15,7 @@ import type { Customer } from "./types";
 import { searchWeb, scrapeCustomerWebsite } from "./firecrawl";
 import { qualifyCustomerType, qualifyCustomerTypeWithSearch } from "./claude";
 import { hasFirecrawl, hasAnthropic } from "./env";
+import { findCustomerType } from "@/lib/customerTypeMatch";
 
 export interface CustomerAnalysis {
   customer_type: string; // e.g. "Pharmaceutical - Large" (a definition's name)
@@ -164,9 +165,11 @@ export async function analyzeCustomer(
     confidence: "high" | "medium" | "low";
     sources?: string[];
   }): CustomerAnalysis => {
-    const matched = defs.find((d) => d.name === v.customer_type) || null;
+    const matched = findCustomerType(defs, v.customer_type);
     return {
-      customer_type: v.customer_type,
+      // Store the catalogue's own spelling, so the saved profile resolves by
+      // === for every reader, not only the tolerant ones.
+      customer_type: matched ? matched.name : v.customer_type,
       customer_type_id: matched ? matched.id : null,
       family: matched ? matched.family : det.family,
       size: matched ? matched.size : det.size,

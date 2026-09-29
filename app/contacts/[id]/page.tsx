@@ -1,3 +1,4 @@
+import { findCustomerType } from "@/lib/customerTypeMatch";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SmartBack } from "@/components/ui/BackButton";
@@ -140,7 +141,7 @@ export default async function ContactDetailPage({
   // Contact⇄offering link (Suren, Jul 3): the contact inherits the customer's
   // applicable offerings; their role keywords rank which fit THIS person best.
   const matchedType = customer?.customer_type
-    ? listCustomerTypes().find((t) => t.name === customer.customer_type)
+    ? findCustomerType(listCustomerTypes(), customer.customer_type)
     : null;
   const contactApplicable = matchedType
     ? listOfferings().filter((o) =>
@@ -400,6 +401,7 @@ export default async function ContactDetailPage({
         firstName={firstName}
         companyName={customer?.company_name || "their account"}
         classified={!!matchedType}
+        customerTypeId={matchedType?.id || null}
         offerings={rankedOfferings}
         voiceWired={hasElevenLabs()}
       />
