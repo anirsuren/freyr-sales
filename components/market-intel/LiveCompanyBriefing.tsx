@@ -4,7 +4,7 @@ import { DateField } from "@/components/ui/DateField";
 import { safeHref } from "@/lib/safeUrl";
 import { fmtWhen } from "@/lib/whenLabel";
 import { SmartBack } from "@/components/ui/BackButton";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -186,6 +186,74 @@ export function LiveCompanyBriefing({
   const [detailsView, setDetailsView] = useStoredView("freyr.mi.details", "open", ["open", "closed"] as const);
   const detailsOpen = detailsView === "open";
   const [detailsSide, setDetailsSide] = useStoredView("freyr.mi.details.side", "right", ["right", "left"] as const);
+
+  /**
+   * SWAPPING SIDES SLIDES; OPENING AND CLOSING DOES NOT (Anir, Sep 29: "you
+   * forgot the animation between left and right when I'm switching, but the
+   * animation for toggling it on and off is good").
+   *
+   * The old code animated the swap with a transform tied to the rail's width,
+   * which meant every open and close swept the page sideways too. Measuring
+   * instead keeps the two apart: record where both halves are, let the grid
+   * put them in their new tracks, then start them from where they used to be
+   * and let them travel. Nothing here runs unless the SIDE changed, so the
+   * open and close he likes stays exactly as it is.
+   */
+  const layoutRef = useRef<HTMLDivElement | null>(null);
+  const mainRef = useRef<HTMLDivElement | null>(null);
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const swapFrom = useRef<{ main: number; rail: number } | null>(null);
+  const SWAP_MS = 300;
+
+  function swapSide() {
+    const main = mainRef.current;
+    const rail = railRef.current;
+    swapFrom.current =
+      main && rail
+        ? { main: main.getBoundingClientRect().left, rail: rail.getBoundingClientRect().left }
+        : null;
+    setDetailsSide(detailsSide === "left" ? "right" : "left");
+  }
+
+  useLayoutEffect(() => {
+    const from = swapFrom.current;
+    swapFrom.current = null;
+    const main = mainRef.current;
+    const rail = railRef.current;
+    const layout = layoutRef.current;
+    if (!from || !main || !rail || !layout) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+
+    /* The tracks trade places outright. Animating their widths at the same
+       time as the slide reads as a squeeze rather than a move. */
+    const columnTransition = layout.style.transition;
+    layout.style.transition = "none";
+    const pairs: [HTMLDivElement, number][] = [
+      [main, from.main - main.getBoundingClientRect().left],
+      [rail, from.rail - rail.getBoundingClientRect().left],
+    ];
+    for (const [el, delta] of pairs) {
+      el.style.transition = "none";
+      el.style.transform = `translateX(${delta}px)`;
+    }
+    const start = requestAnimationFrame(() => {
+      for (const [el] of pairs) {
+        el.style.transition = `transform ${SWAP_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+        el.style.transform = "translateX(0)";
+      }
+    });
+    const clear = window.setTimeout(() => {
+      for (const [el] of pairs) {
+        el.style.transition = "";
+        el.style.transform = "";
+      }
+      layout.style.transition = columnTransition;
+    }, SWAP_MS + 60);
+    return () => {
+      cancelAnimationFrame(start);
+      window.clearTimeout(clear);
+    };
+  }, [detailsSide]);
   const [newsView, chooseNewsView] = useStoredView<NewsView>(
     "freyr.mi.news.view",
     "rows",
@@ -862,6 +930,7 @@ export function LiveCompanyBriefing({
       </SearchPriority>
 
       <div
+        ref={layoutRef}
         data-details-side={detailsSide}
         data-details-open={detailsOpen}
         className={cn(
@@ -883,7 +952,7 @@ export function LiveCompanyBriefing({
               : "grid-cols-[minmax(0,1fr)_40px]"
         )}
       >
-        <div className={cn("mi-briefing-main min-w-0", detailsSide === "left" && "order-2")}>
+        <div ref={mainRef} className={cn("mi-briefing-main min-w-0", detailsSide === "left" && "order-2")}>
           {selectedCompetitor && (
             <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-blue-subtle bg-blue-light px-3 py-2 text-[12px] text-text-primary" role="status">
               <span>Showing competitor mentions of <strong>{selectedCompetitor}</strong> · {groups.length} {groups.length === 1 ? "story" : "stories"}</span>
@@ -1025,7 +1094,7 @@ export function LiveCompanyBriefing({
         </div>
 
         {/* THE RAIL ANIMATES IN LIKE EVERYTHING ELSE (Anir, Sep 4). */}
-        <div className={cn("mi-briefing-rail sticky top-3 min-w-0 self-start", detailsSide === "left" && "order-1")}>
+        <div ref={railRef} className={cn("mi-briefing-rail sticky top-3 min-w-0 self-start", detailsSide === "left" && "order-1")}>
           {!detailsOpen && (
             <button
               type="button"
@@ -1082,7 +1151,7 @@ export function LiveCompanyBriefing({
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-light bg-white px-4 py-3">
             <h2 className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Company details</h2>
             <div className="flex items-center gap-1.5">
-              <button type="button" onClick={() => setDetailsSide(detailsSide === "left" ? "right" : "left")} aria-label={`Move company details to the ${detailsSide === "left" ? "right" : "left"}`} title={`Move to ${detailsSide === "left" ? "right" : "left"}`} className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg border border-border-light bg-white text-text-secondary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">{detailsSide === "left" ? <ArrowRight size={15} aria-hidden="true" /> : <ArrowLeft size={15} aria-hidden="true" />}</button>
+              <button type="button" onClick={swapSide} aria-label={`Move company details to the ${detailsSide === "left" ? "right" : "left"}`} title={`Move to ${detailsSide === "left" ? "right" : "left"}`} className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg border border-border-light bg-white text-text-secondary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">{detailsSide === "left" ? <ArrowRight size={15} aria-hidden="true" /> : <ArrowLeft size={15} aria-hidden="true" />}</button>
               <button type="button" onClick={() => setDetailsView("closed")} aria-label="Hide company details" title="Hide company details" aria-expanded={true} aria-controls="company-details-panel" className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg border border-border-light bg-white text-blue-primary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">{detailsSide === "left" ? <PanelLeftClose size={15} aria-hidden="true" /> : <PanelRightClose size={15} aria-hidden="true" />}</button>
             </div>
           </div>
