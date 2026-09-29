@@ -1027,35 +1027,40 @@ export function LiveCompanyBriefing({
               <span className="whitespace-nowrap [writing-mode:vertical-rl]">Company details</span>
             </button>
           )}
+          {/* THE PANEL IS AS TALL AS WHAT IS IN IT (Anir, Sep 29: "the right
+              side looks like there's so much space, a lot of empty space").
+              It used to be pinned to the full viewport height with a 420px
+              floor, so three short cards left a long empty box below them.
+              The row track carries the collapse instead: 1fr to 0fr animates
+              to the panel's OWN height, which is what makes hiding it fold
+              rather than snap, and the cap below only bites once the content
+              is actually taller than the screen. */}
+          <div
+            className={cn(
+              "grid motion-safe:transition-[grid-template-rows] motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
+              detailsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+            )}
+          >
+          <div className="min-h-0 overflow-hidden">
           <aside
             id="company-details-panel"
             aria-label="Company details"
             aria-hidden={!detailsOpen}
             inert={!detailsOpen}
             className={cn(
-              /* ONE MOTION, NOT THREE (Anir, Sep 29: "you have to fix this
-                 animation when I hide it on the left side, it's really bad").
-                 The height used to snap from full to zero with no transition
-                 while the grid column took half a second to reslide and the
-                 collapsed rail button popped in at once. Height now rides the
-                 same duration and curve as the column, so the panel folds
-                 away instead of vanishing under a fade. */
-              "flex min-w-0 flex-col overflow-hidden rounded-2xl border shadow-sm motion-safe:transition-[opacity,transform,height] motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
-              "border-blue-subtle bg-[rgba(0,113,227,0.035)]",
+              "flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-surface shadow-sm motion-safe:transition-[opacity,transform] motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
+              dataMode === "mock"
+                ? "max-h-[calc(100dvh-114px)]"
+                : "max-h-[calc(100dvh-68px)]",
               detailsOpen
-                ? cn(
-                    dataMode === "mock"
-                      ? "h-[calc(100dvh-114px)]"
-                      : "h-[calc(100dvh-68px)]",
-                    "min-h-[420px] translate-x-0 opacity-100"
-                  )
-                : "pointer-events-none h-0 min-h-0 translate-x-4 opacity-0"
+                ? "translate-x-0 opacity-100"
+                : "pointer-events-none translate-x-4 opacity-0"
             )}
           >
           {/* Keep the rail control outside its scrolling body. Previously the
               header disappeared as soon as someone scrolled down to the last
               cards, making the panel look impossible to close. */}
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-blue-subtle bg-blue-light/70 px-4 py-3">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-light bg-white px-4 py-3">
             <h2 className="whitespace-nowrap text-[12px] font-semibold text-text-secondary">Company details</h2>
             <div className="flex items-center gap-1.5">
               <button type="button" onClick={() => setDetailsSide(detailsSide === "left" ? "right" : "left")} aria-label={`Move company details to the ${detailsSide === "left" ? "right" : "left"}`} title={`Move to ${detailsSide === "left" ? "right" : "left"}`} className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg border border-border-light bg-white text-text-secondary shadow-sm transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">{detailsSide === "left" ? <ArrowRight size={15} aria-hidden="true" /> : <ArrowLeft size={15} aria-hidden="true" />}</button>
@@ -1064,7 +1069,7 @@ export function LiveCompanyBriefing({
           </div>
           {/* The panel hugs quiet content, while busy content scrolls inside the
               viewport. Extra bottom room keeps the last card clear of chat. */}
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 pb-24 [scrollbar-gutter:stable]">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable]">
           <Card className="p-4" aria-labelledby="signal-filter-title">
             <div className="flex items-start gap-2">
               <button type="button" onClick={() => setSignalsOpen(!signalsOpen)} aria-expanded={signalsOpen} aria-controls="signal-filter-options" className="flex min-w-0 flex-1 cursor-pointer items-start justify-between gap-2 text-left focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary">
@@ -1220,6 +1225,8 @@ export function LiveCompanyBriefing({
 
           </div>
           </aside>
+          </div>
+          </div>
         </div>
       </div>
     </div>
