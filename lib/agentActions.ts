@@ -347,6 +347,25 @@ async function contactForTimeline(customerId: string, customerName: string, quer
 }
 
 /** "next Tuesday", "in 3 days", "Oct 14": a day for a reminder, default a week out. */
+/**
+ * "tomorrow at 2pm", "monday 9am", "Friday afternoon", "2026-10-02T14:00":
+ * a day and, when there is one, a time. The day parser reads days only, so the
+ * time comes off first; "tomorrow at 2pm" used to fail whole and a meeting
+ * asked for at 2pm was booked at 10:00 (found testing Sep 30).
+ */
+function splitDayTime(raw: string, zone?: string): { day: string; time: string } | null {
+  const text = raw.trim();
+  const iso = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/.exec(text);
+  if (iso) return { day: iso[1], time: iso[2] || reminderTime(text.slice(10)) };
+  const time = reminderTime(text);
+  const dayWords = text
+    .replace(/\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b(?:at\s+)?\d{1,2}:\d{2}\b|\b(?:in the )?(?:morning|afternoon|evening|tonight)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const day = parseDay(dayWords || text, new Date(), zone) ?? parseDay(text, new Date(), zone);
+  return day ? { day, time } : null;
+}
+
 /** "3pm", "3:30 pm", "15:00", "at 9" as HH:mm; "" when there is no time in it. */
 function reminderTime(value: string): string {
   const m = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b|\b(\d{1,2}):(\d{2})\b/i.exec(value);
@@ -1010,13 +1029,10 @@ export const ACTIONS: ActionDef[] = [
         customer = { id: found.value.id, name: found.value.name };
       }
       const raw = str(params.when, 60);
-      let when = "";
-      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(raw)) when = raw.slice(0, 16);
-      else {
-        const day = parseDay(raw, new Date(), ctx.timeZone);
-        if (!day) return { error: "When is the meeting? Give a date, ideally with a time." };
-        when = `${day}T10:00`;
-      }
+      const parsed = splitDayTime(raw, ctx.timeZone);
+      if (!parsed) return { error: "When is the meeting? A day like tomorrow or Friday works, with a time if you have one." };
+      // A meeting stored with no time is a meeting with no time, not one at 10:00.
+      const when = parsed.time ? `${parsed.day}T${parsed.time}` : parsed.day;
       let type: string = MEETING_TYPES[1];
       if (str(params.type)) {
         const picked = pickEnum(params.type, MEETING_TYPES, "meeting type");
@@ -1024,7 +1040,7 @@ export const ACTIONS: ActionDef[] = [
         type = picked.value;
       }
       return {
-        summary: `Create the meeting "${title}"${customer ? ` with ${customer.name}` : ""} (${type}) on ${when.replace("T", " at ")}.`,
+        summary: `Create the meeting "${title}"${customer ? ` with ${customer.name}` : ""} (${type}) on ${readableDay(parsed.day)}${parsed.time ? ` at ${parsed.time}` : ", no time set"}.`,
         params: { title, type, meetingAt: when, ...(customer ? { customer: customer.name, customerId: customer.id } : {}) },
         ...(customer ? { customerId: customer.id, company: customer.name } : {}),
       };
@@ -1278,17 +1294,12 @@ export const ACTIONS: ActionDef[] = [
       const what = str(params.what, 500);
       if (!what) return { error: "What should I remind you about?" };
       const when = str(params.when, 80);
-      /* "monday at 9am" is a day AND a time. The day parser reads days, so the
-         time comes off first (found over WhatsApp, Sep 30: the whole phrase
-         failed and the agent asked which Monday). */
-      const dayWords = when
-        .replace(/\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b(?:at\s+)?\d{1,2}:\d{2}\b|\b(?:in the )?(?:morning|afternoon|evening|tonight)\b/gi, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      const day = parseDay(dayWords || when, new Date(), ctx.timeZone) ?? parseDay(when, new Date(), ctx.timeZone);
+      // "monday at 9am" is a day AND a time (found over WhatsApp, Sep 30).
+      const parsedWhen = splitDayTime(when, ctx.timeZone);
+      const day = parsedWhen?.day ?? null;
       if (!day) return { error: "When should I remind you? A date or words like tomorrow or Friday both work." };
       if (day < localDay(new Date(), ctx.timeZone).ymd) return { error: `That date (${readableDay(day)}) has already passed. When should I remind you?` };
-      const time = reminderTime(str(params.time, 20) || when);
+      const time = reminderTime(str(params.time, 20)) || parsedWhen?.time || "";
       let account: { id: string; name: string } | undefined;
       const accountName = str(params.account, 200);
       if (accountName) {
