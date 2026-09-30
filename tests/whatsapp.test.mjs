@@ -223,3 +223,8 @@ test("a voice note's bytes come from Meta in two hops, and a miss is null not a 
   );
   assert.equal(await wa.downloadWhatsAppMedia("media-1", config, async () => { throw new Error("network"); }), null);
 });
+
+test("a navigation-only app link disappears with its URL; a record name stays", () => {
+  const out = wa.toWhatsAppText("Done. I will remind you Fri at 10:00: Call Novartis. [Open it](/customers/c-1)\n\nOwner of [GSK](/customers/c-2) is nobody. [Open Novartis](/customers/c-1).", "https://freyrsales.dev.freyrapps.com");
+  assert.equal(out, "Done. I will remind you Fri at 10:00: Call Novartis.\n\nOwner of GSK is nobody.");
+});

@@ -27,14 +27,45 @@ export type DockReminders = { today: string; reminders: DockReminder[] };
 const TTL_MS = 5 * 60_000;
 let cached: { at: number; value: Promise<DockReminders | null> } | null = null;
 
+/** Set once the agent's own door answers 403: the agent is not open to this
+ *  account (a Solutioning Member, or a privilege set without the agent). */
+let closedToThisAccount = false;
+const closedListeners = new Set<() => void>();
+
 function load(force = false): Promise<DockReminders | null> {
   if (!force && cached && Date.now() - cached.at < TTL_MS) return cached.value;
   const value = fetch("/api/agent/reminders?days=7", { cache: "no-store" })
-    .then((r) => (r.ok ? r.json() : null))
+    .then((r) => {
+      if (r.status === 403) {
+        closedToThisAccount = true;
+        closedListeners.forEach((listener) => listener());
+      }
+      return r.ok ? r.json() : null;
+    })
     .then((d) => (d && Array.isArray(d.reminders) ? { today: String(d.today || ""), reminders: d.reminders as DockReminder[] } : null))
     .catch(() => null);
   cached = { at: Date.now(), value };
   return value;
+}
+
+/**
+ * IS THE AGENT OPEN TO THEM AT ALL? A Solutioning Member was shown the
+ * launcher, typed a question, and got "the connection stopped, ask again to
+ * retry" forever, because the agent is closed to that role (found testing Sep
+ * 30). The dock asks its own door once and hides the launcher if it is shut.
+ */
+export function useAgentClosed(): boolean {
+  const [closed, setClosed] = useState(closedToThisAccount);
+  useEffect(() => {
+    const listener = () => setClosed(true);
+    closedListeners.add(listener);
+    if (!closedToThisAccount) load();
+    else setClosed(true);
+    return () => {
+      closedListeners.delete(listener);
+    };
+  }, []);
+  return closed;
 }
 
 /** Overdue, today and tomorrow: the part worth interrupting someone for. */

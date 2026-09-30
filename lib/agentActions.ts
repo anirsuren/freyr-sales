@@ -1278,7 +1278,14 @@ export const ACTIONS: ActionDef[] = [
       const what = str(params.what, 500);
       if (!what) return { error: "What should I remind you about?" };
       const when = str(params.when, 80);
-      const day = parseDay(when, new Date(), ctx.timeZone);
+      /* "monday at 9am" is a day AND a time. The day parser reads days, so the
+         time comes off first (found over WhatsApp, Sep 30: the whole phrase
+         failed and the agent asked which Monday). */
+      const dayWords = when
+        .replace(/\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b(?:at\s+)?\d{1,2}:\d{2}\b|\b(?:in the )?(?:morning|afternoon|evening|tonight)\b/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const day = parseDay(dayWords || when, new Date(), ctx.timeZone) ?? parseDay(when, new Date(), ctx.timeZone);
       if (!day) return { error: "When should I remind you? A date or words like tomorrow or Friday both work." };
       if (day < localDay(new Date(), ctx.timeZone).ymd) return { error: `That date (${readableDay(day)}) has already passed. When should I remind you?` };
       const time = reminderTime(str(params.time, 20) || when);

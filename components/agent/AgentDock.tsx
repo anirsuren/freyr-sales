@@ -34,7 +34,7 @@ import {
   type AskAgentDetail,
 } from "@/lib/agentEvents";
 import { AGENT_DOCK_ACTIVE_KEY } from "@/lib/agentNavigationHandoff";
-import { useAgentReminders, urgentReminders, reminderHeadline, reminderGreeting } from "@/components/agent/useAgentReminders";
+import { useAgentReminders, useAgentClosed, urgentReminders, reminderHeadline, reminderGreeting } from "@/components/agent/useAgentReminders";
 
 /** Remembered dock size (device preference, not identity data). */
 const DOCK_SIZE_KEY = "freyr.agent.dock.size";
@@ -320,6 +320,7 @@ export function AgentDock({
      count on the launcher, a one-line note beside it once a day, and open the
      greeting with the list. The offerings-only release has no such records. */
   const comingUp = useAgentReminders(!offeringsOnly);
+  const agentClosed = useAgentClosed();
   const urgent = urgentReminders(comingUp);
   const reminderNoteKey = userScopedStorageKey("freyr.agent.reminder-note.v1", currentUser.id);
   const [noteDismissedOn, setNoteDismissedOn] = useState<string | null>(null);
@@ -929,8 +930,22 @@ export function AgentDock({
         })
       );
       setTypingTs(receivedProgress ? null : replyTs);
-    } catch {
+    } catch (error) {
       if (activeUserIdRef.current !== requestUserId) return;
+      /* A REFUSAL IS NOT A DROPPED CONNECTION. A 403 means the agent is not
+         open to this account; saying "ask again to retry" sent people round
+         in circles. Say it once, plainly, as the agent's own reply. */
+      if (error instanceof Error && /agent request failed: 403/.test(error.message)) {
+        const refusedAt = Date.now();
+        setConvos((previous) =>
+          previous.map((conversation) =>
+            conversation.id === conversationId
+              ? { ...conversation, messages: [...conversation.messages, { role: "agent" as const, text: "The assistant is not available on your account. Ask an admin if you need it.", ts: refusedAt }], updated: refusedAt }
+              : conversation
+          )
+        );
+        return;
+      }
       setConnectionErrorId(conversationId);
     } finally {
       if (timer) clearTimeout(timer);
@@ -1107,6 +1122,9 @@ export function AgentDock({
     : subject
       ? `Hi ${firstName}. I'm looking at **${subject}** with you. Ask me anything about what's on screen, or pick a starting point below.`
     : `Hi ${firstName}. I'm on **${label}** with you. Ask me anything, or pick a starting point below.`;
+
+  // Not their tool: no launcher, no panel, nothing to click that cannot work.
+  if (agentClosed) return null;
 
   return (
     <div className={embedded ? "flex h-full min-h-0 w-full flex-col bg-white" : "contents"}>

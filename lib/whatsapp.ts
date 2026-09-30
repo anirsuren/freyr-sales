@@ -220,10 +220,19 @@ export function toWhatsAppText(markdown: string, publicOrigin: string): string {
        agent"). The record's NAME stays; the URL goes. When the person wants
        the thing itself, the attachment pipeline sends the file. External web
        links still pass through: those do open on a phone. */
-    if (url.startsWith("/") || target.startsWith(origin)) return clean || target;
+    if (url.startsWith("/") || target.startsWith(origin)) {
+      /* "Open it", "Open Novartis", "View the deal": a button's words with the
+         button gone read as a dangling instruction on a phone ("...renewal.
+         Open it", found testing Sep 30). A navigation-only label goes with
+         its link; a record's name stays. */
+      if (/^(?:open|view|see|go to|show|check)\b/i.test(clean)) return "";
+      return clean || target;
+    }
     return clean === url || clean === target ? target : `${clean} (${target})`;
   });
   text = text.replace(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/gm, "");
+  // What a dropped link leaves behind: a space before a full stop, a "." on its own.
+  text = text.replace(/[ \t]+([.,;:!?])/g, "$1").replace(/([.!?])[ \t]*[.]+/g, "$1");
   text = text.replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
   return text;
 }
