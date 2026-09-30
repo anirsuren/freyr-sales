@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 export type DockReminder = {
   id: string;
   kind: "meeting" | "solutioning" | "contract" | "deal" | "followup" | "personal";
-  bucket: "overdue" | "today" | "tomorrow" | "week" | "later";
+  bucket: "overdue" | "today" | "tomorrow" | "attention" | "week" | "later";
   day: string;
   daysAway: number;
   time?: string;

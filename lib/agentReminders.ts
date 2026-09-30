@@ -31,7 +31,7 @@ import type { WorkspaceMemberScope } from "@/lib/types";
  */
 
 export type ReminderKind = "meeting" | "solutioning" | "contract" | "deal" | "followup" | "personal";
-export type ReminderBucket = "overdue" | "today" | "tomorrow" | "week" | "later";
+export type ReminderBucket = "overdue" | "today" | "tomorrow" | "attention" | "week" | "later";
 
 export type AgentReminder = {
   /** Stable per record and day, so a push can be sent once and only once. */
@@ -62,11 +62,15 @@ export const BUCKET_LABEL: Record<ReminderBucket, string> = {
   overdue: "Overdue",
   today: "Today",
   tomorrow: "Tomorrow",
+  attention: "Needs a nudge",
   week: "This week",
   later: "Coming up",
 };
 
-const BUCKET_ORDER: ReminderBucket[] = ["overdue", "today", "tomorrow", "week", "later"];
+/** Three weeks without an update is when a deal is quietly slipping. */
+export const QUIET_DAYS = 21;
+
+const BUCKET_ORDER: ReminderBucket[] = ["overdue", "today", "tomorrow", "attention", "week", "later"];
 
 const norm = (value: unknown): string => String(value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
 
@@ -136,9 +140,9 @@ export async function remindersFor(input: {
   const horizon = Math.max(1, Math.min(input.horizonDays ?? 7, 30));
   const out: AgentReminder[] = [];
 
-  const push = (reminder: Omit<AgentReminder, "bucket" | "daysAway"> & { daysAway?: number }) => {
+  const push = (reminder: Omit<AgentReminder, "bucket" | "daysAway"> & { daysAway?: number; bucket?: ReminderBucket }) => {
     const daysAway = reminder.daysAway ?? daysBetween(today, reminder.day);
-    out.push({ ...reminder, daysAway, bucket: bucketFor(daysAway) });
+    out.push({ ...reminder, daysAway, bucket: reminder.bucket ?? bucketFor(daysAway) });
   };
 
   const tasks: Promise<void>[] = [];
@@ -269,6 +273,26 @@ export async function remindersFor(input: {
           for (const o of state.opportunities ?? []) {
             if (o.status === "Won" || o.status === "Lost") continue;
             if (!namedOn(person, o.owner)) continue;
+            /* GONE QUIET. An open deal of theirs nobody has touched in three
+               weeks is the one that slips without anyone deciding it should.
+               Not a deadline, so it never raises the launcher badge; it sits
+               under "Needs a nudge" for briefings and "what needs me". */
+            const touched = dayOf(o.updatedAt);
+            if (touched) {
+              const quietFor = daysBetween(touched, today);
+              if (quietFor >= QUIET_DAYS) {
+                push({
+                  id: `deal:${o.id}:quiet`,
+                  kind: "deal",
+                  bucket: "attention",
+                  day: touched,
+                  daysAway: -quietFor,
+                  title: o.name,
+                  line: `The deal "${o.name}"${o.customer ? ` (${o.customer})` : ""} has had no update in ${quietFor} days.`,
+                  href: `/opportunities/${encodeURIComponent(o.id)}`,
+                });
+              }
+            }
             const sign = dayOf(o.estSignDate);
             if (!sign) continue;
             const away = daysBetween(today, sign);
@@ -372,7 +396,7 @@ export function remindersGrounding(reminders: AgentReminder[], firstName: string
     for (const r of items.slice(0, 12)) lines.push(`- ${r.line} [${r.title}](${r.href})`);
     if (items.length > 12) lines.push(`- and ${items.length - 12} more`);
   }
-  const empty = BUCKET_ORDER.slice(0, 4).filter((bucket) => !reminders.some((r) => r.bucket === bucket));
+  const empty = (["overdue", "today", "tomorrow", "week"] as ReminderBucket[]).filter((bucket) => !reminders.some((r) => r.bucket === bucket));
   if (empty.length) lines.push(`Nothing ${empty.map((b) => BUCKET_LABEL[b].toLowerCase()).join(", ")}.`);
   return `COMING UP FOR ${firstName.toUpperCase()} (checked ${today}; only records they are named on; use these for "what's tomorrow", "remind me", "what's due", and to open a briefing):\n${lines.join("\n")}`;
 }
