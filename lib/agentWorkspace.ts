@@ -561,6 +561,24 @@ export async function readAgentWorkspace(
         query = "";
       }
     }
+    /* THE ACCOUNT BEHIND EACH DEAL, AS A LINK. A deal carried only its
+       customer's name, so "the Takeda deal" was answered with Takeda linked to
+       its Market Intel page (found testing Sep 30). The stored id first, else
+       a name that exactly one account has; otherwise no link. */
+    const accountIdFor = await (async () => {
+      if (!await canOpenModule("/customers")) return () => null;
+      const list = await getDb().customers.list().catch(() => []);
+      const ids = new Set(list.map((c) => c.id));
+      const byName = new Map<string, string | null>();
+      for (const c of list) {
+        const key = c.company_name.trim().toLowerCase();
+        byName.set(key, byName.has(key) ? null : c.id);
+      }
+      return (deal: { customerId?: string | null; customer?: string | null }) =>
+        (deal.customerId && ids.has(deal.customerId) ? deal.customerId : null) ??
+        byName.get(String(deal.customer ?? "").trim().toLowerCase()) ??
+        null;
+    })();
     const visibleOpportunities = (await readOpportunities()).opportunities
       .filter((r) => ownedInScope(r.owner))
       .filter((r) =>
@@ -603,7 +621,10 @@ export async function readAgentWorkspace(
         return [...tally.values()]
           .sort((a, b) => b.deals - a.deals || a.customer.localeCompare(b.customer))
           .slice(0, 25)
-          .map((row) => ({ ...row, url: row.customerId ? `/customers/${encodeURIComponent(row.customerId)}` : undefined }));
+          .map((row) => {
+            const id = accountIdFor({ customerId: row.customerId, customer: row.customer });
+            return { ...row, url: id ? `/customers/${encodeURIComponent(id)}` : undefined };
+          });
       })(),
       byCustomerNote: "Deal counts per account (top 25), open = not Won or Lost. Use this for most/fewest deals per customer instead of paging through every record.",
       pageUrl: "/opportunities",
@@ -619,6 +640,10 @@ export async function readAgentWorkspace(
         reference: r.externalId || undefined,
         name: r.name,
         customer: r.customer,
+        customerUrl: (() => {
+          const id = accountIdFor(r);
+          return id ? `/customers/${encodeURIComponent(id)}` : null;
+        })(),
         owner: r.owner,
         level: r.level,
         status: r.status,
