@@ -5,6 +5,8 @@ import { readContracts } from "@/lib/contracts";
 import { readOpportunities } from "@/lib/opportunities";
 import { getDb } from "@/lib/db";
 import { localDay } from "@/lib/agentActionsShared";
+import { readPersonalReminders } from "@/lib/agentPersonalReminders";
+import type { WorkspaceMemberScope } from "@/lib/types";
 
 /**
  * WHAT IS COMING UP FOR THIS PERSON (Anir, Sep 30: "if a deadline is coming or
@@ -28,7 +30,7 @@ import { localDay } from "@/lib/agentActionsShared";
  * "tomorrow" in Hyderabad is not tomorrow in New Jersey.
  */
 
-export type ReminderKind = "meeting" | "solutioning" | "contract" | "deal" | "followup";
+export type ReminderKind = "meeting" | "solutioning" | "contract" | "deal" | "followup" | "personal";
 export type ReminderBucket = "overdue" | "today" | "tomorrow" | "week" | "later";
 
 export type AgentReminder = {
@@ -125,6 +127,9 @@ export async function remindersFor(input: {
   now?: Date;
   /** How far ahead to look for ordinary items (contracts always look 30 days). */
   horizonDays?: number;
+  /** The person's own scope, for the reminders they asked the agent to keep.
+   *  Private: pass it only when the person asking IS this person. */
+  scope?: WorkspaceMemberScope;
 }): Promise<AgentReminder[]> {
   const { person, access } = input;
   const today = localDay(input.now ?? new Date(), input.timeZone).ymd;
@@ -314,6 +319,31 @@ export async function remindersFor(input: {
     );
   }
 
+  if (input.scope) {
+    tasks.push(
+      readPersonalReminders(input.scope)
+        .then((list) => {
+          for (const r of list) {
+            if (r.doneAt) continue;
+            const away = daysBetween(today, r.day);
+            if (away < -14 || away > horizon) continue;
+            push({
+              id: `personal:${r.id}`,
+              kind: "personal",
+              day: r.day,
+              time: r.time,
+              title: r.text.length > 60 ? `${r.text.slice(0, 57)}...` : r.text,
+              line: away < 0
+                ? `You asked me to remind you ${whenWords(r.day, away)}: ${r.text}.`
+                : `Your reminder ${whenWords(r.day, away)}${at(r.time)}: ${r.text}.`,
+              href: r.account ? `/customers/${encodeURIComponent(r.account.id)}` : "/agent",
+            });
+          }
+        })
+        .catch(() => undefined),
+    );
+  }
+
   await Promise.all(tasks);
 
   return out.sort(
@@ -368,6 +398,7 @@ export async function comingUpForAgent(input: {
   timeZone: string;
   access: ReminderAccess;
   members: Array<{ name: string; active: boolean }>;
+  scope?: WorkspaceMemberScope;
 }): Promise<string> {
   const wanted = String(input.person ?? "").trim();
   let person = input.askerName;
@@ -386,7 +417,14 @@ export async function comingUpForAgent(input: {
     if (loose.length > 1) return JSON.stringify({ person: wanted, ambiguous: loose.map((m) => m.name), note: "Several people match. Ask which one." });
     person = loose[0].name;
   }
-  const reminders = await remindersFor({ person, timeZone: input.timeZone, access: input.access, horizonDays: input.days ?? 7 });
+  const reminders = await remindersFor({
+    person,
+    timeZone: input.timeZone,
+    access: input.access,
+    horizonDays: input.days ?? 7,
+    // Their private reminders come back only when they are asking about themself.
+    scope: norm(person) === norm(input.askerName) ? input.scope : undefined,
+  });
   const today = localDay(new Date(), input.timeZone).ymd;
   return JSON.stringify({
     person,

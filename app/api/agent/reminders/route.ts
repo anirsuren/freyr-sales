@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
     person: actor.name,
     timeZone,
     horizonDays: Number.isFinite(horizon) ? horizon : 7,
+    scope: { workspaceId: actor.workspaceId, userId: actor.userId },
     access: {
       meetings: modules.meetings,
       solutioning: modules.solutioning,

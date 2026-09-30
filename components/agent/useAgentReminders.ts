@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
  */
 export type DockReminder = {
   id: string;
-  kind: "meeting" | "solutioning" | "contract" | "deal" | "followup";
+  kind: "meeting" | "solutioning" | "contract" | "deal" | "followup" | "personal";
   bucket: "overdue" | "today" | "tomorrow" | "week" | "later";
   day: string;
   daysAway: number;

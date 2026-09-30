@@ -185,7 +185,7 @@ export async function runReminderPush(options: {
         outcomes.push({ person: member.name, slot, day, items: 0, result: "already-sent", detail: log[key] });
         continue;
       }
-      const reminders = await remindersFor({ person: member.name, timeZone, access: await accessFor(member), now });
+      const reminders = await remindersFor({ person: member.name, timeZone, access: await accessFor(member), now, scope: { workspaceId: member.workspaceId, userId: member.userId } });
       const items = itemsFor(slot, reminders);
       if (!items.length) {
         outcomes.push({ person: member.name, slot, day, items: 0, result: "nothing-due" });

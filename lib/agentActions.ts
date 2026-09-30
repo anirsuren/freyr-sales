@@ -20,9 +20,11 @@ import { moduleCreateRefusal, moduleWriteRefusal, recordWriteRefusal } from "@/l
 import { getCurrentUser } from "@/lib/currentUser";
 import { opportunityChangeRefusal } from "@/lib/opportunityOwnership";
 import { addProposal, getProposal, updateProposal } from "@/lib/agentActionStore";
+import { addPersonalReminder, completePersonalReminder } from "@/lib/agentPersonalReminders";
 import {
   matchOne,
   parseDay,
+  localDay,
   parseMoney,
   shortId,
   readableDay,
@@ -338,13 +340,26 @@ async function customerForWrite(query: unknown) {
  */
 async function contactForTimeline(customerId: string, customerName: string, query: unknown): Promise<Match<{ id: string; name: string }>> {
   const contacts = (await getDb().contacts.list()).filter((c) => c.customer_id === customerId).map((c) => ({ id: c.id, name: c.full_name }));
-  if (!contacts.length) return { ok: false, error: `${customerName} has no contacts yet, and a touch is logged against a contact.` };
+  if (!contacts.length) return { ok: false, error: `${customerName} has no contacts yet, and a touch is logged against a contact. For a reminder to follow up, offer set_reminder instead: it needs no contact.` };
   const q = str(query, 120);
   if (q) return matchOne(q, contacts, "contact");
   return { ok: true, value: contacts[0] };
 }
 
 /** "next Tuesday", "in 3 days", "Oct 14": a day for a reminder, default a week out. */
+/** "3pm", "3:30 pm", "15:00", "at 9" as HH:mm; "" when there is no time in it. */
+function reminderTime(value: string): string {
+  const m = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b|\b(\d{1,2}):(\d{2})\b/i.exec(value);
+  if (!m) return "";
+  let hour = Number(m[1] ?? m[4]);
+  const minute = Number(m[2] ?? m[5] ?? 0);
+  const meridiem = (m[3] || "").toLowerCase();
+  if (meridiem === "pm" && hour < 12) hour += 12;
+  if (meridiem === "am" && hour === 12) hour = 0;
+  if (hour > 23 || minute > 59) return "";
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
 function followupDay(value: unknown, zone?: string): { iso: string; label: string } {
   const raw = str(value, 60);
   const day = parseDay(raw || "next week", new Date(), zone) ?? parseDay("next week", new Date(), zone)!;
@@ -1245,6 +1260,77 @@ export const ACTIONS: ActionDef[] = [
       },
     }),
     done: (p) => ({ text: `Follow-up with ${p.customer} set for ${p.when}.`, link: `/customers/${encodeURIComponent(String(p.customerId))}` }),
+  },
+  {
+    key: "set_reminder",
+    title: "Remind me about something",
+    description: "A personal reminder for the person themself, on a day ('tomorrow', 'Friday', 'next week', a date) and optionally a time: 'remind me Friday to send Pfizer the deck'. Needs no contact or record. Private to them; it comes back in their reminders, the dock and WhatsApp.",
+    module: "/agent",
+    gate: "write",
+    fields: {
+      what: { type: "string", description: "What to remind them about, in their words." },
+      when: { type: "string", description: "The day: a date or words like tomorrow, Friday, next week, in 3 days." },
+      time: { type: "string", description: "Optional time of day, like 3pm or 15:00." },
+      account: { type: "string", description: "Optional customer account it is about." },
+    },
+    required: ["what", "when"],
+    async prepare(params, ctx) {
+      const what = str(params.what, 500);
+      if (!what) return { error: "What should I remind you about?" };
+      const when = str(params.when, 80);
+      const day = parseDay(when, new Date(), ctx.timeZone);
+      if (!day) return { error: "When should I remind you? A date or words like tomorrow or Friday both work." };
+      if (day < localDay(new Date(), ctx.timeZone).ymd) return { error: `That date (${readableDay(day)}) has already passed. When should I remind you?` };
+      const time = reminderTime(str(params.time, 20) || when);
+      let account: { id: string; name: string } | undefined;
+      const accountName = str(params.account, 200);
+      if (accountName) {
+        const customers = await getDb().customers.list();
+        const hit = customers.find((c) => c.company_name.trim().toLowerCase() === accountName.toLowerCase());
+        if (hit) account = { id: hit.id, name: hit.company_name };
+      }
+      return {
+        summary: `Remind you ${readableDay(day)}${time ? ` at ${time}` : ""}: ${what}.`,
+        params: { what, day, time: time || undefined, accountId: account?.id, accountName: account?.name },
+        ...(account ? { customerId: account.id, company: account.name } : {}),
+      };
+    },
+    call: (p) => ({
+      local: async (ctx) => {
+        const saved = await addPersonalReminder(ctx.scope, {
+          text: String(p.what),
+          day: String(p.day),
+          time: p.time ? String(p.time) : undefined,
+          account: p.accountId ? { id: String(p.accountId), name: String(p.accountName) } : undefined,
+        });
+        return { reminderId: saved.id };
+      },
+    }),
+    done: (p) => ({ text: `I will remind you ${readableDay(String(p.day))}${p.time ? ` at ${p.time}` : ""}: ${p.what}.`, link: p.accountId ? `/customers/${encodeURIComponent(String(p.accountId))}` : undefined }),
+  },
+  {
+    key: "complete_reminder",
+    title: "Tick off one of my reminders",
+    description: "Mark one of the person's own personal reminders done, by a few words from it: 'the Pfizer deck one is done'.",
+    module: "/agent",
+    gate: "write",
+    fields: {
+      which: { type: "string", description: "A few words from the reminder, or its id." },
+    },
+    required: ["which"],
+    async prepare(params) {
+      const which = str(params.which, 200);
+      if (!which) return { error: "Which reminder is done?" };
+      return { summary: `Mark your reminder "${which}" as done.`, params: { which } };
+    },
+    call: (p) => ({
+      local: async (ctx) => {
+        const result = await completePersonalReminder(ctx.scope, String(p.which));
+        if (!result.ok) throw new Error(result.candidates?.length ? `${result.error} ${result.candidates.map((c) => `"${c.text}"`).join(", ")}` : result.error);
+        return { reminderId: result.reminder.id, text: result.reminder.text };
+      },
+    }),
+    done: (_p, res) => ({ text: `Done: "${String(res.text ?? "")}" is ticked off.` }),
   },
   {
     key: "log_touch",
