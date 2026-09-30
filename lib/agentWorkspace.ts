@@ -592,8 +592,9 @@ export async function readAgentWorkspace(
              company name. Keying on the id alone split Novartis into a row
              of 2 (with the id) and a row of 3 (name only) and answered 3
              where the account has 5 (found testing Sep 30). */
-          const key = deal.customer.trim().toLowerCase().replace(/\s+/g, " ");
-          const row = tally.get(key) ?? { customer: deal.customer, customerId: deal.customerId, deals: 0, open: 0 };
+          const name = String(deal.customer ?? "").trim() || "No customer";
+          const key = name.toLowerCase().replace(/\s+/g, " ");
+          const row = tally.get(key) ?? { customer: name, customerId: deal.customerId, deals: 0, open: 0 };
           if (!row.customerId && deal.customerId) row.customerId = deal.customerId;
           row.deals += 1;
           if (deal.status !== "Won" && deal.status !== "Lost") row.open += 1;
