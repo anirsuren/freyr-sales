@@ -581,6 +581,30 @@ export async function readAgentWorkspace(
         return counts;
       }, {}),
       estimatedTcvByCurrency: Object.fromEntries([...tcvByCurrency].map(([currency, deals]) => [currency, sumEstimates(deals, "tcv")])),
+      /* PER-CUSTOMER TOTALS, READY MADE. "Which customers have the most
+         deals?" paged through all 104 records three times over and took 93
+         seconds to count them (found testing Sep 30). The count by account,
+         open and total, comes with the first page now. */
+      byCustomer: (() => {
+        const tally = new Map<string, { customer: string; customerId?: string; deals: number; open: number }>();
+        for (const deal of visibleOpportunities) {
+          /* By the account page's own rule: the account id OR the exact
+             company name. Keying on the id alone split Novartis into a row
+             of 2 (with the id) and a row of 3 (name only) and answered 3
+             where the account has 5 (found testing Sep 30). */
+          const key = deal.customer.trim().toLowerCase().replace(/\s+/g, " ");
+          const row = tally.get(key) ?? { customer: deal.customer, customerId: deal.customerId, deals: 0, open: 0 };
+          if (!row.customerId && deal.customerId) row.customerId = deal.customerId;
+          row.deals += 1;
+          if (deal.status !== "Won" && deal.status !== "Lost") row.open += 1;
+          tally.set(key, row);
+        }
+        return [...tally.values()]
+          .sort((a, b) => b.deals - a.deals || a.customer.localeCompare(b.customer))
+          .slice(0, 25)
+          .map((row) => ({ ...row, url: row.customerId ? `/customers/${encodeURIComponent(row.customerId)}` : undefined }));
+      })(),
+      byCustomerNote: "Deal counts per account (top 25), open = not Won or Lost. Use this for most/fewest deals per customer instead of paging through every record.",
       pageUrl: "/opportunities",
       ...(account ? { accountRule: `Only deals attached to ${account.name} by account id or exact company name, the same rule the account page uses. Similar names are different accounts.` } : {}),
       accrualAccess: !accrualsAllowed ? "denied" : accrualPlans ? "available" : "unavailable",
