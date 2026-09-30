@@ -69,7 +69,7 @@ test("phone numbers are digits; display adds the plus", () => {
   assert.equal(wa.waMeLink("", "482913"), null);
 });
 
-test("the agent's markdown becomes WhatsApp text with phone-openable links", () => {
+test("the agent's markdown becomes WhatsApp text: app records by name, outside sources with their link", () => {
   const md = [
     "## Open deals with GSK",
     "",
@@ -93,9 +93,9 @@ test("the agent's markdown becomes WhatsApp text with phone-openable links", () 
     [
       "*Open deals with GSK*",
       "",
-      "You have *two* open opportunities with GSK (https://freyrsales.dev.freyrapps.com/customers/CUS-0001) worth _$330,000_:",
+      "You have *two* open opportunities with GSK worth _$330,000_:",
       "",
-      "• Freya.Register (https://freyrsales.dev.freyrapps.com/opportunities/OPP-0001): Value $200,000, Stage Proposal",
+      "• Freya.Register: Value $200,000, Stage Proposal",
       "• Regulatory writing: Value $130,000, Stage Qualified",
       "",
       "• Owner: Priya",

@@ -34,6 +34,7 @@ import {
   type AskAgentDetail,
 } from "@/lib/agentEvents";
 import { AGENT_DOCK_ACTIVE_KEY } from "@/lib/agentNavigationHandoff";
+import { useAgentReminders, urgentReminders, reminderHeadline, reminderGreeting } from "@/components/agent/useAgentReminders";
 
 /** Remembered dock size (device preference, not identity data). */
 const DOCK_SIZE_KEY = "freyr.agent.dock.size";
@@ -314,6 +315,55 @@ export function AgentDock({
   const [pending, setPending] = useState<string | null>(null);
   // Customers, contacts, offerings, FDL components, teammates and reports.
   const entities = useEntityIndex();
+  /* WHAT IS DUE, WITHOUT BEING ASKED (Anir, Sep 30: "if a deadline is coming or
+     something tomorrow it should remind me"). Overdue, today and tomorrow put a
+     count on the launcher, a one-line note beside it once a day, and open the
+     greeting with the list. The offerings-only release has no such records. */
+  const comingUp = useAgentReminders(!offeringsOnly);
+  const urgent = urgentReminders(comingUp);
+  const reminderNoteKey = userScopedStorageKey("freyr.agent.reminder-note.v1", currentUser.id);
+  const [noteDismissedOn, setNoteDismissedOn] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setNoteDismissedOn(localStorage.getItem(reminderNoteKey));
+    } catch {
+      /* private mode: the note simply shows until dismissed this session */
+    }
+  }, [reminderNoteKey]);
+  const reminderDay = comingUp?.today || "";
+  const dismissReminderNote = () => {
+    if (!reminderDay) return;
+    try {
+      localStorage.setItem(reminderNoteKey, reminderDay);
+    } catch {
+      /* the in-memory state below still hides it */
+    }
+    setNoteDismissedOn(reminderDay);
+  };
+  /* THE REMINDER ARRIVES AT THE BOTTOM OF THE THREAD. The greeting sits above
+     a thread that can run for days, so a list tucked into it was scrolled out
+     of sight the moment the dock opened (found in the browser, Sep 30). It is
+     a fresh bubble after the last message instead, on the first open of the
+     day or when the note is tapped, and it is not saved into the history. */
+  const [reminderBubbleOn, setReminderBubbleOn] = useState(false);
+  useEffect(() => {
+    if (!open || !reminderBubbleOn) return;
+    const id = requestAnimationFrame(() => {
+      const scroller = scrollRef.current;
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, reminderBubbleOn]);
+  useEffect(() => {
+    if (open && urgent.length && reminderDay && noteDismissedOn !== reminderDay) {
+      setReminderBubbleOn(true);
+      dismissReminderNote();
+    }
+    if (!open) setReminderBubbleOn(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, urgent.length, reminderDay]);
+  const showReminderNote = !open && !embedded && !hidden && urgent.length > 0 && !!reminderDay && noteDismissedOn !== reminderDay;
+  const reminderTone = urgent.some((r) => r.bucket === "overdue" || r.bucket === "today") ? "urgent" : "soon";
   const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(null);
   const [historySyncFailed, setHistorySyncFailed] = useState(false);
   const [historyReady, setHistoryReady] = useState(false);
@@ -725,6 +775,7 @@ export function AgentDock({
   }
 
   async function ask(q?: string) {
+    setReminderBubbleOn(false);
     const text = (q ?? input).trim();
     if (
       !text ||
@@ -1278,6 +1329,11 @@ export function AgentDock({
                 </div>
               );
             })}
+            {reminderBubbleOn && urgent.length > 0 && !busy && (
+              <div data-agent-reminder className="agent-dock-reply w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 text-[13px] leading-[1.55] text-text-primary">
+                <AgentResponseMarkdown text={reminderGreeting(urgent)} entities={entities} linkable={!offeringsOnly} />
+              </div>
+            )}
             {busy && (
               <div className="agent-dock-reply w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 text-[13px] leading-[1.55]">
                 {streamingPreview
@@ -1367,13 +1423,56 @@ export function AgentDock({
             // page and the agent review page already use print:hidden; the
             // floating dock simply never got it.
             embedded
-              ? "mx-auto mb-5 mt-auto"
+              ? "relative mx-auto mb-5 mt-auto"
               : "fixed bottom-5 right-5 z-[120] print:hidden",
             "bg-blue-primary hover:bg-blue-hover shadow-[0_8px_24px_-6px_rgba(0,113,227,0.55)] hover:shadow-[0_12px_30px_-6px_rgba(0,113,227,0.65)] hover:-translate-y-0.5"
           )}
         >
           {open ? <X size={22} strokeWidth={2} /> : <MessageCircle size={24} strokeWidth={1.9} />}
+          {!open && urgent.length > 0 && (
+            <span
+              aria-label={reminderHeadline(urgent)}
+              className={cn(
+                "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white tnum",
+                reminderTone === "urgent" ? "bg-[#E5484D]" : "bg-[#D97706]"
+              )}
+            >
+              {urgent.length}
+            </span>
+          )}
         </button>
+      )}
+
+      {/* The once-a-day note beside the launcher: what is due, one tap from the list. */}
+      {showReminderNote && (
+        <div
+          role="status"
+          className={cn(
+            "fixed bottom-[30px] right-[88px] z-[120] flex max-w-[min(340px,calc(100vw-7rem))] items-center gap-1 rounded-full bg-white py-1 pl-3.5 pr-1 text-[13px] text-text-primary print:hidden slide-in-right",
+            POPOVER_SURFACE
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              dismissReminderNote();
+              setReminderBubbleOn(true);
+              onOpenChange(true);
+            }}
+            className="min-w-0 truncate py-1 text-left font-medium hover:text-blue-primary"
+          >
+            <span className={cn("mr-1.5 inline-block h-2 w-2 rounded-full align-middle", reminderTone === "urgent" ? "bg-[#E5484D]" : "bg-[#D97706]")} />
+            Heads up, {reminderHeadline(urgent)}
+          </button>
+          <button
+            type="button"
+            onClick={dismissReminderNote}
+            aria-label="Dismiss for today"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-surface hover:text-text-primary"
+          >
+            <X size={14} strokeWidth={2} />
+          </button>
+        </div>
       )}
     </div>
   );

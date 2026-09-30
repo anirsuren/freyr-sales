@@ -1171,7 +1171,7 @@ export const ACTIONS: ActionDef[] = [
       /* The route insists on a due date ("Pick a valid due date"), so ask
          for one up front rather than failing after the yes. */
       const neededBy = parseDay(params.neededBy, new Date(), ctx.timeZone);
-      if (!neededBy) return { error: "When is it needed by? Give a date (YYYY-MM-DD)." };
+      if (!neededBy) return { error: "When is it needed by? A date or words like Friday or next week both work." };
       let priority: string | undefined;
       if (str(params.priority)) {
         const picked = pickEnum(params.priority, ["High", "Medium", "Low"], "priority");
@@ -1187,7 +1187,7 @@ export const ACTIONS: ActionDef[] = [
         opportunityLabels = [opp.value.plain];
       }
       return {
-        summary: `Raise a solutioning request for a ${kind.value} at ${customer.value.name}: "${title}"${neededBy ? `, needed by ${neededBy}` : ""}${priority ? `, ${priority} priority` : ""}${opportunityLabels ? `, for the deal ${opportunityLabels[0]}` : ""}.`,
+        summary: `Raise a solutioning request for a ${kind.value} at ${customer.value.name}: "${title}"${neededBy ? `, needed by ${readableDay(neededBy)}` : ""}${priority ? `, ${priority} priority` : ""}${opportunityLabels ? `, for the deal ${opportunityLabels[0]}` : ""}.`,
         params: { customer: customer.value.name, customerId: customer.value.id, kind: kind.value, title, details: str(params.details, 4000) || undefined, neededBy, priority, opportunityIds, opportunityLabels },
         customerId: customer.value.id,
         company: customer.value.name,
