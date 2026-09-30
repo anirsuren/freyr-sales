@@ -1324,7 +1324,9 @@ export const ACTIONS: ActionDef[] = [
         return { reminderId: saved.id };
       },
     }),
-    done: (p) => ({ text: `I will remind you ${readableDay(String(p.day))}${p.time ? ` at ${p.time}` : ""}: ${p.what}.`, link: p.accountId ? `/customers/${encodeURIComponent(String(p.accountId))}` : undefined }),
+    /* No link: "Done... [Open it]" pointed at the account page, where the
+       reminder is not (it is private and lives with the agent), Sep 30. */
+    done: (p) => ({ text: `I will remind you ${readableDay(String(p.day))}${p.time ? ` at ${p.time}` : ""}: ${p.what}.` }),
   },
   {
     key: "complete_reminder",
@@ -1360,7 +1362,8 @@ export const ACTIONS: ActionDef[] = [
         return { reminderId: result.reminder.id, text: result.reminder.text };
       },
     }),
-    done: (_p, res) => ({ text: `Done: "${String(res.text ?? "")}" is ticked off.` }),
+    // The page and the WhatsApp bridge both say "Done." in front of this.
+    done: (_p, res) => ({ text: `"${String(res.text ?? "")}" is ticked off.` }),
   },
   {
     key: "log_touch",
