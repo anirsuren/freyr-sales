@@ -43,6 +43,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 import { queueAgentNavigationHandoff } from "@/lib/agentNavigationHandoff";
+import { useAgentReminders } from "@/components/agent/useAgentReminders";
 
 type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp" };
 type OfferingContext = { id: string; name: string };
@@ -205,6 +206,20 @@ export function AgentChat({
     initialOffering ?? null
   );
 
+  /* WHAT IS COMING UP, ON THE AGENT'S OWN PAGE. The dock raises it everywhere
+     else, and the dock is not shown here (one agent on screen, Jul 29), so the
+     Agent page asked nothing and said nothing about tomorrow (Sep 30). */
+  const comingUp = useAgentReminders(!offeringsOnly);
+  const comingUpCounts = (() => {
+    const list = comingUp?.reminders ?? [];
+    return {
+      overdue: list.filter((r) => r.bucket === "overdue").length,
+      today: list.filter((r) => r.bucket === "today").length,
+      tomorrow: list.filter((r) => r.bucket === "tomorrow").length,
+      attention: list.filter((r) => r.bucket === "attention").length,
+    };
+  })();
+  const hasComingUp = comingUpCounts.overdue + comingUpCounts.today + comingUpCounts.tomorrow + comingUpCounts.attention > 0;
   const [summary, setSummary] = useState<{
     needsApproval: number;
     cooling: number;
@@ -933,6 +948,32 @@ export function AgentChat({
                   )}
                 </div>
               )}
+
+            {!offeringsOnly && !offeringContext && hasComingUp && (
+              <div
+                className="flex flex-nowrap gap-2 mt-6 max-w-full overflow-x-auto no-scrollbar py-1 rise-in"
+                style={{ animationDelay: "180ms" }}
+                aria-label="Coming up for you"
+              >
+                {([
+                  ["overdue", "overdue", "What's overdue for me?", "bg-error"],
+                  ["today", "due today", "What's due for me today?", "bg-orange-600"],
+                  ["tomorrow", "due tomorrow", "What's due for me tomorrow?", "bg-orange-600"],
+                  ["attention", comingUpCounts.attention === 1 ? "deal needs a nudge" : "deals need a nudge", "Which of my deals need a nudge?", "bg-blue-primary"],
+                ] as const)
+                  .filter(([key]) => comingUpCounts[key] > 0)
+                  .map(([key, label, question, dot]) => (
+                    <button
+                      key={key}
+                      onClick={() => send(question)}
+                      className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border-light rounded-full px-3 py-1.5 hover:border-blue-subtle hover:text-blue-primary transition-colors"
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                      {comingUpCounts[key]} {label}
+                    </button>
+                  ))}
+              </div>
+            )}
 
             <div
               className="flex flex-nowrap gap-2 mt-3 w-full max-w-[640px] overflow-x-auto no-scrollbar py-1 rise-in"

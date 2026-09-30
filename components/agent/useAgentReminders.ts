@@ -43,10 +43,19 @@ function load(force = false): Promise<DockReminders | null> {
       return r.ok ? r.json() : null;
     })
     .then((d) => (d && Array.isArray(d.reminders) ? { today: String(d.today || ""), reminders: d.reminders as DockReminder[] } : null))
+    .then((data) => {
+      lastKnown = data;
+      return data;
+    })
     .catch(() => null);
   cached = { at: Date.now(), value };
   return value;
 }
+
+/** The last answer this tab saw, so a page that mounts after the dock already
+ *  asked renders the list on its first paint instead of popping it in late
+ *  (a late pop-in broke the Agent page's entrance animation before, Jul 29). */
+let lastKnown: DockReminders | null = null;
 
 /**
  * IS THE AGENT OPEN TO THEM AT ALL? A Solutioning Member was shown the
@@ -94,7 +103,7 @@ export function reminderGreeting(urgent: DockReminder[]): string {
 }
 
 export function useAgentReminders(enabled: boolean): DockReminders | null {
-  const [data, setData] = useState<DockReminders | null>(null);
+  const [data, setData] = useState<DockReminders | null>(() => (enabled ? lastKnown : null));
   useEffect(() => {
     if (!enabled) return;
     let live = true;
