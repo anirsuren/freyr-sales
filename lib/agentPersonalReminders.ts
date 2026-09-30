@@ -85,19 +85,78 @@ export async function addPersonalReminder(
   return reminder;
 }
 
-/** Tick one off. Matches the id, else the one open reminder whose text contains the words given. */
-export async function completePersonalReminder(
-  scope: WorkspaceMemberScope,
-  which: string,
-): Promise<{ ok: true; reminder: PersonalReminder } | { ok: false; error: string; candidates?: PersonalReminder[] }> {
+type Found = { ok: true; reminder: PersonalReminder } | { ok: false; error: string; candidates?: PersonalReminder[] };
+
+/* Words that say which reminder without being part of it: "the Pfizer one",
+   "that reminder", "tick off my deck reminder". */
+const FILLER = new Set(["the", "a", "an", "to", "for", "my", "me", "one", "reminder", "about", "that", "this", "it", "is", "was", "done", "and", "of", "on", "at", "with", "please", "tick", "off", "mark", "as", "i", "you", "your", "today", "tomorrow"]);
+
+/** "Your reminder tomorrow at 15:00: Send Pfizer the deck." reads as "send pfizer the deck". */
+function plain(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/^\s*(?:your reminder|you asked me to remind you|reminder)\b[^:]{0,80}:\s*/, "")
+    .replace(/["'“”‘’.,;:!?()[\]]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const words = (value: string) => plain(value).split(" ").filter((w) => w && !FILLER.has(w));
+
+/**
+ * WHICH REMINDER DID THEY MEAN? The id, else the reminder whose words were
+ * given. The agent reads a reminder back as "Your reminder tomorrow: Send
+ * Pfizer the pricing deck." and then passed that whole line as the one to
+ * tick off, which no reminder's text contains, so "tick that off" failed after
+ * the person had already said yes (found testing Sep 30). Each step is tried
+ * in turn and the first that finds anything decides; two hits is a question.
+ */
+export function pickPersonalReminder(list: PersonalReminder[], which: string): PersonalReminder[] {
+  const raw = which.trim().replace(/^personal:/, "");
+  const byId = list.filter((r) => r.id === raw);
+  if (byId.length) return byId;
+  const q = plain(which);
+  if (!q) return [];
+  const exact = list.filter((r) => plain(r.text) === q);
+  if (exact.length) return exact;
+  const contained = list.filter((r) => {
+    const text = plain(r.text);
+    const account = plain(r.account?.name ?? "");
+    return text.includes(q) || q.includes(text) || (account && q === account);
+  });
+  if (contained.length) return contained;
+  const asked = words(which);
+  // "tick that off" with one reminder open: that one. The confirm card names it before anything changes.
+  if (!asked.length) return list.length === 1 ? list : [];
+  const scored = list
+    .map((r) => {
+      const have = new Set(words(`${r.text} ${r.account?.name ?? ""}`));
+      return { r, score: asked.filter((w) => have.has(w)).length / asked.length };
+    })
+    .filter((s) => s.score >= 0.6);
+  const best = Math.max(0, ...scored.map((s) => s.score));
+  return scored.filter((s) => s.score === best).map((s) => s.r);
+}
+
+/** Find one of their open reminders by id or by a few of its words, without changing it. */
+export async function findPersonalReminder(scope: WorkspaceMemberScope, which: string): Promise<Found> {
   const current = await readPersonalReminders(scope);
   const open = current.filter((r) => !r.doneAt);
-  const q = which.trim().toLowerCase();
-  const byId = open.find((r) => r.id === which.trim());
-  const matches = byId ? [byId] : open.filter((r) => r.text.toLowerCase().includes(q) || (r.account?.name ?? "").toLowerCase().includes(q));
-  if (!matches.length) return { ok: false, error: `You have no open reminder matching "${which.trim()}".` };
+  if (!open.length) return { ok: false, error: "You have no open reminders." };
+  const matches = pickPersonalReminder(open, which);
+  if (matches.length === 1) return { ok: true, reminder: matches[0] };
   if (matches.length > 1) return { ok: false, error: "More than one reminder matches. Which one?", candidates: matches };
-  const done = { ...matches[0], doneAt: new Date().toISOString() };
+  const done = pickPersonalReminder(current.filter((r) => r.doneAt), which);
+  if (done.length === 1) return { ok: false, error: `"${done[0].text}" is already ticked off.` };
+  return { ok: false, error: `You have no open reminder matching "${which.trim()}".`, candidates: open.length <= 5 ? open : undefined };
+}
+
+/** Tick one off: the reminder findPersonalReminder resolves. */
+export async function completePersonalReminder(scope: WorkspaceMemberScope, which: string): Promise<Found> {
+  const found = await findPersonalReminder(scope, which);
+  if (!found.ok) return found;
+  const current = await readPersonalReminders(scope);
+  const done = { ...found.reminder, doneAt: new Date().toISOString() };
   await writePersonalReminders(scope, current.map((r) => (r.id === done.id ? done : r)));
   return { ok: true, reminder: done };
 }

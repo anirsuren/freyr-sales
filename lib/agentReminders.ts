@@ -48,6 +48,9 @@ export type AgentReminder = {
   /** One plain sentence the agent can say as it is. */
   line: string;
   href: string;
+  /** A personal reminder about an account: that account's name. The reminder
+   *  itself lives only with the agent, never on the account's page. */
+  about?: string;
 };
 
 export type ReminderAccess = {
@@ -361,6 +364,7 @@ export async function remindersFor(input: {
                 ? `You asked me to remind you ${whenWords(r.day, away)}: ${r.text}.`
                 : `Your reminder ${whenWords(r.day, away)}${at(r.time)}: ${r.text}.`,
               href: r.account ? `/customers/${encodeURIComponent(r.account.id)}` : "/agent",
+              ...(r.account ? { about: r.account.name } : {}),
             });
           }
         })
@@ -393,7 +397,16 @@ export function remindersGrounding(reminders: AgentReminder[], firstName: string
     const items = reminders.filter((r) => r.bucket === bucket);
     if (!items.length) continue;
     lines.push(`${BUCKET_LABEL[bucket]}:`);
-    for (const r of items.slice(0, 12)) lines.push(`- ${r.line} [${r.title}](${r.href})`);
+    /* A personal reminder about Pfizer was listed as a link to Pfizer's page,
+       and the agent told the rep "you can view this on the Pfizer customer
+       page", where it is not (found testing Sep 30). It is theirs, kept here. */
+    for (const r of items.slice(0, 12)) {
+      lines.push(
+        r.kind === "personal"
+          ? `- ${r.line} (a private reminder they set with you; it is not shown on any record page${r.about ? `; it is about [${r.about}](${r.href})` : ""})`
+          : `- ${r.line} [${r.title}](${r.href})`,
+      );
+    }
     if (items.length > 12) lines.push(`- and ${items.length - 12} more`);
   }
   const empty = (["overdue", "today", "tomorrow", "week"] as ReminderBucket[]).filter((bucket) => !reminders.some((r) => r.bucket === bucket));
@@ -455,8 +468,16 @@ export async function comingUpForAgent(input: {
     today,
     timeZone: input.timeZone,
     checked: ["meetings they own, attend or present", "solutioning they raised, own or attend", "contracts they own (end dates, 30 days)", "deals they own (sign dates)", "their follow-ups"].filter((_, i) =>
-      [input.access.meetings, input.access.solutioning, input.access.contracts, input.access.opportunities, input.access.customers][i]),
-    reminders: reminders.map((r) => ({ when: r.bucket, day: r.day, time: r.time, kind: r.kind, title: r.title, line: r.line, url: r.href })),
+      [input.access.meetings, input.access.solutioning, input.access.contracts, input.access.opportunities, input.access.customers][i])
+      .concat(input.scope && norm(person) === norm(input.askerName) ? ["reminders they set with you"] : []),
+    reminders: reminders.map((r) =>
+      r.kind === "personal"
+        ? {
+            when: r.bucket, day: r.day, time: r.time, kind: r.kind, line: r.line,
+            note: "A private reminder they set with you. It is not shown on any record page.",
+            ...(r.about ? { about: { name: r.about, url: r.href } } : {}),
+          }
+        : { when: r.bucket, day: r.day, time: r.time, kind: r.kind, title: r.title, line: r.line, url: r.href }),
     note: reminders.length
       ? "Only records this person is named on. Day words are on the asker's calendar."
       : "Nothing overdue or coming up in the checked records for this person.",

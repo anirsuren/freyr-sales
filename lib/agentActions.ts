@@ -20,7 +20,7 @@ import { moduleCreateRefusal, moduleWriteRefusal, recordWriteRefusal } from "@/l
 import { getCurrentUser } from "@/lib/currentUser";
 import { opportunityChangeRefusal } from "@/lib/opportunityOwnership";
 import { addProposal, getProposal, updateProposal } from "@/lib/agentActionStore";
-import { addPersonalReminder, completePersonalReminder } from "@/lib/agentPersonalReminders";
+import { addPersonalReminder, completePersonalReminder, findPersonalReminder } from "@/lib/agentPersonalReminders";
 import {
   matchOne,
   parseDay,
@@ -1286,7 +1286,7 @@ export const ACTIONS: ActionDef[] = [
     fields: {
       what: { type: "string", description: "What to remind them about, in their words." },
       when: { type: "string", description: "The day: a date or words like tomorrow, Friday, next week, in 3 days." },
-      time: { type: "string", description: "Optional time of day, like 3pm or 15:00." },
+      time: { type: "string", description: "The time of day they gave, like 3pm or 15:00. Always pass it when they said one; leave it out only when they gave no time." },
       account: { type: "string", description: "Optional customer account it is about." },
     },
     required: ["what", "when"],
@@ -1336,15 +1336,27 @@ export const ACTIONS: ActionDef[] = [
       which: { type: "string", description: "A few words from the reminder, or its id." },
     },
     required: ["which"],
-    async prepare(params) {
+    /* The reminder is found BEFORE the card goes up, so the card names the real
+       one and a miss is said before they say yes, not after (Sep 30). */
+    async prepare(params, ctx) {
       const which = str(params.which, 200);
       if (!which) return { error: "Which reminder is done?" };
-      return { summary: `Mark your reminder "${which}" as done.`, params: { which } };
+      const found = await findPersonalReminder(ctx.scope, which);
+      if (!found.ok) {
+        const list = (found.candidates ?? []).map((c) => `"${c.text}" (${readableDay(c.day)}${c.time ? ` at ${c.time}` : ""})`).join(", ");
+        if (!list) return { error: found.error };
+        return { error: /^More than one/.test(found.error) ? `${found.error} ${list}` : `${found.error} Your open reminders: ${list}.` };
+      }
+      const r = found.reminder;
+      return {
+        summary: `Tick off your reminder for ${readableDay(r.day)}${r.time ? ` at ${r.time}` : ""}: ${r.text}.`,
+        params: { which: r.id, text: r.text },
+      };
     },
     call: (p) => ({
       local: async (ctx) => {
         const result = await completePersonalReminder(ctx.scope, String(p.which));
-        if (!result.ok) throw new Error(result.candidates?.length ? `${result.error} ${result.candidates.map((c) => `"${c.text}"`).join(", ")}` : result.error);
+        if (!result.ok) throw new Error(result.error);
         return { reminderId: result.reminder.id, text: result.reminder.text };
       },
     }),

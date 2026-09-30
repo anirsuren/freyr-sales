@@ -53,3 +53,30 @@ test("the WhatsApp reminder reads like a person, with no app links", () => {
   const evening = reminderMessage("Manoj", "evening", [item("tomorrow", "x")]);
   assert.match(evening, /^Evening Manoj\. A heads up for tomorrow:/);
 });
+
+test("tick-off finds the reminder from the words the agent read back", async () => {
+  const { pickPersonalReminder } = await import("../lib/agentPersonalReminders.ts");
+  const deck = { id: "rem-1", text: "Send Pfizer the pricing deck", day: "2026-10-01", time: "15:00", account: { id: "c-1", name: "Pfizer" }, createdAt: "" };
+  const gsk = { id: "rem-2", text: "Call GSK about the renewal", day: "2026-10-02", createdAt: "" };
+  const both = [deck, gsk];
+  // The whole display line, as the agent passed it on Sep 30.
+  assert.deepEqual(pickPersonalReminder(both, "Your reminder tomorrow: Send Pfizer the pricing deck.").map((r) => r.id), ["rem-1"]);
+  assert.deepEqual(pickPersonalReminder(both, "Your reminder tomorrow at 15:00: Send Pfizer the pricing deck.").map((r) => r.id), ["rem-1"]);
+  assert.deepEqual(pickPersonalReminder(both, "personal:rem-2").map((r) => r.id), ["rem-2"]);
+  assert.deepEqual(pickPersonalReminder(both, "the pfizer deck one").map((r) => r.id), ["rem-1"]);
+  assert.deepEqual(pickPersonalReminder(both, "GSK renewal call").map((r) => r.id), ["rem-2"]);
+  // Nothing that says which: only a lone reminder is "that one".
+  assert.deepEqual(pickPersonalReminder([deck], "that one").map((r) => r.id), ["rem-1"]);
+  assert.deepEqual(pickPersonalReminder(both, "that one"), []);
+  // Words two reminders share are a question, not a guess.
+  const deck2 = { id: "rem-3", text: "Send Novartis the pricing deck", day: "2026-10-03", createdAt: "" };
+  assert.equal(pickPersonalReminder([deck, deck2], "the pricing deck").length, 2);
+  assert.deepEqual(pickPersonalReminder([deck, deck2], "something about Merck"), []);
+});
+
+test("a personal reminder is private, never 'on the account page'", () => {
+  const personal = { id: "personal:rem-1", kind: "personal", bucket: "tomorrow", day: "2026-10-01", daysAway: 1, time: "15:00", title: "Send Pfizer the pricing deck", line: "Your reminder tomorrow at 15:00: Send Pfizer the pricing deck.", href: "/customers/c-1", about: "Pfizer" };
+  const text = remindersGrounding([personal], "Rep", "2026-09-30");
+  assert.match(text, /a private reminder they set with you; it is not shown on any record page; it is about \[Pfizer\]\(\/customers\/c-1\)/);
+  assert.doesNotMatch(text, /\[Send Pfizer the pricing deck\]\(/);
+});
