@@ -25,3 +25,18 @@ test('unverified AI summaries do not become factual evidence',async()=>{
  assert.match(result,/Original article text unavailable/);
  delete company.news[0].summary;
 });
+
+test("the period a person names becomes the news window", async () => {
+  const { marketIntelWindowStart } = await import("../lib/marketIntelAgent.ts");
+  const now = Date.parse("2026-10-01T09:00:00Z"); // a Thursday
+  const at = (q) => { const t = marketIntelWindowStart(q, now); return t === null ? null : new Date(t).toISOString().slice(0, 16); };
+  // Sep 13 news is not "this week" on Oct 1 (found testing Sep 30).
+  assert.equal(at("any news on Amgen this week?"), "2026-09-28T00:00");
+  assert.equal(at("anything today on Pfizer"), "2026-10-01T00:00");
+  assert.equal(at("what happened yesterday"), "2026-09-30T00:00");
+  assert.equal(at("past 3 days"), "2026-09-28T09:00");
+  assert.equal(at("last 2 weeks"), "2026-09-17T09:00");
+  assert.equal(at("this month"), "2026-10-01T00:00");
+  assert.equal(at("last week"), "2026-09-24T09:00");
+  assert.equal(at("what's the latest on Amgen?"), null);
+});

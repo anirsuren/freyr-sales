@@ -1294,6 +1294,10 @@ export const ACTIONS: ActionDef[] = [
       const what = str(params.what, 500);
       if (!what) return { error: "What should I remind you about?" };
       const when = str(params.when, 80);
+      // "Remind me yesterday" could not be read as a day at all, so it was asked "when?" instead of told the day has gone (Sep 30).
+      if (/\b(?:yesterday|last (?:night|week|month)|\d+ (?:days?|weeks?) ago)\b/i.test(when)) {
+        return { error: "That day has already passed. Which day should I remind you?" };
+      }
       // "monday at 9am" is a day AND a time (found over WhatsApp, Sep 30).
       const parsedWhen = splitDayTime(when, ctx.timeZone);
       const day = parsedWhen?.day ?? null;

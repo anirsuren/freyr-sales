@@ -72,8 +72,22 @@ function companyBlock(
     remainingEvidence -= excerpt.length;
     return `\n  Publisher evidence${item.articleTextPartial || text.length > limit || !item.articleText ? " (partial)" : ""}: ${excerpt}`;
   };
+  /* An empty window said only "unable to provide recent news"; the newest
+     item before it lets the answer say "nothing this week, the latest is from
+     Sep 14: ..." (Sep 30). Only when the window holds nothing. */
+  const newestBefore = since !== null && !windowPosts.length && !windowNews.length && !windowSite.length
+    ? [
+        ...company.news.map((n) => ({ at: n.published, title: n.title, source: n.source, url: n.url })),
+        ...(company.site ?? []).map((n) => ({ at: n.published, title: n.title, source: "company website", url: n.url })),
+        ...company.posts.map((p) => ({ at: p.date, title: trim(p.text ?? "", 90), source: "LinkedIn", url: p.url })),
+      ]
+        .filter((item) => item.at && Date.parse(item.at) < since)
+        .sort((a, b) => Date.parse(b.at ?? "") - Date.parse(a.at ?? ""))[0]
+    : undefined;
   return [
     since !== null && `DATE SCOPE: ${new Date(since).toISOString()} through ${new Date().toISOString()}. Matching stored counts: ${windowPosts.length} company posts, ${windowNews.length} outside news articles, ${windowSite.length} website updates. Only dated records in this window are included below.`,
+    // Its own link: without one the answer cited this article with a LinkedIn profile URL from elsewhere in the context (Sep 30).
+    newestBefore && `NOTHING STORED IN THIS WINDOW. The newest stored item before it is dated ${fmtDate(newestBefore.at ?? null)}: "${trim(newestBefore.title ?? "", 140)}" (${newestBefore.source ?? "source not recorded"}). Say there is nothing in the window and you may name this as the latest, with its date and only its own link; never present it as inside the window.${newestBefore.url ? `\nIts link:\n${newestBefore.url}` : " No link is stored for it."}`,
     `Evidence limits: Stored AI summaries are secondary. Use publisher evidence when included, preserving its limitations over any conflicting summary. Partial evidence is not a complete article. Preserve qualifications and technical terminology exactly; do not infer territories, approval indications, transaction completion or mechanisms absent from the supplied text. Dates label publication, not necessarily the event date. If a term is missing, omit it or say it is not specified here.
 Coverage: Counts describe matching stored records within DATE SCOPE when supplied; otherwise all stored dates. Filter by each item's date before answering. A displayed subset is never the total for a period. Undated items cannot establish a date-window count. Stored coverage does not establish that every published item was collected.`,
     `Last recorded collection timestamps: LinkedIn ${company.fetchedAt || "unknown"}; news ${company.newsAt || "unknown"}; website ${company.siteAt || "unknown"}. Per-company last-attempt status and error history are not included in this record. You cannot determine whether a later attempt failed. Recent stored posts do not rule out a later failure; an absence of newer articles does not prove none were published. If asked whether sources failed, state that status is unavailable, rather than diagnosing normal cadence or a healthy source.`,
@@ -107,9 +121,33 @@ Coverage: Counts describe matching stored records within DATE SCOPE when supplie
     .join("\n");
 }
 
+const DAY_MS = 86_400_000;
+
+/**
+ * THE PERIOD THEY ASKED ABOUT, AS A START TIME. "Any news on Amgen this
+ * week?" on Oct 1 answered "This week, Amgen..." with items from Sep 11 to
+ * 14, because only "past/last N days" set a window (found testing Sep 30).
+ * The usual ways of saying a period now set one too; the DATE SCOPE line then
+ * says exactly which days it covers. Days are UTC calendar days.
+ */
+export function marketIntelWindowStart(question: string, now = Date.now()): number | null {
+  const q = question.toLowerCase();
+  const counted = q.match(/\b(?:past|last)\s+(\d+)\s+(day|week|month)s?\b/);
+  if (counted) return now - Math.min(3650, Number(counted[1]) * (counted[2] === "day" ? 1 : counted[2] === "week" ? 7 : 30)) * DAY_MS;
+  const midnight = new Date(now);
+  midnight.setUTCHours(0, 0, 0, 0);
+  const today = midnight.getTime();
+  if (/\btoday\b/.test(q)) return today;
+  if (/\byesterday\b/.test(q)) return today - DAY_MS;
+  if (/\bthis week\b/.test(q)) return today - ((midnight.getUTCDay() + 6) % 7) * DAY_MS;
+  if (/\b(?:past|last) week\b/.test(q)) return now - 7 * DAY_MS;
+  if (/\bthis month\b/.test(q)) return Date.UTC(midnight.getUTCFullYear(), midnight.getUTCMonth(), 1);
+  if (/\b(?:past|last) month\b/.test(q)) return now - 30 * DAY_MS;
+  return null;
+}
+
 export async function searchMarketIntel(query: string, question = query): Promise<string> {
-  const days = question.match(/\b(?:past|last)\s+(\d+)\s+days?\b/i);
-  const since = days ? Date.now() - Math.min(3650, Number(days[1])) * 86400000 : null;
+  const since = marketIntelWindowStart(question);
   const tracking = await readMarketIntelTracking().catch(() => ({ companies: [], people: [] }));
   const q = query.toLowerCase();
   const words = q.split(/[^a-z0-9&]+/).filter((w) => w.length >= 3);
