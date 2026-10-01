@@ -5,6 +5,9 @@ import { ACCESS_COOKIE, normalizeWorkspaceRole, signAccessGrant } from "@/lib/ac
 import { DATA_MODE_COOKIE } from "@/lib/dataMode";
 import { downloadWhatsAppMedia } from "@/lib/whatsapp";
 import { transcribeVoiceNote, voiceNoteConfigured } from "@/lib/voiceNote";
+import { readAgentFileFromBytes } from "@/lib/agentFiles";
+import { readFileForAgent } from "@/lib/agentFileReader";
+import type { StoredMessage } from "@/lib/agentConversationStore";
 import {
   appendAgentExchange,
   latestChannelConversation,
@@ -351,12 +354,25 @@ async function sendReplyAttachments(args: {
 const HOW_TO_LINK =
   "This number isn't connected to a Freyr account yet. In Freyr, open Settings, then Integrations, then WhatsApp, and text the six-digit code shown there.";
 
+/** A name for a file that arrives without one (photos, videos and recordings never carry a file name). */
+const EXT_FOR_MIME: Record<string, string> = {
+  "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic",
+  "video/mp4": "mp4", "video/3gpp": "3gp", "video/quicktime": "mov",
+  "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/aac": "aac", "audio/amr": "amr", "audio/wav": "wav",
+  "application/pdf": "pdf", "text/plain": "txt", "text/csv": "csv",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+  "application/zip": "zip",
+};
+
 export async function handleInboundWhatsApp(message: InboundMessage, options: InboundOptions): Promise<void> {
   const { config } = options;
   // Another number on the same Meta app is somebody else's traffic.
   if (config.phoneNumberId && message.phoneNumberId && message.phoneNumberId !== config.phoneNumberId) return;
   // A reaction is a nod, not a message: every thumbs-up on a reply was answered "I can read text and voice notes here" (Sep 30).
-  if (message.type === "reaction") return;
+  // A sticker is the same kind of nod (Sep 30).
+  if (message.type === "reaction" || message.type === "sticker") return;
 
   const member = await memberForWhatsAppNumber(message.from);
   /* A SIX-DIGIT CODE IS A CLAIM, LINKED OR NOT (Anir, Sep 27: "my other test
@@ -404,31 +420,38 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
      reply opens with what was heard so a mis-hearing is obvious. */
   let incomingText = message.text;
   let heard: string | null = null;
-  if (message.type === "audio" && message.mediaId) {
-    if (!voiceNoteConfigured()) {
-      await reply(message.from, "Voice notes aren't switched on here yet. Type your question.", options);
-      return;
-    }
+  /* A VOICE NOTE IS A QUESTION; ANY OTHER FILE IS SOMETHING TO READ (Anir,
+     Sep 30: "same for WhatsApp... should be able to read it from there"). A
+     voice note recorded in WhatsApp is heard and answered as typed text; a
+     photo, document, video or forwarded recording is read by the agent's file
+     reader and answered in the thread. */
+  const isVoiceNote = message.type === "audio" && !!message.mediaId && message.voice !== false;
+  if (isVoiceNote) {
     const media = await downloadWhatsAppMedia(message.mediaId, config, options.fetchImpl);
-    const speech = media ? await transcribeVoiceNote(media.bytes, media.mimeType, options.fetchImpl) : null;
-    if (!speech?.ok) {
-      console.warn("[whatsapp] voice note not transcribed", { from: `...${message.from.slice(-4)}`, reason: media ? speech?.reason : "download failed" });
-      await reply(message.from, "I couldn't make out that voice note. Try again, or type it.", options);
+    let said = "";
+    if (media && voiceNoteConfigured()) {
+      const speech = await transcribeVoiceNote(media.bytes, media.mimeType, options.fetchImpl);
+      if (speech.ok) said = speech.text;
+      else console.warn("[whatsapp] voice note not transcribed by Whisper", { from: `...${message.from.slice(-4)}`, reason: speech.reason });
+    }
+    // Whisper out of credit or refusing: the agent's own reader hears it instead.
+    if (!said && media) {
+      const reading = await readFileForAgent({ bytes: media.bytes, name: "voice-note.ogg", mime: media.mimeType }).catch(() => null);
+      said = (reading?.text ?? "").replace(/^\[[0-9:]+\]\s*(?:Speaker \d+:\s*)?/gm, "").replace(/\s*\n\s*/g, " ").trim();
+    }
+    if (!said) {
+      await reply(message.from, media ? "I couldn't make out that voice note. Try again, or type it." : "I couldn't download that voice note. Try sending it again.", options);
       return;
     }
-    heard = speech.text;
-    incomingText = speech.text;
+    heard = said;
+    incomingText = said;
   }
-  /* A PHOTO WITH WORDS. A business card captioned "add this contact" was
-     answered "I can read text and voice notes here": the caption was thrown
-     away (Sep 30). The caption is the question; the agent is told plainly that
-     the file itself is not something it can see. */
-  if (!incomingText && message.caption) {
-    const what = message.type === "document" ? "file" : message.type === "video" ? "video" : "photo";
-    incomingText = `[Sent a ${what} you cannot see] ${message.caption}`;
-  }
-  if (!incomingText) {
-    await reply(message.from, "I can read text and voice notes here. Type or record your question.", options);
+  const fileMedia = !isVoiceNote && !!message.mediaId && ["image", "video", "document", "audio"].includes(message.type)
+    ? { mediaId: message.mediaId, mime: message.mimeType, filename: message.filename }
+    : null;
+  if (fileMedia && !incomingText) incomingText = message.caption ?? "";
+  if (!incomingText && !fileMedia) {
+    await reply(message.from, "I can read text, voice notes, photos, documents and recordings here, but not that kind of message.", options);
     return;
   }
 
@@ -469,6 +492,24 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
     : [];
 
   const fetchImpl = options.fetchImpl ?? fetch;
+  let attachments: NonNullable<StoredMessage["attachments"]> = [];
+  if (fileMedia) {
+    const media = await downloadWhatsAppMedia(fileMedia.mediaId, config, options.fetchImpl);
+    if (!media) {
+      await reply(message.from, "I couldn't download that file from WhatsApp. Try sending it again.", options);
+      return;
+    }
+    const mime = media.mimeType || fileMedia.mime;
+    const ext = EXT_FOR_MIME[mime.split(";")[0].trim()] ?? (message.type === "image" ? "jpg" : message.type === "video" ? "mp4" : message.type === "audio" ? "ogg" : "bin");
+    const name = fileMedia.filename || `whatsapp-${message.type}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+    // A recording or a big file takes a minute or two to read; say so first so the phone does not sit silent.
+    if (message.type === "video" || message.type === "audio" || media.bytes.length > 3 * 1024 * 1024) {
+      await reply(message.from, `Got ${fileMedia.filename ? `"${fileMedia.filename}"` : `your ${message.type === "video" ? "video" : message.type === "audio" ? "recording" : "file"}`}. Reading it now, I'll answer in a moment.`, options);
+    }
+    const record = await readAgentFileFromBytes(member.scope, { bytes: media.bytes, name, mime, conversationId, source: "whatsapp" });
+    attachments = [{ fileId: record.fileId, name: record.name, ...(record.kind ? { kind: record.kind } : {}), bytes: record.bytes }];
+    if (!incomingText.trim()) incomingText = "What is in this file? Give me the key points.";
+  }
   const memberCookies = await cookiesFor(user, member.scope);
   let answer: ConverseReply | null = null;
   let timedOut = false;
@@ -487,7 +528,7 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
         "Content-Type": "application/json",
         Cookie: memberCookies,
       },
-      body: JSON.stringify({ message: incomingText, history, path: "/agent", channel: "whatsapp", conversationId }),
+      body: JSON.stringify({ message: incomingText, history, path: "/agent", channel: "whatsapp", conversationId, ...(attachments.length ? { attachments: attachments.map((a) => a.fileId) } : {}) }),
       signal: AbortSignal.timeout(CONVERSE_TIMEOUT_MS),
     });
     answer = (await response.json().catch(() => null)) as ConverseReply | null;
@@ -526,6 +567,7 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
     channel: "whatsapp",
     userText: incomingText,
     agentText: answer.reply,
+    ...(attachments.length ? { attachments } : {}),
     suggestions: Array.isArray(answer.suggestions) ? answer.suggestions : [],
     entityContext: Array.isArray(answer.entityContext) ? answer.entityContext : [],
     ...(answer.pendingAction ? { pendingAction: answer.pendingAction } : {}),

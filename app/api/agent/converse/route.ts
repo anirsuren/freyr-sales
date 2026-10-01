@@ -90,6 +90,7 @@ import { comingUpForAgent, remindersFor, remindersGrounding } from "@/lib/agentR
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { OPPORTUNITY_NOT_YOURS } from "@/lib/opportunityOwnership";
 import { linkBarePaths, withoutProseDashes } from "@/lib/agentProse";
+import { attachAgentFile, conversationFiles, filesForPrompt, getAgentFile, searchFile, waitForFiles, type AgentFileRecord } from "@/lib/agentFiles";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { internalAppOrigin } from "@/lib/internalOrigin";
 
@@ -174,7 +175,14 @@ export async function POST(req: NextRequest) {
    */
   const firstName = actorName.trim().split(/\s+/)[0] || actorName;
   const body = (await req.json().catch(() => ({}))) ?? {};
-  const message = String(body.message || "").trim();
+  /* FILES SENT WITH THIS MESSAGE (Anir, Sep 30: "it should be able to read
+     files, videos, audio... literally anything"). Ids only; each is checked
+     against the person's own files below. A file sent with no words is a
+     question about the file. */
+  const attachmentIds: string[] = Array.isArray(body.attachments)
+    ? [...new Set((body.attachments as unknown[]).filter((v): v is string => typeof v === "string" && /^af-[a-z0-9-]{6,40}$/.test(v)))].slice(0, 10)
+    : [];
+  const message = String(body.message || "").trim() || (attachmentIds.length ? "What is in this file? Give me the key points." : "");
   if (message.length > 12000) return NextResponse.json({error:"Please keep a message under 12,000 characters."},{status:413});
   if (!message) {
     return NextResponse.json({ error: "Missing message" }, { status: 400 });
@@ -226,6 +234,21 @@ export async function POST(req: NextRequest) {
    * this request cannot be executed in this request: the person sees it first.
    */
   const requestEpoch = Date.now();
+  /* THE FILES IN THIS CHAT. A file just sent is attached to the chat and, if
+     it is still being read, waited for briefly, so "what did they agree?"
+     sent with a recording is answered from the recording. */
+  const chatKey = typeof body.conversationId === "string" ? String(body.conversationId).slice(0, 120) : "";
+  if (attachmentIds.length && chatKey) await Promise.all(attachmentIds.map((id) => attachAgentFile(scope, id, chatKey).catch(() => null)));
+  if (attachmentIds.length) await waitForFiles(scope, attachmentIds, 25_000).catch(() => undefined);
+  const chatFiles: AgentFileRecord[] = [
+    ...(chatKey ? await conversationFiles(scope, chatKey).catch(() => [] as AgentFileRecord[]) : []),
+    ...(!chatKey && attachmentIds.length
+      ? (await Promise.all(attachmentIds.map((id) => getAgentFile(scope, id).catch(() => null)))).filter((f): f is AgentFileRecord => Boolean(f))
+      : []),
+  ];
+  const filesBlock = filesForPrompt(chatFiles, attachmentIds);
+  // A question about a shared file is answered from the file, never from a ready-made workspace count.
+  const aboutAFile = attachmentIds.length > 0 || (chatFiles.length > 0 && /\b(file|document|doc|pdf|video|recording|audio|call|transcript|sheet|spreadsheet|deck|slides?|attachment|image|photo|picture|screenshot|page|minute|said|mentioned)\b/i.test(message));
   const timeZone = await memberTimeZone(scope.userId);
   /* WHAT IS COMING UP FOR THEM (Anir, Sep 30: "if a deadline is coming or
      something tomorrow it should remind me"). Read from the same engine the
@@ -1337,6 +1360,15 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
         scope,
       })};
     }
+    if (name === "read_file") {
+      const wanted = String(input?.file ?? "").trim().toLowerCase();
+      const record = chatFiles.find((f) => f.fileId === input?.file)
+        ?? chatFiles.find((f) => f.name.toLowerCase() === wanted)
+        ?? chatFiles.find((f) => wanted && f.name.toLowerCase().includes(wanted))
+        ?? (chatFiles.length === 1 ? chatFiles[0] : undefined);
+      if (!record) return {content: `No file called "${String(input?.file ?? "")}" was shared in this chat.`};
+      return {content: searchFile(record, { query: typeof input?.query === "string" ? input.query.slice(0, 200) : undefined, at: typeof input?.at === "string" ? input.at.slice(0, 20) : undefined })};
+    }
     if (name === "read_workspace") return {content: await readAgentWorkspace(actor, String(input?.module || ""), String(input?.query || "").slice(0,300), input?.mineOnly === true, Number(input?.offset || 0), input?.teamOnly === true)};
     if ((name === "search_offerings" && !moduleAccess.offerings) || (name === "search_market_intel" && !moduleAccess.market_intel) || (["get_account_detail","list_accounts"].includes(name) && !moduleAccess.customers)) return {content:"You do not have access to this module. No data was read."};
     const notFound = (q: unknown) => ({
@@ -1611,7 +1643,7 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
   // therefore requires an explicit capability decision in both places.
   const readOnlyTools = AGENT_TOOLS.filter(t =>
     (!(leadSummaryQuestion && t.name === "read_workspace")) &&
-    (t.name === "read_workspace" || t.name === "coming_up" ||
+    (t.name === "read_workspace" || t.name === "coming_up" || (t.name === "read_file" && chatFiles.length > 0) ||
       (t.name === "search_offerings" && moduleAccess.offerings) ||
       (["search_market_intel", "read_market_source"].includes(t.name) && moduleAccess.market_intel) ||
       (["get_account_detail", "list_accounts"].includes(t.name) && moduleAccess.customers))
@@ -1708,8 +1740,8 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     (pendingElsewhere.length
       ? ` WAITING IN OTHER CHATS (never run these from here; if the person asks for one, propose it again in this chat with the same details): ${pendingElsewhere.map((p) => p.summary).join(" | ")}.`
       : "");
-  const focusedRead = !actionIntent && (marketFocused || leadAggregateQuestion || leadStatusDetailQuestion || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion);
-  const responseSystem = (!focusedRead ? agentSystem + namedMarketContext + actionsSystem : marketFocused ? focusedMarketSystem : focusedListSystem) + "\nRESPONSE PRESENTATION: Give a concise answer, normally 150–250 words unless more detail is requested. Refer to a colleague by name or as they/them; never he, she, him, her or his, because a name does not tell you anyone's pronouns. Link every named application record using its provided canonical destination, including the first mention. Never expose backend tool names as user navigation or fabricate a page for a tool. Keep opaque database IDs out of prose unless requested; put them only inside the supplied link destinations. When explaining navigation, link named pages using navigation in VERIFIED CURRENT USER and verified routes in the app guide (for example [Team](/team)); do not leave page directions as unlinked text. Internal application links MUST preserve the exact relative path returned by the tool, e.g. [Company name](/market-intel/company-id). NEVER prepend https://app, any hostname or any invented prefix. External article citations use the exact supplied destination. A /agent-source/N destination is a request-local citation reference: copy it exactly as [Publisher or article title](/agent-source/N); the application restores its verified source URL. Never rewrite, shorten, or invent a source destination. Use a descriptive publisher or article title as the link label and copy its supplied destination byte-for-byte; never show a raw URL or application path (including paths in parentheses or code formatting). Write [Team members](/admin/members), never Team members (/admin/members). Never place whitespace between ] and (. Use only verified destinations. Finish every answer with <followups>[\"question one\",\"question two\",\"question three\"]</followups>. These must be three short, distinct next questions (aim for 4–8 words each) the USER could ask, specific to this question and answer, exploring new useful information rather than repeating answered questions or generic starters. This metadata is removed from the displayed answer. Do not mention the metadata. Generate it in this same response, without extra tool calls solely for suggestions." + (channel === "whatsapp" ? WHATSAPP_CHANNEL_PRESENTATION : "");
+  const focusedRead = !actionIntent && !aboutAFile && (marketFocused || leadAggregateQuestion || leadStatusDetailQuestion || trackingListQuestion || offeringsInventoryQuestion || opportunityAggregateQuestion);
+  const responseSystem = (!focusedRead ? agentSystem + namedMarketContext + actionsSystem : marketFocused ? focusedMarketSystem : focusedListSystem) + (filesBlock ? `\n\n${filesBlock}\n` : "") + "\nRESPONSE PRESENTATION: Give a concise answer, normally 150–250 words unless more detail is requested. Refer to a colleague by name or as they/them; never he, she, him, her or his, because a name does not tell you anyone's pronouns. Link every named application record using its provided canonical destination, including the first mention. Never expose backend tool names as user navigation or fabricate a page for a tool. Keep opaque database IDs out of prose unless requested; put them only inside the supplied link destinations. When explaining navigation, link named pages using navigation in VERIFIED CURRENT USER and verified routes in the app guide (for example [Team](/team)); do not leave page directions as unlinked text. Internal application links MUST preserve the exact relative path returned by the tool, e.g. [Company name](/market-intel/company-id). NEVER prepend https://app, any hostname or any invented prefix. External article citations use the exact supplied destination. A /agent-source/N destination is a request-local citation reference: copy it exactly as [Publisher or article title](/agent-source/N); the application restores its verified source URL. Never rewrite, shorten, or invent a source destination. Use a descriptive publisher or article title as the link label and copy its supplied destination byte-for-byte; never show a raw URL or application path (including paths in parentheses or code formatting). Write [Team members](/admin/members), never Team members (/admin/members). Never place whitespace between ] and (. Use only verified destinations. Finish every answer with <followups>[\"question one\",\"question two\",\"question three\"]</followups>. These must be three short, distinct next questions (aim for 4–8 words each) the USER could ask, specific to this question and answer, exploring new useful information rather than repeating answered questions or generic starters. This metadata is removed from the displayed answer. Do not mention the metadata. Generate it in this same response, without extra tool calls solely for suggestions." + (channel === "whatsapp" ? WHATSAPP_CHANNEL_PRESENTATION : "");
   /* The two action tools go to everyone: which actions a person may take is
      decided per action by the route it calls, and a refusal comes back in
      the route's own words for the agent to relay. */
@@ -1742,6 +1774,14 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
       prefetchedModule: leadSummaryQuestion ? "leads" : trackingListQuestion ? "market_intel" : offeringsInventoryQuestion ? "offerings" : opportunityAggregateQuestion ? "opportunities" : null,
     });
     let answer = linkBarePaths(withoutProseDashes(sourceReferences.expand(agentResult.text)));
+    /* A file has no page: "[pipeline.xlsx](af-...)", "[deck.pptx](/offerings/of-001?...)"
+       and "[contract.pdf](/agent/contract.pdf)" were all invented (found testing
+       Sep 30). A link on a shared file's name, or to a file id, becomes bold. */
+    for (const f of chatFiles) {
+      answer = answer
+        .replace(new RegExp(`\\[([^\\]]*${escapeRegExp(f.name)}[^\\]]*)\\]\\([^)]*\\)`, "gi"), "**$1**")
+        .replace(new RegExp(`\\[([^\\]]+)\\]\\([^)]*${f.fileId}[^)]*\\)`, "g"), "**$1**");
+    }
     /* CUT OFF AT THE LENGTH CAP. A 35-person team table stopped mid-link
        ("| [Sol Tester](/team?member=") and showed as broken text, and nothing
        on the page offers to continue (found testing Sep 30). The broken last
@@ -1973,6 +2013,7 @@ function outageMessage(deadline: AbortSignal): string {
 // human-led — saved for the signed-in user to review, never sent.
 const AGENT_TOOLS: AgentToolDef[] = [
   {name:"read_market_source",description:"Read an original publisher article already returned by Market Intel. Use before detailed rights, payment, approval or scientific claims when only a summary is available. At most three sources per answer; unavailable text is not evidence.",input_schema:{type:"object",properties:{reference:{type:"string",description:"Exact /agent-source/N reference returned by Market Intel."}},required:["reference"]}},
+  {name:"read_file",description:"Look further into a file shared in this chat (a recording, document, spreadsheet, deck or picture): words to find, a time in a recording like 12:30, or a page number. Use it when the file content you were shown is cut, or for an exact quote.",input_schema:{type:"object",properties:{file:{type:"string",description:"The file's name or id."},query:{type:"string",description:"Words to look for."},at:{type:"string",description:"A time like 12:30, or a page number."}},required:["file"]}},
   {name:"coming_up",description:"What is due or scheduled for a person: overdue, today, tomorrow and this week, across meetings they own or attend, solutioning requests they raised, own or attend (needed-by dates and session dates), contracts they own (end dates), deals they own (sign dates) and their follow-ups. Use it for what's due, what's tomorrow, remind me, deadlines, and what a named colleague has coming up. Defaults to the signed-in user; pass person for a colleague.",input_schema:{type:"object",properties:{person:{type:"string",description:"A colleague's name. Omit for the signed-in user."},days:{type:"integer",description:"How many days ahead to look, default 7, max 30."}}}},
   {name:"read_workspace",description:"Read current permitted records across application modules, current user's offering ownership, personal tracked/starred companies, assigned work and goals. Use mineOnly for my/owned/assigned queries where an owner is recorded. Returns real record links and explicit truncation; narrow by query when needed.", input_schema:{type:"object",properties:{module:{type:"string",enum:["team","meetings","offerings","components","market_intel","leads","sessions","tasks","campaigns","sequences","pipeline","forecast","opportunities","solutioning","contracts","customers","contacts","goals","reports"]},query:{type:"string",description:"Exact company, record name or reference; omit to list. For opportunities use upcoming for open future signing dates sorted nearest first, or overdue for open past signing dates."},mineOnly:{type:"boolean"},teamOnly:{type:"boolean",description:"For team opportunities, contracts or goals: scope to members of groups headed by the signed-in user before filtering and aggregation."},offset:{type:"integer",description:"Pagination offset from nextOffset, default0."}},required:["module"]}},
   {
