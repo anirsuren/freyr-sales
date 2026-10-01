@@ -89,7 +89,7 @@ import { memberTimeZone } from "@/lib/memberTimeZone";
 import { comingUpForAgent, remindersFor, remindersGrounding } from "@/lib/agentReminders";
 import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { OPPORTUNITY_NOT_YOURS } from "@/lib/opportunityOwnership";
-import { withoutProseDashes } from "@/lib/agentProse";
+import { linkBarePaths, withoutProseDashes } from "@/lib/agentProse";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { internalAppOrigin } from "@/lib/internalOrigin";
 
@@ -1711,7 +1711,14 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
       firstDeltaMs,
       prefetchedModule: leadSummaryQuestion ? "leads" : trackingListQuestion ? "market_intel" : offeringsInventoryQuestion ? "offerings" : opportunityAggregateQuestion ? "opportunities" : null,
     });
-    let answer = withoutProseDashes(sourceReferences.expand(agentResult.text));
+    let answer = linkBarePaths(withoutProseDashes(sourceReferences.expand(agentResult.text)));
+    /* CUT OFF AT THE LENGTH CAP. A 35-person team table stopped mid-link
+       ("| [Sol Tester](/team?member=") and showed as broken text, and nothing
+       on the page offers to continue (found testing Sep 30). The broken last
+       line goes and the answer says what to do next. */
+    if (agentResult.truncated) {
+      answer = `${answer.replace(/\n[^\n]*$/, "").trimEnd()}\n\nThat is as much as fits in one answer. Say "continue" for the rest, or narrow it down.`;
+    }
     if (pipelineQuestion) {
       answer = answer.replace(/\[Opportunities\]\(\/opportunities\)/g, "[Pipeline](/pipeline)");
     }
