@@ -367,7 +367,8 @@ const describe = (r: AgentFileRecord) => {
 export function filesForPrompt(files: AgentFileRecord[], focusIds: string[] = []): string {
   if (!files.length) return "";
   const ordered = [...files].sort((a, b) => Number(focusIds.includes(b.fileId)) - Number(focusIds.includes(a.fileId)));
-  let budget = 90_000;
+  // The file being asked about gets room for a whole 40-page contract; the others a glimpse, and read_file for the rest.
+  let budget = 180_000;
   const blocks: string[] = [];
   for (const [index, f] of ordered.slice(0, 8).entries()) {
     const head = `FILE "${f.name}" (${describe(f)}), id ${f.fileId}`;
@@ -379,7 +380,7 @@ export function filesForPrompt(files: AgentFileRecord[], focusIds: string[] = []
       blocks.push(`${head}: could not be read (${f.error ?? "unknown reason"}). Tell them, and suggest sending it again or as another format.`);
       continue;
     }
-    const room = Math.max(4_000, Math.min(index === 0 ? 60_000 : 12_000, budget));
+    const room = Math.max(4_000, Math.min(index === 0 ? 150_000 : 12_000, budget));
     const text = f.reading.text;
     const shown = text.length > room ? `${text.slice(0, room)}\n[... cut here: ${text.length - room} more characters. Use read_file with words to look for, or a time like 12:30, or a page number.]` : text;
     budget -= shown.length;

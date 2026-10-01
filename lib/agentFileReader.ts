@@ -779,8 +779,11 @@ async function readEmail(buf: Buffer, name: string, depth: number, notes: string
 
 /* ---------------------------------------------------------------- the whole file */
 
+/* Each fact keeps its place: the agent answered "signed on page 30" from a
+   summary that named the signer and not the page (it was 28; found Oct 1). */
 const SUMMARISE = "Summarise this file for a sales team in three to five plain sentences: what it is, who and what it is about, " +
-  "the numbers, dates and decisions that matter, and any next steps. Use only what is in it.";
+  "the numbers, dates and decisions that matter, and any next steps. Use only what is in it. Right after each fact, say where it is " +
+  "from the file's own markers: (page N), (slide N), or [mm:ss] for a recording.";
 
 async function summarise(kind: FileKind, text: string): Promise<string> {
   if (!text.trim() || !isVertexConfigured()) return "";
