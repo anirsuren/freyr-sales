@@ -2974,6 +2974,10 @@ const SHOWROOM_PEOPLE: { name: string; email: string; role: string }[] = [
   { name: "Rosalind Achebe", email: "rosalind.achebe@example.com", role: "Customer Success" },
 ];
 
+/** Their names, so a person link to any of them opens a profile (the rep
+ *  page resolves mock people from this list too). */
+export const SHOWROOM_PEOPLE_NAMES: readonly string[] = SHOWROOM_PEOPLE.map((person) => person.name);
+
 /** Mock accounts, so a success story on an offering names a company the demo
  *  workspace can actually open. Taken from the seeded customer list. */
 const SHOWROOM_ACCOUNTS = [

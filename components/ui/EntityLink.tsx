@@ -94,6 +94,8 @@ export function EntityLink({
         role="link"
         tabIndex={0}
         title={title}
+        // Where it goes, readable like an <a>'s href (link checks, tests).
+        data-href={href}
         onClick={go}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") go(e);

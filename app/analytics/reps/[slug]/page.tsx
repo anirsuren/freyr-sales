@@ -2,7 +2,6 @@ import { meetingsForPerson, readMeetings } from "@/lib/meetings";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
-  SearchX,
   DollarSign,
   Mail,
   PhoneCall,
@@ -23,7 +22,6 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { StatTile } from "@/components/ui/StatTile";
 import { SizeBadge } from "@/components/ui/Badge";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { BackButton, SmartBack } from "@/components/ui/BackButton";
 import { BarChart, VIZ, VIZ_SERIES } from "@/components/charts/Charts";
 import { ChartInspector, type ChartRecord } from "@/components/charts/ChartInspector";
@@ -53,6 +51,8 @@ import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
 import { EntityLink } from "@/components/ui/EntityLink";
 import { customerHref } from "@/lib/entityHref";
+import { addMockModePrefix } from "@/lib/modeUrl";
+import { SHOWROOM_PEOPLE_NAMES } from "@/lib/offerings";
 
 /**
  * The teammate's own name in the tab. A static "Rep" label made every open profile
@@ -317,9 +317,19 @@ export default async function RepPage({
   const opportunityState = canViewOpportunities
     ? await readOpportunities()
     : { opportunities: [] };
+  /* EVERY PERSON THE APP CAN LINK TO HAS A PAGE (Anir, Oct 1, after an
+     offering's "Priya Nandakumar" opened "Rep not found": "this cant
+     happen... it has to be smooth"). Mock offerings are owned, uploaded and
+     edited by the showroom colleagues, and the shared catalogue names real
+     colleagues too, and neither group necessarily owns a deal or a lead. They
+     join the roster with honest zeros. */
+  const workspace = process.env.FREYR_WORKSPACE_ID;
+  const directory = workspace ? await listWorkspaceAccess(workspace).catch(() => null) : null;
   const recordOwners = [...new Set([
     ...leadState.leads.map((lead) => lead.owner?.trim()),
     ...opportunityState.opportunities.map((opportunity) => opportunity.owner?.trim()),
+    ...SHOWROOM_PEOPLE_NAMES,
+    ...(directory?.members ?? []).filter((member) => member.active).map((member) => member.name?.trim()),
   ].filter((name): name is string => Boolean(name) && name?.toLowerCase() !== "unassigned"))];
   const roster = salesTeamFor(currentUser);
   const rosterNames = new Set(roster.map((person) => person.name.trim().toLowerCase()));
@@ -340,25 +350,9 @@ export default async function RepPage({
      latter made a valid Mark Miller link from Solutioning land on a dead
      "Rep not found" screen. */
   const me = ranked.find((rep) => repMatchesSlug(rep.name, slug, rep.slug));
-  if (!me) {
-    return (
-      <EmptyState
-        icon={SearchX}
-        title="Rep not found"
-        description="That teammate isn't on the roster. Head back to the team."
-        className="py-24"
-        action={
-          <SmartBack
-            fallback="/team"
-            className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors"
-          >
-            <ArrowLeft size={15} strokeWidth={2} />
-            Back to team
-          </SmartBack>
-        }
-      />
-    );
-  }
+  /* A name nobody in the workspace carries lands on the roster, as in Real
+     mode, never on a "not found" dead end. */
+  if (!me) redirect(addMockModePrefix("/team"));
   const name = me.name;
   const recordedOpportunities = opportunityState.opportunities.filter(
     (opportunity) => opportunity.owner?.trim().toLowerCase() === name.trim().toLowerCase()
