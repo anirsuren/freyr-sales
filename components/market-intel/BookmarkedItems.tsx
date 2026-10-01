@@ -28,6 +28,15 @@ const kindName: Record<SavedItem["kind"], string> = {
   site: "Company website",
 };
 
+/** The same kinds inside a sentence: "The news article ... comes off". */
+const kindInSentence: Record<SavedItem["kind"], string> = {
+  company: "company post",
+  people: "post",
+  news: "news article",
+  authority: "health authority notice",
+  site: "website page",
+};
+
 function displayCompanyName(item: SavedItem, companies: Record<string, { name: string }>): string {
   if (item.companyName?.trim()) return item.companyName.trim();
   if (companies[item.companyId]?.name) return companies[item.companyId].name;
@@ -157,8 +166,33 @@ export function BookmarkedItems({
         onConfirm={() => { if (confirming) void remove(confirming); }}
         busy={confirming !== null && removing === `${confirming.companyId}:${confirming.url}`}
         subject={confirming ? { name: confirming.title, kind: "story" } : null}
-        title="Remove this bookmark?"
-        body={<><b>{confirming?.title ?? "This item"}</b> comes off your bookmarked items.</>}
+        /* SAY WHICH ONE (Anir, Oct 1: "u have to be super super specific").
+           Two companies can carry the same headline, so the company is named
+           too, with the source and the date that tell copies apart. */
+        title={
+          !confirming
+            ? "Remove this bookmark?"
+            : confirming.title.trim()
+              ? `Remove “${confirming.title.trim()}” from your bookmarks for ${displayCompanyName(confirming, companies)}?`
+              : `Remove this untitled item from your bookmarks for ${displayCompanyName(confirming, companies)}?`
+        }
+        body={(() => {
+          if (!confirming) return "";
+          const company = displayCompanyName(confirming, companies);
+          const source = confirming.sourceLabel?.trim();
+          const date =
+            confirming.date && Number.isFinite(Date.parse(confirming.date))
+              ? new Date(confirming.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+              : "";
+          return (
+            <>
+              The {kindInSentence[confirming.kind] ?? "saved item"}{" "}
+              {confirming.title.trim() ? <b>{confirming.title.trim()}</b> : "with no title"}
+              {source && source !== company ? <> from <b>{source}</b></> : null}
+              {date ? <> ({date})</> : null} comes off your bookmarked items for <b>{company}</b>.
+            </>
+          );
+        })()}
         detail="Only your bookmark goes. The post or article itself is untouched."
         confirmLabel="Remove bookmark"
       />

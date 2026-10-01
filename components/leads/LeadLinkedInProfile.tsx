@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Award, BriefcaseBusiness, Building2, ExternalLink, GraduationCap, MapPin, MessageCircle, RefreshCw, Repeat2, ThumbsUp, Users } from "lucide-react";
+import { Award, BriefcaseBusiness, ExternalLink, GraduationCap, MapPin, MessageCircle, RefreshCw, Repeat2, ThumbsUp, Users } from "lucide-react";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { Modal } from "@/components/ui/Modal";
+import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import type { Lead, LeadLinkedInProfile } from "@/lib/leadsShared";
 
 function day(value: string | null | undefined): string | null {
@@ -25,9 +27,12 @@ function ProfileDetails({ profile, url }: { profile: LeadLinkedInProfile; url: s
   return <div className="space-y-4">
     <div className="rounded-xl border border-blue-subtle bg-blue-light/40 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[20px] font-semibold text-text-primary">{profile.fullName}</p>
-          {profile.headline && <p className="mt-1 text-[14px] leading-relaxed text-text-secondary">{profile.headline}</p>}
+        <div className="flex min-w-0 items-start gap-3">
+          {profile.fullName && <Avatar name={profile.fullName} initialsOnly className="h-11 w-11 shrink-0 text-[13px]" />}
+          <div className="min-w-0">
+            <p className="text-[20px] font-semibold text-text-primary">{profile.fullName}</p>
+            {profile.headline && <p className="mt-1 text-[14px] leading-relaxed text-text-secondary">{profile.headline}</p>}
+          </div>
         </div>
         <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-blue-subtle bg-white px-3 py-2 text-[12px] font-semibold text-blue-primary hover:bg-blue-light">
           Open LinkedIn <ExternalLink size={13} />
@@ -35,7 +40,7 @@ function ProfileDetails({ profile, url }: { profile: LeadLinkedInProfile; url: s
       </div>
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-text-secondary">
         {profile.location && <span className="inline-flex items-center gap-1"><MapPin size={13} />{profile.location}</span>}
-        {profile.currentCompany && <span className="inline-flex items-center gap-1"><Building2 size={13} />{profile.currentCompany}</span>}
+        {profile.currentCompany && <span className="inline-flex items-center gap-1.5"><CompanyLogo name={profile.currentCompany} className="h-4 w-4 shrink-0 text-[6px]" />{profile.currentCompany}</span>}
       </div>
       <p className="mt-3 text-[11px] text-text-tertiary">Public profile snapshot{day(profile.fetchedAt) ? ` · checked ${day(profile.fetchedAt)}` : ""}. Details can change on LinkedIn.</p>
     </div>
@@ -59,7 +64,7 @@ function ProfileDetails({ profile, url }: { profile: LeadLinkedInProfile; url: s
       <div className="grid grid-cols-1 items-start gap-4 border-t border-border-light p-4 md:grid-cols-2">
       {profile.experience.length > 0 && <Section title={`Experience · ${profile.experience.length}`}>
         <div className="space-y-4">{profile.experience.map((item, index) => <div key={`${item.title}-${item.company}-${index}`} className="flex gap-3 border-b border-border-light pb-4 last:border-0 last:pb-0">
-          <BriefcaseBusiness size={16} className="mt-0.5 shrink-0 text-blue-primary" />
+          {item.company ? <CompanyLogo name={item.company} className="h-7 w-7 shrink-0 text-[9px]" /> : <BriefcaseBusiness size={16} className="mt-0.5 shrink-0 text-blue-primary" />}
           <div className="min-w-0"><p className="text-[13px] font-semibold text-text-primary">{item.title || item.company}</p>
             {item.title && item.company && <p className="text-[12px] text-text-secondary">{item.company}</p>}
             {item.duration && <p className="mt-0.5 text-[11px] text-text-tertiary">{item.duration}</p>}

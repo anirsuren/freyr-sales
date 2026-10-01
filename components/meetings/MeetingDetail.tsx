@@ -31,6 +31,7 @@ import { companyDestination } from "@/lib/companyDestination";
 import { Avatar } from "@/components/ui/Avatar";
 import { Textarea } from "@/components/ui/Textarea";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatTime } from "@/lib/utils";
 import { stampedAt } from "@/lib/performanceShared";
@@ -130,6 +131,7 @@ export function MeetingDetail({
   meName,
   meRole,
   canDeleteModule,
+  canWrite = false,
   members,
   customers,
   contacts,
@@ -138,6 +140,9 @@ export function MeetingDetail({
   meeting: Meeting;
   meName: string;
   meRole: string;
+  /** The module's write right, the same check POST /api/meetings makes
+   *  first. Gates the hover X's that take a person or a deal off. */
+  canWrite?: boolean;
   /**
    * The module's delete right, from the same check the route makes before it
    * looks at who owns the meeting. Without it an owner whose privilege only
@@ -170,6 +175,10 @@ export function MeetingDetail({
      single click with nothing to undo it. */
   const [confirmNote, setConfirmNote] = useState<string | null>(null);
   const [confirmDoc, setConfirmDoc] = useState<string | null>(null);
+  /* Completing or reopening moves the meeting between the Planned and
+     Completed lists for everyone, so it asks first like the solutioning
+     pages do (Anir, Oct 1: nothing that changes data acts on one click). */
+  const [confirmStatus, setConfirmStatus] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -188,6 +197,17 @@ export function MeetingDetail({
   /* A real percentage, not a word. An upload that only says "Uploading…" is
      an upload you cannot tell from a hung one. */
   const [uploadPct, setUploadPct] = useState(0);
+  /* THE DOCUMENTS LIST FOLDS (Anir, Oct 1: "sales materials should be
+     collapsible", carried to every list of files). Open by default; a list of
+     one or two files never folds. */
+  const [docsOpen, setDocsOpen] = useState(true);
+  const docsFoldable = m.docs.length > 2;
+  /** The person or deal whose hover X was pressed, waiting on its confirm. */
+  const [unlinking, setUnlinking] = useState<{
+    kind: "presenter" | "attendee" | "contact" | "deal";
+    index: number;
+    name: string;
+  } | null>(null);
 
   const mine = m.owner.trim().toLowerCase() === meName.trim().toLowerCase();
   const canDelete = canDeleteModule && (mine || meRole === "admin");
@@ -216,6 +236,41 @@ export function MeetingDetail({
       return false;
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** TAKE ONE OFF RIGHT HERE (Anir, Oct 1: "when i hover i should have a
+   *  delete button showing up"). The same update the Edit dialog saves, with
+   *  only the one list that changes. Names and ids sit side by side, so a
+   *  linked contact or deal leaves both lists at the same position. */
+  async function unlink() {
+    const target = unlinking;
+    if (!target) return;
+    const drop = <T,>(list: T[]) => list.filter((_, i) => i !== target.index);
+    const patch =
+      target.kind === "presenter"
+        ? { presenters: drop(m.presenters) }
+        : target.kind === "attendee"
+          ? { attendees: drop(m.attendees) }
+          : target.kind === "contact"
+            ? target.index < m.contactIds.length
+              ? { contactIds: drop(m.contactIds), contactNames: drop(m.contactNames) }
+              : { contactNames: drop(m.contactNames) }
+            : target.index < m.opportunityIds.length
+              ? { opportunityIds: drop(m.opportunityIds), opportunityLabels: drop(m.opportunityLabels) }
+              : { opportunityLabels: drop(m.opportunityLabels) };
+    const meetingName = m.title || m.ref;
+    if (await post({ op: "update", patch })) {
+      setUnlinking(null);
+      toast(
+        target.kind === "presenter"
+          ? `${target.name} is no longer a presenter on ${meetingName}.`
+          : target.kind === "attendee"
+            ? `${target.name} is no longer listed at ${meetingName}.`
+            : target.kind === "contact"
+              ? `${target.name} is no longer listed at ${meetingName}.`
+              : `${meetingName} is no longer linked to ${target.name}.`
+      );
     }
   }
 
@@ -346,9 +401,7 @@ export function MeetingDetail({
           <button
             type="button"
             disabled={busy}
-            onClick={() =>
-              post({ op: "status", status: done ? "planned" : "completed" })
-            }
+            onClick={() => setConfirmStatus(true)}
             /* THE SAME GREEN AS THE OTHER THREE PAGES, not a brand fill
                (Anir, Aug 29). Green is what this app says "complete" in;
                solid blue said "this is the primary action on the page",
@@ -467,22 +520,38 @@ export function MeetingDetail({
           <SectionCard
             title={
               <span className="inline-flex items-center gap-1.5">
-                Documents
-                <InfoHint text="The deck that was shown and any file handed over during the meeting." />
+                Documents ({m.docs.length})
+                {/* The hint and the plus keep their own clicks and keys; the
+                    rest of the header folds the list. */}
+                <span
+                  className="inline-flex"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <InfoHint text="The deck that was shown and any file handed over during the meeting." />
+                </span>
               </span>
             }
             icon={FileText}
+            onHeaderClick={docsFoldable ? () => setDocsOpen((open) => !open) : undefined}
+            expanded={docsFoldable ? docsOpen : undefined}
+            chevron={docsFoldable}
             action={
-              <AddSquare
-                label="Add a document"
-                busy={uploading}
-                onClick={() => {
-                  setUploadError(null);
-                  setDocFile(null);
-                  setDocLabel("");
-                  setDocOpen(true);
-                }}
-              />
+              <span className="inline-flex" onKeyDown={(e) => e.stopPropagation()}>
+                <AddSquare
+                  label="Add a document"
+                  busy={uploading}
+                  onClick={() => {
+                    setUploadError(null);
+                    setDocFile(null);
+                    setDocLabel("");
+                    setDocOpen(true);
+                    /* Adding opens the list, so the new file lands where it
+                       can be seen. */
+                    setDocsOpen(true);
+                  }}
+                />
+              </span>
             }
           >
             {uploadError && (
@@ -512,27 +581,6 @@ export function MeetingDetail({
                         same way. A row with no file behind it is not wrapped —
                         there is nothing to render, and an empty frame reads as
                         broken. */}
-                    <MaterialPeek
-                      material={{
-                        id: d.id,
-                        kind: formatFromFilename(d.label),
-                        label: d.label,
-                        url: d.url ?? "",
-                        ...(d.docsPath ? { docsPath: d.docsPath } : {}),
-                      }}
-                      /* THE PAGE, NOT THE API. The card iframes this URL, so it
-                         has to be a page that renders the document — pointed at
-                         /api/meetings/preview it faithfully displayed the API's
-                         JSON as text. ?embed=1 is the same bare-document mode
-                         the sales-materials peek has always used. */
-                      previewUrl={
-                        d.docsPath
-                          ? `/meetings/${encodeURIComponent(
-                              m.id
-                            )}/documents/${encodeURIComponent(d.id)}?embed=1`
-                          : null
-                      }
-                    >
                     <button
                       type="button"
                       onClick={() =>
@@ -550,14 +598,38 @@ export function MeetingDetail({
                       }
                       className="group min-w-0 flex-1 cursor-pointer text-left"
                     >
-                      <span className="block truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">
-                        {d.label}
-                      </span>
+                      {/* ONLY THE NAME PREVIEWS, the offering page's rule.
+                          The card wrapped the whole button, so resting on the
+                          "added by" line under the name opened it too. */}
+                      <MaterialPeek
+                        material={{
+                          id: d.id,
+                          kind: formatFromFilename(d.label),
+                          label: d.label,
+                          url: d.url ?? "",
+                          ...(d.docsPath ? { docsPath: d.docsPath } : {}),
+                        }}
+                        /* THE PAGE, NOT THE API. The card iframes this URL, so it
+                           has to be a page that renders the document — pointed at
+                           /api/meetings/preview it faithfully displayed the API's
+                           JSON as text. ?embed=1 is the same bare-document mode
+                           the sales-materials peek has always used. */
+                        previewUrl={
+                          d.docsPath
+                            ? `/meetings/${encodeURIComponent(
+                                m.id
+                              )}/documents/${encodeURIComponent(d.id)}?embed=1`
+                            : null
+                        }
+                      >
+                        <span className="block truncate text-[12.5px] font-semibold text-text-primary group-hover:text-blue-primary">
+                          {d.label}
+                        </span>
+                      </MaterialPeek>
                       <span className="block text-[11px] text-text-tertiary">
                         {d.addedBy} · {stampedAt(d.addedAt)}
                       </span>
                     </button>
-                    </MaterialPeek>
                     <a
                       href={`/api/meetings/download?meetingId=${encodeURIComponent(
                         m.id
@@ -615,6 +687,13 @@ export function MeetingDetail({
                   names={m.presenters}
                   empty="Nobody named as presenter."
                   hrefForName={(name) => `/analytics/reps/${repSlug(name)}`}
+                  /* Off right here, asking first (Anir, Oct 1). */
+                  removeLabel={(name) => `Take ${name} off the presenters`}
+                  onRemove={
+                    canWrite
+                      ? (name, index) => setUnlinking({ kind: "presenter", index, name })
+                      : undefined
+                  }
                 />
               </div>
               <div className="py-3">
@@ -623,6 +702,12 @@ export function MeetingDetail({
                   names={m.attendees}
                   empty="Nobody else recorded."
                   hrefForName={(name) => `/analytics/reps/${repSlug(name)}`}
+                  removeLabel={(name) => `Take ${name} off this meeting`}
+                  onRemove={
+                    canWrite
+                      ? (name, index) => setUnlinking({ kind: "attendee", index, name })
+                      : undefined
+                  }
                 />
               </div>
               <div className="pt-3">
@@ -636,6 +721,12 @@ export function MeetingDetail({
                     )?.id;
                     return id ? `/contacts/${id}` : null;
                   }}
+                  removeLabel={(name) => `Take ${name} off this meeting`}
+                  onRemove={
+                    canWrite
+                      ? (name, index) => setUnlinking({ kind: "contact", index, name })
+                      : undefined
+                  }
                 />
               </div>
             </div>
@@ -662,13 +753,19 @@ export function MeetingDetail({
                     </>
                   );
                   return (
-                    <li key={`${label}-${index}`} className="text-[12.5px] text-text-secondary">
+                    <li key={`${label}-${index}`} className="group/unlink flex items-center text-[12.5px] text-text-secondary">
                       {id ? (
                         <Link href={`/opportunities/${id}`} className="flex w-fit items-center gap-2 hover:text-blue-primary hover:underline">
                           {content}
                         </Link>
                       ) : (
                         <span className="flex items-center gap-2">{content}</span>
+                      )}
+                      {canWrite && (
+                        <UnlinkX
+                          label={`Unlink ${label} from this meeting`}
+                          onClick={() => setUnlinking({ kind: "deal", index, name: label })}
+                        />
                       )}
                     </li>
                   );
@@ -913,7 +1010,7 @@ export function MeetingDetail({
                 value={docLabel}
                 onChange={(event) => setDocLabel(event.target.value)}
                 placeholder="Name people will see"
-                className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-[13px] text-text-primary outline-none focus:border-blue-subtle focus:ring-2 focus:ring-blue-light"
+                className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none focus:border-blue-subtle focus:ring-2 focus:ring-blue-light"
               />
               <span className="mt-1 block text-[11.5px] text-text-tertiary">
                 Original file: {docFile.name}
@@ -985,48 +1082,192 @@ export function MeetingDetail({
         />
       )}
 
+      {(() => {
+        /* Whose note, what kind, when, how it opens, and which meeting
+           (Anir, Oct 1: "u have to be so specific"). */
+        const n = m.notes.find((x) => x.id === confirmNote);
+        const kind = n ? NOTE_META[n.kind].label.toLowerCase() : "note";
+        const wordList = n ? n.text.trim().split(/\s+/).filter(Boolean) : [];
+        const when = n ? stampedAt(n.at) : null;
+        return (
+          <ConfirmDialog
+            open={!!confirmNote}
+            title={
+              n
+                ? `Remove ${n.by}'s ${kind} from ${m.title}?`
+                : `Remove this from the ${m.title} write-up?`
+            }
+            body={
+              n ? (
+                <>
+                  The <b>{kind}</b> <b>{n.by}</b> wrote{when ? ` on ${when}` : ""},{" "}
+                  {wordList.length} {wordList.length === 1 ? "word" : "words"}
+                  {wordList.length > 0 ? (
+                    <>
+                      {" "}starting &ldquo;{wordList.slice(0, 8).join(" ")}
+                      {wordList.length > 8 ? "…" : ""}&rdquo;
+                    </>
+                  ) : null}
+                  , comes off <b>{m.title}</b> ({m.ref})
+                  {m.customer.trim() ? (
+                    <>
+                      {" "}with <b>{m.customer}</b>
+                    </>
+                  ) : null}
+                  .
+                </>
+              ) : (
+                "It will be removed from the meeting record."
+              )
+            }
+            detail="It cannot be brought back."
+            confirmLabel={n ? `Remove ${kind}` : "Remove note"}
+            tone="destructive"
+            onClose={() => setConfirmNote(null)}
+            onConfirm={async () => {
+              const id = confirmNote;
+              setConfirmNote(null);
+              if (id) await post({ op: "remove-note", noteId: id });
+            }}
+          />
+        );
+      })()}
+
+      {(() => {
+        const d = m.docs.find((x) => x.id === confirmDoc);
+        const added = d ? stampedAt(d.addedAt) : null;
+        return (
+          <ConfirmDialog
+            open={!!confirmDoc}
+            title={d ? `Remove ${d.label} from ${m.title}?` : "Remove this document?"}
+            body={
+              <>
+                <b>{d?.label ?? "This file"}</b>
+                {d?.addedBy ? `, added by ${d.addedBy}${added ? ` on ${added}` : ""},` : ""}{" "}
+                comes off <b>{m.title}</b> ({m.ref})
+                {m.customer.trim() ? (
+                  <>
+                    {" "}with <b>{m.customer}</b>
+                  </>
+                ) : null}
+                .
+              </>
+            }
+            detail="It cannot be brought back."
+            confirmLabel="Remove document"
+            tone="destructive"
+            onClose={() => setConfirmDoc(null)}
+            onConfirm={async () => {
+              const id = confirmDoc;
+              setConfirmDoc(null);
+              if (id) await post({ op: "remove-doc", docId: id });
+            }}
+          />
+        );
+      })()}
+
+      {/* The hover X on a person or a deal asks here, naming both. */}
       <ConfirmDialog
-        open={!!confirmNote}
-        title="Remove this from the write-up?"
-        body={(() => {
-          const n = m.notes.find((x) => x.id === confirmNote);
-          if (!n) return "It will be removed from the meeting record.";
-          const words = n.text.trim().split(/\s+/).length;
-          return `A ${NOTE_META[n.kind].label.toLowerCase()} of ${words} ${
-            words === 1 ? "word" : "words"
-          }, written by ${n.by}. It goes from the meeting record and cannot be brought back.`;
-        })()}
-        confirmLabel="Remove it"
-        tone="destructive"
-        onClose={() => setConfirmNote(null)}
-        onConfirm={async () => {
-          const id = confirmNote;
-          setConfirmNote(null);
-          if (id) await post({ op: "remove-note", noteId: id });
+        open={!!unlinking}
+        busy={busy}
+        onClose={() => {
+          if (!busy) setUnlinking(null);
         }}
+        onConfirm={() => void unlink()}
+        title={
+          !unlinking
+            ? "Take this off the meeting?"
+            : unlinking.kind === "deal"
+              ? `Unlink ${unlinking.name} from ${m.title}?`
+              : unlinking.kind === "presenter"
+                ? `Take ${unlinking.name} off the presenters of ${m.title}?`
+                : `Take ${unlinking.name} off ${m.title}?`
+        }
+        body={
+          !unlinking ? null : unlinking.kind === "deal" ? (
+            <>
+              <b>{m.title}</b> ({m.ref}) stops counting against{" "}
+              <b>{unlinking.name}</b>.
+            </>
+          ) : (
+            <>
+              <b>{unlinking.name}</b>{" "}
+              {unlinking.kind === "presenter"
+                ? "is no longer listed as presenting at"
+                : "is no longer listed as attending"}{" "}
+              <b>{m.title}</b> ({m.ref}).
+            </>
+          )
+        }
+        detail={
+          unlinking?.kind === "deal"
+            ? "The deal and the meeting both stay. You can link it again from Edit."
+            : unlinking?.kind === "contact"
+              ? `They stay a contact at ${m.customer || "the account"}, and the meeting keeps its notes and documents. You can add them back from Edit.`
+              : "The meeting keeps its notes and documents. You can add them back from Edit."
+        }
+        person={unlinking && unlinking.kind !== "deal" ? unlinking.name : null}
+        subject={unlinking?.kind === "deal" ? { name: unlinking.name, kind: "opportunity" } : null}
+        confirmLabel={
+          unlinking?.kind === "deal"
+            ? "Unlink deal"
+            : unlinking?.kind === "presenter"
+              ? "Remove presenter"
+              : unlinking?.kind === "contact"
+                ? "Remove contact"
+                : "Remove attendee"
+        }
       />
 
       <ConfirmDialog
-        open={!!confirmDoc}
-        title="Remove this document?"
-        body={`${
-          m.docs.find((x) => x.id === confirmDoc)?.label ?? "This file"
-        } comes off the meeting and cannot be brought back.`}
-        confirmLabel="Remove it"
-        tone="destructive"
-        onClose={() => setConfirmDoc(null)}
-        onConfirm={async () => {
-          const id = confirmDoc;
-          setConfirmDoc(null);
-          if (id) await post({ op: "remove-doc", docId: id });
+        open={confirmStatus}
+        title={done ? `Reopen ${m.title}?` : `Mark ${m.title} as completed?`}
+        body={
+          <>
+            <b>{m.title}</b> ({m.ref})
+            {m.customer.trim() ? (
+              <>
+                {" "}with <b>{m.customer}</b>
+              </>
+            ) : null}{" "}
+            on <b><DateText value={m.meetingAt} /></b> moves from{" "}
+            {done ? "Completed back to Planned" : "Planned to Completed"} for everyone.
+          </>
+        }
+        detail={
+          done
+            ? `${m.completedBy ? `${m.completedBy} marked it completed. ` : ""}Its notes and documents stay.`
+            : "Its notes and documents stay. You can reopen it later."
+        }
+        confirmLabel={done ? "Reopen meeting" : "Complete meeting"}
+        /* A status change, nothing destroyed: blue. */
+        tone="primary"
+        onClose={() => setConfirmStatus(false)}
+        onConfirm={() => {
+          setConfirmStatus(false);
+          void post({ op: "status", status: done ? "planned" : "completed" });
         }}
       />
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Delete this meeting?"
-        body={<><span className="font-semibold">{m.title}</span> ({m.ref}) and everything written on it will be removed. This cannot be undone.</>}
-        confirmLabel="Delete it"
+        title={`Delete ${m.title}?`}
+        body={
+          <>
+            <b>{m.title}</b> ({m.ref})
+            {m.customer.trim() ? (
+              <>
+                {" "}with <b>{m.customer}</b>
+              </>
+            ) : null}{" "}
+            on <b><DateText value={m.meetingAt} /></b> and everything written on it will be
+            removed.
+          </>
+        }
+        detail={`Its ${m.notes.length} ${m.notes.length === 1 ? "note" : "notes"} and ${
+          m.docs.length
+        } ${m.docs.length === 1 ? "document" : "documents"} go with it. This cannot be undone.`}
+        confirmLabel="Delete meeting"
         tone="destructive"
         onClose={() => setConfirmDelete(false)}
         onConfirm={async () => {
@@ -1137,10 +1378,15 @@ function PeopleRow({
   names,
   empty,
   hrefForName,
+  removeLabel,
+  onRemove,
 }: {
   names: string[];
   empty: string;
   hrefForName?: (name: string, index: number) => string | null;
+  /** With both, each person gets a hover X: "Take Ana off the presenters". */
+  removeLabel?: (name: string) => string;
+  onRemove?: (name: string, index: number) => void;
 }) {
   const [all, setAll] = useState(false);
   if (names.length === 0)
@@ -1166,13 +1412,16 @@ function PeopleRow({
           );
           const href = hrefForName?.(n, index);
           return (
-            <li key={`${n}-${index}`}>
+            <li key={`${n}-${index}`} className="group/unlink inline-flex items-center">
               {href ? (
                 <Link href={href} className="inline-flex items-center gap-1.5 rounded-md hover:text-blue-primary hover:underline">
                   {content}
                 </Link>
               ) : (
                 <span className="inline-flex items-center gap-1.5">{content}</span>
+              )}
+              {onRemove && removeLabel && (
+                <UnlinkX label={removeLabel(n)} onClick={() => onRemove(n, index)} />
               )}
             </li>
           );

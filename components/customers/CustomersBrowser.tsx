@@ -31,12 +31,14 @@ import {
   PriorityTooltip,
 } from "@/components/ui/SearchPriority";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { OutcomeBadge } from "@/components/ui/Badge";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
 import { IndustryTag } from "@/components/ui/IndustryTag";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { CompanyFan } from "@/components/ui/CompanyFan";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { cn, formatDateTime, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
@@ -384,6 +386,11 @@ export function CustomersBrowser({
   const [bulkOwner, setBulkOwner] = useState(currentUser.name);
   const [assigning, setAssigning] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  /* Both bulk actions overwrite saved fields on every selected account, and
+     an import updates any account with the same name, so each asks first
+     and says which accounts (Anir, Oct 1: "this cant happen"). */
+  const [confirmBulk, setConfirmBulk] = useState<"analyze" | "assign" | null>(null);
+  const [pendingImport, setPendingImport] = useState<File | null>(null);
 
   useEffect(() => {
     setLoadedListUserId(null);
@@ -951,7 +958,7 @@ export function CustomersBrowser({
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) void importCsv(f);
+              if (f) setPendingImport(f);
               e.target.value = "";
             }}
           />
@@ -1394,7 +1401,7 @@ export function CustomersBrowser({
           </span>
           <div className="flex items-center gap-2 ml-auto flex-wrap">
             <button
-              onClick={runAnalysis}
+              onClick={() => setConfirmBulk("analyze")}
               disabled={analyzing}
               className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-50"
             >
@@ -1414,7 +1421,7 @@ export function CustomersBrowser({
               allowUnassigned={false}
             />
             <button
-              onClick={assignOwner}
+              onClick={() => setConfirmBulk("assign")}
               disabled={assigning}
               className="text-[13px] font-semibold px-3 py-1.5 rounded-md bg-white border border-border text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
             >
@@ -1437,6 +1444,130 @@ export function CustomersBrowser({
           </div>
         </div>
       )}
+
+      {/* THE BULK ACTIONS ASK FIRST AND NAME THE ACCOUNTS. Run analysis
+          saves over the type, ownership and revenue of every selected
+          account; Assign replaces every selected account's owner. Blue:
+          nothing is deleted. */}
+      {(() => {
+        const n = selectedInScope.length;
+        const names = selectedInScope.map((c) => c.company_name);
+        const shown = names.slice(0, 3);
+        const rest = names.length - shown.length;
+        const list =
+          rest > 0
+            ? `${shown.join(", ")} and ${rest} more`
+            : shown.length > 1
+              ? `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`
+              : shown[0] || "";
+        /* Who owns them today, so the person can see whose accounts move. */
+        const ownerCounts = new Map<string, number>();
+        for (const c of selectedInScope) {
+          const owner = (c.owner || "").trim() || "Unassigned";
+          ownerCounts.set(owner, (ownerCounts.get(owner) || 0) + 1);
+        }
+        const owners = [...ownerCounts.entries()].sort((a, b) => b[1] - a[1]);
+        const ownersShown = owners
+          .slice(0, 4)
+          .map(([owner, count]) => (n === 1 ? owner : `${owner} (${count})`));
+        const ownersMore = owners.length - ownersShown.length;
+        const ownersText =
+          ownersMore > 0
+            ? `${ownersShown.join(", ")} and ${ownersMore} more`
+            : ownersShown.join(", ");
+        const allTheirs = n > 0 && selectedInScope.every((c) => (c.owner || "").trim() === bulkOwner);
+        return (
+          <>
+            <ConfirmDialog
+              open={confirmBulk === "analyze"}
+              subject={n === 1 && names[0] ? { name: names[0], kind: "company" } : null}
+              onClose={() => setConfirmBulk(null)}
+              onConfirm={() => {
+                setConfirmBulk(null);
+                void runAnalysis();
+              }}
+              title={
+                n === 1
+                  ? `Analyze ${names[0]} and update its profile?`
+                  : `Analyze ${n} accounts and update their profiles?`
+              }
+              body={
+                <>
+                  The analysis looks up {list ? <b>{list}</b> : "the selected accounts"} and saves
+                  what it finds as {n === 1 ? "its" : "each one's"} customer type, ownership and
+                  revenue.
+                </>
+              }
+              detail={`Values already saved there are replaced. Nothing else on ${
+                n === 1 ? "the account" : "these accounts"
+              } changes.`}
+              confirmLabel={n === 1 ? "Analyze account" : `Analyze ${n} accounts`}
+              tone="primary"
+            />
+            <ConfirmDialog
+              open={confirmBulk === "assign"}
+              person={bulkOwner || null}
+              onClose={() => setConfirmBulk(null)}
+              onConfirm={() => {
+                setConfirmBulk(null);
+                void assignOwner();
+              }}
+              title={
+                n === 1
+                  ? `Make ${bulkOwner} the owner of ${names[0]}?`
+                  : `Make ${bulkOwner} the owner of ${n} accounts?`
+              }
+              body={
+                <>
+                  {list ? <b>{list}</b> : "The selected accounts"} {n === 1 ? "moves" : "move"} to{" "}
+                  <b>{bulkOwner}</b>.
+                </>
+              }
+              detail={
+                allTheirs
+                  ? `${bulkOwner} already owns ${n === 1 ? "it" : "all of them"}, so nothing changes.`
+                  : `${n === 1 ? "Owner today" : "Owners today"}: ${ownersText}. Only the owner changes. Contacts, deals and activity stay as they are.`
+              }
+              confirmLabel={n === 1 ? "Assign account" : `Assign ${n} accounts`}
+              tone="primary"
+            />
+          </>
+        );
+      })()}
+
+      {/* IMPORTING ASKS FIRST, because an account already here with the same
+          name is updated from the file, blank cells included. */}
+      <ConfirmDialog
+        open={pendingImport !== null}
+        onClose={() => setPendingImport(null)}
+        onConfirm={() => {
+          const file = pendingImport;
+          setPendingImport(null);
+          if (file) void importCsv(file);
+        }}
+        title={pendingImport ? `Import ${pendingImport.name}?` : "Import this file?"}
+        body={(() => {
+          const bytes = pendingImport?.size ?? 0;
+          const size =
+            bytes <= 0
+              ? ""
+              : bytes < 1024
+                ? `${bytes} bytes`
+                : bytes < 1024 * 1024
+                  ? `${Math.round(bytes / 1024)} KB`
+                  : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+          return (
+            <>
+              Accounts in {pendingImport ? <b>{pendingImport.name}</b> : "this file"}
+              {size ? ` (${size})` : ""} that are not in Freyr yet are added, with any contacts
+              the file lists.
+            </>
+          );
+        })()}
+        detail="An account already here with the same name is updated from the file: its website, industry, geography, size and owner. A blank cell clears that field."
+        confirmLabel="Import file"
+        tone="primary"
+      />
 
       {/* Everything below is the LIST — the summary above is its own answer
           and does not want a row count or a pin under it. */}
@@ -1550,7 +1681,7 @@ filtered.length === 0 ? (
                   type="button"
                   onClick={() => toggleFold(g.key)}
                   aria-expanded={!shut}
-                  className="flex w-full cursor-pointer select-none items-center gap-2.5 px-5 py-3.5 text-left transition-colors hover:bg-surface/70"
+                  className="flex w-full cursor-pointer select-none items-center gap-2.5 px-5 py-3.5 text-left transition-colors [--fan-ring:var(--white)] hover:bg-surface/70 hover:[--fan-ring:color-mix(in_srgb,rgb(var(--surface-rgb))_70%,var(--white))]"
                 >
                   <ChevronRight
                     size={15}
@@ -1584,6 +1715,14 @@ filtered.length === 0 ? (
                       ) : (
                         <b className="text-[13.5px] text-text-primary">{g.name}</b>
                       )}
+                  {/* The accounts inside, visible before the band is opened. */}
+                  <CompanyFan
+                    companies={g.rows.map((c) => ({ name: c.company_name, id: c.id }))}
+                    logoClassName="h-6 w-6 text-[8px]"
+                    max={5}
+                    nested
+                    ringClassName="ring-[color:var(--fan-ring)]"
+                  />
                   <span className="text-[12px] font-medium text-text-secondary tnum">
                     {g.rows.length} {g.rows.length === 1 ? "account" : "accounts"}
                   </span>

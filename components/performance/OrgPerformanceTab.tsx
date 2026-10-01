@@ -79,9 +79,11 @@ import { VerifyGoalModal, type VerifyScope } from "./VerifyGoalModal";
 import type { CurrencyCode, CurrencyRates } from "@/lib/currency";
 import { GroupPill, MetPill, MiniBar, PacePill, PersonGoalPanel, TypeChip, TypeIconTile, VerifiedPill, typeMeta } from "./bits";
 import type { RunOp } from "./PerformanceModule";
+import { PinnedGoalBar, PinnedGoalName } from "./PinnedGoalBar";
 import { DateText } from "@/components/ui/DateText";
 import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
-import { teammateHref } from "@/lib/entityHref";
+import { isSomebody, teammateHref } from "@/lib/entityHref";
+import { PersonFan } from "@/components/ui/PersonFan";
 
 /**
  * ORG PERFORMANCE — his words, verbatim: "list the primary goals which I've
@@ -501,6 +503,10 @@ export function OrgPerformanceTab({
       id: string;
       name: string;
       sub?: string;
+      /** A group's owner, whose name leads its sub line. */
+      head?: string;
+      /** A group's people, drawn as a face fan on its result. */
+      members?: string[];
       go: () => void;
     }[];
   };
@@ -1396,7 +1402,7 @@ export function OrgPerformanceTab({
                     j.go();
                     setQuery("");
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface"
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface [--fan-ring:var(--white)] hover:[--fan-ring:var(--surface)]"
                 >
                   {j.kind === "person" ? (
                     <EntityLink nested href={teammateHref(j.name)} className="shrink-0 rounded-full" title={j.name}>
@@ -1417,12 +1423,30 @@ export function OrgPerformanceTab({
                         </span>
                       )}
                     </span>
-                    {j.sub && (
+                    {j.sub && (j.kind === "group" && isSomebody(j.head) ? (
+                      /* The owner's face before the owner's name. */
+                      <span className="flex min-w-0 items-center gap-1 text-[11px] text-text-secondary">
+                        <Avatar name={j.head} className="h-4 w-4 shrink-0 text-[6px]" />
+                        <span className="truncate">{j.sub}</span>
+                      </span>
+                    ) : (
                       <span className="block truncate text-[11px] text-text-secondary">
                         {j.sub}
                       </span>
-                    )}
+                    ))}
                   </span>
+                  {/* The group's people, so a result says who is in it. */}
+                  {j.kind === "group" && (() => {
+                    const owner = (j.head ?? "").trim().toLowerCase();
+                    const people = (j.members ?? [])
+                      .filter((n) => n.trim().toLowerCase() !== owner)
+                      .map((n) => ({ name: n, role: "In this group", context: j.name }));
+                    return people.length > 0 ? (
+                      <span className="ml-auto flex shrink-0">
+                        <PersonFan nested people={people} avatarClassName="h-5 w-5 text-[7px]" overlap={-6} ringClassName="ring-[color:var(--fan-ring)]" />
+                      </span>
+                    ) : null;
+                  })()}
                 </button>
               ))}
             </div>
@@ -1847,6 +1871,62 @@ function GoalRows({
 
   return (
     <Fragment>
+      {/* The open goal's row, pinned while its drill-down scrolls under it
+          (Anir, Oct 1: "the goal has to be sticky becasue i will forget what
+          goal it is"). Same cells as the row below, read-only. */}
+      {open && (
+        <PinnedGoalBar
+          goalId={goal.id}
+          accent={typeMeta(goal.type).color}
+          name={goal.name}
+          onClose={onToggle}
+          cells={[
+            <span key="goal" className="flex items-center gap-3">
+              <TypeIconTile type={goal.type} className="h-8 w-8 shrink-0 rounded-lg" />
+              <PinnedGoalName name={goal.name} year={goal.year} />
+            </span>,
+            goal.target > 0 ? (
+              <span key="target" className="text-[13px] font-semibold text-text-primary tnum">
+                {money(goal.target, goal.currency)}
+              </span>
+            ) : (
+              <span key="target" className="text-[13px] text-text-tertiary">·</span>
+            ),
+            <span key="actual" className="text-[13px] font-semibold text-text-primary tnum">
+              {money(actual, goal.currency)}
+            </span>,
+            goal.target > 0 ? (
+              <MetPill key="met" met={verifiedActual >= goal.target} size="sm" />
+            ) : (
+              <span key="met" className="text-[12px] text-text-tertiary">·</span>
+            ),
+            <span key="progress" className="block">
+              <span className="mb-1 block">
+                <PacePill pace={pace} size="sm" />
+              </span>
+              <MiniBar
+                actual={verifiedActual}
+                claimed={actual}
+                sentBack={sentBackActual}
+                target={goal.target}
+                pace={pace}
+              />
+            </span>,
+            <VerifiedPill
+              key="verified"
+              verified={
+                goal.verified ||
+                (goalFamilyActuals({ actuals }, goal).length > 0 &&
+                  goalFamilyActuals({ actuals }, goal).every(
+                    (a) => entryStatus(a) === "verified"
+                  ))
+              }
+              size="sm"
+              nothingToVerify={goalFamilyActuals({ actuals }, goal).length === 0}
+            />,
+          ]}
+        />
+      )}
       <VerifyGoalModal
         open={verifying}
         goal={goal}
@@ -2353,6 +2433,8 @@ function GoalRows({
                            top to bottom. Same idiom the entry cards use. */
                         <div
                           key={a.person}
+                          data-pin-kind="Person"
+                          data-pin-label={a.person}
                           className={cn(
                             "overflow-hidden rounded-xl border bg-white transition-colors",
                             open
@@ -2685,6 +2767,8 @@ function GoalRows({
                   return (
                     <div
                       key={s.id}
+                      data-pin-kind="Sub-goal"
+                      data-pin-label={s.name}
                       className="rounded-xl border border-border-light bg-white p-3.5"
                     >
                       <div className="flex flex-wrap items-center gap-2">
@@ -2999,9 +3083,17 @@ function GoalRows({
                                   aria-hidden="true"
                                   className="mr-1 inline align-[-1px] text-[color:var(--ink-violet-soft)]"
                                 />
-                                <span className="font-semibold text-text-primary">
-                                  {s.owners.join(" and ")}
-                                </span>{" "}
+                                {/* Crown, face, then name, for each owner. */}
+                                {s.owners.map((o, i) => (
+                                  <Fragment key={o}>
+                                    {i > 0 && " and "}
+                                    {isSomebody(o) ? (
+                                      <PersonLink name={o} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5 align-middle font-semibold text-text-primary" />
+                                    ) : (
+                                      <span className="font-semibold text-text-primary">{o}</span>
+                                    )}
+                                  </Fragment>
+                                ))}{" "}
                                 {s.owners.length === 1 ? "owns" : "own"} this
                                 subgoal. No one carries a personal target yet;
                                 owners can be assigned one too.

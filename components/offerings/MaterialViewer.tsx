@@ -1114,6 +1114,8 @@ export function MaterialViewer({
                   <TranscriptPanel
                     offeringId={offeringId}
                     path={currentPath}
+                    label={currentLabel}
+                    offeringName={offeringName}
                     currentTime={videoTime}
                     onSeek={(t) => seekRef.current?.(t)}
                     onClose={() => setShowTranscript(false)}

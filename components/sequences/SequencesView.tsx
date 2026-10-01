@@ -465,7 +465,23 @@ export function SequencesView({
     }
   }
 
-  const [confirmEnrollment, setConfirmEnrollment] = useState<{ id: string; company: string } | null>(null);
+  const [confirmEnrollment, setConfirmEnrollment] = useState<{
+    id: string;
+    company: string;
+    /** Where the account is in the cadence, to tell it apart. */
+    step?: number;
+    of?: number;
+  } | null>(null);
+  /* Pausing, resuming and advancing change what happens next for enrolled
+     accounts, so each one asks first (Anir, Oct 1: "this cant happen"). */
+  const [confirmStatus, setConfirmStatus] = useState(false);
+  const [confirmAdvance, setConfirmAdvance] = useState<{
+    id: string;
+    company: string;
+    step: number;
+    of: number;
+  } | null>(null);
+  const [confirmAdvanceAll, setConfirmAdvanceAll] = useState(false);
   async function removeEnrollment(enrollmentId: string) {
     setBusy(enrollmentId);
     try {
@@ -614,7 +630,7 @@ export function SequencesView({
                   </Tooltip>
                   <Tooltip label={active.status === "active" ? "Pause sequence" : "Resume sequence"} side="bottom" align="right">
                     <button
-                      onClick={() => patchSequence({ status: active.status === "active" ? "paused" : "active" }, active.status === "active" ? "Sequence paused." : "Sequence resumed.")}
+                      onClick={() => setConfirmStatus(true)}
                       disabled={busy !== null}
                       aria-label={active.status === "active" ? "Pause sequence" : "Resume sequence"}
                       className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-text-secondary hover:bg-surface hover:text-blue-primary disabled:opacity-50"
@@ -695,7 +711,7 @@ export function SequencesView({
                     <input value={accountQuery} onChange={(event) => setAccountQuery(event.target.value)} aria-label="Search accounts" placeholder="Search accounts..." className="h-8 w-full rounded-md border border-border bg-white pl-8 pr-2.5 text-[12px] outline-none focus:border-blue-primary" />
                   </div>
                   {advanceable.length > 0 && active.status === "active" && (
-                    <Button onClick={() => advance({ sequenceId: active.id }, "advance-all", "Sequence advanced")} loading={busy === "advance-all"} className="h-8 px-3 py-0 text-[12px]">
+                    <Button onClick={() => setConfirmAdvanceAll(true)} loading={busy === "advance-all"} className="h-8 px-3 py-0 text-[12px]">
                       <Play size={12} /> Advance due ({advanceable.length})
                     </Button>
                   )}
@@ -735,9 +751,9 @@ export function SequencesView({
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success"><CheckCircle2 size={14} /> Done</span>
                             ) : enrollment.managed && enrollment.enrollmentId ? (
                               <>
-                                <button onClick={() => advance({ enrollmentId: enrollment.enrollmentId }, enrollment.enrollmentId!, `${enrollment.company} advanced`)} disabled={busy !== null || active.status === "paused"} className="text-[color:var(--status-red)] inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-semibold text-blue-primary hover:bg-blue-light disabled:opacity-40"><Play size={11} /> Advance</button>
+                                <button onClick={() => setConfirmAdvance({ id: enrollment.enrollmentId!, company: enrollment.company, step: stepIndex + 1, of: active.steps.length })} disabled={busy !== null || active.status === "paused"} className="text-[color:var(--status-red)] inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-semibold text-blue-primary hover:bg-blue-light disabled:opacity-40"><Play size={11} /> Advance</button>
                                 <Tooltip label="Remove from sequence" align="right">
-                                  <button onClick={() => setConfirmEnrollment({ id: enrollment.enrollmentId!, company: enrollment.company })} disabled={busy !== null} aria-label={`Remove ${enrollment.company} from sequence`} className="flex h-7 w-7 items-center justify-center rounded-md text-[color:var(--status-red)] hover:bg-error/10 hover:text-error disabled:opacity-40"><Trash2 size={13} /></button>
+                                  <button onClick={() => setConfirmEnrollment({ id: enrollment.enrollmentId!, company: enrollment.company, step: stepIndex + 1, of: active.steps.length })} disabled={busy !== null} aria-label={`Remove ${enrollment.company} from sequence`} className="flex h-7 w-7 items-center justify-center rounded-md text-[color:var(--status-red)] hover:bg-error/10 hover:text-error disabled:opacity-40"><Trash2 size={13} /></button>
                                 </Tooltip>
                               </>
                             ) : (
@@ -824,10 +840,151 @@ export function SequencesView({
           if (confirmEnrollment) void removeEnrollment(confirmEnrollment.id);
           setConfirmEnrollment(null);
         }}
-        title="Remove from the sequence?"
-        body={<><b>{confirmEnrollment?.company}</b> stops getting this sequence&rsquo;s touches.</>}
-        confirmLabel="Remove it"
+        title={`Remove ${confirmEnrollment?.company || "this account"} from the ${
+          active?.name ? `${active.name} sequence` : "sequence"
+        }?`}
+        body={
+          <>
+            {confirmEnrollment?.company ? <b>{confirmEnrollment.company}</b> : "This account"}
+            {confirmEnrollment?.step && confirmEnrollment.of ? (
+              <>
+                {" "}is on step <b>{confirmEnrollment.step} of {confirmEnrollment.of}</b> in
+              </>
+            ) : (
+              " is enrolled in"
+            )}{" "}
+            {active?.name ? <b>{active.name}</b> : "this sequence"}. It stops getting
+            this sequence&rsquo;s touches.
+          </>
+        }
+        detail="Touches already logged stay on the account's timeline, and the account itself is not changed."
+        confirmLabel="Remove from sequence"
       />
+
+      {/* PAUSE AND RESUME ASK FIRST: they decide whether every enrolled
+          account keeps moving. Blue, because nothing is deleted. */}
+      {active && (
+        <ConfirmDialog
+          open={confirmStatus}
+          onClose={() => setConfirmStatus(false)}
+          onConfirm={() => {
+            setConfirmStatus(false);
+            void patchSequence({ status: active.status === "active" ? "paused" : "active" }, active.status === "active" ? "Sequence paused." : "Sequence resumed.");
+          }}
+          title={`${active.status === "active" ? "Pause" : "Resume"} the ${active.name} sequence?`}
+          body={(() => {
+            const n = activeEnrollments.length;
+            const accounts = (
+              <b>
+                {n} enrolled {n === 1 ? "account" : "accounts"}
+              </b>
+            );
+            if (n === 0) {
+              return (
+                <>
+                  <b>{active.name}</b> has no accounts enrolled yet, so nothing moves either way.
+                </>
+              );
+            }
+            return active.status === "active" ? (
+              <>
+                <b>{active.name}</b> stops moving its {accounts} to their next touch until
+                someone resumes it.
+              </>
+            ) : (
+              <>
+                <b>{active.name}</b> starts moving its {accounts} to their next touch again.
+              </>
+            );
+          })()}
+          detail="Nothing is deleted, and nothing sends or dials without review."
+          confirmLabel={active.status === "active" ? "Pause sequence" : "Resume sequence"}
+          tone="primary"
+        />
+      )}
+
+      {/* ADVANCING ONE ACCOUNT ASKS FIRST: the step it leaves cannot be
+          taken back from here. */}
+      {active && (
+        <ConfirmDialog
+          open={confirmAdvance !== null}
+          onClose={() => setConfirmAdvance(null)}
+          onConfirm={() => {
+            const target = confirmAdvance;
+            setConfirmAdvance(null);
+            if (target) void advance({ enrollmentId: target.id }, target.id, `${target.company} advanced`);
+          }}
+          title={`Move ${confirmAdvance?.company || "this account"} to its next step in ${active.name}?`}
+          body={(() => {
+            const step = confirmAdvance?.step ?? 0;
+            const total = confirmAdvance?.of ?? active.steps.length;
+            const next = step > 0 ? active.steps[step] : undefined;
+            return (
+              <>
+                {confirmAdvance?.company ? <b>{confirmAdvance.company}</b> : "This account"}
+                {step > 0 ? (
+                  <>
+                    {" "}moves from step <b>{step}</b> to step <b>{step + 1} of {total}</b>
+                  </>
+                ) : (
+                  " moves one step forward"
+                )}{" "}
+                in <b>{active.name}</b>
+                {next?.label ? (
+                  <>
+                    . The next touch is {CHANNEL_LABEL[next.channel] ? `${CHANNEL_LABEL[next.channel]}: ` : ""}
+                    <b>{next.label}</b>
+                  </>
+                ) : null}
+                .
+              </>
+            );
+          })()}
+          detail="The step is logged on the account's timeline. Nothing sends or dials without review."
+          confirmLabel="Advance account"
+          tone="primary"
+        />
+      )}
+
+      {/* ADVANCE DUE MOVES EVERY DUE ACCOUNT AT ONCE, so it names them. */}
+      {active && (
+        <ConfirmDialog
+          open={confirmAdvanceAll}
+          onClose={() => setConfirmAdvanceAll(false)}
+          onConfirm={() => {
+            setConfirmAdvanceAll(false);
+            void advance({ sequenceId: active.id }, "advance-all", "Sequence advanced");
+          }}
+          title={
+            advanceable.length === 1
+              ? `Move ${advanceable[0].company} to its next step in ${active.name}?`
+              : `Move ${advanceable.length} accounts to their next step in ${active.name}?`
+          }
+          body={(() => {
+            const names = advanceable.map((enrollment) => enrollment.company);
+            const shown = names.slice(0, 3);
+            const rest = names.length - shown.length;
+            const list =
+              rest > 0
+                ? `${shown.join(", ")} and ${rest} more`
+                : shown.length > 1
+                  ? `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`
+                  : shown[0] || "";
+            return (
+              <>
+                {list ? <b>{list}</b> : "The due accounts"}{" "}
+                {names.length === 1 ? "moves" : "each move"} one step forward in{" "}
+                <b>{active.name}</b>.
+              </>
+            );
+          })()}
+          detail="Each step is logged on the account's timeline. Nothing sends or dials without review."
+          confirmLabel={
+            advanceable.length === 1 ? "Advance account" : `Advance ${advanceable.length} accounts`
+          }
+          tone="primary"
+        />
+      )}
       <Modal open={editorOpen} onClose={() => setEditorOpen(false)} title={editingId ? "Edit sequence" : "New sequence"} size="workflow">
         <div ref={editorContentRef}>
           <div className="sticky top-0 z-20 mb-5 bg-white pb-2">
@@ -924,12 +1081,12 @@ export function SequencesView({
                 <label className="block">
                   <span className="text-[11px] font-semibold text-text-primary">Sequence name<RequiredMark /></span>
                   <span className="ml-2 text-[10px] text-text-tertiary">What reps will see in the library</span>
-                  <input required value={draftName} onChange={(event) => setDraftName(event.target.value)} aria-label="Sequence name" placeholder="e.g. Clinical-stage executive outreach" className="mt-1.5 h-11 w-full rounded-md border border-border bg-white px-3 text-[13px] outline-none focus:border-blue-primary" />
+                  <input required value={draftName} onChange={(event) => setDraftName(event.target.value)} aria-label="Sequence name" placeholder="e.g. Clinical-stage executive outreach" className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary" />
                 </label>
                 <label className="block">
                   <span className="text-[11px] font-semibold text-text-primary">Who is this for, and what should happen?<RequiredMark /></span>
                   <span className="ml-2 text-[10px] text-text-tertiary">Audience + intended outcome</span>
-                  <textarea required value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} aria-label="Sequence description" placeholder="Example: VP Regulatory at clinical-stage biopharma: secure a 20-minute discovery call." rows={3} className="mt-1.5 w-full resize-none rounded-md border border-border bg-white px-3 py-2.5 text-[13px] leading-relaxed outline-none focus:border-blue-primary" />
+                  <textarea required value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} aria-label="Sequence description" placeholder="Example: VP Regulatory at clinical-stage biopharma: secure a 20-minute discovery call." rows={3} className="mt-1.5 w-full resize-none rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] leading-relaxed outline-none focus:border-blue-primary" />
                 </label>
               </div>
             </section>
@@ -962,12 +1119,12 @@ export function SequencesView({
                         <div className="grid grid-cols-[210px_86px_minmax(0,1fr)] items-end gap-2.5">
                           <div>
                             <span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">1. Choose channel</span>
-                            <div className="grid h-9 grid-cols-3 rounded-md border border-border bg-surface/40 p-0.5" role="group" aria-label={`Step ${index + 1} channel`}>
+                            <div className="grid h-10 grid-cols-3 rounded-lg border border-border-light bg-surface/40 p-0.5" role="group" aria-label={`Step ${index + 1} channel`}>
                               {(["email", "call", "wait"] as SequenceChannel[]).map((channel) => { const channelMeta = CHANNEL_META[channel]; const ChannelIcon = channelMeta.icon; const selected = step.channel === channel; return <button key={channel} type="button" aria-pressed={selected} onClick={() => updateDraftStep(index, { channel })} className={cn("inline-flex items-center justify-center gap-1 rounded text-[10px] font-semibold transition-colors", selected ? "bg-white text-text-primary shadow-sm" : "text-text-tertiary hover:text-text-primary")}><ChannelIcon size={11} style={{ color: selected ? channelMeta.color : undefined }} /> {CHANNEL_LABEL[channel]}</button>; })}
                             </div>
                           </div>
-                          <label><span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">2. Set day</span><input type="number" min={0} value={step.day} onChange={(event) => updateDraftStep(index, { day: Math.max(0, Number(event.target.value)) })} aria-label={`Step ${index + 1} day`} className="h-9 w-full rounded-md border border-border bg-white px-2 text-[12px] font-semibold outline-none focus:border-blue-primary" /></label>
-                          <label className="min-w-0"><span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">3. Describe the action<RequiredMark /></span><input required value={step.label} onChange={(event) => updateDraftStep(index, { label: event.target.value })} aria-label={`Step ${index + 1} action`} placeholder="What should the rep do or send?" className="h-9 w-full min-w-0 rounded-md border border-border bg-white px-3 text-[12px] outline-none focus:border-blue-primary" /></label>
+                          <label><span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">2. Set day</span><input type="number" min={0} value={step.day} onChange={(event) => updateDraftStep(index, { day: Math.max(0, Number(event.target.value)) })} aria-label={`Step ${index + 1} day`} className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] font-semibold outline-none focus:border-blue-primary" /></label>
+                          <label className="min-w-0"><span className="mb-1 block text-[9.5px] font-semibold text-text-tertiary">3. Describe the action<RequiredMark /></span><input required value={step.label} onChange={(event) => updateDraftStep(index, { label: event.target.value })} aria-label={`Step ${index + 1} action`} placeholder="What should the rep do or send?" className="h-10 w-full min-w-0 rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary" /></label>
                         </div>
                       </div>
                       <Tooltip label="Remove touch" align="right"><button type="button" onClick={() => setDraftSteps((steps) => steps.filter((_, stepIndex) => stepIndex !== index))} disabled={draftSteps.length === 1} aria-label={`Remove step ${index + 1}`} className="mt-6 flex h-8 w-8 items-center justify-center rounded text-[color:var(--status-red)] hover:bg-error/10 hover:text-error disabled:opacity-30"><Trash2 size={14} /></button></Tooltip>

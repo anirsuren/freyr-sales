@@ -13,11 +13,11 @@ import {
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
-import { SETUP_META } from "@/components/notifications/NotificationRow";
+import { SETUP_META, personIsContact } from "@/components/notifications/NotificationRow";
 import type { NotificationType, SetupMark } from "@/lib/notifications";
 import { tint } from "@/lib/tint";
 import { EntityLink } from "@/components/ui/EntityLink";
-import { customerHref, teammateHref } from "@/lib/entityHref";
+import { contactHref, customerHref, teammateHref } from "@/lib/entityHref";
 
 const ICON: Record<NotificationType, typeof Bell> = {
   review: ClipboardCheck,
@@ -121,7 +121,7 @@ export function NotificationMark({
           <CompanyLogo name={company} className="w-8 h-8 rounded-lg text-[11px]" />
         </EntityLink>
         {person ? (
-          <EntityLink nested href={teammateHref(person)} className="absolute -bottom-1 -right-1 block rounded-full" title={person}>
+          <EntityLink nested href={personIsContact(type) ? contactHref(null, person) : teammateHref(person)} className="absolute -bottom-1 -right-1 block rounded-full" title={person}>
             <Avatar
               name={person}
               className="w-[15px] h-[15px] text-[6.5px] ring-2 ring-[color:var(--white)]"

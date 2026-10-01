@@ -49,6 +49,8 @@ import { geographyWithFlag } from "@/lib/countryFlags";
 import { tint } from "@/lib/tint";
 import { companyDestination } from "@/lib/companyDestination";
 import { formatPhoneNumber } from "@/lib/phone";
+import { CompanyLink, ENTITY_NAME, PersonLink } from "@/components/ui/EntityLink";
+import { contactHref } from "@/lib/entityHref";
 
 const DAY = 86_400_000;
 const WEEK = DAY * 7;
@@ -86,7 +88,7 @@ function LeadRowDetails({ lead, columns, companyHref }: { lead: Lead; columns: n
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Contact</p>
               <div className="mt-1 flex flex-col gap-1 text-[12.5px]">
-                {lead.name ? <Link href={lead.contactId ? `/contacts/${lead.contactId}` : `/leads/${lead.id}/contact`} className="w-fit font-semibold text-text-primary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{lead.name} <ArrowUpRight size={12} className="inline text-text-tertiary" aria-hidden="true" /></Link> : null}
+                {lead.name ? <PersonLink kind="contact" name={lead.name} href={lead.contactId ? contactHref(lead.contactId) : `/leads/${lead.id}/contact`} initialsOnly avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5"><span className={`font-semibold text-text-primary ${ENTITY_NAME}`}>{lead.name} <ArrowUpRight size={12} className="inline text-text-tertiary" aria-hidden="true" /></span></PersonLink> : null}
                 {lead.email ? <a href={`mailto:${lead.email}`} className="w-fit text-text-secondary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{lead.email}</a> : null}
                 {lead.phone ? <a href={`tel:${lead.phone}`} className="w-fit text-text-secondary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{formatPhoneNumber(lead.phone)}</a> : null}
                 {lead.linkedinUrl ? <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" className="w-fit text-text-secondary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">LinkedIn profile <ArrowUpRight size={12} className="inline text-text-tertiary" aria-hidden="true" /></a> : null}
@@ -97,7 +99,7 @@ function LeadRowDetails({ lead, columns, companyHref }: { lead: Lead; columns: n
               <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">Background</p>
               <p className="mt-1 text-[12.5px] leading-5 text-text-primary">
                 {lead.title && <>{lead.title} · </>}
-                <Link href={companyHref} className="font-semibold text-text-primary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{lead.company}</Link>
+                {lead.company ? <CompanyLink name={lead.company} href={companyHref} logoClassName="h-4 w-4 shrink-0 text-[6px]" className="gap-1 align-middle" nameClassName="font-semibold text-text-primary" /> : null}
                 {lead.country && <> · {geographyWithFlag(lead.country)}</>}
               </p>
               {lead.note ? <p className="mt-2 whitespace-pre-wrap text-[12px] leading-5 text-text-secondary">{lead.note}</p> : null}
@@ -111,7 +113,7 @@ function LeadRowDetails({ lead, columns, companyHref }: { lead: Lead; columns: n
             <div className="min-w-0">
               <LeadJourney lead={lead} />
               <p className="mt-3 text-[12px] text-text-secondary">
-                Owner: {lead.owner ? <Link href={`/analytics/reps/${repSlug(lead.owner)}`} className="text-text-secondary hover:text-blue-primary hover:underline focus-visible:text-blue-primary">{lead.owner}</Link> : "Unassigned"}
+                Owner: {lead.owner ? <PersonLink name={lead.owner} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="gap-1 align-middle" /> : "Unassigned"}
               </p>
             </div>
           </div>
@@ -226,6 +228,7 @@ export function LeadAnalytics({ leads }: { leads: Lead[] }) {
             meta: [lead.company, lead.title, lead.source, lead.owner || "Unassigned"].filter(Boolean).join(" · "),
             value: lead.status,
             avatar: lead.name,
+            logo: lead.company || undefined,
             href: `/leads?lead=${encodeURIComponent(lead.ref)}`,
           })),
       })),

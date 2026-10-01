@@ -39,6 +39,7 @@ import {
   SearchPriority,
 } from "@/components/ui/SearchPriority";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -652,7 +653,7 @@ export function LiveCompanyGrid({
 
                 const count = (value: number) => card.countsKnown === false ? "—" : value;
                 return (
-                  <div key={card.id} className="group/row relative grid min-h-[118px] items-center gap-5 px-5 py-4 transition-[background-color,box-shadow] duration-200 hover:bg-[rgba(0,113,227,0.025)] hover:shadow-[inset_3px_0_0_var(--blue-primary)]" style={{ gridTemplateColumns: listColumns }}>
+                  <div key={card.id} className="group/row group/unlinkrow relative grid min-h-[118px] items-center gap-5 px-5 py-4 transition-[background-color,box-shadow] duration-200 hover:bg-[rgba(0,113,227,0.025)] hover:shadow-[inset_3px_0_0_var(--blue-primary)]" style={{ gridTemplateColumns: listColumns }}>
                     <div className="flex min-w-0 items-center gap-2.5">
                       <button type="button" aria-label={`${stars.has(card.id) ? "Unstar" : "Star"} ${card.name}`} aria-pressed={stars.has(card.id)} onClick={() => stars.has(card.id) ? setUnstar({id:card.id,name:card.name,logoUrl:card.logoUrl}) : void setStar(card.id,true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white hover:shadow-sm", stars.has(card.id) ? "text-amber-600" : "text-text-tertiary hover:text-amber-600")}><Star size={15} strokeWidth={2.2} fill={stars.has(card.id) ? "currentColor" : "none"} /></button>
                       {/* THE LINK LOOK BELONGS TO THE LINK (Anir, Oct 1: "the arrow
@@ -668,6 +669,15 @@ export function LiveCompanyGrid({
                           </span>
                         </span>
                       </Link>
+                      {/* Off this person's list from the row (Anir, Oct 1),
+                          the same confirm a collecting row uses. */}
+                      <UnlinkX
+                        within="row"
+                        label={`Remove ${card.name} from my list`}
+                        disabled={unlisting}
+                        onClick={() => setUnlist({ id: card.id, name: card.name, logoUrl: card.logoUrl })}
+                        className="ml-auto"
+                      />
                     </div>
                     <div>{(divisions[card.id] ?? []).length > 0 ? <DivisionChips divisions={divisions[card.id]} /> : <span className="text-[12px] text-text-tertiary">—</span>}</div>
                     <div className="grid grid-cols-1 gap-1.5">
@@ -707,6 +717,9 @@ export function LiveCompanyGrid({
               starred={stars.has(card.id)}
               onStar={on => on ? void setStar(card.id, true) : setUnstar({ id: card.id, name: card.name, logoUrl: card.logoUrl })}
               watch={isAdmin ? stateOf(card.id) : undefined}
+              /* Off this person's list from the tile, through the same confirm
+                 the collecting tiles use (Anir, Oct 1). */
+              onUnlist={() => setUnlist({ id: card.id, name: card.name, logoUrl: card.logoUrl })}
             />
           ))}
         </section>
@@ -716,8 +729,16 @@ export function LiveCompanyGrid({
         subject={unstar ? { name: unstar.name, kind: "company", imageUrl: unstar.logoUrl } : null}
         onClose={() => setUnstar(null)}
         onConfirm={() => { if (unstar) void setStar(unstar.id, false); setUnstar(null); }}
-        title="Remove star?"
-        body={`${unstar?.name ?? "This company"} will no longer be starred. It will stay on your page.`}
+        /* NAME THE COMPANY AND THE PAGE (Anir, Oct 1: "u have to be super
+           super specific"). */
+        title={unstar ? `Remove the star from ${unstar.name}?` : "Remove the star?"}
+        body={
+          <>
+            <b>{unstar?.name ?? "This company"}</b> comes off your starred{" "}
+            {group === "competitor" ? "competitors" : "customers"}. It stays on your{" "}
+            <b>{group === "competitor" ? "Competitor Intel" : "Customer Intel"}</b> page.
+          </>
+        }
         confirmLabel="Remove star"
       />
       <ConfirmDialog
@@ -726,8 +747,17 @@ export function LiveCompanyGrid({
         onClose={() => { if (!unlisting) setUnlist(null); }}
         onConfirm={() => { if (unlist) void removeFromMyList(unlist); }}
         busy={unlisting}
-        title="Remove from your list?"
-        body={`${unlist?.name ?? "This company"} will leave your Market Intel page.`}
+        title={
+          unlist
+            ? `Remove ${unlist.name} from your ${group === "competitor" ? "Competitor Intel" : "Customer Intel"} list?`
+            : "Remove from your list?"
+        }
+        body={
+          <>
+            <b>{unlist?.name ?? "This company"}</b> leaves your{" "}
+            <b>{group === "competitor" ? "Competitor Intel" : "Customer Intel"}</b> page.
+          </>
+        }
         detail={`It stays in the catalogue, so you can add it again from Manage ${group === "competitor" ? "competitors" : "customers"}. If nobody else is tracking it, collection stops.`}
         confirmLabel="Remove from my list"
       />

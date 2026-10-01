@@ -26,6 +26,7 @@ import { buildDeals, formatMoney, STAGES, STAGE_COLOR, type Stage } from "@/lib/
 import { accountHealth, accountHealthSeries } from "@/lib/health";
 import { formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR } from "@/lib/utils";
 import type { TipItem } from "@/components/charts/Charts";
+import { isSomebody } from "@/lib/entityHref";
 import { getDataMode } from "@/lib/dataMode";
 import { requireModuleAccess, moduleCreateRefusal, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { listWorkspaceAccess } from "@/lib/accessStore";
@@ -69,7 +70,7 @@ export async function CustomersScreen({
             // no face) and the offering in `name` (flat text, no glyph), which is
             // exactly what TipItem tells call sites not to do.
             tip: ds.map<TipItem>((d) => ({
-              avatar: d.contactName,
+              avatar: isSomebody(d.contactName) ? d.contactName : undefined,
               name: d.contactName,
               service: d.service,
               value: formatMoney(d.value),
@@ -92,7 +93,7 @@ export async function CustomersScreen({
                   value: ints.length,
                   color: OUTCOME_CHART_COLOR[o as keyof typeof OUTCOME_CHART_COLOR],
                   tip: ints.map<TipItem>((x) => ({
-                    avatar: contactName.get(x.contact_id) || "Contact",
+                    avatar: contactName.get(x.contact_id),
                     name: contactName.get(x.contact_id) || "A contact",
                     subIso: x.created_at,
                   })),
@@ -119,7 +120,7 @@ export async function CustomersScreen({
             return t > start && t <= end;
           })
           .map<TipItem>((x) => ({
-            avatar: contactName.get(x.contact_id) || "Contact",
+            avatar: contactName.get(x.contact_id),
             name: contactName.get(x.contact_id) || "A contact",
             subIso: x.created_at,
             value: x.outcome

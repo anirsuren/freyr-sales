@@ -15,6 +15,9 @@ import { CUSTOMER_OFFERING_ACTIVITIES } from "@/lib/customerOfferingHeatMap";
 import type { CustomerOfferingActivity } from "@/lib/types";
 import type { MasterActivity } from "@/lib/activityMasterShared";
 import { tint } from "@/lib/tint";
+import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { isSomebody } from "@/lib/entityHref";
 
 export type PromptGoal = {
   id: string;
@@ -164,7 +167,7 @@ export function ActivityGoalPrompt({
         >
           {label}
         </span>
-        on <b className="text-text-primary">{customerName}</b>, and {label}
+        on <span className="inline-flex items-center gap-1.5">{isSomebody(customerName) && <CompanyLogo name={customerName} className="h-[18px] w-[18px] shrink-0 text-[7px]" />}<b className="text-text-primary">{customerName}</b></span>, and {label}
         {goals.length === 1 ? " feeds a goal." : " feeds these goals."}
       </p>
 
@@ -264,7 +267,7 @@ export function ActivityGoalPrompt({
         {picked ? (
           <>
             <b className="text-text-primary">{amountLine}</b>, credited to{" "}
-            <b className="text-text-primary">{creditTo}</b>.
+            <span className="inline-flex items-center gap-1 align-middle">{isSomebody(creditTo) && <Avatar name={creditTo} className="h-4 w-4 shrink-0 text-[6px]" />}<b className="text-text-primary">{creditTo}</b></span>.
             {!logsDirectly &&
               " The next screen is the usual Log a result with everything filled in."}
           </>

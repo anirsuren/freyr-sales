@@ -12,6 +12,7 @@ import { cn, formatDateTime } from "@/lib/utils";
 import { TimeAgo } from "@/components/ui/TimeAgo";
 import { useToast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { Button } from "@/components/ui/Button";
 import type {
@@ -184,6 +185,11 @@ export function PitchWorkspace({
     initialReviewNote || null
   );
   const [reviewing, setReviewing] = useState(false);
+  /* Submitting, approving, sending back and restoring an old version all
+     change this pitch's state, so each asks first and names the account and
+     the contact (Anir, Oct 1: nothing that changes data acts on one click). */
+  const [confirmReview, setConfirmReview] = useState<"submit" | "approve" | "request_changes" | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState<PitchVersion | null>(null);
 
   // compose & send email (V3)
   const [composeOpen, setComposeOpen] = useState(false);
@@ -545,7 +551,7 @@ export function PitchWorkspace({
             {reviewStatus === "in_review" ? (
               <>
                 <button
-                  onClick={() => review("approve")}
+                  onClick={() => setConfirmReview("approve")}
                   disabled={reviewing}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-colors disabled:opacity-50"
                 >
@@ -553,7 +559,7 @@ export function PitchWorkspace({
                   Approve
                 </button>
                 <button
-                  onClick={() => review("request_changes")}
+                  onClick={() => setConfirmReview("request_changes")}
                   disabled={reviewing}
                   className="px-3 py-1.5 rounded-lg border border-border-light text-[13px] font-medium text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
                 >
@@ -562,7 +568,7 @@ export function PitchWorkspace({
               </>
             ) : reviewStatus !== "approved" ? (
               <button
-                onClick={() => review("submit")}
+                onClick={() => setConfirmReview("submit")}
                 disabled={reviewing}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-primary text-white text-[13px] font-semibold hover:bg-blue-hover transition-colors disabled:opacity-50"
               >
@@ -970,7 +976,12 @@ export function PitchWorkspace({
                   <span className="text-[12px] text-text-tertiary">In use</span>
                 ) : (
                   <button
-                    onClick={() => restore(v)}
+                    onClick={() => {
+                      // One dialog at a time: the question replaces the list,
+                      // and Cancel brings the list back.
+                      setHistoryOpen(false);
+                      setConfirmRestore(v);
+                    }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-[12px] font-medium text-text-secondary hover:bg-surface transition-colors"
                   >
                     <RotateCcw size={13} strokeWidth={1.8} />
@@ -982,6 +993,100 @@ export function PitchWorkspace({
           </ul>
         )}
       </Modal>
+
+      {(() => {
+        const company = companyName?.trim();
+        const recipient = recipientName?.trim();
+        const resubmit = reviewStatus === "changes_requested";
+        const who = (
+          <>
+            {recipient ? <> to <b>{recipient}</b></> : null}
+            {company ? <> at <b>{company}</b></> : null}
+          </>
+        );
+        return (
+          <ConfirmDialog
+            open={confirmReview !== null}
+            onClose={() => setConfirmReview(null)}
+            onConfirm={() => {
+              const action = confirmReview;
+              setConfirmReview(null);
+              if (action) void review(action);
+            }}
+            tone="primary"
+            title={
+              confirmReview === "approve"
+                ? company ? `Approve the pitch for ${company}?` : "Approve this pitch?"
+                : confirmReview === "request_changes"
+                  ? company ? `Send the pitch for ${company} back for changes?` : "Send this pitch back for changes?"
+                  : `${resubmit ? "Resubmit" : "Submit"} ${company ? `the pitch for ${company}` : "this pitch"} for compliance review?`
+            }
+            body={
+              confirmReview === "approve" ? (
+                <>The pitch{who} clears compliance review. Send email and Send to CRM unlock for it.</>
+              ) : confirmReview === "request_changes" ? (
+                <>The pitch{who} moves to Changes requested. Send email and Send to CRM stay locked until it is approved.</>
+              ) : (
+                <>The pitch{who} moves to In review, where a reviewer approves it or sends it back.</>
+              )
+            }
+            detail={
+              confirmReview === "submit"
+                ? dirty
+                  ? "Your unsaved edits are not part of it. Save them first if they should be reviewed."
+                  : undefined
+                : "You are recorded as the reviewer."
+            }
+            confirmLabel={
+              confirmReview === "approve"
+                ? "Approve pitch"
+                : confirmReview === "request_changes"
+                  ? "Send pitch back"
+                  : resubmit
+                    ? "Resubmit pitch"
+                    : "Submit pitch"
+            }
+          />
+        );
+      })()}
+
+      {(() => {
+        const when = confirmRestore ? formatDateTime(confirmRestore.created_at) : "-";
+        const label = confirmRestore ? VERSION_SOURCE_LABEL[confirmRestore.source] : undefined;
+        const company = companyName?.trim();
+        const consequences = [
+          dirty ? "Your unsaved edits are lost." : "",
+          reviewStatus !== "draft" ? "The pitch goes back to Draft and needs to be submitted for review again." : "",
+        ].filter(Boolean);
+        return (
+          <ConfirmDialog
+            open={confirmRestore !== null}
+            onClose={() => {
+              setConfirmRestore(null);
+              setHistoryOpen(true);
+            }}
+            onConfirm={() => {
+              const version = confirmRestore;
+              setConfirmRestore(null);
+              if (version) void restore(version);
+            }}
+            title={`Replace ${company ? `the pitch for ${company}` : "this pitch"} with ${when !== "-" ? `the version from ${when}` : "an earlier version"}?`}
+            body={
+              <>
+                The 5-Min Script, Intro Email and Cold Call Script go back to the{" "}
+                {label ? (
+                  <>
+                    <b>{label}</b>{" "}
+                  </>
+                ) : null}
+                version{when !== "-" ? <> from <b>{when}</b></> : null}. The current version stays in the history.
+              </>
+            }
+            detail={consequences.length ? consequences.join(" ") : undefined}
+            confirmLabel="Restore version"
+          />
+        );
+      })()}
 
       {/* Compose & send email (V3) */}
       <Modal open={composeOpen} onClose={() => setComposeOpen(false)} title="Send email">
@@ -1023,7 +1128,7 @@ export function PitchWorkspace({
               value={composeSubject}
               onChange={(e) => setComposeSubject(e.target.value)}
               placeholder="What this email is about"
-              className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
+              className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition focus:border-blue-primary focus:shadow-input-focus"
             />
           </div>
           <div>
@@ -1035,7 +1140,7 @@ export function PitchWorkspace({
               value={composeBody}
               onChange={(e) => setComposeBody(e.target.value)}
               rows={7}
-              className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] leading-relaxed outline-none focus:border-blue-primary resize-y"
+              className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] leading-relaxed text-text-primary outline-none transition focus:border-blue-primary focus:shadow-input-focus"
             />
           </div>
           <label className="flex items-center gap-2 text-[13px] text-text-secondary">
@@ -1057,7 +1162,7 @@ export function PitchWorkspace({
                 aria-label="Schedule time"
                 value={scheduleAt}
                 onChange={(e) => setScheduleAt(e.target.value)}
-                className="mt-1 w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
+                className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] font-normal text-text-primary outline-none transition focus:border-blue-primary focus:shadow-input-focus"
               />
             </label>
           )}

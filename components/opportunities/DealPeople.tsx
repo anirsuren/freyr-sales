@@ -148,10 +148,14 @@ export function DealPeople({
   people,
   meName,
   mayChangeTeam,
+  customer = "",
 }: {
   dealId: string;
   /** For the dialog's title, so it says which deal is being staffed. */
   dealName: string;
+  /** The deal's customer, so taking somebody off says which account's deal
+   *  it is. Optional: without it the question names the deal alone. */
+  customer?: string;
   /** The deal's own owner field, live from the picker above this. */
   owner: string;
   /** Who is recorded on the deal today, or null when nobody is. */
@@ -409,19 +413,52 @@ export function DealPeople({
           : "The owner and the people here can change this deal. Everybody else can see it and cannot change it."}
       </p>
 
+      {/* WHO, OFF WHICH DEAL, AT WHICH CUSTOMER (Anir, Oct 1: "u have to say
+          what customer what offering so there is absolutely no confusion").
+          The customer is added only when the deal's name does not already
+          say it. */}
       <ConfirmDialog
         open={!!removing}
         person={removing}
         onClose={() => setRemoving(null)}
         busy={busy}
-        title="Take them off this deal?"
+        title={(() => {
+          const deal = dealName.trim();
+          const account = customer.trim();
+          const named =
+            !!account && deal.toLowerCase().includes(account.toLowerCase());
+          const where = deal ? `the ${deal} deal` : "this deal";
+          return removing
+            ? `Take ${removing} off ${where}${account && !named ? ` with ${account}` : ""}?`
+            : "Take them off this deal?";
+        })()}
         body={
-          <>
-            <b>{removing}</b> comes off {dealName || "this deal"}.
-          </>
+          removing ? (
+            <>
+              <b>{removing}</b> comes off{" "}
+              {dealName.trim() ? (
+                <>
+                  the <b>{dealName.trim()}</b> deal
+                </>
+              ) : (
+                "this deal"
+              )}
+              {customer.trim() &&
+              !dealName.trim().toLowerCase().includes(customer.trim().toLowerCase()) ? (
+                <>
+                  {" "}with <b>{customer.trim()}</b>
+                </>
+              ) : null}
+              .
+            </>
+          ) : (
+            ""
+          )
         }
         detail="They keep seeing the deal. They stop being able to change it."
-        confirmLabel="Take them off"
+        confirmLabel={
+          removing ? `Take ${removing.trim().split(/\s+/)[0]} off` : "Take them off"
+        }
         onConfirm={() => {
           const gone = removing;
           if (!gone) return;

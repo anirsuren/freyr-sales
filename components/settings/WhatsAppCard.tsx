@@ -100,6 +100,10 @@ export function WhatsAppCard() {
       : !configured
         ? "Freyr's WhatsApp number is not set up yet. An admin adds Meta's keys on the server."
         : null;
+  /* NAME THE PHONE BEING CUT OFF (Anir, Oct 1: "u have to be so specific").
+     The number and the day it was connected are what tell this link apart. */
+  const linkedNumber = status?.link?.number?.trim() || "";
+  const linkedSince = status?.link?.linkedAt ? fmtDay(status.link.linkedAt) : "";
 
   return (
     <div>
@@ -156,14 +160,28 @@ export function WhatsAppCard() {
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() => void disconnect()}
-        title="Disconnect WhatsApp?"
+        title={
+          linkedNumber
+            ? `Disconnect WhatsApp number ${linkedNumber} from your agent?`
+            : "Disconnect WhatsApp from your agent?"
+        }
         body={
-          <>
-            Texts from <span className="font-medium tabular-nums">{status?.link?.number}</span> will no longer reach your agent.
-          </>
+          linkedNumber ? (
+            <>
+              Texts from <b className="tabular-nums">{linkedNumber}</b>
+              {linkedSince ? (
+                <>
+                  , connected since <b>{linkedSince}</b>,
+                </>
+              ) : null}{" "}
+              will no longer reach your Freyr agent.
+            </>
+          ) : (
+            "Texts from your phone will no longer reach your Freyr agent."
+          )
         }
         detail="The chats already on the Agent page stay there."
-        confirmLabel="Disconnect"
+        confirmLabel="Disconnect WhatsApp"
         busy={busy}
       />
     </div>

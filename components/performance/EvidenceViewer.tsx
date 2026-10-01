@@ -251,9 +251,13 @@ export function EvidenceLinkRow({
         strokeWidth={2}
         className="shrink-0 text-text-tertiary group-hover:text-blue-primary"
       />
-      <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">
-        {file.name}
-      </span>
+      {/* Resting on the name shows the proof without opening it, the Sales
+          Materials hover; the row still opens it in its own tab. */}
+      <EvidencePeek file={file}>
+        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">
+          {file.name}
+        </span>
+      </EvidencePeek>
       <span className="inline-flex shrink-0 items-center gap-1 text-[11.5px] font-semibold text-blue-primary">
         <ExternalLink size={12} strokeWidth={2.2} /> Open
       </span>

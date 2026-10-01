@@ -30,6 +30,7 @@ const NOBODY = new Set([
   "n/a",
   "tbd",
   "unknown",
+  "someone",
   "you",
   "system",
 ]);

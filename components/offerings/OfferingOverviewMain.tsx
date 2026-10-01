@@ -151,7 +151,7 @@ export function OfferingOverviewMain({
     annual_service: VIZ_SERIES[3],
   };
   const allLines = report.customers.flatMap((customer) =>
-    customer.lines.map((line) => ({ customer: customer.name, line }))
+    customer.lines.map((line) => ({ customer: customer.name, customerId: customer.id, line }))
   );
   const typeTotals = new Map<string, number>();
   for (const { line } of allLines)
@@ -539,7 +539,7 @@ export function OfferingOverviewMain({
                                     key={`${entry.customer}-${entry.line.id}`}
                                     className="flex items-center gap-2 text-[11.5px]"
                                   >
-                                    <EntityLink href={customerHref(null, entry.customer)} className="shrink-0" title={entry.customer}>
+                                    <EntityLink href={customerHref(entry.customerId, entry.customer)} className="shrink-0" title={entry.customer}>
                                       <CompanyLogo
                                         name={entry.customer}
                                         className="h-[18px] w-[18px] shrink-0 text-[7px]"
@@ -548,7 +548,7 @@ export function OfferingOverviewMain({
                                     {/* Wraps, never truncates — a full account
                                         name is the point of the breakdown. */}
                                     <span className="min-w-0 flex-1 leading-tight">
-                                      <EntityLink href={customerHref(null, entry.customer)} className="block break-words font-medium text-text-primary">
+                                      <EntityLink href={customerHref(entry.customerId, entry.customer)} className="block break-words font-medium text-text-primary">
                                         {entry.customer}
                                       </EntityLink>
                                       <span className="block text-[10px] text-text-tertiary">
@@ -789,14 +789,21 @@ export function OfferingOverviewMain({
           rendered here so SectionHeading keeps one home. */}
       <RelatedOfferingsSection
         offeringId={o.id}
+        offeringName={o.offering_name}
         related={related.map((r) => ({
           id: r.id,
           name: r.offering_name,
           type: r.offering_type,
           availability: r.current_availability,
+          // The page's own rule for a category neighbour, so taking one out
+          // hides it rather than only un-pinning it.
+          sameCategory:
+            !!o.offering_category && r.offering_category === o.offering_category,
         }))}
         notes={o.related_notes ?? {}}
         canEdit={admin}
+        relatedAdd={o.related_add ?? []}
+        relatedHide={o.related_hide ?? []}
         heading={
           <SectionHeading
             icon={Layers}

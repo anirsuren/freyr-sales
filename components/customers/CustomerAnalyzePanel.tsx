@@ -176,8 +176,9 @@ export function CustomerAnalyzePanel({
     }
   }
 
+  // The shared 40px box, the same as the Revenue field beside it.
   const field =
-    "w-full rounded-md border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:shadow-input-focus";
+    "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition focus:border-blue-primary focus:shadow-input-focus";
   const labelCls =
     "block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1";
 

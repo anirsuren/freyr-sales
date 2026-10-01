@@ -174,7 +174,7 @@ export function TargetSlider({
             placeholder={placeholder ?? (unit === "currency" ? "e.g. 900k" : "e.g. 120")}
             aria-label={`${label}. Type an exact figure`}
             className={cn(
-              "h-[38px] w-full rounded-lg border bg-white pr-3 text-[13.5px] outline-none tnum focus:border-blue-primary",
+              "h-10 w-full rounded-lg border bg-white pr-3 text-[13px] outline-none tnum focus:border-blue-primary",
               symbol ? "pl-7" : "px-3",
               over ? "border-[color:#C2410C]" : "border-border-light"
             )}

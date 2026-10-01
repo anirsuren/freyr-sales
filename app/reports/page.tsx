@@ -174,6 +174,7 @@ export default async function ReportsPage() {
           label: customer,
           value,
           color: VIZ_SERIES[index % VIZ_SERIES.length],
+          logo: customer,
           tip: [
             {
               logo: customer,

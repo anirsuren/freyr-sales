@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Loader2, Search, UserCheck, UserX } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -151,6 +151,10 @@ export function PeopleSplit() {
   const [listQuery, setListQuery] = useState("");
   const [pendingPriv, setPendingPriv] = useState<{
     person: string;
+    /** Their address and starting role, so the question tells two people of
+     *  one name apart and can say which privileges they keep. */
+    email?: string;
+    role?: string;
     privId: string;
     privLabel: string;
     to: boolean;
@@ -620,7 +624,14 @@ export function PeopleSplit() {
               active={selected.active}
               personName={selected.name}
               onToggle={({ privId, privLabel, to }) =>
-                setPendingPriv({ person: selected.name, privId, privLabel, to })
+                setPendingPriv({
+                  person: selected.name,
+                  email: selected.email,
+                  role: selected.role,
+                  privId,
+                  privLabel,
+                  to,
+                })
               }
             />
             {/* WHO GAVE THEM THIS, AND WHEN (Anir, Sep 4). Under the ticks,
@@ -630,26 +641,71 @@ export function PeopleSplit() {
         </div>
       </div>
 
+      {/* WHO, WHICH PRIVILEGE, AND WHAT THEY KEEP (Anir, Oct 1: "u have to
+          be super super specific"). The address tells two people of one name
+          apart; taking one away says which of their privileges stay. */}
       <ConfirmDialog
         open={pendingPriv !== null}
         person={pendingPriv?.person}
         onClose={() => setPendingPriv(null)}
         onConfirm={applyPendingPriv}
-        title={pendingPriv?.to ? "Give this privilege?" : "Take this privilege away?"}
+        title={
+          !pendingPriv
+            ? "Change this privilege?"
+            : pendingPriv.to
+              ? `Give ${pendingPriv.person} the ${pendingPriv.privLabel} privilege?`
+              : `Take the ${pendingPriv.privLabel} privilege away from ${pendingPriv.person}?`
+        }
         body={
-          pendingPriv && (
-            <>
-              <b>{pendingPriv.person}</b> {pendingPriv.to ? "gets" : "loses"}{" "}
-              <b>{pendingPriv.privLabel}</b>.
-            </>
-          )
+          pendingPriv &&
+          (() => {
+            const theirs = privilegesForPerson(state, pendingPriv.person);
+            const viaRole = pendingPriv.role ? ROLE_PRIVILEGE[pendingPriv.role] : undefined;
+            const kept = pendingPriv.to
+              ? []
+              : state.privileges
+                  .filter(
+                    (p) =>
+                      p.id !== pendingPriv.privId &&
+                      (theirs.includes(p.id) || p.id === viaRole)
+                  )
+                  .map((p) => p.label);
+            return (
+              <>
+                <b>{pendingPriv.person}</b>
+                {pendingPriv.email ? ` (${pendingPriv.email})` : ""}{" "}
+                {pendingPriv.to ? "gets" : "loses"} <b>{pendingPriv.privLabel}</b>.
+                {!pendingPriv.to &&
+                  (kept.length ? (
+                    <>
+                      {" "}They keep{" "}
+                      {kept.map((label, i) => (
+                        <Fragment key={`${label}-${i}`}>
+                          {i === 0 ? "" : i === kept.length - 1 ? " and " : ", "}
+                          <b>{label}</b>
+                        </Fragment>
+                      ))}
+                      .
+                    </>
+                  ) : (
+                    " This leaves them with no other privileges."
+                  ))}
+              </>
+            );
+          })()
         }
         detail={
           pendingPriv?.privId === VIEW_ALL && pendingPriv.to
             ? "View all lets them see every record in a module, including ones nobody assigned them. It never lets them change one. The admins are emailed."
             : "This changes what they can do as soon as you confirm. The admins are emailed."
         }
-        confirmLabel={pendingPriv?.to ? "Give it" : "Take it away"}
+        confirmLabel={
+          !pendingPriv
+            ? "Change privilege"
+            : pendingPriv.to
+              ? `Give ${pendingPriv.person.trim().split(/\s+/)[0]} ${pendingPriv.privLabel}`
+              : `Take ${pendingPriv.privLabel} from ${pendingPriv.person.trim().split(/\s+/)[0]}`
+        }
         /* RED MEANS SOMETHING IS BEING TAKEN (Anir, Aug 29: "I don't like the
            colors here, when I'm giving a privilege the red doesn't make sense,
            it feels like I'm taking away privilege"). Handing somebody a
@@ -665,18 +721,28 @@ export function PeopleSplit() {
         person={pendingAccess?.member.name}
         onClose={() => setPendingAccess(null)}
         onConfirm={() => void applyAccess()}
+        /* NAME THEM, AND THEIR ADDRESS (Anir, Oct 1: "u have to be super super
+           specific"). Two people can share a name; the address cannot. */
         title={
-          pendingAccess?.to === "reactivate" ? "Bring them back?" : "Suspend them?"
+          !pendingAccess
+            ? "Suspend them?"
+            : pendingAccess.to === "reactivate"
+              ? `Reactivate ${pendingAccess.member.name}?`
+              : `Suspend ${pendingAccess.member.name}?`
         }
         body={
           pendingAccess &&
           (pendingAccess.to === "reactivate" ? (
             <>
-              <b>{pendingAccess.member.name}</b> can sign in to Freyr again.
+              <b>{pendingAccess.member.name}</b>
+              {pendingAccess.member.email ? ` (${pendingAccess.member.email})` : ""}{" "}
+              can sign in to Freyr again.
             </>
           ) : (
             <>
-              <b>{pendingAccess.member.name}</b> can no longer sign in to Freyr.
+              <b>{pendingAccess.member.name}</b>
+              {pendingAccess.member.email ? ` (${pendingAccess.member.email})` : ""}{" "}
+              can no longer sign in to Freyr.
             </>
           ))
         }
@@ -685,7 +751,11 @@ export function PeopleSplit() {
             ? "They come back with the privileges they held before. The admins are emailed."
             : "Their records, privileges and history stay as they are, and Reactivate brings them back. The admins are emailed."
         }
-        confirmLabel={pendingAccess?.to === "reactivate" ? "Reactivate" : "Suspend"}
+        confirmLabel={
+          !pendingAccess
+            ? "Suspend"
+            : `${pendingAccess.to === "reactivate" ? "Reactivate" : "Suspend"} ${pendingAccess.member.name.trim().split(/\s+/)[0]}`
+        }
         /* Same rule as the privilege dialog above: red only for taking
            something away. */
         tone={pendingAccess?.to === "reactivate" ? "primary" : "destructive"}

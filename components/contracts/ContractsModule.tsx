@@ -43,8 +43,9 @@ import { Modal } from "@/components/ui/Modal";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { DocumentPeek } from "@/components/ui/DocumentPeek";
+import { DocumentNamePeek, DocumentPeek } from "@/components/ui/DocumentPeek";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { DocumentDrop, landedDocs, type StagedDoc } from "@/components/ui/DocumentDrop";
 import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
@@ -203,6 +204,14 @@ export function ContractsModule({
   const [docs, setDocs] = useState<StagedDoc[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Contract | null>(null);
+  /** A file, the contract link, the deal or the goal whose hover X was
+   *  pressed on a contract row, waiting on its confirm. */
+  const [unlinking, setUnlinking] = useState<{
+    contract: Contract;
+    what: "doc" | "link" | "deal" | "goal";
+    docId?: string;
+    label: string;
+  } | null>(null);
   const [sort, setSort] = useState<"value" | "customer" | "starting" | "status">("value");
   const [groupBy, setGroupBy] = useState<"none" | "customer" | "status">("none");
   const [closedGroups, setClosedGroups] = useState<string[]>([]);
@@ -354,6 +363,37 @@ export function ContractsModule({
       setBusy(false);
     }
   }
+
+  /** TAKE ONE THING OFF A CONTRACT, FROM ITS ROW (Anir, Oct 1: "when i hover
+   *  i should have a delete button showing up"). The same save the edit form
+   *  makes, naming the one field that changes. The route needs the name and
+   *  customer on every save; an empty value is what clears a field. */
+  async function unlink() {
+    const target = unlinking;
+    if (!target) return;
+    const c = target.contract;
+    const base = { id: c.id, name: c.name, customer: c.customer };
+    const change =
+      target.what === "doc"
+        ? { docs: (c.docs ?? []).filter((d) => d.id !== target.docId) }
+        : target.what === "link"
+          ? { documentUrl: "" }
+          : target.what === "deal"
+            ? { opportunityId: "", opportunityName: "" }
+            : { goalLink: null };
+    const done =
+      target.what === "doc"
+        ? `${target.label} is no longer on ${c.name}.`
+        : target.what === "link"
+          ? `${c.name} no longer links to its contract file.`
+          : target.what === "deal"
+            ? `${c.name} is no longer linked to ${target.label}.`
+            : `${c.name} no longer counts towards ${target.label}.`;
+    if (await post({ op: "save", contract: { ...base, ...change } }, done)) setUnlinking(null);
+  }
+  /** The same question the Edit button asks. Every writer may change every
+   *  contract today; per-contract rights narrow this one place. */
+  const mayChange = (_contract: Contract) => canWrite;
 
   function openEditor(contract?: Contract, fromDeal?: DealOption) {
     /* A fresh shelf per editor session: files staged for one contract must
@@ -1153,7 +1193,7 @@ export function ContractsModule({
                         half the story, and the goal it fed is the half people
                         argue about. Only shown once it has actually posted. */}
                     {c.goalLink?.actualId && (
-                      <p className="mt-3 flex flex-wrap items-center gap-1.5 rounded-lg bg-[rgba(22,163,74,0.08)] px-3 py-2 text-[12.5px] text-[color:#16A34A]">
+                      <p className="group/unlink mt-3 flex flex-wrap items-center gap-1.5 rounded-lg bg-[rgba(22,163,74,0.08)] px-3 py-2 text-[12.5px] text-[color:#16A34A]">
                         <Target size={13} strokeWidth={2.3} />
                         <span className="font-semibold">
                           {formatMoney(c.value)} counted towards{" "}
@@ -1179,6 +1219,20 @@ export function ContractsModule({
                             ? ` · posted ${formatDate(c.goalLink.postedAt)}`
                             : ""}
                         </span>
+                        {/* Off the goal from the line itself (Anir, Oct 1). */}
+                        {mayChange(c) && (
+                          <UnlinkX
+                            label={`Stop counting ${c.name} towards ${goalName.get(c.goalLink.goalId) ?? "its goal"}`}
+                            onClick={() =>
+                              setUnlinking({
+                                contract: c,
+                                what: "goal",
+                                label: goalName.get(c.goalLink!.goalId) ?? "its goal",
+                              })
+                            }
+                            className="ml-auto"
+                          />
+                        )}
                       </p>
                     )}
 
@@ -1365,6 +1419,9 @@ export function ContractsModule({
                       <span className="flex flex-wrap items-center gap-1.5">
                         {/* "HOW DO I OPEN THE CONTRACT?" (Anir, Aug 26). Here. */}
                         {c.documentUrl ? (
+                          /* Each link and file carries its own hover X
+                             (Anir, Oct 1), on its corner, beside the link. */
+                          <span className="group/unlink relative inline-flex">
                           <a
                             href={safeHref(c.documentUrl) as string}
                             target="_blank"
@@ -1373,6 +1430,14 @@ export function ContractsModule({
                           >
                             <FileText size={12} strokeWidth={2.2} /> Open the contract
                           </a>
+                          {mayChange(c) && (
+                            <UnlinkX
+                              within="corner"
+                              label={`Remove the contract link from ${c.name}`}
+                              onClick={() => setUnlinking({ contract: c, what: "link", label: "the contract link" })}
+                            />
+                          )}
+                          </span>
                         ) : null}
                         {/* THE FILES ACTUALLY ATTACHED TO THIS CONTRACT (Anir,
                             Sep 6: the meetings behaviour "has to be on...
@@ -1385,8 +1450,8 @@ export function ContractsModule({
                             different thing. These open in the app's own
                             viewer, like a sales material. */}
                         {(c.docs ?? []).map((d) => (
+                          <span key={d.id} className="group/unlink relative inline-flex">
                           <button
-                            key={d.id}
                             type="button"
                             onClick={() =>
                               setViewingDoc({
@@ -1401,8 +1466,27 @@ export function ContractsModule({
                             className="inline-flex max-w-[220px] items-center gap-1.5 rounded-lg border border-border-light bg-white px-2.5 py-1.5 text-[12px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
                           >
                             <FileText size={12} strokeWidth={2.2} />
-                            <span className="truncate">{d.name}</span>
+                            {/* Resting on the name shows an uploaded PDF or
+                                image; a pasted link or an Office file keeps
+                                the click. */}
+                            <DocumentNamePeek
+                              name={d.name}
+                              file={d.docsPath ? d.fileName || d.docsPath : null}
+                              viewUrl={`/api/contracts/download?contractId=${encodeURIComponent(
+                                c.id
+                              )}&docId=${encodeURIComponent(d.id)}&view=1`}
+                            >
+                              <span className="truncate">{d.name}</span>
+                            </DocumentNamePeek>
                           </button>
+                          {mayChange(c) && (
+                            <UnlinkX
+                              within="corner"
+                              label={`Remove ${d.name} from ${c.name}`}
+                              onClick={() => setUnlinking({ contract: c, what: "doc", docId: d.id, label: d.name })}
+                            />
+                          )}
+                          </span>
                         ))}
                         {!c.documentUrl && (c.docs ?? []).length === 0 && (
                           <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface px-2.5 py-1.5 text-[11.5px] font-medium text-text-tertiary">
@@ -1429,6 +1513,7 @@ export function ContractsModule({
                             were already dangling before today. */}
                         {c.opportunityId &&
                           deals.some((d) => d.id === c.opportunityId) && (
+                          <span className="group/unlink relative inline-flex">
                           <Link
                             target="_blank"
                             rel="noopener noreferrer"
@@ -1439,6 +1524,23 @@ export function ContractsModule({
                           >
                             <ArrowUpRight size={15} strokeWidth={2.2} />
                           </Link>
+                          {mayChange(c) && (
+                            <UnlinkX
+                              within="corner"
+                              label={`Unlink ${c.name} from its deal`}
+                              onClick={() =>
+                                setUnlinking({
+                                  contract: c,
+                                  what: "deal",
+                                  label:
+                                    c.opportunityName ||
+                                    deals.find((d) => d.id === c.opportunityId)?.name ||
+                                    "its deal",
+                                })
+                              }
+                            />
+                          )}
+                          </span>
                         )}
                       </span>
                       {canWrite && (
@@ -2050,6 +2152,68 @@ export function ContractsModule({
         />
       )}
 
+      {/* A row's hover X asks here, naming the contract and the one thing
+          that leaves it. */}
+      <ConfirmDialog
+        open={!!unlinking}
+        busy={busy}
+        onClose={() => {
+          if (!busy) setUnlinking(null);
+        }}
+        onConfirm={() => void unlink()}
+        title={
+          !unlinking
+            ? "Take this off the contract?"
+            : unlinking.what === "doc"
+              ? `Remove ${unlinking.label} from ${unlinking.contract.name}?`
+              : unlinking.what === "link"
+                ? `Remove the contract link from ${unlinking.contract.name}?`
+                : unlinking.what === "deal"
+                  ? `Unlink ${unlinking.contract.name} from ${unlinking.label}?`
+                  : `Stop counting ${unlinking.contract.name} towards ${unlinking.label}?`
+        }
+        body={
+          !unlinking ? null : unlinking.what === "doc" ? (
+            <>
+              <b>{unlinking.label}</b> comes off the <b>{unlinking.contract.name}</b> contract
+              with <b>{unlinking.contract.customer}</b>.
+            </>
+          ) : unlinking.what === "link" ? (
+            <>
+              The <b>{unlinking.contract.name}</b> contract with{" "}
+              <b>{unlinking.contract.customer}</b> stops pointing at its contract file.
+            </>
+          ) : unlinking.what === "deal" ? (
+            <>
+              The <b>{unlinking.contract.name}</b> contract stops being linked to{" "}
+              <b>{unlinking.label}</b>.
+            </>
+          ) : (
+            <>
+              The <b>{unlinking.contract.name}</b> contract stops counting towards{" "}
+              <b>{unlinking.label}</b>.
+            </>
+          )
+        }
+        detail={
+          unlinking?.what === "goal"
+            ? "The entry it posted comes off the goal unless it is already verified; a verified one stays. The contract itself stays."
+            : unlinking?.what === "deal"
+              ? "The contract and the deal both stay. You can link it again from Edit."
+              : "The contract keeps everything else. You can add it back from Edit."
+        }
+        subject={unlinking ? { name: unlinking.contract.name, kind: "contract" } : null}
+        confirmLabel={
+          unlinking?.what === "doc"
+            ? "Remove document"
+            : unlinking?.what === "link"
+              ? "Remove link"
+              : unlinking?.what === "deal"
+                ? "Unlink deal"
+                : "Stop counting"
+        }
+      />
+
       <ConfirmDialog
         open={!!confirmDelete}
         subject={confirmDelete ? { name: confirmDelete.name, kind: "contract" } : null}
@@ -2059,11 +2223,60 @@ export function ContractsModule({
           await post({ op: "delete", id: confirmDelete.id }, "Contract deleted.");
           setConfirmDelete(null);
         }}
-        title="Delete this contract?"
-        body={
+        title={
           confirmDelete
-            ? `${confirmDelete.reference}, ${confirmDelete.name}, goes for good. The delivery platform loses the reference it knows this contract by. If the deal simply fell through, set the status to Cancelled instead of deleting.`
-            : ""
+            ? confirmDelete.customer
+              ? `Delete ${confirmDelete.name || confirmDelete.reference} for ${confirmDelete.customer}?`
+              : `Delete ${confirmDelete.name || confirmDelete.reference}?`
+            : "Delete this contract?"
+        }
+        body={
+          confirmDelete ? (
+            <>
+              <b>{confirmDelete.name || confirmDelete.reference}</b>
+              {confirmDelete.customer ? (
+                <>
+                  {" "}for <b>{confirmDelete.customer}</b>
+                </>
+              ) : null}{" "}
+              ({[
+                confirmDelete.reference,
+                confirmDelete.status,
+                confirmDelete.value > 0 ? formatMoney(confirmDelete.value) : "",
+              ]
+                .filter(Boolean)
+                .join(", ")}
+              ) goes for good. The delivery platform loses the reference it knows
+              this contract by.
+            </>
+          ) : (
+            ""
+          )
+        }
+        /* The contracts route takes the contract's unverified booked-revenue
+           entry with it (settleGoal) and leaves the deal alone. */
+        detail={
+          confirmDelete
+            ? [
+                (confirmDelete.docs ?? []).length > 0
+                  ? `Its ${(confirmDelete.docs ?? []).length} attached ${
+                      (confirmDelete.docs ?? []).length === 1 ? "file goes" : "files go"
+                    } with it.`
+                  : "",
+                confirmDelete.goalLink?.actualId
+                  ? `Its booked revenue on ${
+                      goals.find((g) => g.id === confirmDelete.goalLink?.goalId)?.name ||
+                      "its goal"
+                    } comes off too, unless it is already verified.`
+                  : "",
+                confirmDelete.opportunityName
+                  ? `The deal ${confirmDelete.opportunityName} stays.`
+                  : "",
+                "If the deal simply fell through, set the status to Cancelled instead of deleting.",
+              ]
+                .filter(Boolean)
+                .join(" ")
+            : undefined
         }
         confirmLabel="Delete contract"
       />

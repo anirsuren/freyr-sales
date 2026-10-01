@@ -312,6 +312,8 @@ export function PeopleTab({
         id: g.id,
         name: g.name,
         sub: `${g.head} · group`,
+        head: g.head,
+        members: [...new Set((g.members ?? []).map((m) => (m ?? "").trim()).filter(Boolean))],
         go: () => router.push(`/performance/groups?group=${encodeURIComponent(g.id)}`),
       })),
     ],

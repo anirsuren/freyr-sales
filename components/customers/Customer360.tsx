@@ -249,9 +249,17 @@ export function Customer360({
   forceKey,
   solutioningControls = false,
   formatAmount,
+  rowAction,
 }: {
   company: string;
   bands: Customer360Band[];
+  /**
+   * A ROW'S OWN WAY OFF THIS RECORD (Anir, Oct 1: "when i hover i should have
+   * a delete button showing up"). The page knows which rows this person may
+   * unlink and how; this only puts its control beside the row's name, where
+   * the row's hover reveals it. Return null for a row that keeps none.
+   */
+  rowAction?: (bandKey: string, item: Customer360Item) => React.ReactNode;
   /**
    * LET AN EMPTY BAND SAY ITS OWN SENTENCE.
    *
@@ -997,7 +1005,7 @@ export function Customer360({
                     {shownItems.map((item) => (
                       <tr
                         key={item.id}
-                        className="border-b border-border-light transition-colors last:border-b-0 hover:bg-surface/60"
+                        className="group/unlink border-b border-border-light transition-colors last:border-b-0 hover:bg-surface/60"
                       >
                         <td className="py-3 pr-4">
                           <span className="flex items-center gap-2.5">
@@ -1068,6 +1076,7 @@ export function Customer360({
                                 </span>
                               )}
                             </span>
+                            {rowAction?.(active.key, item)}
                           </span>
                         </td>
                         {cols.length > 0

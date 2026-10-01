@@ -25,6 +25,10 @@ type Passkey = { id: string; label: string | null; createdAt: string; lastUsedAt
 export function PasskeySetup() {
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
   const [confirmOff, setConfirmOff] = useState(false);
+  /* Reset throws every saved passkey away before it sets up a new one, so it
+     asks first, the same as Remove (Anir, Oct 1: nothing that removes data
+     acts on one click). */
+  const [confirmReset, setConfirmReset] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [supported, setSupported] = useState(true);
@@ -122,6 +126,43 @@ export function PasskeySetup() {
     .filter((t): t is number => t !== null);
   const lastUsedAt = lastUsedTimes.length ? new Date(Math.max(...lastUsedTimes)) : null;
 
+  /* NAME THE KEYS THE TWO CONFIRMATIONS THROW AWAY (Anir, Oct 1: "u have to
+     be so specific"). Each key is saved with the device it was set up on,
+     like "Touch ID on this Mac". "This device" names nothing, so it is left
+     out and the generic words stay. */
+  const keyNames = Array.from(
+    new Set(
+      passkeys
+        .map((p) => (p.label || "").trim())
+        .filter((label) => label && label !== "This device")
+    )
+  );
+  const onlyKey = passkeys.length === 1 && keyNames.length === 1 ? keyNames[0] : "";
+  const setUpLabel =
+    setUpAt && !Number.isNaN(setUpAt.getTime())
+      ? setUpAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+      : "";
+  const keysGoing = onlyKey ? (
+    <>
+      Your saved passkey <b>{onlyKey}</b>
+      {setUpLabel ? (
+        <>
+          , set up <b>{setUpLabel}</b>,
+        </>
+      ) : null}{" "}
+      is deleted
+    </>
+  ) : passkeys.length > 1 ? (
+    <>
+      All {passkeys.length} saved passkeys are deleted
+      {keyNames.length ? (
+        <>
+          {" "}(<b>{keyNames.join(", ")}</b>)
+        </>
+      ) : null}
+    </>
+  ) : null;
+
   return (
     <div className="rounded-xl border border-border-light bg-white p-4">
       <div className="flex items-start justify-between gap-4">
@@ -145,7 +186,7 @@ export function PasskeySetup() {
         {on ? (
           <div className="text-[color:var(--status-red)] flex shrink-0 items-center gap-2">
             <Button
-              onClick={() => void resetAll()}
+              onClick={() => setConfirmReset(true)}
               loading={busy}
               disabled={!supported}
               variant="secondary"
@@ -202,10 +243,47 @@ export function PasskeySetup() {
         }}
         /* STAYS RED: this throws the saved fingerprint away for good. Turning
            Touch ID back on means enrolling this device from scratch. */
-        title="Turn Touch ID off?"
-        body="Signing in on this device goes back to your password."
+        title={
+          onlyKey
+            ? `Turn off ${onlyKey}?`
+            : passkeys.length > 1
+              ? `Turn off Touch ID and delete all ${passkeys.length} saved passkeys?`
+              : "Turn Touch ID off?"
+        }
+        body={
+          keysGoing ? (
+            <>{keysGoing}, so signing in goes back to your password.</>
+          ) : (
+            "Signing in on this device goes back to your password."
+          )
+        }
         detail="The saved fingerprint is thrown away. To use Touch ID again you have to set it up from scratch."
-        confirmLabel="Turn it off"
+        confirmLabel="Turn Touch ID off"
+      />
+      {/* RED TOO: Reset deletes every saved passkey before it asks this
+          browser for a new one. */}
+      <ConfirmDialog
+        open={confirmReset}
+        onClose={() => setConfirmReset(false)}
+        onConfirm={() => {
+          setConfirmReset(false);
+          void resetAll();
+        }}
+        title={
+          onlyKey
+            ? `Reset ${onlyKey} and set it up again on this device?`
+            : passkeys.length > 1
+              ? `Reset Touch ID and replace all ${passkeys.length} saved passkeys?`
+              : "Reset Touch ID and set it up again on this device?"
+        }
+        body={
+          <>
+            {keysGoing ?? "Your saved passkey is deleted"} first. Then your
+            browser asks you to set Touch ID up again on this device.
+          </>
+        }
+        detail="If you cancel that prompt, Touch ID stays off. Your password and email link still work."
+        confirmLabel="Reset Touch ID"
       />
     </div>
   );

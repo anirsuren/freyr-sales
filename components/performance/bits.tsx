@@ -2009,7 +2009,7 @@ export function SetShareModal({
               }
             }}
             placeholder={unit === "currency" ? "e.g. 250K" : unit === "percent" ? "e.g. 45" : "e.g. 12"}
-            className="h-[42px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[14px] outline-none tnum focus:border-blue-subtle"
+            className="h-10 w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13px] outline-none tnum focus:border-blue-subtle"
           />
         </div>
         {text.trim() !== "" &&

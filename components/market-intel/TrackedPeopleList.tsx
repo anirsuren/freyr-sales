@@ -28,15 +28,26 @@ export function TrackedPeopleList({
   people,
   personPosts = {},
   canManage = false,
+  companyName,
+  openPersonId,
+  onOpenPersonChange,
 }: {
   people: TrackedPerson[];
   /** Collected posts by person id; a missing key means no sync yet. */
   personPosts?: Record<string, FeedPost[]>;
   canManage?: boolean;
+  /** The company these people are followed at, named in the stop-following question. */
+  companyName?: string;
+  /** Lets the page open a person's popup from elsewhere, such as a post
+   *  author's face on the briefing. Both or neither. */
+  openPersonId?: string | null;
+  onOpenPersonChange?: (id: string | null) => void;
 }) {
   const router = useRouter();
   const { toast } = useToast();
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [ownOpenId, setOwnOpenId] = useState<string | null>(null);
+  const openId = onOpenPersonChange ? openPersonId ?? null : ownOpenId;
+  const setOpenId = onOpenPersonChange ?? setOwnOpenId;
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -144,17 +155,35 @@ export function TrackedPeopleList({
           if (target) void stopFollowing(target);
         }}
         busy={busy}
-        title="Stop following this person?"
-        body={
-          <>
-            <b>
-              {people.find((p) => p.id === confirmingId)?.name ?? "This person"}
-            </b>{" "}
-            stops being watched for new posts.
-          </>
-        }
+        /* NAME THE PERSON AND WHERE (Anir, Oct 1: "u have to be super super
+           specific"). Their role tells two people with one name apart, and
+           only this viewer's follow goes. */
+        title={(() => {
+          const target = people.find((p) => p.id === confirmingId);
+          if (!target?.name?.trim()) return "Stop following this person?";
+          return `Stop following ${target.name.trim()}${companyName?.trim() ? ` at ${companyName.trim()}` : ""}?`;
+        })()}
+        body={(() => {
+          const target = people.find((p) => p.id === confirmingId);
+          const role = target?.role?.trim();
+          return (
+            <>
+              <b>{target?.name?.trim() || "This person"}</b>
+              {role ? <>, {role},</> : null} comes off the people you follow
+              {companyName?.trim() ? <> at <b>{companyName.trim()}</b></> : null}.
+            </>
+          );
+        })()}
         detail="Posts already collected stay. You can start following them again at any time."
-        confirmLabel="Stop following"
+        confirmLabel={(() => {
+          const name = people.find((p) => p.id === confirmingId)?.name?.trim() ?? "";
+          if (!name) return "Stop following";
+          // The whole name when it fits the button; otherwise the first name,
+          // skipping a title like "Dr.".
+          const words = name.split(/\s+/);
+          const short = name.length <= 24 ? name : words.find((word) => !word.endsWith(".")) ?? words[0];
+          return `Stop following ${short}`;
+        })()}
       />
 
       <Modal

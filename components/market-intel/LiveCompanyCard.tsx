@@ -16,6 +16,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { LinkedInIcon } from "@/components/ui/LinkedInIcon";
 import { MiLogo } from "@/components/market-intel/MiLogo";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { DivisionChips } from "@/components/market-intel/DivisionChips";
 import { WatchStatus, isInactive, type WatchState } from "@/components/market-intel/WatchStatus";
 import type { CompanyCard } from "@/lib/marketIntelFeed";
@@ -58,6 +59,7 @@ export function LiveCompanyCard({
   starred = false,
   onStar,
   watch,
+  onUnlist,
 }: {
   card: CompanyCard;
   people?: CardPerson[];
@@ -68,6 +70,9 @@ export function LiveCompanyCard({
   watch?: WatchState;
   /** Present when the viewer may star; absent renders no star. */
   onStar?: (on: boolean) => void;
+  /** Present, the card carries a hover X that asks to take it off this
+   *  person's list (the page owns the confirm). */
+  onUnlist?: () => void;
 }) {
   const up = (card.momentumPct ?? 0) >= 0;
   const stories = card.stories.slice(0, 5);
@@ -168,6 +173,15 @@ export function LiveCompanyCard({
             >
               <Star size={13} strokeWidth={2.2} fill={starred ? "currentColor" : "none"} />
             </button>
+          )}
+          {/* Off my list from the card itself (Anir, Oct 1), above the
+              card's link like the star. */}
+          {onUnlist && (
+            <UnlinkX
+              label={`Remove ${card.name} from my list`}
+              onClick={onUnlist}
+              className="relative z-10"
+            />
           )}
         </span>
       </div>
@@ -378,7 +392,10 @@ export function LiveCompanyCard({
 
   return (
     <HoverExpandCard
-      className={watch && isInactive(watch) ? "h-full min-w-0 opacity-75" : "h-full min-w-0"}
+      className={cn(
+        watch && isInactive(watch) ? "h-full min-w-0 opacity-75" : "h-full min-w-0",
+        onUnlist && "group/unlink"
+      )}
       href={`/market-intel/${card.id}`}
       linkLabel={`Open ${card.name} briefing`}
       summary={summary}

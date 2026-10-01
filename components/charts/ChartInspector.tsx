@@ -72,9 +72,17 @@ export function ChartInspector({
   }, [query, records, selectedOutcome]);
 
   const recordRow = (record: ChartRecord, compact = false) => {
+    // The mark beside the label is the label's own: a row titled with the
+    // company wears its logo, and the person in its detail line keeps a face.
+    const logoIsLabel =
+      !!record.logo && record.logo.trim().toLowerCase() === record.label.trim().toLowerCase();
+    const metaPerson =
+      logoIsLabel && record.avatar && record.meta?.toLowerCase().includes(record.avatar.trim().toLowerCase())
+        ? record.avatar
+        : null;
     const content = (
       <>
-        {record.avatar ? (
+        {record.avatar && !logoIsLabel ? (
           <Avatar name={record.avatar} className="h-7 w-7 shrink-0 text-[9px]" />
         ) : record.logo ? (
           <CompanyLogo name={record.logo} className="h-7 w-7 shrink-0 text-[9px]" />
@@ -85,9 +93,14 @@ export function ChartInspector({
           <span className="block truncate text-[12px] font-semibold text-text-primary">
             {record.label}
           </span>
-          {record.meta && (
+          {record.meta && metaPerson ? (
+            <span className="flex min-w-0 items-center gap-1 text-[10.5px] text-text-tertiary">
+              <Avatar name={metaPerson} className="h-3.5 w-3.5 shrink-0 text-[5px]" />
+              <span className="min-w-0 truncate">{record.meta}</span>
+            </span>
+          ) : record.meta ? (
             <span className="block truncate text-[10.5px] text-text-tertiary">{record.meta}</span>
-          )}
+          ) : null}
         </span>
         {record.outcome && <OutcomeBadge outcome={record.outcome} />}
         {record.value && (

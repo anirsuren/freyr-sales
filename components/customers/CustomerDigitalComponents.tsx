@@ -39,11 +39,14 @@ import { DateText } from "@/components/ui/DateText";
  */
 export function CustomerDigitalComponents({
   customerId,
+  customerName,
   links,
   components,
   canEdit,
 }: {
   customerId: string;
+  /** The account's name, so removing a component says which customer. */
+  customerName?: string;
   links: CustomerComponentLink[];
   components: FdlComponent[];
   canEdit: boolean;
@@ -515,9 +518,53 @@ export function CustomerDigitalComponents({
             `${byId.get(id)?.name ?? "Component"} removed.`
           );
         }}
-        title={`Remove ${byId.get(confirmRemove ?? "")?.name ?? "this component"}?`}
-        body="It comes off this customer's digital components. You can add it back any time."
-        confirmLabel="Remove"
+        title={`Remove ${byId.get(confirmRemove ?? "")?.name ?? "this component"} from ${
+          customerName || "this customer"
+        }?`}
+        body={(() => {
+          const component = confirmRemove ? byId.get(confirmRemove) : undefined;
+          const link = confirmRemove
+            ? state.find((item) => item.component_id === confirmRemove)
+            : undefined;
+          const live = link?.release_id
+            ? component?.releases.find((release) => release.id === link.release_id)
+            : undefined;
+          const next = link?.next_release_id
+            ? component?.releases.find((release) => release.id === link.next_release_id)
+            : undefined;
+          const status =
+            link?.release_status === "released"
+              ? "Released"
+              : link?.release_status === "expected"
+                ? "Expected"
+                : null;
+          /* The version they are on and the one they move to are what tell
+             this connection apart. Only what is recorded is said. */
+          const facts = [
+            live ? `on ${withV(live.version)}${status ? `, ${status}` : ""}` : null,
+            next ? `moving to ${withV(next.version)}` : null,
+          ]
+            .filter(Boolean)
+            .join(", ");
+          return (
+            <>
+              {component ? <b>{component.name}</b> : "This component"}
+              {facts ? ` (${facts})` : ""} comes off{" "}
+              {customerName ? (
+                <>
+                  <b>{customerName}</b>&rsquo;s
+                </>
+              ) : (
+                "this customer's"
+              )}{" "}
+              digital components.
+            </>
+          );
+        })()}
+        detail={`Only the connection goes. ${
+          byId.get(confirmRemove ?? "")?.name ?? "The component"
+        } stays in FDL Components, and you can connect it again any time.`}
+        confirmLabel="Remove component"
       />
 
       <Modal

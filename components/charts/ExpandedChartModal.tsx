@@ -58,6 +58,10 @@ export type ExpandedChartItem = {
   /** A TIP_ICONS key drawn in the list in place of the colour dot, in
    *  `color`. Only charts that opt in with `labelIcon` set it. */
   icon?: string;
+  /** A category that is a company or a person wears its logo or face in the
+   *  list instead of the colour dot. */
+  logo?: string;
+  avatar?: string;
   value?: string;
   percentage?: number;
   isEmpty?: boolean;
@@ -84,9 +88,32 @@ export type ExpandedChartRecord = {
  */
 function RecordFace({ record, size }: { record: ExpandedChartRecord; size: "sm" | "md" }) {
   const cls = size === "md" ? "h-8 w-8 shrink-0 text-[9px]" : "h-7 w-7 shrink-0 text-[9px]";
-  if (record.avatar) return <Avatar name={record.avatar} className={cls} />;
+  // The mark beside the label is the label's own: a row titled with the
+  // company wears its logo even when the row also names a person.
+  if (record.avatar && !logoIsLabel(record)) return <Avatar name={record.avatar} className={cls} />;
   if (record.logo) return <CompanyLogo name={record.logo} className={cls} />;
   return null;
+}
+
+function logoIsLabel(record: { label: string; logo?: string }): boolean {
+  return !!record.logo && record.logo.trim().toLowerCase() === record.label.trim().toLowerCase();
+}
+
+/** The detail line under a company row: the person it names keeps their own
+ *  face, beside their name. */
+function RecordMeta({ record, className }: { record: ExpandedChartRecord; className: string }) {
+  if (!record.meta) return null;
+  const person =
+    record.avatar && logoIsLabel(record) && record.meta.toLowerCase().includes(record.avatar.trim().toLowerCase())
+      ? record.avatar
+      : null;
+  if (!person) return <span className={cn("block", className)}>{record.meta}</span>;
+  return (
+    <span className={cn("flex min-w-0 items-center gap-1", className)}>
+      <Avatar name={person} className="h-4 w-4 shrink-0 text-[6px]" />
+      <span className="min-w-0">{record.meta}</span>
+    </span>
+  );
 }
 
 export type ExpandedChartPoint = {
@@ -248,7 +275,13 @@ export function ExpandedChartControl({
                     A row highlights its category; clicking it again clears. */}
                 {items.map((item) => (
                   <button key={item.key} type="button" aria-pressed={selectedKey === item.key} onClick={() => toggleSelected(item.key)} className={cn("mb-1 flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors", selectedKey === item.key ? "border-blue-subtle bg-blue-light/70" : "border-transparent hover:bg-surface")}>
-                    <SeriesMark icon={item.icon} color={item.color} dotClassName="h-2.5 w-2.5 shrink-0 rounded-full" />
+                    {item.logo ? (
+                      <CompanyLogo name={item.logo} className="h-5 w-5 shrink-0 text-[7px]" />
+                    ) : item.avatar ? (
+                      <Avatar name={item.avatar} className="h-5 w-5 shrink-0 text-[7px]" />
+                    ) : (
+                      <SeriesMark icon={item.icon} color={item.color} dotClassName="h-2.5 w-2.5 shrink-0 rounded-full" />
+                    )}
                     <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">{item.label}</span>
                     {item.value && <span className="shrink-0 text-[13px] font-semibold tabular-nums text-text-primary">{item.value}</span>}
                     {item.percentage !== undefined && <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-text-tertiary">{item.percentage}%</span>}
@@ -261,7 +294,7 @@ export function ExpandedChartControl({
                     {selectedItem.records?.length ? (
                       <div className="mt-2 space-y-1">
                         {selectedItem.records.map((record, index) => {
-                          const content = <><RecordFace record={record} size="sm" /><span className="min-w-0 flex-1"><span className="block text-[12.5px] font-semibold text-text-primary">{record.label}</span>{record.meta && <span className="block text-[11.5px] text-text-secondary">{record.meta}</span>}</span>{record.value && <span className="shrink-0 text-[12px] font-semibold tabular-nums text-text-primary">{record.value}</span>}</>;
+                          const content = <><RecordFace record={record} size="sm" /><span className="min-w-0 flex-1"><span className="block text-[12.5px] font-semibold text-text-primary">{record.label}</span><RecordMeta record={record} className="text-[11.5px] text-text-secondary" /></span>{record.value && <span className="shrink-0 text-[12px] font-semibold tabular-nums text-text-primary">{record.value}</span>}</>;
                           return record.href ? <Link key={`${record.label}-${index}`} href={record.href} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface">{content}</Link> : <div key={`${record.label}-${index}`} className="flex items-center gap-3 rounded-lg px-2 py-2">{content}</div>;
                         })}
                       </div>
@@ -341,6 +374,7 @@ export type ExpandedBarChart = {
         caption?: string;
       };
       logo?: string;
+      avatar?: string;
     }
   >;
   unit?: string;
@@ -359,6 +393,9 @@ export type ExpandedDonutChart = {
       /** TIP_ICONS key that marks this slice's list row instead of a dot.
        *  Opt-in, so other donuts keep their dots. */
       labelIcon?: string;
+      /** The slice is a company or a person: its list row wears the mark. */
+      logo?: string;
+      avatar?: string;
       tip?: TipItem[];
     }
   >;
@@ -458,6 +495,8 @@ export function ExpandedChartModal({
       (chart.kind === "bar" ? chart.data[index].dotColor : undefined) ??
       itemColor(item, index),
     icon: "labelIcon" in item ? item.labelIcon : undefined,
+    logo: chart.kind === "bar" ? chart.data[index].logo : chart.kind === "donut" ? chart.segments[index].logo : undefined,
+    avatar: chart.kind === "bar" ? chart.data[index].avatar : chart.kind === "donut" ? chart.segments[index].avatar : undefined,
     value: chart.kind === "bar" ? formatValue(chart.format, chart.data[index].value)
       : chart.kind === "donut" ? formatValue(chart.format, chart.segments[index].value)
       : undefined,

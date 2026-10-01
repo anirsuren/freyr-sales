@@ -1,7 +1,7 @@
 "use client";
 import { DateField } from "@/components/ui/DateField";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 import { MoneyInput } from "@/components/ui/MoneyInput";
@@ -485,6 +485,27 @@ const REQUIRED_FIELDS: Record<string, string> = {
   value: "The estimated TCV",
 };
 
+/* WHAT EACH WAITING CHANGE IS CALLED ON THE FORM, keyed the way `commit()`
+   banks it, so leaving or discarding can say exactly which fields would be
+   thrown away instead of only how many (Anir, Oct 1: "u have to be super
+   super specific"). */
+const FIELD_NAMES: Record<string, string> = {
+  name: "Opportunity name",
+  customer: "Customer",
+  offering: "Offering",
+  confidence: "Confidence",
+  estSignDate: "Expected to sign",
+  status: "Status",
+  level: "Opportunity category",
+  dealType: "Type of opportunity",
+  revenueType: "Revenue type",
+  currency: "Project currency",
+  estimatedTcv: "Estimated TCV",
+  estimatedAcv: "Estimated ACV",
+  owner: "Owner",
+  nextSteps: "Notes",
+};
+
 function Req() {
   return (
     <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">
@@ -903,6 +924,34 @@ export function DealOverviewEditor({
      any link in the app, and the buttons that navigate without one (Back to
      deal). One shared hook does all three; see lib/useLeaveGuard. */
   const guard = useLeaveGuard(dirtyTotal > 0);
+
+  /* DISCARD ASKS FIRST. It throws away every change waiting in the bar, and
+     the bar only exists while there is something to throw away, so a stray
+     click beside Save changes cost all of it. */
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  /* WHICH CHANGES, ON WHICH DEAL. Leaving and Discard both name the fields by
+     their labels on the form and the deal by its saved name and customer,
+     not only a count. An unknown key falls back to the plain sentence rather
+     than a list that is quietly short. */
+  const changedNames = [
+    ...Object.keys(pending).map((key) => FIELD_NAMES[key] ?? ""),
+    ...(planDirty ? ["Revenue accrual schedule"] : []),
+  ];
+  const changedKnown = changedNames.length > 0 && changedNames.every(Boolean);
+  const changedList = changedNames.map((n, i) => (
+    <Fragment key={n}>
+      {i === 0 ? "" : i === changedNames.length - 1 ? " and " : ", "}
+      <b>{n}</b>
+    </Fragment>
+  ));
+  const savedDealName = (deal.name || "").trim();
+  const savedCustomer = (deal.customer || "").trim();
+  const dealLabel = `${savedDealName ? `the ${savedDealName} deal` : "this deal"}${
+    savedCustomer && !savedDealName.toLowerCase().includes(savedCustomer.toLowerCase())
+      ? ` with ${savedCustomer}`
+      : ""
+  }`;
+  const changeWord = `${dirtyTotal} unsaved change${dirtyTotal === 1 ? "" : "s"}`;
 
   /**
    * THE RATE FOR THIS DEAL'S OWN DAY (Suren, Sep 1: "based on that date,
@@ -2100,6 +2149,7 @@ export function DealOverviewEditor({
             <DealPeople
               dealId={deal.id}
               dealName={deal.name || deal.customer}
+              customer={deal.customer}
               owner={owner}
               team={team}
               people={people}
@@ -2183,9 +2233,52 @@ export function DealOverviewEditor({
           setPending({});
           guard.leave();
         }}
-        title={`Leave with ${dirtyCount} unsaved change${dirtyCount === 1 ? "" : "s"}?`}
-        body="Nothing on this deal has been written yet. Leaving now throws those edits away."
+        /* THE WHOLE COUNT, the same one the bar shows and the guard is armed
+           on. It read the fields alone, so leaving with only the schedule
+           changed asked about "0 unsaved changes". */
+        title={`Leave ${dealLabel} and lose ${changeWord}?`}
+        body={
+          changedKnown ? (
+            <>
+              Your changes to {changedList} have not been saved. Leaving now
+              throws them away.
+            </>
+          ) : (
+            "Nothing on this deal has been written yet. Leaving now throws those edits away."
+          )
+        }
+        detail="The deal stays exactly as it was last saved."
         confirmLabel="Leave without saving"
+      />
+
+      <ConfirmDialog
+        open={confirmDiscard}
+        onClose={() => setConfirmDiscard(false)}
+        onConfirm={() => {
+          setConfirmDiscard(false);
+          setPending({});
+          setErrors((e) => ({ ...e, __form: "" }));
+          /* Re-seed every box from the record. Emptying the bank alone
+             left the discarded text sitting on screen. */
+          setResetNonce((n) => n + 1);
+          /* And put the schedule back too: a Discard that quietly
+             kept one section's edits is the same lie in a new place. */
+          onDiscardPlan?.();
+          onSaved?.();
+        }}
+        title={`Discard ${changeWord} to ${dealLabel}?`}
+        body={
+          changedKnown ? (
+            <>
+              {changedList} {changedNames.length === 1 ? "goes" : "go"} back to
+              what is saved.
+            </>
+          ) : (
+            "Every field goes back to what is saved."
+          )
+        }
+        detail="Nothing already saved on the deal changes."
+        confirmLabel="Discard changes"
       />
 
       {/* THE SAVE BAR, PINNED (Anir, Sep 3: "it should be sticky at the
@@ -2218,17 +2311,9 @@ export function DealOverviewEditor({
               <button
                 type="button"
                 disabled={saving}
-                onClick={() => {
-                  setPending({});
-                  setErrors((e) => ({ ...e, __form: "" }));
-                  /* Re-seed every box from the record. Emptying the bank alone
-                     left the discarded text sitting on screen. */
-                  setResetNonce((n) => n + 1);
-                  /* And put the schedule back too: a Discard that quietly
-                     kept one section's edits is the same lie in a new place. */
-                  onDiscardPlan?.();
-                  onSaved?.();
-                }}
+                /* Asks first; the discard itself runs from the dialog above,
+                   unchanged. */
+                onClick={() => setConfirmDiscard(true)}
                 className="cursor-pointer rounded-lg border border-border-light px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-primary hover:text-blue-primary disabled:opacity-50"
               >
                 Discard

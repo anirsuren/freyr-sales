@@ -318,7 +318,7 @@ export function EditMaterialButton({
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="What this document is called"
-              className="w-full rounded-lg border border-border-light px-3 py-2 text-[13.5px] outline-none transition-colors focus:border-blue-subtle"
+              className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-colors focus:border-blue-subtle"
             />
           </div>
 

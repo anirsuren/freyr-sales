@@ -18,6 +18,9 @@ import { tint } from "@/lib/tint";
 
 const FIELD =
   "w-full rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
+// One-line boxes are the shared 40px field. FIELD stays for the description.
+const LINE_FIELD =
+  "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
 const LABEL =
   "block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5";
 
@@ -156,7 +159,7 @@ export function OfferingTypesManager({
           <div>
             <label className={LABEL}>Offering type<RequiredMark /></label>
             <input
-              className={FIELD}
+              className={LINE_FIELD}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Freya - Module + Agent"
@@ -271,7 +274,11 @@ export function OfferingTypesManager({
         onConfirm={() => {
           if (confirmRemove) void removeType(confirmRemove);
         }}
-        title="Remove this offering type?"
+        title={
+          confirmRemove
+            ? `Remove the ${confirmRemove.name} offering type?`
+            : "Remove this offering type?"
+        }
         body={
           confirmRemove ? (
             <>
@@ -284,12 +291,14 @@ export function OfferingTypesManager({
         }
         detail={
           confirmRemove && (offeringCounts[confirmRemove.id] || 0) > 0
-            ? `${offeringCounts[confirmRemove.id]} offering${
-                offeringCounts[confirmRemove.id] === 1 ? "" : "s"
-              } use it right now. They are not deleted, but they will no longer have a type.`
-            : undefined
+            ? offeringCounts[confirmRemove.id] === 1
+              ? `1 offering uses ${confirmRemove.name} right now. It is not deleted, but it will no longer have a type.`
+              : `${offeringCounts[confirmRemove.id]} offerings use ${confirmRemove.name} right now. They are not deleted, but they will no longer have a type.`
+            : confirmRemove
+              ? `No offering uses ${confirmRemove.name}, so nothing else changes.`
+              : undefined
         }
-        confirmLabel="Remove type"
+        confirmLabel="Remove offering type"
       />
     </div>
   );

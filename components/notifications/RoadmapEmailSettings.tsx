@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Mail, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Followed = { kind: "component" | "offering"; id: string; name: string; href: string };
 
@@ -29,6 +30,9 @@ type Subscription = {
 export function RoadmapEmailSettings({ followable }: { followable: Followed[] }) {
   const [sub, setSub] = useState<Subscription | null>(null);
   const [busy, setBusy] = useState(false);
+  /* Turning every-roadmap emails off asks first (Anir, Oct 1: nothing that
+     stops following acts on one click). Turning them on does not. */
+  const [confirmAllOff, setConfirmAllOff] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -88,9 +92,10 @@ export function RoadmapEmailSettings({ followable }: { followable: Followed[] })
           type="button"
           disabled={busy}
           aria-pressed={sub.everything}
-          onClick={() =>
-            save({ everything: !sub.everything }, (s) => ({ ...s, everything: !s.everything }))
-          }
+          onClick={() => {
+            if (sub.everything) setConfirmAllOff(true);
+            else void save({ everything: !sub.everything }, (s) => ({ ...s, everything: !s.everything }));
+          }}
           className={cn(
             "inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-[12.5px] font-semibold transition-colors disabled:opacity-60",
             sub.everything
@@ -135,6 +140,44 @@ export function RoadmapEmailSettings({ followable }: { followable: Followed[] })
           </>
         )}
       </div>
+
+      {/* SAY WHAT KEEPS COMING (Anir, Oct 1: "u have to be so specific"):
+          the roadmaps still followed one by one, by name. Blue: nothing is
+          deleted, and one click turns it back on. */}
+      {(() => {
+        const keptNames = following.map((f) => (f.name || "").trim()).filter(Boolean);
+        return (
+          <ConfirmDialog
+            open={confirmAllOff}
+            onClose={() => setConfirmAllOff(false)}
+            onConfirm={() => {
+              setConfirmAllOff(false);
+              void save({ everything: !sub.everything }, (s) => ({ ...s, everything: !s.everything }));
+            }}
+            tone="primary"
+            title="Stop emails about every roadmap?"
+            body={
+              following.length ? (
+                <>
+                  Roadmap emails go back to just the {following.length} you
+                  follow
+                  {keptNames.length ? (
+                    <>
+                      : <b>{keptNames.slice(0, 3).join(", ")}</b>
+                      {keptNames.length > 3 ? ` and ${keptNames.length - 3} more` : ""}
+                    </>
+                  ) : null}
+                  .
+                </>
+              ) : (
+                "You do not follow any roadmap on its own, so roadmap emails stop."
+              )
+            }
+            detail="Nothing else changes. You can turn it back on any time."
+            confirmLabel="Stop emails about every roadmap"
+          />
+        );
+      })()}
     </section>
   );
 }

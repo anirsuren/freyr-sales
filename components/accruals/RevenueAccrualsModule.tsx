@@ -73,8 +73,10 @@ import {
   monthKey,
   monthLabel,
   planTotal,
+  planVersions,
   tabAccrualStatus,
   TAB_ACCRUAL_STATUS_COLOR,
+  versionStatus,
   type AccrualPlan,
   type RevenueAccrualsState,
   type TabAccrualStatus,
@@ -2776,9 +2778,50 @@ export function RevenueAccrualsModule({
           );
           setConfirmUnfreeze(null);
         }}
-        title={`Unfreeze ${confirmUnfreeze ? monthLabel(confirmUnfreeze) : ""}?`}
-        body="This throws away the saved copy of this month, so there is nothing left to compare against. Your actual plans are not touched. You are deleting the photo, not the thing in it."
-        confirmLabel="Unfreeze the month"
+        /* WHICH SHEET, TAKEN WHEN, BY WHOM, HOLDING WHAT (Anir, Oct 1: "u
+           have to be super super specific"). */
+        title={
+          confirmUnfreeze
+            ? `Unfreeze the ${monthLabel(confirmUnfreeze)} accrual sheet?`
+            : "Unfreeze this month?"
+        }
+        body={(() => {
+          const sheet = confirmUnfreeze
+            ? state.snapshots.find((s) => s.id === confirmUnfreeze)
+            : undefined;
+          const taken = sheet ? formatDate(sheet.takenAt) : "-";
+          return (
+            <>
+              This throws away the saved copy of{" "}
+              <b>{confirmUnfreeze ? monthLabel(confirmUnfreeze) : "this month"}</b>
+              {sheet ? (
+                <>
+                  , frozen
+                  {taken !== "-" ? (
+                    <>
+                      {" "}on <b>{taken}</b>
+                    </>
+                  ) : null}
+                  {sheet.takenBy ? (
+                    <>
+                      {" "}by <b>{sheet.takenBy}</b>
+                    </>
+                  ) : null}{" "}
+                  with{" "}
+                  <b>
+                    {sheet.rows.length} {sheet.rows.length === 1 ? "plan" : "plans"}
+                  </b>{" "}
+                  in it
+                </>
+              ) : null}
+              , so there is nothing left to compare against.
+            </>
+          );
+        })()}
+        detail="Your actual plans are not touched. You are deleting the photo, not the thing in it."
+        confirmLabel={
+          confirmUnfreeze ? `Unfreeze ${monthLabel(confirmUnfreeze)}` : "Unfreeze the month"
+        }
       />
       <ConfirmDialog
         open={confirmSweep}
@@ -2802,7 +2845,39 @@ export function RevenueAccrualsModule({
         tone="primary"
         title="Find deals that should have been signed by now?"
         body="Some deals were supposed to be signed already and have not been. This finds them and puts a flag on their plan so somebody knows to look. Nothing you have typed is changed or deleted, and plans with no numbers in them yet are skipped."
-        confirmLabel="Find them"
+        /* WHICH DEALS THAT IS RIGHT NOW (Anir, Oct 1: "u have to be super
+           super specific"), by the same test the check runs: a filled,
+           current plan whose deal's sign month has passed while it is still
+           open. Said only when there are some. */
+        detail={(() => {
+          if (!confirmSweep) return undefined;
+          const overdue = judged
+            .filter((j) => {
+              const versions = planVersions(j.plan);
+              const latest = versions[versions.length - 1];
+              return (
+                !!latest &&
+                versionStatus(latest) === "Active and Filled" &&
+                j.verdict.problems.includes("close_date_passed")
+              );
+            })
+            .map(
+              (j) =>
+                `${j.plan.opportunityName}${j.plan.customer ? ` at ${j.plan.customer}` : ""}`
+            );
+          if (overdue.length === 0) return undefined;
+          const shown = overdue.slice(0, 3);
+          const more = overdue.length - shown.length;
+          return (
+            <>
+              Right now{" "}
+              {overdue.length === 1 ? "this deal looks" : `${overdue.length} deals look`}{" "}
+              overdue: <b>{shown.join("; ")}</b>
+              {more > 0 ? `, and ${more} more` : ""}.
+            </>
+          );
+        })()}
+        confirmLabel="Check signing dates"
       />
 
       <ConfirmDialog
@@ -2820,9 +2895,35 @@ export function RevenueAccrualsModule({
            on other things too"). Unfreeze below stays red, because that one
            does throw the saved copy away. */
         tone="primary"
-        title={`Freeze ${monthLabel(monthKey(new Date()))}?`}
-        body="Every plan as it stands right now is saved as this month's sheet. From here on, the month-on-month gap is measured against it. Freezing again this month replaces it."
-        confirmLabel="Freeze the month"
+        /* WHICH MONTH, HOW MANY PLANS, AND WHOSE SHEET IT REPLACES (Anir,
+           Oct 1: "u have to be super super specific"). A second freeze in
+           the same month writes over the first, so that one names it. */
+        title={
+          frozenThisMonth
+            ? `Freeze ${monthLabel(monthKey(new Date()))} again?`
+            : `Freeze ${monthLabel(monthKey(new Date()))}?`
+        }
+        body={
+          <>
+            Every plan as it stands right now,{" "}
+            <b>
+              {state.plans.length} {state.plans.length === 1 ? "plan" : "plans"}
+            </b>
+            , is saved as the <b>{monthLabel(monthKey(new Date()))}</b> sheet.
+            From here on, the month-on-month gap is measured against it.
+          </>
+        }
+        detail={(() => {
+          const sheet = state.snapshots.find((s) => s.id === monthKey(new Date()));
+          if (!sheet) return "Freezing again this month replaces it.";
+          const taken = formatDate(sheet.takenAt);
+          return `This replaces the copy frozen${taken !== "-" ? ` on ${taken}` : ""}${sheet.takenBy ? ` by ${sheet.takenBy}` : ""}.`;
+        })()}
+        confirmLabel={
+          frozenThisMonth
+            ? `Re-freeze ${monthLabel(monthKey(new Date()))}`
+            : `Freeze ${monthLabel(monthKey(new Date()))}`
+        }
       />
 
       {/* Opened from the planner's footer, so it sits on top of the planner;
@@ -2845,12 +2946,48 @@ export function RevenueAccrualsModule({
           setConfirmDelete(null);
           if (deleted) setPlanning(null);
         }}
-        title="Delete this accrual plan?"
-        body={
+        /* WHICH DEAL, AT WHICH CUSTOMER, AND HOW MUCH GOES (Anir, Oct 1: "u
+           have to say what customer what offering so there is absolutely no
+           confusion"). */
+        title={
           confirmDelete
-            ? `${confirmDelete.opportunityName} goes back to having no accrual numbers. The deal itself is untouched.`
-            : ""
+            ? `Delete the accrual plan for ${confirmDelete.opportunityName}${confirmDelete.customer ? ` at ${confirmDelete.customer}` : ""}?`
+            : "Delete this accrual plan?"
         }
+        body={
+          confirmDelete ? (
+            <>
+              <b>{confirmDelete.opportunityName}</b>
+              {confirmDelete.customer ? (
+                <>
+                  {" "}at <b>{confirmDelete.customer}</b>
+                </>
+              ) : null}
+              {confirmDelete.offeringLabel ? (
+                <>
+                  , for <b>{confirmDelete.offeringLabel}</b>,
+                </>
+              ) : null}{" "}
+              goes back to having no accrual numbers. The deal itself is
+              untouched.
+            </>
+          ) : (
+            ""
+          )
+        }
+        detail={(() => {
+          if (!confirmDelete) return undefined;
+          const total = planTotal(confirmDelete);
+          const months = confirmDelete.lines.length;
+          const versions = planVersions(confirmDelete).length;
+          const versionWords =
+            versions > 1 ? `its ${versions} saved versions` : "";
+          if (months === 0 || total <= 0)
+            return versionWords
+              ? `${versionWords.charAt(0).toUpperCase()}${versionWords.slice(1)} are deleted with it.`
+              : undefined;
+          return `Its ${formatMoney(total)} schedule over ${months} ${months === 1 ? "month" : "months"} is deleted${versionWords ? `, along with ${versionWords}` : ""}.`;
+        })()}
         confirmLabel="Delete plan"
       />
     </div>

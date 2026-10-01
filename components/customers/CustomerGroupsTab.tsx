@@ -273,14 +273,46 @@ export function CustomerGroupsTab({
 
       <ConfirmDialog
         open={!!confirmDelete}
-        title={`Delete "${confirmDelete?.name ?? "this group"}"?`}
-        /* The one thing somebody deleting a group needs to be sure of. */
-        body={`The group is deleted. The ${
-          confirmDelete?.customerIds.length ?? 0
-        } account${
-          (confirmDelete?.customerIds.length ?? 0) === 1 ? "" : "s"
-        } inside it stay exactly as they are.`}
-        confirmLabel="Delete the group"
+        title={
+          confirmDelete?.name
+            ? `Delete the ${confirmDelete.name} group?`
+            : "Delete this group?"
+        }
+        body={
+          <>
+            The {confirmDelete?.name ? <b>{confirmDelete.name}</b> : null} group
+            {confirmDelete?.createdBy?.trim() ? (
+              <>
+                , made by <b>{confirmDelete.createdBy.trim()}</b>,
+              </>
+            ) : null}{" "}
+            is deleted.
+          </>
+        }
+        /* The one thing somebody deleting a group needs to be sure of, with
+           the accounts named so it is clear which group this is. */
+        detail={(() => {
+          const ids = confirmDelete?.customerIds ?? [];
+          const count = ids.length;
+          if (count === 0) return "It has no accounts in it, so nothing else changes.";
+          const names = ids
+            .map((id) => byId.get(id)?.name)
+            .filter((name): name is string => !!name);
+          const shown = names.slice(0, 3);
+          const rest = count - shown.length;
+          const list =
+            shown.length === 0
+              ? ""
+              : rest > 0
+                ? `${shown.join(", ")} and ${rest} more`
+                : shown.length === 1
+                  ? shown[0]
+                  : `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
+          return count === 1
+            ? `Its one account${list ? `, ${list},` : ""} stays exactly as it is.`
+            : `Its ${count} accounts${list ? `, ${list},` : ""} stay exactly as they are.`;
+        })()}
+        confirmLabel="Delete group"
         tone="destructive"
         onClose={() => setConfirmDelete(null)}
         onConfirm={async () => {

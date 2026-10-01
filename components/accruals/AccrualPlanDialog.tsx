@@ -42,6 +42,7 @@ import {
   monthKey,
   monthLabel,
   monthsFrom,
+  planVersions,
   spreadEvenly,
   splitFieldsFor,
   usedSplitFieldsIn,
@@ -1710,6 +1711,50 @@ export function AccrualPlanDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, editing, planProblem]);
 
+  /* WHICH DEAL'S SCHEDULE, AT WHICH CUSTOMER (Anir, Oct 1: "u have to say
+     what customer what offering so there is absolutely no confusion"). The
+     same planner opens on any deal, so each of its three questions (remove a
+     month, save the change, leave without saving) names the deal and the
+     customer it is about, and the figures that go with it. */
+  const planDeal = dealById.get(editing.opportunityId);
+  const planDealName = savedPlan?.opportunityName || planDeal?.name || "";
+  const planCustomer = savedPlan?.customer || planDeal?.customer || "";
+  const planFor = planDealName
+    ? `${planDealName}${planCustomer ? ` at ${planCustomer}` : ""}`
+    : "";
+  const planNamed = planDealName ? (
+    <>
+      <b>{planDealName}</b>
+      {planCustomer ? (
+        <>
+          {" "}at <b>{planCustomer}</b>
+        </>
+      ) : null}
+    </>
+  ) : null;
+  /* The month being removed and where its money goes, found the way
+     dropMonth finds it: the month before, or the one after when it is the
+     first. */
+  const dropRows = pendingDrop ? planRows(editing) : [];
+  const dropAt = pendingDrop ? dropRows.findIndex((r) => r.month === pendingDrop) : -1;
+  const dropLine = pendingDrop
+    ? editing.lines.find((l) => l.month === pendingDrop)
+    : undefined;
+  const dropAmount = dropLine ? Number(rowTotal(dropLine)) || 0 : 0;
+  const dropNeighbour =
+    dropAt >= 0
+      ? (dropRows[dropAt - 1]?.month ?? dropRows[dropAt + 1]?.month ?? null)
+      : null;
+  /* The version a saved change appends, and what it holds. */
+  const planVersionList = savedPlan ? planVersions(savedPlan) : [];
+  const nextVersion = planVersionList.length
+    ? planVersionList[planVersionList.length - 1].version + 1
+    : 0;
+  const saveMonths = pendingSave?.lines.length ?? 0;
+  const saveTotal = (pendingSave?.lines ?? []).reduce(
+    (sum, l) => sum + (Number(l.amount) || 0),
+    0
+  );
 
   /**
    * THE SAME SCHEDULER, IN A CARD INSTEAD OF A DIALOG.
@@ -2931,20 +2976,54 @@ export function AccrualPlanDialog({
           if (pendingDrop) dropMonth(pendingDrop);
           setPendingDrop(null);
         }}
-        title={pendingDrop ? `Remove ${monthLabel(pendingDrop)}?` : "Remove this month?"}
-        body={
+        title={
           pendingDrop
-            ? `Its money moves to the month next to it, so the total still adds up to the contract. You can put ${monthLabel(pendingDrop)} back with Add month.`
-            : "Its money moves to the month next to it, so the total still adds up to the contract."
+            ? `Remove ${monthLabel(pendingDrop)} from the schedule${planFor ? ` for ${planFor}` : ""}?`
+            : "Remove this month?"
         }
-        confirmLabel="Remove"
+        body={
+          pendingDrop && dropAmount > 0 && dropNeighbour ? (
+            <>
+              Its <b>{readMoney(dropAmount)}</b> moves to{" "}
+              <b>{monthLabel(dropNeighbour)}</b>, so the total still adds up to
+              the contract.
+            </>
+          ) : (
+            "Its money moves to the month next to it, so the total still adds up to the contract."
+          )
+        }
+        detail={
+          pendingDrop
+            ? `You can put ${monthLabel(pendingDrop)} back with Add month.`
+            : undefined
+        }
+        confirmLabel="Remove month"
       />
       <ConfirmDialog
         open={pendingSave !== null}
         onClose={() => setPendingSave(null)}
         onConfirm={() => void commitPendingSave()}
-        title="Save these changes?"
+        title={planFor ? `Save the new schedule for ${planFor}?` : "Save these changes?"}
+        /* His sentence, word for word (item 17). The detail under it says
+           which plan, which version and how much. */
         body="Changes made to this revenue accrual schedule will be made current and Deviation will be logged."
+        detail={
+          nextVersion > 0 ? (
+            <>
+              It becomes version <b>{nextVersion}</b>
+              {planNamed ? <> of the plan for {planNamed}</> : null}
+              {saveTotal > 0 && saveMonths > 0 ? (
+                <>
+                  , with <b>{readMoney(saveTotal)}</b> over{" "}
+                  <b>
+                    {saveMonths} {saveMonths === 1 ? "month" : "months"}
+                  </b>
+                </>
+              ) : null}
+              .
+            </>
+          ) : undefined
+        }
         /* BLUE, NOT RED (Anir, Sep 6: "this is the red button. Make it blue.
            See how it's not supposed to be red?"). ConfirmDialog defaults to
            the destructive tone, and this one inherited it — but saving a
@@ -2952,17 +3031,31 @@ export function AccrualPlanDialog({
            wears it teaches people to ignore the colour on the dialogs where
            it actually means something. */
         tone="primary"
-        /* "Accept" is his word; the dialog's own cancel button already
-           reads "Cancel", which is the other one. */
-        confirmLabel="Accept"
+        /* "Accept" is his word, kept at the front, and the button now also
+           names what it accepts (Anir, Oct 1: be "super super specific").
+           The dialog's own cancel button already reads "Cancel". */
+        confirmLabel="Accept new schedule"
         busy={busy}
       />
       <ConfirmDialog
         open={guard.leaving !== null}
         onClose={guard.stay}
         onConfirm={guard.leave}
-        title="Do you really want to leave?"
-        body="The schedule has changes that are not saved. Leaving now throws them away."
+        title={
+          planFor
+            ? `Leave the schedule for ${planFor} without saving?`
+            : "Do you really want to leave?"
+        }
+        body={
+          planNamed ? (
+            <>
+              The schedule for {planNamed} has changes that are not saved.
+              Leaving now throws them away.
+            </>
+          ) : (
+            "The schedule has changes that are not saved. Leaving now throws them away."
+          )
+        }
         confirmLabel="Leave without saving"
       />
     </>

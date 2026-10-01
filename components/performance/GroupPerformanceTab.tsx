@@ -160,6 +160,8 @@ export function GroupPerformanceTab({
         id: g.id,
         name: g.name,
         sub: `${g.head} · group`,
+        head: g.head,
+        members: [...new Set(g.members.map((m) => m.trim()).filter(Boolean))],
         go: () => setPickedId(g.id),
       })),
     ...knownPeople(state, meName).map((n) => ({
@@ -240,7 +242,11 @@ export function GroupPerformanceTab({
               "flex shrink-0 items-stretch gap-2 rounded-xl border py-2 pl-3 pr-2 text-left transition-colors",
               isOpen
                 ? "border-blue-primary bg-blue-light"
-                : "border-border-light bg-white hover:bg-surface"
+                : "border-border-light bg-white hover:bg-surface",
+              /* The fan's separator ring wears the card's own colour. */
+              isOpen
+                ? "[--fan-ring:var(--blue-light)]"
+                : "[--fan-ring:var(--white)] hover:[--fan-ring:var(--surface)]"
             )}
           >
             {/* THE GROUP'S FACES, ALWAYS ON THE CHIP (Anir, Aug 15: "there's
@@ -262,6 +268,7 @@ export function GroupPerformanceTab({
               className="flex shrink-0 cursor-pointer items-center rounded-lg transition-opacity hover:opacity-80"
             >
             <PersonFan
+              nested
               people={[
                 ...new Set(
                   [g.head, ...g.members].map((m) => m.trim()).filter(Boolean)
@@ -272,6 +279,7 @@ export function GroupPerformanceTab({
                 context: g.name,
               }))}
               avatarClassName="h-6 w-6 text-[8px]"
+              ringClassName="ring-[color:var(--fan-ring)]"
             />
             </button>
             <button

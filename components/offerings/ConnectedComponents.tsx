@@ -49,6 +49,7 @@ export function ConnectedComponents({
   all,
   versions = {},
   canEdit,
+  offeringName,
 }: {
   offeringId: string;
   connected: FdlComponent[];
@@ -56,6 +57,9 @@ export function ConnectedComponents({
   /** componentId → the release id this offering covers. */
   versions?: Record<string, string | null>;
   canEdit: boolean;
+  /** Named in the disconnect confirmation, so it says which package the
+   *  component leaves. Optional: without it the dialog says "this offering". */
+  offeringName?: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -685,29 +689,49 @@ export function ConnectedComponents({
           says either Disconnect in red or Cancel… like normal"). The floating
           "Disconnect?" chip read as a mistake, not a decision. It is the
           app's shared ConfirmDialog now rather than a hand-built copy, so it
-          asks in the same words, colours and layout as every other remove. */}
-      <ConfirmDialog
-        open={confirmDisconnect !== null}
-        onClose={() => setConfirmDisconnect(null)}
-        onConfirm={() => {
-          const c = connected.find((x) => x.id === confirmDisconnect);
-          if (!c) return;
-          void disconnect(c).then(() => setConfirmDisconnect(null));
-        }}
-        busy={busy}
-        title="Disconnect this component?"
-        body={
-          <>
-            <b>
-              {connected.find((x) => x.id === confirmDisconnect)?.name ??
-                "This component"}
-            </b>{" "}
-            stops being part of this offering.
-          </>
-        }
-        detail="The component itself, its versions and its files are untouched. You can connect it again any time."
-        confirmLabel="Disconnect"
-      />
+          asks in the same words, colours and layout as every other remove.
+          It names the component AND the offering it leaves, with its kind
+          and pinned version, so two similar components never read alike
+          (Anir, Oct 1: "u have to be super super specific"). */}
+      {(() => {
+        const target = connected.find((x) => x.id === confirmDisconnect);
+        const pinned = target
+          ? target.releases.find((r) => r.id === versions[target.id])
+          : undefined;
+        const offering = offeringName?.trim() || "";
+        return (
+          <ConfirmDialog
+            open={confirmDisconnect !== null}
+            onClose={() => setConfirmDisconnect(null)}
+            onConfirm={() => {
+              const c = connected.find((x) => x.id === confirmDisconnect);
+              if (!c) return;
+              void disconnect(c).then(() => setConfirmDisconnect(null));
+            }}
+            busy={busy}
+            title={
+              target
+                ? `Disconnect ${target.name} from ${offering || "this offering"}?`
+                : "Disconnect this component?"
+            }
+            body={
+              <>
+                <b>{target?.name ?? "This component"}</b>
+                {target ? ` (${target.type.toLowerCase()}` : null}
+                {target && pinned?.version ? (
+                  <>
+                    , version <b>{withV(pinned.version)}</b>
+                  </>
+                ) : null}
+                {target ? ")" : null} stops being part of{" "}
+                {offering ? <b>{offering}</b> : "this offering"}.
+              </>
+            }
+            detail="The component itself, with its versions, features and files, stays in FDL Components, and any other offering that includes it keeps it. You can connect it again any time."
+            confirmLabel="Disconnect component"
+          />
+        );
+      })()}
     </section>
 
   );

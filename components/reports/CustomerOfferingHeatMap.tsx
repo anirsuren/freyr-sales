@@ -410,6 +410,8 @@ export function CustomerOfferingHeatMap({
 
   /** Which activity's remove-from-heat-map is awaiting a yes. */
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null);
+  /** Which saved activity is waiting for a yes to become the report row. */
+  const [confirmReport, setConfirmReport] = useState<string | null>(null);
   const [draft, setDraft] =
     useState<CustomerOfferingEngagementVersion | null>(null);
   const [initialDraft, setInitialDraft] =
@@ -910,6 +912,25 @@ export function CustomerOfferingHeatMap({
     selectVersion(versionId);
   }
 
+  /** Ticking a different SAVED row saves straight away and changes what the
+   *  heat map shows for everyone, so it asks first (Anir, Oct 1: "this cant
+   *  happen"). The question sits in the row itself, because this editor can
+   *  be a pane of the full-screen heat map, above the app's dialog layer.
+   *  Unticking, or ticking the unsaved draft, only changes this editor and
+   *  still acts at once. */
+  function requestHeatMapActivity(versionId: string) {
+    const savesNow =
+      reportVersionId !== versionId &&
+      pendingVersionDraft?.id !== versionId &&
+      selectedHistory.some((version) => version.id === versionId);
+    if (savesNow) {
+      setConfirmUnlink(null);
+      setConfirmReport(versionId);
+      return;
+    }
+    void chooseHeatMapActivity(versionId);
+  }
+
   async function chooseHeatMapActivity(versionId: string) {
     const source =
       pendingVersionDraft?.id === versionId
@@ -1292,6 +1313,28 @@ export function CustomerOfferingHeatMap({
                     : version.start_date
                       ? `From ${formatDate(version.start_date)}`
                       : "None";
+                /* What tells this activity apart in a confirmation: its
+                   attempt number, status, value and dates. Only what is
+                   recorded is said. */
+                const rowDates =
+                  version.start_date && version.end_date
+                    ? `${formatDate(version.start_date)} to ${formatDate(version.end_date)}`
+                    : version.start_date
+                      ? `start date ${formatDate(version.start_date)}`
+                      : version.potential_close_date
+                        ? `close date ${formatDate(version.potential_close_date)}`
+                        : null;
+                const rowFacts = [
+                  `attempt ${version.version}`,
+                  versionStatus?.label ?? null,
+                  version.dollar_value ? valueSummary : null,
+                  rowDates,
+                ]
+                  .filter(Boolean)
+                  .join(", ");
+                const reportRow = versionRows.find(
+                  (row) => row.id === reportVersionId && row.id !== version.id
+                );
                 return (
                   <section
                     key={version.id}
@@ -1331,7 +1374,7 @@ export function CustomerOfferingHeatMap({
                         : "overflow-hidden border-t border-border-light bg-white first:border-t-0"
                     )}
                   >
-                    <div className="flex items-center gap-2 px-3 py-2.5">
+                    <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
                       <button
                         type="button"
                         role="checkbox"
@@ -1343,7 +1386,7 @@ export function CustomerOfferingHeatMap({
                             ? "Uncheck temporarily while choosing another report row"
                             : "Report this activity in the heat map"
                         }
-                        onClick={() => chooseHeatMapActivity(version.id)}
+                        onClick={() => requestHeatMapActivity(version.id)}
                         className={cn(
                           "inline-flex w-[104px] shrink-0 items-center justify-start gap-2 self-stretch rounded-lg px-2 text-[10.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary disabled:cursor-default lg:w-[116px]",
                           reported
@@ -1436,28 +1479,61 @@ export function CustomerOfferingHeatMap({
                         </span>
                       </button>
                       {confirmUnlink === version.id ? (
-                          <span className="flex shrink-0 items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => void deleteVersion(version.id)}
-                              className="cursor-pointer rounded-full bg-[color:#DC2626] px-2.5 py-1 text-[11px] font-semibold text-white transition-all hover:opacity-90"
-                            >
-                              Delete
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmUnlink(null)}
-                              className="cursor-pointer rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:bg-border-light"
-                            >
-                              Cancel
-                            </button>
+                          /* THE QUESTION NAMES THE CUSTOMER, THE OFFERING AND
+                             THE ACTIVITY (Anir, Oct 1: "u have to say what
+                             customer what offering so there is absolutely no
+                             confusion"). It sits on its own line under the
+                             row, so the narrow side pane never squeezes it,
+                             and in place, because this editor can float above
+                             the app's dialog layer. */
+                          <span className="order-last flex basis-full flex-wrap items-center gap-2 rounded-lg border border-[rgba(220,38,38,0.25)] bg-[rgba(220,38,38,0.04)] px-2.5 py-2">
+                            <span className="min-w-0 flex-1 text-[12px] leading-snug text-text-primary">
+                              {unsaved ? (
+                                <>
+                                  Discard the unsaved <b>{versionMeta.label}</b> draft for{" "}
+                                  <b>{selectedCustomer?.company_name}</b>&rsquo;s{" "}
+                                  <b>{selectedOffering?.name}</b>? Nothing saved changes.
+                                </>
+                              ) : (
+                                <>
+                                  Delete the <b>{versionMeta.label}</b>
+                                  {rowFacts ? ` (${rowFacts})` : ""} from{" "}
+                                  <b>{selectedCustomer?.company_name}</b>&rsquo;s{" "}
+                                  <b>{selectedOffering?.name}</b>?{" "}
+                                  {!reported
+                                    ? "Nothing else on the account changes."
+                                    : selectedHistory.some((row) => row.id !== version.id)
+                                      ? "It is the row the heat map shows now, so the newest remaining activity takes its place."
+                                      : "It is the only activity, so this cell shows None on the heat map until a new one is added."}
+                                </>
+                              )}
+                            </span>
+                            <span className="flex shrink-0 items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => void deleteVersion(version.id)}
+                                className="cursor-pointer rounded-full bg-[color:#DC2626] px-2.5 py-1 text-[11px] font-semibold text-white transition-all hover:opacity-90"
+                              >
+                                {unsaved ? "Discard draft" : "Delete activity"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmUnlink(null)}
+                                className="cursor-pointer rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:bg-border-light"
+                              >
+                                Cancel
+                              </button>
+                            </span>
                           </span>
                         ) : (
                           <button
                             type="button"
                             title="Delete this activity"
                             aria-label="Delete this activity"
-                            onClick={() => setConfirmUnlink(version.id)}
+                            onClick={() => {
+                              setConfirmReport(null);
+                              setConfirmUnlink(version.id);
+                            }}
                             className="text-[color:var(--status-red)] flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
                           >
                             <Trash2 size={14} strokeWidth={2} />
@@ -1479,6 +1555,49 @@ export function CustomerOfferingHeatMap({
                           )}
                         />
                       </button>
+                      {/* Switching the report row saves at once and changes
+                          this cell for everyone, so it asks here first and
+                          names both activities. Blue: nothing is deleted. */}
+                      {confirmReport === version.id && (
+                        <span className="order-last flex basis-full flex-wrap items-center gap-2 rounded-lg border border-blue-subtle bg-blue-light/50 px-2.5 py-2">
+                          <span className="min-w-0 flex-1 text-[12px] leading-snug text-text-primary">
+                            Show the <b>{versionMeta.label}</b>
+                            {rowFacts ? ` (${rowFacts})` : ""} for{" "}
+                            <b>{selectedCustomer?.company_name}</b>&rsquo;s{" "}
+                            <b>{selectedOffering?.name}</b> on the heat map
+                            {reportRow ? (
+                              <>
+                                , in place of the{" "}
+                                <b>
+                                  {CUSTOMER_OFFERING_ACTIVITIES[reportRow.activity]?.label ??
+                                    "current row"}
+                                </b>{" "}
+                                (attempt {reportRow.version})
+                              </>
+                            ) : null}
+                            ? Nothing is deleted.
+                          </span>
+                          <span className="flex shrink-0 items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmReport(null);
+                                void chooseHeatMapActivity(version.id);
+                              }}
+                              className="cursor-pointer rounded-full bg-blue-primary px-2.5 py-1 text-[11px] font-semibold text-white transition-all hover:opacity-90"
+                            >
+                              Report {versionMeta.label}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmReport(null)}
+                              className="cursor-pointer rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:bg-border-light"
+                            >
+                              Cancel
+                            </button>
+                          </span>
+                        </span>
+                      )}
                     </div>
                     {expanded && (
                       /* CLEARLY PART OF THE ROW ABOVE IT (Anir, Aug 13: "it's
@@ -2101,7 +2220,10 @@ export function CustomerOfferingHeatMap({
                             )}
                             title={customer.company_name}
                           >
-                            {customer.company_name}
+                            {/* The name is a door too, not only the logo. */}
+                            <EntityLink nested href={customerHref(customer.id, customer.company_name)}>
+                              {customer.company_name}
+                            </EntityLink>
                           </p>
                           {/* Industry is a category, and categories are
                               colour + icon chips everywhere (standing rule). */}

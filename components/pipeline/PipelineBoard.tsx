@@ -29,6 +29,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ServiceTag } from "@/components/ui/OfferingIcon";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { Term } from "@/components/ui/Tooltip";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
@@ -298,6 +299,9 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStage, setBulkStage] = useState<Stage>("Qualified");
+  /* Moving many deals at once, Closed Lost included, asks first and names
+     them (Anir, Oct 1: "this cant happen"). */
+  const [confirmMove, setConfirmMove] = useState(false);
 
   // manual add
   const [showAdd, setShowAdd] = useState(false);
@@ -447,8 +451,9 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
     setShowAdd(false);
   }
 
+  // The shared 40px box: white, light border, the same as the pickers beside it.
   const inputCls =
-    "w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary";
+    "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] font-normal text-text-primary outline-none transition focus:border-blue-primary focus:shadow-input-focus";
 
   // One shape for every toolbar control: same height, same radius, same border
   // and hover. The strip used to mix py-2 / py-1.5 / h-10 pills across five
@@ -675,7 +680,7 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
               onChange={(v) => setBulkStage(v as Stage)}
               options={STAGE_OPTIONS}
             />
-            <Button onClick={applyBulkMove} className="h-10 rounded-lg px-4 text-[13px]">
+            <Button onClick={() => setConfirmMove(true)} className="h-10 rounded-lg px-4 text-[13px]">
               Move
             </Button>
             <button
@@ -688,6 +693,74 @@ export function PipelineBoard({ deals: initial }: { deals: Deal[] }) {
           </div>
         </div>
       )}
+
+      {/* Names the deals, their value and where they sit today. Red only
+          for Closed Lost, which takes them out of the open pipeline. */}
+      {(() => {
+        const picked = deals.filter((d) => selected.has(d.sessionId));
+        const moving = picked.filter((d) => d.stage !== bulkStage);
+        const already = picked.length - moving.length;
+        const names = moving.map((d) => d.company);
+        const shown = names.slice(0, 3);
+        const rest = names.length - shown.length;
+        const list =
+          rest > 0
+            ? `${shown.join(", ")} and ${rest} more`
+            : shown.length > 1
+              ? `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`
+              : shown[0] || "";
+        const total = moving.reduce((sum, d) => sum + (d.value || 0), 0);
+        const fromCounts = new Map<string, number>();
+        for (const d of moving) fromCounts.set(d.stage, (fromCounts.get(d.stage) || 0) + 1);
+        const fromText = [...fromCounts.entries()]
+          .map(([stage, count]) => (moving.length === 1 ? stage : `${stage} (${count})`))
+          .join(", ");
+        const lost = bulkStage === "Closed Lost";
+        return (
+          <ConfirmDialog
+            open={confirmMove}
+            onClose={() => setConfirmMove(false)}
+            onConfirm={() => {
+              setConfirmMove(false);
+              applyBulkMove();
+            }}
+            title={
+              moving.length === 1
+                ? `Move ${moving[0].company} to ${bulkStage}?`
+                : `Move ${moving.length} deals to ${bulkStage}?`
+            }
+            body={
+              moving.length === 0 ? (
+                <>
+                  {picked.length === 1 ? "It is" : "They are"} already in <b>{bulkStage}</b>, so
+                  nothing moves.
+                </>
+              ) : (
+                <>
+                  <b>{list}</b>
+                  {total > 0 ? ` (${formatMoney(total)} in all)` : ""}{" "}
+                  {moving.length === 1 ? "moves" : "move"} to <b>{bulkStage}</b>.
+                </>
+              )
+            }
+            detail={
+              moving.length === 0
+                ? undefined
+                : `${moving.length === 1 ? "Stage today" : "Stages today"}: ${fromText}.${
+                    lost ? " Lost deals drop out of the open pipeline total." : ""
+                  }${already > 0 ? ` ${already} already in ${bulkStage} stay as they are.` : ""}`
+            }
+            confirmLabel={
+              moving.length === 1
+                ? "Move deal"
+                : moving.length > 1
+                  ? `Move ${moving.length} deals`
+                  : "Move deals"
+            }
+            tone={lost ? "destructive" : "primary"}
+          />
+        );
+      })()}
 
       <div
         ref={boardRef}

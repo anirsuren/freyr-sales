@@ -91,6 +91,8 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { tint } from "@/lib/tint";
 import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
+import { MaterialPeek } from "@/components/offerings/MaterialPeek";
+import { formatFromFilename } from "@/lib/offeringMaterials";
 
 /**
  * ONE COMPONENT, THE WHOLE STORY — Suren's model (Aug 8, via Anir): "first
@@ -102,6 +104,11 @@ import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
 
 const FIELD =
   "w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary";
+
+/* One-line boxes are 40px, the same as the date picker and every dropdown
+   (Anir, Oct 1). FIELD keeps its padding for the description box. */
+const LINE_FIELD =
+  "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary";
 
 const VERSION_PANEL_DEFAULT = 330;
 const VERSION_PANEL_MIN = 230;
@@ -128,6 +135,16 @@ function VersionAttachmentRow({
 }) {
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = file.kind === "image" && Boolean(file.url) && !imageFailed;
+  /* RESTING ON THE NAME SHOWS THE FILE, the Sales Materials hover. This page
+     previews an image or a PDF straight from the file's own route (the viewer
+     below draws exactly that), so the card frames the same route. A Word file
+     or a sheet has no in-app preview here, so its name stays plain. */
+  const peekable = Boolean(file.url) && (file.kind === "image" || /\.pdf$/i.test(file.name));
+  const name = (
+    <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+      {file.name}
+    </span>
+  );
 
   return (
     <div className="flex items-center gap-1">
@@ -151,9 +168,21 @@ function VersionAttachmentRow({
           )}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[12.5px] font-semibold text-text-primary">
-            {file.name}
-          </span>
+          {peekable ? (
+            <MaterialPeek
+              material={{
+                id: file.id,
+                kind: formatFromFilename(file.name),
+                label: file.name,
+                url: file.url,
+              }}
+              previewUrl={file.url}
+            >
+              {name}
+            </MaterialPeek>
+          ) : (
+            name
+          )}
           <span className="block truncate text-[10.5px] text-text-tertiary">
             Attached to {feature}
           </span>
@@ -777,6 +806,13 @@ export function FdlComponentDetail({
    * completely normal and is simply a lie.
    */
   const [confirmCurrent, setConfirmCurrent] = useState<string | null>(null);
+  /* Released and Expected flip asks first too (Anir, Oct 1: nothing that
+     changes data acts on one click). Moving a current version back to
+     Expected also takes away its current mark. */
+  const [confirmStatus, setConfirmStatus] = useState<{
+    id: string;
+    to: "released" | "next";
+  } | null>(null);
   async function removeRelease(id: string) {
     setConfirmReleaseDelete(null);
     await patch(
@@ -1559,7 +1595,12 @@ export function FdlComponentDetail({
                       {canEdit && (
                         <button
                           type="button"
-                          onClick={() => void setReleaseStatus(release.id, shipped ? "next" : "released")}
+                          onClick={() =>
+                            setConfirmStatus({
+                              id: release.id,
+                              to: shipped ? "next" : "released",
+                            })
+                          }
                           disabled={busy}
                           title={
                             shipped
@@ -1619,8 +1660,33 @@ export function FdlComponentDetail({
                               setConfirmReleaseDelete(null);
                               void removeRelease(release.id);
                             }}
-                            title="Remove this version?"
-                            body={`${withV(release.version)} and its feature list come off this component.`}
+                            title={`Remove ${withV(release.version)} from ${component.name}?`}
+                            body={
+                              <>
+                                <b>{withV(release.version)}</b> (
+                                {shipped ? "released" : "expected"}
+                                {release.date ? ` ${formatDate(release.date)}` : ""}
+                                {release.current ? ", the current version" : ""}) comes
+                                off <b>{component.name}</b>.
+                              </>
+                            }
+                            /* The server keeps the features and only drops their
+                               tick for this version; customer records are not
+                               touched by this save. */
+                            detail={[
+                              versionFeatures.length > 0
+                                ? `Its ${versionFeatures.length} ${
+                                    versionFeatures.length === 1 ? "feature stays" : "features stay"
+                                  } on the component, just without this version.`
+                                : "No feature is ticked for this version.",
+                              versionCustomers.length > 0
+                                ? `${versionCustomers.length} ${
+                                    versionCustomers.length === 1 ? "customer is" : "customers are"
+                                  } recorded on it.`
+                                : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
                             confirmLabel="Remove version"
                           />
                         </>
@@ -1632,18 +1698,62 @@ export function FdlComponentDetail({
                           setConfirmCurrent(null);
                           void markCurrent(release.id);
                         }}
-                        title="Make this the current version?"
+                        title={`Make ${withV(release.version)} the current version of ${component.name}?`}
                         body={
                           <>
-                            Sellers will quote <b>{withV(release.version)}</b> as
-                            what customers are on today
-                            {current ? ` instead of ${withV(current)}.` : "."}
+                            Sellers will quote <b>{withV(release.version)}</b> of{" "}
+                            <b>{component.name}</b> as what customers are on today
+                            {current && current !== release.version
+                              ? ` instead of ${withV(current)}.`
+                              : "."}
                           </>
                         }
                         detail="It changes the roadmap, so it is recorded and everyone following this component hears about it."
-                        confirmLabel="Yes, make it current"
+                        confirmLabel={`Make ${withV(release.version)} current`}
                         /* Nothing is destroyed here, so nothing is red
                            (Anir, Aug 21: "why is that a red button?"). */
+                        tone="primary"
+                      />
+                      <ConfirmDialog
+                        open={confirmStatus?.id === release.id}
+                        onClose={() => setConfirmStatus(null)}
+                        onConfirm={() => {
+                          const to = confirmStatus?.to;
+                          setConfirmStatus(null);
+                          if (to) void setReleaseStatus(release.id, to);
+                        }}
+                        title={
+                          confirmStatus?.to === "next"
+                            ? `Move ${withV(release.version)} of ${component.name} back to Expected?`
+                            : `Mark ${withV(release.version)} of ${component.name} as released?`
+                        }
+                        body={
+                          <>
+                            <b>{withV(release.version)}</b> of <b>{component.name}</b>{" "}
+                            {confirmStatus?.to === "next"
+                              ? "goes from Released back to Expected"
+                              : "goes from Expected to Released"}
+                            {release.date ? (
+                              <>
+                                , dated <b>{formatDate(release.date)}</b>
+                              </>
+                            ) : null}
+                            .
+                          </>
+                        }
+                        detail={
+                          confirmStatus?.to === "next"
+                            ? release.current
+                              ? "It is the current version today, so it stops being the current version."
+                              : undefined
+                            : "It does not become the current version until someone marks it current."
+                        }
+                        confirmLabel={
+                          confirmStatus?.to === "next"
+                            ? `Mark ${withV(release.version)} expected`
+                            : `Mark ${withV(release.version)} released`
+                        }
+                        /* A status change, nothing destroyed: blue. */
                         tone="primary"
                       />
                     </span>
@@ -1950,14 +2060,36 @@ export function FdlComponentDetail({
       <ConfirmDialog
         open={confirmDeleteComponent}
         onClose={() => setConfirmDeleteComponent(false)}
-        title="Delete this component?"
+        title={`Delete ${component.name}?`}
         body={
           <>
-            <strong>{component.name}</strong> goes for good, with its versions
-            and its features.
+            <strong>{component.name}</strong> ({component.type}) goes for good,
+            with its {releases.length}{" "}
+            {releases.length === 1 ? "version" : "versions"} and its{" "}
+            {component.features.length}{" "}
+            {component.features.length === 1 ? "feature" : "features"}.
           </>
         }
-        detail="It also comes off any offering it is part of. Those offerings stay; they simply stop listing this piece."
+        detail={(() => {
+          const names = homes.map((home) => home.name).filter(Boolean);
+          const shown =
+            names.length > 3
+              ? `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`
+              : names.length > 1
+                ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+                : names[0] ?? "";
+          const offerings = names.length
+            ? `It also comes off ${shown}. ${
+                names.length === 1 ? "That offering stays" : "Those offerings stay"
+              }; ${names.length === 1 ? "it simply stops" : "they simply stop"} listing this piece.`
+            : "It is not part of any offering.";
+          const running = connected.length
+            ? ` ${connected.length} ${
+                connected.length === 1 ? "customer is" : "customers are"
+              } recorded as running it.`
+            : "";
+          return `${offerings}${running}`;
+        })()}
         confirmLabel="Delete component"
         busy={deletingComponent}
         onConfirm={async () => {
@@ -2113,9 +2245,28 @@ export function FdlComponentDetail({
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-blue-light text-blue-primary">
                               <FileText size={14} strokeWidth={2} />
                             </span>
-                            <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-text-primary group-hover/a:text-blue-primary">
-                              {file.name}
-                            </span>
+                            {/* A PDF's name previews it on rest, from the same
+                                route the viewer opens. An image already shows
+                                itself above; other files have no preview here. */}
+                            {file.url && /\.pdf$/i.test(file.name) ? (
+                              <MaterialPeek
+                                material={{
+                                  id: file.id,
+                                  kind: formatFromFilename(file.name),
+                                  label: file.name,
+                                  url: file.url,
+                                }}
+                                previewUrl={file.url}
+                              >
+                                <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-text-primary group-hover/a:text-blue-primary">
+                                  {file.name}
+                                </span>
+                              </MaterialPeek>
+                            ) : (
+                              <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-text-primary group-hover/a:text-blue-primary">
+                                {file.name}
+                              </span>
+                            )}
                           </span>
                         )}
                       </button>
@@ -2329,7 +2480,7 @@ export function FdlComponentDetail({
                 opens (product owner via Anir, Aug 21: "there should be an
                 option to subscribe for those notifications if there is any
                 change"). Left of Add version: reading is the common act. */}
-            <RoadmapFollowButton kind="component" id={component.id} compact />
+            <RoadmapFollowButton kind="component" id={component.id} name={component.name} compact />
             {canEdit && (
               <Button onClick={() => setAddingVersion(true)}>
                 <Plus size={14} strokeWidth={2.2} /> Add version
@@ -2964,8 +3115,37 @@ export function FdlComponentDetail({
                               setConfirmFeatureDelete(null);
                               void removeFeature(feature.id);
                             }}
-                            title="Remove this feature?"
-                            body={`"${feature.name}" comes off this component's feature list.`}
+                            title={`Remove the ${feature.name} feature from ${component.name}?`}
+                            body={
+                              <>
+                                <b>
+                                  {feature.fid ? `${feature.fid} ` : ""}
+                                  {feature.name}
+                                </b>{" "}
+                                comes off <b>{component.name}</b>&rsquo;s feature list
+                                {(feature.attachments ?? []).length > 0
+                                  ? `, with its ${(feature.attachments ?? []).length} attached ${
+                                      (feature.attachments ?? []).length === 1 ? "file" : "files"
+                                    }`
+                                  : ""}
+                                .
+                              </>
+                            }
+                            detail={(() => {
+                              const inThem = releases.filter((r) =>
+                                feature.versionIds.includes(r.id)
+                              );
+                              if (inThem.length === 0)
+                                return "It is not ticked in any version.";
+                              const names = inThem.map((r) => withV(r.version));
+                              const shown =
+                                names.length > 4
+                                  ? `${names.slice(0, 4).join(", ")} and ${names.length - 4} more`
+                                  : names.join(", ");
+                              return `It is ticked in ${shown}. ${
+                                inThem.length === 1 ? "That version stays" : "Those versions stay"
+                              }.`;
+                            })()}
                             confirmLabel="Remove feature"
                           />
                         </span>
@@ -3362,20 +3542,53 @@ export function FdlComponentDetail({
         )}
       </section>
 
-      <ConfirmDialog
-        open={confirmRemoveCustomer !== null}
-        onClose={() => setConfirmRemoveCustomer(null)}
-        onConfirm={() => {
-          if (confirmRemoveCustomer) void disconnectCustomer(confirmRemoveCustomer);
-        }}
-        title={`Remove ${
-          customers.find((customer) => customer.id === confirmRemoveCustomer)?.name ||
-          "customer"
-        }?`}
-        body={`This removes the customer from ${component.name}. The customer account stays in Freyr and can be added back later.`}
-        confirmLabel="Remove customer"
-        busy={busy}
-      />
+      {(() => {
+        /* Name the account, the component and the version it is recorded
+           on, so two customers on one component cannot be confused. The
+           route drops only this component's entry on the account. */
+        const target = customers.find(
+          (customer) => customer.id === confirmRemoveCustomer
+        );
+        const onRelease = target?.releaseId
+          ? component.releases.find((r) => r.id === target.releaseId)
+          : undefined;
+        const nextRelease = target?.nextReleaseId
+          ? component.releases.find((r) => r.id === target.nextReleaseId)
+          : undefined;
+        return (
+          <ConfirmDialog
+            open={confirmRemoveCustomer !== null}
+            onClose={() => setConfirmRemoveCustomer(null)}
+            onConfirm={() => {
+              if (confirmRemoveCustomer) void disconnectCustomer(confirmRemoveCustomer);
+            }}
+            title={`Remove ${target?.name || "this customer"} from ${component.name}?`}
+            body={
+              <>
+                <b>{target?.name || "This customer"}</b> comes off{" "}
+                <b>{component.name}</b>
+                {onRelease ? (
+                  <>
+                    , with its recorded version <b>{withV(onRelease.version)}</b>
+                    {nextRelease ? (
+                      <>
+                        {" "}and its planned move to <b>{withV(nextRelease.version)}</b>
+                      </>
+                    ) : null}
+                  </>
+                ) : null}
+                .
+              </>
+            }
+            detail={`Only this connection goes. The ${
+              target?.name || "customer"
+            } account and its other components stay in Freyr, and it can be added back later.`}
+            subject={target ? { name: target.name, kind: "company" } : null}
+            confirmLabel="Remove customer"
+            busy={busy}
+          />
+        );
+      })()}
 
       {/* One question for every file remove on this page: the version panel
           and the Files count both ask here. */}
@@ -3389,16 +3602,33 @@ export function FdlComponentDetail({
               confirmFileRemoval.file.id
             );
         }}
-        title="Remove this file?"
-        body={
-          <>
-            <b>{confirmFileRemoval?.file.name ?? "This file"}</b> comes off{" "}
-            {component.features.find(
-              (feature) => feature.id === confirmFileRemoval?.featureId
-            )?.name ?? "its feature"}
-            .
-          </>
+        title={
+          confirmFileRemoval
+            ? `Remove ${confirmFileRemoval.file.name} from ${
+                component.features.find(
+                  (feature) => feature.id === confirmFileRemoval.featureId
+                )?.name ?? "its feature"
+              }?`
+            : "Remove this file?"
         }
+        body={(() => {
+          const featureName = component.features.find(
+            (feature) => feature.id === confirmFileRemoval?.featureId
+          )?.name;
+          return (
+            <>
+              <b>{confirmFileRemoval?.file.name ?? "This file"}</b> comes off{" "}
+              {featureName ? (
+                <>
+                  the <b>{featureName}</b> feature
+                </>
+              ) : (
+                "its feature"
+              )}{" "}
+              of <b>{component.name}</b>.
+            </>
+          );
+        })()}
         detail="The feature stays as it is. To bring the file back, upload it again."
         confirmLabel="Remove file"
         busy={busy}
@@ -3655,13 +3885,18 @@ export function FdlComponentDetail({
           }}
           className="space-y-4"
         >
-          <input
-            autoFocus
-            value={nameDraft}
-            onChange={(event) => setNameDraft(event.target.value)}
-            placeholder="Component name"
-            className={FIELD}
-          />
+          <label className="block">
+            <span className="mb-1 block text-[12px] font-medium text-text-primary">
+              Component name<RequiredMark />
+            </span>
+            <input
+              autoFocus
+              value={nameDraft}
+              onChange={(event) => setNameDraft(event.target.value)}
+              placeholder="Component name"
+              className={LINE_FIELD}
+            />
+          </label>
           <div className="flex justify-end">
             <Button type="submit" disabled={!nameDraft.trim()} loading={busy}>
               <Pencil size={14} strokeWidth={2} /> Save name
@@ -3720,7 +3955,7 @@ export function FdlComponentDetail({
                     setVersion(event.target.value.replace(/^v+/i, ""))
                   }
                   placeholder="2.1"
-                  className={FIELD}
+                  className={LINE_FIELD}
                   style={{ paddingLeft: 26 }}
                 />
               </div>
@@ -3909,7 +4144,7 @@ export function FdlComponentDetail({
               value={featName}
               onChange={(event) => setFeatName(event.target.value)}
               placeholder="Bulk import from Excel"
-              className={FIELD}
+              className={LINE_FIELD}
             />
           </div>
           <div>
@@ -4321,6 +4556,7 @@ function ReleaseDateChip({
           <div>
             <p className="mb-1.5 text-[12px] font-semibold text-text-primary">
               When is it expected?
+              <OptionalMark />
             </p>
             <DateField
               value={draft}
@@ -4351,16 +4587,15 @@ function ReleaseDateChip({
           <div>
             <p className="mb-1.5 text-[12px] font-semibold text-text-primary">
               Why is it moving?
-              {!needsReason && (
-                <span className="ml-1 font-normal text-text-tertiary">optional</span>
-              )}
+              {/* Required by the same test that keeps Save off. */}
+              {needsReason ? <RequiredMark /> : <OptionalMark />}
             </p>
             <input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               maxLength={300}
               placeholder="e.g. dev capacity slipped a sprint"
-              className="h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
+              className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
             />
             <p className="mt-1.5 text-[11.5px] leading-snug text-text-secondary">
               {needsReason && !reason.trim()

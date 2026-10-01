@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DocumentPeek } from "@/components/ui/DocumentPeek";
+import { DocumentNamePeek, DocumentPeek } from "@/components/ui/DocumentPeek";
 import { DocumentDrop, type StagedDoc } from "@/components/ui/DocumentDrop";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import {
@@ -26,6 +26,7 @@ import {
 import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { DateField } from "@/components/ui/DateField";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -117,6 +118,11 @@ const CURRENCY_OPTIONS: ColorOption[] = [
 const FIELD =
   "w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary";
 
+/* One-line boxes are 40px, level with the dropdowns beside them (Anir,
+   Oct 1). FIELD keeps its padding for the comments box. */
+const LINE_FIELD =
+  "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary";
+
 function money(value: number, currency: CustomerOfferingCurrency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -135,6 +141,27 @@ function planned(version: CustomerOfferingEngagementVersion): boolean {
   const start = version.status_dates?.initiated || version.start_date;
   if (!start) return false;
   return start > todayISO();
+}
+
+/** What tells one logged activity from another in a confirmation: its
+ *  status, when it starts, its value and the files on it. Only facts that
+ *  are recorded; a missing one is left out rather than guessed. */
+function activityFacts(version: CustomerOfferingEngagementVersion): string {
+  const facts: string[] = [];
+  const status = planned(version)
+    ? "Planned"
+    : CUSTOMER_OFFERING_STATUSES[version.status]?.label;
+  if (status) facts.push(status);
+  const started = version.start_date || version.status_dates?.initiated || null;
+  if (started) {
+    facts.push(`${planned(version) ? "starts" : "started"} ${formatDate(started)}`);
+  }
+  if (version.dollar_value > 0) {
+    facts.push(money(version.dollar_value, version.currency));
+  }
+  const files = version.documents?.length ?? 0;
+  if (files > 0) facts.push(`${files} ${files === 1 ? "file" : "files"} attached`);
+  return facts.join(", ");
 }
 
 export function ActivityChip({ activity }: { activity: CustomerOfferingActivity }) {
@@ -179,9 +206,12 @@ export function OfferingActivities({
   versions,
   onSave,
   customerId,
+  customerName,
+  offeringName,
   startAdding = false,
   onStartedAdding,
   onEditorClosed,
+  canEdit = false,
 }: {
   versions: CustomerOfferingEngagementVersion[];
   onSave: (
@@ -191,12 +221,23 @@ export function OfferingActivities({
     touched?: CustomerOfferingEngagementVersion,
     /** Its status before this save (null = brand new), so the hook can tell
      *  whether the master's counting threshold was newly reached. */
-    prevStatus?: string | null
+    prevStatus?: string | null,
+    /** What the toast says once it lands, when the change has its own words
+     *  ("Proposal.pdf is no longer on the Pilot activity."). */
+    done?: string
   ) => void;
+  /** May this person change this account (PATCH /api/customers/[id]'s own
+   *  answer, resolved on the server). Gates the hover X on a document. */
+  canEdit?: boolean;
 
   /** The account these activities belong to — the document upload and the
    *  download links are namespaced by it. */
   customerId: string;
+  /** The account and offering by name, so a confirmation says exactly which
+   *  customer and which offering it touches. Optional: without them the
+   *  dialogs fall back to "this offering". */
+  customerName?: string;
+  offeringName?: string;
   /** The customer tab's picker chose THIS offering: open the add-activity
    *  editor as soon as the group renders, once. */
   startAdding?: boolean;
@@ -229,6 +270,20 @@ export function OfferingActivities({
   const [endDate, setEndDate] = useState("");
   const [currency, setCurrency] = useState<CustomerOfferingCurrency>("USD");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /** The document whose hover X was pressed, waiting on its confirm. */
+  const [removingDoc, setRemovingDoc] = useState<{
+    versionId: string;
+    id: string;
+    name: string;
+  } | null>(null);
+  /* Make current changes what the heat map shows for this customer and
+     offering, so it asks first like every other change (Anir, Oct 1). */
+  const [confirmCurrent, setConfirmCurrent] = useState<string | null>(null);
+  /* "Cortexa Biopharma's Freya.Register", or as much of it as is known. */
+  const where =
+    customerName && offeringName
+      ? `${customerName}'s ${offeringName}`
+      : offeringName || customerName || "this offering";
   /* Files on the activity being edited (Anir, Sep 4: "there should be a
      column for documents"). Existing ones arrive as already-landed rows so
      the editor lists them; newly staged ones join on save. */
@@ -347,6 +402,27 @@ export function OfferingActivities({
     // Never leave the customer without a current activity while any remain.
     if (next.length && !next.some((v) => v.linked)) next[0].linked = true;
     onSave(next);
+  }
+
+  /** TAKE ONE FILE OFF THE ACTIVITY, from the table (Anir, Oct 1: "when i
+   *  hover i should have a delete button"). The same save the editor makes
+   *  when a file is dropped from it: the activity keeps everything else. */
+  function removeDocument() {
+    const target = removingDoc;
+    setRemovingDoc(null);
+    if (!target) return;
+    const version = versions.find((v) => v.id === target.versionId);
+    const kind = version ? CUSTOMER_OFFERING_ACTIVITIES[version.activity]?.label : null;
+    onSave(
+      versions.map((v) =>
+        v.id === target.versionId
+          ? { ...v, documents: (v.documents ?? []).filter((d) => d.id !== target.id) }
+          : v
+      ),
+      undefined,
+      undefined,
+      `${target.name} is no longer on the ${kind ? `${kind} ` : ""}activity.`
+    );
   }
 
   return (
@@ -543,16 +619,35 @@ export function OfferingActivities({
                               _blank link, so the file left the app and landed
                               in whatever the browser does with a download. */}
                           {(version.documents ?? []).map((d) => (
+                            <span key={d.id} className="group/unlink flex min-w-0 items-center">
                             <button
-                              key={d.id}
                               type="button"
                               onClick={() => setViewingDoc({ id: d.id, name: d.name, fileName: d.fileName ?? null })}
                               className="inline-flex min-w-0 items-center gap-1 text-left text-[12px] font-medium text-blue-primary hover:underline"
                               title={`Open ${d.name}`}
                             >
                               <FileText size={12} strokeWidth={2} className="shrink-0" />
-                              <span className="truncate">{d.name}</span>
+                              {/* Resting on the name shows an uploaded PDF or
+                                  image; an Office file keeps the click. */}
+                              <DocumentNamePeek
+                                name={d.name}
+                                file={d.docsPath ? d.fileName || d.docsPath : null}
+                                viewUrl={`/api/customers/download?customerId=${encodeURIComponent(
+                                  customerId
+                                )}&docId=${encodeURIComponent(d.id)}&view=1`}
+                              >
+                                <span className="truncate">{d.name}</span>
+                              </DocumentNamePeek>
                             </button>
+                            {canEdit && (
+                              <UnlinkX
+                                label={`Remove ${d.name} from this activity`}
+                                onClick={() =>
+                                  setRemovingDoc({ versionId: version.id, id: d.id, name: d.name })
+                                }
+                              />
+                            )}
+                            </span>
                           ))}
                         </span>
                       ) : (
@@ -571,7 +666,7 @@ export function OfferingActivities({
                       ) : (
                         <button
                           type="button"
-                          onClick={() => makeCurrent(version.id)}
+                          onClick={() => setConfirmCurrent(version.id)}
                           title="Show this activity in the heat map"
                           // whitespace-nowrap: "Make current" was breaking
                           // across two lines and making its row taller than the
@@ -601,12 +696,53 @@ export function OfferingActivities({
                         >
                           <Trash2 size={13} strokeWidth={2} />
                         </button>
+                        {/* Names the customer, the offering and the
+                            activity itself, not an attempt number nobody
+                            sees in this table (Anir, Oct 1). */}
                         <ConfirmDialog
                           open={confirmDelete === version.id}
                           onClose={() => setConfirmDelete(null)}
                           onConfirm={() => remove(version.id)}
-                          title="Remove this activity?"
-                          body={`Attempt ${version.version} comes off this offering's activity log. Nothing else on this account changes.`}
+                          title={(() => {
+                            const kind = CUSTOMER_OFFERING_ACTIVITIES[version.activity]?.label;
+                            return kind
+                              ? `Remove the ${kind} activity from ${where}?`
+                              : `Remove this activity from ${where}?`;
+                          })()}
+                          body={(() => {
+                            const kind = CUSTOMER_OFFERING_ACTIVITIES[version.activity]?.label;
+                            const facts = activityFacts(version);
+                            const said = (version.activity_description || "").trim();
+                            const details =
+                              said.length > 90 ? `${said.slice(0, 87).trimEnd()}…` : said;
+                            return (
+                              <>
+                                The {kind ? <b>{kind}</b> : "activity"}
+                                {facts ? ` (${facts})` : ""}
+                                {details ? <>, &ldquo;{details}&rdquo;,</> : null} comes off
+                                the activity log for{" "}
+                                {offeringName ? <b>{offeringName}</b> : "this offering"}
+                                {customerName ? (
+                                  <>
+                                    {" "}at <b>{customerName}</b>
+                                  </>
+                                ) : null}
+                                .
+                              </>
+                            );
+                          })()}
+                          detail={(() => {
+                            const others = versions.length - 1;
+                            if (version.linked && others > 0) {
+                              return `It is the activity the heat map shows now, so ${
+                                others === 1 ? "the other one" : `one of the other ${others}`
+                              } takes its place. Nothing else on the account changes.`;
+                            }
+                            if (version.linked) {
+                              return "It is the only activity here, so the heat map shows nothing for this offering at this account until a new one is logged.";
+                            }
+                            return "The current activity stays the one the heat map shows. Nothing else on the account changes.";
+                          })()}
                           confirmLabel="Remove activity"
                         />
                       </span>
@@ -683,7 +819,7 @@ export function OfferingActivities({
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="Pilot on two markets, run by the RA team"
-              className={FIELD}
+              className={LINE_FIELD}
             />
           </div>
           <div>
@@ -810,7 +946,7 @@ export function OfferingActivities({
                 }
                 inputMode="numeric"
                 placeholder="250,000"
-                className={`${FIELD} tnum`}
+                className={`${LINE_FIELD} tnum`}
               />
             </div>
           </div>
@@ -841,6 +977,90 @@ export function OfferingActivities({
           </div>
         </form>
       </Modal>
+
+      {/* MAKE CURRENT ASKS FIRST. It changes what the heat map shows for
+          this customer and offering for everyone, so it names both the
+          activity coming in and the one it replaces. Blue: nothing is
+          deleted. */}
+      {(() => {
+        const next = confirmCurrent
+          ? versions.find((v) => v.id === confirmCurrent)
+          : undefined;
+        const now = versions.find((v) => v.linked && v.id !== confirmCurrent);
+        const nextKind = next ? CUSTOMER_OFFERING_ACTIVITIES[next.activity]?.label : undefined;
+        const nowKind = now ? CUSTOMER_OFFERING_ACTIVITIES[now.activity]?.label : undefined;
+        const nextFacts = next ? activityFacts(next) : "";
+        const nowFacts = now ? activityFacts(now) : "";
+        return (
+          <ConfirmDialog
+            open={confirmCurrent !== null}
+            onClose={() => setConfirmCurrent(null)}
+            onConfirm={() => {
+              const id = confirmCurrent;
+              setConfirmCurrent(null);
+              if (id) makeCurrent(id);
+            }}
+            title={
+              nextKind
+                ? `Make the ${nextKind} the current activity for ${where}?`
+                : `Make this the current activity for ${where}?`
+            }
+            body={
+              <>
+                The {nextKind ? <b>{nextKind}</b> : "activity"}
+                {nextFacts ? ` (${nextFacts})` : ""} becomes what the heat map
+                shows for {offeringName ? <b>{offeringName}</b> : "this offering"}
+                {customerName ? (
+                  <>
+                    {" "}at <b>{customerName}</b>
+                  </>
+                ) : null}
+                {now ? (
+                  <>
+                    , in place of the {nowKind ? <b>{nowKind}</b> : "current activity"}
+                    {nowFacts ? ` (${nowFacts})` : ""}
+                  </>
+                ) : null}
+                .
+              </>
+            }
+            detail={
+              now
+                ? "Nothing is deleted. Both stay in the activity log."
+                : "Nothing is deleted."
+            }
+            confirmLabel={nextKind ? `Make ${nextKind} current` : "Make current"}
+            tone="primary"
+          />
+        );
+      })()}
+
+      {/* The document's hover X asks here, naming the file and the activity. */}
+      <ConfirmDialog
+        open={!!removingDoc}
+        onClose={() => setRemovingDoc(null)}
+        onConfirm={removeDocument}
+        title={`Remove ${removingDoc?.name ?? "this document"} from this activity?`}
+        body={(() => {
+          const version = versions.find((v) => v.id === removingDoc?.versionId);
+          const kind = version ? CUSTOMER_OFFERING_ACTIVITIES[version.activity]?.label : null;
+          return (
+            <>
+              <strong>{removingDoc?.name}</strong> comes off the{" "}
+              {kind ? <strong>{kind}</strong> : null} activity
+              {where ? (
+                <>
+                  {" "}on <strong>{where}</strong>
+                </>
+              ) : null}
+              .
+            </>
+          );
+        })()}
+        detail="The activity and its other files stay. You can attach it again from the activity's editor."
+        subject={removingDoc ? { name: removingDoc.name, kind: "document" } : null}
+        confirmLabel="Remove document"
+      />
 
       {/* The sales-material viewer, over the activity list it was opened
           from. Both endpoints resolve the file through the ACCOUNT record and

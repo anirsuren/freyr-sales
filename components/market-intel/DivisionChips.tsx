@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, PenLine } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { useToast } from "@/components/ui/Toast";
 import {
   DIVISIONS,
@@ -23,10 +25,13 @@ export function DivisionChips({
   divisions,
   size = "sm",
   className,
+  onRemove,
 }: {
   divisions: Division[];
   size?: "sm" | "md";
   className?: string;
+  /** Given, each chip carries a hover X that asks to take that tag off. */
+  onRemove?: (division: Division) => void;
 }) {
   if (divisions.length === 0) return null;
   return (
@@ -34,7 +39,7 @@ export function DivisionChips({
       {divisions.map((d) => {
         const meta = DIVISION_META[d];
         const Icon = meta.icon;
-        return (
+        const chip = (
           <span
             key={d}
             title={meta.label}
@@ -49,6 +54,18 @@ export function DivisionChips({
             <Icon size={size === "md" ? 11 : 10} strokeWidth={2.4} />{" "}
             {meta.short}
           </span>
+        );
+        return onRemove ? (
+          <span key={d} className="group/unlink relative inline-flex">
+            {chip}
+            <UnlinkX
+              within="corner"
+              label={`Take the ${meta.label} tag off`}
+              onClick={() => onRemove(d)}
+            />
+          </span>
+        ) : (
+          chip
         );
       })}
     </span>
@@ -150,6 +167,37 @@ export function DivisionEditor({
   useEffect(() => setCurrent(divisions), [divisions]);
   const [draft, setDraft] = useState<Division[]>(divisions);
   const [busy, setBusy] = useState(false);
+  /** The chip whose hover X was pressed, waiting on its confirm. */
+  const [removing, setRemoving] = useState<Division | null>(null);
+
+  /** ONE TAG OFF, FROM THE CHIP (Anir, Oct 1: "when i hover i should have a
+   *  delete button showing up"). The same save the pencil makes, minus the
+   *  one. A company keeps at least one division, as the save requires, so
+   *  the last chip carries no X. */
+  async function removeDivision() {
+    const target = removing;
+    if (!target) return;
+    const next = current.filter((d) => d !== target);
+    if (next.length === 0) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/market-intel/tracking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "divisions", id: companyId, divisions: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Could not save.");
+      toast(`${companyName} is no longer tagged ${DIVISION_META[target].short}.`);
+      setCurrent(next);
+      setRemoving(null);
+      router.refresh();
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "Could not save.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function save() {
     if (draft.length === 0) {
@@ -187,7 +235,11 @@ export function DivisionEditor({
     <>
       <span className="flex items-center gap-1.5">
         {current.length > 0 ? (
-          <DivisionChips divisions={current} size="md" />
+          <DivisionChips
+            divisions={current}
+            size="md"
+            onRemove={canEdit && current.length > 1 ? setRemoving : undefined}
+          />
         ) : (
           <span className="rounded-full border border-dashed border-border-light px-2 py-0.5 text-[11px] font-medium text-text-tertiary">
             No division yet
@@ -256,6 +308,25 @@ export function DivisionEditor({
           </button>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={!!removing}
+        busy={busy}
+        onClose={() => {
+          if (!busy) setRemoving(null);
+        }}
+        onConfirm={() => void removeDivision()}
+        title={`Take the ${removing ? DIVISION_META[removing].short : ""} tag off ${companyName}?`}
+        body={
+          <>
+            <strong>{companyName}</strong> stops being tagged{" "}
+            <strong>{removing ? DIVISION_META[removing].label : ""}</strong>.
+          </>
+        }
+        detail={`Its other ${current.length - 1 === 1 ? "division stays" : "divisions stay"}, and so does everything tracked on it. You can tag it again with the pencil.`}
+        subject={{ name: companyName, kind: "company" }}
+        confirmLabel="Take it off"
+      />
     </>
   );
 }

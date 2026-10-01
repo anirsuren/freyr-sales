@@ -5,6 +5,8 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
+import { EntityLink } from "@/components/ui/EntityLink";
+import { customerHref } from "@/lib/entityHref";
 
 export type FanCompany = {
   name: string;
@@ -32,12 +34,20 @@ export function CompanyFan({
   logoClassName = "h-7 w-7 text-[9px]",
   overlap = -6,
   max = 6,
+  nested = false,
+  ringClassName = "ring-[color:var(--white)]",
 }: {
   companies: FanCompany[];
   logoClassName?: string;
   /** How far the marks sit under each other when collapsed, in px. */
   overlap?: number;
   max?: number;
+  /** The fan sits inside an <a> or <button>: each mark navigates from a
+   *  span, never an anchor inside a button. */
+  nested?: boolean;
+  /** The separator ring between overlapping marks, in the row's own
+   *  background colour (a tinted row wants its tint, not a white halo). */
+  ringClassName?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   if (companies.length === 0) {
@@ -49,7 +59,7 @@ export function CompanyFan({
   const stacked = visible.length > 1 || hidden > 0;
   const circle = cn(
     "relative inline-flex rounded-full transition-[transform,box-shadow] duration-150 hover:z-20 hover:-translate-y-0.5 hover:scale-110 hover:ring-2 hover:ring-blue-primary/55",
-    stacked && "ring-2 ring-white"
+    stacked && cn("ring-2", ringClassName)
   );
   return (
     <span
@@ -96,7 +106,15 @@ export function CompanyFan({
               </div>
             }
           >
-            {c.id ? (
+            {c.id && nested ? (
+              /* The ring and the lift live on this span, not on the
+                 EntityLink: its own rounded-sm would square the circle. */
+              <span className={circle}>
+                <EntityLink href={customerHref(c.id, c.name)} nested title={c.name} className="block rounded-full">
+                  <CompanyLogo name={c.name} className={logoClassName} />
+                </EntityLink>
+              </span>
+            ) : c.id ? (
               <Link
                 href={`/customers/${c.id}`}
                 onClick={(e) => e.stopPropagation()}
@@ -117,12 +135,39 @@ export function CompanyFan({
         </span>
       ))}
       {hidden > 0 && (
-        <span
-          className="relative inline-flex h-7 items-center justify-center rounded-full bg-surface px-1.5 text-[10px] font-bold text-text-secondary ring-2 ring-white transition-[margin] duration-200 ease-out"
-          style={{ marginLeft: expanded ? 4 : overlap }}
+        /* The overflow names itself, as PersonFan's does: hovering "+N"
+           lists the accounts it stands for, each one a door. */
+        <HoverCard
+          width={240}
+          anchor="trigger"
+          content={
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                {hidden} more
+              </p>
+              <ul className="space-y-1.5">
+                {companies.slice(max).map((c) => (
+                  <li key={c.name} className="flex items-center gap-2">
+                    <EntityLink href={c.id ? customerHref(c.id, c.name) : null} className="inline-flex min-w-0 items-center gap-2 text-[12.5px] font-medium text-text-primary" title={c.name}>
+                      <CompanyLogo name={c.name} className="h-5 w-5 shrink-0 text-[7px]" />
+                      <span className="min-w-0 truncate">{c.name}</span>
+                    </EntityLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          }
         >
-          +{hidden}
-        </span>
+          <span
+            className={cn(
+              "relative inline-flex h-7 cursor-default items-center justify-center rounded-full bg-surface px-1.5 text-[10px] font-bold text-text-secondary ring-2 transition-[margin] duration-200 ease-out",
+              ringClassName
+            )}
+            style={{ marginLeft: expanded ? 4 : overlap }}
+          >
+            +{hidden}
+          </span>
+        </HoverCard>
       )}
     </span>
   );

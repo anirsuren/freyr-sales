@@ -29,6 +29,7 @@ import {
 import { InfoHint } from "@/components/ui/InfoHint";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import { useToast } from "@/components/ui/Toast";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { DonutChart, type TipItem } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { VIZ } from "@/components/charts/palette";
@@ -53,6 +54,7 @@ import type {
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { formatDate } from "@/lib/utils";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 
 // One colour + glyph per revenue type — the same accents the offering report's
@@ -190,9 +192,14 @@ export type TabOffering = {
 function RevenueSection({
   lines,
   onSave,
+  customerName = "",
+  offeringName = "",
 }: {
   lines: OfferingRevenueLine[];
   onSave: (lines: OfferingRevenueLine[]) => void;
+  /** Named in the remove confirmation, so it says exactly whose line goes. */
+  customerName?: string;
+  offeringName?: string;
 }) {
   const [confirmLine, setConfirmLine] = useState<{ id: string; label: string } | null>(null);
   const [adding, setAdding] = useState(false);
@@ -225,8 +232,11 @@ function RevenueSection({
   });
   const byType = allRevenueTypes.filter((x) => x.value > 0);
   const num = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^0-9.]/g, "")) || 0));
+  /* The shared 40px box (Anir, Oct 1: "It should all be the same"). It was
+     34px beside 40px dropdowns. The label above is uppercase and bold, so the
+     box sets its own case, weight and spacing back to normal. */
   const inp =
-    "rounded-md border border-border bg-white px-2.5 py-1.5 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus";
+    "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] font-normal normal-case tracking-normal text-text-primary outline-none transition focus:border-blue-primary focus:shadow-input-focus";
 
   function reset() {
     setRType("annual");
@@ -417,17 +427,75 @@ function RevenueSection({
       ) : (
         <p className="text-[12.5px] text-text-secondary">No revenue recorded yet.</p>
       )}
-      <ConfirmDialog
-        open={confirmLine !== null}
-        onClose={() => setConfirmLine(null)}
-        onConfirm={() => {
-          if (confirmLine) onSave(lines.filter((x) => x.id !== confirmLine.id));
-          setConfirmLine(null);
-        }}
-        title="Remove this revenue line?"
-        body={<><b>{confirmLine?.label}</b> comes off this customer&rsquo;s offering.</>}
-        confirmLabel="Remove it"
-      />
+      {/* SAY EXACTLY WHICH LINE, ON WHICH OFFERING, AT WHICH CUSTOMER (Anir,
+          Oct 1: "u have to say what customer what offering so there is
+          absolutely no confusion"). Two lines on one offering can share a
+          note, so the amount, type and dates are what tell them apart. */}
+      {(() => {
+        const line = confirmLine ? lines.find((x) => x.id === confirmLine.id) : undefined;
+        const offering = offeringName || "this offering";
+        const owner = customerName ? `${customerName}'s ${offering}` : offering;
+        const note = (line?.description || "").trim().replace(/[.\s]+$/, "");
+        const typeLabel = line ? REVENUE_TYPE_META[line.revenue_type].label.toLowerCase() : "revenue";
+        const money = line ? formatMoney(line.amount) : "";
+        const others = line ? lines.length - 1 : 0;
+        return (
+          <ConfirmDialog
+            open={confirmLine !== null}
+            onClose={() => setConfirmLine(null)}
+            onConfirm={() => {
+              if (confirmLine) onSave(lines.filter((x) => x.id !== confirmLine.id));
+              setConfirmLine(null);
+            }}
+            title={
+              note
+                ? `Remove the ${note} line from ${owner}?`
+                : `Remove the ${money} ${typeLabel} line from ${owner}?`
+            }
+            body={
+              line ? (
+                <>
+                  The <b>{money}</b> {typeLabel} line
+                  {line.revenue_type === "license" && line.num_licenses
+                    ? ` for ${line.num_licenses} licenses`
+                    : ""}
+                  {line.start_date && line.end_date ? (
+                    <>
+                      {" "}running <b>{formatDate(line.start_date)}</b> to{" "}
+                      <b>{formatDate(line.end_date)}</b>
+                    </>
+                  ) : line.start_date ? (
+                    <>
+                      {" "}from <b>{formatDate(line.start_date)}</b>
+                    </>
+                  ) : line.end_date ? (
+                    <>
+                      {" "}until <b>{formatDate(line.end_date)}</b>
+                    </>
+                  ) : null}{" "}
+                  comes off <b>{offering}</b>
+                  {customerName ? (
+                    <>
+                      {" "}at <b>{customerName}</b>
+                    </>
+                  ) : null}
+                  .
+                </>
+              ) : (
+                ""
+              )
+            }
+            detail={
+              line
+                ? others > 0
+                  ? `${customerName || "The account"} still uses ${offering}, and its other ${others} revenue ${others === 1 ? "line stays" : "lines stay"}.`
+                  : `${customerName || "The account"} still uses ${offering}. This is its only revenue line, so no revenue stays on file for it.`
+                : undefined
+            }
+            confirmLabel="Remove line"
+          />
+        );
+      })()}
 
       {/* Add revenue opens a dialog, not an inline form that shoves the card's
           own content down the page (Anir, Jul 26: "when I press Add Revenue,
@@ -538,6 +606,7 @@ export function CustomerOfferingsTab({
   applicable,
   inUse,
   usage = [],
+  canEdit = false,
 }: {
   customerId: string;
   customerName?: string;
@@ -547,6 +616,9 @@ export function CustomerOfferingsTab({
   inUse: TabOffering[];
   // Commercial detail per in-use offering (Suren, Jul 5).
   usage?: OfferingUsage[];
+  /** May this person change this account (the PATCH route's own answer).
+   *  Gates the hover X that takes an offering off without opening its card. */
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -664,7 +736,8 @@ export function CustomerOfferingsTab({
     offeringId: string,
     versions: CustomerOfferingEngagementVersion[],
     touched?: CustomerOfferingEngagementVersion,
-    prevStatus?: string | null
+    prevStatus?: string | null,
+    done?: string
   ) {
     const existing = usageState.find((u) => u.offering_id === offeringId);
     const next = usageState.filter((u) => u.offering_id !== offeringId);
@@ -685,7 +758,7 @@ export function CustomerOfferingsTab({
       });
       const data = await res.json();
       if (data.ok) {
-        toast("Activity saved.");
+        toast(done ?? "Activity saved.");
         router.refresh();
         // THE MASTER'S THRESHOLD WAS JUST CROSSED → offer to count it. Each
         // activity says which status starts counting (Suren: "a contract
@@ -786,10 +859,13 @@ export function CustomerOfferingsTab({
       });
       const data = await res.json();
       if (data.ok) {
+        const takenOff = nowUsing ? null : inUse.find((o) => o.id === id)?.name;
         toast(
           nowUsing
             ? "Marked as already using: moved out of the pitch list."
-            : "Moved back to the pitch list."
+            : takenOff
+              ? `${takenOff} is no longer in use${customerName ? ` at ${customerName}` : ""}. It is back on the pitch list.`
+              : "Moved back to the pitch list."
         );
         router.refresh();
       } else {
@@ -831,7 +907,7 @@ export function CustomerOfferingsTab({
         className="relative overflow-hidden border border-border-light bg-white p-0 shadow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-success"
         data-testid={`cust-offering-${o.id}`}
       >
-        <div className="group relative grid gap-4 px-5 py-4 transition-colors hover:bg-blue-light/40 lg:grid-cols-[minmax(0,1fr)_minmax(245px,360px)_auto] lg:items-center">
+        <div className="group group/unlinkrow relative grid gap-4 px-5 py-4 transition-colors hover:bg-blue-light/40 lg:grid-cols-[minmax(0,1fr)_minmax(245px,360px)_auto] lg:items-center">
           <button
             type="button"
             onClick={() => toggleExpanded(o.id)}
@@ -875,7 +951,21 @@ export function CustomerOfferingsTab({
               <p className="mt-1 text-[13px] font-semibold text-text-primary tnum">{o.materials.length}</p>
             </div>
           </div>
-          <ChevronDown size={17} strokeWidth={2.2} aria-hidden="true" className={`pointer-events-none relative z-10 justify-self-end text-text-tertiary transition-transform duration-200 group-hover:text-blue-primary ${expanded ? "rotate-180" : ""}`} />
+          {/* Off the account from the card itself (Anir, Oct 1: "when i
+              hover i should have a delete button"), without unfolding it
+              to reach the button at the bottom. Same confirm as that one. */}
+          <span className="pointer-events-none relative z-10 flex items-center gap-1 justify-self-end">
+            {canEdit && (
+              <UnlinkX
+                within="row"
+                label={`Mark ${o.name} as no longer in use${customerName ? ` at ${customerName}` : ""}`}
+                disabled={busyId === o.id}
+                onClick={() => setConfirmUnuse(o)}
+                className="pointer-events-auto"
+              />
+            )}
+            <ChevronDown size={17} strokeWidth={2.2} aria-hidden="true" className={`text-text-tertiary transition-transform duration-200 group-hover:text-blue-primary ${expanded ? "rotate-180" : ""}`} />
+          </span>
         </div>
 
         <div id={`offering-detail-${o.id}`} className="freyr-fold" data-open={expanded} aria-hidden={!expanded} inert={!expanded}>
@@ -893,6 +983,8 @@ export function CustomerOfferingsTab({
               <RevenueSection
                 lines={linesForOffering(o.id)}
                 onSave={(lines) => saveLines(o.id, lines)}
+                customerName={customerName}
+                offeringName={o.name}
               />
             )}
 
@@ -903,9 +995,12 @@ export function CustomerOfferingsTab({
               <OfferingActivities
                 customerId={customerId}
                 versions={activitiesForOffering(o.id)}
-                onSave={(versions, touched, prevStatus) =>
-                  void saveActivities(o.id, versions, touched, prevStatus)
+                onSave={(versions, touched, prevStatus, done) =>
+                  void saveActivities(o.id, versions, touched, prevStatus, done)
                 }
+                canEdit={canEdit}
+                customerName={customerName}
+                offeringName={o.name}
               />
             )}
 
@@ -1307,14 +1402,29 @@ export function CustomerOfferingsTab({
           setConfirmUnuse(null);
           if (offering) void toggleInUse(offering.id, false);
         }}
-        title="Mark as no longer in use?"
+        title={
+          confirmUnuse
+            ? `Mark ${confirmUnuse.name} as no longer in use${customerName ? ` at ${customerName}` : ""}?`
+            : "Mark as no longer in use?"
+        }
         body={
           <>
             <b>{confirmUnuse?.name}</b> comes off what{" "}
-            {customerName || "this account"} uses.
+            <b>{customerName || "this account"}</b> uses and moves back to the
+            offerings to pitch.
           </>
         }
-        detail="Its revenue and activities stay on file."
+        detail={(() => {
+          if (!confirmUnuse) return undefined;
+          const lineList = linesForOffering(confirmUnuse.id);
+          const lineCount = lineList.length;
+          const lineTotal = lineList.reduce((sum, line) => sum + (line.amount || 0), 0);
+          const activityCount = activitiesForOffering(confirmUnuse.id).length;
+          if (!lineCount && !activityCount) return "Nothing is deleted.";
+          return `Nothing is deleted. Its ${lineCount} revenue ${lineCount === 1 ? "line" : "lines"}${
+            lineCount ? ` (${formatMoney(lineTotal)})` : ""
+          } and ${activityCount} logged ${activityCount === 1 ? "activity" : "activities"} stay on file.`;
+        })()}
         confirmLabel="Mark as no longer in use"
       />
     </div>

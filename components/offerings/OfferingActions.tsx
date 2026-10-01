@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Rocket, Check, Search, X, Building2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
 
 // The two primary offering actions (from Suren's approved layout): start a
@@ -41,6 +42,8 @@ export function OfferingActions({
     () => new Set(customers.filter((customer) => customer.assigned).map((customer) => customer.id))
   );
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
+  /** The customer whose box was unticked, waiting on the confirmation. */
+  const [confirmUnuse, setConfirmUnuse] = useState<{ id: string; name: string } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -155,6 +158,22 @@ export function OfferingActions({
     }
   }
 
+  /**
+   * UNTICKING ASKS FIRST (Anir, Oct 1, after "Mark as no longer in use"
+   * acted on one click: "this cant happen"). Clearing a box takes this
+   * offering off what that customer uses, so it goes through a confirmation
+   * naming both. Ticking one only adds, so it still acts at once.
+   */
+  function requestToggle(id: string) {
+    if (!id || busyIds.has(id)) return;
+    if (assignedIds.has(id)) {
+      const name = customers.find((c) => c.id === id)?.name || "this customer";
+      setConfirmUnuse({ id, name });
+      return;
+    }
+    void toggleCustomer(id);
+  }
+
   function onSearchKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -165,7 +184,7 @@ export function OfferingActions({
     } else if (e.key === "Enter") {
       e.preventDefault();
       const row = matches[cursor];
-      if (row) void toggleCustomer(row.id);
+      if (row) requestToggle(row.id);
     }
   }
 
@@ -257,7 +276,7 @@ export function OfferingActions({
                                 disabled={saving}
                                 data-row={i}
                                 onMouseEnter={() => setCursor(i)}
-                                onClick={() => void toggleCustomer(c.id)}
+                                onClick={() => requestToggle(c.id)}
                                 className={cn(
                                   "flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors disabled:opacity-55",
                                   on
@@ -296,6 +315,33 @@ export function OfferingActions({
         )}
         {extra}
       </div>
+      {/* Outside the popover on purpose: the popover closes the moment the
+          dialog takes focus, and the question has to outlive it. Same words
+          as the customer page's own "no longer in use" confirmation. */}
+      <ConfirmDialog
+        open={confirmUnuse !== null}
+        onClose={() => setConfirmUnuse(null)}
+        onConfirm={() => {
+          const target = confirmUnuse;
+          setConfirmUnuse(null);
+          if (target) void toggleCustomer(target.id);
+        }}
+        title={
+          confirmUnuse
+            ? `Mark ${offeringName} as no longer in use at ${confirmUnuse.name}?`
+            : "Mark as no longer in use?"
+        }
+        body={
+          <>
+            <b>{offeringName}</b> comes off what{" "}
+            <b>{confirmUnuse?.name || "this customer"}</b> uses and moves back
+            to the offerings to pitch.
+          </>
+        }
+        detail="Nothing is deleted. The account and its other offerings stay as they are."
+        subject={confirmUnuse ? { name: confirmUnuse.name, kind: "company" } : null}
+        confirmLabel="Mark as no longer in use"
+      />
     </div>
   );
 }

@@ -480,15 +480,25 @@ export function OfferingContacts({
           if (target) void remove(target);
         }}
         busy={!!confirmRemove && busy === confirmRemove.id}
-        title={`Remove ${confirmRemove?.name || "this contact"}?`}
+        title={
+          confirmRemove
+            ? `Remove ${confirmRemove.name} as a contact for ${offeringName?.trim() || "this offering"}?`
+            : "Remove this contact?"
+        }
         confirmLabel="Remove contact"
         body={
           <>
-            <strong>{confirmRemove?.name}</strong> will no longer be listed as
-            a contact for <strong>{offeringName}</strong>.
+            <strong>{confirmRemove?.name}</strong>
+            {generalRole(confirmRemove?.role) ? `, ${generalRole(confirmRemove?.role)},` : ""}{" "}
+            will no longer be listed as a contact for{" "}
+            {offeringName?.trim() ? <strong>{offeringName.trim()}</strong> : "this offering"}.
           </>
         }
-        detail="Their account is untouched. You can add them again at any time."
+        detail={
+          confirmRemove && ownsThis(confirmRemove.name)
+            ? `Their account is untouched, and they stay an owner of ${offeringName?.trim() || "this offering"}. You can add them again at any time.`
+            : "Their account is untouched. You can add them again at any time."
+        }
       />
 
       <Modal
@@ -561,7 +571,7 @@ export function OfferingContacts({
                         placeholder={`What does ${name.split(" ")[0]} do here? e.g. Regulatory strategy lead`}
                         aria-label={`${name}'s custom role`}
                         maxLength={60}
-                        className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none"
+                        className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none"
                       />
                     </div>
                   )}
@@ -849,7 +859,7 @@ export function OfferingContacts({
                   placeholder="e.g. Regulatory strategy lead"
                   aria-label="Custom role"
                   maxLength={60}
-                  className="mt-2 w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13.5px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none"
+                  className="mt-2 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:outline-none"
                 />
               )}
             </div>
@@ -860,9 +870,13 @@ export function OfferingContacts({
               <button
                 type="button"
                 onClick={() => {
+                  /* This deletes the contact on the server straight away, so
+                     it asks first, in the same dialog as the X on the row
+                     (Anir, Oct 1: nothing that removes data acts on one
+                     click). The editor closes so the two never stack. */
                   const target = editing;
                   setEditing(null);
-                  remove(target);
+                  setConfirmRemove(target);
                 }}
                 className="text-[13px] font-semibold text-[color:var(--ink-red)] hover:underline"
               >

@@ -276,7 +276,13 @@ export function PrivilegesAdmin() {
         open={pending !== null}
         onClose={() => setPending(null)}
         onConfirm={applyPending}
-        title="Change this privilege?"
+        /* WHICH PRIVILEGE, WHICH MODULE, FROM WHAT TO WHAT (Anir, Oct 1: "u
+           have to be super super specific"), in the question itself. */
+        title={
+          pending
+            ? `Change ${pending.privLabel} on ${pending.moduleLabel} from ${ACCESS_META[pending.from].label} to ${ACCESS_META[pending.to].label}?`
+            : "Change this privilege?"
+        }
         body={
           pending && (
             <>
@@ -286,8 +292,14 @@ export function PrivilegesAdmin() {
             </>
           )
         }
-        detail="This changes what those people can do as soon as you confirm. The admins are emailed."
-        confirmLabel="Change it"
+        detail={
+          pending
+            ? `It applies to everyone with ${pending.privLabel} as soon as you confirm. Every other module stays as it is. The admins are emailed.`
+            : "This changes what those people can do as soon as you confirm. The admins are emailed."
+        }
+        confirmLabel={
+          pending ? `Change to ${ACCESS_META[pending.to].label}` : "Change access"
+        }
         /* RED ONLY WHEN SOMETHING IS BEING TAKEN AWAY (Anir, Aug 29: "when I'm
            giving a privilege the red doesn't make sense, it feels like I'm
            taking away privilege"). Widening a cell — View to Edit, Edit to

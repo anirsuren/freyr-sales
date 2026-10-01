@@ -50,6 +50,8 @@ type AccountSlice = {
   label: string;
   value: number;
   color: string;
+  /** The account the slice is, so its legend row wears the logo. */
+  logo?: string;
   tip?: TipItem[];
 };
 
@@ -308,6 +310,7 @@ export function OfferingReports({
       label: customer.name,
       value: customer.licenses,
       color: customer.color,
+      logo: customer.name,
       tip: customer.licenseLines.map((line) => ({
         logo: customer.name,
         name: line.description || "License",
@@ -392,6 +395,7 @@ export function OfferingReports({
       label: customer.name,
       value: customer.revenue,
       color: customer.color,
+      logo: customer.name,
       tip: [
         {
           logo: customer.name,

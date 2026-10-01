@@ -212,8 +212,13 @@ export function PendingCompanyCard({
       onConfirm={() => void removeFromMyList()}
       busy={removing}
       subject={{ name: company.name, kind: "company", imageUrl: company.logoUrl }}
-      title="Remove from your list?"
-      body={`${company.name} will leave your Market Intel page.`}
+      title={`Remove ${company.name} from your ${company.group === "competitor" ? "Competitor Intel" : "Customer Intel"} list?`}
+      body={
+        <>
+          <b>{company.name}</b> leaves your{" "}
+          <b>{company.group === "competitor" ? "Competitor Intel" : "Customer Intel"}</b> page.
+        </>
+      }
       detail={`It stays in the catalogue, so you can add it again from Manage ${groupLabel}. If nobody else is tracking it, collection stops.`}
       confirmLabel="Remove from my list"
     />

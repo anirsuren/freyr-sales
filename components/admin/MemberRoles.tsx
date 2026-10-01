@@ -1,7 +1,7 @@
 "use client";
 
 import { RolesGuide } from "@/components/admin/RolesGuide";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
@@ -63,6 +63,20 @@ function isOnline(iso: string | null | undefined): boolean {
   return !Number.isNaN(t) && Date.now() - t < 5 * 60 * 1000;
 }
 
+/** "A", "A and B", "A, B and C", each in bold, inside a confirm's sentence. */
+function BoldList({ names }: { names: string[] }) {
+  return (
+    <>
+      {names.map((name, i) => (
+        <Fragment key={`${name}-${i}`}>
+          {i === 0 ? "" : i === names.length - 1 ? " and " : ", "}
+          <b>{name}</b>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
 export function MemberRoles() {
   const { toast } = useToast();
   const me = useCurrentUserOrNull();
@@ -87,6 +101,9 @@ export function MemberRoles() {
   const [privFor, setPrivFor] = useState<Member | null>(null);
   const [pendingPriv, setPendingPriv] = useState<{
     person: string;
+    /** Their address, so the question tells two people of one name apart
+     *  (this list has several Anirs on it). */
+    email?: string;
     privId: string;
     privLabel: string;
     to: boolean;
@@ -476,7 +493,13 @@ export function MemberRoles() {
               active={privFor.active}
               personName={privFor.name}
               onToggle={({ privId, privLabel, to }) =>
-                setPendingPriv({ person: privFor.name, privId, privLabel, to })
+                setPendingPriv({
+                  person: privFor.name,
+                  email: privFor.email,
+                  privId,
+                  privLabel,
+                  to,
+                })
               }
             />
             {/* Same trail as the split view — one component, so the two ways
@@ -486,22 +509,59 @@ export function MemberRoles() {
         )}
       </Modal>
 
+      {/* WHO, WHICH PRIVILEGE, AND WHAT THEY KEEP (Anir, Oct 1: "u have to
+          be super super specific"). The address tells two people of one name
+          apart; taking one away says which privileges stay. */}
       <ConfirmDialog
         open={pendingPriv !== null}
         person={pendingPriv?.person}
         onClose={() => setPendingPriv(null)}
         onConfirm={applyPendingPriv}
-        title={pendingPriv?.to ? "Give this privilege?" : "Take this privilege away?"}
+        title={
+          !pendingPriv
+            ? "Change this privilege?"
+            : pendingPriv.to
+              ? `Give ${pendingPriv.person} the ${pendingPriv.privLabel} privilege?`
+              : `Take the ${pendingPriv.privLabel} privilege away from ${pendingPriv.person}?`
+        }
         body={
           pendingPriv && (
             <>
-              <b>{pendingPriv.person}</b> {pendingPriv.to ? "gets" : "loses"}{" "}
-              <b>{pendingPriv.privLabel}</b>. It changes what they can do the next
-              time they load a page.
+              <b>{pendingPriv.person}</b>
+              {pendingPriv.email ? ` (${pendingPriv.email})` : ""}{" "}
+              {pendingPriv.to ? "gets" : "loses"} <b>{pendingPriv.privLabel}</b>.
+              It changes what they can do the next time they load a page.
             </>
           )
         }
-        confirmLabel={pendingPriv?.to ? "Give it" : "Take it away"}
+        detail={(() => {
+          if (!pendingPriv || !privState) return undefined;
+          if (pendingPriv.to) {
+            const blurb = privState.privileges.find(
+              (p) => p.id === pendingPriv.privId
+            )?.blurb;
+            return blurb ? `${pendingPriv.privLabel}: ${blurb}` : undefined;
+          }
+          const held = heldFor(pendingPriv.person);
+          const viaRole = privFor ? ROLE_PRIVILEGE[privFor.role] : undefined;
+          const kept = privState.privileges
+            .filter((p) => p.id !== pendingPriv.privId && (held.has(p.id) || p.id === viaRole))
+            .map((p) => p.label);
+          return kept.length ? (
+            <>
+              They keep <BoldList names={kept} />.
+            </>
+          ) : (
+            "This leaves them with no other privileges."
+          );
+        })()}
+        confirmLabel={
+          !pendingPriv
+            ? "Change privilege"
+            : pendingPriv.to
+              ? `Give ${pendingPriv.person.trim().split(/\s+/)[0]} ${pendingPriv.privLabel}`
+              : `Take ${pendingPriv.privLabel} from ${pendingPriv.person.trim().split(/\s+/)[0]}`
+        }
         /* Red is for what cannot be taken back. Giving a privilege is an
            ordinary change, so only taking one away wears the red. */
         tone={pendingPriv?.to ? "primary" : "destructive"}

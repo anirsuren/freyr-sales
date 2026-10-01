@@ -74,6 +74,13 @@ const LinkedInGlyph = LinkedInIcon as unknown as LucideIcon;
 
 const plural = (count: number) => `${count} ${count === 1 ? "company" : "companies"}`;
 
+/** Names for a sentence: "A", "A and B", "A, B and C", "A, B and 3 more". */
+function nameList(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  if (names.length <= 3) return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
+}
+
 type Show = "all" | "mine" | "starred" | "inactive";
 
 /** Not being collected: added later, and on nobody's list. */
@@ -347,6 +354,12 @@ export function ManageCompaniesPanel({
     .sort((a, b) => a.name.localeCompare(b.name));
   const selectedPreview = selectedCompanies.slice(0, 5);
   const moreSelected = selectedCompanies.length - selectedPreview.length;
+  /* The companies whose tick or star differs from what is saved: the same
+     test as `dirty`, named in the leave-without-saving question. */
+  const unsavedCompanies = rows
+    .filter((c) => c.group === group &&
+      (mine.has(c.id) !== saved.mine.has(c.id) || stars.has(c.id) !== saved.stars.has(c.id)))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const trackingPeople: TrackingPerson[] = (trackingCompany ? followers[trackingCompany.id] ?? [] : []).map((id, index) => ({
     id,
     name: memberDirectory[id]?.name || `Workspace member ${index + 1}`,
@@ -655,20 +668,43 @@ export function ManageCompaniesPanel({
           {saving ? "Saving…" : "Save changes"}
         </button>
       </div>
+      {/* NAME WHAT WOULD BE THROWN AWAY AND WHAT WOULD GO (Anir, Oct 1: "u have
+          to be super super specific"): the companies changed, on which list,
+          and for a delete, which company from which section. */}
       <ConfirmDialog open={leaving !== null} onClose={stay} onConfirm={leave}
-        title="Leave without saving?" body="Your changes to this tracking list have not been saved."
-        confirmLabel="Discard and leave" />
+        title={
+          unsavedCompanies.length > 0
+            ? `Leave without saving your changes to ${plural(unsavedCompanies.length)}?`
+            : "Leave without saving?"
+        }
+        body={
+          unsavedCompanies.length > 0 ? (
+            <>
+              Your changes to <b>{nameList(unsavedCompanies.map((c) => c.name))}</b> on your{" "}
+              <b>{group === "competitor" ? "Competitor Intel" : "Customer Intel"}</b> list are not saved yet.
+            </>
+          ) : (
+            "Your changes to this tracking list have not been saved."
+          )
+        }
+        detail="Leaving throws them away. Your saved list stays as it was."
+        confirmLabel="Discard changes and leave" />
       <ConfirmDialog
         open={confirming !== null}
         subject={confirming ? { name: confirming.name, kind: "company", imageUrl: confirming.logoUrl } : null}
         onClose={() => setConfirming(null)}
         onConfirm={() => confirming && void remove(confirming)}
         busy={busy !== null}
-        title={`Delete ${confirming?.name ?? ""} for everyone?`}
+        title={
+          confirming
+            ? `Delete ${confirming.name} from ${group === "competitor" ? "Competitor Intel" : "Customer Intel"} for everyone?`
+            : "Delete this company for everyone?"
+        }
         body={
           <>
-            Everything collected about <b>{confirming?.name}</b> is deleted, and it
-            disappears for the whole team.
+            Everything collected about <b>{confirming?.name ?? "this company"}</b>
+            {group === "competitor" ? "" : ", including the people followed there,"} is deleted, and it
+            disappears from <b>{group === "competitor" ? "Competitor Intel" : "Customer Intel"}</b> for the whole team.
             {(confirming?.followers ?? 0) > 0 && (
               <>
                 {" "}
@@ -678,7 +714,7 @@ export function ManageCompaniesPanel({
           </>
         }
         detail="This can't be undone."
-        confirmLabel="Delete for everyone"
+        confirmLabel="Delete company for everyone"
       />
     </>
   );

@@ -2275,6 +2275,9 @@ export function BarChart({
     // on purpose: a stage-named chart ("Prospect", "Engaged") must not sprout
     // logos for things that are not companies.
     logo?: string;
+    // The person this column is about (a rep, an owner): their face above
+    // the name, the same opt-in as `logo`.
+    avatar?: string;
   }[];
   height?: number;
   format?: Fmt;
@@ -2393,7 +2396,7 @@ export function BarChart({
   // label wraps to as many lines as that width needs, and when the columns
   // add up to more than the card the PLOT scrolls sideways instead of
   // squeezing the words.
-  const hasLogos = data.some((d) => d.logo);
+  const hasLogos = data.some((d) => d.logo || d.avatar);
   const longestLabel = data.reduce((n, d) => Math.max(n, d.label.length), 0);
   const wideLabels = hasLogos || longestLabel > 14;
   const COL_GAP = 12; // gap-3
@@ -2842,12 +2845,17 @@ export function BarChart({
               className="mt-1 flex w-full shrink-0 flex-col items-center justify-end gap-1 px-0.5 text-center"
               style={{ height: labelBlockHeight }}
             >
-              {d.logo && (
+              {d.logo ? (
                 <CompanyLogo
                   name={d.logo}
                   className="h-[20px] w-[20px] shrink-0 text-[7px]"
                 />
-              )}
+              ) : d.avatar ? (
+                <Avatar
+                  name={d.avatar}
+                  className="h-[20px] w-[20px] shrink-0 text-[7px]"
+                />
+              ) : null}
               {/* A category label carries its series colour, the way the
                   forecast by-stage legend does. Suren, Jul 28: "do the next
                   nice colour-coding thing here… look at the labels at the
@@ -2858,7 +2866,7 @@ export function BarChart({
                 title={d.label}
                 className="line-clamp-2 w-full break-words text-[11px] leading-[1.2] text-text-tertiary"
               >
-                {!hideLabelDots && !d.logo && (() => {
+                {!hideLabelDots && !d.logo && !d.avatar && (() => {
                   const markColor = d.dotColor || d.color;
                   const LabelIcon = d.labelIcon ? TIP_ICONS[d.labelIcon] : undefined;
                   /* The icon sits in the text run, so a wrapped name still
@@ -3321,6 +3329,10 @@ export function DonutLegend({
     value: number;
     /** TIP_ICONS key — colour-tinted icon tile instead of the plain dot. */
     icon?: string;
+    /** The slice is a company (its name) or a person (their name): the label
+     *  wears the logo or the face beside it. */
+    logo?: string;
+    avatar?: string;
     /** The records behind this slice. When present, hovering the legend row
      *  opens the SAME pop-up the donut slice shows — the row already lit the
      *  slice via syncId but gave no records, which read as a dead hover
@@ -3412,10 +3424,16 @@ export function DonutLegend({
                 className="col-span-2 inline-flex min-w-0 items-center gap-1.5 justify-self-start rounded-full px-2.5 py-1 text-[12px] font-semibold"
                 style={{ color: it.color, background: tint(it.color, 10) }}
               >
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ background: it.color }}
-                />
+                {it.logo ? (
+                  <CompanyLogo name={it.logo} className="h-4 w-4 shrink-0 text-[6px]" />
+                ) : it.avatar ? (
+                  <Avatar name={it.avatar} className="h-4 w-4 shrink-0 text-[6px]" />
+                ) : (
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: it.color }}
+                  />
+                )}
                 <span className="min-w-0 break-normal">{it.label}</span>
               </span>
             ) : (
@@ -3429,7 +3447,18 @@ export function DonutLegend({
                     like "Meeting Booked" reads as one thing, so it is nowrap
                     and its grid track is sized from that, the share bar
                     yields the width instead of the words. */}
-                <span className="whitespace-nowrap text-text-secondary">{it.label}</span>
+                {it.logo || it.avatar ? (
+                  <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-text-secondary">
+                    {it.logo ? (
+                      <CompanyLogo name={it.logo} className="h-4 w-4 shrink-0 text-[6px]" />
+                    ) : (
+                      <Avatar name={it.avatar!} className="h-4 w-4 shrink-0 text-[6px]" />
+                    )}
+                    {it.label}
+                  </span>
+                ) : (
+                  <span className="whitespace-nowrap text-text-secondary">{it.label}</span>
+                )}
               </>
             )}
             {showValues && (

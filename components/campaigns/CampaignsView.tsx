@@ -556,7 +556,7 @@ export function CampaignsView({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Campaign name<RequiredMark /></label>
-                    <input required value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Freya.Register Q3 pipeline" aria-label="Campaign name" className="h-10 w-full rounded-md border border-border bg-white px-3 text-[13.5px] outline-none focus:border-blue-primary" />
+                    <input required value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Freya.Register Q3 pipeline" aria-label="Campaign name" className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary" />
                   </div>
                   <div>
                     <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Objective<RequiredMark /></label>
@@ -695,8 +695,8 @@ export function CampaignsView({
                 </div>
                 <div className="mt-4 grid grid-cols-[minmax(0,1.2fr)_280px] gap-4">
                   <div className="space-y-3">
-                    <div><label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Subject<RequiredMark /></label><input required value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="What this campaign is about" aria-label="Campaign subject" className="h-10 w-full rounded-md border border-border px-3 text-[13px] outline-none focus:border-blue-primary" /></div>
-                    <div><label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Message<RequiredMark /></label><textarea required minLength={40} value={body} onChange={(event) => setBody(event.target.value)} rows={14} aria-label="Campaign body" className="w-full resize-none rounded-md border border-border px-3 py-2.5 text-[12.5px] leading-relaxed outline-none focus:border-blue-primary" /></div>
+                    <div><label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Subject<RequiredMark /></label><input required value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="What this campaign is about" aria-label="Campaign subject" className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary" /></div>
+                    <div><label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Message<RequiredMark /></label><textarea required minLength={40} value={body} onChange={(event) => setBody(event.target.value)} rows={14} aria-label="Campaign body" className="w-full resize-none rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] leading-relaxed outline-none focus:border-blue-primary" /></div>
                   </div>
                   <div className="rounded-md border border-border-light bg-surface/35 p-3">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">Recipient preview</p>
@@ -733,7 +733,7 @@ export function CampaignsView({
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     {[{ value: "draft", label: "Save as draft", detail: "Keep editing later" }, { value: "now", label: "Queue now", detail: "Ready when email connects" }, { value: "later", label: "Schedule", detail: "Choose a date and time" }].map((option) => <button key={option.value} onClick={() => setScheduleMode(option.value as typeof scheduleMode)} className={cn("rounded-md border p-3 text-left", scheduleMode === option.value ? "border-blue-primary bg-blue-light/45" : "border-border hover:bg-surface")}><span className="block text-[11.5px] font-semibold text-text-primary">{option.label}</span><span className="mt-0.5 block text-[10px] text-text-tertiary">{option.detail}</span></button>)}
                   </div>
-                  {scheduleMode === "later" && <label className="mt-3 block text-[11px] font-semibold text-text-secondary">Send date and time<RequiredMark /><input required type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} aria-label="Campaign schedule" className="mt-1 h-9 rounded-md border border-border px-3 text-[12px] outline-none focus:border-blue-primary" /></label>}
+                  {scheduleMode === "later" && <label className="mt-3 block text-[11px] font-semibold text-text-secondary">Send date and time<RequiredMark /><input required type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} aria-label="Campaign schedule" className="mt-1 h-10 rounded-lg border border-border-light bg-white px-3 text-[13px] font-normal outline-none focus:border-blue-primary" /></label>}
                   <p className="mt-3 text-[10.5px] text-text-tertiary">Email delivery remains gated until the workspace send channel is connected.</p>
                 </div>
               </div>

@@ -9,6 +9,7 @@ import { requireServerMemberScope } from "@/lib/memberScope";
 import {
   moduleCreateRefusal,
   moduleDeleteRefusal,
+  moduleWriteRefusal,
   requireModuleAccess,
 } from "@/lib/moduleAccessServer";
 import { privilegesForPerson, readPrivileges } from "@/lib/privileges";
@@ -66,6 +67,27 @@ export default async function SolutioningRequestPage({
       held.includes("sol_owner")
     );
   if (limitedToOwn && request.owner !== me.name) redirect("/solutioning");
+
+  /* MAY THEY TAKE A LINK OFF THIS REQUEST IN PLACE (Anir, Oct 1: the hover X
+     on a deal, contact or attendee). The route's own `update` answer, in its
+     order: an admin skips the module and role checks; anyone else needs write
+     on Solutioning, a BD role for a plain request, and to be its requester,
+     its owner or a manager. Nobody edits a cancelled record. */
+  const sameName = (a: string | undefined) =>
+    (a ?? "").trim().toLowerCase() === me.name.trim().toLowerCase();
+  const solAdmin = me.role === "admin" || held.includes("admin");
+  const canUnlink =
+    request.status !== "cancelled" &&
+    (solAdmin ||
+      (!(await moduleWriteRefusal("/solutioning")) &&
+        ((request.type ?? "request") !== "request" ||
+          me.role === "bd_owner" ||
+          me.role === "bd_member" ||
+          held.includes("bd_owner") ||
+          held.includes("bd_member")) &&
+        (sameName(request.requestedBy) ||
+          sameName(request.owner) ||
+          me.role === "bd_owner")));
 
   const members = live
     ? [
@@ -149,6 +171,7 @@ export default async function SolutioningRequestPage({
           );
         })(),
       }}
+      canUnlink={canUnlink}
       /* SOL-014/SOL-028: the deliverables raised off this request. The request
          cannot close while one is still open, and it should say so rather than
          refusing on click. */

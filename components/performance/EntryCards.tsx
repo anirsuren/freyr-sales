@@ -45,6 +45,7 @@ import { SegmentValues } from "./bits";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { cn, formatDate } from "@/lib/utils";
 import type { RunOp } from "./PerformanceModule";
 import { typeMeta, GroupPill } from "./bits";
@@ -54,8 +55,8 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { useStoredView } from "@/lib/useStoredView";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
-import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
-import { teammateHref } from "@/lib/entityHref";
+import { CompanyLink, ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { isSomebody, teammateHref } from "@/lib/entityHref";
 import { Tooltip } from "@/components/ui/Tooltip";
 
 /**
@@ -1172,6 +1173,9 @@ export function MyEntriesCard({
    *  pressed send-back rather than the row itself. */
   const [reviewInSendBack, setReviewInSendBack] = useState(false);
   const [dropFor, setDropFor] = useState<string | null>(null);
+  /** The result whose deal link's hover X was pressed, waiting on its
+   *  confirm (Anir, Oct 1: "when i hover i should have a delete button"). */
+  const [unlinkDealFor, setUnlinkDealFor] = useState<string | null>(null);
   /** Fixing a typo used to mean delete and re-enter, losing the upload. */
   const [editFor, setEditFor] = useState<string | null>(null);
   const [draft, setDraft] = useState({
@@ -1669,7 +1673,20 @@ export function MyEntriesCard({
                                   />
                                 </Fact>
                                 <Fact label="Deal">
-                                  {a.dealLabel ?? (
+                                  {a.dealLabel ? (
+                                    /* Untie it right here, for whoever may
+                                       change this result: the same people
+                                       who may drop it. */
+                                    <span className="group/unlink inline-flex items-center">
+                                      {a.dealLabel}
+                                      {canDrop && (
+                                        <UnlinkX
+                                          label={`Untie ${a.dealLabel} from this result`}
+                                          onClick={() => setUnlinkDealFor(a.id)}
+                                        />
+                                      )}
+                                    </span>
+                                  ) : (
                                     <span className="text-text-tertiary">
                                       not tied to a deal
                                     </span>
@@ -1792,23 +1809,104 @@ export function MyEntriesCard({
               );
               if (okDone) setDropFor(null);
             }}
-            title="Delete logged result?"
+            /* WHOSE RESULT, HOW MUCH, ON WHICH GOAL (Anir, Oct 1: "u have to
+               be super super specific"). Two results on one goal can share a
+               person and a day, so the customer, the subgoal and the amount
+               are what tell them apart. */
+            title={
+              a
+                ? `Delete ${a.person}'s ${goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount} result on ${goal?.name ?? "a goal that was removed"}?`
+                : "Delete logged result?"
+            }
             subject={a ? { name: goal?.name ?? "Goal removed", kind: "goal" } : null}
             body={
               a ? (
+                (() => {
+                  const sub = goal?.subgoals.find((x) => x.id === a.subgoalId);
+                  const day = formatDate(a.date);
+                  return (
+                    <>
+                      <b className="tnum">
+                        {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
+                      </b>
+                      {a.customer ? (
+                        <>
+                          {" "}from <b>{a.customer}</b>
+                        </>
+                      ) : null}{" "}
+                      on <b>{goal?.name ?? "a goal that was removed"}</b>
+                      {sub ? (
+                        <>
+                          , subgoal <b>{sub.name}</b>
+                        </>
+                      ) : null}
+                      , logged by <b>{a.person}</b>
+                      {day !== "-" ? (
+                        <>
+                          {" "}for <b>{day}</b>
+                        </>
+                      ) : null}
+                      .
+                    </>
+                  );
+                })()
+              ) : (
+                ""
+              )
+            }
+            detail={
+              a?.evidence?.length
+                ? `This permanently removes the result and its ${a.evidence.length} evidence ${a.evidence.length === 1 ? "file" : "files"} from the goal.`
+                : "This permanently removes the result from the goal."
+            }
+            confirmLabel="Delete result"
+            busy={busy}
+          />
+        );
+      })()}
+      {/* The deal link's hover X asks here: which result, which deal, and
+          what changing a sent-back result does to it. */}
+      {(() => {
+        const a = unlinkDealFor && run ? state.actuals.find((x) => x.id === unlinkDealFor) : null;
+        const goal = a ? state.goals.find((g) => g.id === a.goalId) : undefined;
+        const amount = a ? (goal ? fmtAmount(goal.unit, a.amount, a.currency) : String(a.amount)) : "";
+        return (
+          <ConfirmDialog
+            open={!!a}
+            onClose={() => {
+              if (!busy) setUnlinkDealFor(null);
+            }}
+            onConfirm={async () => {
+              if (!a || !run) return;
+              const okDone = await run(
+                { op: "update-actual", actualId: a.id, dealLabel: "" },
+                `${a.dealLabel ?? "The deal"} is no longer tied to ${a.person}'s result.`
+              );
+              if (okDone) setUnlinkDealFor(null);
+            }}
+            title={
+              a
+                ? `Untie ${a.dealLabel ?? "the deal"} from ${a.person}'s ${amount} result?`
+                : "Untie the deal from this result?"
+            }
+            subject={a ? { name: a.dealLabel ?? "Deal", kind: "opportunity" } : null}
+            body={
+              a ? (
                 <>
-                  <b className="tnum">
-                    {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
-                  </b>{" "}
-                  on <b>{goal?.name ?? "a goal that was removed"}</b>, logged by{" "}
-                  {a.person} for {formatDate(a.date)}.
+                  <b className="tnum">{amount}</b> on{" "}
+                  <b>{goal?.name ?? "a goal that was removed"}</b>, logged by{" "}
+                  <b>{a.person}</b>, stops naming <b>{a.dealLabel}</b>.
                 </>
               ) : (
                 ""
               )
             }
-            detail="This permanently removes the result and its evidence from the goal."
-            confirmLabel="Delete result"
+            detail={
+              a && wasSentBack(a)
+                ? "The result and the deal both stay. Because it was sent back, this also sends it for review again."
+                : "The result and the deal both stay; the result still counts towards its goal."
+            }
+            confirmLabel="Untie deal"
             busy={busy}
           />
         );
@@ -1964,7 +2062,9 @@ export function MyEntriesCard({
                         }))
                       }
                       className={cn(
-                        "h-12 w-full rounded-xl border bg-white pl-9 pr-3 text-[15px] font-semibold outline-none transition-shadow focus:ring-2 tnum",
+                        /* 40px, 12px corners, 13px: the shared field size
+                           (Anir, Oct 1: "It should all be the same"). */
+                        "h-10 w-full rounded-lg border bg-white pl-9 pr-3 text-[13px] font-semibold outline-none transition-shadow focus:ring-2 tnum",
                         amountInvalid
                           ? "border-error focus:border-error focus:ring-error/10"
                           : "border-border-light focus:border-blue-primary focus:ring-blue-primary/10"
@@ -1987,7 +2087,6 @@ export function MyEntriesCard({
                     onChange={(e) =>
                       setDraft((d) => ({ ...d, date: e }))
                     }
-                    className="h-12 w-full rounded-xl border border-border-light bg-white px-3 text-[14px] outline-none transition-shadow focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10"
                   />
                 </label>
                 <div className="block sm:col-span-2 lg:col-span-1 xl:col-span-2">
@@ -2007,7 +2106,7 @@ export function MyEntriesCard({
                     collapsible={false}
                     fill
                     minWidth={0}
-                    className="w-full [&_button[aria-haspopup='listbox']]:!h-12 [&_button[aria-haspopup='listbox']]:!rounded-xl [&_button[aria-haspopup='listbox']]:!px-3 [&_button[aria-haspopup='listbox']]:!text-[14px]"
+                    className="w-full"
                     onChange={(value) => {
                       if (value === "__current") return;
                       const selected = customerOptions.find(
@@ -2081,9 +2180,19 @@ export function MyEntriesCard({
 
               <div data-agent-dock-clearance className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-border-light bg-surface/95 px-6 py-4 backdrop-blur-sm">
                 <p className="max-w-[460px] text-[11.5px] leading-5 text-text-secondary">
-                  {fixing
-                    ? `${a.sentBackBy ?? "Your group owner"} will be notified and can verify the corrected result.`
-                    : "Saving updates this result immediately."}
+                  {fixing ? (
+                    <>
+                      {/* The reviewer's face beside their name. */}
+                      {isSomebody(a.sentBackBy) ? (
+                        <PersonLink name={a.sentBackBy} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="gap-1 align-middle" />
+                      ) : (
+                        a.sentBackBy ?? "Your group owner"
+                      )}{" "}
+                      will be notified and can verify the corrected result.
+                    </>
+                  ) : (
+                    "Saving updates this result immediately."
+                  )}
                 </p>
                 <div className="flex items-center gap-2">
                 <button
@@ -2546,23 +2655,43 @@ export function VerifyQueueCard({
                 0
               );
         const people = [...new Set(chosen.map((q) => q.person))];
+        /* WHOSE CLAIMS, ON WHICH GOAL (Anir, Oct 1: "u have to be super
+           super specific"). The title says who and where; each row below
+           carries its own customer, date and amount. */
+        const goalNames = [
+          ...new Set(
+            chosen
+              .map((q) => state.goals.find((g) => g.id === q.goalId)?.name)
+              .filter((n): n is string => !!n)
+          ),
+        ];
+        const claimWord = `${chosen.length} ${chosen.length === 1 ? "claim" : "claims"}`;
+        const whoWord = people.length === 1 ? people[0] : `${people.length} people`;
+        const goalWord =
+          goalNames.length === 1
+            ? goalNames[0]
+            : goalNames.length > 1
+              ? `${goalNames.length} goals`
+              : "";
         return (
           <Modal
             open
             onClose={() => setConfirmBulk(false)}
-            title={`Verify and lock ${chosen.length} ${chosen.length === 1 ? "claim" : "claims"}`}
+            title={`Verify and lock ${claimWord} from ${whoWord}${goalWord ? ` on ${goalWord}` : ""}?`}
+            wrapTitle
           >
             <p className="text-[13.5px] leading-relaxed text-text-secondary">
               This signs off{" "}
               <b className="text-text-primary tnum">
-                {unit === null
-                  ? `${chosen.length} ${chosen.length === 1 ? "claim" : "claims"}`
-                  : fmtAmount(unit, total)}
+                {unit === null ? claimWord : fmtAmount(unit, total)}
               </b>{" "}
               from{" "}
-              <b className="text-text-primary">
-                {people.length === 1 ? people[0] : `${people.length} people`}
-              </b>
+              <b className="text-text-primary">{whoWord}</b>
+              {goalWord ? (
+                <>
+                  {" "}on <b className="text-text-primary">{goalWord}</b>
+                </>
+              ) : null}
               . Locked claims count toward their goals and cannot be edited
               until you send them back.
             </p>
@@ -2572,12 +2701,40 @@ export function VerifyQueueCard({
                   key={q.id}
                   className="flex items-center gap-2 rounded-lg bg-surface px-2.5 py-1.5 text-[12.5px]"
                 >
-                  <PersonLink name={q.person} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="min-w-0 flex-1 gap-2">
-                    <span className={cn("min-w-0 flex-1 truncate text-text-primary", ENTITY_NAME)}>
-                      {q.person}
-                      {q.customer ? ` · ${q.customer}` : ""}
+                  <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                    <PersonLink name={q.person} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="min-w-0 shrink gap-2">
+                      <span className={cn("min-w-0 truncate text-text-primary", ENTITY_NAME)}>
+                        {q.person}
+                      </span>
+                    </PersonLink>
+                    {/* The customer is its own door, logo beside its name.
+                        The first name is the picked account. */}
+                    {q.customer && (
+                      <>
+                        <span aria-hidden="true" className="shrink-0 text-text-tertiary">·</span>
+                        <CompanyLink
+                          name={q.customer.split(/\s*\+\s*/)[0].split(/\s*·\s*/)[0].trim()}
+                          customerId={q.customerId}
+                          logoClassName="h-4 w-4 shrink-0 text-[6px]"
+                          className="min-w-0 shrink gap-1"
+                        >
+                          <span className={cn("min-w-0 truncate text-text-primary", ENTITY_NAME)}>
+                            {q.customer}
+                          </span>
+                        </CompanyLink>
+                      </>
+                    )}
+                    <span className="min-w-0 shrink truncate text-text-primary">
+                      {/* The goal only when the pick spans several (one goal
+                          is already in the title), and the day, which is what
+                          tells two claims from one person apart. */}
+                      {goalNames.length > 1 &&
+                      state.goals.find((g) => g.id === q.goalId)?.name
+                        ? ` · ${state.goals.find((g) => g.id === q.goalId)?.name}`
+                        : ""}
+                      {formatDate(q.date) !== "-" ? ` · ${formatDate(q.date)}` : ""}
                     </span>
-                  </PersonLink>
+                  </span>
                   <b className="shrink-0 text-text-primary tnum">
                     {fmtAmount(
                       state.goals.find((g) => g.id === q.goalId)?.unit ?? "currency",
@@ -2621,7 +2778,7 @@ export function VerifyQueueCard({
                 }}
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
               >
-                <Check size={14} strokeWidth={2.8} /> Verify and lock
+                <Check size={14} strokeWidth={2.8} /> Verify and lock {claimWord}
               </button>
             </div>
           </Modal>
@@ -2694,6 +2851,13 @@ export function ClaimReviewDialog({
     setNoteError(false);
     onClose();
   };
+  /* WHOSE CLAIM, HOW MUCH, ON WHICH GOAL (Anir, Oct 1: "u have to be super
+     super specific"). The header names the claim and the buttons say whose
+     claim they act on, so a reviewer with ten open never signs the wrong
+     one. */
+  const claimAmount = goal ? fmtAmount(goal.unit, a.amount, a.currency) : String(a.amount);
+  const claimant = a.person.trim().split(/\s+/)[0] || a.person;
+  const claimTitle = `${a.person}'s ${claimAmount} claim${goal ? ` on ${goal.name}` : ""}`;
   return (
           /**
            * EVERYTHING YOU NEED TO MAKE THE CALL, IN ONE PLACE (Anir, Aug 16:
@@ -2707,7 +2871,8 @@ export function ClaimReviewDialog({
           <Modal
             open
             onClose={close}
-            title={locked ? "Unlock and send this claim back" : "Verify this claim"}
+            title={locked ? `Unlock and send back ${claimTitle}` : `Verify ${claimTitle}`}
+            wrapTitle
             size="workflow"
           >
             {/* THE SAME MEASURED BAR AS EVERY OTHER SCREEN (Anir, Aug 23:
@@ -3012,7 +3177,7 @@ export function ClaimReviewDialog({
                   aria-invalid={noteError}
                   aria-describedby={noteError ? "send-back-reason-error" : undefined}
                   className={cn(
-                    "mt-1.5 h-[38px] w-full rounded-lg border bg-white px-3 text-[13px] outline-none",
+                    "mt-1.5 h-10 w-full rounded-lg border bg-white px-3 text-[13px] outline-none",
                     noteError
                       ? "border-error focus:border-error"
                       : "border-border-light focus:border-blue-subtle"
@@ -3056,7 +3221,7 @@ export function ClaimReviewDialog({
                     }}
                     className="cursor-pointer rounded-lg bg-[color:#B02020] px-4 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-[color:#8F1A1A] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-[color:#B02020]"
                   >
-                    Send it back
+                    {`Send ${claimant}'s claim back`}
                   </button>
                 </>
               ) : (
@@ -3087,7 +3252,8 @@ export function ClaimReviewDialog({
                       }}
                       className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-primary px-4 py-2 text-[13.5px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
                     >
-                      <Check size={14} strokeWidth={2.8} /> Verify and lock
+                      <Check size={14} strokeWidth={2.8} />{" "}
+                      {`Verify and lock ${claimant}'s claim`}
                     </button>
                   )}
                 </>

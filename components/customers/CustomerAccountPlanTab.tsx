@@ -2,6 +2,8 @@
 import { DateField } from "@/components/ui/DateField";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
+import { addMockModePrefix, isMockModePath } from "@/lib/modeUrl";
 import {
   AlertCircle,
   CalendarClock,
@@ -55,7 +57,7 @@ import {
   type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
-import { contactHref } from "@/lib/entityHref";
+import { contactHref, teammateHref } from "@/lib/entityHref";
 
 type PlanStatus = "Active" | "Needs review" | "Draft";
 type PlayStage = "Explore" | "Shape" | "Validate" | "Commit";
@@ -369,6 +371,9 @@ export function CustomerAccountPlanTab({
     offering: TabOffering;
     material: OfferingMaterial;
   } | null>(null);
+  /* The hover card frames the material's own page, in the mode this page is
+     in, the same way the Offerings tab beside it does. */
+  const inMock = isMockModePath(usePathname() || "");
 
   useEffect(() => {
     try {
@@ -578,12 +583,12 @@ export function CustomerAccountPlanTab({
               <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Account objective
                 <OptionalMark />
-                <textarea value={draft.objective} onChange={(e) => setDraft({ ...draft, objective: e.target.value })} className="box-border h-32 w-full resize-none rounded-lg border border-border bg-white p-3 text-[13px] font-normal leading-5 normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                <textarea value={draft.objective} onChange={(e) => setDraft({ ...draft, objective: e.target.value })} className="box-border h-32 w-full resize-none rounded-lg border border-border-light bg-white p-3 text-[13px] font-normal leading-5 normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
               <label className="flex min-w-0 flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Current position
                 <OptionalMark />
-                <textarea value={draft.currentPosition} onChange={(e) => setDraft({ ...draft, currentPosition: e.target.value })} className="box-border h-32 w-full resize-none rounded-lg border border-border bg-white p-3 text-[13px] font-normal leading-5 normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                <textarea value={draft.currentPosition} onChange={(e) => setDraft({ ...draft, currentPosition: e.target.value })} className="box-border h-32 w-full resize-none rounded-lg border border-border-light bg-white p-3 text-[13px] font-normal leading-5 normal-case tracking-normal text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
               </label>
             </div>
 
@@ -603,7 +608,7 @@ export function CustomerAccountPlanTab({
                     </div>
                     <div className="min-w-0">
                       <label className="sr-only" htmlFor={`account-plan-action-${action.id}`}>Action {index + 1} (optional)</label>
-                      <input id={`account-plan-action-${action.id}`} value={action.action} onChange={(e) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, action: e.target.value } : item) })} className="h-9 w-full rounded-lg border border-border bg-white px-3 text-[13px] font-medium text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
+                      <input id={`account-plan-action-${action.id}`} value={action.action} onChange={(e) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, action: e.target.value } : item) })} className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] font-medium text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
                       <div className="mt-2 grid items-start gap-2.5 md:grid-cols-3">
                         <label className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                           Owner
@@ -829,7 +834,7 @@ export function CustomerAccountPlanTab({
                                         {linkedActivities.map((activity) => {
                                           const contact = contacts.find((person) => person.id === activity.contact_id);
                                           const outcome = activity.outcome.replaceAll("_", " ");
-                                          return <a key={activity.id} href="/activity" className="group grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-blue-light/25"><span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-[color:var(--ink-teal-deep)]"><CalendarClock size={12} />Activity</span><span className="min-w-0"><span className="block truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">{activity.notes || `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}${contact ? ` with ${contact.full_name}` : ""}`}</span><span className="mt-0.5 block text-[10.5px] capitalize text-text-tertiary">{outcome} · {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(activity.created_at))}</span></span></a>;
+                                          return <a key={activity.id} href="/activity" className="group grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-blue-light/25"><span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-[color:var(--ink-teal-deep)]"><CalendarClock size={12} />Activity</span><span className="flex min-w-0 items-center gap-2">{contact && <EntityLink nested href={contactHref(contact.id, contact.full_name)} className="shrink-0 rounded-full" title={contact.full_name}><Avatar name={contact.full_name} className="h-6 w-6 shrink-0 text-[8px]" /></EntityLink>}<span className="min-w-0"><span className="block truncate text-[12px] font-semibold text-text-primary group-hover:text-blue-primary">{activity.notes || `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}${contact ? ` with ${contact.full_name}` : ""}`}</span><span className="mt-0.5 block text-[10.5px] capitalize text-text-tertiary">{outcome} · {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(activity.created_at))}</span></span></span></a>;
                                         })}
                                       </div>
                                     </div>
@@ -880,7 +885,7 @@ export function CustomerAccountPlanTab({
                                                   material={peekMaterial}
                                                   previewUrl={
                                                     isUploadedMaterial(peekMaterial)
-                                                      ? `${materialPreviewHref(offering.id, peekMaterial)}?embed=1`
+                                                      ? `${inMock ? addMockModePrefix(materialPreviewHref(offering.id, peekMaterial)) : materialPreviewHref(offering.id, peekMaterial)}?embed=1`
                                                       : null
                                                   }
                                                 >
@@ -963,7 +968,7 @@ export function CustomerAccountPlanTab({
                     <div className="mt-2 flex h-12 items-center justify-center">
                       {node.mapped ? (
                         <div className="relative rounded-full bg-white p-[3px]" style={{ boxShadow: `0 0 0 2px ${node.color}, 0 6px 18px rgba(15,23,42,0.14)` }}>
-                          <EntityLink href={contactHref(null, node.name)} className="block rounded-full" title={node.name}><Avatar name={node.name} className="h-10 w-10" /></EntityLink>
+                          <EntityLink href={index === 0 ? teammateHref(node.name) : contactHref(null, node.name)} className="block rounded-full" title={node.name}><Avatar name={node.name} className="h-10 w-10" /></EntityLink>
                           <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white text-white" style={{ background: node.color }}>
                             {index === mappedDecisionSteps - 1 ? <Target size={8} strokeWidth={3} /> : <Check size={8} strokeWidth={3.5} />}
                           </span>
@@ -1011,8 +1016,8 @@ export function CustomerAccountPlanTab({
             <tbody>{visibleStakeholders.length === 0 && <tr><td colSpan={5} className="px-5 py-10 text-center text-[12.5px] text-text-secondary">No stakeholders match these filters.</td></tr>}{visibleStakeholders.map((person) => {
               const expanded = expandedStakeholder === person.id;
               return <Fragment key={person.id}>
-                <tr tabIndex={0} aria-expanded={expanded} onClick={() => setExpandedStakeholder(expanded ? null : person.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setExpandedStakeholder(expanded ? null : person.id); } }} className={cn("cursor-pointer border-b border-border-light text-[12px] outline-none transition-colors focus-visible:bg-blue-light/55 focus-visible:[box-shadow:inset_3px_0_0_0_var(--ink-teal-deep)]", expanded ? "bg-blue-light/45" : "hover:bg-surface/60")}><td className="px-5 py-3"><PersonLink kind="contact" name={person.name} avatarClassName="h-8 w-8 shrink-0" className="flex gap-2.5"><span><span className={cn("block font-semibold text-text-primary", ENTITY_NAME)}>{person.name}</span><span className="block text-[11px] text-text-secondary">{person.title}</span></span></PersonLink></td><td className="px-3 py-3"><RolePill role={person.buyingRole} /></td><td className="px-3 py-3"><p className="font-semibold text-text-primary">{person.relationship}</p><p className="text-[11px] text-text-tertiary">{person.position} · {person.priority} priority</p></td><td className="max-w-[260px] px-3 py-3 font-medium text-blue-primary">{person.nextAction}</td><td className="px-3 py-3"><button aria-label={`${expanded ? "Collapse" : "Expand"} ${person.name}`} aria-expanded={expanded} onClick={(event) => { event.stopPropagation(); setExpandedStakeholder(expanded ? null : person.id); }} className={cn("inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white transition-colors", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/50 hover:text-blue-primary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></button></td></tr>
-                {expanded && <tr key={`${person.id}-detail`} className="border-b border-border-light bg-white"><td colSpan={5} className="px-5 pb-5 pt-3 [box-shadow:inset_3px_0_0_0_var(--ink-teal-deep)]"><div className="tab-panel grid gap-x-8 gap-y-4 sm:grid-cols-[0.8fr_0.9fr_1.7fr]"><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Reports to</p><p className="mt-1.5 text-[12.5px] font-semibold text-text-primary">{person.reportsTo}</p></div><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Introduced by</p><PersonLink kind="contact" name={person.introducer} avatarClassName="h-6 w-6 shrink-0" className="mt-1.5 text-[12.5px] font-semibold text-text-primary" /></div><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Recommended approach</p><p className="mt-1.5 text-[12.5px] leading-5 text-text-primary">{person.approach}</p></div></div></td></tr>}
+                <tr tabIndex={0} aria-expanded={expanded} onClick={() => setExpandedStakeholder(expanded ? null : person.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setExpandedStakeholder(expanded ? null : person.id); } }} className={cn("cursor-pointer border-b border-border-light text-[12px] outline-none transition-colors focus-visible:bg-blue-light/55 focus-visible:[box-shadow:inset_3px_0_0_0_var(--ink-teal-deep)]", expanded ? "bg-blue-light/45" : "hover:bg-surface/60")}><td className="px-5 py-3"><PersonLink kind="contact" contactId={contacts.some((c) => c.id === person.id) ? person.id : null} name={person.name} avatarClassName="h-8 w-8 shrink-0" className="flex gap-2.5"><span><span className={cn("block font-semibold text-text-primary", ENTITY_NAME)}>{person.name}</span><span className="block text-[11px] text-text-secondary">{person.title}</span></span></PersonLink></td><td className="px-3 py-3"><RolePill role={person.buyingRole} /></td><td className="px-3 py-3"><p className="font-semibold text-text-primary">{person.relationship}</p><p className="text-[11px] text-text-tertiary">{person.position} · {person.priority} priority</p></td><td className="max-w-[260px] px-3 py-3 font-medium text-blue-primary">{person.nextAction}</td><td className="px-3 py-3"><button aria-label={`${expanded ? "Collapse" : "Expand"} ${person.name}`} aria-expanded={expanded} onClick={(event) => { event.stopPropagation(); setExpandedStakeholder(expanded ? null : person.id); }} className={cn("inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white transition-colors", expanded ? "border-blue-subtle text-blue-primary" : "border-border-light text-text-secondary hover:border-blue-subtle hover:bg-blue-light/50 hover:text-blue-primary")}><ChevronDown size={15} strokeWidth={2.2} className={cn("transition-transform duration-200", expanded && "rotate-180")} /></button></td></tr>
+                {expanded && <tr key={`${person.id}-detail`} className="border-b border-border-light bg-white"><td colSpan={5} className="px-5 pb-5 pt-3 [box-shadow:inset_3px_0_0_0_var(--ink-teal-deep)]"><div className="tab-panel grid gap-x-8 gap-y-4 sm:grid-cols-[0.8fr_0.9fr_1.7fr]"><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Reports to</p>{stakeholders.some((s) => s.name === person.reportsTo) ? <PersonLink kind="contact" contactId={contacts.find((c) => c.full_name === person.reportsTo)?.id ?? null} name={person.reportsTo} avatarClassName="h-6 w-6 shrink-0" className="mt-1.5 text-[12.5px] font-semibold text-text-primary" /> : <p className="mt-1.5 text-[12.5px] font-semibold text-text-primary">{person.reportsTo}</p>}</div><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Introduced by</p><PersonLink kind={person.introducer === plan.owner ? "teammate" : "contact"} contactId={contacts.find((c) => c.full_name === person.introducer)?.id ?? null} name={person.introducer} avatarClassName="h-6 w-6 shrink-0" className="mt-1.5 text-[12.5px] font-semibold text-text-primary" /></div><div><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Recommended approach</p><p className="mt-1.5 text-[12.5px] leading-5 text-text-primary">{person.approach}</p></div></div></td></tr>}
               </Fragment>;
             })}</tbody>
           </table>
@@ -1025,7 +1030,7 @@ export function CustomerAccountPlanTab({
           <div><div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-primary" /><h3 className="text-[15px] font-semibold text-text-primary">Next actions</h3></div><p className="mt-0.5 text-[12px] text-text-secondary">The short list that moves the account plan forward.</p></div>
           <span className="text-[12px] font-medium text-text-tertiary">{plan.actions.filter((action) => action.status !== "Done").length} open</span>
         </div>
-        <div className="divide-y divide-border-light">{plan.actions.map((action) => <div key={action.id} className="grid items-center gap-3 px-5 py-3.5 sm:grid-cols-[24px_minmax(0,1fr)_170px_130px]"><span className={cn("flex h-5 w-5 items-center justify-center rounded-full border", action.status === "Done" ? "border-[color:var(--ink-green)] bg-[color:var(--ink-green)] text-white dark:bg-[#355844] dark:text-[#dff3e4]" : "border-border bg-surface text-transparent")}><Check size={12} strokeWidth={3} /></span><div className="min-w-0"><p className={cn("text-[12.5px] font-semibold text-text-primary", action.status === "Done" && "line-through opacity-60")}>{action.action}</p><p className="mt-1 inline-flex items-center gap-1 text-[11.5px] font-medium text-blue-primary"><Link2 size={11} />{action.play}</p></div><span className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary"><Avatar name={action.owner} className="h-6 w-6" />{action.owner}</span><div className="sm:text-right"><StatusPill status={action.status} /><p className="mt-1 text-[11px] text-text-tertiary">Due {prettyDate(action.due)}</p></div></div>)}</div>
+        <div className="divide-y divide-border-light">{plan.actions.map((action) => <div key={action.id} className="grid items-center gap-3 px-5 py-3.5 sm:grid-cols-[24px_minmax(0,1fr)_170px_130px]"><span className={cn("flex h-5 w-5 items-center justify-center rounded-full border", action.status === "Done" ? "border-[color:var(--ink-green)] bg-[color:var(--ink-green)] text-white dark:bg-[#355844] dark:text-[#dff3e4]" : "border-border bg-surface text-transparent")}><Check size={12} strokeWidth={3} /></span><div className="min-w-0"><p className={cn("text-[12.5px] font-semibold text-text-primary", action.status === "Done" && "line-through opacity-60")}>{action.action}</p><p className="mt-1 inline-flex items-center gap-1 text-[11.5px] font-medium text-blue-primary"><Link2 size={11} />{action.play}</p></div><PersonLink name={action.owner} avatarClassName="h-6 w-6 shrink-0" className="gap-1.5 text-[12px] text-text-secondary" /><div className="sm:text-right"><StatusPill status={action.status} /><p className="mt-1 text-[11px] text-text-tertiary">Due {prettyDate(action.due)}</p></div></div>)}</div>
       </Card>}
     </div>
   );

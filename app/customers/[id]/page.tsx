@@ -308,6 +308,18 @@ export default async function CustomerDetailPage({
   const mayDeleteOnThisAccount =
     !(await moduleDeleteRefusal("/customers")) &&
     canDeleteRecord(asRecord, "customers", scope);
+  /* THE REST OF THE PATCH ROUTE'S ANSWER, for the hover X's that take a link
+     off this account in place (Anir, Oct 1). In Real mode the route also
+     refuses an owned account to anyone but its owner or a manager, matched on
+     the account id, never the name; this asks that too, so the X only shows
+     where the save lands. */
+  const mayPatchThisAccount =
+    mayEditThisAccount &&
+    (getDataMode() !== "live" ||
+      !(customer.owner_user_id || customer.owner?.trim()) ||
+      me.role === "admin" ||
+      me.role === "bd_owner" ||
+      (!!customer.owner_user_id && customer.owner_user_id === me.memberId));
 
 
   return (
@@ -368,7 +380,8 @@ export default async function CustomerDetailPage({
                     href={`/customers/${parentCompany.id}`}
                     className="inline-flex items-center gap-1 hover:text-blue-primary"
                   >
-                    <ParentCompanyIcon size={12} strokeWidth={2.2} className="text-[color:var(--ink-bright-blue)]" aria-hidden="true" />
+                    {/* The parent's own logo, not a generic building glyph. */}
+                    <CompanyLogo name={parentCompany.company_name} className="h-[18px] w-[18px] shrink-0 text-[7px]" />
                     Part of {parentCompany.company_name}
                   </Link>
                 )}
@@ -451,7 +464,36 @@ export default async function CustomerDetailPage({
               label="Delete account"
               subject={{ name: customer.company_name, kind: "company" }}
               title={`Delete ${customer.company_name}?`}
-              body="The account and its contacts are removed. This cannot be undone."
+              body={(() => {
+                /* Its Customer ID tells two similar names apart, and the
+                   counts say exactly what goes with it (Anir, Oct 1: "u have
+                   to be super super specific"). */
+                const usage = customer.offering_usage ?? [];
+                const inUse = customer.offerings_in_use?.length ?? 0;
+                const activities = usage.reduce((n, u) => n + (u.engagement_versions?.length ?? 0), 0);
+                const lines = usage.reduce((n, u) => n + (u.revenue_lines?.length ?? 0), 0);
+                const goes = [
+                  contacts.length > 0
+                    ? `${contacts.length} ${contacts.length === 1 ? "contact" : "contacts"}`
+                    : null,
+                  inUse > 0 ? `${inUse} ${inUse === 1 ? "offering" : "offerings"} in use` : null,
+                  activities > 0 ? `${activities} logged ${activities === 1 ? "activity" : "activities"}` : null,
+                  lines > 0 ? `${lines} revenue ${lines === 1 ? "line" : "lines"}` : null,
+                ].filter((part): part is string => !!part);
+                const goesText =
+                  goes.length > 1
+                    ? `${goes.slice(0, -1).join(", ")} and ${goes[goes.length - 1]}`
+                    : goes[0] || "";
+                const number = profile?.customerNo?.trim();
+                return (
+                  <>
+                    <b>{customer.company_name}</b>
+                    {number ? ` (${number})` : ""} is deleted
+                    {goesText ? `, with its ${goesText}` : ""}.
+                  </>
+                );
+              })()}
+              detail="This cannot be undone."
               confirmLabel="Delete account"
               done={`${customer.company_name} deleted.`}
               then="/customers"
@@ -473,6 +515,7 @@ export default async function CustomerDetailPage({
            separately so an editor cannot delete and a control that would be
            refused is never drawn. */
         canDeleteContacts={mayDeleteOnThisAccount}
+        canPatchAccount={mayPatchThisAccount}
         bands={bands360}
         customer={customer}
         accountReviews={accountReviews}

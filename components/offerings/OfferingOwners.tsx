@@ -525,33 +525,58 @@ export function OfferingOwners({
           if (target) void release(target.memberId);
         }}
         busy={!!confirmOwner && busy === confirmOwner.memberId}
+        /* Three cases, each named in full (Anir, Oct 1: "u have to be super
+           super specific"): declining a request, giving up your own
+           ownership, and an admin removing someone else. Granting is
+           admin-only on the server, so only an admin can give it back. */
         title={
-          confirmOwner?.memberId === mine?.memberId
-            ? "Give up ownership?"
-            : `Remove ${confirmOwner?.name || "this owner"}?`
+          confirmOwner?.status === "requested"
+            ? `Decline ${confirmOwner.name}'s request to own ${offeringName || "this offering"}?`
+            : confirmOwner?.memberId === mine?.memberId
+              ? `Give up your ownership of ${offeringName || "this offering"}?`
+              : `Remove ${confirmOwner?.name || "this owner"} as an owner of ${offeringName || "this offering"}?`
         }
         confirmLabel={
-          confirmOwner?.memberId === mine?.memberId
-            ? "Give up ownership"
-            : "Remove access"
+          confirmOwner?.status === "requested"
+            ? "Decline request"
+            : confirmOwner?.memberId === mine?.memberId
+              ? "Give up ownership"
+              : "Remove access"
         }
         body={
-          confirmOwner?.memberId === mine?.memberId ? (
+          confirmOwner?.status === "requested" ? (
+            <>
+              <strong>{confirmOwner.name}</strong> asked to own{" "}
+              <strong>{offeringName}</strong>
+              {formatDate(confirmOwner.claimed_at) !== "-"
+                ? ` on ${formatDate(confirmOwner.claimed_at)}`
+                : ""}
+              . The request comes off the list, and they get no edit access.
+            </>
+          ) : confirmOwner?.memberId === mine?.memberId ? (
             <>
               You will no longer be able to edit{" "}
               <strong>{offeringName}</strong>, including its sales materials.
             </>
           ) : (
             <>
-              <strong>{confirmOwner?.name}</strong> will no longer be able to
-              edit <strong>{offeringName}</strong> or its sales materials.
+              <strong>{confirmOwner?.name}</strong>
+              {(confirmOwner?.email || "").trim()
+                ? ` (${(confirmOwner?.email || "").trim()})`
+                : ""}{" "}
+              will no longer be able to edit <strong>{offeringName}</strong> or
+              its sales materials.
             </>
           )
         }
         detail={
-          confirmOwner?.memberId === mine?.memberId
-            ? "An admin, or another owner, has to grant it back."
-            : "They are not notified. You can add them again at any time."
+          confirmOwner?.status === "requested"
+            ? "They are not notified."
+            : confirmOwner?.memberId === mine?.memberId
+              ? granted.filter((o) => o.memberId !== confirmOwner?.memberId).length === 0
+                ? `You are its only owner, so ${offeringName || "it"} will have none. Only a workspace admin can give ownership back.`
+                : "Its other owners keep their access. Only a workspace admin can give yours back."
+              : "They are not notified. You can add them again at any time."
         }
       />
 

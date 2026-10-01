@@ -141,10 +141,24 @@ export function MyListToggle({
          "should probably be red, by the way. It's a negative action"). Both
          answers here remove something: one takes the company off the page,
          the other takes its star off. */
-      title={confirm === "remove" ? "Stop tracking?" : "Remove star?"}
+      title={confirm === "remove" ? `Stop tracking ${companyName}?` : `Remove the star from ${companyName}?`}
       subject={{ name: companyName, kind: "company", imageUrl: companyLogoUrl }}
-      body={confirm === "remove" ? `${companyName} will leave your Market Intel page and starred list. You can add it again from Manage ${group === "competitor" ? "competitors" : "customers"}.` : `${companyName} will no longer be starred. It will stay on your page.`}
-      confirmLabel={confirm === "remove" ? "Stop tracking" : "Remove star"}
+      body={
+        confirm === "remove" ? (
+          <>
+            <b>{companyName}</b> leaves your{" "}
+            <b>{group === "competitor" ? "Competitor Intel" : "Customer Intel"}</b> page
+            {star ? " and your starred list" : ""}. You can add it again from Manage{" "}
+            {group === "competitor" ? "competitors" : "customers"}.
+          </>
+        ) : (
+          <>
+            <b>{companyName}</b> comes off your starred list. You keep tracking it, and it stays on your{" "}
+            <b>{group === "competitor" ? "Competitor Intel" : "Customer Intel"}</b> page.
+          </>
+        )
+      }
+      confirmLabel={confirm === "remove" ? "Stop tracking company" : "Remove star"}
     />
     </>
   );

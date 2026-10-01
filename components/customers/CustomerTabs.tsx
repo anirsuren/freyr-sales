@@ -37,6 +37,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Maximize2,
+  ChevronDown,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -56,7 +57,7 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark } from "@/components/ui/RequiredMark";
 import { Field, Input } from "@/components/ui/Input";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { MoneyInput } from "@/components/ui/MoneyInput";
@@ -69,6 +70,7 @@ import {
   type CustomerDealRowData,
 } from "@/components/customers/CustomerDealRow";
 import { useToast } from "@/components/ui/Toast";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { cn, formatDate, formatDateTime, OUTCOME_META, OUTCOME_CHART_COLOR, SIZE_TIER_LABEL, titleCase } from "@/lib/utils";
 import { AreaChart, DonutChart, DonutLegend, LineChart, Sparkline, type TipItem } from "@/components/charts/Charts";
@@ -112,7 +114,7 @@ import { DateText } from "@/components/ui/DateText";
 import { withCommas } from "@/lib/currency";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { EntityLink, PersonLink } from "@/components/ui/EntityLink";
-import { contactHref } from "@/lib/entityHref";
+import { contactHref, isSomebody } from "@/lib/entityHref";
 
 const CUSTOMER_OUTCOMES: Outcome[] = [
   "interested",
@@ -360,7 +362,18 @@ function PipelineMomentumModal({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13px] font-semibold text-text-primary">{deal.name}</span>
-                      <span className="mt-0.5 block text-[11.5px] text-text-secondary">{[deal.owner, deal.contactName].filter(Boolean).join(" · ") || deal.company}</span>
+                      {/* Owner and contact wear their faces, each a door. */}
+                      <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-text-secondary">
+                        {deal.owner || deal.contactName ? (
+                          <>
+                            {deal.owner && (isSomebody(deal.owner) ? <PersonLink name={deal.owner} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5" /> : <span>{deal.owner}</span>)}
+                            {deal.owner && deal.contactName && <span>·</span>}
+                            {deal.contactName && (isSomebody(deal.contactName) ? <PersonLink kind="contact" name={deal.contactName} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5" /> : <span>{deal.contactName}</span>)}
+                          </>
+                        ) : (
+                          deal.company
+                        )}
+                      </span>
                     </span>
                     <span className="shrink-0 text-right">
                       <span className="block text-[13px] font-bold tnum text-blue-primary">{formatMoney(deal.value)}</span>
@@ -429,6 +442,7 @@ export function CustomerTabs({
   fdlComponents = [],
   canEditComponents = false,
   canDeleteContacts = false,
+  canPatchAccount,
   includeDemoTeam,
   bands = [],
 }: {
@@ -475,6 +489,10 @@ export function CustomerTabs({
   /** May remove a person from this account. A DELETE on Customers, asked
    *  separately from the write that lets you add one. */
   canDeleteContacts?: boolean;
+  /** PATCH /api/customers/[id]'s whole answer, including its Real-mode rule
+   *  that an owned account is changed only by its owner or a manager. Gates
+   *  the hover X's that save through that route. Falls back to canEditFacts. */
+  canPatchAccount?: boolean;
   offeringsCatalog?: {
     typeOptions: string[];
     applicable: TabOffering[];
@@ -483,6 +501,8 @@ export function CustomerTabs({
     all?: TabOffering[];
   };
 }) {
+  /** Who may take a link off this account in place (the hover X's). */
+  const mayPatchAccount = canPatchAccount ?? canEditFacts;
   /* A NUMBER ON EVERY TAB, NOT JUST THE BAND ONES.
      Anir, Sep 1: "why do these things not have any numbers? Obviously, they
      should have numbers too."
@@ -620,6 +640,8 @@ export function CustomerTabs({
   const [accountDraft, setAccountDraft] = useState({ owner: "", competitor: "" });
   const [accountSaving, setAccountSaving] = useState(false);
   const [accountError, setAccountError] = useState("");
+  /** The competitor's hover X, waiting on its confirm. */
+  const [confirmClearCompetitor, setConfirmClearCompetitor] = useState(false);
   // "Unassigned" is what the card prints for nobody, never an owner's name.
   const accountOwner = owner === "Unassigned" ? "" : owner;
   const accountOwnerChoices =
@@ -635,6 +657,10 @@ export function CustomerTabs({
   const [atts, setAtts] = useState<AccountAttachment[]>(
     customer.attachments || []
   );
+  /* THE ATTACHMENTS LIST FOLDS (Anir, Oct 1: "sales materials should be
+     collapsible", carried to every list of documents). Open by default; one
+     or two attachments never fold. */
+  const [attsOpen, setAttsOpen] = useState(true);
   const [attName, setAttName] = useState("");
   const [attModalOpen, setAttModalOpen] = useState(false);
   const [attUrl, setAttUrl] = useState("");
@@ -661,6 +687,11 @@ export function CustomerTabs({
   const [removingContact, setRemovingContact] = useState<{
     id: string;
     name: string;
+    /** Job title and email tell two people with similar names apart. */
+    title?: string | null;
+    email?: string | null;
+    /** Asked from the contact's edit dialog, which closes once it works. */
+    fromEditor?: boolean;
   } | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
   const [contactBusy, setContactBusy] = useState(false);
@@ -842,6 +873,8 @@ export function CustomerTabs({
     const name = contactNameById.get(i.contact_id);
     return {
       avatar: name,
+      // A touch with no known person is named for the account: its logo.
+      logo: name ? undefined : customer.company_name,
       name: name || customer.company_name,
       sub: OUTCOME_META[i.outcome]?.label || i.outcome,
       ...(withDate ? { value: formatDateTime(i.created_at) } : {}),
@@ -858,6 +891,7 @@ export function CustomerTabs({
       const name = contactNameById.get(i.contact_id);
       const item: TipItem = {
         avatar: name,
+        logo: name ? undefined : customer.company_name,
         name: name || customer.company_name,
         sub: customer.company_name,
         value: OUTCOME_META[i.outcome]?.label || i.outcome,
@@ -1108,9 +1142,9 @@ export function CustomerTabs({
     }
   }
 
-  /* ONE DELETE, TWO DOORS: the card's trash, which asks first, and the edit
-     dialog's Remove, which is already a pop-up and so acts. Both say the same
-     thing when it works and show the route's own words when it does not. */
+  /* ONE DELETE, TWO DOORS: the card's trash and the edit dialog's Remove.
+     Both ask first through the same confirmation, say the same thing when it
+     works and show the route's own words when it does not. */
   async function deleteContact(target: { id: string; name: string }): Promise<boolean> {
     if (removeBusy) return false;
     setRemoveBusy(true);
@@ -1143,8 +1177,9 @@ export function CustomerTabs({
   /* REMOVE FROM THE EDIT DIALOG (Anir, Oct 1: "It should just be super easy
      to delete"). Whoever opens a person to fix them is the one most likely to
      find they should not be on the account at all, and the dialog had only
-     Save. It is already a pop-up, so it acts without a second one, the
-     standing rule for a delete inside a dialog. */
+     Save. The delete lands on the server at once, so the button asks first
+     through the page's own confirmation (Anir, Oct 1: "this cant happen"),
+     which calls this on yes. */
   async function removeEditingContact() {
     if (!editingContact) return;
     const removed = await deleteContact({
@@ -1192,6 +1227,19 @@ export function CustomerTabs({
       setCompetitor(typeof updated.competitor === "string" ? updated.competitor : nextCompetitor);
     setAccountEditorOpen(false);
     toast("Account updated.");
+  }
+
+  /** CLEAR THE COMPETITOR FROM THE CARD (Anir, Oct 1: "when i hover i should
+   *  have a delete button"). The same PATCH the Edit pop-up sends, emptied. */
+  async function clearCompetitor() {
+    const was = competitor.trim();
+    setAccountSaving(true);
+    const updated = await patchCustomer({ competitor: "" });
+    setAccountSaving(false);
+    if (!updated) return;
+    setCompetitor("");
+    setConfirmClearCompetitor(false);
+    toast(`${was} is no longer recorded against ${customer.company_name}.`);
   }
 
   async function addDeal() {
@@ -1263,6 +1311,8 @@ export function CustomerTabs({
     setAttName("");
     setAttUrl("");
     setBusy(false);
+    // The new attachment lands in an open list, never behind the fold.
+    setAttsOpen(true);
     toast("Attachment added");
   }
 
@@ -1765,7 +1815,23 @@ export function CustomerTabs({
                       ? contactPhoneDisplay(c.phone, c.raw_linkedin_data, c.country)
                       : null;
                     return (
-                      <Card key={c.id} className="group/contact relative p-3.5 transition-colors hover:border-blue-subtle">
+                      <Card key={c.id} className="group/contact group/unlink relative p-3.5 transition-colors hover:border-blue-subtle">
+                      {/* Off the key list right here (Anir, Oct 1): the
+                          same confirm as the Contacts tab's star, and the
+                          person stays on the account. */}
+                      {canEditFacts && (
+                        <UnlinkX
+                          within="corner"
+                          label={`Take ${c.full_name} off ${customer.company_name}'s key contacts`}
+                          disabled={keySaving === c.id}
+                          onClick={() =>
+                            setUnmarkingKeyContact({
+                              contact: c,
+                              index: displayedContacts.findIndex((item) => item.id === c.id),
+                            })
+                          }
+                        />
+                      )}
                       <div className="flex items-start gap-3">
                         <Avatar name={c.full_name} className="h-10 w-10 shrink-0 text-[13px]" />
                         <div className="min-w-0 flex-1">
@@ -2083,7 +2149,7 @@ export function CustomerTabs({
                   tip: ds.map(
                     (d): TipItem => ({
                       logo: d.company,
-                      avatar: d.contactName,
+                      avatar: isSomebody(d.contactName) ? d.contactName : undefined,
                       name: d.company,
                       sub: d.contactName,
                       value: formatMoney(d.value),
@@ -2129,7 +2195,7 @@ export function CustomerTabs({
                   .filter((deal) => new Date(deal.createdAt).getTime() <= end)
                   .map((deal) => ({
                     logo: deal.company,
-                    avatar: deal.contactName,
+                    avatar: isSomebody(deal.contactName) ? deal.contactName : undefined,
                     name: deal.company,
                     sub: [deal.contactName, deal.stage].filter(Boolean).join(" · "),
                     value: formatMoney(deal.value),
@@ -2407,6 +2473,7 @@ export function CustomerTabs({
         {tab === "components" && (
           <CustomerDigitalComponents
             customerId={customer.id}
+            customerName={customer.company_name}
             links={customer.digital_components || []}
             components={fdlComponents}
             canEdit={canEditComponents}
@@ -2422,6 +2489,7 @@ export function CustomerTabs({
             applicable={offeringsCatalog.applicable}
             inUse={offeringsCatalog.inUse}
             usage={customer.offering_usage || []}
+            canEdit={canEditFacts}
           />
         )}
 
@@ -2519,7 +2587,12 @@ export function CustomerTabs({
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          setRemovingContact({ id: c.id, name: c.full_name });
+                          setRemovingContact({
+                            id: c.id,
+                            name: c.full_name,
+                            title: c.job_title,
+                            email: c.email,
+                          });
                         }}
                         className="relative z-10 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
                       >
@@ -2571,7 +2644,7 @@ export function CustomerTabs({
               orderedDeals.slice(0, index + 1).map((deal) => ({
                 name: deal.name,
                 sub: [deal.contact, deal.stage].filter(Boolean).join(" · "),
-                avatar: deal.contact || undefined,
+                avatar: isSomebody(deal.contact) ? deal.contact : undefined,
                 value: formatMoney(deal.value),
               }))
             ),
@@ -2585,7 +2658,7 @@ export function CustomerTabs({
               tip: rows.map((deal) => ({
                 name: deal.name,
                 sub: deal.contact || deal.owner || "Unassigned",
-                avatar: deal.contact || deal.owner || undefined,
+                avatar: isSomebody(deal.contact || deal.owner) ? deal.contact || deal.owner || undefined : undefined,
                 value: formatMoney(deal.value),
               })),
             };
@@ -2905,18 +2978,21 @@ export function CustomerTabs({
                 <p className="text-[12.5px] text-text-secondary">
                   Paste a link to a document or reference (e.g. a contract or deck).
                 </p>
-                <input
-                  value={attName}
-                  onChange={(e) => setAttName(e.target.value)}
-                  placeholder="Name (e.g. MSA draft)"
-                  className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
-                />
-                <input
-                  value={attUrl}
-                  onChange={(e) => setAttUrl(e.target.value)}
-                  placeholder="https://… (optional)"
-                  className="w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary"
-                />
+                {/* The shared 40px box and labels, like every other dialog. */}
+                <Field label="Name" required>
+                  <Input
+                    value={attName}
+                    onChange={(e) => setAttName(e.target.value)}
+                    placeholder="e.g. MSA draft"
+                  />
+                </Field>
+                <Field label="Link">
+                  <Input
+                    value={attUrl}
+                    onChange={(e) => setAttUrl(e.target.value)}
+                    placeholder="https://…"
+                  />
+                </Field>
                 <div className="flex justify-end">
                   <Button
                     onClick={async () => {
@@ -3010,15 +3086,33 @@ export function CustomerTabs({
 
             <Card>
               <h3 className="text-[15px] font-semibold text-text-primary mb-1">
-                Attachments
+                {atts.length > 2 ? (
+                  <button
+                    type="button"
+                    onClick={() => setAttsOpen((open) => !open)}
+                    aria-expanded={attsOpen}
+                    aria-controls="account-attachments"
+                    className="flex cursor-pointer items-center gap-1.5 transition-colors hover:text-blue-primary"
+                  >
+                    <ChevronDown
+                      size={15}
+                      strokeWidth={2.4}
+                      aria-hidden="true"
+                      className={`text-text-tertiary transition-transform ${attsOpen ? "" : "-rotate-90"}`}
+                    />
+                    Attachments ({atts.length})
+                  </button>
+                ) : (
+                  <>Attachments ({atts.length})</>
+                )}
               </h3>
               {atts.length === 0 && (
                 <p className="text-[12px] text-text-tertiary">
                   Nothing attached yet. Use the Attach button above to add a file.
                 </p>
               )}
-              {atts.length > 0 && (
-                <ul className="mt-4 divide-y divide-border-light">
+              {atts.length > 0 && (atts.length <= 2 || attsOpen) && (
+                <ul id="account-attachments" className="mt-4 divide-y divide-border-light">
                   {atts.map((a) => (
                     <li
                       key={a.id}
@@ -3062,6 +3156,7 @@ export function CustomerTabs({
         {tab === "activity" && (
           <CustomerActivityTab
             customerId={customer.id}
+            customerName={customer.company_name}
             usage={customer.offering_usage || []}
             /* EVERY offering, in-use ones first. A Lead is by definition
                something they do not use yet, and "applicable" needs the
@@ -3082,6 +3177,7 @@ export function CustomerTabs({
               category: o.category ?? null,
             }))}
             canEdit
+            canEditAccount={canEditFacts}
           >
             <InteractionTimeline
               interactions={interactions}
@@ -3321,9 +3417,23 @@ export function CustomerTabs({
                 Competitor / incumbent
                 <InfoHint text="Who they use for this work today, or who you are up against to win it. Knowing that changes how you pitch." />
               </p>
-              <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
-                <Swords size={15} strokeWidth={1.7} className="shrink-0 text-text-tertiary" />
-                <span className={cn("min-w-0 break-words text-[13px] font-medium", competitor ? "text-text-primary" : "text-text-tertiary")}>{competitor || "None recorded"}</span>
+              <div className="group/unlink flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
+                {/* A recorded competitor wears its own mark, sized like the
+                    owner's face above; the glyph stays for none recorded. */}
+                {isSomebody(competitor.trim()) ? (
+                  <CompanyLogo name={competitor.trim()} className="h-7 w-7 shrink-0 text-[9px]" />
+                ) : (
+                  <Swords size={15} strokeWidth={1.7} className="shrink-0 text-text-tertiary" />
+                )}
+                <span className={cn("min-w-0 flex-1 break-words text-[13px] font-medium", competitor ? "text-text-primary" : "text-text-tertiary")}>{competitor || "None recorded"}</span>
+                {/* Off the card in one move, asking first. */}
+                {mayPatchAccount && competitor.trim() && (
+                  <UnlinkX
+                    label={`Clear ${competitor.trim()} as ${customer.company_name}'s competitor`}
+                    disabled={accountSaving}
+                    onClick={() => setConfirmClearCompetitor(true)}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -3372,44 +3482,44 @@ export function CustomerTabs({
                 ]}
               />
             </Field>
-            <Field label="Locations">
-              <span className="grid grid-cols-2 gap-2">
-                <span className="min-w-0">
-                  <span className="mb-1 block text-[11px] text-text-tertiary">City</span>
-                  <ColorSelect
-                    ariaLabel="City"
-                    value={aboutCity}
-                    onChange={(city) => setAboutDraft((draft) => ({ ...draft, geography: locationGeography(aboutCountry, city, draft.geography) }))}
-                    fill
-                    searchable
-                    className="w-full"
-                    options={[
-                      { value: "", label: aboutCountry ? "Choose city" : "Choose country first", noMark: true },
-                      ...cityChoices.map((city) => ({ value: city, label: city, noMark: true })),
-                    ]}
-                    onCreateQuery={aboutCountry ? (city) => setAboutDraft((draft) => ({ ...draft, geography: locationGeography(aboutCountry, city.slice(0, 100), draft.geography) })) : undefined}
-                  />
-                </span>
-                <span className="min-w-0">
-                  <span className="mb-1 block text-[11px] text-text-tertiary">Country</span>
-                  <ColorSelect
-                    ariaLabel="Country"
-                    value={aboutCountry}
-                    onChange={(country) => setAboutDraft((draft) => ({ ...draft, geography: locationGeography(country, "", draft.geography) }))}
-                    fill
-                    searchable
-                    className="w-full"
-                    options={[
-                      { value: "", label: "Choose country", noMark: true },
-                      ...countryOptions(),
-                      ...(aboutCountry && !countryOptions().some((country) => country.value === aboutCountry)
-                        ? [{ value: aboutCountry, label: `${flagForGeography(aboutCountry) ?? "🌐"}  ${aboutCountry}`, noMark: true as const }]
-                        : []),
-                    ]}
-                  />
-                </span>
-              </span>
-            </Field>
+            {/* LEVEL WITH SIZE BESIDE IT (Anir, Oct 1: "some of them aren't
+                aligned"). Small City and Country captions under one Locations
+                label pushed these two boxes 20px below Size. Each is its own
+                field now, labelled the way every other field is. */}
+            <div role="group" aria-label="Locations" className="grid min-w-0 grid-cols-2 gap-2">
+              <Field label="City">
+                <ColorSelect
+                  ariaLabel="City"
+                  value={aboutCity}
+                  onChange={(city) => setAboutDraft((draft) => ({ ...draft, geography: locationGeography(aboutCountry, city, draft.geography) }))}
+                  fill
+                  searchable
+                  className="w-full"
+                  options={[
+                    { value: "", label: aboutCountry ? "Choose city" : "Choose country first", noMark: true },
+                    ...cityChoices.map((city) => ({ value: city, label: city, noMark: true })),
+                  ]}
+                  onCreateQuery={aboutCountry ? (city) => setAboutDraft((draft) => ({ ...draft, geography: locationGeography(aboutCountry, city.slice(0, 100), draft.geography) })) : undefined}
+                />
+              </Field>
+              <Field label="Country">
+                <ColorSelect
+                  ariaLabel="Country"
+                  value={aboutCountry}
+                  onChange={(country) => setAboutDraft((draft) => ({ ...draft, geography: locationGeography(country, "", draft.geography) }))}
+                  fill
+                  searchable
+                  className="w-full"
+                  options={[
+                    { value: "", label: "Choose country", noMark: true },
+                    ...countryOptions(),
+                    ...(aboutCountry && !countryOptions().some((country) => country.value === aboutCountry)
+                      ? [{ value: aboutCountry, label: `${flagForGeography(aboutCountry) ?? "🌐"}  ${aboutCountry}`, noMark: true as const }]
+                      : []),
+                  ]}
+                />
+              </Field>
+            </div>
             <Field label="Website">
               <Input maxLength={500} value={aboutDraft.website_url} onChange={(event) => setAboutDraft((draft) => ({ ...draft, website_url: event.target.value }))} placeholder="example.com" />
             </Field>
@@ -3535,29 +3645,28 @@ export function CustomerTabs({
         size="wide"
       >
         {(() => {
-          const fld =
-            "w-full bg-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-blue-primary";
-          const lbl =
-            "block text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary mb-1";
           const set = (k: string, v: string) =>
             setDealForm({ ...dealForm, [k]: v });
           const stageProb =
             (STAGE_PROBABILITY as Record<string, number>)[dealForm.stage] ?? 0;
+          /* THE APP'S OWN FIELDS (Anir, Oct 1: "It should all be the same").
+             This form kept a private grey box and small uppercase labels. It
+             now uses the shared Field, Input and dropdowns like every other
+             dialog. The two people pickers keep a plain heading instead of a
+             label, because their open list sits inside them and a label
+             would catch its clicks. */
           return (
             <div className="space-y-3.5">
-              <div>
-                <label className={lbl}>Deal name<RequiredMark /></label>
-                <input
+              <Field label="Deal name" required>
+                <Input
                   required
                   autoFocus
                   value={dealForm.name}
                   onChange={(e) => set("name", e.target.value)}
                   placeholder="e.g. EU MDR remediation. 2026"
-                  className={fld}
                 />
-              </div>
-              <div>
-                <label className={lbl}>Offering<OptionalMark /></label>
+              </Field>
+              <Field label="Offering">
                 {/* Dropdown-standard sweep (Anir, Jul 30): every native
                     <select> in this form becomes the app's own picker —
                     ColorSelect for categoricals, PeopleSelect for people. */}
@@ -3577,10 +3686,9 @@ export function CustomerTabs({
                     })),
                   ]}
                 />
-              </div>
+              </Field>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={lbl}>Stage<OptionalMark /></label>
+                <Field label="Stage">
                   <ColorSelect
                     ariaLabel="Stage"
                     value={dealForm.stage}
@@ -3594,21 +3702,21 @@ export function CustomerTabs({
                       icon: STAGE_ICON[s],
                     }))}
                   />
-                </div>
-                <div>
-                  <label className={lbl}>Value<OptionalMark /></label>
+                </Field>
+                <Field label="Value">
                   <MoneyInput
                     value={dealForm.value}
                     onChange={(value) => set("value", value)}
                     ariaLabel="Deal value"
                     placeholder="350,000"
-                    className="h-10"
                   />
-                </div>
+                </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={lbl}>Primary contact<OptionalMark /></label>
+                <div className="min-w-0">
+                  <p className="mb-1.5 flex items-center gap-1 text-[13px] font-medium text-text-primary">
+                    Primary contact <OptionalMark />
+                  </p>
                   <PeopleSelect
                     ariaLabel="Primary contact"
                     value={dealForm.contact}
@@ -3621,18 +3729,18 @@ export function CustomerTabs({
                     }))}
                   />
                 </div>
-                <div>
-                  <label className={lbl}>Expected close<OptionalMark /></label>
+                <Field label="Expected close">
                   <DateField
                     value={dealForm.close_date}
                     onChange={(e) => set("close_date", e)}
-                    className={fld}
                   />
                   <DateEcho value={dealForm.close_date} />
-                </div>
+                </Field>
               </div>
               <div>
-                <label className={lbl}>Owner<OptionalMark /></label>
+                <p className="mb-1.5 flex items-center gap-1 text-[13px] font-medium text-text-primary">
+                  Owner <OptionalMark />
+                </p>
                 <PeopleSelect
                   ariaLabel="Deal owner"
                   value={dealForm.owner}
@@ -3641,25 +3749,22 @@ export function CustomerTabs({
                   allowUnassigned={false}
                 />
               </div>
-              <div>
-                <label className={lbl}>Next step<OptionalMark /></label>
-                <input
+              <Field label="Next step">
+                <Input
                   value={dealForm.next_step}
                   onChange={(e) => set("next_step", e.target.value)}
                   placeholder="e.g. Send the technical proposal by Friday"
-                  className={fld}
                 />
-              </div>
-              <div>
-                <label className={lbl}>Notes<OptionalMark /></label>
+              </Field>
+              <Field label="Notes">
                 <textarea
                   value={dealForm.notes}
                   onChange={(e) => set("notes", e.target.value)}
                   rows={3}
                   placeholder="Context, decision criteria, competition…"
-                  className={`${fld} resize-y leading-relaxed`}
+                  className="w-full min-w-0 resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] leading-relaxed text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-input-focus"
                 />
-              </div>
+              </Field>
 
               <div className="flex items-center justify-between gap-3 pt-1">
                 {/* Win chance only (Anir, Sep 2: "they dont use weighted").
@@ -3684,20 +3789,44 @@ export function CustomerTabs({
 
       {/* Contact removal can start from the Overview or the Contacts tab, so
           the confirmation belongs to the page rather than either panel. */}
+      {/* The edit dialog's Remove asks here too: it deletes the person on
+          the server at once, so it is not a draft change (Anir, Oct 1: "this
+          cant happen"). Names the person, how to tell them apart, and the
+          account they come off. */}
       <ConfirmDialog
         open={!!removingContact}
         person={removingContact?.name}
         busy={removeBusy}
         onClose={() => setRemovingContact(null)}
-        title="Remove this contact?"
-        body={
-          <>
-            <b>{removingContact?.name}</b> comes off this account.
-          </>
-        }
-        detail="Meetings and requests that named them keep that name. Only the person's record on this account is removed."
+        title={`Remove ${removingContact?.name || "this contact"} from ${customer.company_name}?`}
+        body={(() => {
+          const facts = [removingContact?.title, removingContact?.email]
+            .map((fact) => (fact || "").trim())
+            .filter(Boolean)
+            .join(", ");
+          return (
+            <>
+              {removingContact?.name ? <b>{removingContact.name}</b> : "This contact"}
+              {facts ? ` (${facts})` : ""} comes off <b>{customer.company_name}</b>.
+            </>
+          );
+        })()}
+        detail={(() => {
+          const others = Math.max(0, contacts.length - 1);
+          return `Meetings and requests that named them keep that name. ${
+            others > 0
+              ? `${customer.company_name} and its other ${others} ${others === 1 ? "contact stay" : "contacts stay"}.`
+              : `${customer.company_name} itself stays.`
+          }`;
+        })()}
         confirmLabel="Remove contact"
-        onConfirm={removeContact}
+        onConfirm={() => {
+          if (removingContact?.fromEditor) {
+            void removeEditingContact().then(() => setRemovingContact(null));
+            return;
+          }
+          void removeContact();
+        }}
       />
 
       <ConfirmDialog
@@ -3705,9 +3834,21 @@ export function CustomerTabs({
         person={unmarkingKeyContact?.contact.full_name}
         busy={keySaving === unmarkingKeyContact?.contact.id}
         onClose={() => setUnmarkingKeyContact(null)}
-        title="Remove key-contact status?"
-        body={<><b>{unmarkingKeyContact?.contact.full_name}</b> will no longer be marked as a key contact on this account.</>}
-        detail="Their contact record stays on the account. You can mark them as key again anytime."
+        title={`Remove ${unmarkingKeyContact?.contact.full_name || "this person"} from ${customer.company_name}'s key contacts?`}
+        body={
+          <>
+            {unmarkingKeyContact?.contact.full_name ? (
+              <b>{unmarkingKeyContact.contact.full_name}</b>
+            ) : (
+              "This person"
+            )}
+            {unmarkingKeyContact?.contact.job_title?.trim()
+              ? ` (${unmarkingKeyContact.contact.job_title.trim()})`
+              : ""}{" "}
+            will no longer be marked as a key contact at <b>{customer.company_name}</b>.
+          </>
+        }
+        detail="They stay on the account as a contact. You can mark them as key again any time."
         confirmLabel="Remove key status"
         onConfirm={() => {
           if (!unmarkingKeyContact) return;
@@ -3715,6 +3856,26 @@ export function CustomerTabs({
             if (saved) setUnmarkingKeyContact(null);
           });
         }}
+      />
+
+      {/* The competitor's hover X on the Account card asks here. */}
+      <ConfirmDialog
+        open={confirmClearCompetitor}
+        busy={accountSaving}
+        onClose={() => {
+          if (!accountSaving) setConfirmClearCompetitor(false);
+        }}
+        title={`Clear ${competitor.trim() || "the competitor"} from ${customer.company_name}?`}
+        body={
+          <>
+            <b>{competitor.trim()}</b> stops being recorded as the competitor or
+            incumbent at <b>{customer.company_name}</b>.
+          </>
+        }
+        detail="Nothing else on the account changes. You can record one again from Edit account."
+        subject={competitor.trim() ? { name: competitor.trim(), kind: "company" } : null}
+        confirmLabel="Clear competitor"
+        onConfirm={() => void clearCompetitor()}
       />
 
       <Modal
@@ -3916,7 +4077,15 @@ export function CustomerTabs({
             {editingContact && canDeleteContacts && (
               <button
                 type="button"
-                onClick={() => void removeEditingContact()}
+                onClick={() =>
+                  setRemovingContact({
+                    id: editingContact.id,
+                    name: editingContact.full_name,
+                    title: editingContact.job_title,
+                    email: editingContact.email,
+                    fromEditor: true,
+                  })
+                }
                 disabled={removeBusy || contactBusy}
                 className="mr-auto inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-3.5 py-2 text-[13px] font-semibold text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:cursor-not-allowed disabled:opacity-60"
               >

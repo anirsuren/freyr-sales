@@ -8,7 +8,8 @@ import { useToast } from "@/components/ui/Toast";
 import { EditDealDialog } from "./EditDealDialog";
 import { AccrualPlanDialog } from "@/components/accruals/AccrualPlanDialog";
 import type { DealTeam } from "./DealPeople";
-import type { Opportunity } from "@/lib/opportunitiesShared";
+import { estimatedTcvOf, type Opportunity } from "@/lib/opportunitiesShared";
+import { fmtMoney } from "@/lib/currency";
 
 /**
  * THE CLIENT HALF OF THE EDIT PAGE.
@@ -119,6 +120,41 @@ export function DealEditScreen({
     problem: null,
   });
   const [planNonce, setPlanNonce] = useState(0);
+
+  /* SAY WHICH DEAL, WITH WHOM, FOR HOW MUCH (Anir, Oct 1: "u have to say
+     what customer what offering so there is absolutely no confusion"). Two
+     deals can share a name, so the customer, the offering, the amount and
+     Freyr's own reference go in the question. Only facts already on the deal;
+     a missing one is left out, never guessed. */
+  const dealName = (deal.name || "").trim();
+  const dealCustomer = (deal.customer || "").trim();
+  const customerInName =
+    !!dealCustomer && dealName.toLowerCase().includes(dealCustomer.toLowerCase());
+  const dealTcv = estimatedTcvOf(deal);
+  const dealWorth =
+    dealTcv !== undefined && dealTcv > 0 ? fmtMoney(dealTcv, deal.currency) : "";
+  const dealOfferings = [
+    ...new Set(
+      [
+        ...(deal.lines ?? []).map(
+          (line) =>
+            (line.offeringId
+              ? offerings.find((o) => o.id === line.offeringId)?.name
+              : undefined) ?? line.offeringLabel
+        ),
+        ...(deal.offeringIds ?? []).map((id) => offerings.find((o) => o.id === id)?.name),
+        ...(deal.offeringLabels ?? []),
+      ]
+        .map((n) => (n ?? "").trim())
+        .filter(Boolean)
+    ),
+  ];
+  const dealOffering =
+    dealOfferings.length <= 1
+      ? (dealOfferings[0] ?? "")
+      : dealOfferings.length === 2
+        ? `${dealOfferings[0]} and ${dealOfferings[1]}`
+        : `${dealOfferings[0]}, ${dealOfferings[1]} and ${dealOfferings.length - 2} more`;
 
   return (
     <>
@@ -258,11 +294,33 @@ export function DealEditScreen({
       onConfirm={() => void remove()}
       busy={deleting}
       tone="destructive"
-      title="Delete this deal?"
+      title={
+        dealName
+          ? `Delete the ${dealName} deal${dealCustomer && !customerInName ? ` with ${dealCustomer}` : ""}?`
+          : `Delete this deal${dealCustomer ? ` with ${dealCustomer}` : ""}?`
+      }
       body={
         <>
-          <b>{deal.name || "This deal"}</b> comes off the pipeline, and off any
-          goal that counted it as a line item. Its accrual plan goes with it.
+          The{" "}
+          {dealWorth && (
+            <>
+              <b>{dealWorth}</b>{" "}
+            </>
+          )}
+          deal
+          {dealCustomer && (
+            <>
+              {" "}with <b>{dealCustomer}</b>
+            </>
+          )}
+          {dealOffering && (
+            <>
+              {" "}for <b>{dealOffering}</b>
+            </>
+          )}
+          {deal.externalId ? ` (${deal.externalId})` : ""} comes off the
+          pipeline, and off any goal that counted it as a line item. Its accrual
+          plan goes with it.
         </>
       }
       detail="Results already verified against it stay; they simply stop naming a deal."

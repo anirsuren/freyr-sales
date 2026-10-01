@@ -11,7 +11,7 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import type { Opportunity } from "@/lib/opportunitiesShared";
 import { tint } from "@/lib/tint";
-import { RequiredMark } from "@/components/ui/RequiredMark";
+import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 
 /**
  * A CONTRACT, MADE WHERE THE DEAL IS.
@@ -82,7 +82,8 @@ function Field({
     <label className="block min-w-0">
       <span className="text-[12px] font-semibold text-text-primary">
         {label}
-        {required && <RequiredMark />}
+        {/* Every field says which it is (Anir, Oct 1), like the shared Field. */}
+        {required ? <RequiredMark /> : <OptionalMark />}
       </span>
       <span className="mt-1.5 block">{children}</span>
     </label>

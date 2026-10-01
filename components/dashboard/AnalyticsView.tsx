@@ -16,7 +16,8 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { CountUp } from "@/components/ui/CountUp";
 import { formatMoney, STAGE_COLOR, STAGE_FILL, STAGE_PROBABILITY } from "@/lib/pipeline";
 import { tint } from "@/lib/tint";
-import { CompanyLink } from "@/components/ui/EntityLink";
+import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
+import { isSomebody } from "@/lib/entityHref";
 
 interface StageStat {
   stage: string;
@@ -28,8 +29,10 @@ interface OutcomeStat {
   count: number;
   color: string;
 }
-type StageDeal = { company: string; contact: string; value: number; customerId: string };
-type OutcomeContact = { name: string; company: string; contactId: string };
+/* The ids are optional: the analytics page passes names only, and a face
+   without an id still opens by name. */
+type StageDeal = { company: string; contact: string; value: number; customerId: string; contactId?: string };
+type OutcomeContact = { name: string; company: string; contactId: string; customerId?: string };
 
 // A stage is a SEMANTIC value, not a slot in a categorical series: Prospect is
 // burnt orange, Engaged is blue, Qualified is violet — everywhere, on every
@@ -321,9 +324,7 @@ export function AnalyticsView({
                           <span className="block text-[13px] font-medium text-text-primary truncate group-hover:text-blue-primary">
                             {d.company}
                           </span>
-                          <span className="block text-[11.5px] text-text-tertiary truncate">
-                            {d.contact}
-                          </span>
+                          <PersonLink nested kind="contact" name={d.contact} contactId={d.contactId} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="flex gap-1.5 text-[11.5px] text-text-tertiary" />
                         </span>
                         <span className="text-[12.5px] font-semibold text-text-primary tnum shrink-0">
                           {formatMoney(d.value)}
@@ -445,7 +446,11 @@ export function AnalyticsView({
                       <span className="block text-[13px] font-medium text-text-primary truncate group-hover:text-blue-primary">
                         {c.name}
                       </span>
-                      <span className="block text-[11.5px] text-text-tertiary truncate">{c.company}</span>
+                      {isSomebody(c.company) ? (
+                        <CompanyLink nested name={c.company} customerId={c.customerId} logoClassName="h-4 w-4 shrink-0 text-[6px]" className="flex gap-1.5 text-[11.5px] text-text-tertiary" />
+                      ) : (
+                        <span className="block text-[11.5px] text-text-tertiary truncate">{c.company}</span>
+                      )}
                     </span>
                     <ChevronRight size={14} strokeWidth={1.8} className="text-text-tertiary shrink-0" />
                   </Link>
@@ -576,7 +581,10 @@ export function AnalyticsView({
                         stageDeals![s.stage].map((d, di) => (
                           <div key={d.customerId + di} className="flex items-center gap-2.5 px-1.5 py-1">
                             <CompanyLink name={d.company} customerId={d.customerId} logoClassName="w-5 h-5 text-[7px] shrink-0" className="gap-2.5" nameClassName="text-[12.5px] font-medium text-text-primary" />
-                            <span className="text-[11.5px] text-text-tertiary truncate">· {d.contact}</span>
+                            <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-text-tertiary">
+                              ·
+                              <PersonLink kind="contact" name={d.contact} contactId={d.contactId} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="gap-1.5" />
+                            </span>
                             <span className="text-[12px] font-semibold text-text-primary tnum ml-auto shrink-0">
                               {formatMoney(d.value)}
                             </span>

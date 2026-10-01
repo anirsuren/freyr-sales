@@ -283,14 +283,35 @@ export default async function ContactDetailPage({
               endpoint={`/api/contacts/${encodeURIComponent(contact.id)}`}
               label="Remove contact"
               subject={{ name: contact.full_name, kind: "person" }}
-              title="Remove this contact?"
-              body={
-                <>
-                  <b>{contact.full_name}</b> comes off{" "}
-                  {customer ? customer.company_name : "this account"}.
-                </>
+              title={
+                customer
+                  ? `Remove ${contact.full_name} from ${customer.company_name}?`
+                  : `Remove ${contact.full_name}?`
               }
-              detail="Meetings and requests that named them keep that name. Only the person's record on this account is removed."
+              body={(() => {
+                /* Job title and email tell two people with similar names
+                   apart; the account says where they come off. */
+                const facts = [contact.job_title, contact.email]
+                  .map((fact) => (fact || "").trim())
+                  .filter(Boolean)
+                  .join(", ");
+                return (
+                  <>
+                    <b>{contact.full_name}</b>
+                    {facts ? ` (${facts})` : ""} comes off{" "}
+                    {customer ? <b>{customer.company_name}</b> : "this account"}.
+                  </>
+                );
+              })()}
+              detail={`Meetings and requests that named them keep that name. ${
+                customer
+                  ? siblings.length > 0
+                    ? `${customer.company_name} and its other ${siblings.length} ${
+                        siblings.length === 1 ? "contact stay" : "contacts stay"
+                      }.`
+                    : `${customer.company_name} itself stays.`
+                  : "Nothing else is removed."
+              }`}
               confirmLabel="Remove contact"
               done={`${contact.full_name} removed.`}
               then={customer ? `/customers/${customer.id}?tab=contacts` : "/contacts"}

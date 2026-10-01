@@ -18,11 +18,14 @@ import type { OfferingCategory } from "@/lib/offerings";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { listAccent } from "./filterPalette";
 import { tint } from "@/lib/tint";
-import { EntityLink } from "@/components/ui/EntityLink";
+import { EntityLink, PersonLink } from "@/components/ui/EntityLink";
 import { teammateHref } from "@/lib/entityHref";
 
 const FIELD =
   "w-full rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
+// One-line boxes are the shared 40px field. FIELD stays for the description.
+const LINE_FIELD =
+  "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
 const LABEL =
   "block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5";
 
@@ -191,7 +194,7 @@ export function OfferingCategoriesManager({
           <div>
             <label className={LABEL}>Offering category<RequiredMark /></label>
             <input
-              className={FIELD}
+              className={LINE_FIELD}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Global Regulatory Intelligence"
@@ -338,12 +341,22 @@ export function OfferingCategoriesManager({
         onConfirm={() => {
           if (confirmRemove) void removeCategory(confirmRemove);
         }}
-        title="Remove this offering category?"
+        title={
+          confirmRemove
+            ? `Remove the ${confirmRemove.name} offering category?`
+            : "Remove this offering category?"
+        }
         body={
           confirmRemove ? (
             <>
-              <NamePill>{confirmRemove.name}</NamePill> disappears from the
-              category list and from the filters.
+              <NamePill>{confirmRemove.name}</NamePill>
+              {confirmRemove.owner?.trim() ? (
+                <>
+                  , owned by{" "}
+                  <PersonLink name={confirmRemove.owner.trim()} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5 align-middle whitespace-nowrap" nameClassName="font-bold text-text-primary" />,
+                </>
+              ) : null}{" "}
+              disappears from the category list and from the filters.
             </>
           ) : (
             ""
@@ -351,10 +364,12 @@ export function OfferingCategoriesManager({
         }
         detail={
           confirmRemove && (offeringCounts[confirmRemove.id] || 0) > 0
-            ? `${offeringCounts[confirmRemove.id]} offering${
-                offeringCounts[confirmRemove.id] === 1 ? "" : "s"
-              } are in it right now. They are not deleted, but they will no longer have a category.`
-            : undefined
+            ? offeringCounts[confirmRemove.id] === 1
+              ? `1 offering is in ${confirmRemove.name} right now. It is not deleted, but it will no longer have a category.`
+              : `${offeringCounts[confirmRemove.id]} offerings are in ${confirmRemove.name} right now. They are not deleted, but they will no longer have a category.`
+            : confirmRemove
+              ? `No offering is in ${confirmRemove.name}, so nothing else changes.`
+              : undefined
         }
         confirmLabel="Remove category"
       />

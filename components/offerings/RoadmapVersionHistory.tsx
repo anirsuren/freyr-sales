@@ -5,6 +5,11 @@ import { GitBranch, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RoadmapVersion } from "@/lib/roadmapVersions";
 import { PersonLink } from "@/components/ui/EntityLink";
+import { isSomebody } from "@/lib/entityHref";
+
+/** A save with no name on it is stored as "Someone": no face for that. */
+const isNamed = (name: string) =>
+  isSomebody(name) && name.trim().toLowerCase() !== "someone";
 
 /**
  * THE ROADMAP'S OWN HISTORY (product owner, Aug 20: "Every time there is a
@@ -128,7 +133,12 @@ export function RoadmapVersionHistory({
                     the performance timeline uses, so the app tells this kind of
                     fact one way everywhere. */}
                 <span className="mt-1 flex items-center gap-1.5 text-[12px] text-text-secondary">
-                  <PersonLink name={v.savedBy} avatarClassName="h-4 w-4 shrink-0 text-[7px]" className="gap-1.5" />
+                  {/* nested: this line sits inside the row's toggle button. */}
+                  {isNamed(v.savedBy) ? (
+                    <PersonLink nested name={v.savedBy} avatarClassName="h-4 w-4 shrink-0 text-[7px]" className="gap-1.5" />
+                  ) : (
+                    <span>{v.savedBy}</span>
+                  )}
                   <span className="text-text-tertiary">· {stamp(v.savedAt)}</span>
                 </span>
               </span>

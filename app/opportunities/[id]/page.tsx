@@ -11,7 +11,10 @@ import { getRole } from "@/lib/role";
 import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
-import { readPrivileges } from "@/lib/privileges";
+import { privilegesForPerson, readPrivileges } from "@/lib/privileges";
+import { readSolutioning } from "@/lib/solutioning";
+import { canAssignSolutioning } from "@/lib/solutioningValidation";
+import { readContracts } from "@/lib/contracts";
 import { readRecordTeams, teamFor } from "@/lib/recordTeams";
 import { mayTouchOpportunity } from "@/lib/recordAccess";
 import { OpportunityDetail } from "@/components/opportunities/OpportunityDetail";
@@ -254,8 +257,85 @@ export default async function OpportunityPage({
     : (accrualLine?.offeringLabel ?? deal.offeringLabels[0]);
   const accrualSignDate = accrualLine?.estSignDate ?? deal.estSignDate;
 
+  /**
+   * WHICH LINKED ROWS THIS PERSON MAY TAKE OFF THE DEAL, RIGHT IN ITS TAB
+   * (Anir, Oct 1: "when i hover i should have a delete button showing up...
+   * extrapolate this out"). Each row is asked the exact question its own route
+   * asks before that save, so the hover X shows only where the unlink lands:
+   *
+   * - a solutioning request, through /api/solutioning's `update`: never a
+   *   cancelled one; an admin skips the rest; anyone else needs write on
+   *   Solutioning, a BD role, and to be its requester, its owner or a BD
+   *   Owner; a Solutioning Member without assign rights only their own. Only
+   *   when its deal names and ids line up, so the right label leaves too.
+   * - a contract, through /api/contracts' `save`: write on Contracts and this
+   *   contract's own record check. Only the single-deal field is cleared.
+   *
+   * Both records stay; only the link to this deal goes.
+   */
+  const unlinkable: {
+    requests: Record<
+      string,
+      { ref: string; title: string; opportunityIds: string[]; opportunityLabels: string[] }
+    >;
+    contracts: Record<string, { name: string; customer: string }>;
+  } = { requests: {}, contracts: {} };
+  if (await canOpenModule("/solutioning")) {
+    const held = privilegesForPerson(privileges, me.name);
+    const sameName = (name: string | undefined) =>
+      (name ?? "").trim().toLowerCase() === me.name.trim().toLowerCase();
+    const solAdmin = me.role === "admin" || held.includes("admin");
+    const solWrite = !(await moduleWriteRefusal("/solutioning"));
+    const bdRole =
+      me.role === "bd_owner" ||
+      me.role === "bd_member" ||
+      held.includes("bd_owner") ||
+      held.includes("bd_member");
+    const ownOnly =
+      (me.role === "sol_member" || held.includes("sol_member")) &&
+      !canAssignSolutioning(me.role, held);
+    const requests = (await readSolutioning().catch(() => null))?.requests ?? [];
+    for (const r of requests) {
+      if ((r.type ?? "request") !== "request") continue;
+      if (!r.opportunityIds.includes(deal.id) || r.status === "cancelled") continue;
+      if (r.opportunityIds.length !== r.opportunityLabels.length) continue;
+      if (ownOnly && !sameName(r.owner)) continue;
+      const allowed =
+        solAdmin ||
+        (solWrite &&
+          bdRole &&
+          (sameName(r.requestedBy) || sameName(r.owner) || me.role === "bd_owner"));
+      if (!allowed) continue;
+      unlinkable.requests[r.id] = {
+        ref: r.ref,
+        title: r.title,
+        opportunityIds: r.opportunityIds,
+        opportunityLabels: r.opportunityLabels,
+      };
+    }
+  }
+  if (
+    (await canOpenModule("/contracts")) &&
+    !(await moduleWriteRefusal("/contracts"))
+  ) {
+    const contracts = (await readContracts().catch(() => null))?.contracts ?? [];
+    for (const c of contracts) {
+      if (c.opportunityId !== deal.id || !c.name.trim() || !c.customer.trim()) continue;
+      if (
+        await recordWriteRefusal("/contracts", {
+          id: c.id,
+          owner: c.owner,
+          created_by: c.createdBy,
+        })
+      )
+        continue;
+      unlinkable.contracts[c.id] = { name: c.name, customer: c.customer };
+    }
+  }
+
   return (
     <OpportunityDetail
+      unlinkable={unlinkable}
       verdict={verdict}
       mayDelete={mayDelete}
       accrual={{

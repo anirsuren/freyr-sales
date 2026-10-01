@@ -18,6 +18,7 @@ import {
 import type { LookupSource } from "@/lib/placeLookupShared";
 import { cn } from "@/lib/utils";
 import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
+import { CompanyLink } from "@/components/ui/EntityLink";
 
 /**
  * ADD A CUSTOMER, WITH THE FIELDS MANOJ LISTED (Sep 10): "Customer Name*,
@@ -299,8 +300,9 @@ export function AddCustomerDialog({
               onEnter={onEnter}
             />
             {duplicate ? (
-              <span className="mt-1 block text-[11.5px] font-medium text-[#B91C1C]">
-                {duplicate.name} is already a customer.
+              <span className="mt-1 flex items-center gap-1 text-[11.5px] font-medium text-[#B91C1C]">
+                <CompanyLink name={duplicate.name} customerId={duplicate.id} logoClassName="h-4 w-4 shrink-0 text-[6px]" className="gap-1" />
+                is already a customer.
               </span>
             ) : lookup?.status === "working" ? (
               <span className="mt-1 flex items-center gap-1.5 text-[11.5px] text-text-tertiary">

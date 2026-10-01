@@ -273,7 +273,11 @@ export function MaterialPeek({
                 : "top left",
               ["--menu-dir" as string]: position.above ? -1 : 1,
             }}
-            className={`fixed z-[75] overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_16px_40px_rgba(16,24,40,0.18)] ${
+            /* ABOVE EVERY DIALOG LAYER. At z-75 the card drew under the
+               modal backdrop (z-95, z-105 stacked, z-230 docked) and the
+               expanded goal drill (z-120), so resting on a document name
+               inside a dialog opened a preview nobody could see. */
+            className={`fixed z-[240] overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_16px_40px_rgba(16,24,40,0.18)] ${
               open ? "menu-in" : ""
             }`}
           >

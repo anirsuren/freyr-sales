@@ -399,7 +399,7 @@ export default async function MarketIntelCompanyPage({
                 Nobody yet.{canManagePeople ? " Add the senior people whose posts you want to see." : ""}
               </p>
             ) : (
-              <TrackedPeopleList people={people} canManage={canManagePeople} />
+              <TrackedPeopleList people={people} canManage={canManagePeople} companyName={mine.name} />
             )}
           </Card>
           )}

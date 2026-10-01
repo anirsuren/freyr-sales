@@ -650,7 +650,7 @@ function RichBriefEditor({
             value={linkUrl}
             onChange={(event) => setLinkUrl(event.target.value)}
             placeholder="https://www.freyrsolutions.com/…"
-            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-text-primary outline-none transition-colors focus:border-blue-primary"
+            className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary"
           />
           <p className="mt-1.5 text-[12px] text-text-tertiary">
             The selected words become the link. Must start with http:// or https://.
@@ -1330,6 +1330,21 @@ export function OfferingForm({
         : "text-text-secondary hover:text-text-primary"
     );
 
+  /* THE OFFERING EVERY CONFIRMATION ON THIS PAGE NAMES (Anir, Oct 1: "u have
+     to say what customer what offering so there is absolutely no
+     confusion"). The saved name while editing, because that is what the
+     record is called until Save; the typed one while creating. */
+  const recordName =
+    (isEdit ? (initial?.offering_name || "").trim() : "") || offeringName.trim();
+  const recordOwner = recordName ? `${recordName}'s` : "this offering's";
+  const removingMaterialRow =
+    confirmRemoveMaterial === null ? undefined : materials[confirmRemoveMaterial];
+  /* How many cards sit under the group about to lose its heading. */
+  const removingGroupCards =
+    confirmRow?.kind === "group"
+      ? capGroups.find((g) => g.sectionIndex === confirmRow.at)?.cards.length ?? 0
+      : 0;
+
   return (
     // Width belongs to the PAGE, not the form. This used to be a hard
     // max-w-[880px], which on a normal monitor pinned every field to the left
@@ -1340,11 +1355,26 @@ export function OfferingForm({
         open={confirmLeave}
         onClose={() => setConfirmLeave(false)}
         onConfirm={discardAndLeave}
-        title="Leave without saving?"
-        body={
+        title={
           isEdit
-            ? "The changes you made on this page will be lost."
-            : "This offering has not been created yet, so nothing will be saved."
+            ? `Leave without saving your changes to ${recordName || "this offering"}?`
+            : recordName
+              ? `Leave without creating ${recordName}?`
+              : "Leave without creating this offering?"
+        }
+        body={
+          isEdit ? (
+            <>
+              The changes you made to{" "}
+              {recordName ? <b>{recordName}</b> : "this offering"} on this page
+              will be lost.
+            </>
+          ) : (
+            <>
+              {recordName ? <b>{recordName}</b> : "This offering"} has not been
+              created yet, so nothing will be saved.
+            </>
+          )
         }
         detail="Everything you typed since the last save goes away. There is no undo."
         confirmLabel="Discard changes"
@@ -1356,8 +1386,14 @@ export function OfferingForm({
           unsavedRef.current = false;
           guard.leave();
         }}
-        title="Do you really want to leave?"
-        body="The changes you made on this page are not saved. Leaving now throws them away."
+        title={`Leave without saving your changes to ${recordName || "this offering"}?`}
+        body={
+          <>
+            The changes you made to{" "}
+            {recordName ? <b>{recordName}</b> : "this offering"} are not saved.
+            Leaving now throws them away.
+          </>
+        }
         detail="Everything you typed since the last save goes away. There is no undo."
         confirmLabel="Leave without saving"
       />
@@ -1373,15 +1409,26 @@ export function OfferingForm({
           );
           setMaterials((l) => l.filter((_, j) => j !== i));
         }}
-        title="Remove this material?"
+        title={
+          (removingMaterialRow?.label || "").trim()
+            ? `Remove ${(removingMaterialRow?.label || "").trim()} from ${recordName || "this offering"}?`
+            : "Remove this material?"
+        }
         body={
           <>
-            <b>{materials[confirmRemoveMaterial ?? -1]?.label || "This file"}</b>{" "}
-            comes off the offering.
+            <b>{(removingMaterialRow?.label || "").trim() || "This file"}</b>
+            {(removingMaterialRow?.folder || "").trim() ? (
+              <>
+                {" "}in the{" "}
+                <b>{materialFolderLabel((removingMaterialRow?.folder || "").trim())}</b>{" "}
+                folder
+              </>
+            ) : null}{" "}
+            comes off {recordName ? <b>{recordName}</b> : "the offering"}.
           </>
         }
         detail="Nothing is deleted until you press Save changes. Leave the page without saving and the file stays exactly as it was."
-        confirmLabel="Remove it"
+        confirmLabel="Remove material"
         /* Red is for what cannot be taken back. This only takes a row out of
            the form you are still filling in, so it is blue. */
         tone="primary"
@@ -1409,23 +1456,37 @@ export function OfferingForm({
         }}
         title={
           confirmRow?.kind === "group"
-            ? "Remove this group?"
+            ? confirmRow.label === "Untitled group"
+              ? `Remove the untitled group heading from ${recordOwner} brief?`
+              : `Remove the ${confirmRow.label} group heading from ${recordOwner} brief?`
             : confirmRow?.kind === "card"
-              ? "Remove this component?"
-              : "Remove this related offering?"
+              ? `Remove ${confirmRow.label} from ${recordOwner} brief?`
+              : confirmRow
+                ? `Remove ${confirmRow.label} from ${recordOwner} related offerings?`
+                : "Remove this related offering?"
         }
         body={
           <>
             <b>{confirmRow?.label}</b>
             {confirmRow?.kind === "group"
-              ? " goes away as a heading. Its cards stay, joining the group above."
+              ? removingGroupCards === 0
+                ? " goes away as a heading. It holds no cards, so nothing else moves."
+                : ` goes away as a heading. Its ${removingGroupCards} ${
+                    removingGroupCards === 1 ? "card stays" : "cards stay"
+                  }, joining the group above.`
               : confirmRow?.kind === "card"
-                ? " comes off the offering brief."
-                : " comes off this page's Related offerings list."}
+                ? ` comes off ${recordOwner} brief.`
+                : ` comes off ${recordOwner} Related offerings list.`}
           </>
         }
         detail="Nothing is saved until you press Save changes."
-        confirmLabel="Remove it"
+        confirmLabel={
+          confirmRow?.kind === "group"
+            ? "Remove group heading"
+            : confirmRow?.kind === "card"
+              ? "Remove component"
+              : "Remove related offering"
+        }
         /* Red is for what cannot be taken back. This only takes a row out of
            the form you are still filling in, so it is blue. */
         tone="primary"
@@ -2962,7 +3023,7 @@ export function OfferingForm({
             noteTarget ? `How does ${noteTarget.name} relate to this offering?` : ""
           }
           aria-label={noteTarget ? `How ${noteTarget.name} relates` : "How this pair relates"}
-          className="mt-3 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-[13px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary focus:border-blue-primary focus:bg-white"
+          className="mt-3 w-full resize-none rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary focus:border-blue-primary focus:shadow-input-focus"
         />
         {/* Clearing the box removes the note; say so, rather than letting an
             empty Done look like nothing happened. */}
@@ -3305,8 +3366,24 @@ export function OfferingForm({
         subject={{ name: offeringName || "This offering", kind: "offering" }}
         onClose={() => setConfirmDelete(false)}
         onConfirm={remove}
-        title="Delete this offering?"
-        body={`${offeringName || "This offering"} disappears from the offerings list for everyone in the company. This cannot be undone.`}
+        /* The real name, and what goes with it: its sales materials live on
+           the offering, so they go too (Anir, Oct 1: "u have to be super
+           super specific"). */
+        title={recordName ? `Delete ${recordName}?` : "Delete this offering?"}
+        body={
+          <>
+            {recordName ? <b>{recordName}</b> : "This offering"} disappears
+            from the offerings list for everyone in the company
+            {(initial?.materials?.length ?? 0) > 0 ? (
+              <>
+                , along with its <b>{initial?.materials?.length}</b> sales{" "}
+                {initial?.materials?.length === 1 ? "material" : "materials"}
+              </>
+            ) : null}
+            . This cannot be undone.
+          </>
+        }
+        detail="Customers and opportunities that mention it are not deleted."
         confirmLabel="Delete offering"
         busy={deleting}
       />

@@ -22,6 +22,7 @@ export function Modal({
   stacked = false,
   dock = false,
   bodyClassName,
+  wrapTitle = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -52,6 +53,13 @@ export function Modal({
    * leaving dead space under the buttons.
    */
   bodyClassName?: string;
+  /**
+   * Let a long title wrap onto more lines instead of cutting it off with an
+   * ellipsis. Confirmations name the exact record they touch (Anir, Oct 1:
+   * "u have to say what customer what offering so there is absolutely no
+   * confusion"), and a truncated title would hide exactly that name.
+   */
+  wrapTitle?: boolean;
   /** A focused dialog opened from another dialog. It stays above the parent
    *  and owns keyboard handling until it closes. */
   stacked?: boolean;
@@ -215,7 +223,7 @@ export function Modal({
                 <ArrowLeft size={18} strokeWidth={2.2} />
               </button>
             )}
-            <h2 className="min-w-0 truncate text-[16px] font-semibold text-text-primary">{title}</h2>
+            <h2 className={`min-w-0 text-[16px] font-semibold text-text-primary ${wrapTitle ? "break-words leading-snug" : "truncate"}`}>{title}</h2>
             {titleAfter}
           </span>
           <div className="flex shrink-0 items-center gap-2">
@@ -258,7 +266,7 @@ export function ConfirmModal({
   loading?: boolean;
 }) {
   return (
-    <Modal open={open} onClose={onClose} title={title}>
+    <Modal open={open} onClose={onClose} title={title} wrapTitle>
       <p className="text-[14px] text-text-secondary leading-relaxed mb-5">
         {message}
       </p>

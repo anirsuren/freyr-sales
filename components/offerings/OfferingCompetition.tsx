@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { parseCalendarDate } from "@/lib/utils";
 import Link from "next/link";
 import {
@@ -25,6 +26,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { RequiredMark } from "@/components/ui/RequiredMark";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { MiLogo } from "@/components/market-intel/MiLogo";
 import { useStoredView } from "@/lib/useStoredView";
 import { cn } from "@/lib/utils";
@@ -33,8 +36,8 @@ import type {
   CompetitorProduct,
 } from "@/lib/offeringCompetition";
 import { tint } from "@/lib/tint";
-import { EntityLink } from "@/components/ui/EntityLink";
-import { marketCompanyHref } from "@/lib/entityHref";
+import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { isSomebody, marketCompanyHref } from "@/lib/entityHref";
 
 /**
  * THE COMPETITION TAB (Suren, Aug 11): who competes with this offering, with
@@ -65,6 +68,12 @@ function fmtDate(iso: string): string {
   });
 }
 
+/** Who added a row gets a face, but only a person: "Market Intelligence"
+ *  (the seeded source) and "Teammate" (an account with no name) are not. */
+function isPerson(name: string | null | undefined): boolean {
+  return isSomebody(name) && !/^(market intelligence|teammate)$/i.test(name.trim());
+}
+
 function aboutPreview(row: CompetitorProduct): string | null {
   return row.materials.find((m) => m.kind === "about")?.text ?? null;
 }
@@ -87,7 +96,10 @@ export function OfferingCompetition({
   live: boolean;
 }) {
   const { toast } = useToast();
+  const router = useRouter();
   const [rows, setRows] = useState<CompetitorProduct[]>(initialRows);
+  /** The competitor whose hover X was pressed, waiting on its confirm. */
+  const [unlinkingRow, setUnlinkingRow] = useState<CompetitorProduct | null>(null);
   const [view, chooseView] = useStoredView<View>(
     "freyr.competition.view",
     "tiles",
@@ -235,16 +247,46 @@ export function OfferingCompetition({
     }
   }
 
+  /** OFF THE LIST FROM THE LIST ITSELF (Anir, Oct 1: "when i hover i should
+   *  have a delete button showing up"). The popup's own Remove sends the same
+   *  op; this one also refreshes the page so the tab's count follows. */
+  async function takeOffList() {
+    const row = unlinkingRow;
+    if (!row || busy) return;
+    setBusy(true);
+    try {
+      await post({ op: "remove-competitor", competitorId: row.id });
+      await refresh();
+      toast(
+        `${row.product || row.company} is no longer on ${offeringName}'s competition list.`,
+        "success"
+      );
+      setUnlinkingRow(null);
+      router.refresh();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "That didn't work.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const needsUrl = mKind === "link" || mKind === "file";
 
+  /* The logo opens the company's Market Intel page whenever it is tracked
+     there, stored LinkedIn logo or not. Untracked, it stays a plain mark so
+     a click on it still opens the competitor card it sits in. */
   const logoFor = (row: CompetitorProduct) =>
-    row.marketIntelId && logos[row.marketIntelId] ? (
+    row.marketIntelId ? (
       <EntityLink nested href={marketCompanyHref(row.marketIntelId)} className="shrink-0" title={row.company}>
-        <MiLogo
-          name={row.company}
-          logoUrl={logos[row.marketIntelId]}
-          className="h-10 w-10 shrink-0"
-        />
+        {logos[row.marketIntelId] ? (
+          <MiLogo
+            name={row.company}
+            logoUrl={logos[row.marketIntelId]}
+            className="h-10 w-10 shrink-0"
+          />
+        ) : (
+          <CompanyLogo name={row.company} className="h-10 w-10 shrink-0" />
+        )}
       </EntityLink>
       ) : (
       <CompanyLogo name={row.company} className="h-10 w-10 shrink-0" />
@@ -404,11 +446,13 @@ export function OfferingCompetition({
           {rows.map((row) => {
             const preview = aboutPreview(row);
             return (
+              /* The X sits on the tile's corner, beside the tile's button
+                 rather than inside it. */
+              <div key={row.id} className="group/unlink relative">
               <button
-                key={row.id}
                 type="button"
                 onClick={() => setOpenId(row.id)}
-                className="group flex cursor-pointer flex-col rounded-xl border border-border-light bg-white p-5 text-left shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]"
+                className="group flex h-full w-full cursor-pointer flex-col rounded-xl border border-border-light bg-white p-5 text-left shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg active:scale-[0.99]"
               >
                 <span className="flex items-start justify-between gap-3">
                   <span className="flex min-w-0 items-center gap-2.5">
@@ -440,14 +484,22 @@ export function OfferingCompetition({
                   </span>
                 </span>
               </button>
+              {live && (
+                <UnlinkX
+                  within="corner"
+                  label={`Remove ${row.company}${row.product ? ` ${row.product}` : ""} from ${offeringName}'s competition list`}
+                  onClick={() => setUnlinkingRow(row)}
+                />
+              )}
+              </div>
             );
           })}
         </div>
       ) : view === "rows" ? (
         <div className="mt-4 space-y-2.5 stagger">
           {rows.map((row) => (
+            <div key={row.id} className="group/unlink relative">
             <button
-              key={row.id}
               type="button"
               onClick={() => setOpenId(row.id)}
               className="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border-light bg-white p-3.5 text-left shadow-card transition-all hover:border-blue-subtle hover:shadow-md active:scale-[0.995]"
@@ -465,8 +517,15 @@ export function OfferingCompetition({
                 </span>
                 <span className="mt-1 block">{kindChips(row, "sm")}</span>
               </span>
-              <span className="hidden shrink-0 text-[11px] text-text-tertiary sm:block">
-                {row.addedBy.split(" ")[0]} · {fmtDate(row.addedAt)}
+              <span className="hidden shrink-0 items-center gap-1.5 text-[11px] text-text-tertiary sm:flex">
+                {isPerson(row.addedBy) ? (
+                  <PersonLink nested name={row.addedBy} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5">
+                    <span className={ENTITY_NAME}>{row.addedBy.split(" ")[0]}</span>
+                  </PersonLink>
+                ) : (
+                  <span>{row.addedBy.split(" ")[0]}</span>
+                )}
+                <span>· {fmtDate(row.addedAt)}</span>
               </span>
               <ChevronDown
                 size={15}
@@ -474,6 +533,14 @@ export function OfferingCompetition({
                 className="shrink-0 -rotate-90 text-text-tertiary transition-colors group-hover:text-blue-primary"
               />
             </button>
+            {live && (
+              <UnlinkX
+                within="corner"
+                label={`Remove ${row.company}${row.product ? ` ${row.product}` : ""} from ${offeringName}'s competition list`}
+                onClick={() => setUnlinkingRow(row)}
+              />
+            )}
+            </div>
           ))}
         </div>
       ) : (
@@ -498,7 +565,7 @@ export function OfferingCompetition({
                 <tr
                   key={row.id}
                   onClick={() => setOpenId(row.id)}
-                  className="cursor-pointer transition-colors hover:bg-surface"
+                  className="group/unlink cursor-pointer transition-colors hover:bg-surface"
                 >
                   <td className="px-4 py-3">
                     <span className="flex items-center gap-2.5">
@@ -507,6 +574,12 @@ export function OfferingCompetition({
                         {row.company}
                       </span>
                       {liveIntelChip(row)}
+                      {live && (
+                        <UnlinkX
+                          label={`Remove ${row.company}${row.product ? ` ${row.product}` : ""} from ${offeringName}'s competition list`}
+                          onClick={() => setUnlinkingRow(row)}
+                        />
+                      )}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-[13px] text-text-secondary">
@@ -514,7 +587,16 @@ export function OfferingCompetition({
                   </td>
                   <td className="px-4 py-3">{kindChips(row, "sm")}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-[12px] text-text-tertiary">
-                    {row.addedBy.split(" ")[0]} · {fmtDate(row.addedAt)}
+                    <span className="flex items-center gap-1.5">
+                      {isPerson(row.addedBy) ? (
+                        <PersonLink nested name={row.addedBy} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5">
+                          <span className={ENTITY_NAME}>{row.addedBy.split(" ")[0]}</span>
+                        </PersonLink>
+                      ) : (
+                        <span>{row.addedBy.split(" ")[0]}</span>
+                      )}
+                      <span>· {fmtDate(row.addedAt)}</span>
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -587,8 +669,15 @@ export function OfferingCompetition({
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-x-2 text-[13px] font-semibold text-text-primary">
                         {m.label}
-                        <span className="text-[10.5px] font-medium text-text-tertiary">
-                          {m.addedBy.split(" ")[0]} · {fmtDate(m.addedAt)}
+                        <span className="inline-flex items-center gap-1 text-[10.5px] font-medium text-text-tertiary">
+                          {isPerson(m.addedBy) ? (
+                            <PersonLink name={m.addedBy} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="gap-1">
+                              <span className={ENTITY_NAME}>{m.addedBy.split(" ")[0]}</span>
+                            </PersonLink>
+                          ) : (
+                            <span>{m.addedBy.split(" ")[0]}</span>
+                          )}
+                          <span>· {fmtDate(m.addedAt)}</span>
                         </span>
                       </span>
                       {m.text && (
@@ -625,8 +714,37 @@ export function OfferingCompetition({
                         somebody wrote does not disappear on one click. */}
                     {confirmMaterial === m.id && (
                       <div className="tab-panel mt-2 basis-full rounded-lg border border-[color:rgba(220,38,38,0.35)] bg-[rgba(220,38,38,0.04)] px-3 py-2.5">
+                        {/* Which note, on which competitor, under which
+                            offering, and who wrote it when (Anir, Oct 1:
+                            "u have to be super super specific"). */}
                         <p className="text-[12.5px] text-text-primary">
-                          Delete <b className="font-semibold">{m.label}</b>?
+                          Delete the <b className="font-semibold">{m.label}</b>{" "}
+                          {m.kind === "link"
+                            ? "link"
+                            : m.kind === "file"
+                              ? "document link"
+                              : "note"}{" "}
+                          about <b className="font-semibold">{openRow.company}</b>
+                          {openRow.product ? ` ${openRow.product}` : ""}
+                          {offeringName ? (
+                            <>
+                              {" "}from <b className="font-semibold">{offeringName}</b>
+                            </>
+                          ) : null}
+                          ?
+                          {m.addedBy?.trim() && !Number.isNaN(Date.parse(m.addedAt)) ? (
+                            isPerson(m.addedBy) ? (
+                              <>
+                                {" Added by "}
+                                <PersonLink name={m.addedBy.trim()} avatarClassName="h-[18px] w-[18px] shrink-0 text-[7px]" className="gap-1 align-middle whitespace-nowrap" nameClassName="font-semibold text-text-primary" />
+                                {` on ${fmtDate(m.addedAt)}.`}
+                              </>
+                            ) : (
+                              ` Added by ${m.addedBy.trim()} on ${fmtDate(m.addedAt)}.`
+                            )
+                          ) : (
+                            ""
+                          )}{" "}
                           This is the only copy.
                         </p>
                         <div className="mt-2 flex items-center gap-2">
@@ -645,7 +763,13 @@ export function OfferingCompetition({
                             }
                             className="cursor-pointer rounded-lg bg-[color:#B02020] px-3 py-1 text-[12px] font-semibold text-white transition-colors hover:bg-[color:#8F1A1A] disabled:opacity-50"
                           >
-                            {busy ? "Deleting…" : "Delete"}
+                            {busy
+                              ? "Deleting…"
+                              : m.kind === "link"
+                                ? "Delete link"
+                                : m.kind === "file"
+                                  ? "Delete document link"
+                                  : "Delete note"}
                           </button>
                           <button
                             type="button"
@@ -686,7 +810,7 @@ export function OfferingCompetition({
                       value={mLabel}
                       onChange={(e) => setMLabel(e.target.value)}
                       placeholder='Name it, e.g. "2026 list pricing"'
-                      className="h-[34px] min-w-[180px] flex-1 rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
+                      className="h-10 min-w-[180px] flex-1 rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
                     />
                   </div>
                   {needsUrl ? (
@@ -698,7 +822,7 @@ export function OfferingCompetition({
                           ? "Paste the document's link (Teams, SharePoint, Drive…)"
                           : "https://…"
                       }
-                      className="mt-2 h-[34px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
+                      className="mt-2 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
                     />
                   ) : (
                     <textarea
@@ -760,7 +884,7 @@ export function OfferingCompetition({
             {confirmCompetitor && (
               <div className="tab-panel mt-2.5 rounded-xl border border-[color:rgba(220,38,38,0.35)] bg-[rgba(220,38,38,0.04)] p-3.5">
                 <p className="text-[13px] font-semibold text-text-primary">
-                  Remove {openRow.company} from this list?
+                  {`Remove ${openRow.company}${openRow.product ? ` ${openRow.product}` : ""} from ${offeringName ? `${offeringName}'s` : "this"} competition list?`}
                 </p>
                 <p className="mt-1 text-[12.5px] leading-relaxed text-text-secondary">
                   {openRow.product ? `${openRow.product} stops` : "It stops"}{" "}
@@ -825,7 +949,7 @@ export function OfferingCompetition({
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               placeholder="e.g. Veeva Systems"
-              className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
+              className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
             />
             {matchedSuggestions.length > 0 && (
               <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -861,7 +985,7 @@ export function OfferingCompetition({
               value={product}
               onChange={(e) => setProduct(e.target.value)}
               placeholder="e.g. Vault RIM"
-              className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
+              className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
             />
           </div>
           <div>
@@ -900,6 +1024,49 @@ export function OfferingCompetition({
           </button>
         </div>
       </Modal>
+
+      {/* The list's hover X asks here, in the popup's own words. */}
+      <ConfirmDialog
+        open={unlinkingRow !== null}
+        onClose={() => {
+          if (!busy) setUnlinkingRow(null);
+        }}
+        onConfirm={() => void takeOffList()}
+        title={
+          unlinkingRow
+            ? `Remove ${unlinkingRow.company}${unlinkingRow.product ? ` ${unlinkingRow.product}` : ""} from ${offeringName}'s competition list?`
+            : "Remove this competitor?"
+        }
+        body={
+          <>
+            <strong>{unlinkingRow?.product || unlinkingRow?.company}</strong>{" "}
+            stops being tracked against <strong>{offeringName}</strong>
+            {unlinkingRow && unlinkingRow.materials.length > 0
+              ? `, and the ${unlinkingRow.materials.length} piece${
+                  unlinkingRow.materials.length === 1 ? "" : "s"
+                } of intel the team wrote on it go with it.`
+              : "."}
+          </>
+        }
+        detail={
+          unlinkingRow?.marketIntelId
+            ? `${unlinkingRow.company} stays in Market Intel, and any other offering that lists it keeps it.`
+            : "Any other offering that lists it keeps it. You can add it back with Add competitor product."
+        }
+        subject={
+          unlinkingRow
+            ? {
+                name: unlinkingRow.company,
+                kind: "company",
+                imageUrl: unlinkingRow.marketIntelId
+                  ? logos[unlinkingRow.marketIntelId] ?? null
+                  : null,
+              }
+            : null
+        }
+        confirmLabel="Remove competitor"
+        busy={busy}
+      />
     </div>
   );
 }

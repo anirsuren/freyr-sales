@@ -33,8 +33,9 @@ import {
 import { flagForGeography } from "@/lib/countryFlags";
 import { tint } from "@/lib/tint";
 
+// The shared 40px box, the same height as the Size dropdown beside it.
 const FIELD =
-  "w-full rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
+  "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
 const LABEL =
   "block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5";
 const FAMILIES: CustomerFamily[] = [
@@ -101,6 +102,8 @@ export function CustomerTypesManager({
   const [confirmRemoveType, setConfirmRemoveType] = useState<string | null>(null);
   const [removingTypeBusy, setRemovingTypeBusy] = useState(false);
   const removingMarket = markets.find((m) => m.id === confirmRemove) ?? null;
+  const removingType =
+    customerTypes.find((t) => t.id === confirmRemoveType) ?? null;
 
   // EDITING AN EXISTING DEFINITION (change log #37). Separate state from the
   // add form on purpose: opening the editor must never inherit half-typed text
@@ -850,17 +853,32 @@ export function CustomerTypesManager({
         open={confirmRemoveType !== null}
         busy={removingTypeBusy}
         onClose={() => setConfirmRemoveType(null)}
-        title="Remove this customer type?"
+        title={
+          removingType
+            ? `Remove the ${removingType.name} customer type?`
+            : "Remove this customer type?"
+        }
         body={
           <>
-            <NamePill>
-              {customerTypes.find((t) => t.id === confirmRemoveType)?.name ??
-                "This type"}
-            </NamePill>{" "}
-            comes off the list. No offering is for this type, so nothing else changes.
+            <NamePill>{removingType?.name ?? "This type"}</NamePill>
+            {(() => {
+              /* The size band is what tells Small from Large apart. */
+              const facts = removingType
+                ? [
+                    (removingType.revenue || "").trim() &&
+                      `${(removingType.revenue || "").trim()} revenue`,
+                    (removingType.employees || "").trim() &&
+                      `${(removingType.employees || "").trim()} employees`,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")
+                : "";
+              return facts ? ` (${facts})` : null;
+            })()}{" "}
+            comes off the customer type list. No offering is for this type, so nothing else changes.
           </>
         }
-        confirmLabel="Remove type"
+        confirmLabel="Remove customer type"
         onConfirm={async () => {
           if (!confirmRemoveType) return;
           setRemovingTypeBusy(true);
@@ -890,7 +908,11 @@ export function CustomerTypesManager({
           const m = markets.find((x) => x.id === confirmRemove);
           if (m) void removeMarket(m);
         }}
-        title="Remove this market?"
+        title={
+          removingMarket
+            ? `Remove the ${removingMarket.name} market?`
+            : "Remove this market?"
+        }
         body={
           removingMarket ? (
             <>
@@ -903,10 +925,12 @@ export function CustomerTypesManager({
         }
         detail={
           removingMarket && (marketCounts[removingMarket.id] || 0) > 0
-            ? `${marketCounts[removingMarket.id]} offering${
-                marketCounts[removingMarket.id] === 1 ? "" : "s"
-              } are filed under it. They are not deleted, but they will no longer list this market.`
-            : undefined
+            ? marketCounts[removingMarket.id] === 1
+              ? `1 offering is filed under ${removingMarket.name}. It is not deleted, but it will no longer list this market.`
+              : `${marketCounts[removingMarket.id]} offerings are filed under ${removingMarket.name}. They are not deleted, but they will no longer list this market.`
+            : removingMarket
+              ? `No offering is filed under ${removingMarket.name}, so nothing else changes.`
+              : undefined
         }
         confirmLabel="Remove market"
       />

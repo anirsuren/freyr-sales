@@ -42,7 +42,7 @@ import { getDataMode } from "@/lib/dataMode";
 import { getCurrentUser } from "@/lib/currentUser";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
-import { EntityLink } from "@/components/ui/EntityLink";
+import { EntityLink, PersonLink } from "@/components/ui/EntityLink";
 import { contactHref, customerHref } from "@/lib/entityHref";
 
 export const metadata = { title: "Forecast" };
@@ -156,6 +156,8 @@ export default async function ForecastPage() {
       deals: ds.map((d) => ({
         company: d.company,
         contact: d.contactName,
+        // So the contact's face opens their own page.
+        contactId: d.contactId,
         value: d.value,
       })),
     };
@@ -408,9 +410,7 @@ export default async function ForecastPage() {
                                     <EntityLink href={customerHref(null, d.company)} className="block truncate font-medium text-text-primary">
                                       {d.company}
                                     </EntityLink>
-                                    <span className="block truncate text-[10.5px] text-text-tertiary">
-                                      {d.contact}
-                                    </span>
+                                    <PersonLink kind="contact" name={d.contact} contactId={d.contactId} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="mt-0.5 flex gap-1.5 text-[10.5px] text-text-tertiary" />
                                   </span>
                                   <span className="tnum text-text-secondary shrink-0">
                                     {formatMoney(d.value)}

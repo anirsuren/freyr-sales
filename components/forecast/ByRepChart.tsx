@@ -97,6 +97,8 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
     key: r.identityKey,
     label: r.name,
     color: colorByRep.get(r.identityKey) ?? VIZ.blue,
+    // Each row is a rep, so it wears that rep's face.
+    avatar: r.name,
   }));
 
   return (

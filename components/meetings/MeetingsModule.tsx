@@ -986,18 +986,33 @@ export function MeetingsModule({
         onConfirm={() => {
           if (confirmDelete) void deleteMeeting(confirmDelete);
         }}
-        title="Delete this meeting?"
+        title={confirmDelete ? `Delete ${confirmDelete.title}?` : "Delete this meeting?"}
         body={
           confirmDelete ? (
             <>
-              <span className="font-semibold">{confirmDelete.title}</span> ({confirmDelete.ref}) and
-              everything written on it will be removed. This cannot be undone.
+              <b>{confirmDelete.title}</b> ({confirmDelete.ref})
+              {confirmDelete.customer.trim() ? (
+                <>
+                  {" "}with <b>{confirmDelete.customer}</b>
+                </>
+              ) : null}{" "}
+              on <b><DateText value={confirmDelete.meetingAt} /></b> and everything
+              written on it will be removed.
             </>
           ) : (
             ""
           )
         }
-        confirmLabel="Delete it"
+        detail={
+          confirmDelete
+            ? `Its ${confirmDelete.notes.length} ${
+                confirmDelete.notes.length === 1 ? "note" : "notes"
+              } and ${confirmDelete.docs.length} ${
+                confirmDelete.docs.length === 1 ? "document" : "documents"
+              } go with it. This cannot be undone.`
+            : undefined
+        }
+        confirmLabel="Delete meeting"
         busy={deleting}
       />
       </SolutioningTabs>

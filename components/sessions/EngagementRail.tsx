@@ -129,7 +129,6 @@ export function EngagementRail({
             <div>
               <label className={labelCls}>Next step</label>
               <DateField
-                className={fieldCls}
                 value={followUp}
                 onChange={(e) => setFollowUp(e)}
               />

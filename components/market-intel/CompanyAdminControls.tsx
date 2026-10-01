@@ -104,12 +104,13 @@ export function CompanyAdminControls({
       onClose={() => setConfirming(false)}
       onConfirm={() => void remove()}
       busy={busy === "delete"}
-      title={`Delete ${companyName} for everyone?`}
+      title={`Delete ${companyName} from ${group === "competitor" ? "Competitor Intel" : "Customer Intel"} for everyone?`}
       subject={{ name: companyName, kind: "company", imageUrl: companyLogoUrl }}
       body={
         <>
-          Everything collected about <b>{companyName}</b> is deleted, and it
-          disappears for the whole team.
+          Everything collected about <b>{companyName}</b>
+          {group === "competitor" ? "" : ", including the people followed there,"} is deleted, and it
+          disappears from <b>{group === "competitor" ? "Competitor Intel" : "Customer Intel"}</b> for the whole team.
           {followers > 0 && (
             <>
               {" "}
@@ -120,7 +121,7 @@ export function CompanyAdminControls({
         </>
       }
       detail="This can't be undone."
-      confirmLabel="Delete for everyone"
+      confirmLabel="Delete company for everyone"
     />
   );
 

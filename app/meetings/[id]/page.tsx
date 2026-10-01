@@ -9,6 +9,7 @@ import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import {
   moduleDeleteRefusal,
+  moduleWriteRefusal,
   requireModuleAccess,
 } from "@/lib/moduleAccessServer";
 
@@ -91,6 +92,9 @@ export default async function MeetingPage({
       /* The route asks this before it asks whose meeting it is, so the
          page's bin asks it too. */
       canDeleteModule={!(await moduleDeleteRefusal("/meetings"))}
+      /* What POST /api/meetings asks first, so the hover X on a person or a
+         deal only shows where taking it off will save. */
+      canWrite={!(await moduleWriteRefusal("/meetings"))}
       members={members}
       customers={customers
         .map((c) => ({ id: c.id, name: c.company_name }))

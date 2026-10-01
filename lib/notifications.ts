@@ -309,7 +309,9 @@ export function buildNotifications(input: {
         urgency: "today",
         href: `/sessions/${s.id}`,
         ts: s.created_at,
-        company,
+        // The real name only: the "Account" stand-in must never become a
+        // logo, because its link would create a customer by that name.
+        company: custById[s.customer_id]?.company_name || undefined,
       });
     }
   }
@@ -349,6 +351,11 @@ export function buildNotifications(input: {
 
   // Fresh buying signals + upcoming follow-ups
   for (const i of interactions) {
+    /* An interaction whose account was deleted has nowhere to send you: the
+       row would open "customer not found", and its logo used the stand-in
+       name "Account", which the company lookup turns into a brand-new
+       customer called Account the moment anyone clicks it. */
+    if (!custById[i.customer_id]) continue;
     const company = custById[i.customer_id]?.company_name || "Account";
     if (i.outcome === "interested" || i.outcome === "meeting_booked") {
       const who = contactById[i.contact_id]?.full_name;

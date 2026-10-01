@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { Check, Loader2, Search } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -47,6 +47,20 @@ type Person = {
   role: string;
   active?: boolean;
 };
+
+/** "A", "A and B", "A, B and C", each in bold, inside a confirm's sentence. */
+function BoldList({ names }: { names: string[] }) {
+  return (
+    <>
+      {names.map((name, i) => (
+        <Fragment key={`${name}-${i}`}>
+          {i === 0 ? "" : i === names.length - 1 ? " and " : ", "}
+          <b>{name}</b>
+        </Fragment>
+      ))}
+    </>
+  );
+}
 
 export function PeoplePrivileges() {
   const { toast } = useToast();
@@ -365,26 +379,64 @@ export function PeoplePrivileges() {
         </table>
       </div>
 
+      {/* WHO, WHICH PRIVILEGE, AND WHAT THEY KEEP (Anir, Oct 1: "u have to
+          be super super specific"). The address tells two people of one name
+          apart; taking one away says which of their ticks stay. */}
       <ConfirmDialog
         open={pending !== null}
         person={pending?.person}
         onClose={() => setPending(null)}
         onConfirm={applyPending}
-        title={pending?.to ? "Give this privilege?" : "Take this privilege away?"}
+        title={
+          !pending
+            ? "Change this privilege?"
+            : pending.to
+              ? `Give ${pending.person} the ${pending.privLabel} privilege?`
+              : `Take the ${pending.privLabel} privilege away from ${pending.person}?`
+        }
         body={
-          pending && (
-            <>
-              <b>{pending.person}</b> {pending.to ? "gets" : "loses"}{" "}
-              <b>{pending.privLabel}</b>.
-            </>
-          )
+          pending &&
+          (() => {
+            const who = people.find((p) => p.id === pending.personId);
+            const kept = pending.to
+              ? []
+              : state.privileges
+                  .filter(
+                    (p) =>
+                      p.id !== pending.privId &&
+                      (privilegesForMember(state, pending.personId, privilegeDirectory).includes(p.id) ||
+                        (who ? ROLE_PRIVILEGE[who.role] === p.id : false))
+                  )
+                  .map((p) => p.label);
+            return (
+              <>
+                <b>{pending.person}</b>
+                {who?.email ? ` (${who.email})` : ""}{" "}
+                {pending.to ? "gets" : "loses"} <b>{pending.privLabel}</b>.
+                {!pending.to &&
+                  (kept.length ? (
+                    <>
+                      {" "}They keep <BoldList names={kept} />.
+                    </>
+                  ) : (
+                    " This leaves them with no other privileges."
+                  ))}
+              </>
+            );
+          })()
         }
         detail={
           pending?.privId === VIEW_ALL && pending.to
             ? "View all lets them see every record in a module, including ones nobody assigned them. It never lets them change one. The admins are emailed."
             : "This changes what they can do as soon as you confirm. The admins are emailed."
         }
-        confirmLabel={pending?.to ? "Give it" : "Take it away"}
+        confirmLabel={
+          !pending
+            ? "Change privilege"
+            : pending.to
+              ? `Give ${pending.person.trim().split(/\s+/)[0]} ${pending.privLabel}`
+              : `Take ${pending.privLabel} from ${pending.person.trim().split(/\s+/)[0]}`
+        }
         /* Giving is affirmative; only taking away is destructive (Anir, Aug
            29: "when I'm giving a privilege the red doesn't make sense"). */
         tone={pending?.to ? "primary" : "destructive"}

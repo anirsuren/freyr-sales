@@ -49,7 +49,7 @@ import { Customer360 } from "@/components/customers/Customer360";
 import { opportunityValue } from "@/lib/opportunitiesShared";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
-import { EntityLink } from "@/components/ui/EntityLink";
+import { CompanyLink, EntityLink } from "@/components/ui/EntityLink";
 import { customerHref } from "@/lib/entityHref";
 import { addMockModePrefix } from "@/lib/modeUrl";
 import { SHOWROOM_PEOPLE_NAMES } from "@/lib/offerings";
@@ -271,7 +271,7 @@ export default async function RepPage({
             <ul className="divide-y divide-border-light">
               {myOpen.map((deal) => (
                 <li key={deal.id} className="flex items-center gap-3 px-4 py-3">
-                  <EntityLink href={customerHref(null, deal.customer)} className="shrink-0" title={deal.customer}>
+                  <EntityLink href={customerHref(deal.customerId, deal.customer)} className="shrink-0" title={deal.customer}>
                     <CompanyLogo
                       name={deal.customer}
                       className="h-8 w-8 shrink-0 text-[9px]"
@@ -287,7 +287,7 @@ export default async function RepPage({
                       </b>
                     </span>
                     <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[12px]">
-                      <span className="truncate text-text-secondary">{deal.customer}</span>
+                      <EntityLink href={customerHref(deal.customerId, deal.customer)} className="truncate text-text-secondary">{deal.customer}</EntityLink>
                     </span>
                   </span>
                 </li>
@@ -377,7 +377,13 @@ export default async function RepPage({
               <li key={opportunity.id} className="py-3 first:pt-0 last:pb-0">
                 <Link href={`/opportunities/${encodeURIComponent(opportunity.id)}`} className="font-medium text-blue-primary hover:underline">{opportunity.name}</Link>
                 <p className="mt-1 text-sm text-text-secondary">
-                  {[opportunity.customer, opportunity.status].filter(Boolean).join(" · ")}
+                  {opportunity.customer && (
+                    <>
+                      <CompanyLink name={opportunity.customer} customerId={opportunity.customerId} logoClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5 align-middle" />
+                      {opportunity.status ? " · " : ""}
+                    </>
+                  )}
+                  {opportunity.status}
                   {" · "}{opportunity.currency || "USD"} {new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(opportunityValue(opportunity))}
                 </p>
               </li>
@@ -522,6 +528,7 @@ export default async function RepPage({
     .sort((a, b) => b[1] - a[1])
     .map(([company, value], i) => ({
       label: company,
+      logo: company,
       value,
       // Each account its own colour (Suren: "why is it all blue?").
       color: VIZ_SERIES[i % VIZ_SERIES.length],
@@ -558,6 +565,7 @@ export default async function RepPage({
     .sort((a, b) => b.staleDays - a.staleDays)
     .map((d) => ({
       label: d.company,
+      logo: d.company,
       value: d.staleDays,
       color: STAGE_COLOR[d.stage] || VIZ.blue,
       tip: [
@@ -580,6 +588,7 @@ export default async function RepPage({
       value: ago(deal.staleDays),
       href: `/customers/${deal.customerId}`,
       avatar: deal.contactName,
+      logo: deal.company,
     }));
 
   const sortedDeals = [...myDeals].sort((a, b) => b.value - a.value);

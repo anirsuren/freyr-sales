@@ -23,6 +23,7 @@ import {
 } from "@/lib/performanceShared";
 import { tint } from "@/lib/tint";
 import { ENTITY_NAME, PersonLink } from "@/components/ui/EntityLink";
+import { PersonFan } from "@/components/ui/PersonFan";
 
 /**
  * WHAT THIS GROUP IS ACTUALLY CARRYING, TWO CLICKS DEEP (Anir, Aug 25: "I
@@ -215,7 +216,9 @@ export function GroupGoalsDrilldown({
                   <div
                     className={cn(
                       "flex w-full items-center gap-2.5 px-3 py-2.5 transition-colors",
-                      isOpen ? "bg-surface" : "hover:bg-surface"
+                      isOpen
+                        ? "bg-surface [--fan-ring:var(--surface)]"
+                        : "[--fan-ring:var(--white)] hover:bg-surface hover:[--fan-ring:var(--surface)]"
                     )}
                   >
                   <button
@@ -245,6 +248,13 @@ export function GroupGoalsDrilldown({
                         {goal.year}
                       </span>
                     </span>
+                    {/* Who is on it, before the goal is opened. */}
+                    <PersonFan
+                      people={rows.map((r) => ({ name: r.person, role: "", context: goal.name }))}
+                      avatarClassName="h-6 w-6 text-[8px]"
+                      nested
+                      ringClassName="ring-[color:var(--fan-ring)]"
+                    />
                     {/* NO CATEGORY CHIP (Anir, Aug 29: "why are the categories
                         there"). The master needs it because that table has no
                         icon column; here the coloured icon already says which

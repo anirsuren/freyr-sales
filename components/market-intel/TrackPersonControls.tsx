@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -99,7 +100,10 @@ export function TrackPersonButton({
                     onClick={() => save(person.linkedinUrl)}
                     className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white disabled:opacity-50"
                   >
-                    <span className="min-w-0 truncate text-[12px] font-medium text-text-primary">{person.name}</span>
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <Avatar name={person.name} src={person.photoUrl || undefined} className="h-5 w-5 shrink-0 text-[7px]" />
+                      <span className="min-w-0 truncate text-[12px] font-medium text-text-primary">{person.name}</span>
+                    </span>
                     <span className="shrink-0 text-[11px] font-semibold text-blue-primary">Follow</span>
                   </button>
                 ))}
@@ -116,7 +120,7 @@ export function TrackPersonButton({
             <input
               id="mi-person-link"
               required
-              className="w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary"
+              className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-colors focus:border-blue-primary"
               value={linkedinUrl}
               onChange={(e) => {
                 setLinkedinUrl(e.target.value);

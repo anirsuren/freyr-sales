@@ -154,7 +154,7 @@ export function CustomerEditForm({
    *  control simply is not drawn — the API refuses either way. */
   mayDelete?: boolean;
   /** The addresses and parent company (Manoj, Sep 10). */
-  profile?: { hq?: CustomerAddress; other?: CustomerAddress; parentId?: string };
+  profile?: { hq?: CustomerAddress; other?: CustomerAddress; parentId?: string; customerNo?: string };
   /** Every other customer, for Parent company. */
   customers?: { id: string; name: string }[];
 }) {
@@ -690,7 +690,32 @@ export function CustomerEditForm({
         onClose={() => setConfirmDelete(false)}
         onConfirm={remove}
         title={`Delete ${customer.company_name}?`}
-        body="The account and its contacts are removed. This cannot be undone."
+        body={(() => {
+          /* Its Customer ID tells two similar names apart, and the counts
+             say what goes with it, all read off the account itself. */
+          const usage = customer.offering_usage ?? [];
+          const inUse = customer.offerings_in_use?.length ?? 0;
+          const activities = usage.reduce((n, u) => n + (u.engagement_versions?.length ?? 0), 0);
+          const lines = usage.reduce((n, u) => n + (u.revenue_lines?.length ?? 0), 0);
+          const logged = [
+            inUse > 0 ? `${inUse} ${inUse === 1 ? "offering" : "offerings"} in use` : null,
+            activities > 0 ? `${activities} ${activities === 1 ? "activity" : "activities"}` : null,
+            lines > 0 ? `${lines} revenue ${lines === 1 ? "line" : "lines"}` : null,
+          ].filter((part): part is string => !!part);
+          const loggedText =
+            logged.length > 1
+              ? `${logged.slice(0, -1).join(", ")} and ${logged[logged.length - 1]}`
+              : logged[0] || "";
+          const number = profile?.customerNo?.trim();
+          return (
+            <>
+              <b>{customer.company_name}</b>
+              {number ? ` (${number})` : ""} is deleted, with its contacts
+              {loggedText ? ` and everything logged on it: ${loggedText}` : ""}.
+            </>
+          );
+        })()}
+        detail="This cannot be undone."
         confirmLabel={deleting ? "Deleting…" : "Delete account"}
         tone="destructive"
       />

@@ -118,6 +118,20 @@ type Item = StoryInput & {
 type StoryRemoval = {
   title: string;
   items: { url: string; personId?: string }[];
+  /** Where the lead copy came from and when, so the confirmation can name it. */
+  source?: string;
+  date?: string | null;
+  /** Every outlet carrying the story, lead first, for the confirmation. */
+  sources?: string[];
+};
+
+/** An item's kind inside a sentence: "The news article ... comes off". */
+const KIND_IN_SENTENCE: Record<Item["kind"], string> = {
+  company: "company post",
+  people: "post",
+  news: "news article",
+  authority: "health authority notice",
+  site: "website page",
 };
 
 /* ONE NAME PER SOURCE (Sep 13 loop). A company's own site read "TCS.COM" on one
@@ -325,10 +339,14 @@ export function LiveCompanyBriefing({
       setSavingArticles(new Set(savingArticlesRef.current));
     }
   }
+  /* TAKING A BOOKMARK OFF ASKS FIRST, the same as the bin on Bookmarked items
+     (Anir, Oct 1: nothing that removes data acts on one click). Saving one
+     still happens on the click. */
+  const [unsaving, setUnsaving] = useState<Item | null>(null);
   const storyActionClass =
     "inline-flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary";
   const bookmarkButton = (item: Item) => (
-    <button type="button" disabled={!savedReady || savingArticles.has(item.url)} onClick={() => void toggleArticle(item)}
+    <button type="button" disabled={!savedReady || savingArticles.has(item.url)} onClick={() => savedUrls.has(item.url) ? setUnsaving(item) : void toggleArticle(item)}
       aria-label={`${savedUrls.has(item.url) ? "Unsave" : "Save"} item: ${item.title}`} aria-pressed={savedUrls.has(item.url)}
       aria-busy={savingArticles.has(item.url)}
       title={savedUrls.has(item.url) ? "Remove bookmark" : "Save item"}
@@ -485,6 +503,11 @@ export function LiveCompanyBriefing({
         url: item.url,
         ...(item.personId ? { personId: item.personId } : {}),
       })),
+      source: group.lead.sourceLabel,
+      date: group.lead.date,
+      sources: [group.lead, ...group.others]
+        .map((item) => item.sourceLabel?.trim())
+        .filter((label, index, all): label is string => !!label && all.indexOf(label) === index),
     });
   };
 
@@ -846,11 +869,71 @@ export function LiveCompanyBriefing({
         onClose={() => !removingStory && setStoryRemoval(null)}
         onConfirm={() => void removeStory()}
         busy={removingStory}
-        title="Remove this story?"
+        /* SAY WHICH STORY, WHOSE BRIEFING, AND WHO LOSES IT (Anir, Oct 1: "u
+           have to be super super specific"). It comes off the briefing for
+           the whole team, with every copy grouped under it. */
+        title={
+          !storyRemoval
+            ? "Remove this story?"
+            : storyRemoval.title.trim()
+              ? `Remove the story “${storyRemoval.title.trim()}” from ${briefing.name}'s briefing for everyone?`
+              : `Remove this untitled story from ${briefing.name}'s briefing for everyone?`
+        }
         subject={storyRemoval ? { name: storyRemoval.title, kind: "story" } : null}
-        body={<>This removes <b>{storyRemoval?.title}</b> from the shared intelligence feed.</>}
-        detail="All grouped source copies are removed, and future collections will keep them hidden."
+        body={
+          storyRemoval ? (
+            <>
+              <b>{storyRemoval.title.trim() || "This story"}</b>
+              {storyRemoval.source?.trim() ? <> from <b>{storyRemoval.source.trim()}</b></> : null}
+              {fmtDate(storyRemoval.date ?? null) ? <> ({fmtDate(storyRemoval.date ?? null)})</> : null} comes off{" "}
+              <b>{briefing.name}</b>&rsquo;s briefing for the whole team.
+            </>
+          ) : (
+            ""
+          )
+        }
+        detail={(() => {
+          if (!storyRemoval) return undefined;
+          const others = storyRemoval.items.length - 1;
+          const lead = storyRemoval.source?.trim();
+          const otherSources = (storyRemoval.sources ?? []).filter((label) => label !== lead);
+          return others > 0
+            ? `Its ${others} other ${others === 1 ? "copy" : "copies"}${otherSources.length ? ` (${otherSources.join(", ")})` : ""} ${others === 1 ? "goes" : "go"} too, and future collections keep them hidden. The rest of the briefing stays.`
+            : "Future collections keep it hidden. The rest of the briefing stays.";
+        })()}
         confirmLabel="Remove story"
+      />
+      <ConfirmDialog
+        open={unsaving !== null}
+        onClose={() => setUnsaving(null)}
+        onConfirm={() => {
+          const item = unsaving;
+          setUnsaving(null);
+          if (item) void toggleArticle(item);
+        }}
+        subject={unsaving ? { name: unsaving.title, kind: "story" } : null}
+        title={
+          !unsaving
+            ? "Remove this bookmark?"
+            : unsaving.title.trim()
+              ? `Remove “${unsaving.title.trim()}” from your bookmarks for ${briefing.name}?`
+              : `Remove this untitled item from your bookmarks for ${briefing.name}?`
+        }
+        body={
+          unsaving ? (
+            <>
+              The {KIND_IN_SENTENCE[unsaving.kind] ?? "saved item"}{" "}
+              {unsaving.title.trim() ? <b>{unsaving.title.trim()}</b> : "with no title"}
+              {unsaving.sourceLabel?.trim() && unsaving.sourceLabel.trim() !== briefing.name ? <> from <b>{unsaving.sourceLabel.trim()}</b></> : null}
+              {fmtDate(unsaving.date) ? <> ({fmtDate(unsaving.date)})</> : null} comes off your bookmarked items for{" "}
+              <b>{briefing.name}</b>.
+            </>
+          ) : (
+            ""
+          )
+        }
+        detail="Only your bookmark goes. The post or article itself is untouched."
+        confirmLabel="Remove bookmark"
       />
       <SmartBack
         fallback={isCompetitor ? "/market-intel?tab=competitors" : "/market-intel"}
@@ -1365,7 +1448,7 @@ export function LiveCompanyBriefing({
                     Nobody yet.{canManagePeople ? " Add the senior people whose posts you want in this feed." : ""}
                   </p>
                 ) : (
-                  <TrackedPeopleList people={extraPeople} personPosts={railPosts} canManage={canManagePeople} />
+                  <TrackedPeopleList people={extraPeople} personPosts={railPosts} canManage={canManagePeople} companyName={briefing.name} />
                 )}
               </div>
               {!peopleOpen && extraPeople.length === 0 && canManagePeople && <div className="mt-3 flex justify-end"><TrackPersonButton companyId={briefing.id} companyName={briefing.name} availablePeople={availablePeople} /></div>}

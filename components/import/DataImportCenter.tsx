@@ -6,6 +6,7 @@ import { Download, FileSpreadsheet, Upload, CheckCircle2, AlertTriangle } from "
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { downloadCSV, toCSV } from "@/lib/csv";
 
 type Result = { customers: number; contacts: number; skipped: number; errors: string[] };
@@ -15,6 +16,9 @@ export function DataImportCenter() {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
+  /* The chosen file waits for a yes: an account already here with the same
+     name is updated from it, blank cells included (Anir, Oct 1). */
+  const [pending, setPending] = useState<File | null>(null);
 
   function template() {
     downloadCSV("freyr-accounts-contacts-template.csv", toCSV(
@@ -52,7 +56,7 @@ export function DataImportCenter() {
           </div>
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
-          <input ref={input} type="file" accept=".csv,text/csv" className="sr-only" onChange={(event) => upload(event.target.files?.[0])} />
+          <input ref={input} type="file" accept=".csv,text/csv" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) setPending(file); event.target.value = ""; }} />
           <Button onClick={() => input.current?.click()} disabled={busy}>{busy ? "Importing…" : "Choose CSV"}</Button>
           <button onClick={template} className="px-3 py-2 rounded-md border border-border text-[13px] font-medium text-text-secondary hover:bg-surface flex items-center gap-2"><Download size={15} /> Download template</button>
         </div>
@@ -84,6 +88,40 @@ export function DataImportCenter() {
           <li><strong className="block text-text-primary mb-1">3. Validate the file</strong>Import a small batch first, check field mapping, then load the full approved dataset.</li>
         </ol>
       </Card>
+
+      {/* Names the file and says what it does to accounts already here.
+          Blue: nothing is deleted. */}
+      <ConfirmDialog
+        open={pending !== null}
+        onClose={() => setPending(null)}
+        onConfirm={() => {
+          const file = pending;
+          setPending(null);
+          if (file) void upload(file);
+        }}
+        title={pending ? `Import ${pending.name}?` : "Import this file?"}
+        body={(() => {
+          const bytes = pending?.size ?? 0;
+          const size =
+            bytes <= 0
+              ? ""
+              : bytes < 1024
+                ? `${bytes} bytes`
+                : bytes < 1024 * 1024
+                  ? `${Math.round(bytes / 1024)} KB`
+                  : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+          return (
+            <>
+              Accounts in {pending ? <b>{pending.name}</b> : "this file"}
+              {size ? ` (${size})` : ""} that are not in Freyr yet are added, with any contacts
+              the file lists.
+            </>
+          );
+        })()}
+        detail="An account already here with the same name is updated from the file: its website, industry, geography, size and owner. A blank cell clears that field."
+        confirmLabel="Import file"
+        tone="primary"
+      />
     </div>
   );
 }

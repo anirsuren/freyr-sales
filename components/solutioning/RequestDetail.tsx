@@ -47,6 +47,7 @@ import { PeopleSelect } from "@/components/ui/PeopleSelect";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -64,7 +65,7 @@ import type {
   SolutionDoc,
   SolutionRequest,
 } from "@/lib/solutioning";
-import { KIND_META, KindChip, StatusPill } from "./bits";
+import { KIND_META, KindChip, STATUS_META, StatusPill } from "./bits";
 import {
   DELIVERABLE_STATUSES,
   REQUEST_PRIORITIES,
@@ -86,6 +87,14 @@ const PRIORITY_TONE: Record<string, string> = {
 
 const samePerson = (left?: string | null, right?: string | null) =>
   (left ?? "").trim().toLowerCase() === (right ?? "").trim().toLowerCase();
+
+/** "Priya" from "Priya Shah", for short confirm buttons. */
+const firstName = (name?: string | null) =>
+  (name ?? "").trim().split(/\s+/)[0] || "them";
+
+/* The deliverable states that close the work. The same three the open-work
+   count below leaves out, so the confirm and the count always agree. */
+const DELIVERABLE_CLOSED: string[] = ["Finalized", "Submitted to customer", "Cancelled"];
 
 /* The deliverable's own six states, walking from not-started to out-the-door.
    Cancelled is the only red: it is the one that ends the work. */
@@ -236,6 +245,7 @@ export function RequestDetail({
   members,
   linkables,
   may,
+  canUnlink = false,
   children_ = [],
 }: {
   request: SolutionRequest;
@@ -247,6 +257,9 @@ export function RequestDetail({
   linkables: Linkable[];
   /** What the SERVER says this person may do here (SOL-026). */
   may: { create: boolean; remove: boolean; edit: boolean; assign: boolean };
+  /** The route's whole answer to an `update` on THIS request, resolved on the
+   *  server. Gates the hover X that takes a deal, contact or attendee off. */
+  canUnlink?: boolean;
   /** The submissions and presentations raised off this request (SOL-028). */
   children_?: {
     id: string;
@@ -263,6 +276,13 @@ export function RequestDetail({
   const originSection = backTrail ? sectionLabelFor(backTrail) : null;
   const { toast } = useToast();
   const [r, setR] = useState(initial);
+  /** The deal, contact or attendee whose hover X was pressed, waiting on its
+   *  confirm. */
+  const [unlinking, setUnlinking] = useState<{
+    kind: "deal" | "contact" | "attendee";
+    index: number;
+    name: string;
+  } | null>(null);
   const [tab, setTab] = useState<"overview" | DocCategory>("overview");
   const [adding, setAdding] = useState(false);
   const [comment, setComment] = useState("");
@@ -364,6 +384,24 @@ export function RequestDetail({
     division: string;
     name: string;
   } | null>(null);
+  /* NOTHING THAT CHANGES DATA ACTS ON ONE CLICK (Anir, Oct 1: "make sure this
+     doesnt happen anyone else"). Reopening moves the record back onto the open
+     list; a deliverable status change, or a person taken off a division or a
+     document, now asks first and names exactly what moves. Picking somebody
+     for an empty seat still saves at once. */
+  const [confirmReopen, setConfirmReopen] = useState(false);
+  const [confirmDeliverable, setConfirmDeliverable] = useState<string | null>(null);
+  const [confirmWorkstream, setConfirmWorkstream] = useState<{
+    division: string;
+    field: "lead" | "primaryAssignee";
+    from: string;
+    to: string;
+  } | null>(null);
+  const [confirmDocAssign, setConfirmDocAssign] = useState<{
+    docId: string;
+    from: string;
+    to: string | null;
+  } | null>(null);
   const [addingContributorTo, setAddingContributorTo] = useState<string | null>(null);
   const [contributorQuery, setContributorQuery] = useState("");
   const [selectedContributors, setSelectedContributors] = useState<string[]>([]);
@@ -437,6 +475,43 @@ export function RequestDetail({
       setBusy(false);
     }
   }
+
+  /** TAKE ONE OFF RIGHT HERE (Anir, Oct 1: "when i hover i should have a
+   *  delete button showing up"). The same update the Edit dialog sends, with
+   *  only the lists that change. Names and ids leave together, by position,
+   *  and the X is only offered where that position is certain. */
+  async function unlink() {
+    const target = unlinking;
+    if (!target) return;
+    const drop = <T,>(list: T[] | undefined) =>
+      (list ?? []).filter((_, i) => i !== target.index);
+    const patch =
+      target.kind === "deal"
+        ? {
+            opportunityLabels: drop(r.opportunityLabels),
+            opportunityIds: (r.opportunityIds?.length ?? 0) ? drop(r.opportunityIds) : [],
+          }
+        : target.kind === "contact"
+          ? {
+              contactNames: drop(r.contactNames),
+              contactIds: r.contactIds.length ? drop(r.contactIds) : [],
+            }
+          : { attendees: drop(r.attendees) };
+    if (await post({ op: "update", patch })) {
+      setUnlinking(null);
+      toast(
+        target.kind === "deal"
+          ? `${r.ref} is no longer linked to ${target.name}.`
+          : `${target.name} is no longer on ${r.ref}.`
+      );
+    }
+  }
+  /** Where a name's position says exactly which id goes with it. */
+  const dealsAligned =
+    !(r.opportunityIds?.length ?? 0) ||
+    r.opportunityIds.length === r.opportunityLabels.length;
+  const contactsAligned =
+    !r.contactIds.length || r.contactIds.length === r.contactNames.length;
 
   /** Create a NEW item (a submission or a presentation), rather than acting on
    *  this one — so it must not carry this request's id as the target. */
@@ -634,7 +709,7 @@ export function RequestDetail({
                   run: createWork,
                 }
               : mayReopen
-                ? { label: "Reopen", icon: RotateCcw, run: () => post({ op: "reopen" }) }
+                ? { label: "Reopen", icon: RotateCcw, run: async () => setConfirmReopen(true) }
                 : null;
 
           /**
@@ -708,7 +783,7 @@ export function RequestDetail({
               key: "reopen",
               label: "Reopen",
               icon: RotateCcw,
-              onClick: () => void post({ op: "reopen" }),
+              onClick: () => setConfirmReopen(true),
               disabled: busy,
             });
           if (mayDelete)
@@ -767,7 +842,18 @@ export function RequestDetail({
              better"). */
           <ColorSelect
             value={r.deliverableStatus ?? "Draft"}
-            onChange={(v) => void post({ op: "set-deliverable-status", status: v })}
+            onChange={(v) => {
+              /* Every move asks first: each status changes which group the
+                 list files this under ("Drafted", "Submitted to BD"), and
+                 Finalized, Submitted to customer and Cancelled close the
+                 work. Picking the status it already has does nothing new. */
+              const from = r.deliverableStatus ?? "Draft";
+              if (v !== from) {
+                setConfirmDeliverable(v);
+                return;
+              }
+              void post({ op: "set-deliverable-status", status: v });
+            }}
             ariaLabel="Deliverable status"
             minWidth={186}
             options={DELIVERABLE_STATUSES.map((x) => ({
@@ -1017,20 +1103,28 @@ export function RequestDetail({
                           {id && <ArrowUpRight size={12} className="mt-0.5 shrink-0 text-text-tertiary" />}
                         </>
                       );
-                      return id ? (
-                        <ModuleLink
-                          key={`${id}-${label}`}
-                          href={`/opportunities/${id}`}
-                          className="group/opportunity flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary hover:text-blue-primary"
-                        >
-                          {inner}
-                        </ModuleLink>
-                      ) : (
-                        <span
-                          key={label}
-                          className="flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary"
-                        >
-                          {inner}
+                      /* Off the request right here, asking first (Anir,
+                         Oct 1). The X sits beside the link, never inside. */
+                      return (
+                        <span key={`${id ?? ""}-${label}-${i}`} className="group/unlink flex w-fit max-w-full items-start">
+                          {id ? (
+                            <ModuleLink
+                              href={`/opportunities/${id}`}
+                              className="group/opportunity flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary hover:text-blue-primary"
+                            >
+                              {inner}
+                            </ModuleLink>
+                          ) : (
+                            <span className="flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary">
+                              {inner}
+                            </span>
+                          )}
+                          {canUnlink && dealsAligned && (
+                            <UnlinkX
+                              label={`Unlink ${label} from ${r.ref}`}
+                              onClick={() => setUnlinking({ kind: "deal", index: i, name: label })}
+                            />
+                          )}
                         </span>
                       );
                     })}
@@ -1055,17 +1149,26 @@ export function RequestDetail({
                           {contactId && <ArrowUpRight size={12} className="mt-0.5 shrink-0 text-text-tertiary" />}
                         </>
                       );
-                      return contactId ? (
-                        <ModuleLink
-                          key={`${contactId}-${name}`}
-                          href={`/contacts/${contactId}`}
-                          className="group/contact flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary hover:text-blue-primary"
-                        >
-                          {inner}
-                        </ModuleLink>
-                      ) : (
-                        <span key={name} className="flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary">
-                          {inner}
+                      return (
+                        <span key={`${contactId ?? ""}-${name}-${i}`} className="group/unlink flex w-fit max-w-full items-start">
+                          {contactId ? (
+                            <ModuleLink
+                              href={`/contacts/${contactId}`}
+                              className="group/contact flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary hover:text-blue-primary"
+                            >
+                              {inner}
+                            </ModuleLink>
+                          ) : (
+                            <span className="flex w-fit max-w-full items-start gap-2 text-[13px] font-semibold text-text-primary">
+                              {inner}
+                            </span>
+                          )}
+                          {canUnlink && contactsAligned && (
+                            <UnlinkX
+                              label={`Take ${name} off ${r.ref}`}
+                              onClick={() => setUnlinking({ kind: "contact", index: i, name })}
+                            />
+                          )}
                         </span>
                       );
                     })}
@@ -1199,9 +1302,20 @@ export function RequestDetail({
                                   !contributors.some((c) => samePerson(c, name)))
                             )}
                             disabled={busy || !canWrite || !may.assign}
-                            onPick={(v) =>
-                              post({ op: "set-workstream", division, lead: v })
-                            }
+                            onPick={(v) => {
+                              /* Taking the current lead off, or swapping
+                                 them for someone else, asks first. */
+                              if (w?.lead && !samePerson(v, w.lead)) {
+                                setConfirmWorkstream({
+                                  division,
+                                  field: "lead",
+                                  from: w.lead,
+                                  to: v,
+                                });
+                                return;
+                              }
+                              return post({ op: "set-workstream", division, lead: v });
+                            }}
                           />
                           <PersonPick
                             label="Primary assignee"
@@ -1214,13 +1328,25 @@ export function RequestDetail({
                                   !contributors.some((c) => samePerson(c, name)))
                             )}
                             disabled={busy || !canWrite || !may.assign}
-                            onPick={(v) =>
-                              post({
+                            onPick={(v) => {
+                              if (
+                                w?.primaryAssignee &&
+                                !samePerson(v, w.primaryAssignee)
+                              ) {
+                                setConfirmWorkstream({
+                                  division,
+                                  field: "primaryAssignee",
+                                  from: w.primaryAssignee,
+                                  to: v,
+                                });
+                                return;
+                              }
+                              return post({
                                 op: "set-workstream",
                                 division,
                                 primaryAssignee: v,
-                              })
-                            }
+                              });
+                            }}
                           />
                         </div>
                         <div className="mt-3 border-t border-border-light pt-3">
@@ -1273,12 +1399,19 @@ export function RequestDetail({
                   </p>
                   {r.attendees && r.attendees.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                      {r.attendees.map((a) => (
+                      {r.attendees.map((a, i) => (
                         <span
                           key={a}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-primary"
+                          className="group/unlink inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[12px] font-medium text-text-primary"
                         >
                           <PersonLink name={a} avatarClassName="h-[16px] w-[16px] shrink-0 text-[6px]" className="gap-1.5" />
+                          {canUnlink && (
+                            <UnlinkX
+                              label={`Take ${a} off the meeting for ${r.ref}`}
+                              onClick={() => setUnlinking({ kind: "attendee", index: i, name: a })}
+                              className="-my-0.5 -mr-1.5"
+                            />
+                          )}
                           </span>
                       ))}
                     </div>
@@ -1508,7 +1641,22 @@ export function RequestDetail({
                                 className="inline-flex max-w-[200px] cursor-pointer items-center gap-1 rounded-md border border-border-light bg-white px-2 py-1 text-[11px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
                               >
                                 <Paperclip size={11} strokeWidth={2.2} className="shrink-0" />
-                                <span className="truncate">{att.name}</span>
+                                {/* Resting on the name shows the file, through
+                                    the same document page the tabs use. */}
+                                <MaterialPeek
+                                  material={{
+                                    id: att.id,
+                                    kind: formatFromFilename(att.fileName || att.name),
+                                    label: att.name,
+                                    url: "",
+                                    docsPath: att.docsPath,
+                                  }}
+                                  previewUrl={`/solutioning/${encodeURIComponent(
+                                    r.id
+                                  )}/documents/${encodeURIComponent(att.id)}?embed=1`}
+                                >
+                                  <span className="truncate">{att.name}</span>
+                                </MaterialPeek>
                               </button>
                             ))}
                           </span>
@@ -1612,6 +1760,16 @@ export function RequestDetail({
                   key={d.id}
                   doc={d}
                   requestId={r.id}
+                  /* A borrowed document previews only when its home copy is a
+                     file; the list of other requests says which ones are. */
+                  refHasFile={
+                    !!d.ref &&
+                    linkables.some(
+                      (l) =>
+                        l.id === d.ref!.requestId &&
+                        l.docs.some((x) => x.id === d.ref!.docId && x.hasFile)
+                    )
+                  }
                   onOpen={() => setViewing(d)}
                   members={members}
                   canRemove={
@@ -1622,9 +1780,15 @@ export function RequestDetail({
                   }
                   completed={r.status === "completed"}
                   busy={busy}
-                  onAssign={(who) =>
-                    post({ op: "assign-doc", docId: d.id, assignedTo: who })
-                  }
+                  onAssign={(who) => {
+                    /* Taking the person off this document, or handing it to
+                       someone else, asks first. Filling an empty seat saves. */
+                    if (d.assignedTo && !samePerson(who, d.assignedTo)) {
+                      setConfirmDocAssign({ docId: d.id, from: d.assignedTo, to: who });
+                      return;
+                    }
+                    void post({ op: "assign-doc", docId: d.id, assignedTo: who });
+                  }}
                   onRemove={() => setConfirmRemoveDoc({ id: d.id, name: d.name })}
                 />
               ))}
@@ -1797,10 +1961,22 @@ export function RequestDetail({
       <Modal
         open={confirmOwner !== null}
         onClose={() => setConfirmOwner(null)}
-        title={r.owner ? "Change owner" : "Assign owner"}
+        /* Says who, on what, and who it comes off (Anir, Oct 1: "u have to
+           be so specific"). Wraps rather than cutting the name off. */
+        title={
+          confirmOwner
+            ? r.owner
+              ? `Make ${confirmOwner} the owner of "${r.title}" instead of ${r.owner}?`
+              : `Make ${confirmOwner} the owner of "${r.title}"?`
+            : r.owner
+              ? "Change owner"
+              : "Assign owner"
+        }
+        wrapTitle
       >
         <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-text-tertiary">
-          {recordLabel}
+          {recordLabel} · {r.ref}
+          {r.customer.trim() ? ` · ${r.customer}` : ""}
         </p>
         <p className="mt-1 text-[13px] font-semibold leading-snug text-text-primary">
           {r.title}
@@ -1835,7 +2011,11 @@ export function RequestDetail({
             disabled={busy}
             className="!px-3.5 !py-2 !text-[12.5px]"
           >
-            {r.owner ? "Change owner" : "Assign owner"}
+            {confirmOwner
+              ? `Make ${firstName(confirmOwner)} owner`
+              : r.owner
+                ? "Change owner"
+                : "Assign owner"}
           </Button>
         </div>
       </Modal>
@@ -1849,10 +2029,16 @@ export function RequestDetail({
         }}
         busy={busy}
         tone="primary"
-        title="Mark this completed?"
+        title={`Mark "${r.title}" completed?`}
         body={
           <>
-            <b>{r.title}</b> closes for everyone working it.
+            <b>{r.title}</b> ({r.ref})
+            {r.customer.trim() ? (
+              <>
+                {" "}for <b>{r.customer}</b>
+              </>
+            ) : null}{" "}
+            closes for everyone working it.
             {/* SOL-014: "If one of several required deliverables is still open,
                 the request does not auto-complete... An authorized user can
                 explicitly close the request where appropriate." So this warns
@@ -1871,8 +2057,66 @@ export function RequestDetail({
             )}
           </>
         }
-        detail="It leaves the open list. You can reopen it later if something else comes up."
-        confirmLabel="Yes, mark it completed"
+        /* lib/solutioning completeRequest also closes the request this came
+           from once nothing else raised off it is still open. */
+        detail={
+          r.type !== "request" && parent
+            ? `It leaves the open list. If nothing else raised off ${parent.ref} is still open, ${parent.ref} is marked completed too. You can reopen it later if something else comes up.`
+            : "It leaves the open list. You can reopen it later if something else comes up."
+        }
+        confirmLabel={`Complete ${recordLabel}`}
+      />
+
+      {/* The hover X on a linked deal, contact or attendee asks here. */}
+      <ConfirmDialog
+        open={!!unlinking}
+        busy={busy}
+        onClose={() => {
+          if (!busy) setUnlinking(null);
+        }}
+        onConfirm={() => void unlink()}
+        title={
+          !unlinking
+            ? "Take this off the request?"
+            : unlinking.kind === "deal"
+              ? `Unlink ${unlinking.name} from ${r.ref}?`
+              : unlinking.kind === "attendee"
+                ? `Take ${unlinking.name} off the meeting for ${r.ref}?`
+                : `Take ${unlinking.name} off ${r.ref}?`
+        }
+        body={
+          !unlinking ? null : unlinking.kind === "deal" ? (
+            <>
+              <b>{r.title}</b> ({r.ref}) stops being linked to{" "}
+              <b>{unlinking.name}</b>.
+            </>
+          ) : unlinking.kind === "contact" ? (
+            <>
+              <b>{unlinking.name}</b> is no longer a contact on <b>{r.title}</b> ({r.ref}).
+            </>
+          ) : (
+            <>
+              <b>{unlinking.name}</b> is no longer listed for the meeting on{" "}
+              <b>{r.title}</b> ({r.ref}).
+            </>
+          )
+        }
+        detail={
+          unlinking?.kind === "deal"
+            ? "The deal and the request both stay, and the request's history records the change."
+            : unlinking?.kind === "contact"
+              ? `They stay a contact at ${r.customer || "the account"}. The request's history records the change.`
+              : "The request and its documents stay. The request's history records the change."
+        }
+        person={unlinking && unlinking.kind !== "deal" ? unlinking.name : null}
+        subject={unlinking?.kind === "deal" ? { name: unlinking.name, kind: "opportunity" } : null}
+        confirmLabel={
+          unlinking?.kind === "deal"
+            ? "Unlink deal"
+            : unlinking?.kind === "contact"
+              ? "Remove contact"
+              : "Remove attendee"
+        }
       />
 
       <ConfirmDialog
@@ -1888,10 +2132,16 @@ export function RequestDetail({
            sets status to "cancelled", reopenRequest returns early unless the
            status is "completed", and canWrite above turns the whole record
            read-only from then on. One-way door, so it keeps the red. */
-        title={`Cancel ${r.ref}?`}
+        title={`Cancel the ${recordLabel} "${r.title}"?`}
         body={
           <>
-            The work on <b>{r.ref}</b> stops for good. Nothing is deleted, and
+            The work on <b>{r.title}</b> ({r.ref})
+            {r.customer.trim() ? (
+              <>
+                {" "}for <b>{r.customer}</b>
+              </>
+            ) : null}{" "}
+            stops for good. Nothing is deleted, and
             it stays in the list marked Cancelled so people can see what
             happened to it. Nobody can change it after this.
             <textarea
@@ -1903,7 +2153,7 @@ export function RequestDetail({
             />
           </>
         }
-        confirmLabel="Cancel it"
+        confirmLabel={`Cancel ${recordLabel}`}
       />
 
       {/* EDITING THE FACTS, DELIBERATELY (Anir, Sep 1: "I don't want it to
@@ -2182,17 +2432,41 @@ export function RequestDetail({
         })()}
       </Modal>
 
-      <ConfirmDialog
-        open={confirmRemoveDoc !== null}
-        onClose={() => setConfirmRemoveDoc(null)}
-        onConfirm={() => {
-          if (confirmRemoveDoc) void post({ op: "remove-doc", docId: confirmRemoveDoc.id });
-          setConfirmRemoveDoc(null);
-        }}
-        title="Remove this document?"
-        body={<><b>{confirmRemoveDoc?.name}</b> comes off this request for everyone working on it. You would have to add it again.</>}
-        confirmLabel="Remove it"
-      />
+      {(() => {
+        /* Name the file, its version and shelf, and the record it leaves
+           (Anir, Oct 1: "u have to be so specific"). */
+        const doc = confirmRemoveDoc
+          ? r.docs.find((d) => d.id === confirmRemoveDoc.id)
+          : undefined;
+        const docName = doc?.name || confirmRemoveDoc?.name || "this document";
+        const shelf = doc ? DOC_TABS.find((t) => t.key === doc.category)?.label : undefined;
+        return (
+          <ConfirmDialog
+            open={confirmRemoveDoc !== null}
+            onClose={() => setConfirmRemoveDoc(null)}
+            onConfirm={() => {
+              if (confirmRemoveDoc) void post({ op: "remove-doc", docId: confirmRemoveDoc.id });
+              setConfirmRemoveDoc(null);
+            }}
+            title={`Remove ${docName} from "${r.title}"?`}
+            body={
+              <>
+                <b>{docName}</b>
+                {doc
+                  ? ` (${doc.ref ? "linked" : `v${doc.version}`}${shelf ? `, ${shelf}` : ""})`
+                  : ""}{" "}
+                comes off <b>{r.title}</b> ({r.ref}) for everyone working on it.
+              </>
+            }
+            detail={
+              doc?.ref
+                ? "It is a link to a document on another request. That document stays where it is."
+                : `${doc?.assignedTo ? `${doc.assignedTo} is working on it. ` : ""}You would have to add it again.`
+            }
+            confirmLabel="Remove document"
+          />
+        );
+      })()}
       <ConfirmDialog
         open={confirmRemoveContributor !== null}
         person={confirmRemoveContributor?.name}
@@ -2212,14 +2486,24 @@ export function RequestDetail({
           setConfirmRemoveContributor(null);
         }}
         busy={busy}
-        title="Remove this contributor?"
+        title={
+          confirmRemoveContributor
+            ? `Take ${confirmRemoveContributor.name} off ${confirmRemoveContributor.division} on "${r.title}"?`
+            : "Remove this contributor?"
+        }
         body={
           <>
             <b>{confirmRemoveContributor?.name}</b> will no longer be listed as
-            supporting {confirmRemoveContributor?.division}.
+            supporting <b>{confirmRemoveContributor?.division}</b> on{" "}
+            <b>{r.title}</b> ({r.ref}).
           </>
         }
-        confirmLabel="Remove contributor"
+        detail="Nothing else on the request changes."
+        confirmLabel={
+          confirmRemoveContributor
+            ? `Take ${firstName(confirmRemoveContributor.name)} off`
+            : "Remove contributor"
+        }
       />
       <ConfirmDialog
         open={confirmPickUp}
@@ -2230,18 +2514,31 @@ export function RequestDetail({
         }}
         busy={busy}
         tone="primary"
-        title="Take this on?"
+        title={`Take on "${r.title}"?`}
         body={
           <>
-            You become the person doing <b>{r.ref}</b>
+            You become the person doing <b>{r.title}</b> ({r.ref})
+            {r.customer.trim() ? (
+              <>
+                {" "}for <b>{r.customer}</b>
+              </>
+            ) : null}
             {/* Naming the requester is the point — unless the requester is
                 you, in which case "and Anir Suren sees your name on it" is
                 telling me I will see my own name (found in the loop, Sep 6). */}
             {iRequested ? "." : `, and ${r.requestedBy} sees your name on it.`}
           </>
         }
-        detail="You can hand it back afterwards if it turns out to be somebody else's."
-        confirmLabel="Yes, I'll take it"
+        /* lib/solutioning pickUpRequest starts the submission or
+           presentation for a request that has none of that kind yet. */
+        detail={
+          r.type === "request" &&
+          (r.kind === "submission" || r.kind === "presentation") &&
+          !children_.some((c) => c.type === r.kind)
+            ? `It also starts the ${r.kind} for it, with you as its owner. You can hand it back afterwards if it turns out to be somebody else's.`
+            : "You can hand it back afterwards if it turns out to be somebody else's."
+        }
+        confirmLabel={`Take on ${r.ref}`}
       />
 
       <ConfirmDialog
@@ -2261,9 +2558,240 @@ export function RequestDetail({
            the title is what tells you it is the right record. The ref stays,
            after it, for the person who does work by number. */
         title={`Delete "${r.title}"?`}
-        body={`${r.ref} and every document on it go too. If another request borrowed one of these documents, it disappears from there as well.`}
-        confirmLabel="Delete the request"
+        body={
+          <>
+            <b>{r.ref}</b>
+            {r.customer.trim() ? (
+              <>
+                {" "}for <b>{r.customer}</b>
+              </>
+            ) : null}
+            {r.docs.length > 0 ? (
+              <>
+                {" "}and its <b>{r.docs.length}</b>{" "}
+                {r.docs.length === 1 ? "document go" : "documents go"} for everyone.
+              </>
+            ) : (
+              " goes for everyone. It has no documents."
+            )}
+          </>
+        }
+        /* lib/solutioning deleteRequest frees the work raised off it and
+           drops other requests' links to its documents. */
+        detail={
+          [
+            children_.length > 0
+              ? `${children_.map((c) => c.ref).join(", ")} ${
+                  children_.length === 1 ? "was" : "were"
+                } raised off it and ${
+                  children_.length === 1 ? "stays" : "stay"
+                }, just no longer attached to a request.`
+              : "",
+            r.docs.length > 0
+              ? "If another request borrowed one of these documents, it disappears from there as well."
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ") || undefined
+        }
+        confirmLabel={`Delete ${recordLabel}`}
       />
+
+      <ConfirmDialog
+        open={confirmReopen}
+        onClose={() => setConfirmReopen(false)}
+        onConfirm={() => {
+          setConfirmReopen(false);
+          void post({ op: "reopen" });
+        }}
+        busy={busy}
+        tone="primary"
+        title={`Reopen "${r.title}"?`}
+        body={
+          <>
+            <b>{r.title}</b> ({r.ref})
+            {r.customer.trim() ? (
+              <>
+                {" "}for <b>{r.customer}</b>
+              </>
+            ) : null}{" "}
+            moves from Completed back to{" "}
+            <b>{r.owner ? STATUS_META.in_progress.label : STATUS_META.initiated.label}</b>
+            {r.owner ? (
+              <>
+                , with <b>{r.owner}</b> still on it
+              </>
+            ) : null}
+            .
+          </>
+        }
+        detail={`${
+          r.completedBy ? `${r.completedBy} marked it completed. ` : ""
+        }It goes back on the open list for everyone working it.`}
+        confirmLabel={`Reopen ${recordLabel}`}
+      />
+
+      {(() => {
+        const from = r.deliverableStatus ?? "Draft";
+        const to = confirmDeliverable ?? "";
+        const closing = DELIVERABLE_CLOSED.includes(to) && !DELIVERABLE_CLOSED.includes(from);
+        const reopening = DELIVERABLE_CLOSED.includes(from) && !DELIVERABLE_CLOSED.includes(to);
+        return (
+          <ConfirmDialog
+            open={confirmDeliverable !== null}
+            onClose={() => setConfirmDeliverable(null)}
+            onConfirm={() => {
+              const status = confirmDeliverable;
+              setConfirmDeliverable(null);
+              if (status) void post({ op: "set-deliverable-status", status });
+            }}
+            busy={busy}
+            /* A status that can be set back again: blue, not red. */
+            tone="primary"
+            title={`Change "${r.title}" from ${from} to ${to || "a new status"}?`}
+            body={
+              <>
+                <b>{r.title}</b> ({r.ref})
+                {r.customer.trim() ? (
+                  <>
+                    {" "}for <b>{r.customer}</b>
+                  </>
+                ) : null}{" "}
+                goes from <b>{from}</b> to <b>{to || "a new status"}</b> for everyone
+                working on it.
+              </>
+            }
+            /* Only the request this came from counts deliverables as open
+               work by this status, so that is the only place named. */
+            detail={
+              closing && parent
+                ? `It stops counting as open work on ${parent.ref}. You can change the status again later.`
+                : reopening && parent
+                  ? `It counts as open work on ${parent.ref} again.`
+                  : "You can change the status again later."
+            }
+            confirmLabel={to ? `Set to ${to}` : "Change status"}
+          />
+        );
+      })()}
+
+      {(() => {
+        const pick = confirmWorkstream;
+        const role = pick?.field === "primaryAssignee" ? "primary assignee" : "Solutioning lead";
+        const takingOff = pick ? !pick.to : false;
+        return (
+          <ConfirmDialog
+            open={pick !== null}
+            person={pick ? (takingOff ? pick.from : pick.to) : null}
+            onClose={() => setConfirmWorkstream(null)}
+            onConfirm={() => {
+              if (!pick) return;
+              setConfirmWorkstream(null);
+              void post(
+                pick.field === "lead"
+                  ? { op: "set-workstream", division: pick.division, lead: pick.to }
+                  : {
+                      op: "set-workstream",
+                      division: pick.division,
+                      primaryAssignee: pick.to,
+                    }
+              );
+            }}
+            busy={busy}
+            /* Taking someone off is a removal; swapping is a change. */
+            tone={takingOff ? "destructive" : "primary"}
+            title={
+              pick
+                ? takingOff
+                  ? `Take ${pick.from} off as ${role} for ${pick.division} on "${r.title}"?`
+                  : `Make ${pick.to} the ${role} for ${pick.division} instead of ${pick.from}?`
+                : `Change the ${role}?`
+            }
+            body={
+              pick ? (
+                takingOff ? (
+                  <>
+                    <b>{pick.from}</b> stops being the {role} for <b>{pick.division}</b>{" "}
+                    on <b>{r.title}</b> ({r.ref}).
+                  </>
+                ) : (
+                  <>
+                    <b>{pick.to}</b> takes over from <b>{pick.from}</b> as {role} for{" "}
+                    <b>{pick.division}</b> on <b>{r.title}</b> ({r.ref}).
+                  </>
+                )
+              ) : (
+                ""
+              )
+            }
+            detail={takingOff ? "Nobody holds that role until someone is picked." : undefined}
+            confirmLabel={
+              pick
+                ? takingOff
+                  ? `Take ${firstName(pick.from)} off`
+                  : `Switch to ${firstName(pick.to)}`
+                : `Change the ${role}`
+            }
+          />
+        );
+      })()}
+
+      {(() => {
+        const pick = confirmDocAssign;
+        const doc = pick ? r.docs.find((d) => d.id === pick.docId) : undefined;
+        const docName = doc?.name || "this document";
+        const shelf = doc ? DOC_TABS.find((t) => t.key === doc.category)?.label : undefined;
+        const facts = doc
+          ? ` (${doc.ref ? "linked" : `v${doc.version}`}${shelf ? `, ${shelf}` : ""})`
+          : "";
+        const takingOff = pick ? !pick.to : false;
+        return (
+          <ConfirmDialog
+            open={pick !== null}
+            person={pick ? (takingOff ? pick.from : pick.to) : null}
+            onClose={() => setConfirmDocAssign(null)}
+            onConfirm={() => {
+              if (!pick) return;
+              setConfirmDocAssign(null);
+              void post({ op: "assign-doc", docId: pick.docId, assignedTo: pick.to });
+            }}
+            busy={busy}
+            tone={takingOff ? "destructive" : "primary"}
+            title={
+              pick
+                ? takingOff
+                  ? `Take ${pick.from} off ${docName}?`
+                  : `Give ${docName} to ${pick.to} instead of ${pick.from}?`
+                : "Change who is working on this document?"
+            }
+            body={
+              pick ? (
+                takingOff ? (
+                  <>
+                    <b>{pick.from}</b> stops working on <b>{docName}</b>
+                    {facts} on <b>{r.title}</b> ({r.ref}).
+                  </>
+                ) : (
+                  <>
+                    <b>{pick.to}</b> takes over <b>{docName}</b>
+                    {facts} on <b>{r.title}</b> ({r.ref}) from <b>{pick.from}</b>.
+                  </>
+                )
+              ) : (
+                ""
+              )
+            }
+            detail={takingOff ? "It shows Nobody on it until someone is picked." : undefined}
+            confirmLabel={
+              pick
+                ? takingOff
+                  ? `Take ${firstName(pick.from)} off`
+                  : `Switch to ${firstName(pick.to)}`
+                : "Change who is on it"
+            }
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -2309,6 +2837,7 @@ function DocRow({
   completed,
   busy,
   requestId,
+  refHasFile = false,
   onOpen,
   onAssign,
   onRemove,
@@ -2319,6 +2848,8 @@ function DocRow({
   completed: boolean;
   busy: boolean;
   requestId: string;
+  /** This row borrows a document whose home copy is an uploaded file. */
+  refHasFile?: boolean;
   onOpen: () => void;
   onAssign: (who: string | null) => void;
   onRemove: () => void;
@@ -2366,6 +2897,25 @@ function DocRow({
                 >
                   {d.name}
                 </button>
+              </MaterialPeek>
+            ) : (d.ref && refHasFile) || (!d.ref && d.url) ? (
+              /* THE SAME PEEK THE COMPACT REQUEST PREVIEW GIVES THESE ROWS.
+                 A borrowed file renders through this request's document page,
+                 which follows the reference to where the file lives; a pasted
+                 link gets the Sales Materials link card. */
+              <MaterialPeek
+                material={asMaterial(d)}
+                previewUrl={
+                  d.ref
+                    ? `/solutioning/${encodeURIComponent(
+                        requestId
+                      )}/documents/${encodeURIComponent(d.id)}?embed=1`
+                    : null
+                }
+              >
+                <span className="min-w-0 break-words text-[13px] font-semibold text-text-primary">
+                  {d.name}
+                </span>
               </MaterialPeek>
             ) : (
               <span className="min-w-0 break-words text-[13px] font-semibold text-text-primary">
@@ -2703,7 +3253,7 @@ function AddDocForm({
               onChange={(e) => setNote(e.target.value)}
               rows={3}
               placeholder="What this document is, what changed in this version, anything the next person should know."
-              className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:bg-white focus:outline-none"
+              className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:shadow-input-focus focus:outline-none"
             />
           </Field>
         </div>
@@ -2875,7 +3425,7 @@ function AddDocForm({
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               placeholder="Why it's here (optional)"
-              className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:bg-white focus:outline-none"
+              className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-blue-primary focus:shadow-input-focus focus:outline-none"
             />
           </Field>
         </div>

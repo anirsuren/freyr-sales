@@ -38,7 +38,7 @@ import {
   TypeIconTile,
   typeMeta,
 } from "@/components/performance/bits";
-import { actualValue } from "@/lib/performanceShared";
+import { actualValue, fmtAmount } from "@/lib/performanceShared";
 import type { PerformanceState, PrimaryGoal } from "@/lib/performanceShared";
 import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
 import { teammateHref } from "@/lib/entityHref";
@@ -96,25 +96,69 @@ export function RemoveGroupDialog({
   onConfirm,
   busy = false,
 }: {
-  group: { name: string } | null;
+  group: {
+    name: string;
+    /* WHO RUNS IT, HOW MANY ARE IN IT AND WHICH GOALS GO (Anir, Oct 1: "u
+       have to be super super specific"). All optional: a caller without
+       them gets the plain sentence for that part, never a guess. */
+    head?: string;
+    people?: number;
+    goals?: string[];
+  } | null;
   onClose: () => void;
   onConfirm: () => void;
   busy?: boolean;
 }) {
+  const head = group?.head?.trim() ?? "";
+  const people = group?.people ?? 0;
+  const goals = group?.goals;
+  const shownGoals = (goals ?? []).slice(0, 3);
+  const moreGoals = (goals ?? []).length - shownGoals.length;
   return (
     <ConfirmDialog
       open={group !== null}
       onClose={onClose}
       onConfirm={onConfirm}
-      title="Remove this group?"
+      title={group ? `Remove the ${group.name} group?` : "Remove this group?"}
       body={
         group ? (
           <>
             {/* The name is a blue pill, not bare text in the sentence
                 (Anir, Aug 15: "again, group name has to be in the pill,
                 and blue"). */}
-            <NamePill>{group.name}</NamePill> is deleted, and the goals given
-            to it come off with it.
+            <NamePill>{group.name}</NamePill>
+            {head && (
+              <>
+                , owned by{" "}
+                <PersonLink name={head} avatarClassName="h-5 w-5 shrink-0 text-[7px]" className="gap-1.5 align-middle whitespace-nowrap" nameClassName="font-bold text-text-primary" />
+              </>
+            )}
+            {people > 0 && (
+              <>
+                {head ? " with " : ", with "}
+                <b>
+                  {people} {people === 1 ? "person" : "people"}
+                </b>
+              </>
+            )}
+            {head || people > 0 ? "," : ""} is deleted
+            {goals === undefined ? (
+              <>, and the goals given to it come off with it.</>
+            ) : goals.length === 0 ? (
+              <>. It carries no goals.</>
+            ) : (
+              <>
+                , and {goals.length === 1 ? "its goal comes" : `its ${goals.length} goals come`}{" "}
+                off with it:{" "}
+                {shownGoals.map((name, i) => (
+                  <Fragment key={`${name}-${i}`}>
+                    {i === 0 ? "" : i === shownGoals.length - 1 && moreGoals === 0 ? " and " : ", "}
+                    <b>{name}</b>
+                  </Fragment>
+                ))}
+                {moreGoals > 0 ? ` and ${moreGoals} more` : ""}.
+              </>
+            )}
           </>
         ) : (
           ""
@@ -441,7 +485,9 @@ export function GroupDetail({
             </button>
           ) : (
             <span className="text-[11.5px] text-text-tertiary">
-              Only {group.head} can change who is in this group.
+              Only{" "}
+              <PersonLink name={group.head} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="gap-1 align-middle whitespace-nowrap" nameClassName="font-semibold text-text-secondary" />{" "}
+              can change who is in this group.
             </span>
           )}
         </div>
@@ -558,8 +604,8 @@ export function GroupDetail({
                       className={cn(
                         "cursor-pointer align-middle transition-all",
                         isOpen
-                          ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
-                          : "hover:bg-surface",
+                          ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--goal-accent)] [--fan-ring:var(--surface)]"
+                          : "[--fan-ring:var(--white)] hover:bg-surface hover:[--fan-ring:var(--surface)]",
                         openGoal !== null && !isOpen && "opacity-45 hover:opacity-100"
                       )}
                     >
@@ -621,6 +667,7 @@ export function GroupDetail({
                               context: g.name,
                             }))}
                             avatarClassName="h-6 w-6 text-[9px]"
+                            ringClassName="ring-[color:var(--fan-ring)]"
                           />
                         )}
                       </td>
@@ -962,9 +1009,17 @@ export function GroupDetail({
           <>
             <p className="mb-3 text-[12.5px] text-text-secondary">
               On <b className="text-text-primary">{editingTarget.goalName}</b>
-              {editingTarget.kind === "group"
-                ? ` for ${group.name}.`
-                : ` for ${editingTarget.person}.`}
+              {editingTarget.kind === "group" ? (
+                ` for ${group.name}.`
+              ) : editingTarget.person ? (
+                <>
+                  {" for "}
+                  <PersonLink name={editingTarget.person} avatarClassName="h-[18px] w-[18px] shrink-0 text-[7px]" className="gap-1.5 align-middle whitespace-nowrap" nameClassName="font-semibold text-text-primary" />
+                  .
+                </>
+              ) : (
+                "."
+              )}
             </p>
             <input
               autoFocus
@@ -982,7 +1037,7 @@ export function GroupDetail({
               inputMode="numeric"
               placeholder="0"
               aria-label="Target"
-              className="w-full rounded-lg border border-border-light px-3 py-2 text-[14px] font-semibold text-text-primary tnum outline-none focus:border-blue-primary"
+              className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] font-semibold text-text-primary tnum outline-none focus:border-blue-primary"
             />
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
               Leave it at 0 to take the number off and leave them on the goal
@@ -1078,75 +1133,158 @@ export function GroupDetail({
         </div>
       </Modal>
 
-      <ConfirmDialog
-        open={confirmDropPerson !== null}
-        person={confirmDropPerson}
-        onClose={() => setConfirmDropPerson(null)}
-        onConfirm={() => {
-          const who = confirmDropPerson;
-          setConfirmDropPerson(null);
-          if (!who) return;
-          void run(
-            {
-              op: "update-group",
-              groupId,
-              name: group.name,
-              head: group.head,
-              members: people.filter((m) => m !== who && m !== group.head),
-            },
-            `${who} taken out of ${group.name}`
-          );
-        }}
-        title="Take them out of this group?"
-        body={
-          confirmDropPerson ? (
-            <>
-              <b>{confirmDropPerson}</b> comes out of <b>{group.name}</b>.
-            </>
-          ) : (
-            ""
-          )
-        }
-        detail="Any target they carry on this group's goals goes with them. Their own account and everything outside this group is untouched."
-        confirmLabel="Take them out"
-        busy={busy}
-      />
+      {/* WHO, OUT OF WHICH GROUP, AND WHICH GOALS GO WITH THEM (Anir, Oct 1:
+          "u have to be super super specific"). The goals named are the ones
+          this group carries that they are on. */}
+      {(() => {
+        const leaving = confirmDropPerson;
+        const theirGoals = leaving
+          ? carried
+              .filter((g) => {
+                const a = (g.groupAssignments ?? []).find((x) => x.groupId === groupId);
+                return !(a?.excludedPeople ?? []).includes(leaving);
+              })
+              .map((g) => g.name)
+          : [];
+        const shown = theirGoals.slice(0, 3);
+        const more = theirGoals.length - shown.length;
+        return (
+          <ConfirmDialog
+            open={confirmDropPerson !== null}
+            person={confirmDropPerson}
+            onClose={() => setConfirmDropPerson(null)}
+            onConfirm={() => {
+              const who = confirmDropPerson;
+              setConfirmDropPerson(null);
+              if (!who) return;
+              void run(
+                {
+                  op: "update-group",
+                  groupId,
+                  name: group.name,
+                  head: group.head,
+                  members: people.filter((m) => m !== who && m !== group.head),
+                },
+                `${who} taken out of ${group.name}`
+              );
+            }}
+            title={
+              leaving
+                ? `Take ${leaving} out of ${group.name}?`
+                : "Take them out of this group?"
+            }
+            body={
+              confirmDropPerson ? (
+                <>
+                  <b>{confirmDropPerson}</b> comes out of <b>{group.name}</b>.
+                </>
+              ) : (
+                ""
+              )
+            }
+            detail={
+              !leaving ? undefined : theirGoals.length > 0 ? (
+                <>
+                  Any target they carry on{" "}
+                  {shown.map((name, i) => (
+                    <Fragment key={`${name}-${i}`}>
+                      {i === 0 ? "" : i === shown.length - 1 && more === 0 ? " and " : ", "}
+                      <b>{name}</b>
+                    </Fragment>
+                  ))}
+                  {more > 0 ? ` and ${more} more` : ""} through this group goes
+                  with them. Their own account and everything outside this group
+                  is untouched.
+                </>
+              ) : carried.length === 0 ? (
+                "This group carries no goals, so no targets go with them. Their own account and everything outside this group is untouched."
+              ) : (
+                "They are on none of this group's goals, so no targets go with them. Their own account and everything outside this group is untouched."
+              )
+            }
+            confirmLabel={
+              leaving ? `Take ${leaving.trim().split(/\s+/)[0]} out` : "Take them out"
+            }
+            busy={busy}
+          />
+        );
+      })()}
 
-      <ConfirmDialog
-        open={confirmDrop !== null}
-        onClose={() => setConfirmDrop(null)}
-        onConfirm={() => {
-          const g = confirmDrop;
-          setConfirmDrop(null);
-          if (g)
-            void run(
-              { op: "unassign-goal-group", goalId: g.id, groupId },
-              `${g.name} taken off`
-            );
-        }}
-        title="Take this goal off the group?"
-        body={
-          confirmDrop ? (
-            <>
-              <b>{confirmDrop.name}</b> comes off {group.name}. The goal itself
-              stays in the Goal Master, and anything already logged against it
-              is untouched.
-            </>
-          ) : (
-            ""
-          )
-        }
-        confirmLabel="Take it off"
-        /* RED, LIKE EVERY REMOVAL (Anir, Aug 27: "every delete button to be
-           red... in the entire app"). It was blue because the goal can be
-           given back, but the targets set on it for this group and its
-           people do not come back with it, and a blue button reads as a
-           save. */
-        busy={busy}
-      />
+      {/* WHICH GOAL, OFF WHICH GROUP, AND WHAT GOES WITH IT: the year that
+          tells two goals of one name apart, the group's own target on it,
+          and how many of its people come off it too. */}
+      {(() => {
+        const dropping = confirmDrop;
+        const assignment = dropping
+          ? (dropping.groupAssignments ?? []).find((a) => a.groupId === groupId)
+          : undefined;
+        const excludedHere = new Set(assignment?.excludedPeople ?? []);
+        const onIt = dropping ? people.filter((p) => !excludedHere.has(p)).length : 0;
+        const groupTarget = dropping ? targetFor(dropping) : 0;
+        return (
+          <ConfirmDialog
+            open={confirmDrop !== null}
+            onClose={() => setConfirmDrop(null)}
+            onConfirm={() => {
+              const g = confirmDrop;
+              setConfirmDrop(null);
+              if (g)
+                void run(
+                  { op: "unassign-goal-group", goalId: g.id, groupId },
+                  `${g.name} taken off`
+                );
+            }}
+            title={
+              dropping
+                ? `Take ${dropping.name} off ${group.name}?`
+                : "Take this goal off the group?"
+            }
+            body={
+              dropping ? (
+                <>
+                  <b>{dropping.name}</b>
+                  {dropping.year ? ` for ${dropping.year}` : ""} comes off{" "}
+                  <b>{group.name}</b>
+                  {groupTarget > 0 && (
+                    <>
+                      , with the group target of{" "}
+                      <b>{fmtAmount(dropping.unit, groupTarget, dropping.currency)}</b>
+                    </>
+                  )}
+                  . The goal itself stays in the Goal Master, and anything
+                  already logged against it is untouched.
+                </>
+              ) : (
+                ""
+              )
+            }
+            detail={
+              dropping && onIt > 0
+                ? `The ${onIt === 1 ? "1 person" : `${onIt} people`} this group put on it ${onIt === 1 ? "comes" : "come"} off it too, unless they were put on it by hand or through another group.`
+                : undefined
+            }
+            confirmLabel="Take goal off"
+            /* RED, LIKE EVERY REMOVAL (Anir, Aug 27: "every delete button to be
+               red... in the entire app"). It was blue because the goal can be
+               given back, but the targets set on it for this group and its
+               people do not come back with it, and a blue button reads as a
+               save. */
+            busy={busy}
+          />
+        );
+      })()}
 
       <RemoveGroupDialog
-        group={confirmRemoveGroup ? group : null}
+        group={
+          confirmRemoveGroup
+            ? {
+                name: group.name,
+                head: group.head,
+                people: people.length,
+                goals: carried.map((g) => g.name),
+              }
+            : null
+        }
         onClose={() => setConfirmRemoveGroup(false)}
         onConfirm={() => void removeGroup()}
         busy={busy}

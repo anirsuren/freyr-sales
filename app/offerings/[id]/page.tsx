@@ -45,6 +45,7 @@ import { OfferingMaterialsTab } from "@/components/offerings/OfferingMaterialsTa
 import { OfferingReports } from "@/components/offerings/OfferingReports";
 import { ConnectedComponents } from "@/components/offerings/ConnectedComponents";
 import { OfferingCompetition } from "@/components/offerings/OfferingCompetition";
+import { UnlinkAction } from "@/components/ui/UnlinkButton";
 import { readCompetition } from "@/lib/offeringCompetition";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { readMarketIntelSummaries } from "@/lib/marketIntelRead";
@@ -76,7 +77,7 @@ import {
 } from "@/components/offerings/OfferingCustomers";
 import { tint } from "@/lib/tint";
 import { EntityLink } from "@/components/ui/EntityLink";
-import { teammateHref } from "@/lib/entityHref";
+import { isSomebody, teammateHref } from "@/lib/entityHref";
 
 export const dynamic = "force-dynamic";
 
@@ -800,6 +801,7 @@ export default async function OfferingDetailPage({
         ) : tab === "components" ? (
           <ConnectedComponents
             offeringId={o.id}
+            offeringName={o.offering_name}
             connected={connectedComponents}
             all={allComponents}
             versions={o.component_versions ?? {}}
@@ -898,8 +900,11 @@ export default async function OfferingDetailPage({
                               </p>
                               <div className="flex flex-wrap gap-1.5">
                                 {types.map((c) => (
+                                  /* Take a wrong one off right here (Anir,
+                                     Oct 1). The X floats on the chip's corner
+                                     so the three sizes still fit one row. */
+                                  <span key={c.id} className="group/unlink relative inline-flex">
                                   <Tooltip
-                                    key={c.id}
                                     label={`${c.product_type} · Revenue ${c.revenue} · ${c.employees} employees · ${c.operational_focus}`}
                                     side="top"
                                     align="left"
@@ -928,6 +933,34 @@ export default async function OfferingDetailPage({
                                       {displayCustomerSize(c.size)}
                                     </Link>
                                   </Tooltip>
+                                  {admin && (
+                                    <UnlinkAction
+                                      within="corner"
+                                      label={`Take ${c.name} off ${o.offering_name}`}
+                                      request={{
+                                        url: `/api/offerings/${o.id}`,
+                                        method: "PATCH",
+                                        body: {
+                                          customer_type_ids: (raw.customer_type_ids ?? []).filter(
+                                            (typeId) => typeId !== c.id
+                                          ),
+                                        },
+                                      }}
+                                      confirm={{
+                                        title: `Take ${c.name} off ${o.offering_name}?`,
+                                        body: (
+                                          <>
+                                            <strong>{o.offering_name}</strong> stops targeting{" "}
+                                            <strong>{c.name}</strong> companies.
+                                          </>
+                                        ),
+                                        detail: "The customer type stays in the master list, and every other offering keeps it. You can add it back from Edit.",
+                                        confirmLabel: "Take it off",
+                                      }}
+                                      done={`${o.offering_name} no longer targets ${c.name}.`}
+                                    />
+                                  )}
+                                  </span>
                                 ))}
                               </div>
                             </div>
@@ -963,8 +996,8 @@ export default async function OfferingDetailPage({
                         {o.markets.map((m) => {
                           const st = marketStyle(m.name);
                           return (
+                            <span key={m.id} className="group/unlink relative inline-flex">
                             <Link
-                              key={m.id}
                               href={`/offerings?market=${m.id}`}
                               style={{ background: st.bg, color: st.color }}
                               className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
@@ -972,6 +1005,35 @@ export default async function OfferingDetailPage({
                               <span aria-hidden="true" className="text-[13px] leading-none">{marketFlag(m.name)}</span>
                               {m.name}
                             </Link>
+                            {/* Off right here, same as the customer types. */}
+                            {admin && (
+                              <UnlinkAction
+                                within="corner"
+                                label={`Take ${m.name} off ${o.offering_name}`}
+                                request={{
+                                  url: `/api/offerings/${o.id}`,
+                                  method: "PATCH",
+                                  body: {
+                                    market_ids: (raw.market_ids ?? []).filter(
+                                      (marketId) => marketId !== m.id
+                                    ),
+                                  },
+                                }}
+                                confirm={{
+                                  title: `Take ${m.name} off ${o.offering_name}?`,
+                                  body: (
+                                    <>
+                                      <strong>{o.offering_name}</strong> stops listing{" "}
+                                      <strong>{m.name}</strong> as a market it sells into.
+                                    </>
+                                  ),
+                                  detail: "The market stays in the master list, and every other offering keeps it. You can add it back from Edit.",
+                                  confirmLabel: "Take it off",
+                                }}
+                                done={`${m.name} is no longer a market for ${o.offering_name}.`}
+                              />
+                            )}
+                            </span>
                           );
                         })}
                       </div>
@@ -1027,8 +1089,13 @@ export default async function OfferingDetailPage({
                 )}
                 {o.offeringCategory.owner && (
                   <p className="inline-flex items-center gap-1.5 text-[12.5px] text-text-secondary mt-2.5">
-                    <Avatar name={o.offeringCategory.owner} className="h-6 w-6 text-[8px]" />
-                    Offering owner: {o.offeringCategory.owner}
+                    {isSomebody(o.offeringCategory.owner) && (
+                      <EntityLink href={teammateHref(o.offeringCategory.owner)} className="shrink-0 rounded-full" title={o.offeringCategory.owner}>
+                        <Avatar name={o.offeringCategory.owner} className="h-6 w-6 text-[8px]" />
+                      </EntityLink>
+                    )}
+                    Offering owner:{" "}
+                    <EntityLink href={teammateHref(o.offeringCategory.owner)}>{o.offeringCategory.owner}</EntityLink>
                   </p>
                 )}
                 <Link

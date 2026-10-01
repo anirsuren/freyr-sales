@@ -288,7 +288,7 @@ export function ContactOutreachPanel({
                   value={extra}
                   onChange={(e) => setExtra(e.target.value)}
                   placeholder="e.g. met at DIA · focus the EU angle"
-                  className="w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:shadow-input-focus"
+                  className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition focus:border-blue-primary focus:shadow-input-focus"
                 />
               </div>
             )}

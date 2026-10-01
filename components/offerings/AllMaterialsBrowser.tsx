@@ -352,14 +352,6 @@ const TABLE_CLASS =
                         it was. Same MaterialPeek component, so the two pages
                         preview identically — and only the NAME triggers it,
                         the rule that card was given the day it was built. */}
-                    <MaterialPeek
-                      material={row.material}
-                      previewUrl={
-                        isUploadedMaterial(row.material)
-                          ? `${materialPreviewHref(row.offeringId, row.material)}?embed=1`
-                          : null
-                      }
-                    >
                       <button
                         type="button"
                         onClick={() => openRow(row)}
@@ -398,6 +390,19 @@ const TABLE_CLASS =
                             />
                           );
                         })()}
+                        {/* ONLY THE NAME PREVIEWS, the offering page's rule. The
+                            card used to wrap this whole full-width button, so
+                            resting on the icon or the empty end of the cell
+                            opened it too. The name and its new-tab arrow are
+                            the trigger now; the button still opens the file. */}
+                        <MaterialPeek
+                          material={row.material}
+                          previewUrl={
+                            isUploadedMaterial(row.material)
+                              ? `${materialPreviewHref(row.offeringId, row.material)}?embed=1`
+                              : null
+                          }
+                        >
                         <span className="min-w-0 truncate">{row.material.label}</span>
                         {/* THE ARROW OPENS A NEW TAB (Anir, Sep 9: "that button
                             with the arrow coming out of the box is supposed to
@@ -439,8 +444,8 @@ const TABLE_CLASS =
                         >
                           <ExternalLink size={12} strokeWidth={2.2} />
                         </span>
+                        </MaterialPeek>
                       </button>
-                    </MaterialPeek>
                     {row.material.description && (
                       <p
                         title={row.material.description}
@@ -581,7 +586,9 @@ const TABLE_CLASS =
                           title={row.material.addedBy}
                           className="min-w-0 truncate text-[12px] text-text-primary"
                         >
-                          {shortPersonName(row.material.addedBy)}
+                          <EntityLink href={teammateHref(row.material.addedBy)}>
+                            {shortPersonName(row.material.addedBy)}
+                          </EntityLink>
                         </span>
                       </span>
                     ) : (

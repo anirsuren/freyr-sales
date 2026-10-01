@@ -474,6 +474,9 @@ export function SettingsTabs({
     syncedAt: string | null;
   } | null>(null);
   const [linkedinRemoveOpen, setLinkedinRemoveOpen] = useState(false);
+  /* The address the Remove dialog names, caught when Remove is pressed: the
+     one the agent last read, or else what is in the box. */
+  const [linkedinRemoveAddress, setLinkedinRemoveAddress] = useState("");
   // Tracks the last URL we sent for enrichment so repeated saves don't re-run a
   // scrape (and burn Apify credits) for a link that has not changed.
   const savedLinkedinRef = useRef<string>("");
@@ -504,6 +507,12 @@ export function SettingsTabs({
     initialAccessDirectory(currentUser)
   );
   const [accessBusy, setAccessBusy] = useState<string | null>(null);
+  /* NOTHING THAT REMOVES ACTS ON ONE CLICK (Anir, Oct 1: "this cant
+     happen"). Each of these holds what is about to go until its
+     confirmation is answered. */
+  const [confirmReject, setConfirmReject] = useState<AccessDirectory["requests"][number] | null>(null);
+  const [confirmConnector, setConfirmConnector] = useState<(typeof CONNECTORS)[number] | null>(null);
+  const [confirmRemovePhoto, setConfirmRemovePhoto] = useState(false);
 
   // Admins change any member's role right in the directory (Anir, Aug 6:
   // "admins should be able to make other people admins and change other
@@ -1224,7 +1233,7 @@ export function SettingsTabs({
                 {photo && (
                   <button
                     type="button"
-                    onClick={() => void removePhoto()}
+                    onClick={() => setConfirmRemovePhoto(true)}
                     disabled={photoBusy}
                     className="mt-1 text-[12px] font-semibold text-text-secondary hover:underline disabled:opacity-60"
                   >
@@ -1377,7 +1386,10 @@ export function SettingsTabs({
                     type="button"
                     variant="destructive"
                     className="shrink-0 px-3 py-1.5 text-[12.5px]"
-                    onClick={() => setLinkedinRemoveOpen(true)}
+                    onClick={() => {
+                      setLinkedinRemoveAddress(savedLinkedinRef.current || profile.linkedin.trim());
+                      setLinkedinRemoveOpen(true);
+                    }}
                   >
                     Remove
                   </Button>
@@ -1428,15 +1440,73 @@ export function SettingsTabs({
             </div>
           </Card>
 
-          <ConfirmDialog
-            open={linkedinRemoveOpen}
-            onClose={() => setLinkedinRemoveOpen(false)}
-            onConfirm={() => void removeLinkedIn()}
-            title="Remove your LinkedIn?"
-            body={<>The agent will stop using your headline and background, and the photo it picked up goes with it.</>}
-            detail="You can paste the address again any time."
-            confirmLabel="Remove"
-          />
+          {/* SAY WHICH LINKEDIN (Anir, Oct 1: "u have to be so specific"):
+              the address the agent reads, and the headline it took from it. */}
+          {(() => {
+            const shownAddress = linkedinRemoveAddress
+              .replace(/^https?:\/\/(www\.)?/i, "")
+              .replace(/\/+$/, "");
+            const headline = (linkedinInfo?.headline || "").trim();
+            return (
+              <ConfirmDialog
+                open={linkedinRemoveOpen}
+                onClose={() => setLinkedinRemoveOpen(false)}
+                onConfirm={() => void removeLinkedIn()}
+                title={
+                  shownAddress
+                    ? `Remove your LinkedIn address ${shownAddress} from Freyr?`
+                    : "Remove your LinkedIn?"
+                }
+                body={
+                  headline ? (
+                    <>
+                      The agent will stop using your headline <b>{headline}</b>{" "}
+                      and your background, and the photo it picked up goes with it.
+                    </>
+                  ) : (
+                    <>The agent will stop using your headline and background, and the photo it picked up goes with it.</>
+                  )
+                }
+                detail="You can paste the address again any time."
+                confirmLabel="Remove LinkedIn"
+              />
+            );
+          })()}
+
+          {/* WHOSE PICTURE, SAID OUT LOUD (Anir, Oct 1). It used to go on one
+              click. Teammates see this picture too, so it leaves their
+              screens as well. */}
+          {(() => {
+            const photoOwner = (currentUser.name || "").trim();
+            return (
+              <ConfirmDialog
+                open={confirmRemovePhoto}
+                onClose={() => setConfirmRemovePhoto(false)}
+                onConfirm={() => {
+                  setConfirmRemovePhoto(false);
+                  void removePhoto();
+                }}
+                title={
+                  photoOwner
+                    ? `Remove ${photoOwner}'s profile picture?`
+                    : "Remove your profile picture?"
+                }
+                body={
+                  photoOwner ? (
+                    <>
+                      The picture you uploaded for <b>{photoOwner}</b> is
+                      removed everywhere in Freyr, for you and for your
+                      teammates.
+                    </>
+                  ) : (
+                    "The picture you uploaded is removed everywhere in Freyr, for you and for your teammates."
+                  )
+                }
+                detail="Your name, title and LinkedIn stay. You can upload a new picture any time."
+                confirmLabel="Remove picture"
+              />
+            );
+          })()}
         </div>
       )}
 
@@ -1529,14 +1599,14 @@ export function SettingsTabs({
               <ul className="divide-y divide-border-light">
                 {accessDirectory.requests.map((request) => (
                   <li key={request.id} className="flex items-center justify-between gap-5 px-5 py-3.5">
-                    <div className="flex min-w-0 items-center gap-3"><Avatar name={request.name} className="h-9 w-9 shrink-0 text-[12px]" /><span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-text-primary">{request.name}</span><span className="block truncate text-[11px] text-text-tertiary">{request.email || "Email not asserted by identity provider"}</span></span></div>
+                    <div className="flex min-w-0 items-center gap-3"><Avatar name={request.name} initialsOnly className="h-9 w-9 shrink-0 text-[12px]" /><span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-text-primary">{request.name}</span><span className="block truncate text-[11px] text-text-tertiary">{request.email || "Email not asserted by identity provider"}</span></span></div>
                     <div className="flex items-center gap-2">
                       <span className="mr-2 text-[10.5px] text-text-tertiary">Requested {new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(-Math.max(1, Math.round((Date.now() - new Date(request.requestedAt).getTime()) / 60000)), "minute")}</span>
                       {/* Admins only. The server 403s everyone else, so a Rep
                           who clicked these got nothing but a red toast. */}
                       {canInvite && (
                         <>
-                      <button disabled={accessBusy === request.id} onClick={() => reviewRequest(request.id, "reject", request.requestedRole)} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-[11.5px] font-semibold text-text-secondary hover:bg-surface disabled:opacity-50"><UserX size={13} /> Reject</button>
+                      <button disabled={accessBusy === request.id} onClick={() => setConfirmReject(request)} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-[11.5px] font-semibold text-text-secondary hover:bg-surface disabled:opacity-50"><UserX size={13} /> Reject</button>
                       <button disabled={accessBusy === request.id} onClick={() => reviewRequest(request.id, "approve", request.requestedRole)} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-primary px-3 text-[11.5px] font-semibold text-white hover:bg-blue-hover disabled:opacity-50"><UserCheck size={13} /> Approve</button>
                         </>
                       )}
@@ -1548,6 +1618,69 @@ export function SettingsTabs({
               <div className="flex items-center gap-2 px-5 py-5 text-[12px] text-text-secondary"><Check size={15} className="text-success" /> No one is waiting for access.</div>
             )}
           </Card>
+
+          {/* NAME WHO IS TURNED AWAY AND WHAT THEY ASKED FOR (Anir, Oct 1:
+              "u have to be so specific"). Reject used to act on one click. */}
+          {(() => {
+            const requesterName = (confirmReject?.name || "").trim();
+            const requesterEmail = (confirmReject?.email || "").trim();
+            const who = requesterName || requesterEmail;
+            const firstName = requesterName.split(/\s+/)[0] || "";
+            const roleName = confirmReject
+              ? ROLE_CHANGE_OPTIONS.find((option) => option.value === confirmReject.requestedRole)?.label || ""
+              : "";
+            const roleArticle = /^[aeiou]/i.test(roleName) ? "an" : "a";
+            const asked = confirmReject ? new Date(confirmReject.requestedAt) : null;
+            const askedOn =
+              asked && !Number.isNaN(asked.getTime())
+                ? asked.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+                : "";
+            return (
+              <ConfirmDialog
+                open={confirmReject !== null}
+                onClose={() => setConfirmReject(null)}
+                onConfirm={() => {
+                  if (confirmReject) void reviewRequest(confirmReject.id, "reject", confirmReject.requestedRole);
+                  setConfirmReject(null);
+                }}
+                title={
+                  who
+                    ? roleName
+                      ? `Reject ${who}'s request to join Freyr as ${roleArticle} ${roleName}?`
+                      : `Reject ${who}'s request to join Freyr?`
+                    : "Reject this access request?"
+                }
+                body={
+                  who ? (
+                    <>
+                      <b>{who}</b>
+                      {requesterName && requesterEmail ? (
+                        <>
+                          {" "}(<b>{requesterEmail}</b>)
+                        </>
+                      ) : null}{" "}
+                      asked to join
+                      {roleName ? (
+                        <>
+                          {" "}as {roleArticle} <b>{roleName}</b>
+                        </>
+                      ) : null}
+                      {askedOn ? (
+                        <>
+                          {" "}on <b>{askedOn}</b>
+                        </>
+                      ) : null}
+                      . Rejecting takes the request off this list without
+                      giving them access.
+                    </>
+                  ) : (
+                    "Rejecting takes the request off this list without giving access."
+                  )
+                }
+                confirmLabel={firstName ? `Reject ${firstName}` : "Reject request"}
+              />
+            );
+          })()}
 
           {/* THE "YOUR ROLE" SELF-SELECT CARD IS GONE. It rendered three
               buttons — Admin, Manager, Rep — that any Rep could press. It
@@ -1689,7 +1822,7 @@ export function SettingsTabs({
                       {c.desc}
                     </p>
                     <button
-                      onClick={() => toggleConnector(c.key, c.name)}
+                      onClick={() => (on ? setConfirmConnector(c) : toggleConnector(c.key, c.name))}
                       className={cn(
                         "mt-3 text-[13px] font-semibold px-3.5 py-2 rounded-md border transition-colors",
                         on
@@ -1705,6 +1838,33 @@ export function SettingsTabs({
             })}
           </div>
           )}
+          {/* Disconnect asks first, even on these Mock preview tiles (Anir,
+              Oct 1: nothing that removes acts on one click). */}
+          <ConfirmDialog
+            open={confirmConnector !== null}
+            onClose={() => setConfirmConnector(null)}
+            onConfirm={() => {
+              if (confirmConnector) toggleConnector(confirmConnector.key, confirmConnector.name);
+              setConfirmConnector(null);
+            }}
+            title={
+              confirmConnector
+                ? `Disconnect ${confirmConnector.name} from Freyr?`
+                : "Disconnect this tool from Freyr?"
+            }
+            body={
+              confirmConnector ? (
+                <>
+                  The <b>{confirmConnector.name}</b> tile goes back to not
+                  connected in this browser.
+                </>
+              ) : (
+                ""
+              )
+            }
+            detail="This is a Mock mode preview, so no real account is connected or changed."
+            confirmLabel={confirmConnector ? `Disconnect ${confirmConnector.name}` : "Disconnect tool"}
+          />
 
           {/* The CRM mirror is a Mock showroom card (V2 #5). No CRM is wired, so
               in Real it claimed a HubSpot connection that does not exist (Anir,

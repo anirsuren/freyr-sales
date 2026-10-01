@@ -96,9 +96,18 @@ export function ConfirmDialog({
   tone?: "destructive" | "primary";
 }) {
   const affected = subject ?? (person ? { name: person, kind: "person" as const, imageUrl: personPhoto } : null);
-  const ContextIcon = affected ? subjectIcon(affected.kind) : recordIcon(title);
+  /* The title now carries the record's real name ("Delete Storage Plus?"),
+     and a name can trip the wrong icon. The button names the KIND of thing
+     ("Delete account", "Remove contact"), so it is asked first; the title is
+     the fallback when the button says nothing about the kind. */
+  const labelIcon = recordIcon(confirmLabel);
+  const ContextIcon = affected
+    ? subjectIcon(affected.kind)
+    : labelIcon !== AlertTriangle
+      ? labelIcon
+      : recordIcon(title);
   return (
-    <Modal open={open} onClose={onClose} title={title}>
+    <Modal open={open} onClose={onClose} title={title} wrapTitle>
       <div className="flex gap-3.5">
         <span aria-hidden="true" className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-light bg-white shadow-sm">
           {affected?.kind === "company" ? (

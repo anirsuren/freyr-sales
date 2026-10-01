@@ -19,7 +19,7 @@ import {
 import { cn, formatDateTime } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
-import { contactHref, customerHref } from "@/lib/entityHref";
+import { contactHref, customerHref, isSomebody } from "@/lib/entityHref";
 
 /* ---------------------------------------------------------------------------
    FORECAST RISK, rebuilt to the standard of the By-stage block directly above
@@ -381,6 +381,8 @@ export function ForecastRisk({
     key: deal.sessionId,
     label: `${deal.company}${disambiguator ? ` · ${disambiguator}` : ""}`,
     color: past ? RISK : MEASURE,
+    // The row names the company, so it wears the company's logo.
+    logo: isSomebody(deal.company) ? deal.company : undefined,
   }));
 
   const renderExpandedQuietPlot = (

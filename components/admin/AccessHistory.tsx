@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { History, ShieldCheck, UserCog, KeyRound, LogIn } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import { DateText } from "@/components/ui/DateText";
+import { PersonLink } from "@/components/ui/EntityLink";
+import { isSomebody } from "@/lib/entityHref";
 
 /**
  * WHAT HAS BEEN DONE TO ONE PERSON'S ACCESS, NEWEST FIRST.
@@ -96,7 +98,11 @@ export function AccessHistory({
                 </span>
                 <span className="min-w-0 flex-1 pb-4">
                   <span className="block text-[12.5px] text-text-primary">
-                    <b className="font-semibold">{e.actor}</b>{" "}
+                    {isSomebody(e.actor) ? (
+                      <PersonLink name={e.actor} avatarClassName="h-[18px] w-[18px] shrink-0 text-[7px]" className="gap-1.5 align-middle whitespace-nowrap" nameClassName="font-semibold text-text-primary" />
+                    ) : (
+                      <b className="font-semibold">{e.actor}</b>
+                    )}{" "}
                     {e.kind === "role"
                       ? "changed their role"
                       : e.kind === "privileges"

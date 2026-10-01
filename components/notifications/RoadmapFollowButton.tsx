@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell, BellRing } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 /**
  * THE SUBSCRIBE SWITCH, ON THE THING ITSELF.
@@ -20,14 +21,21 @@ export function RoadmapFollowButton({
   kind,
   id,
   compact,
+  name,
 }: {
   kind: "component" | "offering";
   id: string;
   compact?: boolean;
+  /** The component or offering's own name, so stopping its emails says
+   *  which roadmap goes quiet. Optional: without it the words stay generic. */
+  name?: string;
 }) {
   const [following, setFollowing] = useState<boolean | null>(null);
   const [everything, setEverything] = useState(false);
   const [busy, setBusy] = useState(false);
+  /* Stopping the emails asks first (Anir, Oct 1: nothing that unfollows
+     acts on one click). Starting them does not. */
+  const [confirmStop, setConfirmStop] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -71,7 +79,11 @@ export function RoadmapFollowButton({
     }
   }
 
+  const roadmapName = (name || "").trim();
+  const thing = kind === "component" ? "component" : "offering";
+
   return (
+    <>
     <Tooltip
       label={
         everything && !following
@@ -83,7 +95,10 @@ export function RoadmapFollowButton({
     >
       <button
         type="button"
-        onClick={toggle}
+        onClick={() => {
+          if (following) setConfirmStop(true);
+          else void toggle();
+        }}
         disabled={busy}
         aria-pressed={on}
         className={cn(
@@ -102,5 +117,38 @@ export function RoadmapFollowButton({
         {on ? "Notifying you" : "Notify me"}
       </button>
     </Tooltip>
+    {/* NAME THE ROADMAP THAT GOES QUIET (Anir, Oct 1: "u have to be so
+        specific"). Blue: nothing is deleted, and Notify me turns it back on. */}
+    <ConfirmDialog
+      open={confirmStop}
+      onClose={() => setConfirmStop(false)}
+      onConfirm={() => {
+        setConfirmStop(false);
+        void toggle();
+      }}
+      tone="primary"
+      title={
+        roadmapName
+          ? `Stop emails when the ${roadmapName} roadmap changes?`
+          : `Stop emails when this ${thing}'s roadmap changes?`
+      }
+      body={
+        roadmapName ? (
+          <>
+            You will no longer get an email when dates or features change on
+            the <b>{roadmapName}</b> roadmap.
+          </>
+        ) : (
+          `You will no longer get an email when dates or features change on this ${thing}'s roadmap.`
+        )
+      }
+      detail={
+        everything
+          ? "You still hear about it, because you get emails about every roadmap."
+          : "Press Notify me to follow it again."
+      }
+      confirmLabel="Stop emails"
+    />
+    </>
   );
 }

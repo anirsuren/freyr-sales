@@ -948,13 +948,37 @@ export function TargetsTab({
       <ConfirmDialog
         open={confirmRemove !== null}
         busy={removing}
+        subject={confirmRemove?.name ? { name: confirmRemove.name, kind: "company" } : null}
         onClose={() => setConfirmRemove(null)}
-        title="Remove this target?"
-        body={
-          <>
-            <b>{confirmRemove?.name}</b> comes off the target list.
-          </>
-        }
+        title={(() => {
+          const name = confirmRemove?.name || "this target";
+          const domain = confirmRemove
+            ? TARGET_DOMAIN_META[confirmRemove.domain]?.label
+            : undefined;
+          return domain
+            ? `Remove ${name} from the ${domain} target list?`
+            : `Remove ${name} from the target list?`;
+        })()}
+        body={(() => {
+          /* What tells two targets apart: tier, country, who is chasing it,
+             what it could be worth and when. Only what is recorded. */
+          const t = confirmRemove;
+          const facts = [
+            t?.tier?.trim(),
+            t?.hq?.trim(),
+            t?.owner?.trim() ? `owned by ${t.owner.trim()}` : null,
+            t?.potential && t.potential > 0 ? `worth ${money(t.potential)}` : null,
+            t?.quarter?.trim() ? `aimed at ${t.quarter.trim()}` : null,
+          ]
+            .filter(Boolean)
+            .join(", ");
+          return (
+            <>
+              {t?.name ? <b>{t.name}</b> : "This company"}
+              {facts ? ` (${facts})` : ""} comes off the target list.
+            </>
+          );
+        })()}
         detail="This is only the prospect list. Nothing that already exists for this company is touched."
         confirmLabel="Remove target"
         onConfirm={() => {

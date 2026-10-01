@@ -1595,7 +1595,13 @@ export function MaterialsSection({
                             title={material.addedBy || undefined}
                             className="flex items-center gap-1 whitespace-nowrap text-[11.5px] font-semibold text-text-primary"
                           >
-                            {shortPersonName(material.addedBy) || "Not recorded"}
+                            {material.addedBy ? (
+                              <EntityLink href={teammateHref(material.addedBy)}>
+                                {shortPersonName(material.addedBy) || material.addedBy}
+                              </EntityLink>
+                            ) : (
+                              "Not recorded"
+                            )}
                             {uploaderIsOwner(material.addedBy) && (
                               <span title="Offering owner" className="shrink-0 leading-none">
                                 <Crown
@@ -1866,14 +1872,15 @@ export function MaterialsSection({
                   >
                     {material.addedBy ? (
                       <>
-                        <EntityLink href={teammateHref(material.addedBy)} className="shrink-0 rounded-full" title={material.addedBy}>
+                        {/* nested: the whole card is an <a>. */}
+                        <EntityLink nested href={teammateHref(material.addedBy)} className="shrink-0 rounded-full" title={material.addedBy}>
                           <Avatar
                             name={material.addedBy}
                             className="h-5 w-5 text-[8px]"
                           />
                         </EntityLink>
                         <span className="flex items-center gap-1 truncate">
-                          Added by <EntityLink href={teammateHref(material.addedBy)}>{material.addedBy}</EntityLink>
+                          Added by <EntityLink nested href={teammateHref(material.addedBy)}>{material.addedBy}</EntityLink>
                           {uploaderIsOwner(material.addedBy) && (
                             <span title="Offering owner" className="inline-flex shrink-0">
                               <Crown size={10} strokeWidth={2.6} aria-label="Offering owner" className="text-[color:var(--ink-violet-soft)]" />
@@ -2000,11 +2007,45 @@ export function MaterialsSection({
         onClose={() => setPendingRemoval(null)}
         onConfirm={() => pendingRemoval && void removeMaterial(pendingRemoval)}
         busy={Boolean(removing)}
-        title="Remove this material?"
+        /* Name the file AND the offering, plus the facts that tell two
+           versions of one deck apart: type, folder, who uploaded it and
+           when (Anir, Oct 1: "u have to be super super specific"). */
+        title={
+          (pendingRemoval?.label || "").trim()
+            ? `Remove ${(pendingRemoval?.label || "").trim()} from ${(offeringName || "").trim() || "this offering"}?`
+            : "Remove this material?"
+        }
         body={
           <>
-            <span className="font-semibold">{pendingRemoval?.label}</span> comes
-            off this offering, and the sales team stops seeing it.
+            <span className="font-semibold">{pendingRemoval?.label}</span>
+            {pendingRemoval
+              ? (() => {
+                  const type = materialFileTypeLabel(pendingRemoval);
+                  const when = uploadedAt(pendingRemoval);
+                  const by = (pendingRemoval.addedBy || "").trim();
+                  return (
+                    <>
+                      {" "}({type === "LINK" ? "Link" : type} in the{" "}
+                      <b>{materialFolderLabel(canonicalMaterialFolder(pendingRemoval))}</b>{" "}
+                      folder
+                      {by || when ? ", uploaded" : ""}
+                      {by ? (
+                        <>
+                          {" "}by <b>{by}</b>
+                        </>
+                      ) : null}
+                      {when ? ` on ${formatDate(when)}` : ""})
+                    </>
+                  );
+                })()
+              : null}{" "}
+            comes off{" "}
+            {(offeringName || "").trim() ? (
+              <b>{(offeringName || "").trim()}</b>
+            ) : (
+              "this offering"
+            )}
+            , and the sales team stops seeing it.
           </>
         }
         detail={
@@ -2040,7 +2081,7 @@ export function MaterialsSection({
             </label>
             <input
               required
-              className="w-full rounded-md border border-border bg-white px-3 py-2 text-[13px] text-text-primary focus:shadow-input-focus focus:outline-none"
+              className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary focus:border-blue-primary focus:shadow-input-focus focus:outline-none"
               value={renameDraft}
               onChange={(event) => setRenameDraft(event.target.value)}
               onKeyDown={(event) =>

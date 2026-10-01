@@ -171,8 +171,12 @@ export function DateField({
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          "flex w-full cursor-pointer items-center gap-2 rounded-lg border bg-white px-3 py-2 text-left text-[13.5px] transition-colors",
-          open ? "border-blue-primary" : "border-border hover:border-blue-subtle",
+          /* THE SAME BOX AS INPUT AND EVERY DROPDOWN (Anir, Oct 1: "It should
+             all be the same"). Padding alone left this at 38px beside 40px
+             fields. Now it is 40px, light border, 12px corners, 13px text.
+             The open edge rides aria-expanded so a caller's own border class
+             cannot hide it. */
+          "flex h-10 w-full cursor-pointer items-center gap-2 rounded-lg border border-border-light bg-white px-3 py-0 text-left text-[13px] transition-[border-color,box-shadow] hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus aria-expanded:border-blue-primary",
           className
         )}
       >

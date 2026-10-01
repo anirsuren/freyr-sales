@@ -14,7 +14,7 @@ import {
   type Stage,
 } from "@/lib/pipeline";
 import { OUTCOME_META } from "@/lib/utils";
-import { EntityLink } from "@/components/ui/EntityLink";
+import { EntityLink, PersonLink } from "@/components/ui/EntityLink";
 import { contactHref, customerHref } from "@/lib/entityHref";
 
 export type AccountAttentionPreviewProps = {
@@ -170,9 +170,14 @@ export function AccountAttentionPreview(
             <Clock3 size={10} /> {account.lastTouch}
           </span>
           <span className="mt-0.5 block text-[9.5px] font-semibold text-text-secondary">
-            {account.latestOutcome
-              ? OUTCOME_META[account.latestOutcome]?.label || account.latestOutcome
-              : `Owner · ${account.owner}`}
+            {account.latestOutcome ? (
+              OUTCOME_META[account.latestOutcome]?.label || account.latestOutcome
+            ) : (
+              <>
+                Owner ·{" "}
+                <PersonLink name={account.owner} avatarClassName="h-3.5 w-3.5 shrink-0 text-[6px]" className="gap-1 align-middle" />
+              </>
+            )}
           </span>
         </span>
         <ArrowRight size={14} className="text-blue-primary" />

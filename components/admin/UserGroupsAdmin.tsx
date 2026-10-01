@@ -335,7 +335,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Growth Accounts"
-                className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-primary"
+                className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-primary"
               />
             </div>
             <div>
@@ -401,7 +401,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                 below."). */}
             <div className="mt-1.5">
               <MultiPicker
-                options={memberNames.map((m) => ({ id: m, label: m, href: `/team?member=${encodeURIComponent(repSlug(m))}` }))}
+                options={memberNames.map((m) => ({ id: m, label: m, avatarName: m, href: `/team?member=${encodeURIComponent(repSlug(m))}` }))}
                 selected={members}
                 onToggle={(id) =>
                   setMembers((prev) => {
@@ -527,10 +527,10 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                     onClick={() => setSelectedId(g.id)}
                     aria-current={on ? "true" : undefined}
                     className={cn(
-                      "grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_104px] items-center gap-2.5 border-b border-border-light px-3.5 py-3 text-left transition-colors last:border-b-0",
+                      "grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 border-b border-border-light px-3.5 py-3 text-left transition-colors last:border-b-0",
                       on
-                        ? "bg-blue-light/50 [box-shadow:inset_3px_0_0_0_var(--blue-primary)]"
-                        : "hover:bg-surface"
+                        ? "bg-blue-light/50 [box-shadow:inset_3px_0_0_0_var(--blue-primary)] [--fan-ring:color-mix(in_srgb,rgb(var(--blue-light-rgb))_50%,var(--white))]"
+                        : "[--fan-ring:var(--white)] hover:bg-surface hover:[--fan-ring:var(--surface)]"
                     )}
                   >
                     <span className="min-w-0 flex-1">
@@ -556,7 +556,8 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                         }))}
                         avatarClassName="h-6 w-6 text-[8px]"
                         overlap={-7}
-                        max={3}
+                        nested
+                        ringClassName="ring-[color:var(--fan-ring)]"
                       />
                     </span>
                   </button>
@@ -670,7 +671,9 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                           }
                           className={cn(
                             "cursor-pointer transition-all",
-                            open ? "bg-surface" : "hover:bg-surface",
+                            open
+                              ? "bg-surface [--fan-ring:var(--surface)]"
+                              : "[--fan-ring:var(--white)] hover:bg-surface hover:[--fan-ring:var(--surface)]",
                             /* THE OTHER GROUPS STEP BACK (Anir, Aug 29: "I just
                                clicked on a group, why are the rest not getting
                                faded out"). The goals inside already do this;
@@ -773,6 +776,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                                 context: g.name,
                               }))}
                               avatarClassName="h-6 w-6 text-[9px]"
+                              ringClassName="ring-[color:var(--fan-ring)]"
                             />
                           </td>
                           <td className="px-4 py-3.5">
@@ -936,7 +940,31 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
       {/* The same dialog the group's own page and the split view use, so a
           group is deleted in the same words wherever you start. */}
       <RemoveGroupDialog
-        group={confirmRemove}
+        /* Who runs it, how many are in it and which goals it carries, from
+           the list already loaded. Goals only once the performance state is
+           in; until then the dialog says it in general words. */
+        group={
+          confirmRemove
+            ? {
+                name: confirmRemove.name,
+                head: confirmRemove.head,
+                people: new Set(
+                  [confirmRemove.head, ...confirmRemove.members]
+                    .map((m) => m.trim())
+                    .filter(Boolean)
+                ).size,
+                goals: perf
+                  ? perf.goals
+                      .filter((g) =>
+                        (g.groupAssignments ?? []).some(
+                          (a) => a.groupId === confirmRemove.id
+                        )
+                      )
+                      .map((g) => g.name)
+                  : undefined,
+              }
+            : null
+        }
         onClose={() => setConfirmRemove(null)}
         onConfirm={() => {
           const g = confirmRemove;

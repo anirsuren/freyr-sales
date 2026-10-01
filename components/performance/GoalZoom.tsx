@@ -61,13 +61,34 @@ import {
 } from "@/lib/performanceShared";
 import { typeMeta, GroupPill, PaceTimeline, StatusBarSegments } from "./bits";
 import { ClaimReviewDialog, EntryTimeline } from "./EntryCards";
-import { EvidencePreview } from "./EvidenceViewer";
+import { EvidencePeek, EvidencePreview } from "./EvidenceViewer";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { useOpportunities } from "@/lib/useOpportunities";
 import type { RunOp } from "./PerformanceModule";
 import { tint } from "@/lib/tint";
 import { CompanyLink, ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
 import { customerHref, teammateHref } from "@/lib/entityHref";
+import { PersonFan, type FanPerson } from "@/components/ui/PersonFan";
+
+/**
+ * THE GROUP'S FACES ON ITS CLOSED ROW (Anir, Oct 1: "for these groups i need
+ * to be able to see the pfps before i even like click on it"). The owner's
+ * face already leads the row, so the fan carries everyone else. The ring
+ * between the faces wears the row's own colour through --fan-ring: the open
+ * row's blue wash, the lit row's pale blue, the hover grey, each mixed onto
+ * the card.
+ */
+function groupFanPeople(members: string[], head: string, groupName: string): FanPerson[] {
+  const owner = head.trim().toLowerCase();
+  return members
+    .filter((n) => n.trim().toLowerCase() !== owner)
+    .map((n) => ({ name: n, role: "In this group", context: groupName }));
+}
+const GROUP_ROW_RING = "[--fan-ring:var(--white)] hover:[--fan-ring:var(--surface)]";
+const GROUP_ROW_OPEN_RING = "[--fan-ring:color-mix(in_srgb,rgb(0,113,227)_8%,var(--white))]";
+const GROUP_ROW_LIT_RING =
+  "[--fan-ring:color-mix(in_srgb,var(--blue-light)_50%,var(--white))] hover:[--fan-ring:var(--surface)]";
+const FAN_RING = "ring-[color:var(--fan-ring)]";
 
 /**
  * ONE GOAL DONE PROPERLY — the screen Suren approved on Aug 13: the composite
@@ -168,15 +189,19 @@ function ConditionalHover({
   content,
   children,
   side = "bottom",
+  suspended = false,
 }: {
   on: boolean;
   content: React.ReactNode;
   children: React.ReactNode;
   side?: "bottom" | "left";
+  /** Stand down while the pointer is on a face inside the row, so the
+   *  person's own card is the only one open. */
+  suspended?: boolean;
 }) {
   if (!on) return <>{children}</>;
   return (
-    <HoverCard side={side} width={420} delayMs={0} content={content}>
+    <HoverCard side={side} width={420} delayMs={0} content={content} suspended={suspended}>
       {children}
     </HoverCard>
   );
@@ -444,6 +469,8 @@ export function GoalZoom({
   const [periodQuery, setPeriodQuery] = useState("");
   /** A long group list stays usable without changing its selection model. */
   const [groupQuery, setGroupQuery] = useState("");
+  /** The group row whose face fan is under the pointer. */
+  const [fanGroup, setFanGroup] = useState<string | null>(null);
   const [lineQuery, setLineQuery] = useState("");
   /**
    * COLUMN 2 LISTS THE PEOPLE ONLY WHEN ASKED (Anir, Aug 16: "you don't have to
@@ -1398,7 +1425,11 @@ export function GoalZoom({
                                   rel="noreferrer"
                                   className="inline-flex items-center gap-1 rounded-full bg-blue-light px-2 py-1 text-[10px] font-semibold text-blue-primary hover:bg-blue-subtle"
                                 >
-                                  <Paperclip size={10} strokeWidth={2.3} /> {file.name}
+                                  <Paperclip size={10} strokeWidth={2.3} />
+                                  {/* Resting on the name shows the proof. */}
+                                  <EvidencePeek file={file}>
+                                    <span>{file.name}</span>
+                                  </EvidencePeek>
                                 </a>
                               ))}
                             </div>
@@ -1788,6 +1819,7 @@ export function GoalZoom({
                   ) : (
                     visiblePeriodGroups.map((r2) => {
                       const active = selGroup?.group.id === r2.group.id;
+                      const fan = groupFanPeople(r2.members, r2.group.head, r2.group.name);
                       return (
                         r2.verified === 0 && r2.awaiting === 0 ? (
                         <div
@@ -1807,16 +1839,26 @@ export function GoalZoom({
                                 ? "bg-[rgba(0,113,227,0.08)]"
                                 : "rounded-lg hover:bg-surface",
                               /* Same fade as every other row in this column. */
-                              openGroups.size > 0 && !active && "opacity-45 hover:opacity-100"
+                              openGroups.size > 0 && !active && "opacity-45 hover:opacity-100",
+                              active ? GROUP_ROW_OPEN_RING : GROUP_ROW_RING
                             )}
                           >
                             <span className="flex w-full items-center gap-2.5">
                               <EntityLink nested href={teammateHref(r2.group.head)} className="shrink-0 rounded-full" title={r2.group.head}>
                                 <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
                               </EntityLink>
-                              <span className="min-w-0 flex-1">
+                              <span className="min-w-0 flex-1 overflow-hidden" title={r2.group.name}>
                                 <GroupPill name={r2.group.name} size="sm" />
                               </span>
+                              {fan.length > 0 && (
+                                <PersonFan
+                                  nested
+                                  people={fan}
+                                  avatarClassName="h-5 w-5 text-[7px]"
+                                  overlap={-6}
+                                  ringClassName={FAN_RING}
+                                />
+                              )}
                               <b className="shrink-0 text-right text-[11.5px] tnum text-text-tertiary">
                                 {fmtAmount(goal.unit, 0)}
                               </b>
@@ -1866,6 +1908,7 @@ export function GoalZoom({
                             thing you had just asked to see. */}
                         <ConditionalHover
                           on={!active}
+                          suspended={fanGroup === r2.group.id}
                           content={
                             <PaceTimeline
                               title={`${r2.group.name} · ${row?.label ?? ""}`}
@@ -1894,7 +1937,8 @@ export function GoalZoom({
                               : "rounded-lg hover:bg-surface",
                             !active && lit && "rounded-lg bg-blue-light/50 ring-1 ring-inset ring-blue-primary/30",
                             /* Same fade as the period column above. */
-                            openGroups.size > 0 && !active && "opacity-45 hover:opacity-100"
+                            openGroups.size > 0 && !active && "opacity-45 hover:opacity-100",
+                            active ? GROUP_ROW_OPEN_RING : lit ? GROUP_ROW_LIT_RING : GROUP_ROW_RING
                           )}
                         >
                           {/* THE BAR GETS ITS OWN LINE (Anir, Aug 15: "that bar
@@ -1909,9 +1953,26 @@ export function GoalZoom({
                             <EntityLink nested href={teammateHref(r2.group.head)} className="shrink-0 rounded-full" title={r2.group.head}>
                               <Avatar name={r2.group.head} className="h-6 w-6 shrink-0 text-[9px]" />
                             </EntityLink>
-                            <span className="min-w-0 flex-1">
+                            <span className="min-w-0 flex-1 overflow-hidden">
                               <GroupPill name={r2.group.name} size="sm" />
                             </span>
+                            {fan.length > 0 && (
+                              <span
+                                className="flex shrink-0"
+                                onMouseEnter={() => setFanGroup(r2.group.id)}
+                                onMouseLeave={() =>
+                                  setFanGroup((g) => (g === r2.group.id ? null : g))
+                                }
+                              >
+                                <PersonFan
+                                  nested
+                                  people={fan}
+                                  avatarClassName="h-5 w-5 text-[7px]"
+                                  overlap={-6}
+                                  ringClassName={FAN_RING}
+                                />
+                              </span>
+                            )}
                             <RowTotals unit={goal.unit} verified={r2.verified} />
                             {/* A DROPDOWN HAS TO LOOK LIKE ONE (Anir, Aug 16:
                                 "this is still not a drop-down"). The people
@@ -2606,7 +2667,11 @@ export function GoalZoom({
                           rel="noreferrer"
                           className="inline-flex items-center gap-1 rounded-full bg-[rgba(0,113,227,0.08)] px-2 py-0.5 text-[10.5px] font-semibold text-blue-primary hover:bg-[rgba(0,113,227,0.14)]"
                         >
-                          <Paperclip size={10} strokeWidth={2.4} /> {e.name}
+                          <Paperclip size={10} strokeWidth={2.4} />
+                          {/* Resting on the name shows the proof. */}
+                          <EvidencePeek file={e}>
+                            <span>{e.name}</span>
+                          </EvidencePeek>
                         </a>
                       ))}
                     </div>
@@ -2641,7 +2706,19 @@ export function GoalZoom({
                   <b className={ENTITY_NAME}>{a.person}</b>
                 </PersonLink>
                 {" "}· {fmtAmount(goal.unit, a.amount)}
-                {a.customer ? ` · ${a.customer}` : ""}. Verified by
+                {a.customer ? (
+                  <>
+                    {" "}·
+                    {/* The customer's logo beside its name. */}
+                    <span className="inline-flex min-w-0 items-center">
+                      <CompanyLink name={a.customer} customerId={a.customerId} logoClassName="h-[18px] w-[18px] shrink-0 text-[6px]" className="gap-1" />
+                      .
+                    </span>
+                    Verified by
+                  </>
+                ) : (
+                  ". Verified by"
+                )}
                 {a.verifiedBy ? (
                   <PersonLink name={a.verifiedBy} avatarClassName="h-[18px] w-[18px] shrink-0 text-[8px]" className="gap-1" />
                 ) : (

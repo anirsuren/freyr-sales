@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
   AlertCircle,
@@ -26,6 +26,8 @@ import { emailShell } from "@/lib/emailShell";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useToast } from "@/components/ui/Toast";
 import { Avatar } from "@/components/ui/Avatar";
+import { ENTITY_NAME, EntityLink } from "@/components/ui/EntityLink";
+import { teammateHref } from "@/lib/entityHref";
 import { cn } from "@/lib/utils";
 import type { AdminEmailRecord } from "@/lib/adminEmail";
 import { RichTextBox } from "./RichTextBox";
@@ -48,8 +50,9 @@ import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
  * the workspace and cannot be shown afterwards is worse than no mail at all.
  */
 
+// The shared 40px box, level with the recipient fields above it.
 const FIELD =
-  "w-full rounded-lg border border-border-light bg-white px-3 py-2 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
+  "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary";
 
 function Label({
   children,
@@ -121,7 +124,37 @@ type WorkspacePerson = {
   email: string;
   role?: string;
   active?: boolean;
+  /** Invited, never signed in: initials only, never a namesake's photo,
+   *  and no profile to open yet. */
+  pending?: boolean;
 };
+
+/** A workspace person's own page; invitees and outside addresses have none. */
+function personDoor(person: WorkspacePerson | undefined): string | null {
+  return person && !person.pending ? teammateHref(person.name) : null;
+}
+
+/** Face and name as one door when there is a page to open. Without one it
+ *  stays a plain span, so a click still reaches the row it sits in. */
+function FaceDoor({
+  href,
+  nested = false,
+  className,
+  children,
+}: {
+  href: string | null;
+  nested?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return href ? (
+    <EntityLink nested={nested} href={href} className={className}>
+      {children}
+    </EntityLink>
+  ) : (
+    <span className={className}>{children}</span>
+  );
+}
 
 type ComposerAttachment = {
   id: string;
@@ -439,7 +472,7 @@ function RecipientField({
           setOpen(true);
           inputRef.current?.focus();
         }}
-        className="flex min-h-[42px] w-full cursor-text flex-wrap items-center gap-1.5 rounded-lg border border-border-light bg-white px-2 py-1.5 transition-colors focus-within:border-blue-primary"
+        className="flex min-h-[40px] w-full cursor-text flex-wrap items-center gap-1.5 rounded-lg border border-border-light bg-white px-2 py-1.5 transition-colors focus-within:border-blue-primary"
       >
         {chosen.map((address) => {
           const person = people.find(
@@ -452,7 +485,7 @@ function RecipientField({
               className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-surface py-0.5 pl-0.5 pr-1.5 text-[12.5px]"
             >
               {person ? (
-                <Avatar name={person.name} className="h-5 w-5 shrink-0 text-[7px]" />
+                <Avatar name={person.name} initialsOnly={!!person.pending} className="h-5 w-5 shrink-0 text-[7px]" />
               ) : (
                 <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-blue-light text-blue-primary">
                   <Mail size={10} strokeWidth={2.4} />
@@ -530,7 +563,7 @@ function RecipientField({
                       index === active ? "bg-blue-light/60" : "hover:bg-surface"
                     )}
                   >
-                    <Avatar name={person.name} className="h-6 w-6 shrink-0 text-[8px]" />
+                    <Avatar name={person.name} initialsOnly={!!person.pending} className="h-6 w-6 shrink-0 text-[8px]" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[12.5px] font-semibold text-text-primary">
                         {person.name}
@@ -640,10 +673,16 @@ export function EmailComposer() {
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (!d) return;
+          const memberEmails = new Set(
+            ((d.members ?? []) as WorkspacePerson[]).map((m) => (m.email || "").toLowerCase())
+          );
           const rows: WorkspacePerson[] = [
             ...((d.members ?? []) as WorkspacePerson[]),
             /* Someone invited but not yet signed in still has an address. */
-            ...((d.invitations ?? []) as WorkspacePerson[]),
+            ...((d.invitations ?? []) as WorkspacePerson[]).map((m) => ({
+              ...m,
+              pending: !memberEmails.has((m.email || "").toLowerCase()),
+            })),
           ].filter((m) => m.email && m.name);
           /* One person per address, and the FULLER record wins. The
              workspace really does hold two members on anir.s@ — "Anir S"
@@ -1133,7 +1172,23 @@ export function EmailComposer() {
             onConfirm={send}
             busy={sending}
             tone="primary"
-            title="Send this email?"
+            /* THE SUBJECT AND WHO, IN THE QUESTION (Anir, Oct 1: "u have to be
+               super super specific"). One recipient is named; more are
+               counted, and the chips below name them. */
+            title={(() => {
+              const all = everyone({ to, cc: [cc], bcc: [bcc] });
+              const who =
+                recipients === 1 && all.length === 1
+                  ? (people.find((p) => p.email.toLowerCase() === all[0].toLowerCase())?.name ??
+                    all[0])
+                  : recipients > 1
+                    ? `${recipients} people`
+                    : "";
+              const subj = subjectPreview.trim();
+              return subj
+                ? `Send “${subj}”${who ? ` to ${who}` : ""}?`
+                : `Send this email${who ? ` to ${who}` : ""}?`;
+            })()}
             /* NAME THEM (Anir, Aug 30: "when I do send it, it has to show
                me who it's going to on this popup"). "It goes to 1 person" is
                the one fact you already know when you press Send; who that
@@ -1176,16 +1231,33 @@ export function EmailComposer() {
                     <span className="mt-2 block text-[12.5px] text-text-secondary">
                       {recipients} {recipients === 1 ? "person" : "people"}
                       {important ? ", marked important" : ""}
-                      {attachments.length
-                        ? `, with ${attachments.length} ${attachments.length === 1 ? "attachment" : "attachments"}`
-                        : ""}.
+                      {/* Which files, by name, not only how many. */}
+                      {attachments.length ? (
+                        <>
+                          {`, with ${attachments.length} ${attachments.length === 1 ? "attachment" : "attachments"}: `}
+                          {attachments.slice(0, 3).map((file, i, shownFiles) => (
+                            <Fragment key={file.id}>
+                              {i === 0
+                                ? ""
+                                : i === shownFiles.length - 1 && attachments.length <= 3
+                                  ? " and "
+                                  : ", "}
+                              <b className="font-semibold text-text-primary">{file.filename}</b>
+                            </Fragment>
+                          ))}
+                          {attachments.length > 3 ? ` and ${attachments.length - 3} more` : ""}
+                        </>
+                      ) : (
+                        ""
+                      )}
+                      .
                     </span>
                   </>
                 );
               })()
             }
             detail="An outbound email cannot be unsent."
-            confirmLabel="Yes, send it"
+            confirmLabel="Send email"
           />
           </div>
         </div>
@@ -1414,7 +1486,9 @@ export function EmailComposer() {
                     aria-expanded={open}
                     className={cn(
                       "flex w-full cursor-pointer items-center gap-3 px-3.5 py-2.5 text-left transition-colors",
-                      open ? "bg-blue-light/40 hover:bg-blue-light/50" : "hover:bg-surface"
+                      open
+                        ? "bg-blue-light/40 hover:bg-blue-light/50 [--fan-ring:color-mix(in_srgb,rgb(var(--blue-light-rgb))_40%,var(--white))] hover:[--fan-ring:color-mix(in_srgb,rgb(var(--blue-light-rgb))_50%,var(--white))]"
+                        : "[--fan-ring:var(--white)] hover:bg-surface hover:[--fan-ring:var(--surface)]"
                     )}
                   >
                     <ChevronDown
@@ -1456,17 +1530,27 @@ export function EmailComposer() {
                       const rest = named.length - faces.length;
                       return (
                         <span className="hidden w-[300px] shrink-0 items-center gap-2 sm:flex">
-                          <Avatar
-                            name={e.sentBy}
-                            tooltip={`Sent by ${e.sentBy}`}
-                            className="h-6 w-6 shrink-0 text-[8px]"
-                          />
-                          <span
-                            title={e.sentBy}
-                            className="shrink-0 whitespace-nowrap text-[13px] font-semibold text-text-primary"
+                          <FaceDoor
+                            nested
+                            href={personDoor(
+                              people.find(
+                                (p) => p.name.toLowerCase() === e.sentBy.trim().toLowerCase()
+                              )
+                            )}
+                            className="inline-flex shrink-0 items-center gap-2"
                           >
-                            {shortName(e.sentBy)}
-                          </span>
+                            <Avatar
+                              name={e.sentBy}
+                              tooltip={`Sent by ${e.sentBy}`}
+                              className="h-6 w-6 shrink-0 text-[8px]"
+                            />
+                            <span
+                              title={e.sentBy}
+                              className={cn("shrink-0 whitespace-nowrap text-[13px] font-semibold text-text-primary", ENTITY_NAME)}
+                            >
+                              {shortName(e.sentBy)}
+                            </span>
+                          </FaceDoor>
                           <ChevronRight
                             size={12}
                             strokeWidth={2.4}
@@ -1481,28 +1565,42 @@ export function EmailComposer() {
                               beside a single sender told you somebody received
                               it without saying who. */}
                           {named.length === 1 ? (
-                            <>
+                            <FaceDoor
+                              nested
+                              href={personDoor(named[0].person)}
+                              className="inline-flex min-w-0 items-center gap-2"
+                            >
                               <Avatar
                                 name={named[0].person?.name ?? named[0].address}
+                                initialsOnly={!!named[0].person?.pending}
                                 className="h-6 w-6 shrink-0 text-[8px]"
                               />
                               <span
                                 title={named[0].person?.name ?? named[0].address}
-                                className="min-w-0 truncate text-[13px] font-semibold text-text-primary"
+                                className={cn("min-w-0 truncate text-[13px] font-semibold text-text-primary", ENTITY_NAME)}
                               >
                                 {shortName(named[0].person?.name ?? named[0].address)}
                               </span>
-                            </>
+                            </FaceDoor>
                           ) : (
                             <>
+                              {/* Each face opens its person; the separator ring
+                                  takes the row's own colour, not a white edge. */}
                               <span className="flex shrink-0 -space-x-1.5">
                                 {faces.map((f) => (
-                                  <Avatar
+                                  <FaceDoor
                                     key={f.address}
-                                    name={f.person?.name ?? f.address}
-                                    tooltip={f.person?.name ?? f.address}
-                                    className="h-6 w-6 shrink-0 border-2 border-white text-[8px]"
-                                  />
+                                    nested
+                                    href={personDoor(f.person)}
+                                    className="relative inline-flex rounded-full"
+                                  >
+                                    <Avatar
+                                      name={f.person?.name ?? f.address}
+                                      initialsOnly={!!f.person?.pending}
+                                      tooltip={f.person?.name ?? f.address}
+                                      className="h-6 w-6 shrink-0 text-[8px] ring-2 ring-[color:var(--fan-ring)]"
+                                    />
+                                  </FaceDoor>
                                 ))}
                               </span>
                               {rest > 0 && (
@@ -1592,13 +1690,19 @@ export function EmailComposer() {
                                   title={n.address}
                                   className="inline-flex items-center gap-1.5 rounded-full border border-border-light bg-white py-0.5 pl-1 pr-2.5 text-[12px] text-text-primary"
                                 >
-                                  <Avatar
-                                    name={n.person?.name ?? n.address}
-                                    className="h-5 w-5 shrink-0 text-[7px]"
-                                  />
-                                  <span className="max-w-[220px] truncate">
-                                    {n.person?.name ?? n.address}
-                                  </span>
+                                  <FaceDoor
+                                    href={personDoor(n.person)}
+                                    className="inline-flex min-w-0 items-center gap-1.5"
+                                  >
+                                    <Avatar
+                                      name={n.person?.name ?? n.address}
+                                      initialsOnly={!!n.person?.pending}
+                                      className="h-5 w-5 shrink-0 text-[7px]"
+                                    />
+                                    <span className={cn("max-w-[220px] truncate", ENTITY_NAME)}>
+                                      {n.person?.name ?? n.address}
+                                    </span>
+                                  </FaceDoor>
                                 </span>
                               ))}
                             </span>

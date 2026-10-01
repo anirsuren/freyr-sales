@@ -942,9 +942,12 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                             just the dropdown"). Everything else in this cell
                             falls through to the row's own toggle. */}
                         <span className="flex items-center gap-3">
+                          {/* The face opens the rep too, like the name. */}
                           {r.lastSeenAt !== undefined ? (
                             <Tooltip label={presenceTip(r.lastSeenAt)} className="shrink-0">
-                              <Avatar name={r.name} initialsOnly={!!r.pending} className="w-10 h-10 text-[13px] shrink-0" />
+                              <EntityLink href={`/analytics/reps/${r.slug}`} className="block rounded-full">
+                                <Avatar name={r.name} initialsOnly={!!r.pending} className="w-10 h-10 text-[13px] shrink-0" />
+                              </EntityLink>
                               <PresenceDot
                                 lastSeenAt={r.lastSeenAt}
                                 className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white"
@@ -952,7 +955,9 @@ export function TeamRoster({ reps }: { reps: RosterRep[] }) {
                             </Tooltip>
                           ) : (
                             <span className="relative shrink-0">
-                              <Avatar name={r.name} initialsOnly={!!r.pending} className="w-10 h-10 text-[13px] shrink-0" />
+                              <EntityLink href={`/analytics/reps/${r.slug}`} className="block rounded-full" title={r.name}>
+                                <Avatar name={r.name} initialsOnly={!!r.pending} className="w-10 h-10 text-[13px] shrink-0" />
+                              </EntityLink>
                             </span>
                           )}
                           <span className="min-w-0">

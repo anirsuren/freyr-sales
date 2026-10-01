@@ -1,8 +1,60 @@
 "use client";
 
+import type { ReactNode } from "react";
+import { MaterialPeek } from "@/components/offerings/MaterialPeek";
 import { MaterialViewer } from "@/components/offerings/MaterialViewer";
 import { formatFromFilename } from "@/lib/offeringMaterials";
 import type { OfferingMaterial } from "@/lib/offeringMaterials";
+
+/**
+ * WHAT A HOVER CARD CAN SHOW WITHOUT A VIEWER PAGE.
+ *
+ * The Sales Materials hover frames a page. Meetings, solutioning and evidence
+ * have one; contracts and account activities only have the inline byte route
+ * their viewer reads (`view=1`). A browser draws a PDF or an image from those
+ * bytes by itself, so those preview on hover. Word, Excel and PowerPoint need
+ * the app's own renderer, and framing their bytes would download the file, so
+ * their names stay plain.
+ */
+export function browserDrawsFile(file: string | null | undefined): boolean {
+  return /\.(pdf|png|jpe?g|gif|webp|svg|avif|bmp)$/i.test((file ?? "").trim());
+}
+
+/**
+ * RESTING ON A DOCUMENT'S NAME SHOWS IT (Anir, Oct 1: "when i hover it should
+ * definitely do the popup where i dont have to actually click on it to se
+ * it"). Wrap only the name. A file the browser cannot draw renders its name
+ * untouched.
+ */
+export function DocumentNamePeek({
+  name,
+  file,
+  viewUrl,
+  children,
+}: {
+  /** What the document is called, as a person named it. */
+  name: string;
+  /** The stored filename or path, which is what says PDF vs Word. */
+  file: string | null | undefined;
+  /** The module's inline byte route for this document (`view=1`). */
+  viewUrl: string;
+  children: ReactNode;
+}) {
+  if (!browserDrawsFile(file)) return <>{children}</>;
+  return (
+    <MaterialPeek
+      material={{
+        id: viewUrl,
+        kind: formatFromFilename(file || name),
+        label: name,
+        url: viewUrl,
+      }}
+      previewUrl={viewUrl}
+    >
+      {children}
+    </MaterialPeek>
+  );
+}
 
 /**
  * ONE VIEWER FOR EVERY DOCUMENT IN THE APP.

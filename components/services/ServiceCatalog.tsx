@@ -231,12 +231,33 @@ export function ServiceCatalog({
         onClose={() => setConfirmIdx(null)}
         onConfirm={() => confirmIdx !== null && del(confirmIdx)}
         loading={busy}
-        title="Remove service?"
-        message={
-          confirmIdx !== null
-            ? `"${services[confirmIdx]?.name}" will be removed from the knowledge base. This can't be undone.`
-            : ""
+        /* NAME THE SERVICE AND WHO IT IS FOR (Anir, Oct 1: "u have to be
+           super super specific"); the targets tell two similar names apart. */
+        title={
+          confirmIdx !== null && services[confirmIdx]?.name?.trim()
+            ? `Remove ${services[confirmIdx].name.trim()} from the Service Catalog?`
+            : "Remove this service from the Service Catalog?"
         }
+        message={(() => {
+          const svc = confirmIdx !== null ? services[confirmIdx] : undefined;
+          if (!svc) return "";
+          const list = (items: string[]) =>
+            items.length <= 3
+              ? items.length <= 1
+                ? items[0] ?? ""
+                : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`
+              : `${items.slice(0, 2).join(", ")} and ${items.length - 2} more`;
+          const roles = (svc.target_roles ?? []).map((r) => String(r ?? "").trim()).filter(Boolean);
+          const industries = (svc.target_industries ?? svc.target_company_types ?? [])
+            .map((t) => String(t ?? "").trim())
+            .filter(Boolean);
+          const targets = roles.length
+            ? ` It targets ${list(roles)}${industries.length ? ` in ${list(industries)}` : ""}.`
+            : industries.length
+              ? ` It targets ${list(industries)}.`
+              : "";
+          return `“${svc.name?.trim() || "This service"}” comes out of the Service Catalog, so the system stops matching against it.${targets} This can't be undone.`;
+        })()}
         confirmLabel="Remove service"
       />
     </div>

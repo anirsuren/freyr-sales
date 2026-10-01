@@ -492,9 +492,37 @@ export function ActivityMasterCard({
           ).then((ok) => ok && setConfirmRemove(null));
         }}
         busy={busy}
-        title={`Remove ${confirmRemove?.label ?? "this activity"}?`}
-        body="Anything already logged with it keeps its history. It just stops being offered the next time somebody logs an activity."
-        confirmLabel="Remove"
+        /* WHICH ACTIVITY, AND WHICH GOALS LOSE IT (Anir, Oct 1: "u have to
+           be super super specific"). The goals it feeds are named, because
+           they are what stops counting it. */
+        title={
+          confirmRemove
+            ? `Remove ${confirmRemove.label} from the activity master?`
+            : "Remove this activity?"
+        }
+        body={(() => {
+          if (!confirmRemove) return "";
+          /* "Not counted" feeds no goal, whatever is still connected. */
+          const fed =
+            confirmRemove.contribution === "none"
+              ? []
+              : confirmRemove.goalIds
+                  .map((id) => goalById.get(id)?.name)
+                  .filter((n): n is string => !!n);
+          return (
+            <>
+              <b>{confirmRemove.label}</b> comes off the activity master
+              {fed.length > 0 ? (
+                <>
+                  {" "}and stops feeding <b>{fed.join(", ")}</b>
+                </>
+              ) : null}
+              . Anything already logged with it keeps its history.
+            </>
+          );
+        })()}
+        detail="It just stops being offered the next time somebody logs an activity."
+        confirmLabel="Remove activity"
       />
 
       <ConfirmDialog
@@ -515,7 +543,11 @@ export function ActivityMasterCard({
           ).then((ok) => ok && setConfirmDisconnect(null));
         }}
         busy={busy}
-        title="Disconnect this goal?"
+        title={
+          confirmDisconnect
+            ? `Disconnect ${goalById.get(confirmDisconnect.goalId)?.name ?? "this goal"} from ${confirmDisconnect.activity.label}?`
+            : "Disconnect this goal?"
+        }
         subject={
           confirmDisconnect
             ? {
@@ -535,7 +567,7 @@ export function ActivityMasterCard({
           )
         }
         detail="Results already counted keep their history. The goal just stops being offered the next time somebody logs this activity, and it can be connected again."
-        confirmLabel="Disconnect"
+        confirmLabel="Disconnect goal"
       />
     </Card>
   );

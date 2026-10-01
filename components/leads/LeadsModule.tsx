@@ -60,6 +60,7 @@ import {
 import { formatPhoneNumber, phoneProblem, nationalDigitBudget, phoneDigits } from "@/lib/phone";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { useToast } from "@/components/ui/Toast";
 import { Field, Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -227,6 +228,36 @@ export function LeadsModule({
   const [linkedinUnlocked, setLinkedinUnlocked] = useState(false);
   useEffect(() => { setLinkedinUnlocked(false); }, [editing?.id, editing === null]);
   const [confirmDelete, setConfirmDelete] = useState<Lead | null>(null);
+  /* REFRESH REPLACES WHAT IS STORED (Anir, Oct 1: nothing that changes data
+     acts on one click). A fresh read overwrites the saved profile facts, and
+     a failed read clears them, so a lead that already has a profile asks
+     first. A lead with nothing stored yet still retries at once. */
+  const [confirmRefresh, setConfirmRefresh] = useState<Lead | null>(null);
+  /** The owner or LinkedIn link whose hover X was pressed, waiting on its
+   *  confirm (Anir, Oct 1: "when i hover i should have a delete button"). */
+  const [unlinking, setUnlinking] = useState<{ lead: Lead; what: "owner" | "linkedin" } | null>(null);
+  /** Who a lead is, in a confirm: the person, at the company, by reference. */
+  const leadLabel = (lead: Lead) =>
+    [lead.name, lead.company].filter(Boolean).join(" at ") || lead.ref;
+  /** Ownerless, or without its LinkedIn link: the same save the edit form
+   *  makes, with only that field. An empty value is what clears it. */
+  async function unlink() {
+    const target = unlinking;
+    if (!target) return;
+    const saved = await post(
+      {
+        op: "save",
+        lead:
+          target.what === "owner"
+            ? { id: target.lead.id, owner: "" }
+            : { id: target.lead.id, linkedinUrl: "" },
+      },
+      target.what === "owner"
+        ? `${leadLabel(target.lead)} no longer has an owner.`
+        : `${leadLabel(target.lead)} no longer has a LinkedIn link.`
+    );
+    if (saved) setUnlinking(null);
+  }
   /** Which lead is folded open. Same mechanic as every other list here. */
   const [openRow, setOpenRow] = useState<string | null>(null);
 
@@ -855,16 +886,24 @@ export function LeadsModule({
                       </td>
                       <td className="px-4 py-2.5">
                         {lead.owner ? (
+                          <span className="group/unlink flex min-w-0 items-center">
                           <Link
                             href={`/analytics/reps/${repSlug(lead.owner)}`}
                             onClick={(event) => event.stopPropagation()}
-                            className="group/owner flex items-center gap-1.5 text-[12.5px] text-text-secondary"
+                            className="group/owner flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-secondary"
                           >
                             <Avatar name={lead.owner} className="h-5 w-5 shrink-0 text-[8px]" />
                             <span className="truncate transition-colors group-hover/owner:text-blue-primary group-hover/owner:underline">
                               {lead.owner}
                             </span>
                           </Link>
+                          {canWrite && (
+                            <UnlinkX
+                              label={`Take ${lead.owner} off ${leadLabel(lead)} as owner`}
+                              onClick={() => setUnlinking({ lead, what: "owner" })}
+                            />
+                          )}
+                          </span>
                         ) : (
                           <span className="text-[12px] text-text-tertiary">Unassigned</span>
                         )}
@@ -1006,9 +1045,17 @@ export function LeadsModule({
                                   <span className="flex min-w-0 flex-col">
                                     <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><LinkedInIcon size={12} aria-hidden="true" /> LinkedIn</span>
                                     {lead.linkedinUrl ? (
-                                      <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="mt-1 inline-flex min-h-5 items-center gap-1 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                      <span className="group/unlink mt-1 inline-flex min-h-5 items-center">
+                                      <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="inline-flex min-h-5 items-center gap-1 text-[12.5px] font-semibold text-blue-primary hover:underline">
                                         Open profile <ExternalLink size={12} aria-hidden="true" />
                                       </a>
+                                      {canWrite && (
+                                        <UnlinkX
+                                          label={`Remove the LinkedIn link from ${leadLabel(lead)}`}
+                                          onClick={() => setUnlinking({ lead, what: "linkedin" })}
+                                        />
+                                      )}
+                                      </span>
                                     ) : <span className="mt-1 text-[12px] text-text-tertiary">Not added</span>}
                                   </span>
                                   <span className="flex min-w-0 flex-col">
@@ -1051,10 +1098,18 @@ export function LeadsModule({
                                   <span className="flex min-w-0 flex-col">
                                     <span className="flex h-4 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10.5px] leading-4 font-semibold uppercase tracking-[0.05em] text-text-tertiary"><UserRound size={12} strokeWidth={2} aria-hidden="true" /> Owner</span>
                                     {lead.owner ? (
-                                      <Link href={`/analytics/reps/${repSlug(lead.owner)}`} onClick={(event) => event.stopPropagation()} className="mt-1 flex min-h-5 min-w-0 leading-5 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
+                                      <span className="group/unlink mt-1 flex min-h-5 min-w-0 items-center">
+                                      <Link href={`/analytics/reps/${repSlug(lead.owner)}`} onClick={(event) => event.stopPropagation()} className="flex min-h-5 min-w-0 leading-5 items-center gap-1.5 text-[12.5px] font-semibold text-blue-primary hover:underline">
                                         <Avatar name={lead.owner} className="h-5 w-5 shrink-0 text-[7px]" />
                                         <span className="min-w-0 truncate">{lead.owner}</span>
                                       </Link>
+                                      {canWrite && (
+                                        <UnlinkX
+                                          label={`Take ${lead.owner} off ${leadLabel(lead)} as owner`}
+                                          onClick={() => setUnlinking({ lead, what: "owner" })}
+                                        />
+                                      )}
+                                      </span>
                                     ) : <span className="mt-1 flex min-h-5 items-center text-[12px] leading-5 text-text-tertiary">Unassigned</span>}
                                   </span>
                                 </div>
@@ -1063,7 +1118,11 @@ export function LeadsModule({
                                   lead={lead}
                                   refreshing={enrichingId === lead.id}
                                   canWrite={canWrite}
-                                  onRefresh={() => void enrichLead(lead.id)}
+                                  onRefresh={() =>
+                                    lead.linkedinProfile
+                                      ? setConfirmRefresh(lead)
+                                      : void enrichLead(lead.id)
+                                  }
                                 />}
 
                                 {lead.note && (
@@ -1518,6 +1577,44 @@ export function LeadsModule({
         );
       })()}
 
+      {/* The owner's or the LinkedIn link's hover X asks here. */}
+      <ConfirmDialog
+        open={!!unlinking}
+        busy={busy}
+        onClose={() => {
+          if (!busy) setUnlinking(null);
+        }}
+        onConfirm={() => void unlink()}
+        title={
+          !unlinking
+            ? "Take this off the lead?"
+            : unlinking.what === "owner"
+              ? `Take ${unlinking.lead.owner} off ${leadLabel(unlinking.lead)} as owner?`
+              : `Remove the LinkedIn link from ${leadLabel(unlinking.lead)}?`
+        }
+        body={
+          !unlinking ? null : unlinking.what === "owner" ? (
+            <>
+              <b>{unlinking.lead.owner}</b> stops owning{" "}
+              <b>{leadLabel(unlinking.lead)}</b> ({unlinking.lead.ref}), and the lead
+              shows as Unassigned.
+            </>
+          ) : (
+            <>
+              <b>{leadLabel(unlinking.lead)}</b> ({unlinking.lead.ref}) stops linking to
+              its LinkedIn profile.
+            </>
+          )
+        }
+        detail={
+          unlinking?.what === "linkedin"
+            ? "The profile facts read from it go too. The lead keeps everything else, and you can add a link again from Edit."
+            : "The lead keeps everything else. You can assign an owner again from Edit."
+        }
+        person={unlinking?.what === "owner" ? unlinking.lead.owner || null : unlinking?.lead.name || null}
+        confirmLabel={unlinking?.what === "owner" ? "Remove owner" : "Remove link"}
+      />
+
       <ConfirmDialog
         open={!!confirmDelete}
         person={confirmDelete?.name || null}
@@ -1527,13 +1624,96 @@ export function LeadsModule({
           await post({ op: "delete", id: confirmDelete.id }, "Lead deleted.");
           setConfirmDelete(null);
         }}
-        title="Delete this lead?"
-        body={
+        title={
           confirmDelete
-            ? `${confirmDelete.name || confirmDelete.company} (${confirmDelete.ref}) goes for good. If they simply went quiet, set the status to Disqualified instead so the history stays.`
-            : ""
+            ? confirmDelete.name && confirmDelete.company
+              ? `Delete the lead ${confirmDelete.name} (${confirmDelete.company})?`
+              : `Delete the lead ${confirmDelete.name || confirmDelete.company || confirmDelete.ref}?`
+            : "Delete this lead?"
+        }
+        body={
+          confirmDelete ? (
+            <>
+              <b>{confirmDelete.name || confirmDelete.company}</b>
+              {confirmDelete.name && confirmDelete.company ? (
+                <>
+                  {" "}from <b>{confirmDelete.company}</b>
+                </>
+              ) : null}{" "}
+              ({[
+                confirmDelete.ref,
+                confirmDelete.status,
+                confirmDelete.source,
+                confirmDelete.owner ? `owned by ${confirmDelete.owner}` : "",
+              ]
+                .filter(Boolean)
+                .join(", ")}
+              ) goes for good.
+            </>
+          ) : (
+            ""
+          )
+        }
+        /* lib/leads removeLead takes only the lead row. The account and the
+           contact its save created, and any deal it became, are left alone. */
+        detail={
+          confirmDelete
+            ? [
+                confirmDelete.customerId && confirmDelete.company
+                  ? confirmDelete.contactId && confirmDelete.name
+                    ? `The ${confirmDelete.company} account and ${confirmDelete.name} as a contact stay.`
+                    : `The ${confirmDelete.company} account stays.`
+                  : "",
+                confirmDelete.convertedOpportunityId ? "The opportunity it became stays." : "",
+                "If they simply went quiet, set the status to Disqualified instead so the history stays.",
+              ]
+                .filter(Boolean)
+                .join(" ")
+            : undefined
         }
         confirmLabel="Delete lead"
+      />
+
+      <ConfirmDialog
+        open={!!confirmRefresh}
+        person={confirmRefresh?.name || null}
+        onClose={() => setConfirmRefresh(null)}
+        onConfirm={() => {
+          const lead = confirmRefresh;
+          setConfirmRefresh(null);
+          if (lead) void enrichLead(lead.id);
+        }}
+        title={
+          confirmRefresh
+            ? `Refresh the LinkedIn profile saved on ${confirmRefresh.name || confirmRefresh.ref}${
+                confirmRefresh.company ? ` (${confirmRefresh.company})` : ""
+              }?`
+            : "Refresh this LinkedIn profile?"
+        }
+        body={
+          confirmRefresh ? (
+            <>
+              Freyr reads <b>{confirmRefresh.linkedinUrl}</b> again and replaces the
+              profile facts saved on <b>{confirmRefresh.name || confirmRefresh.ref}</b> (
+              {confirmRefresh.ref})
+              {confirmRefresh.linkedinProfile?.fetchedAt ? (
+                <>
+                  , last checked{" "}
+                  <b>
+                    <DateText value={confirmRefresh.linkedinProfile.fetchedAt} />
+                  </b>
+                </>
+              ) : null}
+              .
+            </>
+          ) : (
+            ""
+          )
+        }
+        detail="If LinkedIn cannot be read, the saved facts come off this lead. The link itself stays."
+        confirmLabel="Refresh profile"
+        /* Nothing is deleted on purpose, so blue. */
+        tone="primary"
       />
     </div>
   );

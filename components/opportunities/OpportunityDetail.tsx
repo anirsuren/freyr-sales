@@ -9,6 +9,7 @@ import {
   CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, GitCompareArrows, Pencil, Plus, Target, Trash2 } from "lucide-react";
 import { SmartBack, sectionLabelFor, useBackTrail } from "@/components/ui/BackButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UnlinkX } from "@/components/ui/UnlinkButton";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { EditDealDialog } from "./EditDealDialog";
@@ -95,7 +96,18 @@ export function OpportunityDetail({
   mayChangeTeam = false,
   mayChangeOwner = false,
   customerId,
+  unlinkable = null,
 }: {
+  /** The linked request and contract rows this person may take off this deal
+   *  in place, each with what its unlink save needs. Decided on the server
+   *  with each route's own question; a row not listed keeps no X. */
+  unlinkable?: {
+    requests: Record<
+      string,
+      { ref: string; title: string; opportunityIds: string[]; opportunityLabels: string[] }
+    >;
+    contracts: Record<string, { name: string; customer: string }>;
+  } | null;
   /** What this person may do to THIS deal — the privilege map joined to who is
    *  on the account and on the deal. Decided on the server. */
   verdict: { mayEdit: boolean; mayCreate: boolean; why: string };
@@ -278,6 +290,71 @@ export function OpportunityDetail({
   const { toast } = useToast();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  /** TAKE A LINKED REQUEST OR CONTRACT OFF THIS DEAL, FROM ITS ROW (Anir,
+   *  Oct 1: "when i hover i should have a delete button showing up"). Each
+   *  goes through its own module's save, unlinking only: the request keeps
+   *  its other deals and the contract keeps everything but this deal. */
+  const [unlinkingRow, setUnlinkingRow] = useState<
+    { kind: "request" | "contract"; id: string } | null
+  >(null);
+  const [unlinkBusy, setUnlinkBusy] = useState(false);
+  const dealLabel = deal.name || `${deal.customer} deal`;
+  async function unlinkRow() {
+    const target = unlinkingRow;
+    if (!target) return;
+    const request = target.kind === "request" ? unlinkable?.requests[target.id] : undefined;
+    const contract = target.kind === "contract" ? unlinkable?.contracts[target.id] : undefined;
+    if (!request && !contract) return;
+    setUnlinkBusy(true);
+    try {
+      let res: Response;
+      if (request) {
+        const at = request.opportunityIds.indexOf(deal.id);
+        res = await fetch("/api/solutioning", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            op: "update",
+            requestId: target.id,
+            patch: {
+              opportunityIds: request.opportunityIds.filter((_, i) => i !== at),
+              opportunityLabels: request.opportunityLabels.filter((_, i) => i !== at),
+            },
+          }),
+        });
+      } else {
+        res = await fetch("/api/contracts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            op: "save",
+            contract: {
+              id: target.id,
+              name: contract!.name,
+              customer: contract!.customer,
+              opportunityId: "",
+              opportunityName: "",
+            },
+          }),
+        });
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.ok === false) throw new Error(data?.error || "That didn't save.");
+      toast(
+        request
+          ? `${request.ref} is no longer linked to ${dealLabel}.`
+          : `${contract!.name} is no longer linked to ${dealLabel}.`
+      );
+      setUnlinkingRow(null);
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "That didn't save.", "error");
+    } finally {
+      setUnlinkBusy(false);
+    }
+  }
+
   async function deleteDeal() {
     setDeleting(true);
     try {
@@ -299,6 +376,39 @@ export function OpportunityDetail({
       setConfirmingDelete(false);
     }
   }
+
+  /* SAY WHICH DEAL, WITH WHOM, FOR HOW MUCH (Anir, Oct 1: "u have to say
+     what customer what offering so there is absolutely no confusion"). The
+     same amount the Estimated TCV tile shows, in the deal's own money, plus
+     the customer, the offering and Freyr's own reference. A fact the deal
+     does not have is left out, never guessed. */
+  const dealName = (deal.name || "").trim();
+  const dealCustomer = (deal.customer || "").trim();
+  const customerInName =
+    !!dealCustomer && dealName.toLowerCase().includes(dealCustomer.toLowerCase());
+  const dealWorth = tcv !== undefined && tcv > 0 ? money(tcv, deal.currency) : "";
+  const dealOfferings = [
+    ...new Set(
+      [
+        ...(deal.lines ?? []).map(
+          (line) =>
+            (line.offeringId
+              ? offerings.find((o) => o.id === line.offeringId)?.name
+              : undefined) ?? line.offeringLabel
+        ),
+        ...(deal.offeringIds ?? []).map((id) => offerings.find((o) => o.id === id)?.name),
+        ...(deal.offeringLabels ?? []),
+      ]
+        .map((n) => (n ?? "").trim())
+        .filter(Boolean)
+    ),
+  ];
+  const dealOffering =
+    dealOfferings.length <= 1
+      ? (dealOfferings[0] ?? "")
+      : dealOfferings.length === 2
+        ? `${dealOfferings[0]} and ${dealOfferings[1]}`
+        : `${dealOfferings[0]}, ${dealOfferings[1]} and ${dealOfferings.length - 2} more`;
 
   /**
    * A MONTH ON THE ACCRUAL BAND IS NOT A LINK ANY MORE.
@@ -617,16 +727,96 @@ export function OpportunityDetail({
         }}
         onConfirm={() => void deleteDeal()}
         busy={deleting}
-        title="Delete this deal?"
+        title={
+          dealName
+            ? `Delete the ${dealName} deal${dealCustomer && !customerInName ? ` with ${dealCustomer}` : ""}?`
+            : `Delete this deal${dealCustomer ? ` with ${dealCustomer}` : ""}?`
+        }
         body={
           <>
-            <b>{deal.name || "This deal"}</b> comes off the pipeline, and off any
-            goal that counted it as a line item. Its accrual plan goes with it.
+            The{" "}
+            {dealWorth && (
+              <>
+                <b>{dealWorth}</b>{" "}
+              </>
+            )}
+            deal
+            {dealCustomer && (
+              <>
+                {" "}with <b>{dealCustomer}</b>
+              </>
+            )}
+            {dealOffering && (
+              <>
+                {" "}for <b>{dealOffering}</b>
+              </>
+            )}
+            {deal.externalId ? ` (${deal.externalId})` : ""} comes off the
+            pipeline, and off any goal that counted it as a line item. Its
+            accrual plan goes with it.
           </>
         }
         detail="Results already verified against it stay; they simply stop naming a deal."
         confirmLabel="Delete deal"
       />
+
+      {/* A linked row's hover X asks here, naming the record and this deal. */}
+      {(() => {
+        const request =
+          unlinkingRow?.kind === "request" ? unlinkable?.requests[unlinkingRow.id] : undefined;
+        const contract =
+          unlinkingRow?.kind === "contract" ? unlinkable?.contracts[unlinkingRow.id] : undefined;
+        return (
+          <ConfirmDialog
+            open={!!unlinkingRow}
+            onClose={() => {
+              if (!unlinkBusy) setUnlinkingRow(null);
+            }}
+            onConfirm={() => void unlinkRow()}
+            busy={unlinkBusy}
+            title={
+              request
+                ? `Unlink ${request.ref} from ${dealLabel}?`
+                : contract
+                  ? `Unlink ${contract.name} from ${dealLabel}?`
+                  : "Unlink this from the deal?"
+            }
+            body={
+              request ? (
+                <>
+                  <b>{request.title}</b> ({request.ref}) stops being linked to{" "}
+                  <b>{dealLabel}</b>
+                  {dealCustomer ? (
+                    <>
+                      {" "}with <b>{dealCustomer}</b>
+                    </>
+                  ) : null}
+                  .
+                </>
+              ) : (
+                <>
+                  The <b>{contract?.name}</b> contract with{" "}
+                  <b>{contract?.customer}</b> stops being linked to{" "}
+                  <b>{dealLabel}</b>.
+                </>
+              )
+            }
+            detail={
+              request
+                ? "The request stays in Solutioning with its documents and any other deals, and its history records the change."
+                : "The contract stays in Contracts with its value, schedule and documents. You can link it to a deal again from its edit form."
+            }
+            subject={
+              request
+                ? { name: request.title, kind: "record" }
+                : contract
+                  ? { name: contract.name, kind: "contract" }
+                  : null
+            }
+            confirmLabel={request ? "Unlink request" : "Unlink contract"}
+          />
+        );
+      })()}
 
       {/* The money, in the three shapes the summary reads it in. */}
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -865,6 +1055,24 @@ export function OpportunityDetail({
             /* The accrual schedule follows the USD / local switch above it;
                every other band stays in dollars. */
             formatAmount={accrualMoney}
+            /* A linked request or contract comes off this deal from its own
+               row, for the people its route lets do it (Anir, Oct 1). */
+            rowAction={(bandKey, item) => {
+              const request =
+                bandKey === "solutionRequests" ? unlinkable?.requests[item.id] : undefined;
+              const contract =
+                bandKey === "contracts" ? unlinkable?.contracts[item.id] : undefined;
+              if (!request && !contract) return null;
+              return (
+                <UnlinkX
+                  label={`Unlink ${request ? request.ref : contract!.name} from ${dealLabel}`}
+                  disabled={unlinkBusy}
+                  onClick={() =>
+                    setUnlinkingRow({ kind: request ? "request" : "contract", id: item.id })
+                  }
+                />
+              );
+            }}
             /* An add button in every tab, beside the way out to the module.
                The tab that tells you there are none is the place you look for
                the way to make one. */

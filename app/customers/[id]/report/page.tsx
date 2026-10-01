@@ -25,6 +25,8 @@ import type { RecommendedService } from "@/lib/types";
 import { geographyWithFlag } from "@/lib/countryFlags";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
+import { isSomebody } from "@/lib/entityHref";
 
 /** Which account's report. A static "Account report" was indistinguishable
  *  across open tabs, the same way the customer page itself was (found Aug 14
@@ -119,8 +121,16 @@ export default async function AccountReportPage({
     },
     // Show the effective owner (the same rep the pipeline/forecast assign) so the
     // report doesn't read "Unassigned" while the deal is clearly owned elsewhere.
-    { label: "Owner", value: ownerFor(customer) },
-    { label: "Competitor", value: customer.competitor || "-" },
+    {
+      label: "Owner",
+      value: ownerFor(customer),
+      avatar: isSomebody(ownerFor(customer)) ? ownerFor(customer) : undefined,
+    },
+    {
+      label: "Competitor",
+      value: customer.competitor || "-",
+      logo: isSomebody(customer.competitor) ? customer.competitor : undefined,
+    },
     {
       label: "Open value",
       value: openValue ? formatMoney(openValue) : "-",
@@ -135,7 +145,9 @@ export default async function AccountReportPage({
         <article className="bg-white rounded-xl border border-border-light shadow-card p-10 print:border-0 print:shadow-none print:p-0">
           {/* header */}
           <header className="flex items-start justify-between gap-4 border-b border-border-light pb-5 mb-6">
-            <div>
+            <div className="flex min-w-0 items-center gap-4">
+            <CompanyLogo name={customer.company_name} className="h-12 w-12 shrink-0 text-[16px]" />
+            <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-blue-primary">
                 Freyr · Account Report
               </p>
@@ -145,6 +157,7 @@ export default async function AccountReportPage({
               <p className="text-[13px] text-text-secondary mt-1">
                 {customer.website_url?.replace(/^https?:\/\//, "") || ""}
               </p>
+            </div>
             </div>
             <p className="text-[12px] text-text-tertiary tnum text-right">
               Generated
@@ -160,7 +173,23 @@ export default async function AccountReportPage({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
                   {f.label}
                 </p>
-                <p className="text-[14px] text-text-primary mt-0.5">{f.value}</p>
+                {f.avatar ? (
+                  <PersonLink
+                    name={f.avatar}
+                    avatarClassName="h-6 w-6 shrink-0 text-[8px]"
+                    className="mt-0.5 text-[14px] text-text-primary"
+                  />
+                ) : f.logo ? (
+                  /* A competitor has no record page here: its mark, no door. */
+                  <CompanyLink
+                    name={f.logo}
+                    href={null}
+                    logoClassName="h-6 w-6 shrink-0 text-[8px]"
+                    className="mt-0.5 text-[14px] text-text-primary"
+                  />
+                ) : (
+                  <p className="text-[14px] text-text-primary mt-0.5">{f.value}</p>
+                )}
               </div>
             ))}
           </section>
@@ -185,9 +214,13 @@ export default async function AccountReportPage({
             <ul className="divide-y divide-border-light border-y border-border-light">
               {contacts.map((c) => (
                 <li key={c.id} className="flex items-center justify-between py-2.5">
-                  <span className="text-[14px] font-medium text-text-primary">
-                    {c.full_name}
-                  </span>
+                  <PersonLink
+                    kind="contact"
+                    contactId={c.id}
+                    name={c.full_name}
+                    avatarClassName="h-6 w-6 shrink-0 text-[8px]"
+                    className="text-[14px] font-medium text-text-primary"
+                  />
                   <span className="text-[13px] text-text-secondary">{c.job_title}</span>
                 </li>
               ))}

@@ -49,7 +49,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import { firstNameForUser } from "@/lib/userIdentity";
 import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
-import { contactHref, customerHref, teammateHref } from "@/lib/entityHref";
+import { contactHref, customerHref, isSomebody, teammateHref } from "@/lib/entityHref";
 
 export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
@@ -197,7 +197,7 @@ export default async function DashboardPage({
   // who"). Mirrors app/analytics/page.tsx's shape exactly.
   const stageDeals: Record<
     string,
-    { company: string; contact: string; value: number; customerId: string }[]
+    { company: string; contact: string; value: number; customerId: string; contactId: string }[]
   > = {};
   for (const st of STAGES) stageDeals[st] = [];
   for (const d of deals) {
@@ -206,12 +206,14 @@ export default async function DashboardPage({
       contact: d.contactName,
       value: d.value,
       customerId: d.customerId,
+      // So the contact's face opens their own page.
+      contactId: d.contactId,
     });
   }
   for (const st of STAGES) stageDeals[st].sort((a, b) => b.value - a.value);
   const outcomeContacts: Record<
     string,
-    { name: string; company: string; contactId: string }[]
+    { name: string; company: string; contactId: string; customerId: string }[]
   > = {};
   for (const i of allInteractions) {
     const label = OUTCOME_META[i.outcome]?.label || i.outcome;
@@ -221,6 +223,8 @@ export default async function DashboardPage({
       name: ct?.full_name || "Unknown",
       company: co?.company_name || "-",
       contactId: i.contact_id,
+      // So the company's logo opens its account.
+      customerId: i.customer_id,
     });
   }
 
@@ -724,7 +728,7 @@ export default async function DashboardPage({
                           </EntityLink>
                           <div className="min-w-0 flex-1">
                             <EntityLink href={contactHref(null, deal.contactName)} className="block truncate text-[11px] font-semibold text-text-primary">{deal.contactName}</EntityLink>
-                            <p className="truncate text-[10px] text-text-tertiary">Owned by <EntityLink href={teammateHref(deal.owner)}>{deal.owner}</EntityLink></p>
+                            <p className="truncate text-[10px] text-text-tertiary">Owned by <PersonLink name={deal.owner} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="gap-1 align-middle" /></p>
                           </div>
                         </div>
                         <div className="mt-3 rounded-md border border-blue-subtle bg-blue-light/40 px-3 py-2.5">
@@ -900,7 +904,9 @@ export default async function DashboardPage({
                               <div className="mt-3 grid grid-cols-3 gap-2 text-[10.5px]">
                                 <div><p className="text-text-tertiary">Logged</p><p className="mt-0.5 font-semibold text-text-primary"><LocalTime value={a.when} /></p></div>
                                 <div><p className="text-text-tertiary">Follow-up</p><p className="mt-0.5 font-semibold text-text-primary">{a.followUp ? formatDateTime(a.followUp) : "Not scheduled"}</p></div>
-                                <div><p className="text-text-tertiary">Account owner</p><p className="mt-0.5 truncate font-semibold text-text-primary">{activityCustomer?.owner || activityDeals[0]?.owner || "Unassigned"}</p></div>
+                                {/* The account's own owner already wears their face above;
+                                    an owner taken from the deal gets it here. */}
+                                <div><p className="text-text-tertiary">Account owner</p>{activityCustomer?.owner ? <p className="mt-0.5 truncate font-semibold text-text-primary">{activityCustomer.owner}</p> : <PersonLink name={activityDeals[0]?.owner || "Unassigned"} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="mt-0.5 flex gap-1.5 font-semibold text-text-primary" />}</div>
                               </div>
                               <div className="mt-3 rounded-md border border-blue-subtle bg-blue-light/40 px-3 py-2.5">
                                 <p className="text-[9.5px] font-semibold uppercase tracking-[0.05em] text-blue-primary">Recommended next move</p>
@@ -934,8 +940,14 @@ export default async function DashboardPage({
                             </span>
                             <div className="space-y-1 pt-0.5 min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[14px] font-semibold text-text-primary truncate group-hover:text-blue-primary transition-colors">
-                                  {a.company}
+                                {/* The company wears its logo; the row already opens it. */}
+                                <span className="flex min-w-0 items-center gap-1.5">
+                                  {isSomebody(a.company) && (
+                                    <CompanyLogo name={a.company} className="h-5 w-5 shrink-0 text-[7px]" />
+                                  )}
+                                  <span className="text-[14px] font-semibold text-text-primary truncate group-hover:text-blue-primary transition-colors">
+                                    {a.company}
+                                  </span>
                                 </span>
                                 <OutcomeBadge outcome={a.outcome} />
                               </div>

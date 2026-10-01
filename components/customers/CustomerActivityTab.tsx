@@ -21,6 +21,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { ScrollHint } from "@/components/ui/ScrollHint";
 import { useToast } from "@/components/ui/Toast";
 import { OfferingActivities } from "@/components/customers/OfferingActivities";
+import { formatMoney } from "@/lib/pipeline";
 import type {
   CustomerOfferingEngagementVersion,
   OfferingUsage,
@@ -44,15 +45,22 @@ import type {
  */
 export function CustomerActivityTab({
   customerId,
+  customerName,
   usage,
   offerings,
   canEdit,
+  canEditAccount = false,
   children,
 }: {
   customerId: string;
+  /** The account's name, so a removal names the customer it comes off. */
+  customerName?: string;
   usage: OfferingUsage[];
   offerings: Array<{ id: string; name: string; category?: string | null }>;
   canEdit: boolean;
+  /** The PATCH route's own answer for this account, resolved on the server.
+   *  Gates the hover X that takes a file off an activity. */
+  canEditAccount?: boolean;
   /** The interaction log, kept below as the touch history it always was. */
   children?: React.ReactNode;
 }) {
@@ -94,7 +102,8 @@ export function CustomerActivityTab({
 
   async function save(
     offeringId: string,
-    versions: CustomerOfferingEngagementVersion[]
+    versions: CustomerOfferingEngagementVersion[],
+    done?: string
   ) {
     setPickerSelection(null);
     const existing = state.find((u) => u.offering_id === offeringId);
@@ -116,7 +125,7 @@ export function CustomerActivityTab({
       });
       const data = await res.json();
       if (data.ok) {
-        toast("Activity saved.");
+        toast(done ?? "Activity saved.");
         router.refresh();
       } else {
         toast(data.error || "Couldn't save that.", "error");
@@ -383,8 +392,13 @@ export function CustomerActivityTab({
                       <div className="tab-panel">
                         <OfferingActivities
                           customerId={customerId}
+                          customerName={customerName}
+                          offeringName={offering.name}
                           versions={u.engagement_versions || []}
-                          onSave={(versions) => void save(u.offering_id, versions)}
+                          onSave={(versions, _touched, _prevStatus, done) =>
+                            void save(u.offering_id, versions, done)
+                          }
+                          canEdit={canEditAccount}
                         />
                       </div>
                     )}
@@ -426,21 +440,66 @@ export function CustomerActivityTab({
         </section>
       )}
 
+      {/* NAMES THE OFFERING AND THE CUSTOMER, and counts what goes with it
+          (Anir, Oct 1: "u have to say what customer what offering so there
+          is absolutely no confusion"). The revenue lines leave with the
+          activities, so they are counted too. */}
       <ConfirmDialog
         open={confirmRemove !== null}
         onClose={() => setConfirmRemove(null)}
         onConfirm={() => confirmRemove && void removeOffering(confirmRemove)}
-        title="Remove this offering from the account?"
+        title={(() => {
+          const name = confirmRemove ? byId.get(confirmRemove)?.name : undefined;
+          const account = customerName || "this account";
+          return name
+            ? `Remove ${name} and its activities from ${account}?`
+            : `Remove this offering and its activities from ${account}?`;
+        })()}
         body={(() => {
           if (!confirmRemove) return "";
           const u = state.find((x) => x.offering_id === confirmRemove);
           const n = u?.engagement_versions?.length || 0;
-          const name = byId.get(confirmRemove)?.name ?? "this offering";
-          return n > 0
-            ? `${name} and its ${n} logged ${n === 1 ? "activity" : "activities"} come off this account. The offering itself stays in the catalogue.`
-            : `${name} comes off this account. Nothing has been logged on it, so nothing else is lost.`;
+          const lines = u?.revenue_lines || [];
+          const lineTotal = lines.reduce((sum, line) => sum + (line.amount || 0), 0);
+          const name = byId.get(confirmRemove)?.name;
+          const goes: string[] = [];
+          if (n > 0) goes.push(`${n} logged ${n === 1 ? "activity" : "activities"}`);
+          if (lines.length > 0) {
+            goes.push(
+              `${lines.length} revenue ${lines.length === 1 ? "line" : "lines"}${
+                lineTotal > 0 ? ` (${formatMoney(lineTotal)})` : ""
+              }`
+            );
+          }
+          return (
+            <>
+              {name ? <b>{name}</b> : "This offering"} comes off{" "}
+              {customerName ? (
+                <>
+                  <b>{customerName}</b>&rsquo;s
+                </>
+              ) : (
+                "this account's"
+              )}{" "}
+              activity list
+              {goes.length > 0 ? (
+                <>
+                  , together with its <b>{goes.join(" and ")}</b>.
+                </>
+              ) : (
+                ". Nothing has been logged on it, so nothing else goes."
+              )}
+            </>
+          );
         })()}
-        confirmLabel="Remove it"
+        detail={(() => {
+          if (!confirmRemove) return undefined;
+          const name = byId.get(confirmRemove)?.name || "The offering";
+          return `${name} stays in the catalogue, and ${
+            customerName ? `${customerName}'s` : "this account's"
+          } other offerings are not touched.`;
+        })()}
+        confirmLabel="Remove offering"
       />
 
       {/* WIDE, TALL, PINNED, SEARCHABLE (Anir, Sep 4: "I don't even know why

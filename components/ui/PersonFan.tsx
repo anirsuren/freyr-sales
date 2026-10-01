@@ -41,6 +41,8 @@ export function PersonFan({
      more right after the last profile picture"). Eight faces already pushed
      the group chips wide enough to crowd the row. */
   max = 5,
+  nested = false,
+  ringClassName = "ring-[color:var(--white)]",
 }: {
   people: FanPerson[];
   /** Avatar sizing, passed straight through (Avatar styles via className). */
@@ -48,6 +50,12 @@ export function PersonFan({
   /** How far the faces sit under each other when collapsed, in px. */
   overlap?: number;
   max?: number;
+  /** The fan sits inside an <a> or <button> (a group row that opens or
+   *  expands): each face navigates from a span, never an anchor in a button. */
+  nested?: boolean;
+  /** The separator ring between overlapping faces, in the row's own
+   *  background colour (a tinted row wants its tint, not a white halo). */
+  ringClassName?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   if (people.length === 0) return null;
@@ -89,10 +97,10 @@ export function PersonFan({
             <span
               className={cn(
                 "relative isolate inline-flex overflow-hidden rounded-full bg-[var(--surface)] outline-none transition-[transform,box-shadow] duration-150 hover:z-20 hover:-translate-y-0.5 hover:scale-110 hover:ring-2 hover:ring-blue-primary/55",
-                stacked && "ring-2 ring-[color:var(--white)]"
+                stacked && cn("ring-2", ringClassName)
               )}
             >
-              <EntityLink href={teammateHref(p.name)} className="block rounded-full" title={p.name}>
+              <EntityLink href={teammateHref(p.name)} nested={nested} className="block rounded-full" title={p.name}>
                 <Avatar
                   name={p.name}
                   className={avatarClassName}

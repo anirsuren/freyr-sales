@@ -3161,7 +3161,7 @@ export function OpportunitiesBrowser({
                   the money lands, not how likely it is ("I might sign today
                   but this revenue will come in a year and a half"), so a 99%
                   deal can still be future revenue. */}
-              <Field label="Revenue type">
+              <Field label="Revenue type" requirement="none">
                 {(() => {
                   const conf =
                     editing.rows[0]?.confidence === "" ||
@@ -3286,6 +3286,7 @@ export function OpportunitiesBrowser({
               </Field>
               <Field
                 label="Opportunity id"
+                requirement="none"
                 hint="Created by the system the moment the deal is saved, so it is never typed by hand. Deals imported from Freyr's CRM keep the reference they arrived with."
               >
                 {/* Nobody types this anymore — it is assigned, not entered. */}
@@ -3699,22 +3700,86 @@ export function OpportunitiesBrowser({
         )}
       </Modal>
 
-      <ConfirmDialog
-        open={confirmRemove !== null}
-        subject={confirmRemove ? { name: confirmRemove.name, kind: "opportunity" } : null}
-        onClose={() => setConfirmRemove(null)}
-        onConfirm={() => confirmRemove && void remove(confirmRemove)}
-        busy={busy}
-        title="Remove this opportunity?"
-        body={
-          <>
-            <b>{confirmRemove?.name}</b> comes off the pipeline, and off any goal
-            that counted it as a line item.
-          </>
-        }
-        detail="Results already logged on it stay; they simply stop naming a deal."
-        confirmLabel="Remove opportunity"
-      />
+      {/* SAY WHICH DEAL, WITH WHOM, FOR HOW MUCH (Anir, Oct 1: "u have to
+          say what customer what offering so there is absolutely no
+          confusion"). The same total its row shows, plus the customer, the
+          offering and Freyr's own reference. Nothing the deal lacks is
+          guessed. */}
+      {(() => {
+        const r = confirmRemove;
+        const name = (r?.name || "").trim();
+        const customer = (r?.customer || "").trim();
+        const inName =
+          !!customer && name.toLowerCase().includes(customer.toLowerCase());
+        const total = r ? opportunityValue(r) : 0;
+        const worth = Number.isFinite(total) && total > 0 ? money(total) : "";
+        const offeringNames = r
+          ? [
+              ...new Set(
+                [
+                  ...linesOf(r).map(
+                    (line) =>
+                      (line.offeringId ? offeringName.get(line.offeringId) : undefined) ??
+                      line.offeringLabel
+                  ),
+                  ...(r.offeringIds ?? []).map((id) => offeringName.get(id)),
+                  ...(r.offeringLabels ?? []),
+                ]
+                  .map((n) => (n ?? "").trim())
+                  .filter(Boolean)
+              ),
+            ]
+          : [];
+        const offering =
+          offeringNames.length <= 1
+            ? (offeringNames[0] ?? "")
+            : offeringNames.length === 2
+              ? `${offeringNames[0]} and ${offeringNames[1]}`
+              : `${offeringNames[0]}, ${offeringNames[1]} and ${offeringNames.length - 2} more`;
+        return (
+          <ConfirmDialog
+            open={confirmRemove !== null}
+            subject={confirmRemove ? { name: confirmRemove.name, kind: "opportunity" } : null}
+            onClose={() => setConfirmRemove(null)}
+            onConfirm={() => confirmRemove && void remove(confirmRemove)}
+            busy={busy}
+            title={
+              name
+                ? `Remove the ${name} opportunity${customer && !inName ? ` with ${customer}` : ""}?`
+                : `Remove this opportunity${customer ? ` with ${customer}` : ""}?`
+            }
+            body={
+              r ? (
+                <>
+                  The{" "}
+                  {worth && (
+                    <>
+                      <b>{worth}</b>{" "}
+                    </>
+                  )}
+                  deal
+                  {customer && (
+                    <>
+                      {" "}with <b>{customer}</b>
+                    </>
+                  )}
+                  {offering && (
+                    <>
+                      {" "}for <b>{offering}</b>
+                    </>
+                  )}
+                  {r.externalId ? ` (${r.externalId})` : ""} comes off the
+                  pipeline, and off any goal that counted it as a line item.
+                </>
+              ) : (
+                ""
+              )
+            }
+            detail="Results already logged on it stay; they simply stop naming a deal."
+            confirmLabel="Remove opportunity"
+          />
+        );
+      })()}
 
     </div>
   );
@@ -3729,6 +3794,7 @@ function Field({
   label,
   hint,
   required = false,
+  requirement,
   children,
 }: {
   label: string;
@@ -3745,17 +3811,22 @@ function Field({
    * Same red asterisk, same meaning, on both screens.
    */
   required?: boolean;
+  /** EVERY FIELD SAYS WHICH IT IS (Anir, Oct 1), like the shared Field: a
+   *  star when required, "(optional)" otherwise. "none" is only for a fact
+   *  nobody types here, such as the id the system assigns. */
+  requirement?: "required" | "optional" | "none";
   children: React.ReactNode;
 }) {
+  const state = requirement ?? (required ? "required" : "optional");
   return (
     <label className="block min-w-0">
       <span className="mb-1 flex items-center gap-1 text-[12px] font-semibold text-text-primary">
         {label}
-        {required && (
-          <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">
-            *
-          </span>
-        )}
+        {state === "required" ? (
+          <RequiredMark />
+        ) : state === "optional" ? (
+          <OptionalMark />
+        ) : null}
         {hint && <InfoHint text={hint} />}
       </span>
       {children}
@@ -3993,7 +4064,7 @@ function SingleOfferingEditor({
           one. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_170px]">
         <div className="min-w-0">
-          <label className={labelCls}>Offering <span aria-label="required" title="Required" className="text-[color:var(--status-red)]">*</span><InfoHint text="Which product or service this deal is for. Not in the catalogue yet? pick the last option in the list and type its name." /></label>
+          <label className={labelCls}>Offering<RequiredMark /><InfoHint text="Which product or service this deal is for. Not in the catalogue yet? pick the last option in the list and type its name." /></label>
           <div className="mt-1">
             <MultiPicker
               variant="dropdown"

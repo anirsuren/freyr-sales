@@ -1543,7 +1543,7 @@ export function AddMaterialButton({
               placeholder={
                 kind ? `e.g. ${MATERIAL_META[kind].label}. Q3 deck` : "e.g. Q3 deck"
               }
-              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
+              className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
             />
           </div>
 
@@ -1556,13 +1556,7 @@ export function AddMaterialButton({
               className="mb-1.5 flex items-baseline gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary"
             >
               Material Description
-              {isProposalFolder(folder) ? (
-                <RequiredMark />
-              ) : (
-                <span className="text-[10px] font-medium normal-case tracking-normal text-text-tertiary">
-                  Optional
-                </span>
-              )}
+              {isProposalFolder(folder) ? <RequiredMark /> : <OptionalMark />}
             </label>
             <textarea
               required={isProposalFolder(folder)}
@@ -1575,7 +1569,7 @@ export function AddMaterialButton({
                   ? "Enter month and year of proposal submission, e.g. submitted March 2026"
                   : "One sentence on what this file is for: skip it if the title says enough."
               }
-              className="w-full resize-y rounded-lg border border-border bg-white px-3 py-2 text-[14px] leading-snug text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
+              className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] leading-snug text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
             />
             {isProposalFolder(folder) && (
               <p className="mt-1.5 text-[11.5px] leading-snug text-text-secondary">
@@ -1883,17 +1877,15 @@ export function AddMaterialButton({
                       </div>
                       <div className="mt-2.5">
                         <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
-                          Description{" "}
-                          <span className="font-medium normal-case tracking-normal">
-                            Optional
-                          </span>
+                          Description
+                          <OptionalMark />
                         </span>
                         <input
                           value={fileOverrides[key]?.description ?? description}
                           onChange={(event) => updateFileOverride(selected, { description: event.target.value })}
                           aria-label={`Description for ${selected.name}`}
                           placeholder="One sentence on what this file is for"
-                          className="h-9 w-full rounded-md border border-border bg-white px-2.5 text-[12px] text-text-primary outline-none focus:border-blue-primary"
+                          className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none focus:border-blue-primary"
                         />
                       </div>
                     </div>
@@ -1911,7 +1903,7 @@ export function AddMaterialButton({
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://…"
-                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
+                  className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary focus:outline-none focus:border-blue-subtle focus:shadow-input-focus"
                 />
               </div>
             )}
@@ -2155,7 +2147,7 @@ export function AddMaterialButton({
               maxLength={60}
               placeholder="e.g. Regional sales decks"
               aria-label="New folder name"
-              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-[13.5px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary focus:shadow-input-focus"
+              className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary focus:shadow-input-focus"
             />
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4">

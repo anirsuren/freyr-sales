@@ -12,6 +12,7 @@ import {
   ENTRY_COLOR,
   GOAL_PROGRESS_COLOR,
   entryStatus,
+  fiscalLabel,
   fmtAmount,
   goalFamilyActuals,
   type PerformanceState,
@@ -24,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { EvidenceLinkRow } from "./EvidenceViewer";
 import type { RunOp } from "./PerformanceModule";
 import { CompanyLink, EntityLink } from "@/components/ui/EntityLink";
-import { teammateHref } from "@/lib/entityHref";
+import { isSomebody, teammateHref } from "@/lib/entityHref";
 
 /**
  * SIGNING OFF A GOAL IS A DECISION, NOT A TOGGLE (Anir, Aug 15: "when I press
@@ -144,12 +145,40 @@ export function VerifyGoalModal({
   const missingEvidenceCount = visibleEntries.filter(
     (entry) => !entry.evidence?.length
   ).length;
+  /* WHICH APPROVAL, ON WHICH GOAL, FOR WHICH YEAR (Anir, Oct 1: "u have to
+     be super super specific"). A person, a subgoal, or a person on a subgoal
+     is named before the goal, and the goal's financial year says which span
+     the sign-off covers, since the same goal name comes back every year. */
+  const fy = goal.year ? fiscalLabel(goal.year) : "";
+  const where = scope
+    ? `${scope.label} ${scope.subgoalId ? "in" : "on"} ${goal.name}`
+    : goal.name;
+  const span = fy ? ` for ${fy}` : "";
+  const firstName = scope?.person
+    ? scope.person.trim().split(/\s+/)[0] || scope.person
+    : "";
+  const confirmWords = undoing
+    ? firstName
+      ? `Take back ${firstName}'s approval`
+      : scope?.subgoalId
+        ? "Take back subgoal approval"
+        : "Take back goal approval"
+    : firstName
+      ? `Verify and lock ${firstName}'s share`
+      : scope?.subgoalId
+        ? "Verify and lock subgoal"
+        : "Verify and lock goal";
 
   return (
     <Modal
       open
       onClose={onClose}
-      title={undoing ? "Take back this approval" : "Verify this goal"}
+      title={
+        undoing
+          ? `Take back the approval for ${where}${span}`
+          : `Verify ${where}${span}`
+      }
+      wrapTitle
       size="workflow"
       tall
     >
@@ -162,6 +191,12 @@ export function VerifyGoalModal({
       <div className="rounded-xl bg-surface px-4 py-3.5">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <b className="min-w-0 flex-1 truncate text-[15px] font-bold text-text-primary">
+            {/* The person being signed off wears their face. */}
+            {scope && isSomebody(scope.person) && (
+              <EntityLink href={teammateHref(scope.person)} className="mr-2 inline-flex rounded-full align-middle" title={scope.person}>
+                <Avatar name={scope.person} className="h-6 w-6 shrink-0 text-[9px]" />
+              </EntityLink>
+            )}
             {subjectName}
             {scope && (
               <span className="ml-1.5 text-[12px] font-semibold text-text-tertiary">
@@ -415,7 +450,7 @@ export function VerifyGoalModal({
           )}
         >
           <ShieldCheck size={14} strokeWidth={2.4} />
-          {undoing ? "Take back the approval" : "Verify and lock"}
+          {confirmWords}
         </button>
       </div>
     </Modal>

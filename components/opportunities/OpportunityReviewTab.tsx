@@ -275,7 +275,7 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
     <FormRoom icon={Flag} title="The discussion" defaultOpen summary={draft.compellingEvent.trim() ? "Compelling event written" : "Nothing written yet"}>
       <div className="grid gap-3 sm:grid-cols-[220px_minmax(0,1fr)] sm:items-start">
         <UiField label="Review date" required hint={dateHint}>
-          <DateField className={field} value={reviewedOn} onChange={(event) => setReviewedOn(event)} ariaLabel="Review date" />
+          <DateField value={reviewedOn} onChange={(event) => setReviewedOn(event)} ariaLabel="Review date" />
         </UiField>
         {/* NO BADGE HERE (Anir, Sep 28: "what does new snapshot mean? Why is
             it just a random tag there? It looks like a button"). Nothing to
@@ -292,7 +292,7 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
     <FormRoom icon={CalendarDays} title="Customer commitment" summary={commitSummary}>
       <p className="mb-3 text-[12px] text-text-secondary">The next step agreed with the customer: the commitment made together, not an internal intention.</p>
       {editing ? <div className="grid gap-3 sm:grid-cols-2">
-        <UiField label="Date"><DateField className={field} value={draft.nextStep.date} onChange={(e) => update({ nextStep: { ...draft.nextStep, date: e } })} ariaLabel="Next step date" /></UiField>
+        <UiField label="Date"><DateField value={draft.nextStep.date} onChange={(e) => update({ nextStep: { ...draft.nextStep, date: e } })} ariaLabel="Next step date" /></UiField>
         <UiField label="Objective"><Input value={draft.nextStep.objective} onChange={(e) => update({ nextStep: { ...draft.nextStep, objective: e.target.value } })} placeholder="What will be achieved?" /></UiField>
         <UiField label="Highest stakeholder"><RecordPicker choices={contactChoices} name={draft.nextStep.stakeholderName} id={draft.nextStep.stakeholderContactId} placeholder="Search contacts" emptyLabel="No contacts found" onPick={(choice) => { const contact = options?.contacts.find((item) => item.id === choice.id); update({ nextStep: { ...draft.nextStep, stakeholderName: choice.label, stakeholderContactId: contact?.id, stakeholderTitle: contact?.title || draft.nextStep.stakeholderTitle } }); }} onCreate={(name) => update({ nextStep: { ...draft.nextStep, stakeholderName: name, stakeholderContactId: undefined, stakeholderTitle: "" } })} /></UiField>
         <UiField label="Stakeholder title"><Input value={draft.nextStep.stakeholderTitle} onChange={(e) => update({ nextStep: { ...draft.nextStep, stakeholderTitle: e.target.value } })} placeholder="Title" /></UiField>
@@ -515,7 +515,7 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
               onPick={(choice) => setActionDraft((current) => current ? { ...current, owner: choice.label, ownerId: options?.teammates.find((teammate) => teammate.id === choice.id)?.id } : current)} />
           </UiField>
           <UiField label="Deadline" required>
-            <DateField className={field} value={actionDraft.deadline} onChange={(value) => setActionDraft((current) => current ? { ...current, deadline: value } : current)} ariaLabel="Action deadline" />
+            <DateField value={actionDraft.deadline} onChange={(value) => setActionDraft((current) => current ? { ...current, deadline: value } : current)} ariaLabel="Action deadline" />
           </UiField>
         </div>
         {actionError && <p role="alert" className="text-[12.5px] font-medium text-[color:var(--status-red)]">{actionError}</p>}

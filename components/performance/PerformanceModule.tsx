@@ -71,7 +71,7 @@ import {
   type CurrencyCode,
 } from "@/lib/currency";
 import { EvidencePicker } from "./EvidencePicker";
-import {cn, todayISO} from "@/lib/utils";
+import {cn, formatDate, todayISO} from "@/lib/utils";
 import { type FilterGroup } from "@/components/ui/FilterMenu";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { useStickyValue } from "@/lib/useStickyValue";
@@ -114,7 +114,7 @@ import { PeopleTab } from "./PeopleTab";
 import { GroupPerformanceTab } from "./GroupPerformanceTab";
 import { tint } from "@/lib/tint";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
-import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
+import { CompanyLink, ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
 import { customerHref, teammateHref } from "@/lib/entityHref";
 
 /**
@@ -1277,7 +1277,11 @@ function MasterTab({
                         expandedId === g.id
                           ? "bg-surface [box-shadow:inset_3px_0_0_0_var(--goal-accent)]"
                           : "hover:bg-surface",
-                        expandedId !== null && expandedId !== g.id && "opacity-45 hover:opacity-100"
+                        expandedId !== null && expandedId !== g.id && "opacity-45 hover:opacity-100",
+                        /* The owner fan's separator ring wears the row's colour. */
+                        expandedId === g.id
+                          ? "[--fan-ring:var(--surface)]"
+                          : "[--fan-ring:var(--white)] hover:[--fan-ring:var(--surface)]"
                       )}
                       style={{ ["--goal-accent" as string]: typeMeta(g.type).color }}
                     >
@@ -1348,17 +1352,20 @@ function MasterTab({
                       </td>
                       <td className="px-4 py-4">
                         {owners.length > 0 ? (
-                          <span className="flex -space-x-1.5">
-                            {owners.slice(0, 4).map((o) => (
-                              <EntityLink key={o} href={teammateHref(o)} className="rounded-full">
-                                <Avatar
-                                  name={o}
-                                  tooltip={"Goal owner: " + o}
-                                  className="h-6 w-6 border-2 border-white text-[9px]"
-                                />
-                              </EntityLink>
-                            ))}
-                          </span>
+                          /* The shared fan: four faces, then a +N that names
+                             the rest; no white border round each face. */
+                          <PersonFan
+                            nested
+                            people={owners.map((o) => ({
+                              name: o,
+                              role: "Goal owner",
+                              context: g.name,
+                            }))}
+                            avatarClassName="h-6 w-6 text-[9px]"
+                            overlap={-6}
+                            max={4}
+                            ringClassName="ring-[color:var(--fan-ring)]"
+                          />
                         ) : (
                           <span className="text-[11.5px] text-text-tertiary">·</span>
                         )}
@@ -1525,33 +1532,24 @@ function MasterTab({
           const name = state.goals.find((x) => x.id === id)?.name ?? "This goal";
           void run({ op: "remove-goal", goalId: id }, `${name} removed from the master`);
         }}
-        title="Remove this goal?"
+        /* SAY WHAT GETS DESTROYED, AND WHICH GOAL. Removing a goal deletes
+           every result logged against it, which "stops counting it" badly
+           understates: the entries are gone, not merely uncounted. The words
+           live in goalRemovalWords so the popup and the split pane say the
+           same thing. */
+        title={(() => {
+          const g = state.goals.find((x) => x.id === confirmRemoveId);
+          return g ? goalRemovalWords(state, g).title : "Remove this goal?";
+        })()}
         body={(() => {
-          /* SAY WHAT GETS DESTROYED. Removing a goal deletes every result
-             logged against it, which "stops counting it" badly understates:
-             the entries are gone, not merely uncounted. */
-          const logged = state.actuals.filter(
-            (a) => a.goalId === confirmRemoveId
-          ).length;
-          return (
-            <>
-              <b>
-                {state.goals.find((x) => x.id === confirmRemoveId)?.name ??
-                  "This goal"}
-              </b>{" "}
-              and its subgoals come off the master, and Org performance stops
-              counting it.
-              {logged > 0 && (
-                <>
-                  {" "}
-                  <b>
-                    The {logged} {logged === 1 ? "result" : "results"} logged
-                    against it {logged === 1 ? "is" : "are"} deleted too.
-                  </b>
-                </>
-              )}
-            </>
-          );
+          const g = state.goals.find((x) => x.id === confirmRemoveId);
+          return g
+            ? goalRemovalWords(state, g).body
+            : "This goal and its subgoals come off the Goal Master.";
+        })()}
+        detail={(() => {
+          const g = state.goals.find((x) => x.id === confirmRemoveId);
+          return g ? goalRemovalWords(state, g).detail : undefined;
         })()}
         confirmLabel="Remove goal"
       />
@@ -1637,6 +1635,9 @@ function GroupSplitPanel({
   const [editingPerson, setEditingPerson] = useState<string | null>(null);
   const [targetDraft, setTargetDraft] = useState("");
   const [dropFor, setDropFor] = useState<string | null>(null);
+  /** "Split evenly" writes over every person's target on this goal at once,
+   *  so it asks first and says whose numbers change. */
+  const [confirmSplit, setConfirmSplit] = useState(false);
 
   const roster = [
     ...new Set([group.head, ...group.members].map((m) => m.trim()).filter(Boolean)),
@@ -1722,15 +1723,8 @@ function GroupSplitPanel({
             <button
               type="button"
               disabled={busy}
-              onClick={async () => {
-                const each = Math.round(groupTarget / on.length);
-                for (const person of on) {
-                  await run(
-                    { op: "assign-goal", goalId: goal.id, person, target: each },
-                    ""
-                  );
-                }
-              }}
+              /* Asks first: the dialog below the people list runs the split. */
+              onClick={() => setConfirmSplit(true)}
               className="mt-2 cursor-pointer rounded-lg bg-blue-light px-2.5 py-1 text-[11.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-primary hover:text-white disabled:opacity-50"
             >
               Split evenly ({fmtAmount(goal.unit, Math.round(groupTarget / on.length))} each)
@@ -1892,21 +1886,103 @@ function GroupSplitPanel({
           );
           if (okDone) setDropFor(null);
         }}
-        title="Take them off this goal?"
+        /* THE PERSON, THE GOAL AND THE GROUP, by name (Anir, Oct 1: "u have
+           to be super super specific"). One person can sit in two groups
+           that both carry the goal, so the group is part of the question. */
+        title={
+          dropFor
+            ? `Take ${dropFor} off ${goal.name} for ${group.name}?`
+            : "Take them off this goal?"
+        }
         body={
           dropFor ? (
             <>
               <b>{dropFor}</b> comes off <b>{goal.name}</b> and stays in{" "}
-              {group.name}.
+              <b>{group.name}</b>.
             </>
           ) : (
             ""
           )
         }
-        detail="Their target on this goal goes with them. Anything they already logged stays on the record."
-        confirmLabel="Take them off"
+        detail={(() => {
+          if (!dropFor) return undefined;
+          const target = targetOf(dropFor);
+          const logged = (state.actuals ?? []).filter(
+            (x) => x.goalId === goal.id && x.person === dropFor
+          ).length;
+          const targetWords =
+            target > 0
+              ? `Their ${fmtAmount(goal.unit, target)} target on this goal goes with them.`
+              : "Their target on this goal goes with them.";
+          const loggedWords =
+            logged > 0
+              ? `The ${logged} ${logged === 1 ? "result" : "results"} they already logged ${logged === 1 ? "stays" : "stay"} on the record.`
+              : "Anything they already logged stays on the record.";
+          return `${targetWords} ${loggedWords}`;
+        })()}
+        confirmLabel={
+          dropFor
+            ? `Take ${dropFor.trim().split(/\s+/)[0] || dropFor} off`
+            : "Take them off"
+        }
         busy={busy}
       />
+
+      {/* SPLITTING EVENLY WRITES OVER EVERYBODY'S TARGET on this goal in one
+          press, so it says whose and by how much before it does. The loop is
+          the one the button used to run straight away. */}
+      {(() => {
+        const each = on.length > 0 ? Math.round(groupTarget / on.length) : 0;
+        const replacing = on.filter((m) => targetOf(m) > 0 && targetOf(m) !== each);
+        const names =
+          replacing.length > 3
+            ? `${replacing.slice(0, 3).join(", ")} and ${replacing.length - 3} more`
+            : replacing.length > 1
+              ? `${replacing.slice(0, -1).join(", ")} and ${replacing[replacing.length - 1]}`
+              : (replacing[0] ?? "");
+        return (
+          <ConfirmDialog
+            open={confirmSplit}
+            onClose={() => setConfirmSplit(false)}
+            onConfirm={async () => {
+              setConfirmSplit(false);
+              const split = Math.round(groupTarget / on.length);
+              for (const person of on) {
+                await run(
+                  { op: "assign-goal", goalId: goal.id, person, target: split },
+                  ""
+                );
+              }
+            }}
+            title={`Split the ${fmtAmount(goal.unit, groupTarget)} ${group.name} target on ${goal.name} evenly?`}
+            body={
+              on.length === 1 ? (
+                <>
+                  <b>{on[0]}</b> in <b>{group.name}</b> gets a target of{" "}
+                  <b>{fmtAmount(goal.unit, each)}</b> on <b>{goal.name}</b>.
+                </>
+              ) : (
+                <>
+                  Each of the <b>{on.length} people</b> in <b>{group.name}</b>{" "}
+                  on <b>{goal.name}</b> gets a target of{" "}
+                  <b>{fmtAmount(goal.unit, each)}</b>.
+                </>
+              )
+            }
+            detail={
+              replacing.length === 1
+                ? `This replaces ${replacing[0]}'s current ${fmtAmount(goal.unit, targetOf(replacing[0]))} target.`
+                : replacing.length > 1
+                  ? `This replaces the current targets of ${names}.`
+                  : "Nobody on it has a different target yet, so nothing is written over."
+            }
+            /* Blue: it sets targets and deletes nothing. */
+            tone="primary"
+            confirmLabel="Split target evenly"
+            busy={busy}
+          />
+        );
+      })()}
 
       {/* ------------------------------------------------- set one target */}
       {/* Stacked when this panel is already inside the goal dialog, so it
@@ -1921,7 +1997,7 @@ function GroupSplitPanel({
           <>
             <p className="mb-3 text-[12.5px] text-text-secondary">
               On <b className="text-text-primary">{goal.name}</b> for{" "}
-              {editingPerson}, in {group.name}.
+              <PersonLink name={editingPerson} avatarClassName="h-[18px] w-[18px] shrink-0 text-[7px]" className="gap-1 align-middle" />, in {group.name}.
             </p>
             <input
               autoFocus
@@ -1939,7 +2015,7 @@ function GroupSplitPanel({
               inputMode="numeric"
               placeholder="0"
               aria-label="Target"
-              className="w-full rounded-lg border border-border-light px-3 py-2 text-[14px] font-semibold text-text-primary tnum outline-none focus:border-blue-primary"
+              className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] font-semibold text-text-primary tnum outline-none focus:border-blue-primary"
             />
             <p className="mt-1.5 text-[11.5px] text-text-tertiary">
               Leave it at 0 to take the number off and leave them on the goal
@@ -2229,23 +2305,25 @@ function AssignGroupModal({
                         />
                         {expanded ? "Hide" : "Show"} {roster.length}{" "}
                         {roster.length === 1 ? "person" : "people"}
-                        <span className="ml-auto flex items-center pl-1.5">
-                          {roster.slice(0, 5).map((n, i) => (
-                            <EntityLink
-                              key={n}
-                              nested
-                              href={teammateHref(n)}
-                              title={n}
-                              className={cn("rounded-full", i > 0 && "-ml-1.5")}
-                            >
-                              <Avatar name={n} className="h-5 w-5 text-[7px] ring-1 ring-white" />
-                            </EntityLink>
-                          ))}
-                          {roster.length > 5 && (
-                            <span className="ml-1 text-[10px] font-semibold text-text-tertiary tnum">
-                              +{roster.length - 5}
-                            </span>
-                          )}
+                        {/* The shared fan: five faces, then a +N that names
+                            the rest on hover. The negative margin keeps the
+                            line at its old height. */}
+                        <span className="-my-0.5 ml-auto flex pl-0.5">
+                          <PersonFan
+                            nested
+                            people={roster.map((n) => ({
+                              name: n,
+                              role: n === g.head ? "Group owner" : "In this group",
+                              context: g.name,
+                            }))}
+                            avatarClassName="h-5 w-5 text-[7px]"
+                            overlap={-6}
+                            ringClassName={
+                              on
+                                ? "ring-[color:color-mix(in_srgb,var(--blue-light)_60%,var(--white))]"
+                                : undefined
+                            }
+                          />
                         </span>
                       </button>
                       <span
@@ -2486,13 +2564,102 @@ function targetIsGarbage(typed: string, parsed: number | null): boolean {
   return typed.trim() !== "" && parsed === null;
 }
 
+/**
+ * WHAT A GOAL'S REMOVE CONFIRMATION SAYS, written once (Anir, Oct 1: "u have
+ * to be super super specific... so there is absolutely no confusion"). The
+ * Goal Master table, the goal popup and the split pane all ask this question,
+ * so they read the words from here and cannot drift apart. Every fact is the
+ * goal's own: its year and target, its subgoals, who carries it, what is
+ * logged on it, and any rollup goal it adds into.
+ */
+function goalRemovalWords(
+  state: PerformanceState,
+  goal: PrimaryGoal
+): {
+  title: string;
+  body: React.ReactNode;
+  detail?: React.ReactNode;
+  question: React.ReactNode;
+} {
+  const subs = goal.subgoals.length;
+  const subsWords = subs > 0 ? `${subs} ${subs === 1 ? "subgoal" : "subgoals"}` : "";
+  const logged = state.actuals.filter((a) => a.goalId === goal.id).length;
+  const loggedWords =
+    logged > 0
+      ? `The ${logged} ${logged === 1 ? "result" : "results"} logged against it ${logged === 1 ? "is" : "are"} deleted too.`
+      : "";
+  const groups = (goal.groupAssignments ?? []).length;
+  const people = (goal.assignments ?? []).length;
+  const carriers = [
+    groups > 0 ? `${groups} ${groups === 1 ? "group" : "groups"}` : "",
+    people > 0 ? `${people} ${people === 1 ? "person" : "people"}` : "",
+  ]
+    .filter(Boolean)
+    .join(" and ");
+  const rollups = state.goals
+    .filter((g) => g.id !== goal.id && (g.componentGoalIds ?? []).includes(goal.id))
+    .map((g) => g.name);
+  return {
+    title: `Remove ${goal.name} from the Goal Master?`,
+    body: (
+      <>
+        <b>{goal.name}</b>
+        {goal.year ? (
+          <>
+            {" "}for <b>{goal.year}</b>
+          </>
+        ) : null}
+        {goal.target > 0 ? (
+          <>
+            , target <b>{fmtAmount(goal.unit, goal.target)}</b>,
+          </>
+        ) : null}{" "}
+        comes off the Goal Master
+        {subsWords ? (
+          <>
+            {" "}with its <b>{subsWords}</b>
+          </>
+        ) : null}
+        , and Org performance stops counting it.
+        {loggedWords ? (
+          <>
+            {" "}
+            <b>{loggedWords}</b>
+          </>
+        ) : null}
+      </>
+    ),
+    detail:
+      carriers || rollups.length > 0 ? (
+        <>
+          {carriers ? `It comes off the ${carriers} it is assigned to.` : null}
+          {rollups.length > 0 ? (
+            <>
+              {carriers ? " " : null}It also stops counting toward{" "}
+              <b>{rollups.join(", ")}</b>.
+            </>
+          ) : null}
+        </>
+      ) : undefined,
+    question: (
+      <>
+        Remove <b>{goal.name}</b>
+        {goal.year ? ` for ${goal.year}` : ""}
+        {subsWords ? ` and its ${subsWords}` : ""} from the Goal Master?
+        {loggedWords ? ` ${loggedWords}` : ""}
+      </>
+    ),
+  };
+}
+
 function ConfirmUnder({
   question,
   actionLabel,
   onConfirm,
   onCancel,
 }: {
-  question: string;
+  /** Names the exact record, so it may carry bold names. */
+  question: React.ReactNode;
   actionLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
@@ -2574,6 +2741,14 @@ function GoalPopupBody({
   const [confirmSubRemove, setConfirmSubRemove] = useState<string | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [confirmUnassign, setConfirmUnassign] = useState<string | null>(null);
+  /** The sign-off about to flip on one person's share of this goal. Signing
+   *  off locks their waiting results and taking it back un-approves them, so
+   *  the pill asks first instead of acting on one click (Anir, Oct 1, on a
+   *  button that acted with no confirmation: "this cant happen"). */
+  const [confirmVerify, setConfirmVerify] = useState<{
+    person: string;
+    verified: boolean;
+  } | null>(null);
   /** Which assigned person's drill-down is open (Anir, Aug 19: "when I press
    *  the dropdown, it should give me a ton more information about them"). */
   const [openPerson, setOpenPerson] = useState<string | null>(null);
@@ -2687,7 +2862,7 @@ function GoalPopupBody({
                   not ask in the app's own dialog. */}
               {confirmGoalRemove && inDialog && (
                 <ConfirmUnder
-                  question="Remove this goal and its subgoals?"
+                  question={goalRemovalWords(state, goal).question}
                   actionLabel="Remove goal"
                   onConfirm={() => {
                     setConfirmGoalRemove(false);
@@ -2780,14 +2955,9 @@ function GoalPopupBody({
             goal.name + " removed from the master"
           ).then((ok) => ok && onRemoved());
         }}
-        title="Remove this goal?"
-        body={(() => {
-          const logged = state.actuals.filter((a) => a.goalId === goal.id).length;
-          const base = `${goal.name} and its subgoals come off the master, and Org performance stops counting it.`;
-          return logged > 0
-            ? `${base} The ${logged} ${logged === 1 ? "result" : "results"} logged against it ${logged === 1 ? "is" : "are"} deleted too.`
-            : base;
-        })()}
+        title={goalRemovalWords(state, goal).title}
+        body={goalRemovalWords(state, goal).body}
+        detail={goalRemovalWords(state, goal).detail}
         confirmLabel="Remove goal"
       />
       {/* ONE DIALOG FOR A SUBGOAL, WHEREVER THE GOAL IS OPEN. Inside the
@@ -2809,23 +2979,58 @@ function GoalPopupBody({
             name + " removed"
           ).then((ok) => ok && setOpenSub(null));
         }}
-        title="Remove this subgoal?"
+        title={(() => {
+          const s = goal.subgoals.find((x) => x.id === confirmSubRemove);
+          return s ? `Remove ${s.name} from ${goal.name}?` : "Remove this subgoal?";
+        })()}
         body={(() => {
           /* Same rule as removing a goal: say what is destroyed. A subgoal
              takes every result logged against it, which "targets come off"
              does not begin to cover. */
-          const logged = state.actuals.filter(
-            (a) => a.subgoalId === confirmSubRemove
-          ).length;
           /* Named, because the bin now sits on closed rows too and the
-             dialog is the only place that says which one is going. */
-          const name =
-            goal.subgoals.find((x) => x.id === confirmSubRemove)?.name ??
-            "This subgoal";
-          const base = `${name} comes off ${goal.name}, with its owners, people and targets.`;
-          return logged > 0
-            ? `${base} The ${logged} ${logged === 1 ? "result" : "results"} logged against it ${logged === 1 ? "is" : "are"} deleted too.`
-            : base;
+             dialog is the only place that says which one is going. Its
+             target and who is on it tell two same-named slices apart. */
+          const s = goal.subgoals.find((x) => x.id === confirmSubRemove);
+          if (!s)
+            return `This subgoal comes off ${goal.name}, with its owners, people and targets.`;
+          const logged = state.actuals.filter(
+            (a) => a.goalId === goal.id && a.subgoalId === s.id
+          ).length;
+          const groupCount = (s.groupAssignments ?? []).length;
+          const who = [
+            s.owners.length > 0
+              ? `${s.owners.length} ${s.owners.length === 1 ? "owner" : "owners"}`
+              : "",
+            s.people.length > 0
+              ? `${s.people.length} ${s.people.length === 1 ? "person" : "people"}`
+              : "",
+            groupCount > 0 ? `${groupCount} ${groupCount === 1 ? "group" : "groups"}` : "",
+          ].filter(Boolean);
+          const whoWords =
+            who.length > 1
+              ? `${who.slice(0, -1).join(", ")} and ${who[who.length - 1]}`
+              : (who[0] ?? "");
+          return (
+            <>
+              <b>{s.name}</b>
+              {s.target > 0 ? (
+                <>
+                  , target <b>{fmtAmount(goal.unit, s.target)}</b>,
+                </>
+              ) : null}{" "}
+              comes off <b>{goal.name}</b>
+              {whoWords ? <>, with its {whoWords} and their targets</> : null}.
+              {logged > 0 ? (
+                <>
+                  {" "}
+                  <b>
+                    The {logged} {logged === 1 ? "result" : "results"} logged
+                    against it {logged === 1 ? "is" : "are"} deleted too.
+                  </b>
+                </>
+              ) : null}
+            </>
+          );
         })()}
         confirmLabel="Remove subgoal"
       />
@@ -3120,7 +3325,7 @@ function GoalPopupBody({
                   );
                 }
               }}
-              className="flex min-h-10 cursor-pointer flex-wrap items-center gap-2.5 px-3 py-2 transition-colors hover:bg-blue-light/40"
+              className="flex min-h-10 cursor-pointer flex-wrap items-center gap-2.5 px-3 py-2 transition-colors hover:bg-blue-light/40 [--fan-ring:var(--surface)] hover:[--fan-ring:color-mix(in_srgb,var(--blue-light)_40%,var(--surface))]"
             >
               <span className="flex shrink-0 items-center">
                 <ChevronDown
@@ -3144,6 +3349,7 @@ function GoalPopupBody({
                       rows on Admin: the faces slide apart on hover and each
                       one opens its person card. */}
                   <PersonFan
+                    nested
                     people={[
                       ...new Set(
                         [group.head, ...group.members]
@@ -3158,6 +3364,7 @@ function GoalPopupBody({
                           : roleLabel(memberRoles?.[m]),
                       context: group.name,
                     }))}
+                    ringClassName="ring-[color:var(--fan-ring)]"
                   />
                   <span className="text-[11.5px] text-text-secondary tnum">
                     {new Set([group.head, ...group.members].map((m) => m.trim()).filter(Boolean)).size}
@@ -3241,19 +3448,64 @@ function GoalPopupBody({
           );
           if (okDone) setConfirmGroupUnassign(null);
         }}
-        title="Take this goal off the group?"
-        body={
-          <>
-            <b>{goal.name}</b> comes off{" "}
-            <b>
-              {state.groups.find((g) => g.id === confirmGroupUnassign)?.name ??
-                "this group"}
-            </b>
-            .
-          </>
-        }
-        detail="The people the group put on it come off with it, and so do their targets on it. Anyone given the goal by hand stays, and anything already logged stays on the record."
-        confirmLabel="Take it off"
+        /* WHICH GOAL, WHICH GROUP, HOW MUCH (Anir, Oct 1: "u have to be super
+           super specific"). The group's own target and the people it put on
+           the goal are what this takes away, so the dialog counts them. */
+        title={(() => {
+          const groupName = state.groups.find(
+            (g) => g.id === confirmGroupUnassign
+          )?.name;
+          return groupName
+            ? `Take ${goal.name} off ${groupName}?`
+            : "Take this goal off the group?";
+        })()}
+        body={(() => {
+          const groupName = state.groups.find(
+            (g) => g.id === confirmGroupUnassign
+          )?.name;
+          const groupTarget =
+            (goal.groupAssignments ?? []).find(
+              (a) => a.groupId === confirmGroupUnassign
+            )?.target ?? 0;
+          return (
+            <>
+              <b>{groupName ?? "This group"}</b> stops carrying{" "}
+              <b>{goal.name}</b>
+              {groupTarget > 0 ? (
+                <>
+                  {" "}and its <b>{fmtAmount(goal.unit, groupTarget)}</b> group
+                  target
+                </>
+              ) : null}
+              .
+            </>
+          );
+        })()}
+        detail={(() => {
+          /* The same people the store takes off: rows the group created,
+             for its own roster, unless another group on this goal still
+             covers them. */
+          const roster = (groupId: string | null) => {
+            const g = state.groups.find((x) => x.id === groupId);
+            return g ? [g.head, ...g.members].map((m) => m.trim().toLowerCase()) : [];
+          };
+          const going = new Set(roster(confirmGroupUnassign));
+          const staying = new Set(
+            (goal.groupAssignments ?? [])
+              .filter((a) => a.groupId !== confirmGroupUnassign)
+              .flatMap((a) => roster(a.groupId))
+          );
+          const leaving = (goal.assignments ?? []).filter((a) => {
+            const who = a.person.trim().toLowerCase();
+            return a.assignedBy === "group" && going.has(who) && !staying.has(who);
+          }).length;
+          const rest =
+            "Anyone given the goal by hand stays, and anything already logged stays on the record.";
+          return leaving > 0
+            ? `The ${leaving} ${leaving === 1 ? "person" : "people"} the group put on it ${leaving === 1 ? "comes" : "come"} off with it, and so ${leaving === 1 ? "does their target" : "do their targets"} on it. ${rest}`
+            : `Nobody else comes off it. ${rest}`;
+        })()}
+        confirmLabel="Take group off"
         busy={busy}
       />
 
@@ -3387,18 +3639,12 @@ function GoalPopupBody({
                     person: a.person,
                   }) ||
                     a.verified)
-                    ? () =>
-                        run(
-                          {
-                            op: "set-verified",
-                            goalId: goal.id,
-                            person: a.person,
-                            verified: !a.verified,
-                          },
-                          a.verified
-                            ? `${a.person} marked not verified`
-                            : `${a.person} verified`
-                        )
+                    ? /* Asks first, in the dialog after this list. */
+                      () =>
+                        setConfirmVerify({
+                          person: a.person,
+                          verified: a.verified,
+                        })
                     : undefined
                 }
               />
@@ -3444,20 +3690,35 @@ function GoalPopupBody({
                         `${a.person} unassigned`
                       );
                     }}
-                    title="Take this goal off them?"
+                    title={`Take ${a.person} off ${goal.name}?`}
                     body={
                       <>
                         <b>{a.person}</b> stops carrying{" "}
-                        <b>{goal.name}</b>.
+                        <b>{goal.name}</b>
+                        {a.target > 0 ? (
+                          <>
+                            , and their <b>{fmtAmount(goal.unit, a.target)}</b>{" "}
+                            target on it goes too
+                          </>
+                        ) : null}
+                        .
                       </>
                     }
-                    detail="Anything they already logged on it stays on the record."
+                    detail={(() => {
+                      if (confirmUnassign !== a.person) return undefined;
+                      const logged = state.actuals.filter(
+                        (x) => x.goalId === goal.id && x.person === a.person
+                      ).length;
+                      return logged > 0
+                        ? `The ${logged} ${logged === 1 ? "result" : "results"} they already logged on it ${logged === 1 ? "stays" : "stay"} on the record.`
+                        : "Anything they already logged on it stays on the record.";
+                    })()}
                     /* RED, LIKE EVERY REMOVAL (Anir, Aug 27: "every delete
                        button to be red... in the entire app"). It was blue on
                        the grounds that assigning again puts it back, but
                        their target on this goal does not come back with
                        them, and a blue button reads as a save. */
-                    confirmLabel="Unassign"
+                    confirmLabel={`Take ${a.person.trim().split(/\s+/)[0] || a.person} off`}
                     busy={busy}
                   />
                 </span>
@@ -3485,6 +3746,86 @@ function GoalPopupBody({
           })}
         </div>
       )}
+      {/* SIGNING ONE PERSON OFF IS A DECISION, NOT A TOGGLE. The pill above
+          flipped on one click here while the other goal screens open a dialog
+          first. The run below is exactly the one the pill made; this only
+          asks before it, naming who, which goal and what moves. */}
+      {(() => {
+        const pending = confirmVerify;
+        const carried =
+          (goal.assignments ?? []).find((x) => x.person === pending?.person)
+            ?.target ?? 0;
+        const waiting = pending
+          ? state.actuals.filter(
+              (x) =>
+                x.goalId === goal.id &&
+                x.person === pending.person &&
+                entryStatus(x) === "reported"
+            ).length
+          : 0;
+        const first = pending
+          ? pending.person.trim().split(/\s+/)[0] || pending.person
+          : "";
+        return (
+          <ConfirmDialog
+            open={pending !== null}
+            person={pending?.person}
+            onClose={() => setConfirmVerify(null)}
+            onConfirm={() => {
+              if (!pending) return;
+              setConfirmVerify(null);
+              void run(
+                {
+                  op: "set-verified",
+                  goalId: goal.id,
+                  person: pending.person,
+                  verified: !pending.verified,
+                },
+                pending.verified
+                  ? `${pending.person} marked not verified`
+                  : `${pending.person} verified`
+              );
+            }}
+            title={
+              pending?.verified
+                ? `Take back the approval for ${pending.person} on ${goal.name}?`
+                : `Verify ${pending?.person ?? "this person"} on ${goal.name}?`
+            }
+            body={
+              pending?.verified ? (
+                <>
+                  <b>{pending.person}</b> goes back to not verified on{" "}
+                  <b>{goal.name}</b>.
+                </>
+              ) : (
+                <>
+                  This signs off <b>{pending?.person}</b> on <b>{goal.name}</b>
+                  {carried > 0 ? (
+                    <>
+                      , where they carry <b>{fmtAmount(goal.unit, carried)}</b>
+                    </>
+                  ) : null}
+                  .
+                </>
+              )
+            }
+            detail={
+              pending?.verified
+                ? "Their results on it stay verified and keep counting."
+                : waiting > 0
+                  ? `Their ${waiting} waiting ${waiting === 1 ? "result" : "results"} on it ${waiting === 1 ? "is" : "are"} locked and ${waiting === 1 ? "starts" : "start"} to count.`
+                  : "Nothing of theirs is waiting on it, so no result changes."
+            }
+            /* Red only for taking an approval back, the same as the goal's
+               own verify dialog; signing off destroys nothing. */
+            tone={pending?.verified ? "destructive" : "primary"}
+            confirmLabel={
+              pending?.verified ? `Take back ${first}'s approval` : `Verify ${first}`
+            }
+            busy={busy}
+          />
+        );
+      })()}
       {/* THE FORM OPENS INSIDE THIS BOX (Anir, Aug 16: "When I add a person,
           it should show up inside the box because this is confusing. It's like
           making up a third section"). It used to unfold after the box closed,
@@ -3528,35 +3869,70 @@ function PickedPill({
   run: RunOp;
   stop?: boolean;
 }) {
+  /** Turning tracking OFF takes the goal off Org performance for everybody,
+   *  so that direction asks first. Turning it on only puts the goal back and
+   *  still acts at once. The save is the same either way. */
+  const [confirmStop, setConfirmStop] = useState(false);
+  const flip = () =>
+    run(
+      {
+        op: "update-goal",
+        goalId: goal.id,
+        pickedForOrg: !goal.pickedForOrg,
+      },
+      goal.pickedForOrg
+        ? goal.name + " is no longer tracked"
+        : goal.name + " is now being tracked",
+      (prev) => ({
+        ...prev,
+        goals: prev.goals.map((g) =>
+          g.id === goal.id
+            ? { ...g, pickedForOrg: !goal.pickedForOrg }
+            : g
+        ),
+      })
+    );
   return (
-    <TrackSwitch
-      on={goal.pickedForOrg}
-      withLabel
-      disabled={!live}
-      onToggle={
-        live
-          ? () =>
-              run(
-                {
-                  op: "update-goal",
-                  goalId: goal.id,
-                  pickedForOrg: !goal.pickedForOrg,
-                },
-                goal.pickedForOrg
-                  ? goal.name + " is no longer tracked"
-                  : goal.name + " is now being tracked",
-                (prev) => ({
-                  ...prev,
-                  goals: prev.goals.map((g) =>
-                    g.id === goal.id
-                      ? { ...g, pickedForOrg: !goal.pickedForOrg }
-                      : g
-                  ),
-                })
-              )
-          : undefined
-      }
-    />
+    <>
+      <TrackSwitch
+        on={goal.pickedForOrg}
+        withLabel
+        disabled={!live}
+        onToggle={
+          live
+            ? () => {
+                if (goal.pickedForOrg) setConfirmStop(true);
+                else void flip();
+              }
+            : undefined
+        }
+      />
+      <ConfirmDialog
+        open={confirmStop}
+        onClose={() => setConfirmStop(false)}
+        onConfirm={() => {
+          setConfirmStop(false);
+          if (goal.pickedForOrg) void flip();
+        }}
+        title={`Stop tracking ${goal.name} on Org performance?`}
+        body={
+          <>
+            <b>{goal.name}</b>
+            {goal.year ? (
+              <>
+                {" "}for <b>{goal.year}</b>
+              </>
+            ) : null}{" "}
+            stays on the Goal Master but stops being counted and shown on Org
+            performance.
+          </>
+        }
+        detail="Nothing logged on it is deleted, and tracking can be turned back on at any time."
+        /* Blue: this hides the goal from one screen and destroys nothing. */
+        tone="primary"
+        confirmLabel="Stop tracking"
+      />
+    </>
   );
 }
 
@@ -3654,6 +4030,34 @@ function GoalEditorFields({
   })();
   const milestoneProblem = milestoneFault?.message ?? null;
 
+  /* WHICH MILESTONE THE REMOVE DIALOG IS ABOUT, by its own figures (Anir,
+     Oct 1: "u have to be super super specific"). Rows are numbered, but a
+     number alone does not say which one is going; the date and the figure it
+     is meant to reach do. A half-written row falls back to its number. */
+  const pendingMilestone =
+    confirmMilestone !== null ? milestones[confirmMilestone] : undefined;
+  const pendingMilestoneAmount = pendingMilestone
+    ? parseAmountInput(pendingMilestone.amount)
+    : null;
+  const milestoneFigure =
+    pendingMilestoneAmount !== null && pendingMilestoneAmount > 0 && unit
+      ? fmtAmount(unit, pendingMilestoneAmount)
+      : "";
+  const milestoneDayRaw =
+    pendingMilestone && pendingMilestone.date.trim()
+      ? formatDate(pendingMilestone.date)
+      : "";
+  const milestoneDay = milestoneDayRaw !== "-" ? milestoneDayRaw : "";
+  const milestoneGoal = editing?.name || "this goal";
+  const milestoneWhich =
+    milestoneFigure && milestoneDay
+      ? `the ${milestoneFigure} by ${milestoneDay} milestone`
+      : milestoneFigure
+        ? `the ${milestoneFigure} milestone`
+        : milestoneDay
+          ? `the ${milestoneDay} milestone`
+          : `milestone ${(confirmMilestone ?? 0) + 1}`;
+
   /** Editing with nothing changed → Save stays grey (Anir, Aug 18: "That
    *  should be greyed out unless I change anything. This goes for all
    *  pop-ups"). Field-by-field against the goal as it opened. */
@@ -3725,7 +4129,7 @@ function GoalEditorFields({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Booked Revenue (Contract Value Signed)"
-          className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
+          className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
         />
       </div>
       <div className="flex flex-wrap items-end gap-2">
@@ -3766,7 +4170,7 @@ function GoalEditorFields({
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
               placeholder="e.g. Customer Success"
-              className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13.5px] outline-none focus:border-blue-subtle"
+              className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
             />
           </div>
         )}
@@ -3860,7 +4264,7 @@ function GoalEditorFields({
               )
             }
             placeholder={unit === "currency" ? "e.g. 100M" : unit === "percent" ? "e.g. 45" : "e.g. 1,200"}
-            className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none tnum focus:border-blue-subtle"
+            className="h-10 w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13px] outline-none tnum focus:border-blue-subtle"
           />
         </div>
         {target.trim() !== "" &&
@@ -4069,11 +4473,28 @@ function GoalEditorFields({
               if (at !== null)
                 setMilestones((prev) => prev.filter((_, i) => i !== at));
             }}
-            title="Remove this milestone?"
-            body="It comes off the goal's schedule."
+            title={`Remove ${milestoneWhich} from ${milestoneGoal}?`}
+            body={
+              <>
+                Milestone <b>{(confirmMilestone ?? 0) + 1}</b> of{" "}
+                {milestones.length}
+                {milestoneFigure ? (
+                  <>
+                    , reach <b>{milestoneFigure}</b>
+                  </>
+                ) : null}
+                {milestoneDay ? (
+                  <>
+                    {" "}by <b>{milestoneDay}</b>
+                  </>
+                ) : null}
+                {milestoneFigure || milestoneDay ? ", " : " "}
+                comes off the schedule for <b>{milestoneGoal}</b>.
+              </>
+            }
             detail="Nothing changes until you save the schedule."
             tone="destructive"
-            confirmLabel="Remove it"
+            confirmLabel="Remove milestone"
           />
 
           <button
@@ -4163,12 +4584,14 @@ function SubgoalEditorFields({
   const [owners, setOwners] = useState<string[]>(editing?.owners ?? []);
   const [addingOwner, setAddingOwner] = useState(false);
   const [addingGroup, setAddingGroup] = useState(false);
-  /** What the page-side dialog is asking about: "owner:Name",
-   *  "person:Name" or "group:<id>". Never set inside a popup. */
+  /** What the dialog below is asking about: "owner:Name", "person:Name" or
+   *  "group:<id>". Owners and people only ask on the page, because inside a
+   *  popup they change nothing until Save. A group always asks, popup or
+   *  not, because taking it off saves straight away. */
   const [confirmDrop, setConfirmDrop] = useState<string | null>(null);
 
   /** Take a group off this slice, now. The server does it; nothing waits
-   *  for Save, which is why the page asks first. */
+   *  for Save, which is why it always asks first. */
   function unassignGroup(groupId: string) {
     if (!editing) return;
     const name =
@@ -4184,8 +4607,8 @@ function SubgoalEditorFields({
     );
   }
 
-  /** The X on an owner, a person or a group: at once inside a popup, after
-   *  the dialog below on the page. */
+  /** The X on an owner or a person: at once inside a popup, after the dialog
+   *  below on the page. (A group's X always asks; see unassignGroup.) */
   function askOrDrop(key: string, drop: () => void) {
     if (inDialog) drop();
     else setConfirmDrop(key);
@@ -4455,7 +4878,7 @@ function SubgoalEditorFields({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Growth Accounts"
-            className="mt-1.5 h-[42px] w-full rounded-xl border border-border-light bg-white px-3.5 text-[13.5px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
+            className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none transition-shadow focus:border-blue-subtle focus:shadow-input-focus"
           />
         </div>
         <div className="w-[170px]">
@@ -4474,7 +4897,7 @@ function SubgoalEditorFields({
                 )
               }
               placeholder={goal.unit === "currency" ? "e.g. 40M" : "e.g. 700"}
-              className="h-[42px] w-full rounded-xl border border-border-light bg-white pl-8 pr-3 text-[13.5px] outline-none transition-shadow tnum focus:border-blue-subtle focus:shadow-input-focus"
+              className="h-10 w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13px] outline-none transition-shadow tnum focus:border-blue-subtle focus:shadow-input-focus"
             />
           </div>
           {/* Say what was read back, and say so when nothing was. A field that
@@ -4672,18 +5095,15 @@ function SubgoalEditorFields({
                         {a.target > 0 ? fmtAmount(goal.unit, a.target) : "no target"}
                       </span>
                       {/* Red at rest. This one saves straight away rather
-                          than waiting for Save, so on the page it asks in
-                          the dialog first; inside a popup it acts. */}
+                          than waiting for Save, so it asks in the dialog
+                          first, inside a popup as well as on the page: the
+                          popup's own Save is not what commits it. */}
                       <button
                         type="button"
                         disabled={busy}
                         title={`Take this slice off ${g?.name ?? "the group"}`}
                         aria-label={`Unassign ${g?.name ?? "group"} from this subgoal`}
-                        onClick={() =>
-                          askOrDrop(`group:${a.groupId}`, () =>
-                            unassignGroup(a.groupId)
-                          )
-                        }
+                        onClick={() => setConfirmDrop(`group:${a.groupId}`)}
                         className="shrink-0 cursor-pointer rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <X size={13} strokeWidth={2.4} />
@@ -4932,16 +5352,49 @@ function SubgoalEditorFields({
         )}
       </div>
 
-      {/* THE PAGE-SIDE ASK for the three X's above. Only ever opened when this
-          form is unfolded on the page; inside a popup they act at once. */}
+      {/* THE ASK for the three X's above. Owners and people only ask here
+          when this form is unfolded on the page; inside a popup they change
+          nothing until Save, so they act at once. A group asks here wherever
+          the form is, because taking it off saves straight away. Each names
+          the person or group, the subgoal and the goal it belongs to, since
+          subgoal names repeat across goals. */}
       {(() => {
         const [kind, ...rest] = (confirmDrop ?? "").split(":");
         const key = rest.join(":");
         const slice = (editing?.name ?? name).trim() || "this subgoal";
-        const groupName =
+        const first = key.trim().split(/\s+/)[0] || key;
+        const group =
+          kind === "group" ? state.groups.find((x) => x.id === key) : undefined;
+        const groupName = group?.name ?? "That group";
+        const groupTarget =
           kind === "group"
-            ? state.groups.find((x) => x.id === key)?.name ?? "That group"
-            : "";
+            ? ((editing?.groupAssignments ?? []).find((a) => a.groupId === key)
+                ?.target ?? 0)
+            : 0;
+        const personTarget =
+          kind === "person"
+            ? (parseAmountInput(rows.find((r) => r.name === key)?.target ?? "") ?? 0)
+            : 0;
+        /* The same people the store takes off with the group: rows it put on
+           this slice, for its own roster, unless another group on the slice
+           still covers them. */
+        const leaving = (() => {
+          if (kind !== "group" || !editing) return 0;
+          const rosterOf = (id: string) => {
+            const g = state.groups.find((x) => x.id === id);
+            return g ? [g.head, ...g.members].map((m) => m.trim().toLowerCase()) : [];
+          };
+          const going = new Set(rosterOf(key));
+          const staying = new Set(
+            (editing.groupAssignments ?? [])
+              .filter((a) => a.groupId !== key)
+              .flatMap((a) => rosterOf(a.groupId))
+          );
+          return editing.people.filter((p) => {
+            const who = p.name.trim().toLowerCase();
+            return p.assignedBy === "group" && going.has(who) && !staying.has(who);
+          }).length;
+        })();
         return (
           <ConfirmDialog
             open={confirmDrop !== null}
@@ -4955,35 +5408,61 @@ function SubgoalEditorFields({
             }}
             title={
               kind === "owner"
-                ? "Remove them as an owner?"
+                ? `Remove ${key} as an owner of ${slice} in ${goal.name}?`
                 : kind === "person"
-                  ? "Take them off this subgoal?"
-                  : "Take this slice off the group?"
+                  ? `Take ${key} off ${slice} in ${goal.name}?`
+                  : group
+                    ? `Take ${groupName} off ${slice} in ${goal.name}?`
+                    : "Take this slice off the group?"
             }
             body={
               kind === "group" ? (
                 <>
-                  <b>{groupName}</b> stops carrying <b>{slice}</b>.
+                  The group <b>{groupName}</b> stops carrying the subgoal{" "}
+                  <b>{slice}</b> in <b>{goal.name}</b>
+                  {groupTarget > 0 ? (
+                    <>
+                      , and its <b>{fmtAmount(goal.unit, groupTarget)}</b> target
+                      on it
+                    </>
+                  ) : null}
+                  .
                 </>
               ) : (
                 <>
                   <b>{key}</b>{" "}
-                  {kind === "owner" ? "stops owning" : "comes off"} <b>{slice}</b>
-                  {kind === "person" ? ", with their target on it." : "."}
+                  {kind === "owner" ? "stops owning" : "comes off"} the subgoal{" "}
+                  <b>{slice}</b> in <b>{goal.name}</b>
+                  {kind === "person" ? (
+                    personTarget > 0 ? (
+                      <>
+                        , with their <b>{fmtAmount(goal.unit, personTarget)}</b>{" "}
+                        target on it.
+                      </>
+                    ) : (
+                      ", with their target on it."
+                    )
+                  ) : (
+                    "."
+                  )}
                 </>
               )
             }
             detail={
               kind === "group"
-                ? "This saves straight away. The people the group put on this slice come off with it, and so do their targets. Anyone added by hand stays."
+                ? `This saves straight away. ${
+                    leaving > 0
+                      ? `The ${leaving} ${leaving === 1 ? "person" : "people"} the group put on this slice ${leaving === 1 ? "comes" : "come"} off with it, and so ${leaving === 1 ? "does their target" : "do their targets"}.`
+                      : "Nobody else comes off it."
+                  } Anyone added by hand stays.`
                 : "Nothing changes until you save the subgoal."
             }
             confirmLabel={
               kind === "owner"
-                ? "Remove owner"
+                ? `Remove ${first} as owner`
                 : kind === "person"
-                  ? "Take them off"
-                  : "Take it off"
+                  ? `Take ${first} off`
+                  : "Take group off"
             }
           />
         );
@@ -5713,7 +6192,7 @@ function LogActualModal({
                 options={[
                   { value: "", label: "Pick the account…", color: "#C7CDD6" },
                   ...(customer && !customerId
-                    ? [{ value: "__typed", label: customer, color: "var(--ink-bright-blue)" }]
+                    ? [{ value: "__typed", label: customer, color: "var(--ink-bright-blue)", logoName: customer }]
                     : []),
                   {
                     value: "__other",
@@ -5829,10 +6308,23 @@ function LogActualModal({
           {newOpportunityOpen && (
             <div className="mt-2.5 rounded-xl border border-blue-subtle bg-blue-light/20 p-3">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[12.5px] font-semibold text-text-primary">
-                  {editingOpportunityId
-                    ? `Edit ${newOpportunityName || "opportunity"}`
-                    : `New opportunity for ${customer.trim()}`}
+                <p className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-text-primary">
+                  {editingOpportunityId ? (
+                    `Edit ${newOpportunityName || "opportunity"}`
+                  ) : (
+                    <>
+                      New opportunity for
+                      {/* The account's logo beside its name; a typed name
+                          with no account yet has no door. */}
+                      <CompanyLink
+                        name={customer.trim()}
+                        customerId={customerId || null}
+                        href={customerId ? undefined : null}
+                        logoClassName="h-4 w-4 shrink-0 text-[6px]"
+                        className="min-w-0 gap-1"
+                      />
+                    </>
+                  )}
                 </p>
                 <button
                   type="button"
@@ -5880,7 +6372,7 @@ function LogActualModal({
                       )
                     }
                     placeholder="e.g. 1M"
-                    className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none tnum focus:border-blue-subtle"
+                    className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none tnum focus:border-blue-subtle"
                   />
                 </label>
                 <label>
@@ -5898,7 +6390,7 @@ function LogActualModal({
                         )
                       }
                       inputMode="decimal"
-                      className="h-9 w-full rounded-lg border border-border-light bg-white px-3 pr-7 text-[13px] outline-none tnum focus:border-blue-subtle"
+                      className="h-10 w-full rounded-lg border border-border-light bg-white px-3 pr-7 text-[13px] outline-none tnum focus:border-blue-subtle"
                     />
                     <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[12px] text-text-tertiary">
                       %
@@ -5914,7 +6406,7 @@ function LogActualModal({
                     required
                     value={newOpportunitySignDate}
                     onChange={(event) => setNewOpportunitySignDate(event)}
-                    className="mt-1 h-9 w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none tnum focus:border-blue-subtle"
+                    className="mt-1 tnum"
                   />
                 </label>
               </div>
@@ -6070,7 +6562,15 @@ function LogActualModal({
             customer.trim() !== "" &&
             oppMatches.length === 0 && (
               <p className="mt-1.5 text-[11px] text-text-tertiary">
-                No opportunities recorded on {customer.trim()} yet
+                No opportunities recorded on{" "}
+                <CompanyLink
+                  name={customer.trim()}
+                  customerId={customerId || null}
+                  href={customerId ? undefined : null}
+                  logoClassName="h-4 w-4 shrink-0 text-[6px]"
+                  className="gap-1 align-middle"
+                />{" "}
+                yet
                 {(selectedAccount?.deals.length ?? 0) > 0
                   ? ". The engagements on the account are still listed above."
                   : "."}
@@ -6200,7 +6700,7 @@ function LogActualModal({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="e.g. BioNex contract signed"
-            className="mt-1 h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
+            className="mt-1 h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] outline-none focus:border-blue-subtle"
           />
         </div>
         {/* SAY WHAT IS MISSING. A money goal cannot be claimed without proof

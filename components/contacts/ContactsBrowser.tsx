@@ -21,13 +21,14 @@ import { LinkedInLink } from "@/components/ui/LinkedInLink";
 import { HoverExpandCard } from "@/components/ui/HoverExpandCard";
 import { DonutChart, DonutLegend, Sparkline, VIZ, type TipItem } from "@/components/charts/Charts";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { cn, formatDateTime } from "@/lib/utils";
 import { contactPhoneDisplay } from "@/lib/contactPhoneDisplay";
 import { countryFlag } from "@/lib/countries";
 import { EntityLink } from "@/components/ui/EntityLink";
-import { contactHref } from "@/lib/entityHref";
+import { contactHref, isSomebody } from "@/lib/entityHref";
 
 export interface ContactRow {
   id: string;
@@ -101,6 +102,9 @@ export function ContactsBrowser({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [voiceCategory, setVoiceCategory] = useState(voiceCategories[0] || "");
   const [voiceBusy, setVoiceBusy] = useState(false);
+  /* Calling real people asks first and names them (Anir, Oct 1: "this cant
+     happen"). One click used to queue, or dial, every selected contact. */
+  const [confirmCall, setConfirmCall] = useState(false);
 
   async function runVoiceAgent() {
     if (!voiceCategory || selected.size === 0) return;
@@ -330,7 +334,7 @@ export function ContactsBrowser({
                       }))}
                     />
                     <button
-                      onClick={runVoiceAgent}
+                      onClick={() => setConfirmCall(true)}
                       disabled={voiceBusy}
                       className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md border border-blue-primary text-blue-primary hover:bg-blue-light/50 transition-colors disabled:opacity-50"
                     >
@@ -439,7 +443,7 @@ export function ContactsBrowser({
                     </Link>
                   ) : (
                     <div className="hidden sm:flex items-center gap-2 min-w-0">
-                      <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />
+                      {isSomebody(c.company) && <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />}
                       <span className="text-[13px] text-text-secondary truncate">
                         {c.company}
                       </span>
@@ -562,7 +566,7 @@ export function ContactsBrowser({
                     </Link>
                   ) : (
                     <span className="flex items-center gap-2 min-w-0">
-                      <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />
+                      {isSomebody(c.company) && <CompanyLogo name={c.company} className="w-5 h-5 text-[8px] shrink-0" />}
                       <span className="text-[13px] text-text-secondary truncate">{c.company}</span>
                     </span>
                   )}
@@ -732,6 +736,57 @@ export function ContactsBrowser({
           })}
         </div>
       )}
+
+      {/* Names who gets called, which agent calls, and that it may dial
+          straight away. Blue: nothing is deleted. */}
+      {(() => {
+        const picked = rows.filter((row) => selected.has(row.id));
+        const n = picked.length;
+        const people = picked.map((row) =>
+          row.company?.trim() ? `${row.name} (${row.company.trim()})` : row.name
+        );
+        const shown = people.slice(0, 3);
+        const rest = people.length - shown.length;
+        const list =
+          rest > 0
+            ? `${shown.join(", ")} and ${rest} more`
+            : shown.length > 1
+              ? `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`
+              : shown[0] || "";
+        const agent = voiceCategory ? `the ${voiceCategory} agent` : "the voice agent";
+        return (
+          <ConfirmDialog
+            open={confirmCall}
+            person={n === 1 ? picked[0].name : null}
+            onClose={() => setConfirmCall(false)}
+            onConfirm={() => {
+              setConfirmCall(false);
+              void runVoiceAgent();
+            }}
+            title={
+              n === 1
+                ? `Have ${agent} call ${picked[0].name}?`
+                : `Have ${agent} call ${n} contacts?`
+            }
+            body={
+              <>
+                {list ? <b>{list}</b> : "The selected contacts"} {n === 1 ? "is" : "are"} queued for{" "}
+                {voiceCategory ? (
+                  <>
+                    the <b>{voiceCategory}</b> voice agent
+                  </>
+                ) : (
+                  "the voice agent"
+                )}
+                .
+              </>
+            }
+            detail="If a phone number is connected, it starts dialing now. Otherwise the calls wait in the queue until one is."
+            confirmLabel={n === 1 ? "Queue the call" : `Queue ${n} calls`}
+            tone="primary"
+          />
+        );
+      })()}
     </div>
   );
 }

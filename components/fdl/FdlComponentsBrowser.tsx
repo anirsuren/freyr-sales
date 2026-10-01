@@ -1041,7 +1041,7 @@ export function FdlComponentsBrowser({
               maxLength={80}
               onChange={(event) => setName(event.target.value)}
               placeholder="Register Module"
-              className="h-11 w-full rounded-xl border border-border-light bg-white px-3.5 text-[13.5px] text-text-primary outline-none transition-[border-color,box-shadow] placeholder:text-text-tertiary focus:border-blue-subtle focus:shadow-input-focus"
+              className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none transition-[border-color,box-shadow] placeholder:text-text-tertiary focus:border-blue-subtle focus:shadow-input-focus"
             />
           </label>
 
@@ -1113,27 +1113,53 @@ export function FdlComponentsBrowser({
 
       {/* One confirmation for the whole list, named after whichever component
           the red button belongs to. */}
-      <ConfirmDialog
-        open={!!confirmDelete}
-        onClose={() => setConfirmDelete(null)}
-        onConfirm={() => {
-          const target = components.find((c) => c.id === confirmDelete);
-          if (target) void removeComponent(target);
-        }}
-        busy={busy}
-        title="Delete this component?"
-        body={
-          <>
-            <b>
-              {components.find((c) => c.id === confirmDelete)?.name ??
-                "This component"}
-            </b>{" "}
-            goes for good, with its versions and its feature list.
-          </>
-        }
-        detail="Offerings that include it keep their own records; they simply stop listing this component."
-        confirmLabel="Delete component"
-      />
+      {(() => {
+        /* Name the component, its type, how much goes with it and the
+           offerings it leaves, so two similar names cannot be mixed up. */
+        const pending = components.find((c) => c.id === confirmDelete);
+        const homes = pending ? usedIn[pending.id] ?? [] : [];
+        const versions = pending?.releases.length ?? 0;
+        const features = pending?.features.length ?? 0;
+        const homeList =
+          homes.length > 3
+            ? `${homes.slice(0, 3).join(", ")} and ${homes.length - 3} more`
+            : homes.length > 1
+              ? `${homes.slice(0, -1).join(", ")} and ${homes[homes.length - 1]}`
+              : homes[0] ?? "";
+        return (
+          <ConfirmDialog
+            open={!!confirmDelete}
+            onClose={() => setConfirmDelete(null)}
+            onConfirm={() => {
+              const target = components.find((c) => c.id === confirmDelete);
+              if (target) void removeComponent(target);
+            }}
+            busy={busy}
+            title={pending ? `Delete ${pending.name}?` : "Delete this component?"}
+            body={
+              pending ? (
+                <>
+                  <b>{pending.name}</b> ({pending.type}) goes for good, with its{" "}
+                  {versions} {versions === 1 ? "version" : "versions"} and its{" "}
+                  {features} {features === 1 ? "feature" : "features"}.
+                </>
+              ) : (
+                "This component goes for good, with its versions and its feature list."
+              )
+            }
+            detail={
+              homes.length
+                ? `It also comes off ${homeList}. ${
+                    homes.length === 1
+                      ? "That offering keeps its own record and simply stops listing it."
+                      : "Those offerings keep their own records and simply stop listing it."
+                  }`
+                : "It is not part of any offering."
+            }
+            confirmLabel="Delete component"
+          />
+        );
+      })()}
     </section>
   );
 }

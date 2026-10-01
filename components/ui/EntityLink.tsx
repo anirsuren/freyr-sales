@@ -6,7 +6,7 @@ import type { ComponentProps, KeyboardEvent, MouseEvent, ReactNode } from "react
 import { Avatar } from "@/components/ui/Avatar";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
-import { contactHref, customerHref, teammateHref } from "@/lib/entityHref";
+import { contactHref, customerHref, isSomebody, teammateHref } from "@/lib/entityHref";
 import { useCurrentDataMode, useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { canAccessModule } from "@/lib/moduleAccess";
 import { isReleasedPath } from "@/lib/release";
@@ -176,8 +176,13 @@ export function PersonLink({
   title?: string;
   children?: ReactNode;
 }) {
-  const to =
-    href !== undefined
+  /* NOBODY WEARS NO FACE. "Unassigned", "Someone", "Unknown" keep a neutral
+     empty circle the size of a face (rows stay aligned) and no door, never
+     an initials badge that reads as a person. */
+  const somebody = isSomebody(name);
+  const to = !somebody
+    ? null
+    : href !== undefined
       ? href
       : kind === "contact"
         ? contactHref(contactId, name)
@@ -190,7 +195,11 @@ export function PersonLink({
       title={title}
       className={rowClasses(className)}
     >
-      <Avatar name={name} src={src} initialsOnly={initialsOnly} className={avatarClassName} />
+      {somebody ? (
+        <Avatar name={name} src={src} initialsOnly={initialsOnly} className={avatarClassName} />
+      ) : (
+        <span aria-hidden="true" className={cn("inline-block rounded-full border border-border-light bg-surface", avatarClassName)} />
+      )}
       {children ?? (
         <span className={cn("min-w-0 truncate", ENTITY_NAME, nameClassName)}>{name}</span>
       )}

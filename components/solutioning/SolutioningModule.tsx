@@ -1139,44 +1139,126 @@ export function SolutioningModule({
           rollups still exist on each person's own profile page. */}
       </SolutioningTabs>
 
-      <ConfirmDialog
-        open={confirmPickUp !== null}
-        onClose={() => setConfirmPickUp(null)}
-        onConfirm={() => {
-          if (confirmPickUp)
-            void post({ op: "pick-up", requestId: confirmPickUp.id }, confirmPickUp.id);
-          setConfirmPickUp(null);
-        }}
-        tone="primary"
-        title="Take this on?"
-        body={
-          <>
-            You become the person doing <b>{confirmPickUp?.label}</b>, and
-            whoever asked for it sees your name on it.
-          </>
-        }
-        detail="You can hand it back afterwards if it turns out to be somebody else's."
-        confirmLabel="Yes, I'll take it"
-      />
+      {(() => {
+        /* Name the record, its customer and who asked (Anir, Oct 1: "u have
+           to be so specific"). Looked up by id from the rows on screen. */
+        const target = confirmPickUp
+          ? state.requests.find((r) => r.id === confirmPickUp.id)
+          : undefined;
+        const askedByMe =
+          !!target &&
+          target.requestedBy.trim().toLowerCase() === meName.trim().toLowerCase();
+        /* lib/solutioning pickUpRequest starts the submission or
+           presentation for a request that has none of that kind yet. A
+           member's list holds only their own work, so it is only said when
+           the whole room is on screen. */
+        const starts =
+          !!target &&
+          !limitToOwn &&
+          (target.type ?? "request") === "request" &&
+          (target.kind === "submission" || target.kind === "presentation") &&
+          !state.requests.some(
+            (x) => x.requestId === target.id && x.type === target.kind
+          );
+        return (
+          <ConfirmDialog
+            open={confirmPickUp !== null}
+            onClose={() => setConfirmPickUp(null)}
+            onConfirm={() => {
+              if (confirmPickUp)
+                void post({ op: "pick-up", requestId: confirmPickUp.id }, confirmPickUp.id);
+              setConfirmPickUp(null);
+            }}
+            tone="primary"
+            title={target ? `Take on "${target.title}"?` : "Take this on?"}
+            body={
+              target ? (
+                <>
+                  You become the person doing <b>{target.title}</b> ({target.ref})
+                  {target.customer.trim() ? (
+                    <>
+                      {" "}for <b>{target.customer}</b>
+                    </>
+                  ) : null}
+                  {askedByMe ? "." : `, and ${target.requestedBy} sees your name on it.`}
+                </>
+              ) : (
+                <>
+                  You become the person doing <b>{confirmPickUp?.label}</b>, and
+                  whoever asked for it sees your name on it.
+                </>
+              )
+            }
+            detail={
+              starts && target
+                ? `It also starts the ${target.kind} for it, with you as its owner. You can hand it back afterwards if it turns out to be somebody else's.`
+                : "You can hand it back afterwards if it turns out to be somebody else's."
+            }
+            confirmLabel={target ? `Take on ${target.ref}` : "Take on request"}
+          />
+        );
+      })()}
 
-      <ConfirmDialog
-        open={confirmDelete !== null}
-        onClose={() => setConfirmDelete(null)}
-        onConfirm={() => {
-          if (confirmDelete)
-            void post({ op: "delete", requestId: confirmDelete.id }, confirmDelete.id);
-          setConfirmDelete(null);
-        }}
-        title={`Delete ${confirmDelete?.ref}?`}
-        body={
-          <>
-            <b>{confirmDelete?.ref}</b> and its documents go, for everyone. If
-            the work simply stopped, cancel it instead. A cancelled record
-            stays in the list where people can still read it.
-          </>
-        }
-        confirmLabel="Delete it"
-      />
+      {(() => {
+        const target = confirmDelete
+          ? state.requests.find((r) => r.id === confirmDelete.id)
+          : undefined;
+        const docCount = target?.docs.length ?? 0;
+        /* lib/solutioning deleteRequest frees the work raised off it and
+           drops other requests' links to its documents. */
+        const raised =
+          target && !limitToOwn
+            ? state.requests.filter((x) => x.requestId === target.id)
+            : [];
+        return (
+          <ConfirmDialog
+            open={confirmDelete !== null}
+            onClose={() => setConfirmDelete(null)}
+            onConfirm={() => {
+              if (confirmDelete)
+                void post({ op: "delete", requestId: confirmDelete.id }, confirmDelete.id);
+              setConfirmDelete(null);
+            }}
+            title={
+              target
+                ? `Delete "${target.title}"?`
+                : `Delete ${confirmDelete?.ref ?? "this request"}?`
+            }
+            body={
+              <>
+                <b>{target?.ref ?? confirmDelete?.ref}</b>
+                {target && target.customer.trim() ? (
+                  <>
+                    {" "}for <b>{target.customer}</b>
+                  </>
+                ) : null}{" "}
+                {docCount > 0
+                  ? `and its ${docCount} ${docCount === 1 ? "document go" : "documents go"}, for everyone.`
+                  : "goes, for everyone."}{" "}
+                If the work simply stopped, cancel it instead. A cancelled record
+                stays in the list where people can still read it.
+              </>
+            }
+            detail={
+              [
+                raised.length > 0
+                  ? `${raised.map((x) => x.ref).join(", ")} ${
+                      raised.length === 1 ? "was" : "were"
+                    } raised off it and ${
+                      raised.length === 1 ? "stays" : "stay"
+                    }, just no longer attached to a request.`
+                  : "",
+                docCount > 0
+                  ? "If another request borrowed one of these documents, it disappears from there as well."
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
+            confirmLabel={`Delete ${target?.type ?? "request"}`}
+          />
+        );
+      })()}
       {creating && (
         <NewRequestDialog
           room={room}

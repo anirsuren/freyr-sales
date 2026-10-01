@@ -4,6 +4,7 @@ import { DateText } from "@/components/ui/DateText";
 import { cn } from "@/lib/utils";
 import type {
   AppNotification,
+  NotificationType,
   NotificationUrgency,
   SetupMark,
 } from "@/lib/notifications";
@@ -52,6 +53,12 @@ export function urgencyColor(urgency?: NotificationUrgency): string | null {
   if (urgency === "overdue") return LATE_RED;
   if (urgency === "today") return TODAY_ORANGE;
   return null;
+}
+
+/** Account alerts name the customer's contact; the rest name a teammate
+ *  (who sent a result back, who saved a roadmap). Picks the face's door. */
+export function personIsContact(type: NotificationType): boolean {
+  return type === "rotting" || type === "signal" || type === "followup" || type === "voice";
 }
 
 /**
@@ -149,7 +156,7 @@ export function NotificationRow({
             actually needed a name went unprinted. */}
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
           {n.person && (
-            <PersonLink nested name={n.person} avatarClassName="h-[18px] w-[18px] shrink-0 text-[8px]" className="shrink-0 gap-1.5 text-[12px] font-semibold text-text-primary" />
+            <PersonLink nested name={n.person} kind={personIsContact(n.type) ? "contact" : "teammate"} avatarClassName="h-[18px] w-[18px] shrink-0 text-[8px]" className="shrink-0 gap-1.5 text-[12px] font-semibold text-text-primary" />
           )}
           <span className="min-w-0 text-[12px] text-text-secondary leading-snug break-words">
             {n.detail || n.body}

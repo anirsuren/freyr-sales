@@ -14,7 +14,8 @@ import type { Opportunity } from "@/lib/opportunitiesShared";
 import { cn, formatDate, plural } from "@/lib/utils";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
-import { PersonLink } from "@/components/ui/EntityLink";
+import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
+import { isSomebody } from "@/lib/entityHref";
 
 /**
  * EVERY DEAL RUNNING ON THIS OFFERING, ON THE OFFERING'S OWN PAGE.
@@ -171,10 +172,15 @@ export function OfferingOpportunities({
                       {row.customer}
                     </Link>
                   ) : (
-                    <span className="flex items-center gap-2 text-[12.5px] text-text-secondary">
-                      <CompanyLogo name={row.customer} className="h-6 w-6 shrink-0" />
-                      {row.customer}
-                    </span>
+                    /* No account id on the deal: the door finds the account
+                       by name, which is right for a deal's customer. */
+                    <CompanyLink
+                      name={row.customer}
+                      logoClassName="h-6 w-6 shrink-0"
+                      className="flex gap-2 text-[12.5px] text-text-secondary"
+                    >
+                      <span className="min-w-0">{row.customer}</span>
+                    </CompanyLink>
                   )}
                 </td>
                 <td className="py-2.5 pr-4">
@@ -216,7 +222,7 @@ export function OfferingOpportunities({
                   {row.estSignDate ? <DateText value={row.estSignDate} /> : "—"}
                 </td>
                 <td className="py-2.5 pr-4">
-                  {row.owner ? (
+                  {isSomebody(row.owner) ? (
                     <PersonLink name={row.owner} avatarClassName="h-5 w-5 shrink-0 text-[8px]" className="flex gap-1.5 text-[12.5px] text-text-secondary" />
                   ) : (
                     <span className="text-[12px] text-text-tertiary">Unassigned</span>

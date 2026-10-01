@@ -56,8 +56,10 @@ import { DateText } from "@/components/ui/DateText";
  * fifth roadmap section.
  */
 
+/* The shared field: 40px, 12px corners, 13px (Anir, Oct 1: "It should all
+   be the same"). These boxes were 48px, taller than every other form. */
 const FIELD =
-  "h-12 w-full rounded-xl border border-border-light bg-white px-3.5 text-[14px] text-text-primary shadow-[0_1px_2px_rgba(16,24,40,0.03)] placeholder:text-text-tertiary transition-[border-color,box-shadow] focus:border-blue-primary focus:outline-none focus:ring-4 focus:ring-blue-primary/10";
+  "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary placeholder:text-text-tertiary transition-[border-color,box-shadow] focus:border-blue-primary focus:outline-none focus:shadow-input-focus";
 const LABEL =
   "mb-2 block text-[13px] font-semibold text-text-primary";
 
@@ -1706,10 +1708,41 @@ export function OfferingReleasesTab({
             );
           setConfirmVersion(null);
         }}
-        title="Remove this version?"
-        body={<><b>{confirmVersion?.version}</b> and its feature list come off the roadmap.</>}
+        /* The version, the offering, the date and the feature count, so a
+           V2 is never mistaken for another offering's V2 (Anir, Oct 1). */
+        title={
+          confirmVersion
+            ? `Remove ${confirmVersion.version} from ${offeringName?.trim() ? `${offeringName.trim()}'s` : "this offering's"} release history?`
+            : "Remove this version?"
+        }
+        body={(() => {
+          const rel = confirmVersion
+            ? releases.find((r) => r.id === confirmVersion.id)
+            : undefined;
+          const count = rel?.features.length ?? 0;
+          const when = rel?.date ? formatDate(rel.date) : "-";
+          return (
+            <>
+              <b>{confirmVersion?.version}</b>
+              {when !== "-"
+                ? `, ${rel?.status === "next" ? "expected" : "released"} ${when},`
+                : ""}{" "}
+              and its{" "}
+              {count > 0 ? `${count} ${count === 1 ? "feature" : "features"}` : "feature list"}{" "}
+              come off{" "}
+              {offeringName?.trim() ? (
+                <>
+                  <b>{offeringName.trim()}</b>&rsquo;s
+                </>
+              ) : (
+                "this offering's"
+              )}{" "}
+              roadmap.
+            </>
+          );
+        })()}
         detail="This saves straight away. It does not wait for a Save button."
-        confirmLabel="Remove it"
+        confirmLabel="Remove version"
       />
       <Modal open={adding} onClose={closeAddModal} title="Add a roadmap version" size="wide">
         <form

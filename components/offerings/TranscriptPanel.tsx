@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
+import { PersonLink } from "@/components/ui/EntityLink";
+import { isSomebody } from "@/lib/entityHref";
 
 /**
  * WHAT WAS SAID, BESIDE THE RECORDING THAT SAID IT.
@@ -65,6 +67,8 @@ export function TranscriptPanel({
   currentTime,
   onSeek,
   onClose,
+  label,
+  offeringName,
 }: {
   offeringId: string;
   path: string;
@@ -72,8 +76,20 @@ export function TranscriptPanel({
   currentTime: number;
   onSeek: (seconds: number) => void;
   onClose?: () => void;
+  /** The recording's name and where it is filed, so "Transcribe again"
+   *  says exactly which transcript it replaces. Both optional. */
+  label?: string;
+  offeringName?: string;
 }) {
   const { toast } = useToast();
+  /**
+   * TRANSCRIBING AGAIN ASKS FIRST (Anir, Oct 1: nothing that changes data
+   * acts on one click). It throws away the transcript on file, hand edits
+   * included, so the question unfolds in place under the button: this panel
+   * already sits inside the viewer pop-up, and the house rule is no pop-up on
+   * a pop-up.
+   */
+  const [confirmRetry, setConfirmRetry] = useState(false);
   const [loading, setLoading] = useState(true);
   const [transcript, setTranscript] = useState<TranscriptState | null>(null);
   const [plainText, setPlainText] = useState<string | null>(null);
@@ -108,6 +124,10 @@ export function TranscriptPanel({
       alive = false;
     };
   }, [offeringId, path]);
+
+  // A half-answered question never carries over to another file or into the
+  // editor.
+  useEffect(() => setConfirmRetry(false), [path, editing]);
 
   const segments = transcript?.segments ?? [];
 
@@ -366,16 +386,88 @@ export function TranscriptPanel({
       {!loading && transcript && (
         <footer className="border-t border-border-light px-3 py-2 text-[11px] leading-snug text-text-tertiary">
           {SOURCE_LABEL[transcript.source]}
-          {transcript.editedBy && ` · ${transcript.editedBy}`}
+          {transcript.editedBy && (
+            <>
+              {" · "}
+              {/* "Someone" is the stored fallback for no name: no face. */}
+              {isSomebody(transcript.editedBy) &&
+              transcript.editedBy.trim().toLowerCase() !== "someone" ? (
+                <PersonLink
+                  name={transcript.editedBy}
+                  avatarClassName="h-4 w-4 shrink-0 text-[6px]"
+                  className="gap-1 align-middle"
+                />
+              ) : (
+                transcript.editedBy
+              )}
+            </>
+          )}
           {canEdit && transcribable && !editing && (
             <button
               type="button"
-              onClick={retry}
+              onClick={() => setConfirmRetry(true)}
               disabled={busy === "retry"}
               className="ml-2 font-semibold text-blue-primary hover:underline disabled:opacity-60"
             >
               {busy === "retry" ? "Listening…" : "Transcribe again"}
             </button>
+          )}
+          {confirmRetry && canEdit && transcribable && !editing && busy !== "retry" && (
+            <div className="tab-panel mt-2 rounded-lg border border-[color:rgba(220,38,38,0.35)] bg-[rgba(220,38,38,0.04)] px-3 py-2.5 text-[12px] leading-snug text-text-primary">
+              <p>
+                Replace the transcript of{" "}
+                <b className="font-semibold">{(label || "").trim() || "this recording"}</b>
+                {(offeringName || "").trim() ? (
+                  <>
+                    {" "}in <b className="font-semibold">{(offeringName || "").trim()}</b>
+                  </>
+                ) : null}
+                ?{" "}
+                {`The one on file now (${
+                  segments.length
+                    ? `${segments.length} ${segments.length === 1 ? "line" : "lines"}, `
+                    : ""
+                }`}
+                {transcript.source === "edited" ? (
+                  isSomebody(transcript.editedBy) ? (
+                    <>
+                      {"edited by hand by "}
+                      <PersonLink name={transcript.editedBy} avatarClassName="h-4 w-4 shrink-0 text-[6px]" className="gap-1 align-middle whitespace-nowrap" nameClassName="font-semibold text-text-primary" />
+                    </>
+                  ) : transcript.editedBy ? (
+                    `edited by hand by ${transcript.editedBy}`
+                  ) : (
+                    "edited by hand"
+                  )
+                ) : transcript.source === "owner" ? (
+                  "supplied by the uploader"
+                ) : transcript.source === "reconciled" ? (
+                  "corrected against the uploader's copy"
+                ) : (
+                  "made automatically"
+                )}
+                {") is replaced by a new automatic one. This cannot be undone."}
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmRetry(false);
+                    void retry();
+                  }}
+                  className="cursor-pointer rounded-lg bg-[color:#B02020] px-3 py-1 text-[12px] font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
+                >
+                  Replace transcript
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmRetry(false)}
+                  className="cursor-pointer rounded-lg border border-border-light bg-white px-3 py-1 text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                >
+                  Keep this one
+                </button>
+              </div>
+            </div>
           )}
         </footer>
       )}

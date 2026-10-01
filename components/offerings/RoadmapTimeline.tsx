@@ -5,6 +5,7 @@ import { GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RoadmapVersion } from "@/lib/roadmapVersions";
 import { PersonLink } from "@/components/ui/EntityLink";
+import { isSomebody } from "@/lib/entityHref";
 
 /**
  * THE VERSION HISTORY AS A TIMELINE, SPACED BY ORDER RATHER THAN BY DATE.
@@ -151,7 +152,12 @@ export function RoadmapTimeline({ versions }: { versions: RoadmapVersion[] }) {
             )}
           </div>
           <p className="mt-1 flex items-center gap-1.5 text-[12px] text-text-secondary">
-            <PersonLink name={current.savedBy} avatarClassName="h-4 w-4 shrink-0 text-[7px]" className="gap-1.5" />
+            {/* A save with no name on it reads "Someone": no face for that. */}
+            {isSomebody(current.savedBy) && current.savedBy.trim().toLowerCase() !== "someone" ? (
+              <PersonLink name={current.savedBy} avatarClassName="h-4 w-4 shrink-0 text-[7px]" className="gap-1.5" />
+            ) : (
+              <span>{current.savedBy}</span>
+            )}
             <span className="text-text-tertiary">
               · {fullStamp(current.savedAt)}
             </span>
