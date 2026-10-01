@@ -388,7 +388,7 @@ export function DealPeople({
                     disabled={busy}
                     onClick={() => setRemoving(n)}
                     aria-label={`Take ${n} off this deal`}
-                    className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10 disabled:opacity-50"
+                    className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:opacity-50"
                   >
                     <Trash2 size={14} strokeWidth={2} />
                   </button>

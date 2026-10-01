@@ -24,8 +24,10 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { SmartBack } from "@/components/ui/BackButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { NamePill } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
+import { isManagerOrAdmin } from "@/lib/moduleAccess";
 import { cn, plural } from "@/lib/utils";
 import { withCommas } from "@/lib/currency";
 import { expandMoneyShorthand } from "@/lib/moneyShorthand";
@@ -72,7 +74,58 @@ type Props = {
   embedded?: boolean;
   /** Split view fetches its own state, so it needs telling when to re-read. */
   onChanged?: () => void;
+  /**
+   * The group was deleted from here. The split view picks another group; the
+   * group's own page goes back to the list when this is not given.
+   */
+  onRemoved?: () => void;
 };
+
+/**
+ * ONE WAY TO SAY IT, WHEREVER A GROUP IS DELETED FROM: the Groups table, the
+ * split view and the group's own page.
+ *
+ * SAY WHAT GOES. The table's dialog said "its people and their goals are
+ * untouched", but removeGroup takes the goals given to the group off with it,
+ * and the rows it created for its people on those goals with them. Their
+ * accounts, anything given to them by hand and everything they logged stay.
+ */
+export function RemoveGroupDialog({
+  group,
+  onClose,
+  onConfirm,
+  busy = false,
+}: {
+  group: { name: string } | null;
+  onClose: () => void;
+  onConfirm: () => void;
+  busy?: boolean;
+}) {
+  return (
+    <ConfirmDialog
+      open={group !== null}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      title="Remove this group?"
+      body={
+        group ? (
+          <>
+            {/* The name is a blue pill, not bare text in the sentence
+                (Anir, Aug 15: "again, group name has to be in the pill,
+                and blue"). */}
+            <NamePill>{group.name}</NamePill> is deleted, and the goals given
+            to it come off with it.
+          </>
+        ) : (
+          ""
+        )
+      }
+      detail="Targets its people carry only because of this group go too. Their accounts, goals given to them by hand and everything they logged stay."
+      confirmLabel="Remove group"
+      busy={busy}
+    />
+  );
+}
 
 const money = (n: number) =>
   n >= 1_000_000
@@ -88,6 +141,7 @@ export function GroupDetail({
   groupTypeLabel,
   embedded = false,
   onChanged,
+  onRemoved,
 }: Props) {
   const { toast } = useToast();
   const me = useCurrentUserOrNull();
@@ -103,6 +157,8 @@ export function GroupDetail({
   const [openGoal, setOpenGoal] = useState<string | null>(null);
   /** The person about to be taken out of the group, held until confirmed. */
   const [confirmDropPerson, setConfirmDropPerson] = useState<string | null>(null);
+  /** The whole group about to be deleted, held until confirmed. */
+  const [confirmRemoveGroup, setConfirmRemoveGroup] = useState(false);
   /* WHICH TARGET IS BEING EDITED, and in a popup (Anir, Aug 29: "I think
      editing should still be a pop-up, so just keep that part. I don't like just
      entering it in right here"). One piece of state for both kinds, because the
@@ -223,6 +279,37 @@ export function GroupDetail({
     !!me &&
     me.name.trim().toLowerCase() === group.head.trim().toLowerCase();
   const canManagePeople = isOwner || me?.role === "admin";
+  /* DELETING THE GROUP IS A PLAN CHANGE, which the performance route keeps
+     for managers and admins. Only the Groups table offered it, so a group
+     opened on its own page or in the split view had no way to go (Anir,
+     Oct 1: "It should just be super easy to delete"). */
+  const canRemoveGroup = !!me && isManagerOrAdmin(me.role);
+
+  /* Its own call rather than run(): run re-reads the page, and the page of a
+     group that no longer exists is not the one to land on. */
+  async function removeGroup() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/performance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "remove-group", groupId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast(data?.error || "That didn't save.", "error");
+        return;
+      }
+      setConfirmRemoveGroup(false);
+      toast(`${group!.name} removed`);
+      if (onRemoved) onRemoved();
+      else router.push("/admin/groups");
+    } catch {
+      toast("That didn't save.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   /* One save for both kinds. The op differs, the question does not. */
   async function saveTarget() {
@@ -296,11 +383,27 @@ export function GroupDetail({
             {people.length} {people.length === 1 ? "person" : "people"}
           </span>
         </div>
-        {busy && (
-          <span className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
-            <Loader2 size={12} className="animate-spin" /> Saving…
-          </span>
-        )}
+        <span className="flex items-center gap-2">
+          {busy && (
+            <span className="flex items-center gap-1.5 text-[12px] text-text-tertiary">
+              <Loader2 size={12} className="animate-spin" /> Saving…
+            </span>
+          )}
+          {/* The bin the Groups table carries, on the group itself: here
+              and in the split view's pane. Red at rest, and it asks. */}
+          {canRemoveGroup && (
+            <button
+              type="button"
+              disabled={busy}
+              title={`Remove ${group.name}`}
+              aria-label={`Remove ${group.name}`}
+              onClick={() => setConfirmRemoveGroup(true)}
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white text-[color:var(--status-red)] transition-colors hover:border-[rgba(220,38,38,0.4)] hover:bg-[rgba(220,38,38,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Trash2 size={14} strokeWidth={2.2} />
+            </button>
+          )}
+        </span>
       </div>
 
       {/* --------------------------------------------------------- the people */}
@@ -363,14 +466,16 @@ export function GroupDetail({
                    person"). It asks first, because taking somebody out of a
                    group takes their goals in it with them and the standing rule
                    is that a removal is red and confirmed. The owner has no X:
-                   a group with no owner is not a group. */
+                   a group with no owner is not a group. Red at rest, not grey
+                   until hovered (Anir, Oct 1: "It should just be super easy
+                   to delete"), so it reads as a way out, not a close box. */
                 canManagePeople && (
                   <button
                     type="button"
                     title={`Take ${m} out of ${group.name}`}
                     aria-label={`Take ${m} out of ${group.name}`}
                     onClick={() => setConfirmDropPerson(m)}
-                    className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-[rgba(220,38,38,0.10)] hover:text-[color:var(--status-red)]"
+                    className="shrink-0 cursor-pointer rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                   >
                     <X size={13} strokeWidth={2.4} />
                   </button>
@@ -1032,9 +1137,18 @@ export function GroupDetail({
           )
         }
         confirmLabel="Take it off"
-        /* Red is for what cannot be taken back. The goal stays in the Goal
-           Master and can be given to the group again, so this is blue. */
-        tone="primary"
+        /* RED, LIKE EVERY REMOVAL (Anir, Aug 27: "every delete button to be
+           red... in the entire app"). It was blue because the goal can be
+           given back, but the targets set on it for this group and its
+           people do not come back with it, and a blue button reads as a
+           save. */
+        busy={busy}
+      />
+
+      <RemoveGroupDialog
+        group={confirmRemoveGroup ? group : null}
+        onClose={() => setConfirmRemoveGroup(false)}
+        onConfirm={() => void removeGroup()}
         busy={busy}
       />
     </div>

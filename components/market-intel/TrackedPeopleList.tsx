@@ -111,10 +111,13 @@ export function TrackedPeopleList({
                       <LinkedInIcon size={13} />
                     </a>
                     )}
+                    {/* Red at rest, at full strength: a faded grey X read as
+                        decoration, not as the way to stop following (Anir,
+                        Oct 1: "It should just be super easy to delete"). */}
                     {canManage && <button
                       type="button"
                       onClick={() => setConfirmingId(person.id)}
-                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary opacity-70 transition-all hover:bg-[rgba(220,38,38,0.10)] hover:text-[#DC2626] hover:opacity-100 focus-visible:opacity-100"
+                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                       aria-label={`Stop following ${person.name}`}
                       title="Stop following"
                     >

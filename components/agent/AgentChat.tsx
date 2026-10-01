@@ -45,7 +45,12 @@ import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 import { queueAgentNavigationHandoff } from "@/lib/agentNavigationHandoff";
 import { useAgentReminders } from "@/components/agent/useAgentReminders";
-import { useAgentAttachments, type SentAttachment } from "@/components/agent/useAgentAttachments";
+import {
+  chatFileIds,
+  discardChatFiles,
+  useAgentAttachments,
+  type SentAttachment,
+} from "@/components/agent/useAgentAttachments";
 import { PendingAttachmentChips, SentAttachmentChips } from "@/components/agent/AttachmentChips";
 
 type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp"; /** Files sent with a user message. */ attachments?: SentAttachment[] };
@@ -739,8 +744,12 @@ export function AgentChat({
   /* Every delete asks (Anir, Aug 27: "every delete button... a pop-up in
      the entire app"). A chat is real work; one hover-click erased it. */
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
-  const [confirmChat, setConfirmChat] = useState<{ id: string; title: string } | null>(null);
+  const [confirmChat, setConfirmChat] = useState<{ id: string; title: string; files: number } | null>(null);
   function remove(id: string) {
+    /* The files sent in it go too, read from this render's list so the
+       requests are not repeated by a state updater that may run twice. */
+    const gone = convos.find((c) => c.id === id);
+    if (gone) discardChatFiles(gone, convos.filter((c) => c.id !== id));
     setConvos((prev) => {
       const next = prev.filter((c) => c.id !== id);
       save(storageKey, next);
@@ -767,9 +776,10 @@ export function AgentChat({
             </p>
           ) : (
             /* Grouped by day rather than one flat "Recent" pile, so a thread
-               tells you when it is from before you open it (Anir, Aug 14). The
-               stamp on each row and the delete button share the same corner:
-               the stamp is what you see, the delete appears over it on hover. */
+               tells you when it is from before you open it (Anir, Aug 14).
+               THE BIN IS ALWAYS THERE, beside the stamp rather than hidden
+               under it until hover (Anir, Oct 1: "It should just be super
+               easy to delete"). Red at rest, and it asks first. */
             bucketByDay(visibleConvos, (c) => c.updated || 0).map((group) => (
               <div key={group.label}>
                 <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
@@ -786,7 +796,7 @@ export function AgentChat({
                           .filter(Boolean)
                           .join("\n")}
                         className={cn(
-                          "w-full text-left flex items-center gap-2 pl-2.5 pr-[62px] py-2 rounded-md text-[13px] truncate transition-colors",
+                          "w-full text-left flex items-center gap-2 pl-2.5 pr-[88px] py-2 rounded-md text-[13px] truncate transition-colors",
                           c.id === activeId
                             ? "bg-blue-light text-blue-primary font-medium"
                             : "text-text-secondary hover:bg-surface"
@@ -800,14 +810,22 @@ export function AgentChat({
                         <span className="truncate">{c.title || "New chat"}</span>
                       </button>
                       {c.updated ? (
-                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] tabular-nums text-text-tertiary group-hover:opacity-0 transition-opacity">
+                        <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-[11px] tabular-nums text-text-tertiary">
                           {listStamp(c.updated)}
                         </span>
                       ) : null}
                       <button
-                        onClick={() => setConfirmChat({ id: c.id, title: c.title || "this chat" })}
+                        type="button"
+                        onClick={() =>
+                          setConfirmChat({
+                            id: c.id,
+                            title: c.title || "this chat",
+                            files: chatFileIds(c).length,
+                          })
+                        }
+                        title={`Delete ${c.title || "this chat"}`}
                         aria-label={`Delete ${c.title || "chat"}`}
-                        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded bg-inherit text-[color:var(--status-red)] opacity-0 group-hover:opacity-100 hover:text-error transition-opacity"
+                        className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                       >
                         <Trash2 size={13} strokeWidth={1.8} />
                       </button>
@@ -844,7 +862,11 @@ export function AgentChat({
         }}
         title="Delete this chat?"
         body={<><b>{confirmChat?.title}</b> and everything in it goes away.</>}
-        detail="There is no undo for a deleted conversation."
+        detail={
+          confirmChat?.files
+            ? `The ${confirmChat.files === 1 ? "file" : `${confirmChat.files} files`} sent in it ${confirmChat.files === 1 ? "is" : "are"} deleted too. There is no undo for a deleted conversation.`
+            : "There is no undo for a deleted conversation."
+        }
         confirmLabel="Delete it"
       />
       {/* Conversation list */}

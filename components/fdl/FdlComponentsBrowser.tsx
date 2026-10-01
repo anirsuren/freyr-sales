@@ -585,16 +585,34 @@ export function FdlComponentsBrowser({
               const current = fdlCurrentVersion(component);
               const homes = usedIn[component.id] ?? [];
               return (
+                /* DELETE ON THE TILE TOO, NOT ONLY IN THE TABLE (Anir, Oct 1:
+                   "It's really easy to add them, but if I do something wrong,
+                   it's a huge problem. It should just be super easy to
+                   delete"). Tiles are the default view, so a component made
+                   by mistake had no visible way off the page without
+                   switching views. The bin sits outside the link in its own
+                   corner box, the same build as the remove on a component's
+                   customer cards, and asks through the list's one
+                   ConfirmDialog. The stagger entrance now animates this
+                   wrapper instead of the link. The link's hover lift never
+                   showed while the link was the animated element (the
+                   entrance holds its transform), and keeping it now would
+                   slide the tile out from under its corner button, so it
+                   goes. */
+                <div key={component.id} className="relative">
                 <Link
-                  key={component.id}
                   href={`/components/${component.id}`}
-                  className="group flex h-full flex-col rounded-xl border border-border-light bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-blue-subtle hover:shadow-lg"
+                  className="group flex h-full flex-col rounded-xl border border-border-light bg-white p-4 shadow-card transition-all hover:border-blue-subtle hover:shadow-lg"
                 >
                   {/* Same anatomy as an offering tile (Anir, Aug 8: "fdl
                       should really look pretty similar to the offerings
                       page"): branded icon tile, the type as a coloured
                       eyebrow, the name as the headline, chevron on the right. */}
-                  <div className="flex h-[52px] items-start justify-between gap-2">
+                  <div
+                    className={`flex h-[52px] items-start justify-between gap-2 ${
+                      canEdit ? "pr-8" : ""
+                    }`}
+                  >
                     <div className="flex min-w-0 items-start gap-2.5">
                       {agentIn(component.name) ? (
                         <AgentAvatar name={component.name} size={36} />
@@ -696,6 +714,22 @@ export function FdlComponentsBrowser({
                     </div>
                   </div>
                 </Link>
+                {canEdit && (
+                  <span className="absolute right-3 top-3">
+                    <Tooltip label="Delete this component">
+                      <button
+                        type="button"
+                        aria-label={`Delete ${component.name}`}
+                        onClick={() => setConfirmDelete(component.id)}
+                        disabled={busy}
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Trash2 size={14} strokeWidth={2} />
+                      </button>
+                    </Tooltip>
+                  </span>
+                )}
+                </div>
               );
             })}
               </div>
@@ -932,7 +966,7 @@ export function FdlComponentsBrowser({
                                     // should read as dangerous before you reach
                                     // it (Anir, Aug 9: "the delete button should
                                     // be red, obviously").
-                                    className="text-[color:var(--status-red)] flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                                   >
                                     <Trash2 size={14} strokeWidth={2} />
                                   </button>

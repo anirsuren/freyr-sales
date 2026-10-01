@@ -1092,9 +1092,9 @@ export function RevenueAccrualsModule({
      new version." The route has existed since tonight; this is the button. */
   const [confirmSweep, setConfirmSweep] = useState(false);
   const [confirmUnfreeze, setConfirmUnfreeze] = useState<string | null>(null);
+  /** The plan waiting on "Delete this accrual plan?". Set from the planner's
+   *  footer, which is the one door a plan's delete has. */
   const [confirmDelete, setConfirmDelete] = useState<AccrualPlan | null>(null);
-  /** The compact plan manager. See the button that opens it for why it has to
-   *  exist at all now the deal rows are gone. */
 
   /**
    * TWO EXPANDERS, NOT TWO PAGES (Suren, Sep 1: "one tab, and then another tab
@@ -2001,10 +2001,11 @@ export function RevenueAccrualsModule({
                     a decision to flag, not to make silently, and he has now
                     made it: the button goes.
 
-                    So a plan currently cannot be deleted from anywhere. That
-                    is the deliberate consequence of his instruction and not an
-                    oversight; the moment somebody needs to delete one, this is
-                    the note that says why they cannot. */}
+                    That left a plan undeletable from anywhere, until Oct 1
+                    (Anir: "It should just be super easy to delete"). The
+                    toolbar still has no delete, as he asked; it lives in the
+                    planner's footer instead, red, beside the plan it removes,
+                    and it asks first. See onDelete on AccrualPlanDialog. */}
                 <PriorityTooltip label="Export CSV">
                   <button
                     type="button"
@@ -2421,9 +2422,10 @@ export function RevenueAccrualsModule({
                     the accrual planner, the same dialog "Plan a deal" and the
                     pencil open. It went through /revenue-accruals/[id] until
                     Sep 1; that page is gone, because Suren wanted one screen.
-                  · DELETE A PLAN — had NO other door anywhere in the module,
-                    and the planner has no delete of its own. It is the
-                    "Delete a plan" control on the toolbar above.
+                  · DELETE A PLAN — had NO other door anywhere in the module.
+                    It went to the toolbar, then off it on Sep 1, and since
+                    Oct 1 it is the red "Delete plan" in the planner's own
+                    footer, beside the plan it removes.
 
                 The sort and the row grouping went too: both existed only to
                 order these rows, and a control that changes nothing on screen
@@ -2728,6 +2730,19 @@ export function RevenueAccrualsModule({
           pickable={missing}
           plans={state.plans}
           onClose={() => setPlanning(null)}
+          /* DELETE THE OPEN PLAN, behind the confirmation below. Asked the way
+             /api/revenue-accruals asks its "delete" op: write here at all,
+             then the delete right, which is the create level ("the person
+             who can create only can delete"), so canCreate is that answer.
+             Anybody else gets no button rather than one that is refused. */
+          onDelete={
+            canWrite && canCreate
+              ? (opportunityId) =>
+                  setConfirmDelete(
+                    state.plans.find((p) => p.opportunityId === opportunityId) ?? null
+                  )
+              : undefined
+          }
           onSaved={(next) => {
             setState(next);
             /* LAND ON WHAT YOU JUST MADE. Saving from the "No numbers yet"
@@ -2810,21 +2825,30 @@ export function RevenueAccrualsModule({
         confirmLabel="Freeze the month"
       />
 
+      {/* Opened from the planner's footer, so it sits on top of the planner;
+          once the plan is gone the planner closes too, since what it was
+          showing no longer exists. The body used to promise the deal would
+          show under "No numbers yet", a filter since renamed, and Won or Lost
+          deals are never listed there at all, so it no longer promises it. */}
       <ConfirmDialog
         open={!!confirmDelete}
-        onClose={() => setConfirmDelete(null)}
+        onClose={() => {
+          if (!busy) setConfirmDelete(null);
+        }}
+        busy={busy}
         onConfirm={async () => {
           if (!confirmDelete) return;
-          await post(
+          const deleted = await post(
             { op: "delete", opportunityId: confirmDelete.opportunityId },
             "Plan deleted."
           );
           setConfirmDelete(null);
+          if (deleted) setPlanning(null);
         }}
         title="Delete this accrual plan?"
         body={
           confirmDelete
-            ? `${confirmDelete.opportunityName} goes back to having no accrual numbers, and shows up under “No numbers yet”. The deal itself is untouched.`
+            ? `${confirmDelete.opportunityName} goes back to having no accrual numbers. The deal itself is untouched.`
             : ""
         }
         confirmLabel="Delete plan"

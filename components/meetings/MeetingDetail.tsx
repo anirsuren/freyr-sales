@@ -129,6 +129,7 @@ export function MeetingDetail({
   meeting: initial,
   meName,
   meRole,
+  canDeleteModule,
   members,
   customers,
   contacts,
@@ -137,6 +138,13 @@ export function MeetingDetail({
   meeting: Meeting;
   meName: string;
   meRole: string;
+  /**
+   * The module's delete right, from the same check the route makes before it
+   * looks at who owns the meeting. Without it an owner whose privilege only
+   * reaches edit saw a bin that could only answer "Only an owner can delete
+   * this."
+   */
+  canDeleteModule: boolean;
   members: string[];
   customers: { id: string; name: string }[];
   contacts: { id: string; name: string; customerId: string | null; title: string }[];
@@ -182,7 +190,7 @@ export function MeetingDetail({
   const [uploadPct, setUploadPct] = useState(0);
 
   const mine = m.owner.trim().toLowerCase() === meName.trim().toLowerCase();
-  const canDelete = mine || meRole === "admin";
+  const canDelete = canDeleteModule && (mine || meRole === "admin");
   const done = m.status === "completed";
 
   async function post(body: Record<string, unknown>): Promise<boolean> {

@@ -6,8 +6,10 @@ import { fetchFxDay } from "@/lib/fxClient";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import Link from "next/link";
 import {
-  CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, GitCompareArrows, Pencil, Plus, Target } from "lucide-react";
+  CalendarCheck, ArrowLeft, ArrowUpRight, CalendarClock, FileSignature, GitCompareArrows, Pencil, Plus, Target, Trash2 } from "lucide-react";
 import { SmartBack, sectionLabelFor, useBackTrail } from "@/components/ui/BackButton";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { EditDealDialog } from "./EditDealDialog";
 /* THE OVERVIEW TAB IS THE EDIT FORM (Suren, Sep 1: "This overview can be the
@@ -79,6 +81,7 @@ const LEVEL_TONE: Record<string, string> = {
 
 export function OpportunityDetail({
   verdict,
+  mayDelete = false,
   accrual = null,
   requestSolutioning = null,
   createOptions = null,
@@ -96,6 +99,10 @@ export function OpportunityDetail({
   /** What this person may do to THIS deal — the privilege map joined to who is
    *  on the account and on the deal. Decided on the server. */
   verdict: { mayEdit: boolean; mayCreate: boolean; why: string };
+  /** May delete this deal: the edit screen's rule plus the owner-or-manager
+   *  check /api/opportunities makes before it removes one. Decided on the
+   *  server, so an edit-only member is never shown a Delete that fails. */
+  mayDelete?: boolean;
   /**
    * WHAT THE REVENUE ACCRUALS TAB NEEDS TO OPEN ITS PLANNER HERE.
    *
@@ -254,6 +261,42 @@ export function OpportunityDetail({
       return null;
     } catch {
       return "That didn't save.";
+    }
+  }
+
+  /**
+   * DELETING THE DEAL FROM THE DEAL ITSELF (Anir, Oct 1: "It's really easy to
+   * add them, but if I do something wrong, it's a huge problem. It should just
+   * be super easy to delete").
+   *
+   * The only doors were the pipeline row and the very end of the edit screen,
+   * so the page you land on after making a deal was the one place you could
+   * not scrap it. Same op both of those send, so one route and one set of
+   * rules, and the route takes the accrual plan and unverified met entries
+   * with it.
+   */
+  const { toast } = useToast();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  async function deleteDeal() {
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/opportunities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "remove", id: deal.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "That didn't delete.");
+      toast(`${deal.name || "The deal"} deleted.`);
+      /* Stays on "Removing…" until the pipeline arrives, rather than closing
+         and showing the deal again for a moment as though nothing happened. */
+      router.push("/opportunities");
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "That didn't delete.", "error");
+      setDeleting(false);
+      setConfirmingDelete(false);
     }
   }
 
@@ -550,8 +593,40 @@ export function OpportunityDetail({
               Convert to contract
             </button>
           ) : null}
+          {/* DELETE, LAST AND RED, and it asks first. The buttons before it
+              keep their places; this only adds to the end of the row. Drawn
+              only when the server says the remove would land. */}
+          {mayDelete ? (
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-3.5 py-2 text-[13px] font-semibold text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+            >
+              <Trash2 size={14} strokeWidth={2.2} />
+              Delete deal
+            </button>
+          ) : null}
         </span>
       </div>
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        subject={{ name: deal.name || "This deal", kind: "opportunity" }}
+        onClose={() => {
+          if (!deleting) setConfirmingDelete(false);
+        }}
+        onConfirm={() => void deleteDeal()}
+        busy={deleting}
+        title="Delete this deal?"
+        body={
+          <>
+            <b>{deal.name || "This deal"}</b> comes off the pipeline, and off any
+            goal that counted it as a line item. Its accrual plan goes with it.
+          </>
+        }
+        detail="Results already verified against it stay; they simply stop naming a deal."
+        confirmLabel="Delete deal"
+      />
 
       {/* The money, in the three shapes the summary reads it in. */}
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">

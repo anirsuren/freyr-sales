@@ -47,6 +47,8 @@ import { DateText } from "@/components/ui/DateText";
 import { contactPhoneDisplay } from "@/lib/contactPhoneDisplay";
 import { countryFlag } from "@/lib/countries";
 import { dateOnlyDaysFromToday } from "@/lib/dateOnly";
+import { moduleDeleteRefusal, recordDeleteRefusal } from "@/lib/moduleAccessServer";
+import { DeleteRecordButton } from "@/components/customers/DeleteRecordButton";
 
 export const metadata = { title: "Contact" };
 export const dynamic = "force-dynamic";
@@ -132,6 +134,19 @@ export default async function ContactDetailPage({
   const displayedPhone = contact.phone
     ? contactPhoneDisplay(contact.phone, contact.raw_linkedin_data, contact.country)
     : null;
+  /* MAY THIS PERSON TAKE THEM OFF? Asked the way DELETE /api/contacts/[id]
+     asks it: the Customers delete right, then the account they belong to,
+     because removing a person is a change to that account. Without an account
+     the route asks only the first, so this does too. The header draws nothing
+     for somebody the route would refuse. */
+  const mayRemoveContact = customer
+    ? !(await recordDeleteRefusal("/customers", {
+        id: customer.id,
+        owner: customer.owner,
+        owner_user_id: customer.owner_user_id,
+        created_by: customer.created_by,
+      }))
+    : !(await moduleDeleteRefusal("/customers"));
   // The deals this person sits on — the same pipeline derivation every other
   // page uses, scoped to the sessions/interactions already loaded above.
   const contactDeals = customer
@@ -255,6 +270,31 @@ export default async function ContactDetailPage({
               <Mail size={13} strokeWidth={2} className="shrink-0" />
               <span className="truncate max-w-[240px]">{contact.email}</span>
             </a>
+          )}
+          {/* REMOVE THEM FROM THEIR OWN PAGE (Anir, Oct 1: "It should just be
+              super easy to delete"). The trash lived only on the account's
+              Contacts tab, so a mistyped person opened from search, a meeting
+              or the voice page could not be taken off from where they were
+              standing. Last in the row and red, and it asks first. Lands on
+              the account's Contacts tab, which is the list they came off. */}
+          {mayRemoveContact && (
+            <DeleteRecordButton
+              compact
+              endpoint={`/api/contacts/${encodeURIComponent(contact.id)}`}
+              label="Remove contact"
+              subject={{ name: contact.full_name, kind: "person" }}
+              title="Remove this contact?"
+              body={
+                <>
+                  <b>{contact.full_name}</b> comes off{" "}
+                  {customer ? customer.company_name : "this account"}.
+                </>
+              }
+              detail="Meetings and requests that named them keep that name. Only the person's record on this account is removed."
+              confirmLabel="Remove contact"
+              done={`${contact.full_name} removed.`}
+              then={customer ? `/customers/${customer.id}?tab=contacts` : "/contacts"}
+            />
           )}
         </div>
       </div>

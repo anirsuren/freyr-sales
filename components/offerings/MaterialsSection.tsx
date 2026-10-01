@@ -1904,7 +1904,10 @@ export function MaterialsSection({
                     is most of why the list read as busy. They now sit together
                     at the end of the card: the thing you actually came to do
                     wears a button, the rest are quiet square icon buttons that
-                    only colour on hover. */}
+                    only colour on hover. Remove is the exception: it is red at
+                    rest, like every remove in the app, so the way to undo a
+                    wrong upload is never hidden (Anir, Oct 1: "It should just
+                    be super easy to delete"). */}
                 <span
                   className={`flex shrink-0 items-center gap-1 ${
                     columns === 4
@@ -1980,7 +1983,7 @@ export function MaterialsSection({
                           setPendingRemoval(material);
                         }
                       }}
-                      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-[color:#B02020]/10 hover:text-[color:var(--ink-red)]"
+                      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                     >
                       <X size={14} strokeWidth={2} />
                     </span>

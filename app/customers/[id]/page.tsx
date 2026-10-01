@@ -26,6 +26,7 @@ import { buildCustomer360 } from "@/lib/customer360";
 import { Customer360 } from "@/components/customers/Customer360";
 import { BAND_ICONS } from "@/lib/customer360Shared";
 import { CustomerTabs } from "@/components/customers/CustomerTabs";
+import { DeleteRecordButton } from "@/components/customers/DeleteRecordButton";
 import { readAccountReviews } from "@/lib/accountReviews";
 import { initializeLiveOfferings, listFdlComponents } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
@@ -435,6 +436,27 @@ export default async function CustomerDetailPage({
             <FileText size={15} strokeWidth={1.7} />
             Report
           </Link>
+          {/* DELETE THE ACCOUNT FROM THE ACCOUNT (Anir, Oct 1: "It should
+              just be super easy to delete"). It lived only on
+              /customers/[id]/edit, which nothing has linked to since the
+              page-wide Edit account door went, so an account added by mistake
+              could not be removed from anywhere a person would look. Drawn on
+              mayDeleteOnThisAccount, the same pair DELETE /api/customers/[id]
+              asks (the module's delete right, then this record's). An account
+              that still has deals is refused by the route, which says how many
+              and to move them first, and the button shows that as it is. */}
+          {mayDeleteOnThisAccount && (
+            <DeleteRecordButton
+              endpoint={`/api/customers/${customer.id}`}
+              label="Delete account"
+              subject={{ name: customer.company_name, kind: "company" }}
+              title={`Delete ${customer.company_name}?`}
+              body="The account and its contacts are removed. This cannot be undone."
+              confirmLabel="Delete account"
+              done={`${customer.company_name} deleted.`}
+              then="/customers"
+            />
+          )}
         </div>
       </div>
 

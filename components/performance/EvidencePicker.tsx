@@ -265,11 +265,16 @@ export function EvidencePicker({
             className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(0,113,227,0.08)] px-2.5 py-1 text-[11.5px] font-semibold text-blue-primary"
           >
             📎 {e.name}
+            {/* RED, LIKE EVERY REMOVE (Anir, Aug 27: "every delete button to
+                be red"). It was the chip's own blue, so it read as part of
+                the file name. It acts at once: this picker only lives inside
+                a form's popup, and nothing is kept until that form saves. */}
             <button
               type="button"
+              title={`Remove ${e.name}`}
               aria-label={`Remove ${e.name}`}
               onClick={() => onChange(value.filter((_, j) => j !== i))}
-              className="cursor-pointer text-blue-primary/70 hover:text-blue-primary"
+              className="-mr-1 cursor-pointer rounded-full p-0.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
             >
               <X size={11} strokeWidth={2.6} />
             </button>

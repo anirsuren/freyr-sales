@@ -16,10 +16,12 @@ import {
   PanelsTopLeft,
   Rows3,
   SearchX,
+  Trash2,
   UserRound,
   Plus,
   Users,
 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PageToolbar } from "@/components/ui/PageToolbar";
 import { StatTile } from "@/components/ui/StatTile";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -199,6 +201,8 @@ export function MeetingsModule({
   contacts,
   opportunities,
   canCreate,
+  canDelete = false,
+  isAdmin = false,
   routeRoom,
 }: {
   state: MeetingsState;
@@ -214,6 +218,15 @@ export function MeetingsModule({
    * create on.
    */
   canCreate: boolean;
+  /**
+   * MAY THEY REMOVE MEETINGS AT ALL (Anir, Oct 1: "It's really easy to add
+   * them, but if I do something wrong, it's a huge problem. It should just be
+   * super easy to delete"). The module's delete right, from the same check
+   * the route makes. Which ones is a second question, answered per row.
+   */
+  canDelete?: boolean;
+  /** Admins may remove anybody's meeting; everyone else only their own. */
+  isAdmin?: boolean;
   /** Which room, from the URL. */
   routeRoom: MeetingRoom;
 }) {
@@ -256,6 +269,44 @@ export function MeetingsModule({
     ["table", "split"] as const
   );
   const [pickedId, setPickedId] = useState<string | null>(null);
+  /* The meeting about to be deleted, held until the dialog says yes. */
+  const [confirmDelete, setConfirmDelete] = useState<Meeting | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  /**
+   * THE BIN SHOWS ONLY WHERE THE DELETE WOULD WORK. The route refuses anyone
+   * without the module's delete right, and then anyone who neither owns the
+   * meeting nor is an admin. A bin that can only fail is worse than no bin,
+   * so the row asks the same two questions in the same order.
+   */
+  const canDeleteMeeting = (m: Meeting) =>
+    canDelete &&
+    (isAdmin ||
+      (m.owner ?? "").trim().toLowerCase() === meName.trim().toLowerCase());
+
+  async function deleteMeeting(m: Meeting) {
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/meetings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "delete", id: m.id }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        toast(data?.error || "That didn't delete.", "error");
+        return;
+      }
+      if (data.state) setState(data.state);
+      setConfirmDelete(null);
+      if (pickedId === m.id) setPickedId(null);
+      toast(`${m.ref} deleted.`);
+      router.refresh();
+    } catch {
+      toast("That didn't delete.", "error");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const all = state.meetings;
   const planned = all.filter((m) => m.status === "planned");
@@ -669,6 +720,21 @@ export function MeetingsModule({
                   >
                     <ArrowUpRight size={15} strokeWidth={2.2} />
                   </Link>
+                  {/* The same bin the list rows carry, beside the meeting it
+                      removes, so the split view is not the one place a
+                      meeting cannot be deleted from. */}
+                  {canDeleteMeeting(picked) && (
+                    <button
+                      type="button"
+                      title={`Delete ${picked.title}`}
+                      aria-label={`Delete ${picked.ref} ${picked.title}`}
+                      onClick={() => setConfirmDelete(picked)}
+                      disabled={deleting}
+                      className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Trash2 size={14} strokeWidth={2} />
+                    </button>
+                  )}
                 </div>
                 <div className="px-4 py-4">
                   <MeetingPanel m={picked} contacts={contacts} ownArrow={false} />
@@ -823,6 +889,32 @@ export function MeetingsModule({
                             </span>
                           )}
                         </span>
+                        {/* DELETE FROM THE LIST, NOT ONLY FROM THE MEETING
+                            (Anir, Oct 1: "It should just be super easy to
+                            delete"). The only way to remove one was to open
+                            it and find the bin in its header. Red at rest and
+                            it asks first, like every remove in the app. A row
+                            the viewer cannot delete keeps the slot empty, so
+                            the chevrons still line up down the list. */}
+                        {canDelete &&
+                          (canDeleteMeeting(m) ? (
+                            <button
+                              type="button"
+                              title={`Delete ${m.title}`}
+                              aria-label={`Delete ${m.ref} ${m.title}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDelete(m);
+                              }}
+                              onKeyDown={(e) => e.stopPropagation()}
+                              disabled={deleting}
+                              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <Trash2 size={14} strokeWidth={2} />
+                            </button>
+                          ) : (
+                            <span className="h-7 w-7 shrink-0" aria-hidden="true" />
+                          ))}
                         <button
                           type="button"
                           aria-label={openIds.has(m.id) ? "Collapse meeting details" : "Expand meeting details"}
@@ -885,6 +977,29 @@ export function MeetingsModule({
           }}
         />
       )}
+
+      {/* Same words as the meeting's own page, so the two deletes read as
+          one action wherever it is started from. */}
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          if (confirmDelete) void deleteMeeting(confirmDelete);
+        }}
+        title="Delete this meeting?"
+        body={
+          confirmDelete ? (
+            <>
+              <span className="font-semibold">{confirmDelete.title}</span> ({confirmDelete.ref}) and
+              everything written on it will be removed. This cannot be undone.
+            </>
+          ) : (
+            ""
+          )
+        }
+        confirmLabel="Delete it"
+        busy={deleting}
+      />
       </SolutioningTabs>
     </div>
   );

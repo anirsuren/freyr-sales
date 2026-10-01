@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -546,7 +547,7 @@ export function ConnectedComponents({
                       aria-label={`Disconnect ${component.name}`}
                       title="Disconnect from this offering"
                       onClick={() => setConfirmDisconnect(component.id)}
-                      className="absolute right-3 top-3 flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                      className="absolute right-3 top-3 flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                     >
                       <Unlink size={13} strokeWidth={2} />
                     </button>
@@ -682,42 +683,31 @@ export function ConnectedComponents({
       </Modal>
       {/* A REAL CONFIRMATION (Anir, Aug 12: "it should be like a pop-up that
           says either Disconnect in red or Cancel… like normal"). The floating
-          "Disconnect?" chip read as a mistake, not a decision. */}
-      <Modal
+          "Disconnect?" chip read as a mistake, not a decision. It is the
+          app's shared ConfirmDialog now rather than a hand-built copy, so it
+          asks in the same words, colours and layout as every other remove. */}
+      <ConfirmDialog
         open={confirmDisconnect !== null}
         onClose={() => setConfirmDisconnect(null)}
+        onConfirm={() => {
+          const c = connected.find((x) => x.id === confirmDisconnect);
+          if (!c) return;
+          void disconnect(c).then(() => setConfirmDisconnect(null));
+        }}
+        busy={busy}
         title="Disconnect this component?"
-      >
-        <p className="text-[13px] leading-relaxed text-text-secondary">
-          {(() => {
-            const c = connected.find((x) => x.id === confirmDisconnect);
-            return c
-              ? `${c.name} stops being part of this offering. The component itself, its versions and its files are untouched. You can connect it again any time.`
-              : "";
-          })()}
-        </p>
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setConfirmDisconnect(null)}
-            className="cursor-pointer rounded-full px-4 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              const c = connected.find((x) => x.id === confirmDisconnect);
-              if (!c) return;
-              void disconnect(c).then(() => setConfirmDisconnect(null));
-            }}
-            className="cursor-pointer rounded-full bg-error px-4 py-2 text-[13px] font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
-          >
-            {busy ? "Disconnecting…" : "Disconnect"}
-          </button>
-        </div>
-      </Modal>
+        body={
+          <>
+            <b>
+              {connected.find((x) => x.id === confirmDisconnect)?.name ??
+                "This component"}
+            </b>{" "}
+            stops being part of this offering.
+          </>
+        }
+        detail="The component itself, its versions and its files are untouched. You can connect it again any time."
+        confirmLabel="Disconnect"
+      />
     </section>
 
   );

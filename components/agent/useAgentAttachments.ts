@@ -30,6 +30,37 @@ export type PendingAttachment = {
 
 export type SentAttachment = { fileId: string; name: string; kind?: string; bytes?: number };
 
+type ChatWithFiles = { messages: { attachments?: SentAttachment[] }[] };
+
+/** Every file sent in a chat, once each. */
+export function chatFileIds(chat: ChatWithFiles): string[] {
+  return [
+    ...new Set(
+      (chat.messages ?? [])
+        .flatMap((m) => (m.attachments ?? []).map((a) => a?.fileId))
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+}
+
+/**
+ * A DELETED CHAT TAKES ITS FILES WITH IT (Anir, Oct 1: "It should just be super
+ * easy to delete"). Deleting a conversation only dropped the messages, so a
+ * recording or a contract sent in it stayed in storage with nothing left that
+ * could ever reach it. Each file goes through the same DELETE the x on a chip
+ * uses, which only ever removes the signed-in person's own files.
+ *
+ * A file another remaining chat still shows is kept. keepalive lets the
+ * requests finish if the page is left straight after deleting.
+ */
+export function discardChatFiles(gone: ChatWithFiles, kept: ChatWithFiles[]): void {
+  const stillShown = new Set(kept.flatMap(chatFileIds));
+  for (const fileId of chatFileIds(gone)) {
+    if (stillShown.has(fileId)) continue;
+    void fetch(`/api/agent/files/${encodeURIComponent(fileId)}`, { method: "DELETE", keepalive: true }).catch(() => undefined);
+  }
+}
+
 type ServerFile = { fileId: string; status: PendingAttachment["status"]; kind?: string; error?: string; durationSeconds?: number; pages?: number };
 
 /** A raw PUT to a signed URL, reporting bytes sent. */

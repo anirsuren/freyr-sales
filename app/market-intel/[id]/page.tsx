@@ -186,7 +186,7 @@ export default async function MarketIntelCompanyPage({
   const mine = tracking.companies.find((c) => c.id === id);
   if (mine?.onboarding) return <>
     <AutoFresh everyMs={15_000} />
-    <div className="mx-auto max-w-xl"><PendingCompanyCard company={mine} divisions={companyDivisions(tracking, id, sourceDefault(id))} /></div>
+    <div className="mx-auto max-w-xl"><PendingCompanyCard company={mine} divisions={companyDivisions(tracking, id, sourceDefault(id))} onMyPage={onMyPage} /></div>
   </>;
 
   /**

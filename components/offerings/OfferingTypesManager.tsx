@@ -244,12 +244,15 @@ export function OfferingTypesManager({
                     </button>
                   )}
                   {canEdit && (
+                    /* Red at rest, like every remove in the app: a grey X
+                       that only reddens on hover is one nobody finds (Anir,
+                       Oct 1: "It should just be super easy to delete"). */
                     <button
                       onClick={() => setConfirmRemove(t)}
                       disabled={busy}
                       aria-label={`Remove ${t.name}`}
                       title={`Remove ${t.name}`}
-                      className="cursor-pointer rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-error/10 hover:text-error disabled:opacity-50"
+                      className="cursor-pointer rounded-lg p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:opacity-50"
                     >
                       <X size={14} strokeWidth={2.2} />
                     </button>

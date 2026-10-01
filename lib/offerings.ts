@@ -4863,11 +4863,28 @@ export function updateOfferingType(
   return activeStore().offeringTypes[i];
 }
 export function deleteOfferingType(id: string): boolean {
-  // Removes the definition from the master list. Offerings keep their
-  // offering_type string — this just drops the managed entry/description.
-  const before = activeStore().offeringTypes.length;
-  activeStore().offeringTypes = activeStore().offeringTypes.filter((t) => t.id !== id);
-  return activeStore().offeringTypes.length < before;
+  const store = activeStore();
+  const gone = store.offeringTypes.find((t) => t.id === id);
+  if (!gone) return false;
+  store.offeringTypes = store.offeringTypes.filter((t) => t.id !== id);
+  // THE OFFERINGS LET GO OF IT TOO, OR THE DELETE DOES NOT STICK. Offerings
+  // hold the type as a plain name, and the next save of any offering still
+  // carrying it ran ensureOfferingType and put the type straight back, while
+  // the confirm had just promised those offerings "will no longer have a
+  // type" (Anir, Oct 1: "if I do something wrong, it's a huge problem. It
+  // should just be super easy to delete"). Only a name no remaining type
+  // answers to is cleared: exactly the ones that save would have revived.
+  const name = gone.name.trim().toLowerCase();
+  const stillListed = store.offeringTypes.some(
+    (t) => t.name.trim().toLowerCase() === name
+  );
+  if (name && !stillListed) {
+    for (const offering of store.offerings) {
+      if ((offering.offering_type || "").trim().toLowerCase() === name)
+        offering.offering_type = "";
+    }
+  }
+  return true;
 }
 // Keep the master list complete when an offering introduces a brand-new type
 // name via the entry form, so it shows up in the filter and the manager.
@@ -4927,11 +4944,25 @@ export function updateOfferingCategory(
   return activeStore().offeringCategories[i];
 }
 export function deleteOfferingCategory(id: string): boolean {
-  // Removes the definition from the master list. Offerings keep their
-  // offering_category string — this just drops the managed entry.
-  const before = activeStore().offeringCategories.length;
-  activeStore().offeringCategories = activeStore().offeringCategories.filter((c) => c.id !== id);
-  return activeStore().offeringCategories.length < before;
+  const store = activeStore();
+  const gone = store.offeringCategories.find((c) => c.id === id);
+  if (!gone) return false;
+  store.offeringCategories = store.offeringCategories.filter((c) => c.id !== id);
+  // Same reason as deleteOfferingType: an offering still filed under the
+  // name would bring the category back through ensureOfferingCategory on its
+  // next save, and the confirm promises they "will no longer have a
+  // category". Only a name no remaining category answers to is cleared.
+  const name = gone.name.trim().toLowerCase();
+  const stillListed = store.offeringCategories.some(
+    (c) => c.name.trim().toLowerCase() === name
+  );
+  if (name && !stillListed) {
+    for (const offering of store.offerings) {
+      if ((offering.offering_category || "").trim().toLowerCase() === name)
+        offering.offering_category = "";
+    }
+  }
+  return true;
 }
 // Keep the master list complete when an offering introduces a brand-new
 // category name (via the entry form or Excel import).

@@ -659,7 +659,7 @@ export function CustomerEditForm({
             type="button"
             onClick={() => setConfirmDelete(true)}
             disabled={busy || deleting}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-error/30 px-3.5 py-2 text-[13px] font-semibold text-error transition-colors hover:bg-error/5 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] px-3.5 py-2 text-[13px] font-semibold text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Trash2 size={14} strokeWidth={2.2} />
             Delete account

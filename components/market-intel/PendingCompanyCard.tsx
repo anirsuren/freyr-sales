@@ -2,21 +2,65 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, RefreshCw } from "lucide-react";
+import { Check, Loader2, RefreshCw, X } from "lucide-react";
 import { MiLogo } from "./MiLogo";
 import { DivisionChips } from "./DivisionChips";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { useToast } from "@/components/ui/Toast";
 import type { TrackedCompany } from "@/lib/marketIntelTracking";
 import type { Division } from "@/lib/offeringMaterials";
 export function PendingCompanyCard({
   company,
   divisions,
+  onMyPage = false,
 }: {
   company: TrackedCompany;
   divisions: Division[];
+  /** Whether this company is on the viewer's own Market Intel list. The
+   *  remove only appears when there is something of theirs to remove. */
+  onMyPage?: boolean;
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState("");
+  /* TAKING A JUST-ADDED COMPANY BACK OFF (Anir, Oct 1: "It's really easy to
+     add them, but if I do something wrong, it's a huge problem. It should
+     just be super easy to delete"). While a company is still collecting it
+     showed only progress, so a wrong add could not be undone from here. This
+     unticks it on the viewer's own list through the same call the Manage
+     page and the Tracking toggle make. It never deletes the company for
+     anyone else. */
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const groupLabel = company.group === "competitor" ? "competitors" : "customers";
+  async function removeFromMyList() {
+    setRemoving(true);
+    try {
+      const res = await fetch("/api/market-intel/bookmarks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: company.id, on: false }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Could not save your list.");
+      setConfirmRemove(false);
+      toast(
+        `${company.name} is off your list.${
+          data?.stopped ? " Nobody else is tracking it, so collection stops." : ""
+        }`
+      );
+      // Back to the list it came off. This page keeps showing collection
+      // progress for anyone who opens it, so staying here would look as if
+      // nothing had happened. The list is a dynamic page, so it arrives fresh.
+      router.push(company.group === "competitor" ? "/market-intel?tab=competitors" : "/market-intel");
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "Could not save your list.", "error");
+    } finally {
+      setRemoving(false);
+    }
+  }
   const steps = [
     { key: "identity", label: "Confirm company & LinkedIn", detail: "Checking official sources and reading company posts" },
     { key: "sources", label: "Collect news & website updates", detail: "Searching coverage and reading the company’s website" },
@@ -58,6 +102,7 @@ export function PendingCompanyCard({
     }
   }
   return (
+    <>
     <article
       aria-label={`${company.name}: ${failed ? "collection needs attention" : "collecting updates"}`}
       aria-busy={!failed}
@@ -70,12 +115,29 @@ export function PendingCompanyCard({
           logoUrl={company.logoUrl}
           className="h-9 w-9 shrink-0"
         />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h3 className="truncate text-[14.5px] font-semibold text-text-primary">
             <Link href={`/market-intel/${company.id}`} className="hover:text-blue-primary hover:underline">{company.name}</Link>
           </h3>
           {!failed && <p className="mt-1 flex items-center gap-1.5 text-[12px] font-medium text-blue-primary">{stageIndex >= 0 ? ["Confirming company", "Collecting updates", "Preparing your briefing", "Saving your briefing"][stageIndex] : "Getting ready"}</p>}
         </div>
+        {/* Above the card-wide link (z-20 over its z-10), red at rest like
+            every remove in the app, and asking before it acts. */}
+        {onMyPage && (
+          <span className="relative z-20 shrink-0">
+            <Tooltip label="Remove from my list">
+              <button
+                type="button"
+                aria-label={`Remove ${company.name} from my list`}
+                onClick={() => setConfirmRemove(true)}
+                disabled={removing}
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <X size={15} strokeWidth={2.2} />
+              </button>
+            </Tooltip>
+          </span>
+        )}
       </div>
       {failed ? (
         <div className="flex flex-1 flex-col justify-center py-5">
@@ -144,5 +206,17 @@ export function PendingCompanyCard({
         <DivisionChips divisions={divisions} />
       </div>
     </article>
+    <ConfirmDialog
+      open={confirmRemove}
+      onClose={() => !removing && setConfirmRemove(false)}
+      onConfirm={() => void removeFromMyList()}
+      busy={removing}
+      subject={{ name: company.name, kind: "company", imageUrl: company.logoUrl }}
+      title="Remove from your list?"
+      body={`${company.name} will leave your Market Intel page.`}
+      detail={`It stays in the catalogue, so you can add it again from Manage ${groupLabel}. If nobody else is tracking it, collection stops.`}
+      confirmLabel="Remove from my list"
+    />
+    </>
   );
 }

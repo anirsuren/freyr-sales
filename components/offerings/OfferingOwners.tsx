@@ -432,12 +432,15 @@ export function OfferingOwners({
                   An offering whose only way out of ownership runs through the
                   person who left has no way out at all. Admins only, never
                   managers, and always through the confirm dialog — which says
-                  plainly that the person will not be told. */}
+                  plainly that the person will not be told. Red at rest, like
+                  every remove in the app, so the way out is never hidden in
+                  a grey X (Anir, Oct 1: "It should just be super easy to
+                  delete"). */}
               {(o.memberId === myMemberId || isAdmin) && (
                 <button
                   onClick={() => setConfirmOwner(o)}
                   disabled={busy === o.memberId}
-                  className="shrink-0 rounded-md p-1 text-text-tertiary transition-colors hover:bg-[var(--surface)] hover:text-[color:var(--ink-red)] disabled:opacity-50"
+                  className="shrink-0 cursor-pointer rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:opacity-50"
                   aria-label={
                     o.memberId === myMemberId
                       ? "Give up your ownership"
@@ -483,7 +486,7 @@ export function OfferingOwners({
               <button
                 onClick={() => setConfirmOwner(o)}
                 disabled={busy === o.memberId}
-                className="rounded-md p-1 text-text-tertiary transition-colors hover:text-[color:var(--ink-red)] disabled:opacity-50"
+                className="cursor-pointer rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:opacity-50"
                 aria-label={`Decline ${o.name}`}
               >
                 <X size={14} strokeWidth={2} />

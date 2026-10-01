@@ -1808,49 +1808,24 @@ function GroupSplitPanel({
                 {targetOf(m) > 0 ? fmtAmount(goal.unit, targetOf(m)) : "no target"}
               </span>
             )}
-            {live &&
-              isManager &&
-              (dropFor === m ? (
-                <span className="flex shrink-0 items-center gap-1.5 text-[11px]">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={async () => {
-                      const okDone = await run(
-                        {
-                          op: "set-group-goal-exclusion",
-                          goalId: goal.id,
-                          groupId: assignment.groupId,
-                          person: m,
-                          excluded: true,
-                        },
-                        `${m} is off ${goal.name}`
-                      );
-                      if (okDone) setDropFor(null);
-                    }}
-                    className="cursor-pointer rounded-md bg-[color:#B02020] px-2 py-1 font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
-                  >
-                    Take off
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDropFor(null)}
-                    className="cursor-pointer rounded-md border border-border-light px-2 py-1 font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                  >
-                    Keep
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  title={`Take ${m} off ${goal.name}. They stay in ${group.name}.`}
-                  aria-label={`Take ${m} off this goal`}
-                  onClick={() => setDropFor(m)}
-                  className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:var(--status-red)]"
-                >
-                  <X size={13} strokeWidth={2.4} />
-                </button>
-              ))}
+            {/* RED AT REST, AND IT ASKS IN THE APP'S OWN DIALOG (Anir, Oct
+                1: "It should just be super easy to delete"). The X was grey
+                until hovered, so it read as a close button rather than a
+                way to take somebody off, and its Take off / Keep pair grew
+                out of the row. The same dialog the individual rows below
+                already use, wherever this panel is drawn. */}
+            {live && isManager && (
+              <button
+                type="button"
+                disabled={busy}
+                title={`Take ${m} off ${goal.name}. They stay in ${group.name}.`}
+                aria-label={`Take ${m} off this goal`}
+                onClick={() => setDropFor(m)}
+                className="shrink-0 cursor-pointer rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <X size={13} strokeWidth={2.4} />
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -1897,6 +1872,41 @@ function GroupSplitPanel({
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={dropFor !== null}
+        person={dropFor}
+        onClose={() => setDropFor(null)}
+        onConfirm={async () => {
+          const who = dropFor;
+          if (!who) return;
+          const okDone = await run(
+            {
+              op: "set-group-goal-exclusion",
+              goalId: goal.id,
+              groupId: assignment.groupId,
+              person: who,
+              excluded: true,
+            },
+            `${who} is off ${goal.name}`
+          );
+          if (okDone) setDropFor(null);
+        }}
+        title="Take them off this goal?"
+        body={
+          dropFor ? (
+            <>
+              <b>{dropFor}</b> comes off <b>{goal.name}</b> and stays in{" "}
+              {group.name}.
+            </>
+          ) : (
+            ""
+          )
+        }
+        detail="Their target on this goal goes with them. Anything they already logged stays on the record."
+        confirmLabel="Take them off"
+        busy={busy}
+      />
 
       {/* ------------------------------------------------- set one target */}
       {/* Stacked when this panel is already inside the goal dialog, so it
@@ -2663,12 +2673,19 @@ function GoalPopupBody({
               <button
                 type="button"
                 title="Remove this goal from the master"
+                aria-label={`Remove ${goal.name}`}
                 onClick={() => setConfirmGoalRemove(!confirmGoalRemove)}
-                className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-white"
+                className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
               >
                 <Trash2 size={14} strokeWidth={2.2} />
               </button>
-              {confirmGoalRemove && hostedInPopup && (
+              {/* UNDER THE BUTTON ONLY INSIDE THE REAL POPUP (Anir, Aug 12:
+                  "it should just show me underneath the delete button"),
+                  where a second dialog would stack on the first. The split
+                  view draws this same header on the page, and there the
+                  little pop-under was the one delete in Goal Master that did
+                  not ask in the app's own dialog. */}
+              {confirmGoalRemove && inDialog && (
                 <ConfirmUnder
                   question="Remove this goal and its subgoals?"
                   actionLabel="Remove goal"
@@ -2754,7 +2771,7 @@ function GoalPopupBody({
       )}
 
       <ConfirmDialog
-        open={confirmGoalRemove && !hostedInPopup}
+        open={confirmGoalRemove && !inDialog}
         onClose={() => setConfirmGoalRemove(false)}
         onConfirm={() => {
           setConfirmGoalRemove(false);
@@ -2773,8 +2790,13 @@ function GoalPopupBody({
         })()}
         confirmLabel="Remove goal"
       />
+      {/* ONE DIALOG FOR A SUBGOAL, WHEREVER THE GOAL IS OPEN. Inside the
+          popup this used to be a pop-under, which hung off a row whose card
+          clips its overflow, so on a closed row it was cut in half: the same
+          fault that moved the person unassign below onto this dialog (Anir,
+          Aug 28: "this delete button doesn't even work"). */}
       <ConfirmDialog
-        open={confirmSubRemove !== null && !hostedInPopup}
+        open={confirmSubRemove !== null}
         onClose={() => setConfirmSubRemove(null)}
         onConfirm={() => {
           const id = confirmSubRemove;
@@ -2795,7 +2817,12 @@ function GoalPopupBody({
           const logged = state.actuals.filter(
             (a) => a.subgoalId === confirmSubRemove
           ).length;
-          const base = "Its owners, people and targets come off this goal.";
+          /* Named, because the bin now sits on closed rows too and the
+             dialog is the only place that says which one is going. */
+          const name =
+            goal.subgoals.find((x) => x.id === confirmSubRemove)?.name ??
+            "This subgoal";
+          const base = `${name} comes off ${goal.name}, with its owners, people and targets.`;
           return logged > 0
             ? `${base} The ${logged} ${logged === 1 ? "result" : "results"} logged against it ${logged === 1 ? "is" : "are"} deleted too.`
             : base;
@@ -2858,6 +2885,7 @@ function GoalPopupBody({
                   suggestions={suggestions}
                   run={run}
                   busy={busy}
+                  inDialog={inDialog}
                   onDone={() => setOpenSub(null)}
                 />
               </div>
@@ -2926,51 +2954,31 @@ function GoalPopupBody({
                     ))}
                   </span>
                 )}
-                {isManager && expanded && (
+                {/* ON EVERY ROW, NOT ONLY AN OPEN ONE (Anir, Oct 1: "It
+                    should just be super easy to delete"). The bin used to
+                    appear only after the row was unfolded, so a subgoal
+                    added by mistake had no visible way off the list. It
+                    asks in the dialog above before anything goes. */}
+                {isManager && (
                   <span
-                    className="relative shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      title="Remove this subgoal"
-                      aria-label={`Remove ${s.name}`}
-                      onClick={(e) => {
+                    role="button"
+                    tabIndex={0}
+                    title="Remove this subgoal"
+                    aria-label={`Remove ${s.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmSubRemove(s.id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
                         e.stopPropagation();
-                        setConfirmSubRemove(
-                          confirmSubRemove === s.id ? null : s.id
-                        );
-                      }}
-                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-error/10"
-                    >
-                      <Trash2 size={13} strokeWidth={2.2} />
-                    </span>
-                    {confirmSubRemove === s.id && hostedInPopup && (
-                      <ConfirmUnder
-                        question={(() => {
-                          const logged = state.actuals.filter(
-                            (a) => a.subgoalId === s.id
-                          ).length;
-                          return logged > 0
-                            ? `Remove this subgoal? The ${logged} ${logged === 1 ? "result" : "results"} logged against it ${logged === 1 ? "is" : "are"} deleted too.`
-                            : "Remove this subgoal?";
-                        })()}
-                        actionLabel="Remove"
-                        onConfirm={() => {
-                          setConfirmSubRemove(null);
-                          void run(
-                            {
-                              op: "remove-subgoal",
-                              goalId: goal.id,
-                              subgoalId: s.id,
-                            },
-                            s.name + " removed"
-                          ).then((ok) => ok && setOpenSub(null));
-                        }}
-                        onCancel={() => setConfirmSubRemove(null)}
-                      />
-                    )}
+                        setConfirmSubRemove(s.id);
+                      }
+                    }}
+                    className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                  >
+                    <Trash2 size={13} strokeWidth={2.2} />
                   </span>
                 )}
                 <ChevronDown
@@ -2998,6 +3006,7 @@ function GoalPopupBody({
                         suggestions={suggestions}
                         run={run}
                         busy={busy}
+                        inDialog={inDialog}
                         onDone={() => setOpenSub(null)}
                       />
                     </>
@@ -3175,46 +3184,28 @@ function GoalPopupBody({
                   its people carry {fmtAmount(goal.unit, peopleTotal)}
                 </span>
               )}
+              {/* RED AT REST AND IT ASKS IN THE APP'S OWN DIALOG (Anir, Oct
+                  1: "It should just be super easy to delete"). This X was
+                  grey until hovered and confirmed with a Remove / Keep pair
+                  wedged into the row, the only removal on this panel that
+                  did not look like one. Same dialog as the individual rows
+                  below. */}
               {isManager && (
-                <span className="relative ml-auto shrink-0">
-                  {confirmGroupUnassign === assignment.groupId ? (
-                    <span className="flex items-center gap-1.5 whitespace-nowrap text-[11.5px]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void run(
-                            {
-                              op: "unassign-goal-group",
-                              goalId: goal.id,
-                              groupId: assignment.groupId,
-                            },
-                            `${group?.name ?? "That group"} no longer carries ${goal.name}`
-                          );
-                          setConfirmGroupUnassign(null);
-                        }}
-                        className="cursor-pointer rounded-md bg-[color:#B02020] px-2 py-1 font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
-                      >
-                        Remove
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmGroupUnassign(null)}
-                        className="cursor-pointer rounded-md border border-border-light bg-white px-2 py-1 font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                      >
-                        Keep
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      title={`Take ${goal.name} off ${group?.name ?? "this group"}`}
-                      aria-label={`Unassign ${group?.name ?? "this group"}`}
-                      onClick={() => setConfirmGroupUnassign(assignment.groupId)}
-                      className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-white hover:text-[color:var(--status-red)]"
-                    >
-                      <X size={14} strokeWidth={2.4} />
-                    </button>
-                  )}
+                <span className="ml-auto shrink-0">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title={`Take ${goal.name} off ${group?.name ?? "this group"}`}
+                    aria-label={`Unassign ${group?.name ?? "this group"}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmGroupUnassign(assignment.groupId);
+                    }}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    className="cursor-pointer rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <X size={14} strokeWidth={2.4} />
+                  </button>
                 </span>
               )}
             </div>
@@ -3235,6 +3226,36 @@ function GoalPopupBody({
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmGroupUnassign !== null}
+        onClose={() => setConfirmGroupUnassign(null)}
+        onConfirm={async () => {
+          const groupId = confirmGroupUnassign;
+          if (!groupId) return;
+          const name =
+            state.groups.find((g) => g.id === groupId)?.name ?? "That group";
+          const okDone = await run(
+            { op: "unassign-goal-group", goalId: goal.id, groupId },
+            `${name} no longer carries ${goal.name}`
+          );
+          if (okDone) setConfirmGroupUnassign(null);
+        }}
+        title="Take this goal off the group?"
+        body={
+          <>
+            <b>{goal.name}</b> comes off{" "}
+            <b>
+              {state.groups.find((g) => g.id === confirmGroupUnassign)?.name ??
+                "this group"}
+            </b>
+            .
+          </>
+        }
+        detail="The people the group put on it come off with it, and so do their targets on it. Anyone given the goal by hand stays, and anything already logged stays on the record."
+        confirmLabel="Take it off"
+        busy={busy}
+      />
 
       <AssignGroupModal
         open={groupAssignOpen}
@@ -3387,8 +3408,14 @@ function GoalPopupBody({
                     type="button"
                     title={`Unassign ${a.person}`}
                     aria-label={`Unassign ${a.person}`}
-                    onClick={() => setConfirmUnassign(a.person)}
-                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-error/10"
+                    /* The row folds open on a click; the bin is not asking
+                       for that, so the click stops here. */
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmUnassign(a.person);
+                    }}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                   >
                     <Trash2 size={13} strokeWidth={2.2} />
                   </button>
@@ -3425,9 +3452,11 @@ function GoalPopupBody({
                       </>
                     }
                     detail="Anything they already logged on it stays on the record."
-                    /* Red is for what cannot be taken back. Assigning the goal
-                       again puts this straight, so it wears the ordinary blue. */
-                    tone="primary"
+                    /* RED, LIKE EVERY REMOVAL (Anir, Aug 27: "every delete
+                       button to be red... in the entire app"). It was blue on
+                       the grounds that assigning again puts it back, but
+                       their target on this goal does not come back with
+                       them, and a blue button reads as a save. */
                     confirmLabel="Unassign"
                     busy={busy}
                   />
@@ -4105,6 +4134,7 @@ function SubgoalEditorFields({
   run,
   busy,
   standalone = false,
+  inDialog = standalone,
   onDone,
 }: {
   goal: PrimaryGoal;
@@ -4116,6 +4146,14 @@ function SubgoalEditorFields({
   busy: boolean;
   /** A modal gets its own orientation header and persistent actions. */
   standalone?: boolean;
+  /**
+   * WHETHER THIS FORM IS INSIDE A POPUP, which decides how its X's ask.
+   * Inside one, a red X acts at once, because no popup opens on a popup
+   * (Anir, Aug 27: "every delete button... a pop-up in the entire app,
+   * unless it's already in a pop-up"). Unfolded on the page, the same X
+   * asks in the app's own dialog first. A standalone form is always in one.
+   */
+  inDialog?: boolean;
   onDone: () => void;
 }) {
   const [name, setName] = useState(editing?.name ?? "");
@@ -4125,8 +4163,33 @@ function SubgoalEditorFields({
   const [owners, setOwners] = useState<string[]>(editing?.owners ?? []);
   const [addingOwner, setAddingOwner] = useState(false);
   const [addingGroup, setAddingGroup] = useState(false);
-  /** Which row is asking "are you sure" — "owner:Name" or "person:Name". */
+  /** What the page-side dialog is asking about: "owner:Name",
+   *  "person:Name" or "group:<id>". Never set inside a popup. */
   const [confirmDrop, setConfirmDrop] = useState<string | null>(null);
+
+  /** Take a group off this slice, now. The server does it; nothing waits
+   *  for Save, which is why the page asks first. */
+  function unassignGroup(groupId: string) {
+    if (!editing) return;
+    const name =
+      state.groups.find((x) => x.id === groupId)?.name ?? "That group";
+    void run(
+      {
+        op: "unassign-subgoal-group",
+        goalId: goal.id,
+        subgoalId: editing.id,
+        groupId,
+      },
+      `${name} no longer carries this slice`
+    );
+  }
+
+  /** The X on an owner, a person or a group: at once inside a popup, after
+   *  the dialog below on the page. */
+  function askOrDrop(key: string, drop: () => void) {
+    if (inDialog) drop();
+    else setConfirmDrop(key);
+  }
   const [rows, setRows] = useState<{ name: string; target: string }[]>(
     editing?.people.map((p) => ({
       name: p.name,
@@ -4508,43 +4571,25 @@ function SubgoalEditorFields({
                   />
                   <PersonLink name={o} avatarClassName="h-5 w-5 shrink-0 text-[8px]" className="gap-2" nameClassName="text-[12.5px] font-medium text-text-primary" />
                 </span>
-                {/* AN X, AND IT ASKS (Anir, Aug 15: "can you make it just an
-                    X instead of a delete icon... obviously it should ask me
-                    for confirmation... it didn't ask me for any confirmation,
-                    so that's a problem"). The confirm replaces the row's own
-                    controls rather than opening a dialog: this is already
-                    inside a popup, and no popup ever opens on a popup. */}
-                {confirmDrop === `owner:${o}` ? (
-                  <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11.5px]">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOwners(owners.filter((x) => x !== o));
-                        setConfirmDrop(null);
-                      }}
-                      className="cursor-pointer rounded-md bg-[color:#B02020] px-2 py-1 font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
-                    >
-                      Remove
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDrop(null)}
-                      className="cursor-pointer rounded-md border border-border-light bg-white px-2 py-1 font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                    >
-                      Keep
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    aria-label={"Remove " + o}
-                    title={`Remove ${o} as a goal owner`}
-                    onClick={() => setConfirmDrop(`owner:${o}`)}
-                    className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:var(--status-red)]"
-                  >
-                    <X size={14} strokeWidth={2.4} />
-                  </button>
-                )}
+                {/* AN X, RED AT REST (Anir, Aug 15: "can you make it just an
+                    X instead of a delete icon"; Oct 1: "It should just be
+                    super easy to delete"). It was grey until hovered, and
+                    its Remove / Keep pair grew out of the row. Inside a
+                    popup it acts at once, and nothing is kept until Save is
+                    pressed. On the page it asks first. */}
+                <button
+                  type="button"
+                  aria-label={"Remove " + o}
+                  title={`Remove ${o} as a goal owner`}
+                  onClick={() =>
+                    askOrDrop(`owner:${o}`, () =>
+                      setOwners((prev) => prev.filter((x) => x !== o))
+                    )
+                  }
+                  className="cursor-pointer rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                >
+                  <X size={14} strokeWidth={2.4} />
+                </button>
               </div>
             ))}
           </div>
@@ -4626,23 +4671,20 @@ function SubgoalEditorFields({
                       <span className="shrink-0 text-[11.5px] text-text-tertiary tnum">
                         {a.target > 0 ? fmtAmount(goal.unit, a.target) : "no target"}
                       </span>
+                      {/* Red at rest. This one saves straight away rather
+                          than waiting for Save, so on the page it asks in
+                          the dialog first; inside a popup it acts. */}
                       <button
                         type="button"
                         disabled={busy}
                         title={`Take this slice off ${g?.name ?? "the group"}`}
                         aria-label={`Unassign ${g?.name ?? "group"} from this subgoal`}
                         onClick={() =>
-                          void run(
-                            {
-                              op: "unassign-subgoal-group",
-                              goalId: goal.id,
-                              subgoalId: editing.id,
-                              groupId: a.groupId,
-                            },
-                            `${g?.name ?? "That group"} no longer carries this slice`
+                          askOrDrop(`group:${a.groupId}`, () =>
+                            unassignGroup(a.groupId)
                           )
                         }
-                        className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:var(--status-red)]"
+                        className="shrink-0 cursor-pointer rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <X size={13} strokeWidth={2.4} />
                       </button>
@@ -4785,37 +4827,21 @@ function SubgoalEditorFields({
                     />
                   );
                 })()}
-                {confirmDrop === `person:${r.name}` ? (
-                  <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11.5px]">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRows(rows.filter((_, xi) => xi !== i));
-                        setConfirmDrop(null);
-                      }}
-                      className="cursor-pointer rounded-md bg-[color:#B02020] px-2 py-1 font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
-                    >
-                      Remove
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDrop(null)}
-                      className="cursor-pointer rounded-md border border-border-light bg-white px-2 py-1 font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                    >
-                      Keep
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    aria-label={"Remove " + r.name}
-                    title={`Take ${r.name} off this subgoal`}
-                    onClick={() => setConfirmDrop(`person:${r.name}`)}
-                    className="cursor-pointer rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface hover:text-[color:var(--status-red)]"
-                  >
-                    <X size={14} strokeWidth={2.4} />
-                  </button>
-                )}
+                {/* Red at rest, like the owner X above, and asking the same
+                    way: at once inside a popup, the dialog on the page. */}
+                <button
+                  type="button"
+                  aria-label={"Remove " + r.name}
+                  title={`Take ${r.name} off this subgoal`}
+                  onClick={() =>
+                    askOrDrop(`person:${r.name}`, () =>
+                      setRows((prev) => prev.filter((x) => x.name !== r.name))
+                    )
+                  }
+                  className="cursor-pointer rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                >
+                  <X size={14} strokeWidth={2.4} />
+                </button>
               </div>
             ))}
           </div>
@@ -4905,6 +4931,63 @@ function SubgoalEditorFields({
           </button>
         )}
       </div>
+
+      {/* THE PAGE-SIDE ASK for the three X's above. Only ever opened when this
+          form is unfolded on the page; inside a popup they act at once. */}
+      {(() => {
+        const [kind, ...rest] = (confirmDrop ?? "").split(":");
+        const key = rest.join(":");
+        const slice = (editing?.name ?? name).trim() || "this subgoal";
+        const groupName =
+          kind === "group"
+            ? state.groups.find((x) => x.id === key)?.name ?? "That group"
+            : "";
+        return (
+          <ConfirmDialog
+            open={confirmDrop !== null}
+            person={kind === "owner" || kind === "person" ? key : null}
+            onClose={() => setConfirmDrop(null)}
+            onConfirm={() => {
+              setConfirmDrop(null);
+              if (kind === "owner") setOwners((prev) => prev.filter((x) => x !== key));
+              else if (kind === "person") setRows((prev) => prev.filter((x) => x.name !== key));
+              else if (kind === "group") unassignGroup(key);
+            }}
+            title={
+              kind === "owner"
+                ? "Remove them as an owner?"
+                : kind === "person"
+                  ? "Take them off this subgoal?"
+                  : "Take this slice off the group?"
+            }
+            body={
+              kind === "group" ? (
+                <>
+                  <b>{groupName}</b> stops carrying <b>{slice}</b>.
+                </>
+              ) : (
+                <>
+                  <b>{key}</b>{" "}
+                  {kind === "owner" ? "stops owning" : "comes off"} <b>{slice}</b>
+                  {kind === "person" ? ", with their target on it." : "."}
+                </>
+              )
+            }
+            detail={
+              kind === "group"
+                ? "This saves straight away. The people the group put on this slice come off with it, and so do their targets. Anyone added by hand stays."
+                : "Nothing changes until you save the subgoal."
+            }
+            confirmLabel={
+              kind === "owner"
+                ? "Remove owner"
+                : kind === "person"
+                  ? "Take them off"
+                  : "Take it off"
+            }
+          />
+        );
+      })()}
     </div>
   );
 }

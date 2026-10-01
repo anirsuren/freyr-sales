@@ -14,6 +14,7 @@ import {
   PanelRightOpen,
   PanelRightClose,
   Paperclip,
+  Trash2,
 } from "lucide-react";
 import { cn, POPOVER_SURFACE } from "@/lib/utils";
 import { mergeConversationChanges } from "@/lib/conversationChanges";
@@ -36,7 +37,12 @@ import {
 } from "@/lib/agentEvents";
 import { AGENT_DOCK_ACTIVE_KEY } from "@/lib/agentNavigationHandoff";
 import { useAgentReminders, useAgentClosed, urgentReminders, reminderHeadline, reminderGreeting } from "@/components/agent/useAgentReminders";
-import { useAgentAttachments, type SentAttachment } from "@/components/agent/useAgentAttachments";
+import {
+  chatFileIds,
+  discardChatFiles,
+  useAgentAttachments,
+  type SentAttachment,
+} from "@/components/agent/useAgentAttachments";
 import { PendingAttachmentChips, SentAttachmentChips } from "@/components/agent/AttachmentChips";
 
 /** Remembered dock size (device preference, not identity data). */
@@ -307,6 +313,13 @@ export function AgentDock({
   const [subject, setSubject] = useState("");
   const [typingTs, setTypingTs] = useState<number | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  /** The past chat whose row is asking "delete this?", by id. */
+  const [confirmChatId, setConfirmChatId] = useState<string | null>(null);
+  /* A question left open when the list closed must not be waiting there the
+     next time it opens. */
+  useEffect(() => {
+    if (!historyOpen) setConfirmChatId(null);
+  }, [historyOpen]);
   const [convos, setConvos] = useState<Convo[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pendingOffering, setPendingOffering] =
@@ -725,6 +738,24 @@ export function AgentDock({
     setTypingTs(null);
     setInput("");
     setHistoryOpen(false);
+  }
+
+  /**
+   * DELETE A PAST CHAT FROM THE DOCK (Anir, Oct 1: "It should just be super
+   * easy to delete"). Past chats could only be deleted on the full Agent page.
+   * Same rule as there: the files sent in it go too, unless another chat still
+   * shows them, and the list syncs to the account through the effect above.
+   */
+  function removeConversation(id: string) {
+    const gone = convos.find((c) => c.id === id);
+    if (gone) discardChatFiles(gone, convos.filter((c) => c.id !== id));
+    setConvos((previous) => previous.filter((c) => c.id !== id));
+    setConfirmChatId(null);
+    if (activeId === id) {
+      setActiveId(null);
+      setConnectionErrorId(null);
+      setTypingTs(null);
+    }
   }
 
   // Send a queued prompt once the panel is open and idle.
@@ -1240,25 +1271,73 @@ export function AgentDock({
                   <div key={group.label} className="mb-4">
                     <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">{group.label}</p>
                     <ul className="space-y-1">
-                      {group.items.map((conversation) => (
+                      {group.items.map((conversation) => {
+                        const files = chatFileIds(conversation).length;
+                        return (
                         <li key={conversation.id}>
-                          <button
-                            type="button"
-                            onClick={() => openConversation(conversation.id)}
-                            aria-current={conversation.id === activeId ? "true" : undefined}
-                            className={cn(
-                              "flex w-full items-center gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors",
-                              conversation.id === activeId
-                                ? "bg-blue-light text-blue-primary"
-                                : "text-text-secondary hover:bg-surface hover:text-text-primary"
-                            )}
-                          >
-                            <MessageSquareText size={16} strokeWidth={1.8} className="shrink-0" />
-                            <span className="min-w-0 flex-1 truncate text-[13px] font-medium" title={conversation.channel === "whatsapp" ? "From WhatsApp" : undefined}>{conversation.title || "New chat"}</span>
-                            <span className="shrink-0 text-[11px] font-normal text-text-tertiary">{conversation.updated ? listStamp(conversation.updated) : ""}</span>
-                          </button>
+                          {/* THE ASK SITS IN THE ROW, NOT IN A DIALOG. The
+                              dock floats above the layer the app's dialogs
+                              open on, so a ConfirmDialog would land behind
+                              it; this is already a pop-up, and a pop-up
+                              confirms in place (Anir, Aug 12: "it should
+                              just show me underneath the delete button"). */}
+                          {confirmChatId === conversation.id ? (
+                            <div className="flex items-center gap-2 rounded-lg border border-[rgba(220,38,38,0.25)] bg-[rgba(220,38,38,0.04)] px-2.5 py-2">
+                              <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-text-primary">
+                                Delete <b className="font-semibold">{conversation.title || "this chat"}</b>
+                                {files > 0
+                                  ? ` and the ${files === 1 ? "file" : `${files} files`} sent in it?`
+                                  : "?"}{" "}
+                                <span className="text-text-tertiary">There is no undo.</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmChatId(null)}
+                                className="shrink-0 cursor-pointer rounded-md border border-border-light bg-white px-2 py-1 text-[11.5px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                              >
+                                Keep
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeConversation(conversation.id)}
+                                className="shrink-0 cursor-pointer rounded-md bg-[color:#B02020] px-2 py-1 text-[11.5px] font-semibold text-white transition-colors hover:bg-[color:#8F1A1A]"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => openConversation(conversation.id)}
+                                aria-current={conversation.id === activeId ? "true" : undefined}
+                                className={cn(
+                                  "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors",
+                                  conversation.id === activeId
+                                    ? "bg-blue-light text-blue-primary"
+                                    : "text-text-secondary hover:bg-surface hover:text-text-primary"
+                                )}
+                              >
+                                <MessageSquareText size={16} strokeWidth={1.8} className="shrink-0" />
+                                <span className="min-w-0 flex-1 truncate text-[13px] font-medium" title={conversation.channel === "whatsapp" ? "From WhatsApp" : undefined}>{conversation.title || "New chat"}</span>
+                                <span className="shrink-0 text-[11px] font-normal text-text-tertiary">{conversation.updated ? listStamp(conversation.updated) : ""}</span>
+                              </button>
+                              {/* Red at rest on every past chat, the same
+                                  bin the full Agent page now shows. */}
+                              <button
+                                type="button"
+                                onClick={() => setConfirmChatId(conversation.id)}
+                                title={`Delete ${conversation.title || "this chat"}`}
+                                aria-label={`Delete ${conversation.title || "chat"}`}
+                                className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                              >
+                                <Trash2 size={14} strokeWidth={1.9} />
+                              </button>
+                            </div>
+                          )}
                         </li>
-                      ))}
+                        );
+                      })}
                     </ul>
                   </div>
                 ))

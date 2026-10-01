@@ -93,11 +93,15 @@ export function PendingAttachmentChips({ files, onRemove }: { files: PendingAtta
               {detail(f)}
             </div>
           </div>
+          {/* Red at rest, like every remove in the app (Anir, Aug 27). It
+              acts at once: the file has not been sent yet, so nothing is
+              lost that picking it again would not bring back. */}
           <button
             type="button"
             onClick={() => onRemove(f.localId)}
+            title={`Remove ${f.name}`}
             aria-label={`Remove ${f.name}`}
-            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-md flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-blue-light/60"
+            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-md flex items-center justify-center text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
           >
             <X size={12} />
           </button>

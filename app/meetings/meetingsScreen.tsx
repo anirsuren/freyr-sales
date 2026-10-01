@@ -14,6 +14,7 @@ import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
 import {
   moduleCreateRefusal,
+  moduleDeleteRefusal,
   requireModuleAccess,
 } from "@/lib/moduleAccessServer";
 
@@ -73,6 +74,10 @@ export async function MeetingsScreen({ room }: { room: MeetingRoom }) {
       state={state}
       meName={me.name}
       canCreate={!(await moduleCreateRefusal("/meetings"))}
+      /* The same two questions the delete route asks: the module's delete
+         right first, then whose meeting it is (owner or admin, per row). */
+      canDelete={!(await moduleDeleteRefusal("/meetings"))}
+      isAdmin={me.role === "admin"}
       members={members}
       customers={customers
         .map((c) => ({ id: c.id, name: c.company_name }))

@@ -27,6 +27,7 @@ import {
   Tag,
   ThumbsUp,
   Users,
+  X,
 } from "lucide-react";
 
 import { Avatar } from "@/components/ui/Avatar";
@@ -40,6 +41,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { LiveCompanyCard, type CardPerson } from "@/components/market-intel/LiveCompanyCard";
 
 import { WatchStatus, type WatchState } from "@/components/market-intel/WatchStatus";
@@ -405,6 +407,49 @@ export function LiveCompanyGrid({
     }
   };
 
+  /* TAKING A JUST-ADDED COMPANY BACK OFF (Anir, Oct 1: "It's really easy to
+     add them, but if I do something wrong, it's a huge problem. It should
+     just be super easy to delete"). A company still collecting showed only
+     "Starting collection" or "Pending", with no way off the page. This
+     unticks it on this person's own list through the same call the Manage
+     page and the Tracking toggle make. Deleting a company for everyone stays
+     an admin action, as the tracking route requires. */
+  const [unlist, setUnlist] = useState<{ id: string; name: string; logoUrl?: string | null } | null>(null);
+  const [unlisting, setUnlisting] = useState(false);
+  const removeFromMyList = async (company: { id: string; name: string }) => {
+    setUnlisting(true);
+    try {
+      const res = await fetch("/api/market-intel/bookmarks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: company.id, on: false }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Could not save your list.");
+      setUnlist(null);
+      toast(`${company.name} is off your list.${data?.stopped ? " Nobody else is tracking it, so collection stops." : ""}`);
+      router.refresh();
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "Could not save your list.", "error");
+    } finally {
+      setUnlisting(false);
+    }
+  };
+  /** The red X a collecting company wears, in the table row and on the tile. */
+  const unlistButton = (company: { id: string; name: string; logoUrl?: string | null }) => (
+    <Tooltip label="Remove from my list">
+      <button
+        type="button"
+        aria-label={`Remove ${company.name} from my list`}
+        onClick={() => setUnlist(company)}
+        disabled={unlisting}
+        className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <X size={15} strokeWidth={2.2} />
+      </button>
+    </Tooltip>
+  );
+
   const q = query.trim().toLowerCase();
   const matches = (id: string, name: string, industry?: string | null) =>
     !q ||
@@ -594,6 +639,7 @@ export function LiveCompanyGrid({
                       <button type="button" aria-label={`${stars.has(row.id) ? "Unstar" : "Star"} ${row.name}`} aria-pressed={stars.has(row.id)} onClick={() => stars.has(row.id) ? setUnstar({id: row.id, name: row.name, logoUrl: companyDirectory?.[row.id]?.logoUrl}) : void setStar(row.id, true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface", stars.has(row.id) ? "text-amber-600" : "text-text-tertiary")}><Star size={15} fill={stars.has(row.id) ? "currentColor" : "none"} /></button>
                       <MiLogo name={row.name} className="h-10 w-10 shrink-0" />
                       <span className="block min-w-0 text-[13.5px] font-semibold leading-snug text-text-primary">{row.name}</span>
+                      <span className="ml-auto shrink-0">{unlistButton({ id: row.id, name: row.name, logoUrl: companyDirectory?.[row.id]?.logoUrl })}</span>
                     </div>
                     <div>{(divisions[row.id] ?? []).length > 0 ? <DivisionChips divisions={divisions[row.id]} /> : <span className="text-[12px] text-text-tertiary">—</span>}</div>
                     <div className="grid grid-cols-1 gap-1.5 opacity-55"><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /><span className="h-7 rounded-lg bg-surface" /></div>
@@ -643,6 +689,7 @@ export function LiveCompanyGrid({
                 <MiLogo name={company.name} logoUrl={company.logoUrl} className="h-10 w-10 shrink-0" />
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-text-primary">{company.name}</p><p className="text-xs text-text-secondary">Starting collection</p></div>
                 <button type="button" aria-label={`${stars.has(company.id) ? "Unstar" : "Star"} ${company.name}`} aria-pressed={stars.has(company.id)} onClick={() => stars.has(company.id) ? setUnstar({ id: company.id, name: company.name, logoUrl: company.logoUrl }) : void setStar(company.id, true)} className={cn("flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface", stars.has(company.id) ? "text-amber-600" : "text-text-tertiary hover:text-amber-600")}><Star size={15} fill={stars.has(company.id) ? "currentColor" : "none"} /></button>
+                {unlistButton({ id: company.id, name: company.name, logoUrl: company.logoUrl })}
               </div>
               {(divisions[company.id] ?? []).length > 0 && <DivisionChips divisions={divisions[company.id]} className="mt-3" />}
             </div>
@@ -668,6 +715,17 @@ export function LiveCompanyGrid({
         title="Remove star?"
         body={`${unstar?.name ?? "This company"} will no longer be starred. It will stay on your page.`}
         confirmLabel="Remove star"
+      />
+      <ConfirmDialog
+        open={unlist !== null}
+        subject={unlist ? { name: unlist.name, kind: "company", imageUrl: unlist.logoUrl } : null}
+        onClose={() => { if (!unlisting) setUnlist(null); }}
+        onConfirm={() => { if (unlist) void removeFromMyList(unlist); }}
+        busy={unlisting}
+        title="Remove from your list?"
+        body={`${unlist?.name ?? "This company"} will leave your Market Intel page.`}
+        detail={`It stays in the catalogue, so you can add it again from Manage ${group === "competitor" ? "competitors" : "customers"}. If nobody else is tracking it, collection stops.`}
+        confirmLabel="Remove from my list"
       />
     </>
   );

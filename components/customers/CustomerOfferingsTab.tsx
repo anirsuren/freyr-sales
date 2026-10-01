@@ -397,10 +397,13 @@ function RevenueSection({
                   </span>
                 )}
               </span>
+              {/* House red with the red wash on hover, not a second red: the
+                  negative margins keep the icon exactly where it sat. */}
               <button
+                type="button"
                 onClick={() => setConfirmLine({ id: l.id, label: l.description || "this line" })}
                 aria-label="Remove revenue line"
-                className="shrink-0 text-[color:var(--status-red)] hover:text-error transition-colors mt-0.5"
+                className="-mx-1 -mb-1 -mt-0.5 shrink-0 cursor-pointer rounded-md p-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
               >
                 <Trash2 size={14} strokeWidth={1.8} />
               </button>
@@ -547,6 +550,8 @@ export function CustomerOfferingsTab({
   const [savingType, setSavingType] = useState(false);
   const [selectedType, setSelectedType] = useState(customerType || "");
   const [busyId, setBusyId] = useState<string | null>(null);
+  /** The in-use offering waiting on "Mark as no longer in use" to be confirmed. */
+  const [confirmUnuse, setConfirmUnuse] = useState<TabOffering | null>(null);
   // Local copy of the revenue lines so add/remove feels instant.
   const [usageState, setUsageState] = useState<OfferingUsage[]>(usage);
   /**
@@ -951,11 +956,13 @@ export function CustomerOfferingsTab({
               </div>
             )}
             <div className="mt-5 border-t border-border-light pt-4">
+              {/* House red, and it asks first like every other remove. It
+                  used to take the offering off the account on one click. */}
               <button
                 type="button"
-                onClick={() => toggleInUse(o.id, false)}
+                onClick={() => setConfirmUnuse(o)}
                 disabled={busyId === o.id}
-                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] font-semibold text-error transition-colors hover:bg-error/10 disabled:opacity-50"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] font-semibold text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:opacity-50"
               >
                 <X size={13} strokeWidth={2.2} />
                 {busyId === o.id ? "Updating…" : "Mark as no longer in use"}
@@ -1233,6 +1240,26 @@ export function CustomerOfferingsTab({
           />
         );
       })()}
+      {/* Only the in-use mark changes. The revenue lines and activities stay
+          filed against the offering, so nothing typed is thrown away. */}
+      <ConfirmDialog
+        open={confirmUnuse !== null}
+        onClose={() => setConfirmUnuse(null)}
+        onConfirm={() => {
+          const offering = confirmUnuse;
+          setConfirmUnuse(null);
+          if (offering) void toggleInUse(offering.id, false);
+        }}
+        title="Mark as no longer in use?"
+        body={
+          <>
+            <b>{confirmUnuse?.name}</b> comes off what{" "}
+            {customerName || "this account"} uses.
+          </>
+        }
+        detail="Its revenue and activities stay on file."
+        confirmLabel="Mark as no longer in use"
+      />
     </div>
   );
 }

@@ -16,10 +16,8 @@ import {
 } from "lucide-react";
 import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { Button } from "@/components/ui/Button";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { GroupGoalsDrilldown } from "./GroupGoalsDrilldown";
-import { GroupDetail } from "./GroupDetail";
-import { NamePill } from "@/components/ui/Badge";
+import { GroupDetail, RemoveGroupDialog } from "./GroupDetail";
 import { Modal } from "@/components/ui/Modal";
 import { PersonFan } from "@/components/ui/PersonFan";
 import { InfoHint } from "@/components/ui/InfoHint";
@@ -430,6 +428,9 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                     {m === head && (
                       <Crown size={10} strokeWidth={2.6} className="text-[color:var(--ink-violet-soft)]" />
                     )}
+                    {/* Red at rest like every remove, and it acts at once:
+                        this is already a popup and nothing is kept until the
+                        group is saved. */}
                     <button
                       type="button"
                       aria-label={`Remove ${m}`}
@@ -437,7 +438,7 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                         setMembers((prev) => prev.filter((x) => x !== m));
                         if (head === m) setHead("");
                       }}
-                      className="cursor-pointer text-text-tertiary hover:text-error"
+                      className="cursor-pointer rounded-full p-0.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                     >
                       <X size={11} strokeWidth={2.4} />
                     </button>
@@ -581,6 +582,12 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
                   }
                   embedded
                   onChanged={() => void load()}
+                  /* Deleted from the pane: stand on the first group that is
+                     left rather than on the one that just went. */
+                  onRemoved={() => {
+                    setSelectedId(null);
+                    void load();
+                  }}
                 />
               ) : (
                 <p className="px-2 py-10 text-center text-[12.5px] text-text-secondary">
@@ -926,30 +933,16 @@ export function UserGroupsAdmin({ memberNames }: { memberNames: string[] }) {
         )}
       </div>
 
-      <ConfirmDialog
-        open={confirmRemove !== null}
+      {/* The same dialog the group's own page and the split view use, so a
+          group is deleted in the same words wherever you start. */}
+      <RemoveGroupDialog
+        group={confirmRemove}
         onClose={() => setConfirmRemove(null)}
         onConfirm={() => {
           const g = confirmRemove;
           setConfirmRemove(null);
           if (g) void run({ op: "remove-group", groupId: g.id }, `${g.name} removed`);
         }}
-        title="Remove this group?"
-        body={
-          confirmRemove ? (
-            <>
-              {/* The name is a blue pill, not bare text in the sentence
-                  (Anir, Aug 15: "again, group name has to be in the pill,
-                  and blue"). */}
-              <NamePill>{confirmRemove.name}</NamePill> disappears from
-              Goals. Its people and their goals are untouched. Only the
-              grouping goes.
-            </>
-          ) : (
-            ""
-          )
-        }
-        confirmLabel="Remove group"
       />
     </div>
   );

@@ -115,47 +115,70 @@ function VersionAttachmentRow({
   file,
   feature,
   onOpen,
+  onRemove,
+  removeDisabled = false,
 }: {
   file: FdlFeatureAttachment;
   feature: string;
   onOpen: () => void;
+  /** Present only for people who can edit the component. The row asks the
+   *  page's confirm; nothing is removed from here directly. */
+  onRemove?: () => void;
+  removeDisabled?: boolean;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = file.kind === "image" && Boolean(file.url) && !imageFailed;
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="group flex w-full cursor-pointer items-center gap-3 px-1 py-2.5 text-left transition-colors hover:bg-blue-light/40"
-      title={`Open ${file.name}`}
-    >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-light bg-surface">
-        {showImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={file.url}
-            alt=""
-            onError={() => setImageFailed(true)}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <FileText size={17} strokeWidth={1.8} className="text-text-tertiary" />
-        )}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[12.5px] font-semibold text-text-primary">
-          {file.name}
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group flex min-w-0 flex-1 cursor-pointer items-center gap-3 px-1 py-2.5 text-left transition-colors hover:bg-blue-light/40"
+        title={`Open ${file.name}`}
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-light bg-surface">
+          {showImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={file.url}
+              alt=""
+              onError={() => setImageFailed(true)}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <FileText size={17} strokeWidth={1.8} className="text-text-tertiary" />
+          )}
         </span>
-        <span className="block truncate text-[10.5px] text-text-tertiary">
-          Attached to {feature}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[12.5px] font-semibold text-text-primary">
+            {file.name}
+          </span>
+          <span className="block truncate text-[10.5px] text-text-tertiary">
+            Attached to {feature}
+          </span>
         </span>
-      </span>
-      <ChevronRight
-        size={14}
-        className="shrink-0 text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary"
-      />
-    </button>
+        <ChevronRight
+          size={14}
+          className="shrink-0 text-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-blue-primary"
+        />
+      </button>
+      {/* A SIBLING, NOT A CHILD: a button cannot sit inside the row's own
+          button. Red at rest, like every remove in the app. */}
+      {onRemove && (
+        <Tooltip label="Remove this file">
+          <button
+            type="button"
+            aria-label={`Remove ${file.name} from ${feature}`}
+            onClick={onRemove}
+            disabled={removeDisabled}
+            className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Trash2 size={13} strokeWidth={2} />
+          </button>
+        </Tooltip>
+      )}
+    </div>
   );
 }
 
@@ -841,6 +864,11 @@ export function FdlComponentDetail({
   /** The release whose Files panel opened the picker, if any. */
   const [filesForRelease, setFilesForRelease] = useState<string | null>(null);
   const [confirmFeatureDelete, setConfirmFeatureDelete] = useState<string | null>(null);
+  /** The file a person asked to take off its feature, waiting on the confirm. */
+  const [confirmFileRemoval, setConfirmFileRemoval] = useState<{
+    featureId: string;
+    file: FdlFeatureAttachment;
+  } | null>(null);
   /** Feature rows open like a dropdown IN the table (Anir, Aug 17: "you can
    *  probably do a drop-down here… you could definitely do the pop-up still.
    *  I'm just saying I want a dropdown"). Row click expands; the name still
@@ -950,6 +978,23 @@ export function FdlComponentDetail({
       { features: component.features.filter((f) => f.id !== id) },
       "Feature removed."
     );
+  }
+
+  /**
+   * TAKE A FILE OFF ITS FEATURE FROM WHERE IT IS LISTED (Anir, Oct 1: "It's
+   * really easy to add them, but if I do something wrong, it's a huge
+   * problem. It should just be super easy to delete"). A file could be added
+   * straight from the version panel, but the only way to take one off was the
+   * feature's edit popup. This is the same save that popup makes on Save,
+   * reached from the version panel and the Files count instead.
+   */
+  async function removeFeatureFile(featureId: string, fileId: string) {
+    const next = component.features.map((f) => {
+      if (f.id !== featureId) return f;
+      const remaining = (f.attachments ?? []).filter((a) => a.id !== fileId);
+      return { ...f, attachments: remaining.length ? remaining : undefined };
+    });
+    if (await patch({ features: next }, "File removed.")) setConfirmFileRemoval(null);
   }
 
   // ---- compare -----------------------------------------------------------
@@ -1124,6 +1169,7 @@ export function FdlComponentDetail({
                 (feature.attachments ?? []).map((file) => ({
                   file,
                   feature: feature.name,
+                  featureId: feature.id,
                 }))
               );
               const behindCount = connected.filter((customer) => {
@@ -1562,7 +1608,7 @@ export function FdlComponentDetail({
                             type="button"
                             aria-label={`Remove ${withV(release.version)}`}
                             onClick={() => setConfirmReleaseDelete(release.id)}
-                            className="text-[color:var(--status-red)] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-error transition-colors hover:bg-error/10"
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                           >
                             <Trash2 size={14} strokeWidth={2} />
                           </button>
@@ -1709,9 +1755,19 @@ export function FdlComponentDetail({
                           ) : (
                             <ScrollHint containerClassName="min-h-0 flex-1" className="h-full pr-1">
                               <ul className="divide-y divide-border-light">
-                                {versionAttachments.map(({ file, feature }) => (
+                                {versionAttachments.map(({ file, feature, featureId }) => (
                                   <li key={file.id}>
-                                    <VersionAttachmentRow file={file} feature={feature} onOpen={() => setPreviewing(file)} />
+                                    <VersionAttachmentRow
+                                      file={file}
+                                      feature={feature}
+                                      onOpen={() => setPreviewing(file)}
+                                      onRemove={
+                                        canEdit
+                                          ? () => setConfirmFileRemoval({ featureId, file })
+                                          : undefined
+                                      }
+                                      removeDisabled={busy || uploading}
+                                    />
                                   </li>
                                 ))}
                               </ul>
@@ -2802,6 +2858,9 @@ export function FdlComponentDetail({
                           width={300}
                           anchor="trigger"
                           delayMs={0}
+                          /* Put away while the remove confirm is up, so the
+                             preview never sits over the dialog. */
+                          suspended={confirmFileRemoval !== null}
                           content={
                             <div>
                               <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
@@ -2811,11 +2870,11 @@ export function FdlComponentDetail({
                               </p>
                               <ul className="space-y-1">
                                 {(feature.attachments ?? []).map((file) => (
-                                  <li key={file.id}>
+                                  <li key={file.id} className="flex items-center gap-1">
                                     <button
                                       type="button"
                                       onClick={() => setPreviewing(file)}
-                                      className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border-light px-2 py-1.5 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
+                                      className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg border border-border-light px-2 py-1.5 text-left transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
                                     >
                                       {file.kind === "image" ? (
                                         // eslint-disable-next-line @next/next/no-img-element
@@ -2838,6 +2897,25 @@ export function FdlComponentDetail({
                                         </span>
                                       </span>
                                     </button>
+                                    {/* The way off sits beside the way in, red
+                                        and asking first. stopPropagation keeps
+                                        the click from also folding the row the
+                                        card belongs to. */}
+                                    {canEdit && (
+                                      <button
+                                        type="button"
+                                        aria-label={`Remove ${file.name} from ${feature.name}`}
+                                        title="Remove this file"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setConfirmFileRemoval({ featureId: feature.id, file });
+                                        }}
+                                        disabled={busy || uploading}
+                                        className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+                                      >
+                                        <Trash2 size={13} strokeWidth={2} />
+                                      </button>
+                                    )}
                                   </li>
                                 ))}
                               </ul>
@@ -2875,7 +2953,7 @@ export function FdlComponentDetail({
                               e.stopPropagation();
                               setConfirmFeatureDelete(feature.id);
                             }}
-                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-error/10 hover:text-error"
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                           >
                             <Trash2 size={13} strokeWidth={2} />
                           </button>
@@ -3296,6 +3374,33 @@ export function FdlComponentDetail({
         }?`}
         body={`This removes the customer from ${component.name}. The customer account stays in Freyr and can be added back later.`}
         confirmLabel="Remove customer"
+        busy={busy}
+      />
+
+      {/* One question for every file remove on this page: the version panel
+          and the Files count both ask here. */}
+      <ConfirmDialog
+        open={confirmFileRemoval !== null}
+        onClose={() => setConfirmFileRemoval(null)}
+        onConfirm={() => {
+          if (confirmFileRemoval)
+            void removeFeatureFile(
+              confirmFileRemoval.featureId,
+              confirmFileRemoval.file.id
+            );
+        }}
+        title="Remove this file?"
+        body={
+          <>
+            <b>{confirmFileRemoval?.file.name ?? "This file"}</b> comes off{" "}
+            {component.features.find(
+              (feature) => feature.id === confirmFileRemoval?.featureId
+            )?.name ?? "its feature"}
+            .
+          </>
+        }
+        detail="The feature stays as it is. To bring the file back, upload it again."
+        confirmLabel="Remove file"
         busy={busy}
       />
 
@@ -3902,13 +4007,16 @@ export function FdlComponentDetail({
                     >
                       {file.name}
                     </a>
+                    {/* Inside the popup, so it acts at once with no second
+                        question (nothing is saved until Save), but red at
+                        rest like every remove in the app. */}
                     <button
                       type="button"
                       aria-label={`Remove ${file.name}`}
                       onClick={() =>
                         setFeatFiles((prev) => prev.filter((f) => f.id !== file.id))
                       }
-                      className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error"
+                      className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                     >
                       <X size={13} strokeWidth={2} />
                     </button>

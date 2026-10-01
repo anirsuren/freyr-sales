@@ -113,6 +113,11 @@ export function ActivityMasterCard({
   const [newLabel, setNewLabel] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<MasterActivity | null>(null);
+  /** The goal about to stop being fed by an activity, held until confirmed. */
+  const [confirmDisconnect, setConfirmDisconnect] = useState<{
+    activity: MasterActivity;
+    goalId: string;
+  } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -332,22 +337,22 @@ export function ActivityMasterCard({
                                 <span className="flex items-center gap-1">
                                   <t.icon size={10.5} strokeWidth={2.5} aria-hidden="true" />
                                   <span className="truncate">{g.name}</span>
+                                  {/* RED AT REST AND IT ASKS (Anir, Oct 1: "It
+                                      should just be super easy to delete").
+                                      It was a faded X in the goal's own colour
+                                      that cut the link on the first click,
+                                      the one removal on this card that
+                                      neither looked like one nor asked. */}
                                   {writable && (
                                     <button
                                       type="button"
+                                      title={`Disconnect ${g.name} from ${a.label}`}
                                       aria-label={`Disconnect ${g.name} from ${a.label}`}
                                       disabled={busy}
                                       onClick={() =>
-                                        void post(
-                                          {
-                                            op: "update",
-                                            id: a.id,
-                                            goalIds: a.goalIds.filter((x) => x !== gid),
-                                          },
-                                          `${g.name} disconnected from ${a.label}`
-                                        )
+                                        setConfirmDisconnect({ activity: a, goalId: gid })
                                       }
-                                      className="cursor-pointer opacity-60 transition-opacity hover:opacity-100"
+                                      className="-my-0.5 shrink-0 cursor-pointer rounded p-0.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
                                     >
                                       <X size={10.5} strokeWidth={2.8} />
                                     </button>
@@ -490,6 +495,47 @@ export function ActivityMasterCard({
         title={`Remove ${confirmRemove?.label ?? "this activity"}?`}
         body="Anything already logged with it keeps its history. It just stops being offered the next time somebody logs an activity."
         confirmLabel="Remove"
+      />
+
+      <ConfirmDialog
+        open={confirmDisconnect !== null}
+        onClose={() => setConfirmDisconnect(null)}
+        onConfirm={() => {
+          const pending = confirmDisconnect;
+          if (!pending) return;
+          const { activity, goalId } = pending;
+          const goalName = goalById.get(goalId)?.name ?? "That goal";
+          void post(
+            {
+              op: "update",
+              id: activity.id,
+              goalIds: activity.goalIds.filter((x) => x !== goalId),
+            },
+            `${goalName} disconnected from ${activity.label}`
+          ).then((ok) => ok && setConfirmDisconnect(null));
+        }}
+        busy={busy}
+        title="Disconnect this goal?"
+        subject={
+          confirmDisconnect
+            ? {
+                name: goalById.get(confirmDisconnect.goalId)?.name ?? "This goal",
+                kind: "goal",
+              }
+            : null
+        }
+        body={
+          confirmDisconnect ? (
+            <>
+              <b>{confirmDisconnect.activity.label}</b> stops feeding{" "}
+              <b>{goalById.get(confirmDisconnect.goalId)?.name ?? "this goal"}</b>.
+            </>
+          ) : (
+            ""
+          )
+        }
+        detail="Results already counted keep their history. The goal just stops being offered the next time somebody logs this activity, and it can be connected again."
+        confirmLabel="Disconnect"
       />
     </Card>
   );

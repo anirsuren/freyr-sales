@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, UserCheck, UserX } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 import { PrivilegeCards } from "./PrivilegeCards";
 import {
@@ -126,7 +127,21 @@ function SuspendedPill() {
 
 export function PeopleSplit() {
   const { toast } = useToast();
+  const me = useCurrentUserOrNull();
   const [members, setMembers] = useState<Member[] | null>(null);
+  /**
+   * SUSPEND AND BRING BACK, FROM THE PERSON (Anir, Oct 1: "It's really easy
+   * to add them, but if I do something wrong, it's a huge problem. It should
+   * just be super easy to delete"). The access route has always taken
+   * deactivate and reactivate from an admin, and this screen draws a red
+   * Suspended pill, but nothing anywhere set it. Held here until the dialog
+   * says yes.
+   */
+  const [pendingAccess, setPendingAccess] = useState<{
+    member: Member;
+    to: "deactivate" | "reactivate";
+  } | null>(null);
+  const [changingAccess, setChangingAccess] = useState(false);
   const [state, setState] = useState<PrivilegeState | null>(null);
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -269,6 +284,56 @@ export function PeopleSplit() {
     else delete nextMap[key];
     void savePrivileges({ ...state, peoplePrivileges: nextMap });
   }
+
+  /** The existing access route, the one the old Settings directory used. It
+   *  answers with the fresh directory, so the list and the pane redraw from
+   *  what the server now holds. */
+  async function applyAccess() {
+    if (!pendingAccess) return;
+    const { member, to } = pendingAccess;
+    setChangingAccess(true);
+    try {
+      const res = await fetch("/api/settings/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: to, memberId: member.id }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        toast(data?.error || "That didn't save.", "error");
+        return;
+      }
+      setPendingAccess(null);
+      if (Array.isArray(data.directory?.members)) {
+        setMembers(
+          (data.directory.members as Member[])
+            .filter((m) => m.accountType !== "demo")
+            .sort((a, b) => a.name.localeCompare(b.name))
+        );
+      } else {
+        void load();
+      }
+      toast(
+        to === "deactivate"
+          ? `${member.name} is suspended`
+          : `${member.name} can sign in again`
+      );
+    } catch {
+      toast("That didn't save.", "error");
+    } finally {
+      setChangingAccess(false);
+    }
+  }
+
+  /* The route refuses an admin suspending their own account, so the button
+     is not offered on your own pane. Matched on the account id, with the
+     email as a second key for sessions that carry no member id. */
+  const selectedIsMe =
+    !!me &&
+    ((!!me.memberId && me.memberId === selected.id) ||
+      (!!me.email &&
+        !!selected.email &&
+        me.email.trim().toLowerCase() === selected.email.trim().toLowerCase()));
 
   const held = new Set(privilegesForPerson(state, selected.name));
   const fromRole = ROLE_PRIVILEGE[selected.role];
@@ -492,6 +557,38 @@ export function PeopleSplit() {
                 revoked by removing the way to change it, and every person was
                 backfilled with the privileges their role implied before the
                 control went away. */}
+            {/* TAKING SOMEBODY OUT IS ON THE PERSON (Anir, Oct 1: "It should
+                just be super easy to delete"). Suspend is red at rest and
+                asks first; it stops them signing in and keeps everything
+                they did, so Reactivate is the way back. Not offered on your
+                own pane: the route refuses an admin suspending themselves. */}
+            {selected.active ? (
+              !selectedIsMe && (
+                <button
+                  type="button"
+                  disabled={changingAccess}
+                  onClick={() =>
+                    setPendingAccess({ member: selected, to: "deactivate" })
+                  }
+                  className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--status-red)] transition-colors hover:border-[color:#DC2626] hover:bg-[rgba(220,38,38,0.08)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <UserX size={14} strokeWidth={2.2} />
+                  Suspend
+                </button>
+              )
+            ) : (
+              <button
+                type="button"
+                disabled={changingAccess}
+                onClick={() =>
+                  setPendingAccess({ member: selected, to: "reactivate" })
+                }
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3.5 py-2 text-[12.5px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <UserCheck size={14} strokeWidth={2.2} />
+                Reactivate
+              </button>
+            )}
           </div>
 
           <div className="mt-5">
@@ -563,6 +660,37 @@ export function PeopleSplit() {
         busy={saving}
       />
 
+      <ConfirmDialog
+        open={pendingAccess !== null}
+        person={pendingAccess?.member.name}
+        onClose={() => setPendingAccess(null)}
+        onConfirm={() => void applyAccess()}
+        title={
+          pendingAccess?.to === "reactivate" ? "Bring them back?" : "Suspend them?"
+        }
+        body={
+          pendingAccess &&
+          (pendingAccess.to === "reactivate" ? (
+            <>
+              <b>{pendingAccess.member.name}</b> can sign in to Freyr again.
+            </>
+          ) : (
+            <>
+              <b>{pendingAccess.member.name}</b> can no longer sign in to Freyr.
+            </>
+          ))
+        }
+        detail={
+          pendingAccess?.to === "reactivate"
+            ? "They come back with the privileges they held before. The admins are emailed."
+            : "Their records, privileges and history stay as they are, and Reactivate brings them back. The admins are emailed."
+        }
+        confirmLabel={pendingAccess?.to === "reactivate" ? "Reactivate" : "Suspend"}
+        /* Same rule as the privilege dialog above: red only for taking
+           something away. */
+        tone={pendingAccess?.to === "reactivate" ? "primary" : "destructive"}
+        busy={changingAccess}
+      />
     </div>
   );
 }

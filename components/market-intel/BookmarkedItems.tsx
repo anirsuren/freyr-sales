@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bookmark, ExternalLink, Loader2, Trash2 } from "lucide-react";
 import { MiLogo } from "./MiLogo";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { safeHref } from "@/lib/safeUrl";
 
@@ -50,6 +51,12 @@ export function BookmarkedItems({
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
   const [removing, setRemoving] = useState<string | null>(null);
+  /* ASK FIRST, IN THE APP'S OWN DIALOG. The bin removed the bookmark on the
+     first click, and a grey bin beside the open-source arrow is easy to hit
+     by mistake; there was no way to get the item back short of finding it in
+     its briefing again (Anir, Oct 1: "if I do something wrong, it's a huge
+     problem"). */
+  const [confirming, setConfirming] = useState<SavedItem | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -89,6 +96,7 @@ export function BookmarkedItems({
       });
       if (!response.ok) throw new Error();
       setItems(previous => previous.filter(saved => saved.companyId !== item.companyId || saved.url !== item.url));
+      setConfirming(null);
       toast("Item removed from your bookmarks.");
     } catch {
       toast("Could not remove this bookmark. Please try again.", "error");
@@ -134,7 +142,8 @@ export function BookmarkedItems({
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {href && <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Open source: ${item.title}`} title="Open source" className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:bg-blue-50 hover:text-blue-primary"><ExternalLink size={15} /></a>}
-                    <button type="button" disabled={removing === `${item.companyId}:${item.url}`} onClick={() => void remove(item)} aria-label={`Remove bookmark: ${item.title}`} title="Remove bookmark" className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:bg-red-50 hover:text-red-600 disabled:opacity-50">{removing === `${item.companyId}:${item.url}` ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}</button>
+                    {/* Red at rest, like every remove in the app, and it asks before it acts. */}
+                    <button type="button" disabled={removing === `${item.companyId}:${item.url}`} onClick={() => setConfirming(item)} aria-label={`Remove bookmark: ${item.title}`} title="Remove bookmark" className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:opacity-50">{removing === `${item.companyId}:${item.url}` ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}</button>
                   </div>
                 </div>
               </article>
@@ -142,6 +151,17 @@ export function BookmarkedItems({
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={confirming !== null}
+        onClose={() => setConfirming(null)}
+        onConfirm={() => { if (confirming) void remove(confirming); }}
+        busy={confirming !== null && removing === `${confirming.companyId}:${confirming.url}`}
+        subject={confirming ? { name: confirming.title, kind: "story" } : null}
+        title="Remove this bookmark?"
+        body={<><b>{confirming?.title ?? "This item"}</b> comes off your bookmarked items.</>}
+        detail="Only your bookmark goes. The post or article itself is untouched."
+        confirmLabel="Remove bookmark"
+      />
     </section>
   );
 }

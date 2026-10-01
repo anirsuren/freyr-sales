@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Boxes, Check, LayoutGrid, Link2, Plus, Search, Table2, X } from "lucide-react";
+import { Boxes, Check, LayoutGrid, Link2, Plus, Search, Table2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
@@ -11,6 +11,7 @@ import { InfoHint } from "@/components/ui/InfoHint";
 import { Modal } from "@/components/ui/Modal";
 import { OfferingIcon } from "@/components/ui/OfferingIcon";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { ViewSelect } from "@/components/ui/ViewSelect";
 import {
   VersionPill,
@@ -198,6 +199,11 @@ export function CustomerDigitalComponents({
                 <th className="w-[18%] px-3 py-2.5">Current version</th>
                 <th className="w-[20%] px-3 py-2.5">Version status</th>
                 <th className="w-[18%] px-3 py-2.5">Next version</th>
+                {/* THE TABLE COULD NOT REMOVE ANYTHING. Only the cards carried
+                    the control, so whoever preferred rows had to switch views
+                    to take a component off. Left-aligned like every Actions
+                    column, and only drawn for somebody who may change these. */}
+                {canEdit && <th className="w-[72px] px-3 py-2.5">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light stagger">
@@ -259,6 +265,23 @@ export function CustomerDigitalComponents({
                         <span className="text-[12.5px] text-text-tertiary">Not planned</span>
                       )}
                     </td>
+                    {canEdit && (
+                      <td className="px-3 py-2.5">
+                        <span className="flex items-center justify-start gap-1">
+                          <Tooltip label={`Remove ${component.name}`}>
+                            <button
+                              type="button"
+                              aria-label={`Remove ${component.name}`}
+                              onClick={() => setConfirmRemove(link.component_id)}
+                              disabled={busy}
+                              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <Trash2 size={14} strokeWidth={2} />
+                            </button>
+                          </Tooltip>
+                        </span>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -449,33 +472,26 @@ export function CustomerDigitalComponents({
                 </p>
 
                 {canEdit && (
-                  <>
+                  /* ALWAYS THERE, AND RED (Anir, Oct 1: "It should just be
+                     super easy to delete"). It only appeared while the pointer
+                     was over the card, and grey until then, so the way to take
+                     a component off read as no way at all. Its own positioned
+                     box, because the hover label wraps the button and an
+                     absolute button inside it lands in the wrong corner (the
+                     same fix FDL Components needed on its customer cards). */
+                  <span className="absolute right-3 top-3">
+                    <Tooltip label={`Remove ${component.name}`}>
                       <button
                         type="button"
                         aria-label={`Remove ${component.name}`}
-                        title="This customer no longer runs it"
                         onClick={() => setConfirmRemove(link.component_id)}
-                        className="absolute right-3 top-3 flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-text-tertiary opacity-0 transition-opacity hover:bg-error/10 hover:text-error group-hover:opacity-100"
+                        disabled={busy}
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <X size={13} strokeWidth={2} />
+                        <Trash2 size={14} strokeWidth={2} />
                       </button>
-                      <ConfirmDialog
-                        open={confirmRemove === link.component_id}
-                        onClose={() => setConfirmRemove(null)}
-                        onConfirm={() => {
-                          setConfirmRemove(null);
-                          void save(
-                            state.filter(
-                              (item) => item.component_id !== link.component_id
-                            ),
-                            `${component.name} removed.`
-                          );
-                        }}
-                        title={`Remove ${component.name}?`}
-                        body="It comes off this customer's digital components. You can add it back any time."
-                        confirmLabel="Remove"
-                      />
-                  </>
+                    </Tooltip>
+                  </span>
                 )}
               </div>
             );
@@ -483,6 +499,26 @@ export function CustomerDigitalComponents({
         </div>
         )
       )}
+
+      {/* ONE CONFIRMATION FOR BOTH VIEWS. It used to live inside each card,
+          which left the table with nowhere to ask from. Only the connection
+          goes; the component itself stays in FDL Components. */}
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        onClose={() => setConfirmRemove(null)}
+        onConfirm={() => {
+          const id = confirmRemove;
+          setConfirmRemove(null);
+          if (!id) return;
+          void save(
+            state.filter((item) => item.component_id !== id),
+            `${byId.get(id)?.name ?? "Component"} removed.`
+          );
+        }}
+        title={`Remove ${byId.get(confirmRemove ?? "")?.name ?? "this component"}?`}
+        body="It comes off this customer's digital components. You can add it back any time."
+        confirmLabel="Remove"
+      />
 
       <Modal
         open={picking}

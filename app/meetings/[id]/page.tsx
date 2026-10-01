@@ -7,7 +7,10 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { requireServerMemberScope } from "@/lib/memberScope";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import {
+  moduleDeleteRefusal,
+  requireModuleAccess,
+} from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +88,9 @@ export default async function MeetingPage({
       meeting={meeting}
       meName={me.name}
       meRole={me.role}
+      /* The route asks this before it asks whose meeting it is, so the
+         page's bin asks it too. */
+      canDeleteModule={!(await moduleDeleteRefusal("/meetings"))}
       members={members}
       customers={customers
         .map((c) => ({ id: c.id, name: c.company_name }))

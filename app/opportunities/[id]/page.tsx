@@ -18,9 +18,11 @@ import { OpportunityDetail } from "@/components/opportunities/OpportunityDetail"
 import { RequestSolutioningButton } from "@/components/customers/RequestSolutioningButton";
 import { listWorkspaceAccess } from "@/lib/accessStore";
 import { getDataMode } from "@/lib/dataMode";
+import { opportunityChangeRefusal } from "@/lib/opportunityOwnership";
 import {
   canOpenModule,
   moduleWriteRefusal,
+  recordDeleteRefusal,
   recordWriteRefusal,
 } from "@/lib/moduleAccessServer";
 
@@ -146,6 +148,22 @@ export default async function OpportunityPage({
     !(await recordWriteRefusal("/opportunities", { id: deal.id }));
 
   /**
+   * MAY THIS PERSON DELETE THE DEAL, FROM THE DEAL (Anir, Oct 1: "It should
+   * just be super easy to delete").
+   *
+   * The edit screen's rule (the verdict, then this deal's own delete right;
+   * see /opportunities/[id]/edit) plus the check /api/opportunities makes
+   * before it removes one: its owner, or a manager. Without that last part a
+   * member who may edit but does not own the deal would be shown a Delete the
+   * route refuses. Deleting is its own privilege, not a corner of editing, so
+   * an edit-only member sees no button rather than one that fails.
+   */
+  const mayDelete =
+    verdict.mayEdit &&
+    !opportunityChangeRefusal(deal, me) &&
+    !(await recordDeleteRefusal("/opportunities", { id: deal.id }));
+
+  /**
    * ASK FOR SOLUTIONING FROM THE DEAL IT IS FOR.
    *
    * Anir, Aug 31, looking at a deal's empty Presentations tab: "am I supposed
@@ -239,6 +257,7 @@ export default async function OpportunityPage({
   return (
     <OpportunityDetail
       verdict={verdict}
+      mayDelete={mayDelete}
       accrual={{
         mayPlan: mayPlanAccrual,
         plan: accrualPlan,

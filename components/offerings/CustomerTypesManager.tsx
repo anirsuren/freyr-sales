@@ -681,12 +681,15 @@ export function CustomerTypesManager({
                         offering — the route refuses that too and says which
                         offerings are holding it. */}
                     {count === 0 && (
+                      /* Full house red at rest, not a faded 70% that firms
+                         up on hover (Anir, Oct 1: "It should just be super
+                         easy to delete"). */
                       <button
                         type="button"
                         onClick={() => setConfirmRemoveType(t.id)}
                         aria-label={`Remove ${t.name}`}
                         title="Remove this customer type"
-                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-error/70 transition-colors hover:bg-red-50 hover:text-error"
+                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                       >
                         <Trash2 size={14} strokeWidth={2} />
                       </button>
@@ -768,13 +771,15 @@ export function CustomerTypesManager({
                   </button>
                 )}
                 {canEdit && (
+                  /* Red at rest so the way off the list is visible on every
+                     chip, not discovered by hovering a grey X. */
                   <button
                     type="button"
                     onClick={() => setConfirmRemove(m.id)}
                     disabled={busy}
                     aria-label={`Remove ${m.name}`}
                     title={`Remove ${m.name}`}
-                    className="cursor-pointer px-1.5 py-1 text-text-tertiary transition-colors hover:text-error disabled:opacity-50"
+                    className="cursor-pointer rounded-md px-1.5 py-1 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:opacity-50"
                   >
                     <X size={12} strokeWidth={2.2} />
                   </button>
