@@ -48,7 +48,12 @@ import { PendingAttachmentChips, SentAttachmentChips } from "@/components/agent/
 /** Remembered dock size (device preference, not identity data). */
 const DOCK_SIZE_KEY = "freyr.agent.dock.size";
 const DOCK_MIN_WIDTH = 360;
-const DOCK_MIN_HEIGHT = 440;
+/* SHRINKS TO THE CONVERSATION (Anir, Oct 1: the panel opened small, "then i
+   tried to adjust it and it like snapped to this... i cant shrink it to just
+   the size of the message"). A 440px floor made the first drag of a shorter
+   panel jump to 440 and refused anything smaller. The floor is now what the
+   header, one message, the suggestions and the input actually need. */
+const DOCK_MIN_HEIGHT = 260;
 
 /** Keep a chosen size usable: never smaller than readable, never past the window. */
 function clampDockSize(w: number, h: number): { w: number; h: number } {
