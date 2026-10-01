@@ -240,12 +240,11 @@ export async function POST(req: NextRequest) {
   const chatKey = typeof body.conversationId === "string" ? String(body.conversationId).slice(0, 120) : "";
   if (attachmentIds.length && chatKey) await Promise.all(attachmentIds.map((id) => attachAgentFile(scope, id, chatKey).catch(() => null)));
   if (attachmentIds.length) await waitForFiles(scope, attachmentIds, 25_000).catch(() => undefined);
-  const chatFiles: AgentFileRecord[] = [
-    ...(chatKey ? await conversationFiles(scope, chatKey).catch(() => [] as AgentFileRecord[]) : []),
-    ...(!chatKey && attachmentIds.length
-      ? (await Promise.all(attachmentIds.map((id) => getAgentFile(scope, id).catch(() => null)))).filter((f): f is AgentFileRecord => Boolean(f))
-      : []),
-  ];
+  const inChat = chatKey ? await conversationFiles(scope, chatKey).catch(() => [] as AgentFileRecord[]) : [];
+  // The files sent with THIS message always count, even if their link to the chat has not landed yet.
+  const sentNow = (await Promise.all(attachmentIds.filter((id) => !inChat.some((f) => f.fileId === id)).map((id) => getAgentFile(scope, id).catch(() => null))))
+    .filter((f): f is AgentFileRecord => Boolean(f));
+  const chatFiles: AgentFileRecord[] = [...sentNow, ...inChat];
   const filesBlock = filesForPrompt(chatFiles, attachmentIds);
   // A question about a shared file is answered from the file, never from a ready-made workspace count.
   const aboutAFile = attachmentIds.length > 0 || (chatFiles.length > 0 && /\b(file|document|doc|pdf|video|recording|audio|call|transcript|sheet|spreadsheet|deck|slides?|attachment|image|photo|picture|screenshot|page|minute|said|mentioned)\b/i.test(message));

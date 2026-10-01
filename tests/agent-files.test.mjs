@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { fileKind, timedLines } = await import("../lib/agentFileReader.ts");
-const { filesForPrompt, searchFile } = await import("../lib/agentFiles.ts");
+const { chartText, fileKind, timedLines } = await import("../lib/agentFileReader.ts");
+const { filesForPrompt, readingStalled, searchFile } = await import("../lib/agentFiles.ts");
 const { sanitizeConversation } = await import("../lib/agentConversationStore.ts");
 const { parseInboundMessages } = await import("../lib/whatsapp.ts");
 
@@ -76,4 +76,28 @@ test("WhatsApp media of every kind carries its id, a document its name, audio it
   assert.equal(note.voice, true);
   const [forwarded] = parseInboundMessages(payload({ type: "audio", audio: { id: "A2", mime_type: "audio/mpeg" } }));
   assert.equal(forwarded.voice, false);
+});
+
+test("a chart drawn in a deck is read from the numbers it keeps, percentages as percentages", () => {
+  const bar = '<c:chartSpace><c:chart><c:title><c:tx><c:rich><a:p><a:r><a:t>Pipeline by region</a:t></a:r></a:p></c:rich></c:tx></c:title><c:plotArea><c:barChart>' +
+    '<c:ser><c:tx><c:strRef><c:strCache><c:pt idx="0"><c:v>Open pipeline</c:v></c:pt></c:strCache></c:strRef></c:tx>' +
+    '<c:dLbls><c:tx><c:rich><a:p><a:r><a:t>label</a:t></a:r></a:p></c:rich></c:tx></c:dLbls>' +
+    '<c:cat><c:strRef><c:strCache><c:pt idx="0"><c:v>Japan</c:v></c:pt><c:pt idx="1"><c:v>R&amp;D</c:v></c:pt></c:strCache></c:strRef></c:cat>' +
+    '<c:val><c:numRef><c:numCache><c:formatCode>General</c:formatCode><c:pt idx="0"><c:v>3400000</c:v></c:pt><c:pt idx="1"><c:v>7800000.5</c:v></c:pt></c:numCache></c:numRef></c:val></c:ser>' +
+    '</c:barChart><c:valAx><c:title><c:tx><c:rich><a:p><a:r><a:t>USD</a:t></a:r></a:p></c:rich></c:tx></c:title></c:valAx></c:plotArea></c:chart></c:chartSpace>';
+  assert.equal(chartText(bar), 'Chart "Pipeline by region" (bar): Open pipeline: Japan 3,400,000, R&D 7,800,000.5');
+  const pie = '<c:chart><c:plotArea><c:pie3DChart><c:ser><c:cat><c:strRef><c:strCache><c:pt idx="0"><c:v>Won</c:v></c:pt><c:pt idx="1"><c:v>Lost</c:v></c:pt></c:strCache></c:strRef></c:cat>' +
+    '<c:val><c:numRef><c:numCache><c:formatCode>0%</c:formatCode><c:pt idx="0"><c:v>0.47</c:v></c:pt><c:pt idx="1"><c:v>0.535</c:v></c:pt></c:numCache></c:numRef></c:val></c:ser></c:pie3DChart></c:plotArea></c:chart>';
+  assert.equal(chartText(pie), "Chart (pie): Won 47%, Lost 53.5%");
+  // An axis title is not the chart's title, and a chart with no stored values says nothing.
+  assert.doesNotMatch(chartText(bar.replace(/<c:title>[\s\S]*?<\/c:title>/, "")), /"USD"/);
+  assert.equal(chartText("<c:chart><c:plotArea><c:lineChart></c:lineChart></c:plotArea></c:chart>"), "");
+});
+
+test("a reading that stopped checking in counts as stalled, a live or finished one never does", () => {
+  const minutesAgo = (m) => new Date(Date.now() - m * 60_000).toISOString();
+  assert.equal(readingStalled(record({ status: "reading", updatedAt: minutesAgo(4) })), true);
+  assert.equal(readingStalled(record({ status: "reading", updatedAt: minutesAgo(1) })), false);
+  assert.equal(readingStalled(record({ status: "ready", updatedAt: minutesAgo(60) })), false);
+  assert.equal(readingStalled(record({ status: "failed", updatedAt: minutesAgo(60) })), false);
 });

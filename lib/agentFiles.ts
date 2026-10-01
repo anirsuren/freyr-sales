@@ -80,6 +80,82 @@ async function saveRecord(scope: WorkspaceMemberScope, record: AgentFileRecord):
   if (error) throw new Error(error.message);
 }
 
+/** A new updatedAt, never equal to the one it replaces (it is what a change is checked against). */
+const nextStamp = (previous: string) => {
+  const now = new Date().toISOString();
+  return now === previous ? new Date(Date.parse(now) + 1).toISOString() : now;
+};
+
+/**
+ * Change a file's record from what is stored NOW, never from an old copy, and
+ * only if nobody changed it in between. A chat attaches a file while it is
+ * still being read; writing the finished reading from the copy taken when the
+ * reading began wiped that attachment, and the agent answered as if no file
+ * had been sent (found Oct 1). Returns null when the record is gone.
+ */
+async function changeRecord(
+  scope: WorkspaceMemberScope,
+  fileId: string,
+  change: (current: AgentFileRecord) => AgentFileRecord | null,
+): Promise<AgentFileRecord | null> {
+  const client = db();
+  if (!client) throw new Error("File storage is not configured on this server.");
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const current = await getAgentFile(scope, fileId);
+    if (!current) return null;
+    const next = change(current);
+    if (!next) return current;
+    const stamped = { ...next, updatedAt: nextStamp(current.updatedAt) };
+    const { data, error } = await client
+      .from("offering_catalog_state")
+      .update({ catalog: stamped })
+      .eq("id", rowId(scope, fileId))
+      .eq("catalog->>updatedAt", current.updatedAt)
+      .select("id");
+    if (error) throw new Error(error.message);
+    if (data?.length) return stamped;
+  }
+  throw new Error("The file's record kept changing; try again.");
+}
+
+/** A reading checks in every minute; one silent for three has died with its server (a deploy, a restart). */
+const HEARTBEAT_MS = 60_000;
+const STALLED_MS = 3 * 60_000;
+
+export function readingStalled(record: AgentFileRecord): boolean {
+  return record.status === "reading" && Date.now() - Date.parse(record.updatedAt) > STALLED_MS;
+}
+
+function heartbeat(scope: WorkspaceMemberScope, fileId: string): () => void {
+  const timer = setInterval(() => {
+    void changeRecord(scope, fileId, (c) => (c.status === "reading" ? { ...c } : null)).catch(() => undefined);
+  }, HEARTBEAT_MS);
+  return () => clearInterval(timer);
+}
+
+/**
+ * Start again any reading whose server died under it: the original is in
+ * storage, so it is simply read again. A file whose original never got there
+ * is marked failed, so the chip and the agent say so instead of "reading…"
+ * for ever.
+ */
+async function resumeStalled(scope: WorkspaceMemberScope, record: AgentFileRecord): Promise<AgentFileRecord> {
+  if (!readingStalled(record)) return record;
+  try {
+    return await startAgentFileRead(scope, record.fileId);
+  } catch {
+    return (await changeRecord(scope, record.fileId, (c) =>
+      readingStalled(c) ? { ...c, status: "failed", error: "The reading was interrupted. Send the file again." } : null,
+    ).catch(() => null)) ?? record;
+  }
+}
+
+/** A status check: where a file is, and a stalled reading started again. */
+export async function agentFileStatus(scope: WorkspaceMemberScope, fileId: string): Promise<AgentFileRecord | null> {
+  const record = await getAgentFile(scope, fileId);
+  return record ? resumeStalled(scope, record) : null;
+}
+
 export async function getAgentFile(scope: WorkspaceMemberScope, fileId: string): Promise<AgentFileRecord | null> {
   const client = db();
   if (!client || !/^af-[a-z0-9-]{6,40}$/.test(fileId)) return null;
@@ -136,10 +212,17 @@ const reading = new Map<string, Promise<void>>();
 export async function startAgentFileRead(scope: WorkspaceMemberScope, fileId: string): Promise<AgentFileRecord> {
   const record = await getAgentFile(scope, fileId);
   if (!record) throw new Error("No such file.");
-  if (record.status === "ready" || reading.has(rowId(scope, fileId))) return record;
+  // Done, being read here, or being read by another server that is still checking in.
+  if (record.status === "ready" || reading.has(rowId(scope, fileId)) || (record.status === "reading" && !readingStalled(record))) return record;
   if (!(await materialExistsInStore(record.storagePath))) throw new Error("The upload has not finished yet.");
-  const started: AgentFileRecord = { ...record, status: "reading", readingStartedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-  await saveRecord(scope, started);
+  // Claimed only when this call is the one that moved it to reading; two servers never both start.
+  let claimed = false;
+  const started = await changeRecord(scope, fileId, (c) => {
+    claimed = !(c.status === "ready" || (c.status === "reading" && !readingStalled(c)));
+    return claimed ? { ...c, status: "reading", readingStartedAt: new Date().toISOString(), error: undefined } : null;
+  });
+  if (!started) throw new Error("No such file.");
+  if (!claimed || reading.has(rowId(scope, fileId))) return started;
   const job = readStoredFile(scope, started).finally(() => reading.delete(rowId(scope, fileId)));
   reading.set(rowId(scope, fileId), job);
   return started;
@@ -147,6 +230,7 @@ export async function startAgentFileRead(scope: WorkspaceMemberScope, fileId: st
 
 async function readStoredFile(scope: WorkspaceMemberScope, record: AgentFileRecord): Promise<void> {
   const dir = await mkdtemp(path.join(tmpdir(), "agent-upload-"));
+  const stop = heartbeat(scope, record.fileId);
   try {
     // Streamed to disk, never held whole in memory: a phone video can be a gigabyte.
     const url = await getMaterialServeUrl(record.storagePath);
@@ -155,20 +239,25 @@ async function readStoredFile(scope: WorkspaceMemberScope, record: AgentFileReco
     const filePath = path.join(dir, safeName(record.name));
     await pipeline(Readable.fromWeb(response.body as import("node:stream/web").ReadableStream), createWriteStream(filePath));
     const result = await readFileForAgent({ filePath, name: record.name, mime: record.mime });
-    await finish(scope, record, result);
+    stop();
+    await finish(scope, record.fileId, result);
   } catch (error) {
-    await saveRecord(scope, { ...record, status: "failed", error: error instanceof Error ? error.message.slice(0, 300) : "Reading failed.", updatedAt: new Date().toISOString() }).catch(() => undefined);
+    stop();
+    const message = error instanceof Error ? error.message.slice(0, 300) : "Reading failed.";
+    await changeRecord(scope, record.fileId, (c) => ({ ...c, status: "failed", error: message })).catch(() => undefined);
   } finally {
+    stop();
     await rm(dir, { recursive: true, force: true }).catch(() => undefined);
   }
 }
 
-async function finish(scope: WorkspaceMemberScope, record: AgentFileRecord, result: FileReading): Promise<AgentFileRecord> {
-  const done: AgentFileRecord = {
-    ...record,
+/** The finished reading, written onto the record as it is stored now (a chat may have attached it meanwhile). */
+async function finish(scope: WorkspaceMemberScope, fileId: string, result: FileReading): Promise<AgentFileRecord | null> {
+  return changeRecord(scope, fileId, (c) => ({
+    ...c,
     kind: result.kind,
     status: "ready",
-    updatedAt: new Date().toISOString(),
+    error: undefined,
     reading: {
       kind: result.kind,
       ...(result.durationSeconds ? { durationSeconds: result.durationSeconds } : {}),
@@ -178,9 +267,7 @@ async function finish(scope: WorkspaceMemberScope, record: AgentFileRecord, resu
       readBy: result.readBy,
       text: result.text,
     },
-  };
-  await saveRecord(scope, done);
-  return done;
+  }));
 }
 
 /**
@@ -212,23 +299,24 @@ export async function readAgentFileFromBytes(
   // The original is kept like a web upload; failing to keep it never stops the reading.
   const client = db();
   await client?.storage.from("offering-materials").upload(record.storagePath, input.bytes, { contentType: record.mime, upsert: false }).catch(() => undefined);
+  const stop = heartbeat(scope, fileId);
   try {
-    return await finish(scope, record, await readFileForAgent({ bytes: input.bytes, name: record.name, mime: record.mime }));
+    const result = await readFileForAgent({ bytes: input.bytes, name: record.name, mime: record.mime });
+    stop();
+    return (await finish(scope, fileId, result)) ?? record;
   } catch (error) {
-    const failed: AgentFileRecord = { ...record, status: "failed", error: error instanceof Error ? error.message.slice(0, 300) : "Reading failed.", updatedAt: new Date().toISOString() };
-    await saveRecord(scope, failed).catch(() => undefined);
-    return failed;
+    stop();
+    const message = error instanceof Error ? error.message.slice(0, 300) : "Reading failed.";
+    return (await changeRecord(scope, fileId, (c) => ({ ...c, status: "failed", error: message })).catch(() => null)) ?? { ...record, status: "failed", error: message };
+  } finally {
+    stop();
   }
 }
 
 /** Attach a file to a chat (a web upload made before the chat had an id). */
 export async function attachAgentFile(scope: WorkspaceMemberScope, fileId: string, conversationId: string): Promise<AgentFileRecord | null> {
-  const record = await getAgentFile(scope, fileId);
-  if (!record) return null;
-  if (record.conversationId === conversationId) return record;
-  const next = { ...record, conversationId: conversationId.slice(0, 120), updatedAt: new Date().toISOString() };
-  await saveRecord(scope, next);
-  return next;
+  const id = conversationId.slice(0, 120);
+  return changeRecord(scope, fileId, (c) => (c.conversationId === id ? null : { ...c, conversationId: id }));
 }
 
 /** Every file shared in one chat, newest first. */
@@ -240,14 +328,14 @@ export async function conversationFiles(scope: WorkspaceMemberScope, conversatio
     .select("catalog")
     .like("id", `agent-file:${scope.workspaceId}:${scope.userId}:%`)
     .eq("catalog->>conversationId", conversationId);
-  return ((data ?? []).map((r) => r.catalog as AgentFileRecord))
-    .filter((r) => r.userId === scope.userId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const records = (data ?? []).map((r) => r.catalog as AgentFileRecord).filter((r) => r.userId === scope.userId);
+  return (await Promise.all(records.map((r) => resumeStalled(scope, r)))).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 /** Wait (briefly) for files that are still being read, so a question asked with a file can be answered from it. */
 export async function waitForFiles(scope: WorkspaceMemberScope, fileIds: string[], maxMs: number): Promise<void> {
   const deadline = Date.now() + maxMs;
+  await Promise.all(fileIds.map((id) => agentFileStatus(scope, id).catch(() => null)));
   while (Date.now() < deadline) {
     const records = await Promise.all(fileIds.map((id) => getAgentFile(scope, id)));
     if (records.every((r) => !r || r.status === "ready" || r.status === "failed")) return;

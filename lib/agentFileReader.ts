@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { mkdtemp, open, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type JSZip from "jszip";
 import { extractFileContent } from "@/lib/fileText";
 import { withoutProseDashes } from "@/lib/agentProse";
 import { isVertexConfigured, vertexReadParts, type VertexReadPart } from "@/lib/vertex";
@@ -164,12 +165,17 @@ const inline = (mimeType: string, bytes: Buffer): VertexReadPart => ({ inlineDat
  * and a half; a refusal for any other reason fails at once.
  */
 async function gemini(parts: VertexReadPart[], maxOutputTokens = 8192): Promise<string> {
+  return (await geminiRead(parts, maxOutputTokens)).text;
+}
+
+/** The same read, also saying whether the answer hit its length limit (so the caller can read less at a time). */
+async function geminiRead(parts: VertexReadPart[], maxOutputTokens = 8192, timeoutMs?: number): Promise<{ text: string; cutOff: boolean }> {
   let wait = 2000;
   for (let attempt = 0; ; attempt++) {
     try {
-      const r = await vertexReadParts(parts, { maxOutputTokens });
-      if (r.text.trim()) return r.text.trim();
-      if (attempt >= 2) return "";
+      const r = await vertexReadParts(parts, { maxOutputTokens, ...(timeoutMs ? { timeoutMs } : {}) });
+      if (r.text.trim()) return { text: r.text.trim(), cutOff: r.finishReason === "MAX_TOKENS" };
+      if (attempt >= 2) return { text: "", cutOff: false };
     } catch (error) {
       const status = (error as { status?: number }).status;
       const retryable = status === 429 || status === 500 || status === 503 || status === 504 ||
@@ -274,14 +280,35 @@ const ON_SCREEN = "These are frames from a video, each labelled with its time. F
   "starting with its [mm:ss] label, then every word, number and label visible on screen, exactly as shown, and a short description of any chart, " +
   "table, diagram, person or scene (with the values a chart or table shows). Skip frames that only repeat the previous one. No other text.";
 
-async function screenReading(file: string, dir: string, seconds: number, notes: string[]): Promise<TimedLine[]> {
+/** The picture at one moment: ffmpeg jumps there and decodes only from the keyframe before it. */
+async function frameAt(file: string, at: number, out: string): Promise<boolean> {
+  const run = await ffmpeg(["-y", "-ss", String(at), "-i", file, "-frames:v", "1", "-vf", "scale='min(960,iw)':-2", "-q:v", "5", out], 120_000);
+  return run.ok && existsSync(out);
+}
+
+async function screenReading(file: string, dir: string, seconds: number | null, notes: string[]): Promise<TimedLine[]> {
   // About ninety looks through any recording, never closer than 4s or further apart than 30s.
-  const every = Math.min(30, Math.max(4, Math.round(seconds / 90)));
-  const run = await ffmpeg(["-y", "-i", file, "-vf", `fps=1/${every},scale='min(960,iw)':-2`, "-q:v", "5", path.join(dir, "frame_%05d.jpg")]);
-  const names = (await readdir(dir)).filter((f) => /^frame_\d{5}\.jpg$/.test(f)).sort();
-  if (!run.ok || !names.length) {
-    notes.push("The picture could not be read from this video.");
-    return [];
+  const every = Math.min(30, Math.max(4, Math.round((seconds ?? 600) / 90)));
+  /* Jump to each moment rather than decode every frame. Decoding a 2-minute
+     4K phone clip whole took 142s on one core and jumping took 5s; a 10-minute
+     one would have run past the server's patience (measured Oct 1). */
+  let frames: { name: string; at: number }[] = [];
+  if (seconds) {
+    const times = Array.from({ length: Math.max(1, Math.ceil(seconds / every)) }, (_, i) => i * every);
+    const got = await inParallel(times, 2, async (at, i) => {
+      const name = `frame_${String(i + 1).padStart(5, "0")}.jpg`;
+      return (await frameAt(file, at, path.join(dir, name))) ? { name, at } : null;
+    });
+    frames = got.filter((f): f is { name: string; at: number } => f !== null);
+  }
+  if (!frames.length) {
+    // No length to jump by (a browser recording often has none), or jumping failed: decode it straight through.
+    const run = await ffmpeg(["-y", "-i", file, "-vf", `fps=1/${every},scale='min(960,iw)':-2`, "-q:v", "5", path.join(dir, "frame_%05d.jpg")]);
+    frames = (await readdir(dir)).filter((f) => /^frame_\d{5}\.jpg$/.test(f)).sort().map((name, i) => ({ name, at: i * every }));
+    if (!run.ok || !frames.length) {
+      notes.push("The picture could not be read from this video.");
+      return [];
+    }
   }
   /* Slides and screen shares hold still: keep a frame when it changed, and at
      least once a minute regardless. "Changed" counts pixels that moved sharply:
@@ -292,7 +319,7 @@ async function screenReading(file: string, dir: string, seconds: number, notes: 
   const kept: { at: number; bytes: Buffer }[] = [];
   let last: Buffer | null = null;
   let lastAt = -Infinity;
-  for (const [i, name] of names.entries()) {
+  for (const { name, at } of frames) {
     const bytes = await readFile(path.join(dir, name));
     const thumb = await sharp(bytes).resize(160, 90, { fit: "fill" }).greyscale().raw().toBuffer();
     let changed = 1;
@@ -301,7 +328,6 @@ async function screenReading(file: string, dir: string, seconds: number, notes: 
       for (let k = 0; k < thumb.length; k++) if (Math.abs(thumb[k] - last[k]) > 48) moved++;
       changed = moved / thumb.length;
     }
-    const at = i * every;
     if (changed > 0.004 || at - lastAt >= 60) {
       kept.push({ at, bytes });
       last = thumb;
@@ -326,10 +352,81 @@ async function screenReading(file: string, dir: string, seconds: number, notes: 
 
 /* ---------------------------------------------------------------- documents */
 
-const READ_PAGES = (from: number, to: number | null) =>
-  `Read ${to ? `pages ${from} to ${to}` : "every page"} of this document. For each page write a line "--- Page N ---", then all of its text ` +
-  "exactly as written (keep tables as rows with | between cells), then for every chart, picture, diagram, stamp, signature or handwriting, " +
-  "what it shows including every number and label. Do not summarise or skip pages. Use the page numbers of the document itself.";
+const PAGE_RULES = "then all of its text exactly as written (keep tables as rows with | between cells), then for every chart, picture, " +
+  "diagram, stamp, signature or handwriting, what it shows including every number and label. Do not summarise or skip pages.";
+const READ_PAGES = (from: number, to: number, total: number) =>
+  `This PDF holds ${from === to ? `page ${from}` : `pages ${from} to ${to}`} of a ${total}-page document. For each page write a line ` +
+  `"--- Page N ---" with its page number in the whole document (the first page here is page ${from}), ${PAGE_RULES}`;
+const READ_EVERY_PAGE = `Read every page of this document. For each page write a line "--- Page N ---", ${PAGE_RULES}`;
+
+/** Pages per read: a scanned page can be a megabyte, and ten dense pages is about what one answer holds. */
+const PDF_PIECE_PAGES = 10;
+const PDF_MAX_PAGES = 150;
+/** Writing out a long document is what takes the time (120 typed pages: 4 minutes three at a time), so more pieces run at once. */
+const PDF_PARALLEL = 6;
+
+type PdfSplit = { total: number; make: (from: number, to: number) => Promise<Buffer> };
+
+/**
+ * A PDF opened so any run of its pages can be cut out as its own small PDF.
+ * Only the typed text of a PDF over 14MB used to be read, so a 40MB scanned
+ * contract came back as "nothing could be read" (found Oct 1). null when it
+ * will not open this way (a password, damage); the caller then sends it whole.
+ */
+async function splitPdf(buf: Buffer): Promise<PdfSplit | null> {
+  try {
+    const { PDFDocument } = await import("pdf-lib");
+    const source = await PDFDocument.load(buf, { updateMetadata: false, throwOnInvalidObject: false });
+    const total = source.getPageCount();
+    if (!total) return null;
+    return {
+      total,
+      make: async (from, to) => {
+        const piece = await PDFDocument.create({ updateMetadata: false });
+        const pages = await piece.copyPages(source, Array.from({ length: to - from + 1 }, (_, i) => from - 1 + i));
+        pages.forEach((page) => piece.addPage(page));
+        return Buffer.from(await piece.save());
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pages from..to, read by Gemini. A piece over the inline limit, or one whose
+ * reading ran past the answer's length, is halved and each half read; a page
+ * that still cannot be read is named in the notes, so the agent never says it
+ * holds nothing.
+ */
+async function readPdfPages(split: PdfSplit, from: number, to: number, notes: string[], whole?: Buffer): Promise<string> {
+  const halves = async () => {
+    const mid = Math.floor((from + to) / 2);
+    return [await readPdfPages(split, from, mid, notes), await readPdfPages(split, mid + 1, to, notes)].filter(Boolean).join("\n\n");
+  };
+  let bytes: Buffer;
+  try {
+    bytes = whole ?? (await split.make(from, to));
+  } catch {
+    notes.push(`Pages ${from} to ${to} could not be cut out to read.`);
+    return "";
+  }
+  if (bytes.length > INLINE_MAX) {
+    if (to > from) return halves();
+    notes.push(`Page ${from} is too large a picture to read.`);
+    return "";
+  }
+  try {
+    const { text, cutOff } = await geminiRead([inline("application/pdf", bytes), { text: READ_PAGES(from, to, split.total) }], 30_000, 300_000);
+    if (cutOff && to > from) return halves();
+    if (cutOff) notes.push(`Page ${from} was too long to read in full.`);
+    if (!text) notes.push(from === to ? `Page ${from} could not be read.` : `Pages ${from} to ${to} could not be read.`);
+    return text;
+  } catch {
+    notes.push(from === to ? `Page ${from} could not be read.` : `Pages ${from} to ${to} could not be read.`);
+    return "";
+  }
+}
 
 /** Pages in a PDF, from its page objects; null when they are packed where a regex cannot see. */
 function pdfPageCount(buf: Buffer): number | null {
@@ -341,26 +438,30 @@ function pdfPageCount(buf: Buffer): number | null {
 async function readPdf(buf: Buffer, name: string, notes: string[], readBy: string[]): Promise<{ text: string; pages?: number }> {
   const raw = buf.toString("latin1");
   const locked = /\/Encrypt\b/.test(raw);
-  const pages = pdfPageCount(buf) ?? undefined;
+  let pages = pdfPageCount(buf) ?? undefined;
   const local = extractFileContent(buf, `${name.replace(/\.[^.]+$/, "")}.pdf`).text;
   if (!raw.includes("%%EOF")) notes.push("This PDF looks cut short or damaged; only what could be read is below.");
-  if (isVertexConfigured() && buf.length <= INLINE_MAX) {
-    const ranges: [number, number | null][] = !pages || pages <= 15 ? [[1, null]] : Array.from({ length: Math.ceil(Math.min(pages, 150) / 15) }, (_, i) => [i * 15 + 1, Math.min(pages, (i + 1) * 15)]);
-    const read = await inParallel(ranges, 3, async ([from, to]) => {
-      try {
-        return await gemini([inline("application/pdf", buf), { text: READ_PAGES(from, to) }], 30_000);
-      } catch {
-        return "";
-      }
-    });
-    const text = read.filter(Boolean).join("\n\n");
-    if (pages && pages > 150) notes.push(`Only the first 150 of ${pages} pages were read closely; the rest is its plain text.`);
+  if (isVertexConfigured()) {
+    let text = "";
+    const split = await splitPdf(buf);
+    if (split) {
+      pages = split.total;
+      const last = Math.min(split.total, PDF_MAX_PAGES);
+      const ranges: [number, number][] = [];
+      for (let from = 1; from <= last; from += PDF_PIECE_PAGES) ranges.push([from, Math.min(last, from + PDF_PIECE_PAGES - 1)]);
+      // A short, small PDF goes exactly as it came; anything else in pieces of its own pages.
+      const whole = split.total <= PDF_PIECE_PAGES && buf.length <= INLINE_MAX ? buf : undefined;
+      text = (await inParallel(ranges, PDF_PARALLEL, ([from, to]) => readPdfPages(split, from, to, notes, whole))).filter(Boolean).join("\n\n");
+      if (split.total > PDF_MAX_PAGES) notes.push(`Only the first ${PDF_MAX_PAGES} of ${split.total} pages were read closely; the rest is its plain text.`);
+    } else if (buf.length <= INLINE_MAX) {
+      text = await gemini([inline("application/pdf", buf), { text: READ_EVERY_PAGE }], 30_000).catch(() => "");
+    } else {
+      notes.push(`This PDF is ${Math.round(buf.length / 1048576)}MB and would not open to be read page by page, so its pictures and scanned pages were not read; only its typed text is below.`);
+    }
     if (text) {
       readBy.push("gemini");
-      return { text: pages && pages > 150 && local ? `${text}\n\n${local}` : text, pages };
+      return { text: pages && pages > PDF_MAX_PAGES && local ? `${text}\n\n${local}` : text, pages };
     }
-  } else if (buf.length > INLINE_MAX) {
-    notes.push(`This PDF is ${Math.round(buf.length / 1048576)}MB, so its pictures and scanned pages were not read; only its typed text is below.`);
   }
   if (local) {
     readBy.push("text");
@@ -410,28 +511,93 @@ async function readImage(buf: Buffer, name: string, mime: string, notes: string[
  * can belong to slide 2; the agent said "speaker notes on slide 1" about notes
  * that sat on slide 2 until each was mapped through its slide (Sep 30).
  */
+const unescapeXml = (s: string) =>
+  s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
+
+const xmlWords = (xml: string) =>
+  unescapeXml(xml.replace(/<\/a:p>/g, "\n").replace(/<a:br\b[^>]*\/?>/g, "\n").replace(/<[^>]+>/g, ""))
+    .split("\n").map((l) => l.trim()).filter(Boolean).join("\n");
+
+/**
+ * A chart drawn in PowerPoint or Word, from the values the file keeps with it.
+ * It is not a picture, so neither the slide's words nor a look at its pictures
+ * ever saw its numbers.
+ */
+export function chartText(xml: string): string {
+  const head = xml.split(/<c:plotArea\b/)[0];
+  const title = /<c:title>([\s\S]*?)<\/c:title>/.exec(head);
+  const type = /<c:(\w+?)(?:3D)?Chart>/.exec(xml)?.[1];
+  const points = (part: string | undefined) => {
+    const out = new Map<number, string>();
+    for (const m of (part ?? "").matchAll(/<c:pt idx="(\d+)"[^>]*>\s*<c:v>([^<]*)<\/c:v>/g)) if (!out.has(Number(m[1]))) out.set(Number(m[1]), unescapeXml(m[2]));
+    return out;
+  };
+  const series: string[] = [];
+  for (const [, ser] of xml.matchAll(/<c:ser>([\s\S]*?)<\/c:ser>/g)) {
+    const name = /<c:v>([^<]*)<\/c:v>/.exec(/<c:tx>([\s\S]*?)<\/c:tx>/.exec(ser)?.[1] ?? "")?.[1];
+    const cats = points(/<c:(?:cat|xVal)>([\s\S]*?)<\/c:(?:cat|xVal)>/.exec(ser)?.[1]);
+    const valPart = /<c:(?:val|yVal)>([\s\S]*?)<\/c:(?:val|yVal)>/.exec(ser)?.[1];
+    const percent = /<c:formatCode>[^<]*%[^<]*<\/c:formatCode>/.test(valPart ?? "");
+    const shown = [...points(valPart)].sort((a, b) => a[0] - b[0]).map(([idx, v]) => {
+      const n = Number(v);
+      const value = !Number.isFinite(n) ? v : percent ? `${Math.round(n * 1000) / 10}%` : n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+      return cats.has(idx) ? `${cats.get(idx)} ${value}` : value;
+    });
+    if (shown.length) series.push(`${name ? `${unescapeXml(name)}: ` : ""}${shown.join(", ")}`);
+  }
+  if (!series.length) return "";
+  const label = title ? xmlWords(title[1]).replace(/\n/g, " ") : "";
+  return `Chart${label ? ` "${label}"` : ""}${type ? ` (${type})` : ""}: ${series.join("; ")}`;
+}
+
+/** A SmartArt diagram's words, in order. */
+const diagramText = (xml: string) => {
+  const words = [...xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map((m) => unescapeXml(m[1]).trim()).filter(Boolean);
+  return words.length ? `Diagram: ${words.join(" / ")}` : "";
+};
+
+/** Charts and diagrams a slide or document points to, through its relationships file. */
+async function linkedParts(zip: JSZip, rels: string | undefined, folder: string): Promise<string[]> {
+  const out: string[] = [];
+  for (const m of (rels ?? "").matchAll(/Target="(?:\.\.\/)?((?:charts\/chart|diagrams\/data)\d+\.xml)"/g)) {
+    const xml = await zip.file(`${folder}${m[1]}`)?.async("string");
+    const text = xml ? (m[1].startsWith("charts/") ? chartText(xml) : diagramText(xml)) : "";
+    if (text) out.push(text);
+  }
+  return out;
+}
+
 async function deckText(buf: Buffer): Promise<string> {
   const { default: JSZip } = await import("jszip");
   const zip = await JSZip.loadAsync(buf).catch(() => null);
   if (!zip) return "";
-  const words = (xml: string) =>
-    xml.replace(/<\/a:p>/g, "\n").replace(/<a:br\b[^>]*\/?>/g, "\n").replace(/<[^>]+>/g, "")
-      .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&")
-      .split("\n").map((l) => l.trim()).filter(Boolean).join("\n");
   const slides = Object.keys(zip.files)
     .map((n) => /^ppt\/slides\/slide(\d+)\.xml$/.exec(n))
     .filter((m): m is RegExpExecArray => Boolean(m))
     .sort((a, b) => Number(a[1]) - Number(b[1]));
   const out: string[] = [];
   for (const [index, m] of slides.entries()) {
-    const body = words(await zip.file(m[0])!.async("string"));
+    const body = xmlWords(await zip.file(m[0])!.async("string"));
     const rels = await zip.file(`ppt/slides/_rels/slide${m[1]}.xml.rels`)?.async("string");
     const notesFile = rels ? /Target="\.\.\/notesSlides\/(notesSlide\d+\.xml)"/.exec(rels)?.[1] : undefined;
-    const notes = notesFile ? words(await zip.file(`ppt/notesSlides/${notesFile}`)?.async("string") ?? "").replace(/^\d+$/gm, "").trim() : "";
-    if (body || notes) out.push(`Slide ${index + 1}: ${body}${notes ? `\nSlide ${index + 1} speaker notes: ${notes}` : ""}`);
+    const notes = notesFile ? xmlWords(await zip.file(`ppt/notesSlides/${notesFile}`)?.async("string") ?? "").replace(/^\d+$/gm, "").trim() : "";
+    const drawn = await linkedParts(zip, rels, "ppt/");
+    if (body || notes || drawn.length) {
+      out.push(`Slide ${index + 1}: ${body}${drawn.map((d) => `\nSlide ${index + 1} ${d}`).join("")}${notes ? `\nSlide ${index + 1} speaker notes: ${notes}` : ""}`);
+    }
   }
   return out.join("\n\n");
 }
+
+/** A Word file's charts and diagrams, in the order the document links them. */
+async function wordDrawings(buf: Buffer): Promise<string> {
+  const { default: JSZip } = await import("jszip");
+  const zip = await JSZip.loadAsync(buf).catch(() => null);
+  if (!zip) return "";
+  return (await linkedParts(zip, await zip.file("word/_rels/document.xml.rels")?.async("string"), "word/")).join("\n");
+}
+
+const MAX_OFFICE_PICTURES = 40;
 
 /** Pictures stored inside an Office file, read as images (a chart pasted into a slide is only a picture). */
 async function officePictures(buf: Buffer, kind: "word" | "slides", notes: string[], readBy: string[]): Promise<string> {
@@ -449,9 +615,14 @@ async function officePictures(buf: Buffer, kind: "word" | "slides", notes: strin
       for (const m of xml.matchAll(/Target="\.\.\/media\/([^"]+)"/g)) if (!where.has(m[1])) where.set(m[1], slide);
     }
   }
+  /* In slide order (then by number: image10 after image9), and up to 40: a
+     deck exported from a design tool is often a picture per slide, and the
+     first 12 in the zip were neither all of it nor the first 12 slides. */
+  const number = (n: string) => Number(/(\d+)\.\w+$/.exec(n)?.[1] ?? 0);
   const media = Object.keys(zip.files)
     .filter((n) => n.startsWith(folder) && /\.(png|jpe?g|gif|webp|bmp)$/i.test(n))
-    .slice(0, 12);
+    .sort((a, b) => (where.get(path.basename(a)) ?? 1e6) - (where.get(path.basename(b)) ?? 1e6) || number(a) - number(b))
+    .slice(0, MAX_OFFICE_PICTURES);
   const lines = await inParallel(media, PARALLEL, async (file) => {
     const bytes = Buffer.from(await zip.file(file)!.async("uint8array"));
     if (bytes.length < 4000) return ""; // bullets, logos and lines
@@ -461,7 +632,8 @@ async function officePictures(buf: Buffer, kind: "word" | "slides", notes: strin
   });
   const found = lines.filter(Boolean);
   if (found.length) readBy.push("gemini");
-  if (Object.keys(zip.files).filter((n) => n.startsWith(folder)).length > 12) notes.push("Only the first 12 pictures in this file were read.");
+  const pictures = Object.keys(zip.files).filter((n) => n.startsWith(folder) && /\.(png|jpe?g|gif|webp|bmp)$/i.test(n)).length;
+  if (pictures > MAX_OFFICE_PICTURES) notes.push(`Only the first ${MAX_OFFICE_PICTURES} of ${pictures} pictures in this file were read.`);
   return found.join("\n\n");
 }
 
@@ -580,7 +752,9 @@ async function readFileForAgentInternal(
     } else if (kind === "image") {
       text = await readImage(bytes, name, input.mime ?? "", notes, readBy);
     } else if (kind === "word" || kind === "slides") {
-      const own = extOf(name) === "pptx" ? await deckText(bytes) : extOf(name) === "docx" ? extractFileContent(bytes, name).text : "";
+      const own = extOf(name) === "pptx"
+        ? await deckText(bytes)
+        : extOf(name) === "docx" ? [extractFileContent(bytes, name).text, await wordDrawings(bytes)].filter(Boolean).join("\n\n") : "";
       if (own) readBy.push("text");
       const pictures = ["docx", "pptx"].includes(extOf(name)) ? await officePictures(bytes, kind, notes, readBy) : "";
       if (!["docx", "pptx"].includes(extOf(name))) notes.push(`The older .${extOf(name)} format cannot be opened here. Save it as .${kind === "word" ? "docx" : "pptx"} and send it again.`);
@@ -613,7 +787,7 @@ async function readFileForAgentInternal(
         if (!isVertexConfigured()) notes.push("Recordings cannot be transcribed on this server.");
         const [speech, screen] = await Promise.all([
           info.audio && isVertexConfigured() ? transcribe(file, dir, notes) : Promise.resolve([] as TimedLine[]),
-          info.video && kind === "video" && isVertexConfigured() ? screenReading(file, dir, durationSeconds ?? 600, notes) : Promise.resolve([] as TimedLine[]),
+          info.video && kind === "video" && isVertexConfigured() ? screenReading(file, dir, durationSeconds ?? null, notes) : Promise.resolve([] as TimedLine[]),
         ]);
         if (!info.audio) notes.push(kind === "video" ? "This video has no sound, so there is nothing to transcribe." : "No sound could be found in this file.");
         else if (!speech.length) notes.push("Nobody could be heard speaking in this recording.");
