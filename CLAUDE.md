@@ -218,7 +218,7 @@ Goal-level verification is green when Verified and red when Not verified across 
 
 Keep a compact search field under the Groups header in the Goals drill-down. Filter the current period's group list by group name or owner, show visible/total while filtering, offer a clear action and empty result, and preserve the existing selection and three-column layout.
 
-Expanded chart dialogs preserve the source chart's exact color and segmentation semantics. Goals progress remains solid green when verified, striped amber while waiting, and striped red when sent back; goal-type colors appear only as identity dots. Do not simplify expanded chart data in a way that drops pending bands, labels, captions, or tooltip details.
+Expanded chart dialogs preserve the source chart's exact color and segmentation semantics. Goals progress remains solid green when verified, striped amber while waiting, and striped red when sent back; the goal-type identity appears as the goal type's icon in its colour. Do not simplify expanded chart data in a way that drops pending bands, labels, captions, or tooltip details.
 
 Expanded chart dialogs always render every series or slice. Do not add visibility dropdowns, “show all” controls, visible counts, or empty-filter states.
 

@@ -2298,6 +2298,44 @@ input {
   }
 }
 
+/* THE GOAL ROW LIGHTS WITH EVERYTHING ELSE THAT IS THAT GOAL (Anir, Oct 1:
+   "I think the entire goal row as a whole should also kind of shine, along
+   with the progress bar and all that stuff").
+
+   A faint wash of the app's blue, never a status colour, and one soft band of
+   the same blue passing across it as the row lights. It is the row's own
+   background, so nothing in the row moves or resizes. The band passes once
+   and settles; anyone who asked for less motion gets the wash alone. */
+tr.goal-row-lit {
+  background-color: rgb(var(--blue-primary-rgb) / 0.055);
+  background-image: linear-gradient(
+    100deg,
+    rgb(var(--blue-primary-rgb) / 0) 0%,
+    rgb(var(--blue-primary-rgb) / 0.11) 50%,
+    rgb(var(--blue-primary-rgb) / 0) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 35% 100%;
+  background-position: -55% 0;
+  animation: goalRowSheen 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes goalRowSheen {
+  from {
+    background-position: -55% 0;
+  }
+  to {
+    background-position: 155% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  tr.goal-row-lit {
+    animation: none;
+    background-image: none;
+  }
+}
+
 /**
  * THE FOUR THAT KEPT MOVING (found Aug 16, auditing every animation against
  * prefers-reduced-motion). Thirty-five of this file's thirty-nine animating

@@ -158,16 +158,20 @@ export function DealActivity({
 function ActivityHeading({ count }: { count: number }) {
   return (
     <div className="mb-3 flex items-start justify-between gap-3">
-      <div className="flex items-start gap-1.5">
-        <div>
+      <div>
+        {/* The hint rides the title's own line, right after the word. Placed
+            after the title and subtitle block it took the subtitle's width
+            and landed far from "Activity" (Anir, Oct 1: "the question mark is
+            too far from wherever it's supposed to be"). */}
+        <div className="flex items-center gap-1.5">
           <h2 className="text-[15px] font-semibold text-text-primary">
             Activity
           </h2>
-          <p className="mt-0.5 text-[11px] text-text-tertiary">
-            Every call, email and note logged on this deal
-          </p>
+          <InfoHint text="Each touch is coloured by the stage it moved the deal into. So this list and the tracker at the top of the page tell the same story." />
         </div>
-        <InfoHint text="Each touch is coloured by the stage it moved the deal into. So this list and the tracker at the top of the page tell the same story." />
+        <p className="mt-0.5 text-[11px] text-text-tertiary">
+          Every call, email and note logged on this deal
+        </p>
       </div>
       {count > 0 && (
         <span className="shrink-0 rounded-full bg-blue-light px-2.5 py-1 text-[11.5px] font-semibold text-blue-primary tnum">

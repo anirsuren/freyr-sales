@@ -2222,8 +2222,11 @@ export function MiniBar({
         className={cn(
           /* bar-hoverable: pointing at the track lights the fill, so a caller
              that passes no `lit` still animates (Anir, Aug 30). */
-          "bar-hoverable flex h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] transition-all duration-150",
-          lit && "h-2 w-28"
+          "bar-hoverable flex h-1.5 w-24 overflow-hidden rounded-full bg-[rgba(0,113,227,0.10)] transition-all duration-150 motion-reduce:transition-none",
+          /* Lit, it thickens and shines but keeps its width. Since the whole
+             goal row lights it (Anir, Oct 1), a wider bar would shove the
+             percentage beside it sideways on every row the pointer crossed. */
+          lit && "h-2"
         )}
       >
         <StatusBarSegments

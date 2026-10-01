@@ -44,6 +44,7 @@ import { EvidencePicker } from "./EvidencePicker";
 import { SegmentValues } from "./bits";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { cn, formatDate } from "@/lib/utils";
 import type { RunOp } from "./PerformanceModule";
 import { typeMeta, GroupPill } from "./bits";
@@ -55,6 +56,7 @@ import { expandMoneyShorthand } from "@/lib/moneyShorthand";
 import { OptionalMark, RequiredMark } from "@/components/ui/RequiredMark";
 import { ENTITY_NAME, EntityLink, PersonLink } from "@/components/ui/EntityLink";
 import { teammateHref } from "@/lib/entityHref";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 /**
  * THE EVIDENCE-AND-VERIFICATION SURFACES (Suren, Aug 13).
@@ -685,6 +687,127 @@ function Rule() {
   );
 }
 
+/** How many faces a shut banner shows before it says "+N". */
+const BANNER_FACE_MAX = 5;
+
+/**
+ * One face per person, most claims first, ties in the order they arrived. The
+ * key ignores case and spacing so one person never shows up twice.
+ */
+function peopleByCount(names: (string | null | undefined)[]): string[] {
+  const seen = new Map<string, { name: string; count: number; first: number }>();
+  names.forEach((raw, i) => {
+    const name = (raw ?? "").trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    const hit = seen.get(key);
+    if (hit) hit.count += 1;
+    else seen.set(key, { name, count: 1, first: i });
+  });
+  return [...seen.values()]
+    .sort((a, b) => b.count - a.count || a.first - b.first)
+    .map((p) => p.name);
+}
+
+/** The owners of every group this person is in, never the person: the ones
+ *  who sign their claims off, so the ones who send them back. */
+function ownersOf(state: PerformanceState, who: string): string[] {
+  const me = who.trim().toLowerCase();
+  const heads: string[] = [];
+  for (const g of state.groups ?? []) {
+    const head = (g.head ?? "").trim();
+    if (!head || head.toLowerCase() === me) continue;
+    if (!(g.members ?? []).some((m) => (m ?? "").trim().toLowerCase() === me)) continue;
+    if (!heads.some((h) => h.toLowerCase() === head.toLowerCase())) heads.push(head);
+  }
+  return heads;
+}
+
+/**
+ * WHO IS ON THE OTHER END, WHILE THE BANNER IS SHUT (Anir, Oct 1: "when I
+ * close that panel ... I want the profile pictures to show up. Maybe up to 5
+ * of them ... You can say just 'plus however many more' so I can see a little
+ * preview").
+ *
+ * Five faces, overlapped, then a count. They fan apart under the pointer like
+ * every other face stack in the app, so each one is easy to reach. A face
+ * opens that person's record and never folds the banner: the header is a
+ * <button>, so the link is EntityLink's nested kind, which navigates from a
+ * span and stops the click before the header sees it.
+ *
+ * The negative vertical margin keeps the stack from making the header row
+ * taller, so the banner keeps its height as it opens and shuts.
+ */
+function BannerFaces({ people, cutout = "var(--white)" }: {
+  people: string[];
+  /**
+   * The banner's own colour, drawn as a thin gap between overlapping faces.
+   * Never a white ring on a tinted banner (Anir, Oct 1: "I don't know why
+   * you're doing this white thing... It should hover over the actual circle").
+   */
+  cutout?: string;
+}) {
+  const [spread, setSpread] = useState(false);
+  if (people.length === 0) return null;
+  const shown = people.slice(0, BANNER_FACE_MAX);
+  const rest = people.slice(BANNER_FACE_MAX);
+  return (
+    <span
+      className="menu-in -my-1 inline-flex shrink-0 items-center"
+      style={{
+        ["--menu-dir" as string]: 0,
+        ["--menu-origin" as string]: "left center",
+      }}
+      onMouseEnter={() => setSpread(true)}
+      onMouseLeave={() => setSpread(false)}
+      onFocusCapture={() => setSpread(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+          setSpread(false);
+      }}
+    >
+      {shown.map((name, i) => (
+        <span
+          key={name}
+          className="relative inline-flex transition-[margin] duration-200 ease-out motion-reduce:transition-none"
+          style={{
+            marginLeft: i === 0 ? 0 : spread ? 3 : -6,
+            zIndex: spread ? shown.length - i : i + 1,
+          }}
+        >
+          <Tooltip label={name}>
+            <EntityLink
+              nested
+              href={teammateHref(name)}
+              className="inline-flex !rounded-full"
+            >
+              <span
+                className="inline-flex rounded-full shadow-[0_0_0_2px_var(--face-cut)] transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:scale-110 hover:shadow-[0_0_0_2px_rgba(0,113,227,0.55)] motion-reduce:transition-none"
+                style={{ ["--face-cut" as string]: cutout }}
+              >
+                <Avatar name={name} className="h-[22px] w-[22px] text-[8px]" />
+              </span>
+            </EntityLink>
+          </Tooltip>
+        </span>
+      ))}
+      {rest.length > 0 && (
+        <Tooltip
+          label={
+            rest.length <= 8
+              ? rest.join("\n")
+              : `${rest.slice(0, 7).join("\n")}\nand ${rest.length - 7} more`
+          }
+        >
+          <span className="ml-1.5 inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full border border-border-light bg-white px-1.5 text-[10.5px] font-bold text-text-secondary tnum">
+            +{rest.length}
+          </span>
+        </Tooltip>
+      )}
+    </span>
+  );
+}
+
 /**
  * WHAT YOU SENT BACK, AND WHO IS SITTING ON IT.
  *
@@ -769,13 +892,23 @@ export function SentBackWatchCard({
           className="mt-px shrink-0 text-[color:var(--ink-amber)]"
         />
         <span className="min-w-0">
-          <h3 className="text-[13.5px] font-bold text-[color:var(--ink-amber)]">
-            {waiting.length} {waiting.length === 1 ? "claim you" : "claims you"}{" "}
-            sent back, waiting on{" "}
-            {withWhom.length === 1
-              ? withWhom[0]
-              : `${withWhom.length} people`}
-          </h3>
+          {/* Shut, the title line also shows WHO has to re-submit, as faces
+              (Anir, Oct 1). Open, the table below names them. */}
+          <span className="flex min-w-0 items-center gap-2.5">
+            <h3 className="text-[13.5px] font-bold text-[color:var(--ink-amber)]">
+              {waiting.length} {waiting.length === 1 ? "claim you" : "claims you"}{" "}
+              sent back, waiting on{" "}
+              {withWhom.length === 1
+                ? withWhom[0]
+                : `${withWhom.length} people`}
+            </h3>
+            {!expanded && (
+              <BannerFaces
+                people={peopleByCount(waiting.map((a) => a.person))}
+                cutout="color-mix(in srgb, #B45309 6%, var(--white))"
+              />
+            )}
+          </span>
           <span className="mt-0.5 block text-[12.5px] text-text-secondary">
             Nothing for you to do until they re-submit. It counts once they fix
             it and you sign it off.
@@ -911,11 +1044,27 @@ export function SentBackCard({
           className="mt-px shrink-0 text-[color:var(--ink-red)]"
         />
         <span className="min-w-0">
-          <h3 className="text-[13.5px] font-bold text-[color:var(--ink-red)]">
-            {isMe
-              ? `Sent back to you. ${rejected.length} result${rejected.length === 1 ? "" : "s"} need${rejected.length === 1 ? "s" : ""} a fix`
-              : `Sent back to ${who}. ${rejected.length} waiting on them`}
-          </h3>
+          {/* Shut, the title line also shows WHO sent it back, as faces
+              (Anir, Oct 1). A claim stamped before sentBackBy existed falls
+              back to the owners of the groups this person is in, the people
+              who sign their claims off. */}
+          <span className="flex min-w-0 items-center gap-2.5">
+            <h3 className="text-[13.5px] font-bold text-[color:var(--ink-red)]">
+              {isMe
+                ? `Sent back to you. ${rejected.length} result${rejected.length === 1 ? "" : "s"} need${rejected.length === 1 ? "s" : ""} a fix`
+                : `Sent back to ${who}. ${rejected.length} waiting on them`}
+            </h3>
+            {!expanded && (
+              <BannerFaces
+                people={peopleByCount(
+                  rejected.flatMap((a) =>
+                    a.sentBackBy?.trim() ? [a.sentBackBy] : ownersOf(state, a.person)
+                  )
+                )}
+                cutout="color-mix(in srgb, #DC2626 7%, var(--white))"
+              />
+            )}
+          </span>
           <span className="mt-0.5 block text-[12.5px] text-text-secondary">
             {isMe
               ? "None of it counts toward your goals until you fix it and it is verified."
@@ -1220,6 +1369,20 @@ export function MyEntriesCard({
                   isPending(a) &&
                   !!run &&
                   (a.person === meName || a.addedBy === meName);
+                /**
+                 * WHO MAY DROP IT: the person who logged it, OR the owner of a
+                 * group they are in. The store has always allowed both
+                 * (removeActual: "yours to drop, or your group owner's to drop
+                 * on your behalf") while the bin showed only to the first, so a
+                 * group owner looking at a wrong claim from one of their people
+                 * had no way to clear it (Anir, Oct 1: "It should just be super
+                 * easy to delete"). Still unlocked claims only: a verified one
+                 * is sent back first, exactly as the store insists.
+                 */
+                const canDrop =
+                  isPending(a) &&
+                  !!run &&
+                  (a.person === meName || a.addedBy === meName || iOwnThisPerson);
                 return (
                   <Fragment key={a.id}>
                     <tr
@@ -1365,42 +1528,42 @@ export function MyEntriesCard({
                             </button>
                           )}
                           {canEdit && (
-                            <>
-                              <button
-                                type="button"
-                                title="Edit this entry"
-                                aria-label={`Edit the ${a.date} entry`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenRow(a.id);
-                                  setEditFor(a.id);
-                                  setDropFor(null);
-                                  setDraft({
-                                    amount: String(a.amount),
-                                    date: a.date,
-                                    customer: a.customer ?? "",
-                                    customerId: a.customerId ?? "",
-                                  });
-                                  setDraftEvidence(a.evidence ?? []);
-                                }}
-                                className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
-                              >
-                                <PenLine size={14} strokeWidth={2.2} />
-                              </button>
-                              <button
-                                type="button"
-                                title="Delete this entry"
-                                aria-label={`Delete the ${a.date} entry`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDropFor(a.id);
-                                  setEditFor(null);
-                                }}
-                                className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-surface"
-                              >
-                                <Trash2 size={14} strokeWidth={2.2} />
-                              </button>
-                            </>
+                            <button
+                              type="button"
+                              title="Edit this entry"
+                              aria-label={`Edit the ${a.date} entry`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenRow(a.id);
+                                setEditFor(a.id);
+                                setDropFor(null);
+                                setDraft({
+                                  amount: String(a.amount),
+                                  date: a.date,
+                                  customer: a.customer ?? "",
+                                  customerId: a.customerId ?? "",
+                                });
+                                setDraftEvidence(a.evidence ?? []);
+                              }}
+                              className="cursor-pointer rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary"
+                            >
+                              <PenLine size={14} strokeWidth={2.2} />
+                            </button>
+                          )}
+                          {canDrop && (
+                            <button
+                              type="button"
+                              title="Delete this entry"
+                              aria-label={`Delete the ${a.date} entry`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDropFor(a.id);
+                                setEditFor(null);
+                              }}
+                              className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                            >
+                              <Trash2 size={14} strokeWidth={2.2} />
+                            </button>
                           )}
                           <ChevronDown
                             size={16}
@@ -1612,68 +1775,44 @@ export function MyEntriesCard({
           expanded row. On a detailed result that confirmation landed below
           the viewport, so pressing the visible trash icon appeared to do
           nothing. Keep the ownership and lock rules, but put the decision in
-          the same immediate dialog pattern as Edit and Review. */}
-      {dropFor && run &&
-        (() => {
-          const a = state.actuals.find((x) => x.id === dropFor);
-          if (!a) return null;
-          const goal = state.goals.find((g) => g.id === a.goalId);
-          return (
-            <Modal
-              open
-              onClose={() => setDropFor(null)}
-              title="Delete logged result?"
-              dialogClassName="!max-w-[520px]"
-            >
-              <div className="space-y-4">
-                <div className="rounded-xl border border-border-light bg-surface p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <span className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
-                        Result
-                      </span>
-                      <span className="mt-1 block text-[14px] font-bold text-text-primary">
-                        {goal?.name ?? "Goal removed"}
-                      </span>
-                      <span className="mt-1 block text-[12px] text-text-secondary">
-                        {formatDate(a.date)} · logged by {a.person}
-                      </span>
-                    </div>
-                    <span className="shrink-0 text-[20px] font-extrabold text-text-primary tnum">
-                      {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-[13px] leading-5 text-text-secondary">
-                  This permanently removes the result and its evidence from the goal.
-                </p>
-                <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setDropFor(null)}
-                    className="h-10 cursor-pointer rounded-xl border border-border-light bg-white px-4 text-[13px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={async () => {
-                      const okDone = await run(
-                        { op: "remove-actual", actualId: a.id },
-                        "Entry deleted"
-                      );
-                      if (okDone) setDropFor(null);
-                    }}
-                    className="h-10 cursor-pointer rounded-xl bg-[color:#DC2626] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[color:#B91C1C] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Delete result
-                  </button>
-                </div>
-              </div>
-            </Modal>
-          );
-        })()}
+          the app's one delete dialog, the same one every other remove opens,
+          rather than a hand-built copy of it. */}
+      {(() => {
+        const a = dropFor && run ? state.actuals.find((x) => x.id === dropFor) : null;
+        const goal = a ? state.goals.find((g) => g.id === a.goalId) : undefined;
+        return (
+          <ConfirmDialog
+            open={!!a}
+            onClose={() => setDropFor(null)}
+            onConfirm={async () => {
+              if (!a || !run) return;
+              const okDone = await run(
+                { op: "remove-actual", actualId: a.id },
+                "Entry deleted"
+              );
+              if (okDone) setDropFor(null);
+            }}
+            title="Delete logged result?"
+            subject={a ? { name: goal?.name ?? "Goal removed", kind: "goal" } : null}
+            body={
+              a ? (
+                <>
+                  <b className="tnum">
+                    {goal ? fmtAmount(goal.unit, a.amount, a.currency) : a.amount}
+                  </b>{" "}
+                  on <b>{goal?.name ?? "a goal that was removed"}</b>, logged by{" "}
+                  {a.person} for {formatDate(a.date)}.
+                </>
+              ) : (
+                ""
+              )
+            }
+            detail="This permanently removes the result and its evidence from the goal."
+            confirmLabel="Delete result"
+            busy={busy}
+          />
+        );
+      })()}
       {/* THE SAME REVIEW POPUP THE QUEUE OPENS. One dialog for signing a
           claim off, wherever you happen to be standing when you decide to. */}
       {reviewing &&
@@ -2135,6 +2274,14 @@ export function VerifyQueueCard({
           <span className="text-[11.5px] font-semibold text-[color:var(--ink-amber)] tnum">
             {fmtAmount("currency", onHold)} on hold until you do
           </span>
+          )}
+          {/* Shut, the faces of whoever logged the waiting claims sit right
+              after the money (Anir, Oct 1). Open, the table names them. */}
+          {pending && !expanded && (
+            <BannerFaces
+              people={peopleByCount(queue.map((a) => a.person))}
+              cutout={pending ? "color-mix(in srgb, #D97706 7%, var(--white))" : "var(--white)"}
+            />
           )}
         {/* ONE SENTENCE, WITH THE GROUP NAME AS A TAG INSIDE IT (Anir,
             Aug 15). Two goes at this: "you own test. Only you can lock these"

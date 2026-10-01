@@ -33,6 +33,10 @@ import {
   Hourglass,
   AlertCircle,
   ShieldCheck,
+  CheckCircle2,
+  TrendingUp,
+  TrendingDown,
+  CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 import { formatDateTime, cn, OUTCOME_META } from "@/lib/utils";
@@ -76,6 +80,16 @@ const TIP_ICONS: Record<string, LucideIcon> = {
   goalLeadGen: Magnet,
   goalActivity: Activity,
   goalProposal: Handshake,
+  // A goal type with no mark of its own wears the same Sparkles fallback the
+  // Goals pages give it (performance/bits typeMeta).
+  goalOther: Sparkles,
+  // Where a goal stands against its schedule, as the pace pills draw it
+  // (performance/bits PACE_META), so a legend keys each slice with that mark.
+  paceMet: CheckCircle2,
+  paceAhead: TrendingUp,
+  paceOnTrack: Activity,
+  paceLagging: TrendingDown,
+  paceUnscheduled: CalendarClock,
   waiting: Hourglass,
   sentBack: AlertCircle,
   verified: ShieldCheck,
@@ -1306,7 +1320,7 @@ function TipStat({
  * or nothing when no dot class is given — so every existing call site is
  * pixel-identical until a caller opts in.
  */
-function SeriesMark({
+export function SeriesMark({
   icon,
   color,
   dotClassName,
@@ -1826,6 +1840,25 @@ export function useDonutSync(syncId: string | undefined): number | null {
   return syncId ? linked : null;
 }
 
+/**
+ * Whether ONE index on a sync channel is lit. A list whose every row calls
+ * useDonutSync re-renders every row on every hover; this re-renders a row only
+ * when its own answer changes, which matters once a whole table row broadcasts
+ * as the pointer crosses it (Goals rows, Oct 1).
+ */
+export function useDonutSyncIs(
+  syncId: string | undefined,
+  index: number
+): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!syncId) return;
+    setOn(false);
+    return donutSyncSubscribe(syncId, (i) => setOn(i === index));
+  }, [syncId, index]);
+  return syncId ? on : false;
+}
+
 export function DonutChart({
   segments,
   size = 150,
@@ -1986,7 +2019,13 @@ export function DonutChart({
                 className={onSegmentClick ? "outline-none" : undefined}
                 aria-label={onSegmentClick ? `Show ${s.label} records` : undefined}
                 onClick={onSegmentClick ? () => onSegmentClick(i) : undefined}
-                onFocus={onSegmentClick ? () => setFocusedSlice(i) : undefined}
+                // Keyboard focus lights its slice. A mouse click also focuses
+                // the slice, and pinning it there kept the clicked slice lit
+                // after a second click cleared it and stopped hover from
+                // popping any other slice.
+                onFocus={onSegmentClick ? (event) => {
+                  if (event.currentTarget.matches(":focus-visible")) setFocusedSlice(i);
+                } : undefined}
                 onBlur={onSegmentClick ? () => setFocusedSlice(null) : undefined}
                 onKeyDown={onSegmentClick ? (event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -2104,7 +2143,14 @@ export function BarChart({
    */
   maxBarWidth = 88,
   hideFullHeightGhost = false,
+  dimUnselected = false,
 }: {
+  /**
+   * Fade the other bars while `activeIndex` names a picked bar, so a bar
+   * clicked in an expanded chart reads as highlighted in place. Nothing fades
+   * while the pointer is on a bar: hover still just pops that one bar.
+   */
+  dimUnselected?: boolean;
   maxBarWidth?: number;
   /**
    * DROP THE 100% GHOST when the tallest bar is not a target.
@@ -2178,6 +2224,14 @@ export function BarChart({
      * the series' identity (its goal type); the bar is its status.
      */
     dotColor?: string;
+    /**
+     * A TIP_ICONS key drawn in place of the dot beside the axis label, in the
+     * same `dotColor`. The Goals charts mark each goal with its type's own
+     * icon (Anir, Oct 1: "where you have the random dot, replace it with the
+     * actual logo"). Opt-in, so a chart that only wants an icon in its tip
+     * keeps its label dot.
+     */
+    labelIcon?: string;
     // TIP_ICONS key ("qualified", "company", …) — string, not a component, so
     // server components can pass it. Absent/unknown = no mark, same as today.
     icon?: string;
@@ -2483,6 +2537,8 @@ export function BarChart({
           d.value > 0 && (d.pending ?? 0) > d.value / 2
             ? (dominantPendingBand?.color ?? d.pendingColor ?? d.color ?? VIZ.blue)
             : (d.color || VIZ.blue);
+        const faded =
+          dimUnselected && activeIndex != null && hover == null && i !== activeIndex;
         return (
           <div
             key={i}
@@ -2659,6 +2715,9 @@ export function BarChart({
                   maxWidth: maxBarWidth,
                   height: `${(plotted(d.value) / max) * 100}%`,
                   minHeight: 4,
+                  ...(dimUnselected
+                    ? { opacity: faded ? 0.35 : 1, transition: "opacity 150ms ease" }
+                    : {}),
                 }}
               >
                 <div
@@ -2799,13 +2858,30 @@ export function BarChart({
                 title={d.label}
                 className="line-clamp-2 w-full break-words text-[11px] leading-[1.2] text-text-tertiary"
               >
-                {!hideLabelDots && !d.logo && (d.dotColor || d.color) && (
-                  <span
-                    aria-hidden
-                    className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full align-middle"
-                    style={{ background: d.dotColor || d.color }}
-                  />
-                )}
+                {!hideLabelDots && !d.logo && (() => {
+                  const markColor = d.dotColor || d.color;
+                  const LabelIcon = d.labelIcon ? TIP_ICONS[d.labelIcon] : undefined;
+                  /* The icon sits in the text run, so a wrapped name still
+                     starts beside it, and the small drop centres it on the
+                     first line's letters. */
+                  if (LabelIcon)
+                    return (
+                      <LabelIcon
+                        aria-hidden="true"
+                        size={12}
+                        strokeWidth={2.2}
+                        className="mr-1 inline-block shrink-0 align-[-2px]"
+                        style={{ color: markColor || VIZ.blue }}
+                      />
+                    );
+                  return markColor ? (
+                    <span
+                      aria-hidden
+                      className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full align-middle"
+                      style={{ background: markColor }}
+                    />
+                  ) : null;
+                })()}
                 {d.label}
               </span>
             </span>
@@ -2826,8 +2902,12 @@ export function LineChart({
   className,
   format,
   pointTips,
+  selectedSeries = null,
 }: {
   series: { label: string; color: string; points: number[] }[];
+  /** A picked line in an expanded chart: it draws a little heavier and the
+   *  other lines fade, so it is highlighted in place. Hover is unchanged. */
+  selectedSeries?: number | null;
   // Sparse labels shown along the x-axis (a handful, evenly spread).
   xLabels?: string[];
   // One label PER data point — used for the hover tooltip so it names the exact
@@ -2896,10 +2976,12 @@ export function LineChart({
               d={d}
               fill="none"
               stroke={s.color}
-              strokeWidth="2.5"
+              strokeWidth={selectedSeries === si ? 3.5 : 2.5}
               strokeLinecap="round"
               strokeLinejoin="round"
               className="chart-line"
+              opacity={selectedSeries != null && selectedSeries !== si ? 0.25 : 1}
+              style={{ transition: "opacity 150ms ease, stroke-width 120ms ease" }}
             />
           );
         })}
@@ -2951,7 +3033,10 @@ export function LineChart({
             top={`${y(value)}px`}
             color={s.color}
             active={hi === i}
-            dimmed={hi != null && hi !== i}
+            dimmed={
+              (hi != null && hi !== i) ||
+              (selectedSeries != null && selectedSeries !== si)
+            }
           />
         ))
       )}

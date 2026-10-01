@@ -15,6 +15,7 @@ import {
   DonutChart,
   LineChart,
   InteractiveChartTipProvider,
+  SeriesMark,
   type TipItem,
 } from "@/components/charts/Charts";
 import { VIZ, VIZ_SERIES } from "@/components/charts/palette";
@@ -53,6 +54,9 @@ export type ExpandedChartItem = {
   key: string;
   label: string;
   color: string;
+  /** A TIP_ICONS key drawn in the list in place of the colour dot, in
+   *  `color`. Only charts that opt in with `labelIcon` set it. */
+  icon?: string;
   value?: string;
   percentage?: number;
   isEmpty?: boolean;
@@ -76,8 +80,21 @@ export type ExpandedChartControlProps = {
   title: string;
   subtitle?: string;
   items: ExpandedChartItem[];
-  /** Render the full-size chart with every item key. */
-  renderExpanded: (itemKeys: readonly string[]) => ReactNode;
+  /**
+   * Render the full-size chart with every item key. A picked category is
+   * highlighted in place (Anir, Oct 1: "When I click on the fucking section,
+   * just highlight that section. Why are you making the entire graph that
+   * 30%?"),
+   * so the chart never redraws as one category on its own. `onSelect` toggles:
+   * the picked key again clears it, another key moves it.
+   */
+  renderExpanded: (
+    itemKeys: readonly string[],
+    selectedKey: string | null,
+    onSelect: (key: string) => void
+  ) => ReactNode;
+  /** The line under "Explore the chart" that says how to pick a category. */
+  selectHint?: string;
   /** Records attached to individual points in an area chart. */
   points?: ExpandedChartPoint[];
   renderPointExpanded?: (selectedPoint: number, onSelectPoint: (index: number) => void) => ReactNode;
@@ -96,6 +113,7 @@ export function ExpandedChartControl({
   subtitle,
   items,
   renderExpanded,
+  selectHint = "Click a row to highlight it in the chart.",
   points,
   renderPointExpanded,
   triggerLabel = "Open chart",
@@ -108,6 +126,8 @@ export function ExpandedChartControl({
   const [pointQuery, setPointQuery] = useState("");
   const keys = items.map((item) => item.key);
   const selectedItem = items.find((item) => item.key === selectedKey);
+  const toggleSelected = (key: string) =>
+    setSelectedKey((current) => (current === key ? null : key));
   const pointIndex = selectedPoint ?? Math.max(0, (points?.length || 1) - 1);
   const point = points?.[pointIndex];
   const matchingPointRecords = point?.records.filter((record) =>
@@ -153,24 +173,19 @@ export function ExpandedChartControl({
           )}
           <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,.65fr)]">
             <div className="flex min-h-[320px] items-center justify-center overflow-auto rounded-2xl border border-border-light bg-surface p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.38)]">
-              {selectedItem?.isEmpty ? (
-                <div className="max-w-sm text-center">
-                  <span className="mx-auto mb-4 block h-3 w-3 rounded-full" style={{ backgroundColor: selectedItem.color }} />
-                  <p className="text-[18px] font-semibold text-text-primary">No results for {selectedItem.label}</p>
-                  <p className="mt-2 text-[13px] text-text-secondary">This category has no results in the current view.</p>
-                </div>
-              ) : (
-                <InteractiveChartTipProvider>
-                  <ChartExpansionSuppressionProvider>
-                    {points && renderPointExpanded ? renderPointExpanded(pointIndex, setSelectedPoint) : renderExpanded(selectedItem ? [selectedItem.key] : keys)}
-                  </ChartExpansionSuppressionProvider>
-                </InteractiveChartTipProvider>
-              )}
+              {/* The whole chart, always. A picked category is highlighted in
+                  place and an empty one simply has nothing lit; the chart is
+                  never swapped for one category or an empty message. */}
+              <InteractiveChartTipProvider>
+                <ChartExpansionSuppressionProvider>
+                  {points && renderPointExpanded ? renderPointExpanded(pointIndex, setSelectedPoint) : renderExpanded(keys, selectedItem?.key ?? null, toggleSelected)}
+                </ChartExpansionSuppressionProvider>
+              </InteractiveChartTipProvider>
             </div>
             <div className="flex min-h-[320px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border-light bg-white">
               <div className="border-b border-border-light px-4 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">{points ? "Leads behind the chart" : "Explore the chart"}</p>
-                <p className="mt-1 text-[13px] text-text-secondary">{points ? "Select a point or week to see every record." : "Choose a category to see it on its own."}</p>
+                <p className="mt-1 text-[13px] text-text-secondary">{points ? "Select a point or week to see every record." : selectHint}</p>
               </div>
               {points && !!point?.records.length && <div className="border-b border-border-light px-4 py-3">
                 <label className="flex items-center gap-2 rounded-xl border border-border-light bg-surface px-3 py-2 focus-within:border-blue-primary focus-within:ring-2 focus-within:ring-blue-primary/10">
@@ -211,12 +226,11 @@ export function ExpandedChartControl({
                     })}</div> : <p className="py-8 text-center text-[13px] text-text-secondary">No leads match your search in this week.</p> : <p className="py-8 text-center text-[13px] text-text-secondary">No leads arrived in this week.</p>}
                   </div>
                 ) : <>
-                <button type="button" aria-pressed={selectedKey === null} onClick={() => setSelectedKey(null)} className={cn("mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition-colors", selectedKey === null ? "bg-blue-light text-blue-primary" : "text-text-primary hover:bg-surface")}>
-                  All categories <span className="text-[11px] font-medium text-text-tertiary">{items.length}</span>
-                </button>
+                {/* No "All categories" row: the chart always shows them all.
+                    A row highlights its category; clicking it again clears. */}
                 {items.map((item) => (
-                  <button key={item.key} type="button" aria-pressed={selectedKey === item.key} onClick={() => setSelectedKey(item.key)} className={cn("mb-1 flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors", selectedKey === item.key ? "border-blue-subtle bg-blue-light/70" : "border-transparent hover:bg-surface")}>
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                  <button key={item.key} type="button" aria-pressed={selectedKey === item.key} onClick={() => toggleSelected(item.key)} className={cn("mb-1 flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors", selectedKey === item.key ? "border-blue-subtle bg-blue-light/70" : "border-transparent hover:bg-surface")}>
+                    <SeriesMark icon={item.icon} color={item.color} dotClassName="h-2.5 w-2.5 shrink-0 rounded-full" />
                     <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">{item.label}</span>
                     {item.value && <span className="shrink-0 text-[13px] font-semibold tabular-nums text-text-primary">{item.value}</span>}
                     {item.percentage !== undefined && <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-text-tertiary">{item.percentage}%</span>}
@@ -293,6 +307,9 @@ export type ExpandedBarChart = {
       pendingBands?: { value: number; color: string }[];
       pendingColor?: string;
       dotColor?: string;
+      /** TIP_ICONS key that marks this bar's axis label and its list row
+       *  instead of a dot, in `dotColor`. */
+      labelIcon?: string;
       icon?: string;
       caption?: string;
       tipNote?: string;
@@ -321,6 +338,9 @@ export type ExpandedDonutChart = {
       color: string;
       value: number;
       icon?: string;
+      /** TIP_ICONS key that marks this slice's list row instead of a dot.
+       *  Opt-in, so other donuts keep their dots. */
+      labelIcon?: string;
       tip?: TipItem[];
     }
   >;
@@ -413,7 +433,13 @@ export function ExpandedChartModal({
   const items = data.map((item, index) => ({
     key: keys[index],
     label: item.label,
-    color: itemColor(item, index),
+    /* A bar with a dotColor keeps its identity in that colour (the Goals
+       chart paints every bar the verified green and marks the goal type
+       separately), so its list row is marked the same way. */
+    color:
+      (chart.kind === "bar" ? chart.data[index].dotColor : undefined) ??
+      itemColor(item, index),
+    icon: "labelIcon" in item ? item.labelIcon : undefined,
     value: chart.kind === "bar" ? formatValue(chart.format, chart.data[index].value)
       : chart.kind === "donut" ? formatValue(chart.format, chart.segments[index].value)
       : undefined,
@@ -459,17 +485,21 @@ export function ExpandedChartModal({
     );
   }
 
-  function renderExpanded(visible: readonly string[]) {
-    const visibleSet = new Set(visible);
+  function renderExpanded(
+    _itemKeys: readonly string[],
+    selectedKey: string | null,
+    onSelect: (key: string) => void
+  ) {
+    // Every item is always drawn. The picked one is highlighted in place and
+    // the rest fade, so the chart keeps its full shape in every state.
+    const picked = selectedKey === null ? -1 : keys.indexOf(selectedKey);
+    const selectedIndex = picked < 0 ? null : picked;
 
     if (chart.kind === "line") {
-      const series = chart.series.filter((_, index) =>
-        visibleSet.has(keys[index])
-      );
       return (
         <div className="w-full">
           <LineChart
-            series={series}
+            series={chart.series}
             xLabels={chart.xLabels}
             pointLabels={chart.pointLabels}
             pointTips={chart.pointTips}
@@ -477,12 +507,16 @@ export function ExpandedChartModal({
             format={chart.format}
             height={330}
             className="w-full"
+            selectedSeries={selectedIndex}
           />
           <div className="mt-6 flex flex-wrap justify-center gap-2">
-            {series.map((entry, index) => (
+            {chart.series.map((entry, index) => (
               <span
                 key={entry.id || `${index}:${entry.label}`}
-                className="inline-flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[11.5px] font-medium text-text-secondary"
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full border border-border-light bg-white px-3 py-1.5 text-[11.5px] font-medium text-text-secondary transition-opacity",
+                  selectedIndex !== null && selectedIndex !== index && "opacity-40"
+                )}
               >
                 <span
                   className="h-2 w-2 rounded-full"
@@ -497,15 +531,10 @@ export function ExpandedChartModal({
     }
 
     if (chart.kind === "bar") {
-      const data = chart.data
-        .filter((_, index) => visibleSet.has(keys[index]))
-        .map((entry) => {
-          const originalIndex = chart.data.indexOf(entry);
-          return {
-            ...entry,
-            color: itemColor(entry, originalIndex),
-          };
-        });
+      const data = chart.data.map((entry, index) => ({
+        ...entry,
+        color: itemColor(entry, index),
+      }));
       return (
         <BarChart
           data={data}
@@ -514,12 +543,14 @@ export function ExpandedChartModal({
           format={chart.format}
           hideTipStats={chart.hideTipStats}
           tipRecordsLabel={chart.tipRecordsLabel}
+          activeIndex={selectedIndex}
+          onBarClick={(index) => onSelect(keys[index])}
+          dimUnselected
         />
       );
     }
 
     if (chart.kind === "area") {
-      if (!visibleSet.has(keys[0])) return null;
       return (
         <div className="flex min-h-[350px] w-full items-center">
           <AreaChart
@@ -540,35 +571,44 @@ export function ExpandedChartModal({
       );
     }
 
-    const segments = chart.segments.filter((_, index) =>
-      visibleSet.has(keys[index])
-    );
-    const shownTotal = segments.reduce(
-      (total, segment) => total + segment.value,
+    const total = chart.segments.reduce(
+      (sum, segment) => sum + segment.value,
       0
     );
-    const allShown = segments.length === chart.segments.length;
-    const syncId = `${donutSyncId}-${visible.join("-")}`;
     return (
       <div className="flex min-h-[350px] w-full items-center justify-center">
+        {/* The full ring in every state, centre text included. A clicked
+            slice keeps the hover pop and the other slices fade. */}
         <DonutChart
-          segments={segments}
+          segments={chart.segments}
           size={280}
           thickness={27}
-          centerLabel={allShown && chart.centerLabel ? chart.centerLabel : formatValue(chart.format, shownTotal)}
-          centerSub={allShown && chart.centerSub ? chart.centerSub : segments[0]?.label || "shown"}
+          centerLabel={chart.centerLabel || formatValue(chart.format, total)}
+          centerSub={chart.centerSub || chart.segments[0]?.label || "shown"}
           format={chart.format}
-          syncId={syncId}
+          syncId={donutSyncId}
+          selectedIndex={selectedIndex}
+          onSegmentClick={(index) => onSelect(keys[index])}
         />
       </div>
     );
   }
+
+  const selectHint =
+    chart.kind === "donut"
+      ? "Click a slice or row to highlight it."
+      : chart.kind === "bar"
+        ? "Click a bar or row to highlight it."
+        : chart.kind === "line" && chart.series.length > 1
+          ? "Click a row to highlight its line."
+          : "Click the row to see its details.";
 
   return (
     <ExpandedChartControl
       {...controlProps}
       items={items}
       renderExpanded={renderExpanded}
+      selectHint={controlProps.selectHint ?? selectHint}
     />
   );
 }

@@ -59,16 +59,19 @@ export function DealContact({ contact }: { contact: Contact }) {
 
   return (
     <div className="mb-6">
-      <div className="mb-3 flex items-start gap-1.5">
-        <div>
+      <div className="mb-3">
+        {/* The hint sits right after the title on its own line, not after
+            the title and subtitle block, where the subtitle's width pushed
+            it away from the words it explains. */}
+        <div className="flex items-center gap-1.5">
           <h2 className="text-[15px] font-semibold text-text-primary">
             Who you&apos;re selling to
           </h2>
-          <p className="mt-0.5 text-[11px] text-text-tertiary">
-            The person this deal runs through, and how to reach them
-          </p>
+          <InfoHint text="The primary contact on this deal. Every touch in the history below was logged for them." />
         </div>
-        <InfoHint text="The primary contact on this deal. Every touch in the history below was logged for them." />
+        <p className="mt-0.5 text-[11px] text-text-tertiary">
+          The person this deal runs through, and how to reach them
+        </p>
       </div>
 
       <Card className="p-4">

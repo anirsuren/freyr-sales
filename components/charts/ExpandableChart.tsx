@@ -39,6 +39,7 @@ export function ExpandableChart({
   subtitle,
   rows,
   footnote,
+  selectHint,
   children,
   className,
 }: {
@@ -48,11 +49,24 @@ export function ExpandableChart({
   rows?: ChartDetailRow[];
   /** Optional caveat shown under the table — e.g. what the total excludes. */
   footnote?: string;
-  children: (expanded: boolean, selectedRow: number | null) => ReactNode;
+  /** The line under "Explore the chart" that says how to pick a row. */
+  selectHint?: string;
+  /**
+   * Draws the chart. In the popup it always draws every row: `selectedRow` is
+   * highlighted in place, never shown on its own, and `selectRow` toggles it
+   * (the picked row again clears it), so a slice or bar can pick it too.
+   */
+  children: (
+    expanded: boolean,
+    selectedRow: number | null,
+    selectRow: (index: number) => void
+  ) => ReactNode;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
+  const selectRow = (index: number) =>
+    setSelectedRow((current) => (current === index ? null : index));
 
   return (
     <>
@@ -69,7 +83,7 @@ export function ExpandableChart({
           <Maximize2 size={13} strokeWidth={2} />
         </button>
         <ChartExpansionSuppressionProvider>
-          {children(false, null)}
+          {children(false, null, selectRow)}
         </ChartExpansionSuppressionProvider>
       </div>
 
@@ -79,18 +93,20 @@ export function ExpandableChart({
           <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,.65fr)]">
             <div className="flex min-h-[320px] items-center justify-center overflow-auto rounded-2xl border border-border-light bg-surface p-5">
               <InteractiveChartTipProvider>
-                <ChartExpansionSuppressionProvider>{children(true, selectedRow)}</ChartExpansionSuppressionProvider>
+                <ChartExpansionSuppressionProvider>{children(true, selectedRow, selectRow)}</ChartExpansionSuppressionProvider>
               </InteractiveChartTipProvider>
             </div>
             <div className="min-h-[320px] overflow-y-auto rounded-2xl border border-border-light bg-white p-3">
               <p className="px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">Explore the chart</p>
+              {!!rows?.length && selectHint && <p className="-mt-1 px-2 pb-2 text-[13px] text-text-secondary">{selectHint}</p>}
               {rows?.length ? (
                 <>
-                  <button type="button" aria-pressed={selectedRow === null} onClick={() => setSelectedRow(null)} className={cn("mb-1 w-full rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold", selectedRow === null ? "bg-blue-light text-blue-primary" : "text-text-primary hover:bg-surface")}>All categories</button>
+                  {/* No "All categories" row: the chart always shows every
+                      row. A row highlights its own; clicking it again clears. */}
                   {rows.map((row, index) => (
-                    <button key={`${row.label}-${index}`} type="button" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)} className={cn("mb-1 w-full rounded-xl px-3 py-2.5 text-left transition-colors", selectedRow === index ? "bg-blue-light/70" : "hover:bg-surface")}>
+                    <button key={`${row.label}-${index}`} type="button" aria-pressed={selectedRow === index} onClick={() => selectRow(index)} className={cn("mb-1 w-full rounded-xl px-3 py-2.5 text-left transition-colors", selectedRow === index ? "bg-blue-light/70" : "hover:bg-surface")}>
                       <span className="flex items-start gap-2.5"><span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color || "var(--blue-primary)" }} /><span className="min-w-0 flex-1 text-[13px] font-medium text-text-primary">{row.label}</span><span className="shrink-0 text-[13px] font-semibold tabular-nums text-text-primary">{row.value}</span></span>
-                      {selectedRow === index && <span className="mt-2 block pl-5 text-[12px] text-text-secondary">{row.sub || (/^0(?:\b|\s)/.test(row.value) ? "Nothing in this category right now." : "Showing this category in the chart breakdown.")}</span>}
+                      {selectedRow === index && (row.sub || /^0(?:\b|\s)/.test(row.value)) && <span className="mt-2 block pl-5 text-[12px] text-text-secondary">{row.sub || "Nothing in this category right now."}</span>}
                     </button>
                   ))}
                 </>

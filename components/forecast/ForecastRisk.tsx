@@ -383,7 +383,10 @@ export function ForecastRisk({
     color: past ? RISK : MEASURE,
   }));
 
-  const renderExpandedQuietPlot = (visibleKeys: readonly string[]) => {
+  const renderExpandedQuietPlot = (
+    visibleKeys: readonly string[],
+    selectedKey: string | null
+  ) => {
     const visible = new Set(visibleKeys);
     const visibleMarks = marks.filter(({ deal }) => visible.has(deal.sessionId));
     if (visibleMarks.length === 0) {
@@ -436,11 +439,18 @@ export function ForecastRisk({
           {visibleMarks.map(({ deal, past, disambiguator }) => {
             const tone = past ? RISK : MEASURE;
             const pct = (deal.staleDays / expandedAxisMax) * 100;
+            // A deal picked on the right keeps the hover look and the other
+            // marks fade; every deal stays on the shared axis.
+            const picked = selectedKey === deal.sessionId;
+            const faded = selectedKey !== null && !picked;
             return (
               <Link
                 key={deal.sessionId}
                 href={`/deals/${deal.sessionId}`}
-                className="group grid grid-cols-[minmax(160px,230px)_minmax(0,1fr)_76px] items-center gap-4 rounded-xl border border-transparent px-3 py-2.5 transition-colors hover:border-border-light hover:bg-surface"
+                className={cn(
+                  "group grid grid-cols-[minmax(160px,230px)_minmax(0,1fr)_76px] items-center gap-4 rounded-xl border px-3 py-2.5 transition-colors hover:border-border-light hover:bg-surface",
+                  picked ? "border-border-light bg-surface" : "border-transparent"
+                )}
               >
                 <span className="flex min-w-0 items-center gap-2.5">
                   <CompanyLogo
@@ -459,7 +469,10 @@ export function ForecastRisk({
                 <span className="relative block h-9">
                   <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-surface" />
                   <span
-                    className="chart-grow-x absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full"
+                    className={cn(
+                      "chart-grow-x absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full transition-opacity",
+                      faded && "opacity-40 group-hover:opacity-100"
+                    )}
                     style={{ width: `${pct}%`, background: tone }}
                   />
                   <span
@@ -471,7 +484,10 @@ export function ForecastRisk({
                     }}
                   />
                   <span
-                    className="absolute top-1/2 z-[2] h-3.5 w-3.5 -translate-y-1/2 rounded-full"
+                    className={cn(
+                      "absolute top-1/2 z-[2] h-3.5 w-3.5 -translate-y-1/2 rounded-full transition-opacity",
+                      faded && "opacity-40 group-hover:opacity-100"
+                    )}
                     style={{
                       left: `${pct}%`,
                       marginLeft: -7,

@@ -69,6 +69,7 @@ import {
   DonutLegend,
   donutSyncBroadcast,
   useDonutSync,
+  useDonutSyncIs,
   type TipItem,
 } from "@/components/charts/Charts";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
@@ -111,6 +112,20 @@ const PACE_LABEL: Record<string, string> = {
   ontrack: "On track",
   lagging: "Lagging",
   unset: "No target yet",
+};
+/**
+ * Each standing keyed by the icon its pace pill already wears (Anir, Oct 1:
+ * the legend's dots become real marks). TIP_ICONS keys, because the chart
+ * layer draws them. "No target yet" has no pill and no icon, so it keeps
+ * its dot.
+ */
+const PACE_TIP_ICON: Record<string, string | undefined> = {
+  unscheduled: "paceUnscheduled",
+  met: "paceMet",
+  ahead: "paceAhead",
+  ontrack: "paceOnTrack",
+  lagging: "paceLagging",
+  unset: undefined,
 };
 
 /** Clean chart label: the goal name without its bracketed clarifier. */
@@ -165,6 +180,46 @@ const TYPE_TIP_ICON: Record<string, string> = {
   "sales activity & engagement": "goalActivity",
   "proposal & deal execution": "goalProposal",
 };
+
+/**
+ * THE GOAL TYPE'S OWN ICON UNDER ITS BAR (Anir, Oct 1: "where you have the
+ * random dot, replace it with the actual logo... for financial, instead of the
+ * green dot, put the actual money symbol"). A type outside the four known ones
+ * wears the Sparkles fallback, exactly as its chip does.
+ */
+function typeLabelIcon(type: string): string {
+  return TYPE_TIP_ICON[type.trim().toLowerCase()] ?? "goalOther";
+}
+
+/**
+ * THE GOAL'S STANDING LIGHTS WITH IT (Anir, Oct 1: "if I hover over booked
+ * revenue, I want the booked revenue graph to shine... so that I see
+ * everything that's interconnected").
+ *
+ * While a goal is lit on the goal channel, from its row or from its bar, the
+ * slice of "Where the goals stand" that holds it lights too, and that slice's
+ * legend row with it. Draws nothing; it only relays the goal channel onto the
+ * donut's own channel, so the donut's popups are never involved.
+ */
+function PaceSliceLink({
+  goalSyncId,
+  paceSyncId,
+  sliceOfGoal,
+}: {
+  goalSyncId: string;
+  paceSyncId: string;
+  /** For each goal index on the goal channel, its slice, or null. */
+  sliceOfGoal: (number | null)[];
+}) {
+  const goal = useDonutSync(goalSyncId);
+  const slice = goal === null ? null : (sliceOfGoal[goal] ?? null);
+  useEffect(() => {
+    if (slice === null) return;
+    donutSyncBroadcast(paceSyncId, slice);
+    return () => donutSyncBroadcast(paceSyncId, null);
+  }, [paceSyncId, slice]);
+  return null;
+}
 
 /**
  * A CHART HOVER IS A SUMMARY, NOT THE AUDIT LOG.
@@ -687,6 +742,7 @@ export function OrgPerformanceTab({
           : [],
       color: MONEY,
       dotColor: typeMeta(goal.type).color,
+      labelIcon: typeLabelIcon(goal.type),
       caption:
         goal.target > 0
           ? `${fmtAmount(goal.unit, actual, goal.currency)} of ${fmtAmount(goal.unit, goal.target, goal.currency)}`
@@ -761,6 +817,10 @@ export function OrgPerformanceTab({
         id: key,
         label: PACE_LABEL[key],
         color: PACE_COLOR[key],
+        /* The standing's own icon on the legend, the slice's popup and the
+           expanded list, in the slice colour. */
+        icon: PACE_TIP_ICON[key],
+        labelIcon: PACE_TIP_ICON[key],
         value: matchingGoals.length,
         details: matchingGoals.map(({ goal, verified }) => ({
           label: goal.name,
@@ -774,6 +834,20 @@ export function OrgPerformanceTab({
   const activePaceSegments = paceSegments.filter(
     (segment) => segment.value > 0
   );
+  /** For each bar in the chart, in the chart's order (the same index the rows
+   *  broadcast), the donut slice that goal stands in. See PaceSliceLink. */
+  const paceSliceOfGoal = withValue.map(({ goal, verified }) => {
+    const pace = paceVerdict(
+      verified,
+      goal.target,
+      goal.year,
+      goal.measure,
+      undefined,
+      milestoneByNow(goal)
+    );
+    const slice = activePaceSegments.findIndex((s) => s.id === pace);
+    return slice >= 0 ? slice : null;
+  });
   const expandedBarTitle =
     typeof words?.barTitle === "string"
       ? words.barTitle
@@ -879,7 +953,11 @@ export function OrgPerformanceTab({
             </thead>
             <tbody className="divide-y divide-border-light">
               {rows.map((g) => {
-                const i = sorted.indexOf(g);
+                /* The CHART's position, not the table's. The bars keep the
+                   Goal Master order while the table follows the sort, so a
+                   row that broadcast its table position lit some other
+                   goal's bar whenever the sort was anything but that order. */
+                const i = chartGoals.indexOf(g);
                 return (
                 <GoalRows
                   key={g.id}
@@ -1074,8 +1152,9 @@ export function OrgPerformanceTab({
                    *
                    * Green is verified work. The hatched cap preserves the two
                    * unresolved states: amber is waiting and red is sent back.
-                   * The goal's type colour stays on the label dot, where it
-                   * identifies the goal without changing progress semantics.
+                   * The goal's type stays on the label, as that type's icon in
+                   * its own colour, where it identifies the goal without
+                   * changing progress semantics.
                    */
                   const verified = verifiedValue(state, g);
                   const awaiting = Math.max(0, a - verified);
@@ -1148,10 +1227,14 @@ export function OrgPerformanceTab({
                           ]
                         : [],
                     color: MONEY,
-                    // The label dot keeps the goal TYPE's own colour, so green
+                    // The label mark keeps the goal TYPE's own colour, so green
                     // under the bars means "Financial" again instead of
                     // repeating the verified green of every bar above it.
                     dotColor: typeMeta(g.type).color,
+                    // And it is that type's icon, not a dot (Anir, Oct 1):
+                    // the money mark for Financial, the heartbeat for Sales
+                    // Activity, the same marks the type chips wear.
+                    labelIcon: typeLabelIcon(g.type),
                     /* Amber is the safe fallback for unresolved work. Explicit
                        pending bands above split sent-back work into red. */
                     pendingColor: GOAL_PROGRESS_COLOR.reported,
@@ -1257,6 +1340,11 @@ export function OrgPerformanceTab({
                 }}
               />
             </div>
+            <PaceSliceLink
+              goalSyncId={syncId}
+              paceSyncId="perf-pace"
+              sliceOfGoal={paceSliceOfGoal}
+            />
             <div className="mx-auto mt-3 flex w-full max-w-[420px] items-center justify-center gap-6">
               <DonutChart
                 size={140}
@@ -1457,12 +1545,34 @@ export function OrgPerformanceTab({
             const allTypes = grouped.map(([type]) => type);
             const groupsFold = showTypeHeaders && allTypes.length > 0;
             if (!groupsFold) return null;
-            const anyOpen = allTypes.some((t) => !shutTypes.includes(t));
+            /* THE OPEN GOAL STAYS OPEN (Anir, Oct 1: "when I close all, by
+               the way, if I have one open, I want that one to stay open").
+               Close all folds every type except the one holding the expanded
+               goal, so that goal stays on screen and expanded. With nothing
+               else left open the button reads Open all, which opens
+               everything as before. A type folded by hand stays folded. */
+            const openGoal = shown.find((g) => openIds.has(g.id));
+            const keepType = openGoal ? openGoal.type || "Other" : null;
+            const anyOpen = allTypes.some(
+              (t) => t !== keepType && !shutTypes.includes(t)
+            );
             return (
               <button
                 type="button"
-                aria-label={anyOpen ? "Collapse every goal type" : "Expand every goal type"}
-                onClick={() => setShutTypes(anyOpen ? allTypes : [])}
+                aria-label={
+                  anyOpen
+                    ? keepType
+                      ? "Collapse every goal type except the open goal's"
+                      : "Collapse every goal type"
+                    : "Expand every goal type"
+                }
+                onClick={() =>
+                  setShutTypes((current) =>
+                    anyOpen
+                      ? allTypes.filter((t) => t !== keepType || current.includes(t))
+                      : []
+                  )
+                }
                 className="inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary"
               >
                 {anyOpen ? (
@@ -1667,8 +1777,10 @@ function GoalRows({
     undefined,
     milestoneByNow(goal)
   );
-  /** Which column the cursor is on in the chart above (or on a sibling row). */
-  const linkedIndex = useDonutSync(syncId);
+  /** This goal is lit: the cursor is on its row, on its bar in the chart
+   *  above, or on its own line in the drill-down. Asked as a yes or no, so a
+   *  hover re-renders the two rows it moves between, not the whole table. */
+  const lit = useDonutSyncIs(syncId, index);
   /** True while this goal's three columns are open on their own, full width
    *  (Anir, Aug 16: "a whole pop-up so that all the bullshit gets hidden"). */
   const [full, setFull] = useState(false);
@@ -1775,20 +1887,36 @@ function GoalRows({
       </Modal>
       <tr
         onClick={onToggle}
+        /* THE WHOLE GOAL LIGHTS UP TOGETHER (Anir, Oct 1: "when I hover over
+           the entire goal, it does the shiny thing... I want the progress bar
+           to shine so that I see everything that's interconnected... the
+           entire goal row as a whole should also kind of shine").
+
+           This replaces the Aug 16 rule that only the bar's own cell could
+           light it. Anywhere on the row now lights the row, its progress
+           bar, its bar in the chart above and its slice of the standing
+           donut, and pointing at the bar in the chart lights all of them
+           back. Nothing here opens a popup, so the chart popup rules are
+           untouched. */
+        onMouseEnter={() => donutSyncBroadcast(syncId, index)}
+        onMouseLeave={() => donutSyncBroadcast(syncId, null)}
         data-goal-row={goal.id}
-        data-linked={linkedIndex === index ? "true" : undefined}
+        data-linked={lit ? "true" : undefined}
         className={cn(
           // A small gap above the row when a chart click scrolls to it —
           // nothing inside the page scroller is sticky, so every pixel of
           // headroom here is a pixel the drill-down below doesn't get.
-          "scroll-mt-6 cursor-pointer transition-all hover:bg-surface",
+          "scroll-mt-6 cursor-pointer transition-all",
           // The open goal is the subject: a thick rail in its own type colour
           // down the left, a tinted header, and a hard edge above it so the
           // goal before it clearly ends.
           open &&
             "bg-surface [box-shadow:inset_3px_0_0_0_var(--goal-accent)]",
-          dimmed && "opacity-45 hover:opacity-100",
-          linkedIndex === index && "bg-blue-light/40"
+          // A lit goal is never the faded one, wherever the light came from.
+          dimmed && !lit && "opacity-45",
+          // Hovered or lit from the chart: a faint blue wash with one sheen
+          // passing across it (globals.css). Blue, never a status colour.
+          lit && "goal-row-lit"
         )}
         style={{ ["--goal-accent" as string]: typeMeta(goal.type).color }}
       >
@@ -1893,16 +2021,10 @@ function GoalRows({
             <span className="text-[12px] text-text-tertiary">·</span>
           )}
         </td>
-        {/* THE SHINE BELONGS TO THE BAR, NOT THE ROW (Anir, Aug 16: "when my
-            mouse moves, it's still doing the shining thing. Only when my mouse
-            is on top of the bar should it do it, or in the area of the bar").
-            The whole row used to broadcast, so crossing any of its seven cells
-            lit the bar and its partner in the chart. */}
-        <td
-          className="px-4 py-3 align-middle"
-          onMouseEnter={() => donutSyncBroadcast(syncId, index)}
-          onMouseLeave={() => donutSyncBroadcast(syncId, null)}
-        >
+        {/* The row above does the lighting now (Anir, Oct 1, reversing the
+            Aug 16 "only on the bar" rule), so this cell no longer
+            broadcasts on its own. */}
+        <td className="px-4 py-3 align-middle">
           {/* PACE SITS ON THE BAR IT DESCRIBES (Anir, Aug 16: "just move the
               'lagging' to right above the progress bar i think it would look
               good there"). Over in the Goal cell it was a third mark competing
@@ -1943,7 +2065,7 @@ function GoalRows({
             sentBack={sentBackActual}
             target={goal.target}
             pace={pace}
-            lit={linkedIndex === index}
+            lit={lit}
           />
 
         </td>
@@ -2146,7 +2268,7 @@ function GoalRows({
                 goalId={goal.id}
                 meName={meName}
                 run={run}
-                lit={linkedIndex === index}
+                lit={lit}
                 onLinkHover={(on) =>
                   donutSyncBroadcast(syncId, on ? index : null)
                 }
@@ -2501,25 +2623,46 @@ function GoalRows({
                   </div>
                 )
               ) : (
-                <>
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const allCollapsed = goal.subgoals.every((s) => collapsedSubgoals.has(s.id));
-                      setCollapsedSubgoals(
-                        allCollapsed ? new Set() : new Set(goal.subgoals.map((s) => s.id))
+                /* A SUB-GOALS SECTION, BUILT LIKE ASSIGNED PEOPLE (Anir,
+                   Oct 1: "I don't like this 'Collapse all sub-goals'... you
+                   need to have a sub-goals panel... just put it kind of like
+                   you have assigned people: you have a box"). Same box, same
+                   label, same spacing as the section above. The expand and
+                   collapse control moves into the label row as quiet text,
+                   pulled into the label's own line so the row is no taller.
+                   Assigned people shows no count, so neither does this. */
+                <div className="rounded-xl border border-border-light bg-white p-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
+                      Sub-goals
+                    </p>
+                    {(() => {
+                      const allCollapsed = goal.subgoals.every((s) =>
+                        collapsedSubgoals.has(s.id)
                       );
-                    }}
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold text-text-secondary transition-colors hover:bg-surface hover:text-blue-primary"
-                  >
-                    {goal.subgoals.every((s) => collapsedSubgoals.has(s.id)) ? (
-                      <><ChevronsUpDown size={13} strokeWidth={2.2} /> Expand all subgoals</>
-                    ) : (
-                      <><ChevronsDownUp size={13} strokeWidth={2.2} /> Collapse all subgoals</>
-                    )}
-                  </button>
-                </div>
+                      return (
+                        <button
+                          type="button"
+                          aria-label={allCollapsed ? "Expand all sub-goals" : "Collapse all sub-goals"}
+                          onClick={() =>
+                            setCollapsedSubgoals(
+                              allCollapsed
+                                ? new Set()
+                                : new Set(goal.subgoals.map((s) => s.id))
+                            )
+                          }
+                          className="-my-1 inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-semibold leading-none text-text-tertiary transition-colors hover:bg-surface hover:text-blue-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-primary/30"
+                        >
+                          {allCollapsed ? (
+                            <><ChevronsUpDown size={12} strokeWidth={2.2} aria-hidden="true" /> Expand all</>
+                          ) : (
+                            <><ChevronsDownUp size={12} strokeWidth={2.2} aria-hidden="true" /> Collapse all</>
+                          )}
+                        </button>
+                      );
+                    })()}
+                  </div>
+                  <div className="mt-2 space-y-2.5">
                 {goal.subgoals.map((s) => {
                   const subActual = actualValue(actuals, goal, {
                     subgoalId: s.id,
@@ -2652,11 +2795,22 @@ function GoalRows({
                           </span>
                         </span>
                       </div>
+                      {/* NO PADDING ON THE FOLD'S OWN CHILD (Anir, Oct 1:
+                          "too much space below the text... when it's
+                          closed, you have to fix that"). A shut fold
+                          collapses its child's content but not the child's
+                          own padding, so the 10px gap above the people list
+                          stayed behind under every shut subgoal, which made
+                          the card taller than its header and pushed the
+                          header off centre. The gap lives one level in now:
+                          shut, the card has equal padding top and bottom;
+                          open, it looks exactly as before. */}
                       <div
                         id={`subgoal-people-${s.id}`}
                         className="freyr-fold"
                         data-open={collapsedSubgoals.has(s.id) ? "false" : "true"}
                       >
+                        <div>
                         <div className="pt-2.5">
                       {s.people.length > 0 && (
                         /* ONE CARD PER PERSON, the same shape the goal-level
@@ -2871,12 +3025,13 @@ function GoalRows({
                         </div>
                       )}
                         </div>
+                        </div>
                       </div>
                     </div>
                   );
-                })
-                }
-                </>
+                })}
+                  </div>
+                </div>
               )}
               </div>
               </div>

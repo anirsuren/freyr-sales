@@ -121,7 +121,7 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
               title="Weighted forecast by rep"
               subtitle="Compare each teammate's realistic quarter forecast, their open pipeline, and their share of the team quota."
               items={expansionItems}
-              renderExpanded={(visibleKeys) => {
+              renderExpanded={(visibleKeys, selectedKey) => {
                 const visible = new Set(visibleKeys);
                 const visibleReps = sorted.filter((r) =>
                   visible.has(r.identityKey)
@@ -139,11 +139,18 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                         !!currentUser.memberId &&
                         r.memberId === currentUser.memberId;
                       const color = colorByRep.get(r.identityKey) ?? VIZ.blue;
+                      // A rep picked on the right keeps the hover look and
+                      // the other bars fade; every rep stays on the chart.
+                      const picked = selectedKey === r.identityKey;
+                      const faded = selectedKey !== null && !picked;
                       return (
                         <Link
                           key={r.identityKey}
                           href={`/analytics/reps/${r.slug}`}
-                          className="group grid grid-cols-[minmax(130px,210px)_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-transparent px-3 py-2.5 transition-colors hover:border-border-light hover:bg-surface"
+                          className={cn(
+                            "group grid grid-cols-[minmax(130px,210px)_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border px-3 py-2.5 transition-colors hover:border-border-light hover:bg-surface",
+                            picked ? "border-border-light bg-surface" : "border-transparent"
+                          )}
                         >
                           <span className="flex min-w-0 items-center gap-2.5">
                             <Avatar
@@ -166,7 +173,10 @@ export function ByRepChart({ reps }: { reps: ByRep[] }) {
                           </span>
                           <span className="relative h-8 overflow-hidden rounded-lg bg-surface">
                             <span
-                              className="chart-grow-x absolute inset-y-0 left-0 rounded-lg"
+                              className={cn(
+                                "chart-grow-x absolute inset-y-0 left-0 rounded-lg transition-opacity",
+                                faded && "opacity-40 group-hover:opacity-100"
+                              )}
                               style={{
                                 width: `${Math.max(
                                   (r.weighted / expandedMax) * 100,

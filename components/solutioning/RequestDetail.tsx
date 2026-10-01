@@ -1569,9 +1569,10 @@ export function RequestDetail({
               /* The category sentence rides an info icon beside the title
                  (Anir, Sep 6: "I don't even think you need the text at the
                  top... you can probably tuck that into an information icon to
-                 the right of the header"). The header actions slot is exactly
-                 that spot. */
-              actions={
+                 the right of the header"). titleAfter puts it right after the
+                 title; the actions slot parked it by the close button, far
+                 from the words it explains. */
+              titleAfter={
                 <InfoHint
                   text={DOC_TABS.find((t) => t.key === tab)?.hint ?? ""}
                 />

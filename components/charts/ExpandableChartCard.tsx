@@ -76,8 +76,20 @@ export function ExpandableChartCard({
 
   return (
     <Card className={className}>
-      <ExpandableChart title={title} subtitle={subtitle} rows={rows} footnote={footnote}>
-        {(expanded, selectedRow) => (
+      <ExpandableChart
+        title={title}
+        subtitle={subtitle}
+        rows={rows}
+        footnote={footnote}
+        selectHint={
+          kind === "donut"
+            ? "Click a slice or row to highlight it."
+            : kind === "bar"
+              ? "Click a bar or row to highlight it."
+              : "Click a row to see its details."
+        }
+      >
+        {(expanded, selectedRow, selectRow) => (
           <div className={expanded ? "w-full" : undefined}>
             {!expanded && (
               <>
@@ -89,8 +101,16 @@ export function ExpandableChartCard({
                 )}
               </>
             )}
+            {/* Every bar and slice in every state. In the popup a picked row
+                is highlighted in place, never drawn on its own. */}
             {kind === "bar" && bar && (
-              <BarChart {...bar} data={expanded && selectedRow !== null ? bar.data.filter((_, index) => index === selectedRow) : bar.data} height={expanded ? 320 : 190} />
+              <BarChart
+                {...bar}
+                height={expanded ? 320 : 190}
+                {...(expanded
+                  ? { activeIndex: selectedRow, onBarClick: selectRow, dimUnselected: true }
+                  : {})}
+              />
             )}
             {kind === "donut" && donut && (
               <div
@@ -102,10 +122,12 @@ export function ExpandableChartCard({
               >
                 <DonutChart
                   {...donut}
-                  segments={expanded && selectedRow !== null ? donut.segments.filter((_, index) => index === selectedRow) : donut.segments}
                   syncId={donutSync}
                   size={expanded ? 220 : 140}
                   thickness={expanded ? 22 : 15}
+                  {...(expanded
+                    ? { selectedIndex: selectedRow, onSegmentClick: selectRow }
+                    : {})}
                 />
                 {legend && !expanded && <DonutLegend {...legend} syncId={donutSync} />}
               </div>
