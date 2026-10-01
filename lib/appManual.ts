@@ -601,7 +601,8 @@ activity". The heat map itself has no export.`,
   {
     routes: ["/agent"],
     keywords: ["agent", "assistant", "ai", "autopilot", "draft", "follow-up",
-      "chat", "knowledge base", "tone", "snippet", "digest"],
+      "chat", "knowledge base", "tone", "snippet", "digest", "whatsapp", "phone",
+      "text you", "remind", "reminder", "due tomorrow", "what can you do"],
     title: "Agent",
     body: `/agent is one full-page chat, not a console of tabs. Down the left
 are your past conversations with "New chat" at the top, and at the bottom two
@@ -628,11 +629,24 @@ the /agent pages themselves and any edit or new form. Its header says which
 page or record it is looking at, and it suggests three prompts for that page
 before you type.
 
-WHAT IT CAN AND CANNOT DO. It answers about what is on your screen, the
-offerings catalogue and its uploaded materials, the Market Intel feed,
-and how this app works. It writes full drafts for you to copy. It cannot save,
-send, file, schedule or change anything in the workspace, and it never contacts
-anyone — so it will show you a draft and stop there.`,
+WHAT IT CAN AND CANNOT DO. It answers about what is on your screen, your
+records, the offerings catalogue and its uploaded materials, the Market Intel
+feed, and how this app works, and it writes full drafts for you to copy. It can
+also make the changes you are allowed to make (deals, accounts and contacts,
+meetings, solutioning requests, goals, leads, Market Intel stars and your own
+reminders), always in two steps: a card says exactly what will change, and
+nothing happens until you press "Yes, do it" (on WhatsApp, reply YES). It never
+sends an email or contacts anyone.
+
+REMINDERS. Ask "what's due tomorrow?" or say "remind me Friday at 3pm to send
+the deck". What is due shows as a count on the bubble, as chips on the Agent
+page and, once WhatsApp is connected, as a message at 8 in the morning (due
+today and overdue) and 6 in the evening (due tomorrow), on your own clock.
+
+WHATSAPP. Connect your phone once in Settings, "Integrations", on the
+"WhatsApp" card (see Settings). After that you text the agent like a person:
+it answers with your access and nothing more, asks YES or NO before it changes
+anything, and every WhatsApp chat also appears on the Agent page.`,
   },
   {
     routes: ["/market-intel"],
@@ -684,15 +698,15 @@ put them in the group.`,
   },
   {
     routes: ["/settings", "/notifications", "/onboarding"],
-    keywords: ["setting", "settings", "notification", "email", "telegram",
+    keywords: ["setting", "settings", "notification", "email", "telegram", "whatsapp", "connect my phone",
       "alert", "theme", "dark", "mark all read", "unread", "bell", "badge",
       "signature", "profile", "photo", "time zone", "password", "passkey",
       "integration", "tour", "onboarding", "access request", "linkedin profile"],
     title: "Settings, Notifications and the product tour",
     body: `SETTINGS (/settings) is a rail of sections: "Workspace", "Profile",
 "Team", "Notifications", "Integrations" and "Access". The released workspace
-does not show the Notifications and Integrations sections yet, so say they are
-not there rather than describing them, unless the person is in progress mode.
+does not show the Notifications section yet, so say it is not there rather than
+describing it, unless the person is in progress mode.
 
   Workspace — "Data view", the same Ready now / In progress switch as the
   account menu, worded here as "Real mode" and "Mock mode"; and "Guided product
@@ -711,10 +725,15 @@ not there rather than describing them, unless the person is in progress mode.
   rules": "New session created", "Outcome logged", "Rotting deal alert" and
   "Weekly pipeline digest".
 
-  Integrations — "Connect" for Email, Calendar, CRM, Slack / Teams and
-  LinkedIn, then "System services", the engines Freyr runs on, each marked
-  "Live" or "Not configured". Those are set up with secure keys by an admin;
-  there is nothing to connect there yourself.
+  Integrations (/settings?tab=integrations): first the "WhatsApp" card.
+  "Connect" opens "Connect your phone", a pop-up with a QR code and a six-digit
+  code: text that code to Freyr's WhatsApp number from your own phone (or scan
+  the QR) and the pop-up turns to "WhatsApp connected" by itself. The card then
+  says "Connected" with your number, and "Disconnect" unlinks it. Nobody types a
+  phone number. Below it are "System services", the engines Freyr runs on, each
+  marked "Live" or "Not configured", set up with secure keys by an admin. The
+  "Connect" tiles for Email, Calendar, CRM, Slack / Teams and LinkedIn appear
+  only in Mock mode.
 
   Access — whether the workspace is invite-only, the "Access requests" queue
   where an admin presses "Approve" or "Reject", and a "Role permissions" table

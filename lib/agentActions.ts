@@ -2392,6 +2392,31 @@ export async function actionGateRefusal(key: string): Promise<string | null> {
   return refusal ? refusalInWords(refusal, def.module) : null;
 }
 
+/**
+ * WHAT THEY CAN ASK FOR, ACTION BY ACTION. "What can you do?" got the module
+ * summary turned into promises: a BD member was told the agent could "plan
+ * meetings" and "assign solutioning requests", neither of which the gates
+ * let them do (found testing Sep 30). Each action's own gate is asked here,
+ * once per module and level, plus the per-action rules the module does not
+ * carry (Solutioning Owner for pick-up and assign; members change only the
+ * deals they own).
+ */
+export async function actionsTheyMayAsk(): Promise<string[]> {
+  const me = await getCurrentUser();
+  const gates = new Map<string, string | null>();
+  const solutioningRefusal = await solutioningOwnerRefusal();
+  const titles: string[] = [];
+  for (const def of ACTIONS) {
+    const gateKey = `${def.module}:${def.gate}`;
+    if (!gates.has(gateKey)) gates.set(gateKey, await actionGateRefusal(def.key));
+    if (gates.get(gateKey)) continue;
+    if ((def.key === "pick_up_solutioning_request" || def.key === "assign_solutioning_request") && solutioningRefusal) continue;
+    const ownDealsOnly = def.module === "/opportunities" && def.gate === "write" && me.role !== "admin" && me.role !== "bd_owner";
+    titles.push(ownDealsOnly ? `${def.title} (only deals they own)` : def.title);
+  }
+  return titles;
+}
+
 export type ProposeResult = { ok: true; proposal: ActionProposal } | { ok: false; error: string };
 
 /** Resolve, ask the module question, store. The route decides the rest at execution. */
