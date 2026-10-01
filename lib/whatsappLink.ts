@@ -20,7 +20,12 @@ import { normalizePhone } from "@/lib/whatsapp";
  */
 
 export type WhatsAppLink = { number: string; linkedAt: string; name: string };
-export type WhatsAppPending = { code: string; expires: string };
+export type WhatsAppPending = {
+  code: string;
+  expires: string;
+  /** Set when this code was texted from a phone already linked to someone else, so the pop-up can say why nothing happened. */
+  refused?: { at: string; reason: "number-in-use" };
+};
 
 export const LINK_CODE_TTL_MS = 15 * 60_000;
 
@@ -43,7 +48,12 @@ function pendingOf(raw: unknown): WhatsAppPending | null {
   const code = typeof value?.code === "string" && /^\d{6}$/.test(value.code) ? value.code : "";
   const expires = typeof value?.expires === "string" ? value.expires : "";
   if (!code || !expires || Date.parse(expires) <= Date.now()) return null;
-  return { code, expires };
+  const refused = value?.refused as { at?: unknown; reason?: unknown } | undefined;
+  return {
+    code,
+    expires,
+    ...(refused?.reason === "number-in-use" && typeof refused.at === "string" ? { refused: { at: refused.at, reason: "number-in-use" as const } } : {}),
+  };
 }
 
 export async function readWhatsAppLinkState(
@@ -87,15 +97,23 @@ export async function memberForWhatsAppNumber(
 }
 
 /**
- * The text that carries a pending code links the phone it came from. A phone
- * belongs to one person, so the newest proof of possession wins and any older
- * link to the same number is dropped.
+ * The text that carries a pending code links the phone it came from.
+ *
+ * ONE PHONE, ONE ACCOUNT (Anir, Oct 1: "If it is a phone number that's already
+ * there, you can't do that, because then it's going to fuck up the first
+ * one"). A number already linked to somebody else stays theirs: the code is
+ * refused ("number-in-use"), the refusal is written on the code so the pop-up
+ * that is waiting can say why, and the phone is told how to move it. It used
+ * to switch silently to whoever sent the newest code (Sep 27, so one phone
+ * could test several accounts); that let a second account take the first
+ * one's phone away. Sending a code from the phone that is already linked to
+ * the SAME account just refreshes the link.
  */
 export async function claimWhatsAppCode(
   code: string,
   number: string,
   name: string
-): Promise<{ scope: WorkspaceMemberScope; link: WhatsAppLink } | "expired" | null> {
+): Promise<{ scope: WorkspaceMemberScope; link: WhatsAppLink } | "expired" | "number-in-use" | null> {
   const rows = await findMemberProfilesBy(CODE_PATH, code);
   const row = rows[0];
   if (!row) return null;
@@ -109,7 +127,11 @@ export async function claimWhatsAppCode(
   if (!digits) return null;
   for (const other of await findMemberProfilesBy(NUMBER_PATH, digits)) {
     if (other.scope.userId === row.scope.userId && other.scope.workspaceId === row.scope.workspaceId) continue;
-    await patchMemberProfileExtras(other.scope, { whatsapp: undefined });
+    if (!linkOf(other.profile.whatsapp)) continue;
+    await patchMemberProfileExtras(row.scope, {
+      whatsappPending: { ...(row.profile.whatsappPending as object), refused: { at: new Date().toISOString(), reason: "number-in-use" } },
+    });
+    return "number-in-use";
   }
   const link: WhatsAppLink = {
     number: digits,

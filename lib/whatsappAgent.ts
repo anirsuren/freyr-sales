@@ -375,12 +375,13 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
   if (message.type === "reaction" || message.type === "sticker") return;
 
   const member = await memberForWhatsAppNumber(message.from);
-  /* A SIX-DIGIT CODE IS A CLAIM, LINKED OR NOT (Anir, Sep 27: "my other test
-     accounts... it'll be the same phone number... it'll just know it's the
-     code that's connected to the account"). One phone, several accounts: the
-     newest code decides who the phone speaks as, and claimWhatsAppCode drops
-     the older link itself. A linked person whose six digits match no pending
-     code is just typing a number (an amount, say), so that goes to the agent. */
+  /* A SIX-DIGIT CODE IS A CLAIM, LINKED OR NOT. One phone, one account (Anir,
+     Oct 1: "If it is a phone number that's already there, you can't do that,
+     because then it's going to fuck up the first one"): a code for another
+     account, sent from a phone that is already linked, is refused and the
+     phone is told how to move it. It used to switch accounts (Sep 27). A
+     linked person whose six digits match no pending code is just typing a
+     number (an amount, say), so that goes to the agent. */
   const code = linkCodeIn(message.text);
   if (code) {
     // A locked-out number is ignored outright: no reply, nothing to probe with.
@@ -390,13 +391,26 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
       await reply(message.from, "That code has expired. Get a new one from Settings, then Integrations, then WhatsApp in Freyr.", options);
       return;
     }
+    if (claimed === "number-in-use") {
+      // Said to the person holding the phone, so naming the account it belongs to is theirs to know.
+      const owner = member ? await appUser(member.scope.userId) : null;
+      const ownerName = owner?.display_name || owner?.email || "another account";
+      await reply(
+        message.from,
+        `This phone is already connected to ${ownerName} in Freyr, and one phone can only be connected to one account. ` +
+          `To move it, open Freyr as ${ownerName}, go to Settings, then Integrations, then WhatsApp, and press Disconnect. Then send the new code again.`,
+        options
+      );
+      return;
+    }
     if (claimed) {
       clearCodeFailures(message.from);
       const user = await appUser(claimed.scope.userId);
       const who = user?.display_name || user?.email || "you";
+      const already = !!member && member.scope.userId === claimed.scope.userId && member.scope.workspaceId === claimed.scope.workspaceId;
       await reply(
         message.from,
-        `${member ? "Switched to" : "Connected as"} ${who}. Ask your Freyr agent about your accounts, deals, offerings or market news. It works for you, with your access.`,
+        `${already ? "Already connected as" : "Connected as"} ${who}. Ask your Freyr agent about your accounts, deals, offerings or market news. It works for you, with your access.`,
         options
       );
       return;

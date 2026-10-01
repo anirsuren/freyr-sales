@@ -25,7 +25,7 @@ async function status(scope: NonNullable<Awaited<ReturnType<typeof verifiedReque
           const waMe = config?.businessNumber ? waMeLink(config.businessNumber, pending.code) : null;
           /* The same link as a QR code: scanned from the phone, WhatsApp opens with the code typed in, one tap to send. */
           const qr = waMe ? await QRCode.toDataURL(waMe, { margin: 1, width: 176 }) : null;
-          return { code: pending.code, expires: pending.expires, waMe, qr };
+          return { code: pending.code, expires: pending.expires, waMe, qr, ...(pending.refused ? { refused: pending.refused } : {}) };
         })()
       : null,
   };

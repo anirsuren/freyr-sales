@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, Check, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 import { DEMO_SCENES, WhatsAppDemoPhone, prettyPhone } from "@/components/onboarding/WhatsAppDemoPhone";
@@ -26,7 +26,14 @@ type Status = {
   canSend: boolean;
   businessNumber: string;
   link: { number: string; linkedAt?: string; name?: string } | null;
-  pending: { code: string; expires: string; waMe: string | null; qr: string | null } | null;
+  pending: {
+    code: string;
+    expires: string;
+    waMe: string | null;
+    qr: string | null;
+    /** The code came from a phone already linked to another account, and was refused. */
+    refused?: { at: string; reason: "number-in-use" };
+  } | null;
 };
 
 export type PhoneSetupOutcome = "connected" | "dismissed";
@@ -306,13 +313,27 @@ export function PhoneSetupDialog({
                     ))}
                   </ol>
                 </div>
-                <div className="mt-4 flex items-center gap-2 border-t border-blue-primary/10 pt-3.5 text-[12.5px] font-medium text-blue-primary" role="status">
-                  <span className="relative flex h-2 w-2" aria-hidden="true">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-primary/50" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-primary" />
-                  </span>
-                  {phase === "loading" ? "Making your code" : "Waiting for your message"}
-                </div>
+                {pending?.refused ? (
+                  /* ONE PHONE, ONE ACCOUNT (Oct 1). The phone that sent this code
+                     already belongs to another account, so nothing was linked.
+                     The other account is not named here: the phone's owner is
+                     told on WhatsApp, the person at this screen only how to fix it. */
+                  <div className="mt-4 flex items-start gap-2 border-t border-blue-primary/10 pt-3.5 text-[12.5px] leading-snug text-[color:var(--ink-orange)]" role="alert">
+                    <AlertTriangle size={14} strokeWidth={2.2} className="mt-0.5 shrink-0" aria-hidden="true" />
+                    <span>
+                      <span className="font-semibold">That phone is already connected to another Freyr account.</span> One phone works
+                      with one account: disconnect it there first (Settings, then Integrations, then WhatsApp), then send the code again.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex items-center gap-2 border-t border-blue-primary/10 pt-3.5 text-[12.5px] font-medium text-blue-primary" role="status">
+                    <span className="relative flex h-2 w-2" aria-hidden="true">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-primary/50" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-primary" />
+                    </span>
+                    {phase === "loading" ? "Making your code" : "Waiting for your message"}
+                  </div>
+                )}
               </div>
               <p className="mt-4 text-[12.5px] leading-relaxed text-text-secondary">
                 {pending ? (
