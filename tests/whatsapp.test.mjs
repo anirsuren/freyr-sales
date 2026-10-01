@@ -228,3 +228,10 @@ test("a navigation-only app link disappears with its URL; a record name stays", 
   const out = wa.toWhatsAppText("Done. I will remind you Fri at 10:00: Call Novartis. [Open it](/customers/c-1)\n\nOwner of [GSK](/customers/c-2) is nobody. [Open Novartis](/customers/c-1).", "https://freyrsales.dev.freyrapps.com");
   assert.equal(out, "Done. I will remind you Fri at 10:00: Call Novartis.\n\nOwner of GSK is nobody.");
 });
+
+test("an ellipsis survives; a dropped link's double dot does not", async () => {
+  const { toWhatsAppText } = await import("../lib/whatsapp.ts");
+  assert.equal(toWhatsAppText("Cancelled. I won't do this: Add a note \"Pain points: labeling...", ""), "Cancelled. I won't do this: Add a note \"Pain points: labeling...");
+  assert.equal(toWhatsAppText("Saved the meeting. [Open it](/meetings/m-1).", ""), "Saved the meeting.");
+  assert.equal(toWhatsAppText("Really? .", ""), "Really?");
+});

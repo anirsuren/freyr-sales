@@ -232,7 +232,8 @@ export function toWhatsAppText(markdown: string, publicOrigin: string): string {
   });
   text = text.replace(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/gm, "");
   // What a dropped link leaves behind: a space before a full stop, a "." on its own.
-  text = text.replace(/[ \t]+([.,;:!?])/g, "$1").replace(/([.!?])[ \t]*[.]+/g, "$1");
+  // Exactly two dots only: "..." is an ellipsis and was being flattened to "." (Sep 30).
+  text = text.replace(/[ \t]+([.,;:!?])/g, "$1").replace(/([!?])[ \t]*\.+/g, "$1").replace(/(?<!\.)\.\.(?!\.)/g, ".");
   text = text.replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
   return text;
 }
