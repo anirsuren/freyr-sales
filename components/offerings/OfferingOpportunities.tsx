@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { DashedEmpty } from "@/components/ui/DashedEmpty";
 import { formatMoney } from "@/lib/pipeline";
 import { revenueTypeRule } from "@/lib/opportunitiesShared";
 import type { Opportunity } from "@/lib/opportunitiesShared";
@@ -69,17 +69,42 @@ export type OfferingOpportunityRow = {
 export function OfferingOpportunities({
   rows,
   offeringName,
+  emptyTitle,
+  emptyDescription,
 }: {
   rows: OfferingOpportunityRow[];
   offeringName: string;
+  /** The whole tab is empty (no deals AND no customers): one message for both. */
+  emptyTitle?: string;
+  emptyDescription?: string;
 }) {
+  const heading = (
+    <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+      <Target size={15} strokeWidth={2} className="text-blue-primary" />
+      Opportunities on this offering
+      <InfoHint text="Every deal in the pipeline that includes this offering, whoever owns it. These are the same deals you see on the Opportunities page, gathered here so you do not have to filter for them yourself." />
+    </h2>
+  );
+
+  /* AT ZERO THE CARD STAYS (Anir, Oct 1: "this doesnt look centered the 'no
+     opportunity' thing"). The generic empty state floated loose above the
+     boxed Customers card with its own padding; the card keeps its title on
+     the left and the message sits centred in the same dashed box every
+     record tab uses. */
   if (rows.length === 0) {
     return (
-      <EmptyState
-        icon={Target}
-        title="No opportunity is running on this offering yet"
-        description={`Add an opportunity for ${offeringName} on the Opportunities page and it appears here, with its customer, its value and where it stands.`}
-      />
+      <section className="mt-4 rounded-xl border border-border-light bg-white p-5 shadow-card">
+        {heading}
+        <p className="mt-0.5 text-[12.5px] text-text-secondary">No deals on {offeringName} yet.</p>
+        <DashedEmpty
+          icon={Target}
+          title={emptyTitle ?? "No opportunity is running on this offering yet"}
+          className="mt-4"
+        >
+          {emptyDescription ??
+            `Add an opportunity for ${offeringName} on the Opportunities page and it appears here, with its customer, its value and where it stands.`}
+        </DashedEmpty>
+      </section>
     );
   }
 
@@ -91,11 +116,7 @@ export function OfferingOpportunities({
 
   return (
     <section className="mt-4 rounded-xl border border-border-light bg-white p-5 shadow-card">
-      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-        <Target size={15} strokeWidth={2} className="text-blue-primary" />
-        Opportunities on this offering
-        <InfoHint text="Every deal in the pipeline that includes this offering, whoever owns it. These are the same deals you see on the Opportunities page, gathered here so you do not have to filter for them yourself." />
-      </h2>
+      {heading}
       <p className="mt-0.5 text-[12.5px] text-text-secondary">
         {rows.length} {rows.length === 1 ? "deal" : "deals"} across {accounts}{" "}
         {accounts === 1 ? "account" : "accounts"} on {offeringName}.

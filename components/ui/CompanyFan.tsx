@@ -110,7 +110,10 @@ export function CompanyFan({
               /* The ring and the lift live on this span, not on the
                  EntityLink: its own rounded-sm would square the circle. */
               <span className={circle}>
-                <EntityLink href={customerHref(c.id, c.name)} nested title={c.name} className="block rounded-full">
+                {/* flex, never block: an initials logo is inline, and a
+                    block link gave it a line taller than the circle, so the
+                    hover ring drew an oval (see PersonFan). */}
+                <EntityLink href={customerHref(c.id, c.name)} nested title={c.name} className="flex rounded-full">
                   <CompanyLogo name={c.name} className={logoClassName} />
                 </EntityLink>
               </span>

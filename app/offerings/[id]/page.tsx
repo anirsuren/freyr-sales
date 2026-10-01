@@ -19,7 +19,6 @@ import {
 import { SIZE_TIER_META } from "@/components/ui/Badge";
 import { AvailabilityPill } from "@/components/ui/AvailabilityPill";
 import { SectionCard } from "@/components/ui/SectionCard";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Avatar } from "@/components/ui/Avatar";
 import { RecordView } from "@/components/RecordView";
@@ -765,10 +764,11 @@ export default async function OfferingDetailPage({
                both are empty the tab has one thing to say, and both ways in
                fit in one sentence. Each half keeps its own message only when
                the other half has rows. */
-            <EmptyState
-              icon={Target}
-              title="Nothing is running on this offering yet"
-              description={`Add an opportunity for ${o.offering_name} on the Opportunities page, or log an activity for it on a customer's Activity tab, and it appears here with its customer, its value and where it stands.`}
+            <OfferingOpportunities
+              rows={[]}
+              offeringName={o.offering_name}
+              emptyTitle="Nothing is running on this offering yet"
+              emptyDescription={`Add an opportunity for ${o.offering_name} on the Opportunities page, or log an activity for it on a customer's Activity tab, and it appears here with its customer, its value and where it stands.`}
             />
           ) : (
           <>

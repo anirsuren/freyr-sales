@@ -3,22 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, MessageCircle, Smartphone, Sparkles, X } from "lucide-react";
-import { PhoneSetupDialog, WHATSAPP_CHANGED_EVENT } from "@/components/onboarding/PhoneSetupDialog";
-import { prettyPhone } from "@/components/onboarding/WhatsAppDemoPhone";
+import { ArrowRight, MessageCircle, Sparkles, X } from "lucide-react";
 import { addMockModePrefix, isMockModePath } from "@/lib/modeUrl";
 import { cn } from "@/lib/utils";
 
-type WhatsAppStatus = {
-  configured: boolean;
-  link: { number: string } | null;
-};
-
 /**
  * THE LAST CARD OF THE TOUR. It says the tour is over, and offers the three
- * first moves that matter most: ask the agent, put it on your phone (if not
- * done yet), and get to work. Same frame rules as the welcome card: X,
- * Escape and a click outside close it, and it never changes size.
+ * first moves that matter most: ask the agent, finish your profile, and get
+ * to work. The phone is not one of them: the WhatsApp pop-up comes right
+ * after this card closes (Anir, Oct 1: "the whatsapp agent has to come after
+ * the onboarding is done or skipped"). Same frame rules as the welcome card:
+ * X, Escape and a click outside close it, and it never changes size.
  */
 export function OnboardingFinish({
   firstName,
@@ -36,27 +31,10 @@ export function OnboardingFinish({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const [whatsApp, setWhatsApp] = useState<WhatsAppStatus | null>(null);
-  const [connecting, setConnecting] = useState(false);
   const doneRef = useRef<HTMLButtonElement>(null);
   const after = useRef<(() => void) | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const response = await fetch("/api/profile/whatsapp", { cache: "no-store" });
-      if (response.ok) setWhatsApp((await response.json()) as WhatsAppStatus);
-    } catch {
-      // Without the answer the WhatsApp card simply does not show.
-    }
-  }, []);
-
-  useEffect(() => {
-    setMounted(true);
-    void load();
-    const refresh = () => void load();
-    window.addEventListener(WHATSAPP_CHANGED_EVENT, refresh);
-    return () => window.removeEventListener(WHATSAPP_CHANGED_EVENT, refresh);
-  }, [load]);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!mounted) return;
@@ -81,21 +59,18 @@ export function OnboardingFinish({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || connecting) return;
+      if (event.key !== "Escape") return;
       event.preventDefault();
       leave();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [connecting, leave]);
+  }, [leave]);
 
   const go = (route: string) => () =>
     leave(() => router.push(isMockModePath(window.location.pathname) ? addMockModePrefix(route) : route));
 
   if (!mounted) return null;
-
-  const linked = whatsApp?.link?.number ?? null;
-  const showPhone = !!whatsApp?.configured;
 
   return createPortal(
     <div className={cn("tour-welcome-root fixed inset-0 z-[124] flex items-center justify-center p-6", leaving && "is-leaving")} data-testid="onboarding-finish">
@@ -150,39 +125,17 @@ export function OnboardingFinish({
             <span className="mt-1 text-[12px] leading-snug text-text-secondary">What should I know before my next meeting?</span>
           </button>
 
-          {showPhone && linked ? (
-            <div className="flex flex-col items-start rounded-2xl border border-success/25 bg-success/[0.05] p-4 text-left" role="status">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-success text-white">
-                <Check size={17} strokeWidth={2.6} />
-              </span>
-              <span className="mt-3 text-[13.5px] font-semibold text-text-primary">WhatsApp connected</span>
-              <span className="mt-1 text-[12px] leading-snug text-text-secondary tabular-nums">{prettyPhone(linked)}</span>
-            </div>
-          ) : showPhone ? (
-            <button
-              type="button"
-              onClick={() => setConnecting(true)}
-              className="group flex flex-col items-start rounded-2xl border border-border-light bg-white p-4 text-left transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-blue-primary/40 hover:shadow-[0_12px_28px_-14px_rgba(0,113,227,0.45)]"
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
-                <Smartphone size={17} strokeWidth={2} />
-              </span>
-              <span className="mt-3 text-[13.5px] font-semibold text-text-primary">Connect WhatsApp</span>
-              <span className="mt-1 text-[12px] leading-snug text-text-secondary">One scan, then text your agent from anywhere.</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={go("/settings?tab=profile")}
-              className="group flex flex-col items-start rounded-2xl border border-border-light bg-white p-4 text-left transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-blue-primary/40 hover:shadow-[0_12px_28px_-14px_rgba(0,113,227,0.45)]"
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
-                <MessageCircle size={17} strokeWidth={2} />
-              </span>
-              <span className="mt-3 text-[13.5px] font-semibold text-text-primary">Finish your profile</span>
-              <span className="mt-1 text-[12px] leading-snug text-text-secondary">Your photo and title, as your team sees them.</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={go("/settings?tab=profile")}
+            className="group flex flex-col items-start rounded-2xl border border-border-light bg-white p-4 text-left transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-blue-primary/40 hover:shadow-[0_12px_28px_-14px_rgba(0,113,227,0.45)]"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-light text-blue-primary">
+              <MessageCircle size={17} strokeWidth={2} />
+            </span>
+            <span className="mt-3 text-[13.5px] font-semibold text-text-primary">Finish your profile</span>
+            <span className="mt-1 text-[12px] leading-snug text-text-secondary">Your photo and title, as your team sees them.</span>
+          </button>
 
           <button
             type="button"
@@ -210,16 +163,6 @@ export function OnboardingFinish({
           </button>
         </div>
       </div>
-
-      {connecting && (
-        <PhoneSetupDialog
-          mode="settings"
-          onClose={() => {
-            setConnecting(false);
-            void load();
-          }}
-        />
-      )}
     </div>,
     document.body
   );

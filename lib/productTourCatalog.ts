@@ -733,8 +733,12 @@ export function localTourIndexForCatalogStep(
 const TOUR_DISPLAY_ORDER = [
   // Getting around
   "top-search", "account-menu", "notifications-bell", "sidebar-modules",
-  // Your agent: the page, the bubble on every page, then the phone.
-  "agent-workspace", "agent-dock", "whatsapp-agent",
+  // Your agent: the page, then the bubble on every page. The phone is not a
+  // stop: it comes AFTER the tour is finished or skipped (Anir, Oct 1: "the
+  // whatsapp agent has to come after the onboarding is done or skipped"), so
+  // "whatsapp-agent" and "settings-integrations" stay in the catalog for
+  // saved progress but are left out of this order on purpose.
+  "agent-workspace", "agent-dock",
   // Knowledge
   "offerings-browser", "components-browser", "market-intel",
   // Selling, in the order the work flows.
@@ -748,7 +752,7 @@ const TOUR_DISPLAY_ORDER = [
   "team-roster", "admin-console",
   // Settings, tab by tab, ending where the tour can be found again.
   "settings-profile", "settings-appearance", "settings-notifications",
-  "settings-integrations", "settings-access", "settings-mock-mode",
+  "settings-access", "settings-mock-mode",
   "settings-replay",
 ];
 
@@ -775,6 +779,9 @@ export function getProductTourSteps({
     : !!normalizedRole && canAccessModule(route, normalizedRole);
   const home = canOpen("/offerings") ? "/offerings" : canOpen("/solutioning") ? "/solutioning" : "/settings?tab=workspace";
   const filtered = PRODUCT_TOUR_STEPS.filter((step) => {
+    // A step left out of the display order is retired from the walkthrough;
+    // it keeps its catalog index so saved progress still resolves.
+    if (!TOUR_DISPLAY_ORDER.includes(step.id)) return false;
     if (offeringsOnly && !step.availableInOfferingsOnly) return false;
     if (step.onlyFor && (!normalizedRole || !step.onlyFor.includes(normalizedRole))) return false;
     if (step.requires && !features[step.requires]) return false;

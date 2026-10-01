@@ -100,7 +100,12 @@ export function PersonFan({
                 stacked && cn("ring-2", ringClassName)
               )}
             >
-              <EntityLink href={teammateHref(p.name)} nested={nested} className="block rounded-full" title={p.name}>
+              {/* flex, never block: an initials face is inline, and inside
+                  a block link it sat on a 24px line that made this box taller
+                  than the circle, so the hover ring drew an oval above it
+                  (Anir, Oct 1: "again with this shit you have to fix all the
+                  circles"). */}
+              <EntityLink href={teammateHref(p.name)} nested={nested} className="flex rounded-full" title={p.name}>
                 <Avatar
                   name={p.name}
                   className={avatarClassName}

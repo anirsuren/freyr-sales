@@ -12,6 +12,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ProductTourOverlay } from "./ProductTourOverlay";
 import { OnboardingWelcome } from "./OnboardingWelcome";
 import { OnboardingFinish } from "./OnboardingFinish";
+import { WhatsAppOnboarding } from "./WhatsAppOnboarding";
 import {
   ONBOARDING_START_EVENT,
   requestNotificationsPanel,
@@ -165,6 +166,10 @@ export function ProductTourProvider({
   const [startRequest, setStartRequest] = useState<StartRequest | null>(null);
   const [welcome, setWelcome] = useState<Welcome | null>(null);
   const [finished, setFinished] = useState(false);
+  /** The phone pop-up has answered for this visit: connected, skipped, or
+   *  not offered here. It never asks twice in one visit. */
+  const [phoneSettled, setPhoneSettled] = useState(false);
+  const settlePhone = useCallback(() => setPhoneSettled(true), []);
   const mountedRef = useRef(false);
   const loadInFlightRef = useRef(false);
   const hydratedRef = useRef(false);
@@ -685,6 +690,25 @@ export function ProductTourProvider({
     }
   }, [active, currentRoute, localStep, pendingStep, router, steps]);
 
+  /* THE WHATSAPP AGENT COMES AFTER THE TOUR (Anir, Oct 1: "the whatsapp
+     agent has to come after the onboarding is done or skipped"). Once the
+     tour is finished or skipped and none of it is on screen, the phone
+     pop-up asks: connect, or Skip for now, which is saved so it never asks
+     again. A connected phone, a saved skip, or a workspace without a
+     WhatsApp number means it never shows. Same gate as the tour itself:
+     Real mode, with sign-in approvals on. */
+  const phoneTurn =
+    autoStart &&
+    enabled &&
+    !phoneSettled &&
+    phase === "ready" &&
+    (snapshot?.state.status === "completed" || snapshot?.state.status === "skipped") &&
+    !welcome &&
+    !active &&
+    !finished &&
+    !startRequest &&
+    !launching;
+
   return (
     <>
       {children}
@@ -708,6 +732,7 @@ export function ProductTourProvider({
           firstName={firstName}
           // "Refresher" only for someone who finished it and asked again.
           returning={!welcome.firstRun && snapshot?.state.status === "completed"}
+          whatsApp={!!features?.whatsapp}
           onBegin={acceptWelcome}
           onDismiss={declineWelcome}
         />
@@ -758,6 +783,7 @@ export function ProductTourProvider({
           onClose={() => setFinished(false)}
         />
       )}
+      {phoneTurn && <WhatsAppOnboarding onResolved={settlePhone} />}
     </>
   );
 }

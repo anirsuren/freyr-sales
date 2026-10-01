@@ -27,9 +27,11 @@ for (const role of ['admin','bd_owner','bd_member','sol_member']) {
     // The app-wide chrome comes first, on the home page, with no page change between.
     assert.deepEqual(steps.slice(0,4).map(s=>s.id), ['top-search','account-menu','notifications-bell','sidebar-modules']);
     assert.ok(steps.slice(0,4).every(s=>s.route===steps[0].route && s.nextLabel===undefined || s===steps[3]));
-    // The agent chapter follows, ending on the WhatsApp showcase.
+    // The agent chapter follows, ending on the bubble. The phone is not a
+    // stop: WhatsApp comes after the tour is finished or skipped (Anir, Oct 1).
     const agent = steps.filter(s=>s.chapter==='Your agent').map(s=>s.id);
-    assert.deepEqual(agent.slice(-2), ['agent-dock','whatsapp-agent']);
+    assert.equal(agent.at(-1), 'agent-dock');
+    assert.ok(!steps.some(s=>s.id==='whatsapp-agent' || s.id==='settings-integrations'));
     assert.equal(steps.at(-1).id, "settings-replay");
     assert.equal(steps.at(-1).nextLabel, "Finish tour");
     assert.equal(steps.at(-2).id, "settings-mock-mode");
@@ -77,14 +79,23 @@ test('steps saved before Oct 1 keep their catalog indexes', () => {
   assert.equal(new Set(PRODUCT_TOUR_STEPS.map(s=>s.id)).size, PRODUCT_TOUR_STEPS.length);
 });
 
-test('the WhatsApp stop needs a workspace number', () => {
-  const without = getProductTourSteps({role:'bd_member',offeringsOnly:true});
-  assert.ok(!without.some(s=>s.id==='whatsapp-agent'));
-  const withIt = getProductTourSteps({role:'bd_member',offeringsOnly:true,features:{whatsapp:true}});
-  const stop = withIt.find(s=>s.id==='whatsapp-agent');
-  assert.ok(stop);
-  assert.equal(stop.kind, 'showcase');
-  assert.equal(stop.route, withIt[0].route);
+test('WhatsApp is never a tour stop: it comes after the tour', () => {
+  for (const features of [{}, {whatsapp:true}]) {
+    for (const role of ['admin','bd_owner','bd_member','sol_member']) {
+      const ids = getProductTourSteps({role,offeringsOnly:false,features}).map(s=>s.id);
+      assert.ok(!ids.includes('whatsapp-agent'), role);
+      assert.ok(!ids.includes('settings-integrations'), role);
+    }
+  }
+  // The retired stops keep their catalog slots, so saved progress on them
+  // still resolves to a nearby stop instead of breaking the resume.
+  const steps = getProductTourSteps({role:'bd_member',offeringsOnly:true,features:{whatsapp:true}});
+  for (const id of ['whatsapp-agent','settings-integrations']) {
+    const retired = PRODUCT_TOUR_STEPS.find(s=>s.id===id);
+    assert.ok(retired, id);
+    const local = localTourIndexForCatalogStep(steps, retired.catalogIndex);
+    assert.ok(local >= 0 && local < steps.length, id);
+  }
 });
 
 test('admin-only stops reach admins only', () => {
@@ -101,7 +112,7 @@ test('admin-only stops reach admins only', () => {
 test('every role walks the settings it has', () => {
   for (const role of ['admin','bd_owner','bd_member','sol_member']) {
     const ids = getProductTourSteps({role,offeringsOnly:true}).map(s=>s.id);
-    for (const id of ['settings-profile','settings-appearance','settings-integrations','settings-mock-mode','settings-replay']) assert.ok(ids.includes(id), `${role} ${id}`);
+    for (const id of ['settings-profile','settings-appearance','settings-mock-mode','settings-replay']) assert.ok(ids.includes(id), `${role} ${id}`);
     // Notifications settings only exist in the in-progress workspace.
     assert.ok(!ids.includes('settings-notifications'), role);
   }

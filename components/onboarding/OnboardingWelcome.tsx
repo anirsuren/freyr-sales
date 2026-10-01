@@ -71,12 +71,15 @@ export function OnboardingWelcome({
   role,
   firstName,
   returning,
+  whatsApp = false,
   onBegin,
   onDismiss,
 }: {
   steps: readonly ProductTourStep[];
   role: string | null | undefined;
   firstName: string;
+  /** The workspace has a WhatsApp number, so the phone comes after the tour. */
+  whatsApp?: boolean;
   /**
    * They finished the tour before and chose to take it again from Settings.
    * Only then does it say "refresher" (Anir, Oct 1: "that makes sense... if
@@ -178,7 +181,7 @@ export function OnboardingWelcome({
             className="tour-welcome-rise mt-3 max-w-[400px] text-[14px] leading-[1.6] text-text-secondary"
             style={{ animationDelay: "180ms" }}
           >
-            A walk through everything your account can open, your own AI agent, and how to reach it on WhatsApp. About {minutes} minutes, and you can stop at any point.
+            A walk through everything your account can open, and your own AI agent. About {minutes} minutes, and you can stop at any point.
           </p>
 
           <div className="tour-welcome-rise mt-5 flex flex-wrap items-center gap-2 text-[12px] text-text-secondary" style={{ animationDelay: "230ms" }}>
@@ -189,8 +192,10 @@ export function OnboardingWelcome({
           </div>
 
           {/* THE AGENT ON THE PHONE, SAID UP FRONT (Anir, Oct 1: "the user
-              doesn't even know that it exists"). Even a "Not now" sees it. */}
-          {steps.some((step) => step.id === "whatsapp-agent") && (
+              doesn't even know that it exists"). Even a "Not now" sees it.
+              Setting it up comes AFTER the tour, finished or skipped (Anir,
+              Oct 1), so this only says what is coming. */}
+          {whatsApp && (
             <div
               className="tour-welcome-rise mt-6 flex max-w-[420px] items-start gap-3 rounded-2xl border border-blue-primary/15 bg-blue-light/50 px-4 py-3.5"
               style={{ animationDelay: "260ms" }}
@@ -201,7 +206,7 @@ export function OnboardingWelcome({
               <span className="min-w-0">
                 <span className="block text-[13px] font-semibold text-text-primary">Your agent is on WhatsApp too</span>
                 <span className="mt-0.5 block text-[12.5px] leading-snug text-text-secondary">
-                  Text it from your phone: questions, voice notes, files and reminders. The tour shows you how to connect in one scan.
+                  Text it from your phone: questions, voice notes, files and reminders. Right after the tour, one scan connects your phone.
                 </span>
               </span>
             </div>

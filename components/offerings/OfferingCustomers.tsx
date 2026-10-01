@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Building2, ChevronRight } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { InfoHint } from "@/components/ui/InfoHint";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { DashedEmpty } from "@/components/ui/DashedEmpty";
 import { ActivityChip, StatusChip } from "@/components/customers/OfferingActivities";
 import { withV } from "@/lib/version";
 import type { CustomerOfferingEngagementVersion } from "@/lib/types";
@@ -38,13 +38,25 @@ export function OfferingCustomers({
   rows: OfferingCustomerRow[];
   offeringName: string;
 }) {
+  const heading = (
+    <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+      <Building2 size={15} strokeWidth={2} className="text-blue-primary" />
+      Customers on this offering
+      <InfoHint text="Where each account stands on this offering, and which version of each piece of software in the package they run. Both come from the account's own page." />
+    </h2>
+  );
+
+  /* At zero the card keeps its title and centres its message in the dashed
+     box every record tab uses, never a loose empty state (Anir, Oct 1). */
   if (rows.length === 0) {
     return (
-      <EmptyState
-        icon={Building2}
-        title="No customer is on this offering yet"
-        description={`Go to a customer's Activity tab and log an activity for ${offeringName}. You can also connect one of its components to an account. Either way, that customer then shows up here.`}
-      />
+      <section className="mt-4 rounded-xl border border-border-light bg-white p-5 shadow-card">
+        {heading}
+        <p className="mt-0.5 text-[12.5px] text-text-secondary">No accounts on {offeringName} yet.</p>
+        <DashedEmpty icon={Building2} title="No customer is on this offering yet" className="mt-4">
+          {`Go to a customer's Activity tab and log an activity for ${offeringName}. You can also connect one of its components to an account. Either way, that customer then shows up here.`}
+        </DashedEmpty>
+      </section>
     );
   }
 
@@ -60,11 +72,7 @@ export function OfferingCustomers({
        their name again. Both facts hang off the same account, so they are
        columns of one row. */
     <section className="mt-4 rounded-xl border border-border-light bg-white p-5 shadow-card">
-      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-        <Building2 size={15} strokeWidth={2} className="text-blue-primary" />
-        Customers on this offering
-        <InfoHint text="Where each account stands on this offering, and which version of each piece of software in the package they run. Both come from the account's own page." />
-      </h2>
+      {heading}
       <p className="mt-0.5 text-[12.5px] text-text-secondary">
         {rows.length} {rows.length === 1 ? "account" : "accounts"} on{" "}
         {offeringName}.

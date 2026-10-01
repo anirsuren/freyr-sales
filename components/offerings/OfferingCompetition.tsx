@@ -22,7 +22,7 @@ import {
 import { Card } from "@/components/ui/Card";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ColorSelect } from "@/components/ui/ColorSelect";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { DashedEmpty } from "@/components/ui/DashedEmpty";
 import { Modal } from "@/components/ui/Modal";
 import { RequiredMark } from "@/components/ui/RequiredMark";
 import { useToast } from "@/components/ui/Toast";
@@ -434,13 +434,9 @@ export function OfferingCompetition({
       </div>
 
       {rows.length === 0 ? (
-        <div className="mt-4">
-          <EmptyState
-            icon={Swords}
-            title="No competition on file yet"
-            description={`Add the products that compete with ${offeringName}. For each one the team can note the price, how it is sold, and any links or documents worth keeping.`}
-          />
-        </div>
+        <DashedEmpty icon={Swords} title="No competition on file yet" className="mt-4">
+          {`Add the products that compete with ${offeringName}. For each one the team can note the price, how it is sold, and any links or documents worth keeping.`}
+        </DashedEmpty>
       ) : view === "tiles" ? (
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 stagger">
           {rows.map((row) => {
