@@ -355,6 +355,8 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
   const { config } = options;
   // Another number on the same Meta app is somebody else's traffic.
   if (config.phoneNumberId && message.phoneNumberId && message.phoneNumberId !== config.phoneNumberId) return;
+  // A reaction is a nod, not a message: every thumbs-up on a reply was answered "I can read text and voice notes here" (Sep 30).
+  if (message.type === "reaction") return;
 
   const member = await memberForWhatsAppNumber(message.from);
   /* A SIX-DIGIT CODE IS A CLAIM, LINKED OR NOT (Anir, Sep 27: "my other test
@@ -417,6 +419,14 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
     heard = speech.text;
     incomingText = speech.text;
   }
+  /* A PHOTO WITH WORDS. A business card captioned "add this contact" was
+     answered "I can read text and voice notes here": the caption was thrown
+     away (Sep 30). The caption is the question; the agent is told plainly that
+     the file itself is not something it can see. */
+  if (!incomingText && message.caption) {
+    const what = message.type === "document" ? "file" : message.type === "video" ? "video" : "photo";
+    incomingText = `[Sent a ${what} you cannot see] ${message.caption}`;
+  }
   if (!incomingText) {
     await reply(message.from, "I can read text and voice notes here. Type or record your question.", options);
     return;
@@ -425,6 +435,18 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
   const user = await appUser(member.scope.userId);
   if (!user || user.active === false) {
     await reply(message.from, "Your Freyr account isn't active, so I can't answer here.", options);
+    return;
+  }
+  /* "?" on a phone got the web app's keyboard shortcuts ("Enter: open the
+     search bar") because "?" opens that list in the browser (Sep 30). On
+     WhatsApp it means "what can I ask you?". */
+  // "What can you do?" still goes to the agent, which answers with their exact access.
+  if (/^(?:\?+|help|menu)$/i.test(incomingText.trim())) {
+    await reply(
+      message.from,
+      "I'm your Freyr agent. Ask me things like:\n• What's due for me tomorrow?\n• Brief me\n• Remind me Friday at 3pm to send the Pfizer deck\n• Log a call with Jane at Pfizer: she's interested\n\nI answer with your own access, and I always ask YES or NO before I change anything.",
+      options,
+    );
     return;
   }
   if (!user.provider_subject) {

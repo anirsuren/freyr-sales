@@ -235,3 +235,14 @@ test("an ellipsis survives; a dropped link's double dot does not", async () => {
   assert.equal(toWhatsAppText("Saved the meeting. [Open it](/meetings/m-1).", ""), "Saved the meeting.");
   assert.equal(toWhatsAppText("Really? .", ""), "Really?");
 });
+
+test("a photo's caption comes through; other media carry none", async () => {
+  const { parseInboundMessages } = await import("../lib/whatsapp.ts");
+  const payload = (message) => ({ object: "whatsapp_business_account", entry: [{ changes: [{ field: "messages", value: { metadata: { phone_number_id: "1" }, contacts: [], messages: [{ id: "m1", from: "15550100002", timestamp: "1790000000", ...message }] } }] }] });
+  const [photo] = parseInboundMessages(payload({ type: "image", image: { id: "x", caption: " add this contact " } }));
+  assert.equal(photo.caption, "add this contact");
+  assert.equal(photo.text, "");
+  const [reaction] = parseInboundMessages(payload({ type: "reaction", reaction: { message_id: "m0", emoji: "👍" } }));
+  assert.equal(reaction.type, "reaction");
+  assert.equal(reaction.caption, undefined);
+});

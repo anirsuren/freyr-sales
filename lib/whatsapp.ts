@@ -91,6 +91,8 @@ export type InboundMessage = {
   /** For a voice note (type "audio"): Meta's media id and the file's mime type. */
   mediaId: string;
   mimeType: string;
+  /** The words sent with a photo, video or file, when there are any. */
+  caption?: string;
 };
 
 /**
@@ -132,6 +134,9 @@ export function parseInboundMessages(payload: unknown): InboundMessage[] {
           text: type === "text" ? String(text.body ?? "").trim() : "",
           mediaId: type === "audio" ? String(audio.id ?? "") : "",
           mimeType: type === "audio" ? String(audio.mime_type ?? "") : "",
+          ...(["image", "video", "document"].includes(type)
+            ? { caption: String(((message[type] ?? {}) as Record<string, unknown>).caption ?? "").trim().slice(0, 2000) }
+            : {}),
         });
       }
     }
