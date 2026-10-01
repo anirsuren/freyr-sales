@@ -81,7 +81,11 @@ export function PersonFan({
       {visible.map((p, i) => (
         <span
           key={p.name}
-          className="relative inline-flex transition-[margin,transform] duration-200 ease-out"
+          // The hovered face rises above its neighbours: the wrapper's own
+          // z-index set the order, so the circle's ring slid under the next
+          // face (Anir, Oct 1: "why is the blue circle being hid behind the
+          // circles"). !important beats the inline order while hovered.
+          className="relative inline-flex transition-[margin,transform] duration-200 ease-out hover:!z-30 focus-within:!z-30"
           style={{
             marginLeft: i === 0 ? 0 : expanded ? 4 : overlap,
             zIndex: expanded ? visible.length - i : i + 1,

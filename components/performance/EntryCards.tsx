@@ -770,7 +770,8 @@ function BannerFaces({ people, cutout = "var(--white)" }: {
       {shown.map((name, i) => (
         <span
           key={name}
-          className="relative inline-flex transition-[margin] duration-200 ease-out motion-reduce:transition-none"
+          // The hovered face rises above its neighbours (see PersonFan).
+          className="relative inline-flex transition-[margin] duration-200 ease-out motion-reduce:transition-none hover:!z-30 focus-within:!z-30"
           style={{
             marginLeft: i === 0 ? 0 : spread ? 3 : -6,
             zIndex: spread ? shown.length - i : i + 1,

@@ -716,7 +716,6 @@ export async function readAgentWorkspace(
         estSignDate: signDateOf(r),
         confidence: opportunityConfidence(r),
         nextSteps: r.nextSteps || null,
-        nextStepsMeaning: "Recorded next steps only. Null means no next step is recorded; a suggestion inferred from stage must be labelled a recommendation, not the recorded next milestone.",
         offerings: offeringsAllowed ? [...new Set([...(r.offeringLabels ?? []), ...(r.offeringIds ?? []).map(id => catalog.find(o => o.id === id)?.offering_name).filter((n): n is string => Boolean(n))])] : undefined,
         offeringIds: offeringsAllowed ? r.offeringIds : undefined,
         ...(accrualPlans ? {accrual: (() => {
@@ -774,7 +773,6 @@ export async function readAgentWorkspace(
         opportunityIds: r.opportunityIds,
         opportunities: r.opportunityLabels,
         owner: r.owner || null,
-        ownerMeaning: "Overall request owner. Null means unassigned; a requester, division lead or primary assignee is not the overall owner.",
         requestedBy: r.requestedBy,
         assignedToMe: mine(r.owner) || (r.workstreams ?? []).some(w => mine(w.lead) || mine(w.primaryAssignee) || w.contributors.some(mine)) || r.docs.some(d => mine(d.assignedTo)),
         requestedByMe: mine(r.requestedBy),
@@ -1154,12 +1152,37 @@ export async function readAgentWorkspace(
       valueByCurrency[currency] =
         (valueByCurrency[currency] || 0) + Number(r.value || 0);
     }
+    /* EXACT TOTALS, NOT THE AGENT'S ARITHMETIC (Anir, Oct 1: the cost and
+       accuracy work). Only 50 records fit in one result, so a total the
+       agent added up itself covered whichever 50 it was shown: the same
+       question said "$2.9M" on one run and "over $10M" on the next. These
+       are summed over every open deal before any paging. */
+    const openValueByOffering: Record<string, Record<string, number>> = {};
+    for (const r of open) {
+      const currency = String(r.currency || "USD");
+      const names = Array.isArray(r.offerings) && r.offerings.length ? (r.offerings as string[]) : ["(no offering recorded)"];
+      for (const name of names) {
+        const bucket = (openValueByOffering[name] ||= {});
+        bucket[currency] = (bucket[currency] || 0) + Number(r.value || 0);
+      }
+    }
     summary = {
       ...summary,
       totalRecords: rows.length,
       openCount: open.length,
       openValueByCurrency: valueByCurrency,
-      note: "Open excludes Won and Lost. Values remain in original currency; do not sum currencies or substitute value for Estimated ACV/TCV.",
+      openValueByOffering,
+      note: "Open excludes Won and Lost. Values remain in original currency; do not sum currencies or substitute value for Estimated ACV/TCV. openValueByOffering is exact over every open deal; quote it instead of adding up the listed records. A deal on several offerings counts under each, so do not add the offering totals together.",
+      /* Said once here, not repeated on every one of up to 50 records (it
+         cost about 2,500 tokens per lookup, Oct 1). */
+      nextStepsMeaning: "Each record's nextSteps is the recorded next steps only. Null means no next step is recorded; a suggestion inferred from stage must be labelled a recommendation, not the recorded next milestone.",
+    };
+  }
+  if (key === "solutioning") {
+    // Once per result, not on every request record (Oct 1, the cost work).
+    summary = {
+      ...summary,
+      ownerMeaning: "Each record's owner is the overall request owner. Null means unassigned; a requester, division lead or primary assignee is not the overall owner.",
     };
   }
   const total = rows.length;
@@ -1179,11 +1202,18 @@ export async function readAgentWorkspace(
       .sort((a, b) =>
         String(a.estSignDate).localeCompare(String(b.estSignDate)),
       );
+    const filteredValueByCurrency: Record<string, number> = {};
+    for (const r of rows) {
+      const currency = String(r.currency || "USD");
+      filteredValueByCurrency[currency] = (filteredValueByCurrency[currency] || 0) + Number(r.value || 0);
+    }
     summary = {
       ...summary,
       dateFilter: q,
       todayUtc: today,
       filteredCount: rows.length,
+      // Exact over every matching deal, before paging: quote this total.
+      filteredValueByCurrency,
     };
   } else if (q)
     rows = rows.filter((r) => JSON.stringify(r).toLowerCase().includes(q));

@@ -79,7 +79,8 @@ export function CompanyFan({
       {visible.map((c, i) => (
         <span
           key={c.name}
-          className="relative inline-flex transition-[margin,transform] duration-200 ease-out"
+          // The hovered logo rises above its neighbours (see PersonFan).
+          className="relative inline-flex transition-[margin,transform] duration-200 ease-out hover:!z-30 focus-within:!z-30"
           style={{
             marginLeft: i === 0 ? 0 : expanded ? 4 : overlap,
             zIndex: expanded ? visible.length - i : i + 1,

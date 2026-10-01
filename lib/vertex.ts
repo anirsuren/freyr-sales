@@ -117,6 +117,34 @@ function addUsage(
 }
 
 /**
+ * WHAT EACH CALL REALLY COSTS, IN DEVELOPMENT ONLY (Anir, Oct 1: "make a
+ * change... and then see if there was a decrease in the cost"). One line per
+ * model call: prompt, cached and output tokens, and how big each part sent
+ * was, so a change to the prompt can be measured instead of guessed.
+ * Production never writes it.
+ */
+function logDevUsage(
+  response: Awaited<ReturnType<GoogleGenAI["models"]["generateContent"]>> | null,
+  sizes: { system: number; tools: number; turns: number }
+) {
+  if (process.env.NODE_ENV === "production" || !response) return;
+  const u = response.usageMetadata;
+  const line = JSON.stringify({
+    at: new Date().toISOString(),
+    prompt: u?.promptTokenCount ?? 0,
+    cached: u?.cachedContentTokenCount ?? 0,
+    output: u?.candidatesTokenCount ?? 0,
+    thoughts: u?.thoughtsTokenCount ?? 0,
+    systemChars: sizes.system,
+    toolChars: sizes.tools,
+    turns: sizes.turns,
+  });
+  void import("node:fs")
+    .then((fs) => fs.promises.appendFile("/tmp/freyr-agent-usage.jsonl", `${line}\n`))
+    .catch(() => undefined);
+}
+
+/**
  * "thought\nYou have no upcoming meetings...": the model sometimes writes its
  * reasoning channel's name as the first line of the visible answer, and a
  * rep's briefing opened with the word "thought" (found testing Sep 30). Real
@@ -230,6 +258,7 @@ export async function vertexConverseAgentic(
   try {
     const { client: vertex, config } = getClient();
     const declarations = toolDeclarations(tools);
+    const toolChars = process.env.NODE_ENV === "production" ? 0 : JSON.stringify(declarations).length;
     const callConfig = (withTools: boolean): GenerateContentConfig => ({
       ...generationConfig(system, withTools, declarations),
       httpOptions: { timeout: PER_CALL_TIMEOUT_MS },
@@ -240,9 +269,25 @@ export async function vertexConverseAgentic(
        one, reassembled into the same shape either way. */
     const step = async (withTools: boolean): Promise<StepResult> => {
       const request = { model: config.model, contents, config: callConfig(withTools) };
+      const sizes = { system: system.length, tools: toolChars, turns: contents.length };
+      // Development only, and only while /tmp/freyr-capture-agent exists:
+      // keep the exact request so another model can be tried on identical
+      // inputs. Production never writes it.
+      if (process.env.NODE_ENV !== "production") {
+        void import("node:fs").then((fs) => {
+          if (!fs.existsSync("/tmp/freyr-capture-agent")) return;
+          const { abortSignal: _ignored, httpOptions: _http, ...rest } = request.config as GenerateContentConfig & { abortSignal?: unknown };
+          void _ignored; void _http;
+          return fs.promises.writeFile(
+            `/tmp/freyr-agent-request-${Date.now()}.json`,
+            JSON.stringify({ model: request.model, contents: request.contents, config: rest })
+          );
+        }).catch(() => undefined);
+      }
       if (!onText) {
         const response = await vertex.models.generateContent(request);
         addUsage(usage, response);
+        logDevUsage(response, sizes);
         return {
           text: visibleResponseText(response),
           emitted: false,
@@ -287,6 +332,7 @@ export async function vertexConverseAgentic(
       }
       if (!headDone && head) emit(head.replace(LEADING_THOUGHT_LABEL, ""));
       if (last) addUsage(usage, last);
+      logDevUsage(last, sizes);
       return {
         text: text.trim(),
         emitted,
