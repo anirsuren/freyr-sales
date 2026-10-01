@@ -3075,17 +3075,25 @@ export function FdlComponentDetail({
                         </span>
                       </Link>
                       {canEdit && (
-                        <Tooltip label={`Remove ${customer.name}`}>
-                          <button
-                            type="button"
-                            aria-label={`Remove ${customer.name} from ${component.name}`}
-                            onClick={() => setConfirmRemoveCustomer(customer.id)}
-                            disabled={busy}
-                            className="absolute right-3 top-3 flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            <Trash2 size={14} strokeWidth={2} />
-                          </button>
-                        </Tooltip>
+                        /* The corner is its own box: the hover label wraps the
+                           button in a positioned span, and an absolute button
+                           inside it landed under the card's bottom-left corner,
+                           half hidden by the next section, so nobody could find
+                           how to take a customer off (Anir, Oct 1). Red, like
+                           every remove in the app. */
+                        <span className="absolute right-3 top-3">
+                          <Tooltip label={`Remove ${customer.name}`}>
+                            <button
+                              type="button"
+                              aria-label={`Remove ${customer.name} from ${component.name}`}
+                              onClick={() => setConfirmRemoveCustomer(customer.id)}
+                              disabled={busy}
+                              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <Trash2 size={14} strokeWidth={2} />
+                            </button>
+                          </Tooltip>
+                        </span>
                       )}
                     </li>
                   );
@@ -3250,7 +3258,7 @@ export function FdlComponentDetail({
                                       setConfirmRemoveCustomer(customer.id);
                                     }}
                                     disabled={busy}
-                                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30 disabled:cursor-not-allowed disabled:opacity-40"
                                   >
                                     <Trash2 size={14} strokeWidth={2} />
                                   </button>
