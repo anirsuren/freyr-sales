@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/currency";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { MaterialPeek } from "@/components/offerings/MaterialPeek";
+import { addMockModePrefix, isMockModePath } from "@/lib/modeUrl";
 import { Layers, CheckCircle2, Sparkles, ExternalLink, X, Package, DollarSign, Plus, Trash2, ChevronDown, ChevronUp, Paperclip, CalendarClock, Briefcase, Wrench, KeyRound, Search, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { DateEcho } from "@/components/ui/DateEcho";
@@ -40,6 +42,7 @@ import {
   asAccessLevel,
   asJourneyStage,
   asMaterialKind,
+  type OfferingMaterial,
 } from "@/lib/offeringMaterials";
 import type {
   CustomerOfferingEngagementVersion,
@@ -598,6 +601,14 @@ export function CustomerOfferingsTab({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set<string>()
   );
+  // SALES MATERIALS FOLD (Anir, Oct 1: "sales materials should be
+  // collapsible"). Open by default, the view he likes; closing one offering's
+  // list leaves the others as they are.
+  const [materialsClosed, setMaterialsClosed] = useState<Set<string>>(
+    () => new Set<string>()
+  );
+  const pathname = usePathname() || "";
+  const inMock = isMockModePath(pathname);
   const [offeringQuery, setOfferingQuery] = useState("");
 
   const inUseIds = useMemo(() => new Set(inUse.map((o) => o.id)), [inUse]);
@@ -791,6 +802,15 @@ export function CustomerOfferingsTab({
     }
   }
 
+  function toggleMaterials(id: string) {
+    setMaterialsClosed((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   function toggleExpanded(id: string) {
     setExpandedIds((current) => {
       const next = new Set(current);
@@ -892,10 +912,22 @@ export function CustomerOfferingsTab({
             {(using || o.materials.length > 0) && (
               <div className="mt-3 flex items-center justify-between gap-3 border-t border-border-light pt-3">
                 <div className="min-w-0 flex-1">
-                  <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
+                  <button
+                    type="button"
+                    onClick={() => toggleMaterials(o.id)}
+                    aria-expanded={!materialsClosed.has(o.id)}
+                    aria-controls={`offering-materials-${o.id}`}
+                    className="mb-1.5 flex cursor-pointer items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-text-tertiary transition-colors hover:text-text-primary"
+                  >
+                    <ChevronDown
+                      size={13}
+                      strokeWidth={2.4}
+                      className={`transition-transform ${materialsClosed.has(o.id) ? "-rotate-90" : ""}`}
+                      aria-hidden="true"
+                    />
                     Sales Materials ({o.materials.length})
-                  </p>
-                  {o.materials.length === 0 ? (
+                  </button>
+                  {materialsClosed.has(o.id) ? null : o.materials.length === 0 ? (
                     <p className="text-[12px] text-text-tertiary">
                       None yet. Add them on the offering page and they show up here.
                     </p>
@@ -906,9 +938,32 @@ export function CustomerOfferingsTab({
                        a row with two; it should just be one row with one"). A full-width
                        row gives the title room, puts the format glyph up front, and
                        parks the tags on the right edge where they line up down the list. */
-                    <div className="flex flex-col gap-1.5">
+                    <div id={`offering-materials-${o.id}`} className="flex flex-col gap-1.5">
                       {o.materials.map((m) => {
                         const kind = asMaterialKind(m.kindKey);
+                        /* HOVER THE NAME TO SEE IT (Anir, Oct 1: "when i hover
+                           it should definitely do the popup where i dont have
+                           to actually click on it to se it... look at sales
+                           materials in offerings it should be like that").
+                           The same card the offering page shows: an uploaded
+                           file renders, a pasted link says where it goes. */
+                        const peekMaterial = {
+                          id: m.id,
+                          kind: kind ?? "document",
+                          label: m.label,
+                          url: m.url,
+                          docsPath: m.docsPath,
+                          description: m.description,
+                          // The card's Buyer stage and Access rows read these;
+                          // without them it said "Not recorded" beside a row
+                          // showing both pills.
+                          journeyStage: asJourneyStage(m.journeyStage),
+                          accessLevel: asAccessLevel(m.accessLevel),
+                        } as OfferingMaterial;
+                        const previewPath = `/offerings/${encodeURIComponent(o.id)}/materials/${encodeURIComponent(m.id)}`;
+                        const previewUrl = m.docsPath
+                          ? `${inMock ? addMockModePrefix(previewPath) : previewPath}?embed=1`
+                          : null;
                         const Icon = kind ? MATERIAL_ICON[kind] : Paperclip;
                         const tone = kind ? MATERIAL_COLOR[kind] : "#4F46E5";
                         return (
@@ -928,9 +983,11 @@ export function CustomerOfferingsTab({
                               <Icon size={13} strokeWidth={2} />
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block text-[12.5px] font-semibold leading-snug text-text-primary group-hover:text-blue-primary">
-                                {m.label}
-                              </span>
+                              <MaterialPeek material={peekMaterial} previewUrl={previewUrl}>
+                                <span className="block text-[12.5px] font-semibold leading-snug text-text-primary group-hover:text-blue-primary">
+                                  {m.label}
+                                </span>
+                              </MaterialPeek>
                               <span
                                 className="block text-[11px] font-medium leading-tight"
                                 style={{ color: tone }}
