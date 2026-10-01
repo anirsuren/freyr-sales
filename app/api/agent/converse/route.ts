@@ -74,6 +74,7 @@ import {
   cancelProposal,
   executeProposal,
   actionGateRefusal,
+  actionsTheyMayAsk,
   proposeAction,
   proposeActionTool,
   runActionTool,
@@ -1633,6 +1634,13 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
   /* A BD member asked to change "the Takeda deal" and was asked which of two
      Takeda deals, when neither was theirs and either would be refused (found
      testing Sep 30). The per-deal rule, up front, like the module rule. */
+  /* "What can you do?" answered from the module summary promised a BD member
+     "plan meetings" and "assign solutioning requests" (Sep 30). Asked about
+     capabilities, the turn gets the exact list their gates allow. */
+  const capabilityQuestion = /\b(?:what (?:can|could) you (?:do|help)|what are you able|what do you do|your capabilities|how can you help|what can i ask you)\b/i.test(message);
+  const capabilityLine = agentActionsEnabled() && capabilityQuestion
+    ? `CHANGES THEY MAY ASK YOU TO MAKE (every action their access allows; say them in your own words, grouped, from your side ("I can set reminders for you"), without links on the action names; offer nothing beyond them, and never say plan, create, open, add or assign for a kind of record unless a title below does): ${(await actionsTheyMayAsk().catch(() => [])).join("; ")}. `
+    : "";
   const dealRule = agentActionsEnabled() && !isManagerOrAdmin(actor.role)
     ? `DEALS: ${firstName} may change only deals whose owner is ${actorName}. A deal owned by someone else or by no one is refused with "${OPPORTUNITY_NOT_YOURS}" When every deal that fits their request is not theirs, say that first, before asking which one. `
     : "";
@@ -1663,7 +1671,7 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     "Never say something is done unless run_action returned DONE, and never say 'I have proposed' unless propose_action returned PROPOSED in this very turn; if you have not called it yet, call it. Proposal ids exist only in propose_action results; never make one up. " +
     "If propose_action answers 'Not proposed', say why in its words; a permission refusal is final, do not look for another way around it. " +
     "If they ask what you can do, list only the actions within their level, in plain words (goals, groups, deals, accounts, contacts, leads, meetings, Market Intel stars). " +
-    accessLine + " " + dealRule + createHint +
+    accessLine + " " + dealRule + createHint + capabilityLine +
     (pendingForPrompt.length
       ? `PENDING PROPOSALS in this chat, awaiting their answer: ${pendingForPrompt.map((p) => `[${p.id}] ${p.summary}`).join(" | ")}. Only a message that plainly says yes to one of them (yes, go ahead, do it, confirm) confirms it: then call run_action with its id. A message that says something is done, finished or completed is NOT a yes; it is news. If it changes the details, propose again.`
       : "No proposals are pending in this chat.") +
