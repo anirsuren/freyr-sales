@@ -22,6 +22,7 @@ import { VIZ, VIZ_SERIES } from "@/components/charts/palette";
 import { Modal } from "@/components/ui/Modal";
 import { ColorSelect } from "@/components/ui/ColorSelect";
 import { Avatar } from "@/components/ui/Avatar";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { cn } from "@/lib/utils";
 
 /**
@@ -68,8 +69,25 @@ export type ExpandedChartRecord = {
   meta?: string;
   value?: string;
   href?: string;
+  /** A person's name: the row shows their photo. */
   avatar?: string;
+  /** A company's name: the row shows its logo when there is no person. */
+  logo?: string;
 };
+
+/**
+ * THE FACE BESIDE EVERY NAME (Anir, Oct 1: "if there is a profile picture
+ * thats supposed to go here pls add and if ur forgetting anywhere else add
+ * it"). A row about a person shows their photo, a row about a company its
+ * logo, and a row about neither (an offering, a month) shows nothing rather
+ * than a made-up face.
+ */
+function RecordFace({ record, size }: { record: ExpandedChartRecord; size: "sm" | "md" }) {
+  const cls = size === "md" ? "h-8 w-8 shrink-0 text-[9px]" : "h-7 w-7 shrink-0 text-[9px]";
+  if (record.avatar) return <Avatar name={record.avatar} className={cls} />;
+  if (record.logo) return <CompanyLogo name={record.logo} className={cls} />;
+  return null;
+}
 
 export type ExpandedChartPoint = {
   label: string;
@@ -243,8 +261,8 @@ export function ExpandedChartControl({
                     {selectedItem.records?.length ? (
                       <div className="mt-2 space-y-1">
                         {selectedItem.records.map((record, index) => {
-                          const content = <><span className="min-w-0 flex-1"><span className="block text-[12.5px] font-semibold text-text-primary">{record.label}</span>{record.meta && <span className="block text-[11.5px] text-text-secondary">{record.meta}</span>}</span>{record.value && <span className="shrink-0 text-[12px] font-semibold tabular-nums text-text-primary">{record.value}</span>}</>;
-                          return record.href ? <Link key={`${record.label}-${index}`} href={record.href} className="flex items-start gap-3 rounded-lg px-2 py-2 hover:bg-surface">{content}</Link> : <div key={`${record.label}-${index}`} className="flex items-start gap-3 rounded-lg px-2 py-2">{content}</div>;
+                          const content = <><RecordFace record={record} size="sm" /><span className="min-w-0 flex-1"><span className="block text-[12.5px] font-semibold text-text-primary">{record.label}</span>{record.meta && <span className="block text-[11.5px] text-text-secondary">{record.meta}</span>}</span>{record.value && <span className="shrink-0 text-[12px] font-semibold tabular-nums text-text-primary">{record.value}</span>}</>;
+                          return record.href ? <Link key={`${record.label}-${index}`} href={record.href} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface">{content}</Link> : <div key={`${record.label}-${index}`} className="flex items-center gap-3 rounded-lg px-2 py-2">{content}</div>;
                         })}
                       </div>
                     ) : (
@@ -449,7 +467,7 @@ export function ExpandedChartModal({
       : chart.kind === "line" ? chart.series[index].points.every((value) => value === 0)
       : chart.data.every((value) => value === 0),
     records: "details" in item && Array.isArray(item.details) ? item.details
-      : "tip" in item && Array.isArray(item.tip) ? item.tip.map((tip) => ({ label: tip.name, meta: tip.sub, value: tip.value }))
+      : "tip" in item && Array.isArray(item.tip) ? item.tip.map((tip) => ({ label: tip.name, meta: tip.sub, value: tip.value, avatar: tip.avatar, logo: tip.logo }))
       : undefined,
   }));
   const donutSyncId = useId();

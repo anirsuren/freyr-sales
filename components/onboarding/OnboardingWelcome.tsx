@@ -77,7 +77,12 @@ export function OnboardingWelcome({
   steps: readonly ProductTourStep[];
   role: string | null | undefined;
   firstName: string;
-  /** They have seen the tour before: say "again", not "welcome". */
+  /**
+   * They finished the tour before and chose to take it again from Settings.
+   * Only then does it say "refresher" (Anir, Oct 1: "that makes sense... if
+   * its only there for users who are explicitly going to settings and doing
+   * it again"). A first sign-in, or someone who skipped it, is welcomed.
+   */
   returning: boolean;
   onBegin: () => void;
   onDismiss: () => void;

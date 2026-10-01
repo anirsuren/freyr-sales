@@ -706,7 +706,8 @@ export function ProductTourProvider({
           steps={steps}
           role={snapshot?.role}
           firstName={firstName}
-          returning={!welcome.firstRun && snapshot?.state.status !== "not_started"}
+          // "Refresher" only for someone who finished it and asked again.
+          returning={!welcome.firstRun && snapshot?.state.status === "completed"}
           onBegin={acceptWelcome}
           onDismiss={declineWelcome}
         />
