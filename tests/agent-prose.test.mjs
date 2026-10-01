@@ -40,3 +40,10 @@ test("a page path becomes a named link; other slashes stay", async () => {
   assert.equal(linkBarePaths("see [Team](/team) and 24/7 support, and/or `/usr/bin`"), "see [Team](/team) and 24/7 support, and/or `/usr/bin`");
   assert.equal(linkBarePaths("```\n/performance/people\n```"), "```\n/performance/people\n```");
 });
+
+test("a record page path is never turned into a link", async () => {
+  const { linkBarePaths } = await import("../lib/agentProse.ts");
+  assert.equal(linkBarePaths("a page that does not exist (/opportunities/does-not-exist)"), "a page that does not exist (/opportunities/does-not-exist)");
+  assert.equal(linkBarePaths("see `/customers/40a7a3c3-5a32-493d-827f-1c88a0cf0ec6`"), "see `/customers/40a7a3c3-5a32-493d-827f-1c88a0cf0ec6`");
+  assert.equal(linkBarePaths("open /agent/settings"), "open [Settings](/agent/settings)");
+});

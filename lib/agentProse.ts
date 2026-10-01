@@ -38,6 +38,17 @@ const APP_SECTIONS = new Set([
   "pipeline", "forecast", "sessions", "tasks", "campaigns", "sequences", "components", "revenue-accruals",
 ]);
 
+/* Fixed pages one level down. A record page ("/opportunities/does-not-exist")
+   is never linked from a bare path: on a missing-deal page the answer linked
+   the missing deal (Sep 30). Records get their links from the tools. */
+const KNOWN_SUBPAGES = new Set([
+  "performance/org", "performance/groups", "performance/people", "performance/evidence",
+  "admin/members", "admin/goal-master", "admin/groups", "agent/settings", "agent/impact", "agent/inbox",
+  "agent/plan", "agent/review", "customers/groups", "customers/targets", "market-intel/manage",
+  "meetings/completed", "offerings/customer-types", "offerings/materials", "offerings/offering-categories",
+  "offerings/offering-types", "reports/activity-goal-flow", "reports/customer-offering-heat-map",
+]);
+
 const KEEP_AS_IS = /(```[\s\S]*?```|\[[^\]\n]*\]\([^)\s]*\))/g;
 const APP_PATH = String.raw`\/[a-z][a-z0-9-]*(?:\/[A-Za-z0-9._-]+)*(?:\?[A-Za-z0-9=&_-]+)?`;
 
@@ -67,7 +78,9 @@ export function linkBarePaths(text: string): string {
         ? segment
         : segment.replace(pattern, (all, inCode: string | undefined, bare: string | undefined) => {
             const path = inCode ?? bare ?? "";
-            return APP_SECTIONS.has(path.split(/[/?]/)[1] ?? "") ? `[${pageLabel(path)}](${path})` : all;
+            const parts = (path.split("?")[0] ?? "").split("/").filter(Boolean);
+            const linkable = APP_SECTIONS.has(parts[0] ?? "") && (parts.length === 1 || (parts.length === 2 && KNOWN_SUBPAGES.has(`${parts[0]}/${parts[1]}`)));
+            return linkable ? `[${pageLabel(path)}](${path})` : all;
           }),
     )
     .join("");
