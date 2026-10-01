@@ -23,6 +23,7 @@ import { canAssignSolutioning } from "@/lib/solutioningValidation";
 import { opportunityChangeRefusal } from "@/lib/opportunityOwnership";
 import { addProposal, getProposal, updateProposal } from "@/lib/agentActionStore";
 import { addPersonalReminder, completePersonalReminder, findPersonalReminder } from "@/lib/agentPersonalReminders";
+import { localDayTime, relativeMoment, zonedInstant } from "@/lib/agentClock";
 import {
   matchOne,
   parseDay,
@@ -366,21 +367,24 @@ async function contactForTimeline(customerId: string, customerName: string, quer
  */
 function splitDayTime(raw: string, zone?: string): { day: string; time: string } | null {
   const text = raw.trim();
+  // "in 2 hours" is a day and a minute at once.
+  const moment = relativeMoment(text);
+  if (moment !== null) return localDayTime(moment, zone);
   const iso = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/.exec(text);
   if (iso) return { day: iso[1], time: iso[2] || reminderTime(text.slice(10)) };
   const time = reminderTime(text);
   const dayWords = text
-    .replace(/\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b(?:at\s+)?\d{1,2}:\d{2}\b|\b(?:in the )?(?:morning|afternoon|evening|tonight)\b/gi, " ")
+    .replace(/\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b(?:at\s+)?\d{1,2}:\d{2}\b|\b(?:at\s+)?(?:noon|midday|midnight)\b|\b(?:in the )?(?:morning|afternoon|evening|tonight)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
   const day = parseDay(dayWords || text, new Date(), zone) ?? parseDay(text, new Date(), zone);
   return day ? { day, time } : null;
 }
 
-/** "3pm", "3:30 pm", "15:00", "at 9" as HH:mm; "" when there is no time in it. */
+/** "3pm", "3:30 pm", "15:00", "noon" as HH:mm; "" when there is no time in it. */
 function reminderTime(value: string): string {
   const m = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b|\b(\d{1,2}):(\d{2})\b/i.exec(value);
-  if (!m) return "";
+  if (!m) return /\b(?:noon|midday)\b/i.test(value) ? "12:00" : /\bmidnight\b/i.test(value) ? "00:00" : "";
   let hour = Number(m[1] ?? m[4]);
   const minute = Number(m[2] ?? m[5] ?? 0);
   const meridiem = (m[3] || "").toLowerCase();
@@ -1041,7 +1045,13 @@ export const ACTIONS: ActionDef[] = [
       }
       const raw = str(params.when, 60);
       const parsed = splitDayTime(raw, ctx.timeZone);
-      if (!parsed) return { error: "When is the meeting? A day like tomorrow or Friday works, with a time if you have one." };
+      if (!parsed) return { error: "When is the meeting? A day and a time, like tomorrow at 2pm." };
+      /* A meeting still to come gets a heads-up before it starts, so it needs
+         its time (Oct 1, the same rule as reminders). One already held and
+         being logged may have none. */
+      if (!parsed.time && parsed.day >= localDay(new Date(), ctx.timeZone).ymd) {
+        return { error: `What time is the meeting ${readableDay(parsed.day)}? For example 2pm.` };
+      }
       // A meeting stored with no time is a meeting with no time, not one at 10:00.
       const when = parsed.time ? `${parsed.day}T${parsed.time}` : parsed.day;
       let type: string = MEETING_TYPES[1];
@@ -1291,15 +1301,16 @@ export const ACTIONS: ActionDef[] = [
   {
     key: "set_reminder",
     title: "Remind me about something",
-    description: "A personal reminder for the person themself, on a day ('tomorrow', 'Friday', 'next week', a date) and optionally a time: 'remind me Friday to send Pfizer the deck'. Needs no contact or record. Private to them; it comes back in their reminders, the dock and WhatsApp.",
+    description: "A personal reminder for the person themself, at a day AND a time ('Friday at 9am', 'tomorrow 14:30', 'in 2 hours'): 'remind me Friday at 9 to send Pfizer the deck'. The agent messages them at that minute (on WhatsApp when their phone is linked). When they gave no time, ask them for one; never pick it. Needs no contact or record. Private to them.",
     module: "/agent",
     gate: "write",
     fields: {
       what: { type: "string", description: "What to remind them about, in their words." },
-      when: { type: "string", description: "The day: a date or words like tomorrow, Friday, next week, in 3 days." },
-      time: { type: "string", description: "The time of day they gave, like 3pm or 15:00. Always pass it when they said one; leave it out only when they gave no time." },
+      when: { type: "string", description: "The day (a date or words like tomorrow, Friday, next week), or a moment like 'in 2 hours'." },
+      time: { type: "string", description: "The time of day they gave, like 9am, 3:30pm, 15:00 or noon. Required: when they gave none, ask them for it instead of proposing." },
       account: { type: "string", description: "Optional customer account it is about." },
     },
+    // Time is checked in prepare, so a missing one is asked for in words, not as "needs time".
     required: ["what", "when"],
     async prepare(params, ctx) {
       const what = str(params.what, 500);
@@ -1315,6 +1326,13 @@ export const ACTIONS: ActionDef[] = [
       if (!day) return { error: "When should I remind you? A date or words like tomorrow or Friday both work." };
       if (day < localDay(new Date(), ctx.timeZone).ymd) return { error: `That date (${readableDay(day)}) has already passed. When should I remind you?` };
       const time = reminderTime(str(params.time, 20)) || parsedWhen?.time || "";
+      /* A reminder is a message at a minute (Anir, Oct 1: "how can it just give
+         a reminder at a day? It has to give a reminder at a time... The user
+         has to give a time"). No time said: ask for one, never pick it. */
+      if (!time) return { error: `What time ${readableDay(day)} should I remind you? For example 9am or 14:30.` };
+      if (zonedInstant(day, time, ctx.timeZone) <= Date.now()) {
+        return { error: `${time} ${readableDay(day)} has already passed. What time should I remind you?` };
+      }
       let account: { id: string; name: string } | undefined;
       const accountName = str(params.account, 200);
       if (accountName) {
@@ -1323,8 +1341,8 @@ export const ACTIONS: ActionDef[] = [
         if (hit) account = { id: hit.id, name: hit.company_name };
       }
       return {
-        summary: `Remind you ${readableDay(day)}${time ? ` at ${time}` : ""}: ${what}.`,
-        params: { what, day, time: time || undefined, accountId: account?.id, accountName: account?.name },
+        summary: `Remind you ${readableDay(day)} at ${time}: ${what}.`,
+        params: { what, day, time, accountId: account?.id, accountName: account?.name },
         ...(account ? { customerId: account.id, company: account.name } : {}),
       };
     },

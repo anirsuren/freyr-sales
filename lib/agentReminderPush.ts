@@ -6,7 +6,9 @@ import type { UserIdentityRole } from "@/lib/userIdentity";
 import { memberTimeZone } from "@/lib/memberTimeZone";
 import { localDay } from "@/lib/agentActionsShared";
 import { remindersFor, type AgentReminder, type ReminderAccess } from "@/lib/agentReminders";
-import { readDurableConversations } from "@/lib/agentConversationStore";
+import { appendAgentNotice, readDurableConversations } from "@/lib/agentConversationStore";
+import { claimReminderNotice, cleanPersonalReminder } from "@/lib/agentPersonalReminders";
+import { zonedInstant } from "@/lib/agentClock";
 import { canSendWhatsApp, sendWhatsAppText, toWhatsAppText, whatsappConfig } from "@/lib/whatsapp";
 
 /**
@@ -218,20 +220,166 @@ export async function runReminderPush(options: {
   return outcomes;
 }
 
+/* ------------------------------------------------------------- at the minute */
+
 /**
- * THE CLOCK. Checked every ten minutes; each person's slot fires in the first
- * pass of their 8:00 and 18:00 hour, and the log makes every later pass in
- * that hour a no-op. Armed once per server process by the agent's own routes,
- * so a server restart re-arms it on the first page anyone opens.
+ * A REMINDER AT ITS TIME (Anir, Oct 1: "It has to give a reminder at a time.
+ * That's when it texts you, right?"). A personal reminder goes out at the
+ * minute it was set for, on the person's own clock; a meeting or a session
+ * with a start time gets a heads-up a quarter of an hour before. Either one
+ * lands in their WhatsApp thread, so "done" or "remind me again in an hour"
+ * is understood. Same rules as the twice-daily messages: linked phones only,
+ * once each, and only inside WhatsApp's 24-hour window (outside it, the dock
+ * still shows the reminder).
+ */
+const GRACE_MS = 3 * 60 * 60 * 1000; // a server that was down still sends a reminder up to 3 hours late
+const SOON_MS = 15 * 60_000;
+
+export type TimedOutcome = {
+  person: string;
+  kind: "reminder" | "starting-soon";
+  what: string;
+  result: "sent" | "window-closed" | "no-sender" | "failed" | "already-sent";
+  detail?: string;
+  text?: string;
+};
+
+function minutesWord(ms: number): string {
+  const minutes = Math.max(1, Math.round(ms / 60_000));
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
+async function deliver(
+  member: Member,
+  text: string,
+  now: Date,
+  config: ReturnType<typeof whatsappConfig>,
+  dryRun: boolean,
+): Promise<Pick<TimedOutcome, "result" | "detail">> {
+  const last = await lastInboundAt(member);
+  if (!last || now.getTime() - last > WINDOW_MS) {
+    return { result: "window-closed", detail: last ? `last message ${new Date(last).toISOString()}` : "never messaged" };
+  }
+  if (dryRun || !canSendWhatsApp(config)) return { result: "no-sender", detail: dryRun ? "dry run" : "no WhatsApp token on this server" };
+  const sent = await sendWhatsAppText(member.number, text, config!);
+  if (!sent.ok || sent.skipped) return { result: "failed", detail: sent.error || "skipped" };
+  await appendAgentNotice({ workspaceId: member.workspaceId, userId: member.userId }, { channel: "whatsapp", text, at: now.getTime() }).catch(() => undefined);
+  return { result: "sent" };
+}
+
+export async function runTimedReminders(options: {
+  now?: Date;
+  /** Also look for meetings and sessions starting within the next quarter hour. */
+  meetings?: boolean;
+  dryRun?: boolean;
+  onlyUserId?: string;
+} = {}): Promise<TimedOutcome[]> {
+  const now = options.now ?? new Date();
+  const config = whatsappConfig();
+  const client = db();
+  if (!client) return [];
+  const members = (await linkedMembers()).filter((m) => !options.onlyUserId || m.userId === options.onlyUserId);
+  if (!members.length) return [];
+  const byKey = new Map(members.map((m) => [`${m.workspaceId}:${m.userId}`, m]));
+  const zones = new Map<string, string>();
+  const zoneOf = async (m: Member) => {
+    if (!zones.has(m.userId)) zones.set(m.userId, await memberTimeZone(m.userId));
+    return zones.get(m.userId)!;
+  };
+  const outcomes: TimedOutcome[] = [];
+
+  // 1. Personal reminders, at their minute. Claimed before sending, so two servers never both send one.
+  const { data: rows } = await client.from("offering_catalog_state").select("catalog").like("id", "agent-personal-reminders:%");
+  for (const row of rows ?? []) {
+    const stored = row.catalog as { workspaceId?: string; userId?: string; reminders?: unknown[] } | null;
+    const member = byKey.get(`${stored?.workspaceId}:${stored?.userId}`);
+    if (!member || !Array.isArray(stored?.reminders)) continue;
+    const zone = await zoneOf(member);
+    for (const raw of stored.reminders) {
+      const r = cleanPersonalReminder(raw);
+      if (!r || !r.time || r.doneAt || r.notifiedAt) continue;
+      const due = zonedInstant(r.day, r.time, zone);
+      if (now.getTime() < due || now.getTime() - due > GRACE_MS) continue;
+      const late = now.getTime() - due > 5 * 60_000;
+      const text =
+        `Reminder${late ? ` (for ${r.time})` : ""}: ${r.text}${r.account ? ` (${r.account.name})` : ""}\n\n` +
+        "Reply done when it is done, or tell me when to remind you again.";
+      if (options.dryRun) {
+        outcomes.push({ person: member.name, kind: "reminder", what: r.text, result: "no-sender", detail: "dry run", text });
+        continue;
+      }
+      const claimed = await claimReminderNotice({ workspaceId: member.workspaceId, userId: member.userId }, r.id).catch(() => null);
+      if (!claimed) {
+        outcomes.push({ person: member.name, kind: "reminder", what: r.text, result: "already-sent" });
+        continue;
+      }
+      outcomes.push({ person: member.name, kind: "reminder", what: r.text, text, ...(await deliver(member, text, now, config, false)) });
+    }
+  }
+
+  // 2. A heads-up before a meeting or a session that has a start time today.
+  if (options.meetings) {
+    const logs = new Map<string, Record<string, string>>();
+    for (const member of members) {
+      const zone = await zoneOf(member);
+      const reminders = await remindersFor({ person: member.name, timeZone: zone, access: await accessFor(member), now, scope: { workspaceId: member.workspaceId, userId: member.userId } }).catch(() => [] as AgentReminder[]);
+      for (const r of reminders) {
+        if ((r.kind !== "meeting" && r.kind !== "solutioning") || !r.time || r.daysAway !== 0 || r.id.endsWith(":outcome")) continue;
+        const until = zonedInstant(r.day, r.time, zone) - now.getTime();
+        if (until <= 0 || until > SOON_MS) continue;
+        if (!logs.has(member.workspaceId)) logs.set(member.workspaceId, await readLog(member.workspaceId));
+        const log = logs.get(member.workspaceId)!;
+        const key = `${member.userId}:soon:${r.id}`;
+        if (log[key]) {
+          outcomes.push({ person: member.name, kind: "starting-soon", what: r.title, result: "already-sent" });
+          continue;
+        }
+        const text = `In ${minutesWord(until)}: ${r.line}\n\nWant a quick brief before it starts?`;
+        const outcome = await deliver(member, text, now, config, !!options.dryRun);
+        // Logged whatever happened: a closed window or a missing token does not open in the next five minutes.
+        if (!options.dryRun) log[key] = now.toISOString();
+        outcomes.push({ person: member.name, kind: "starting-soon", what: r.title, text, ...outcome });
+      }
+    }
+    for (const [workspaceId, sent] of logs) await writeLog(workspaceId, sent).catch(() => undefined);
+  }
+  return outcomes;
+}
+
+/**
+ * THE CLOCK. Ticks every minute: reminders at their minute on every tick,
+ * meetings starting soon every five, and the 8:00 and 18:00 messages every ten
+ * (each person's slot fires in the first pass of that hour; the log makes the
+ * rest of the hour a no-op). Armed once per server process by the agent's own
+ * routes, so a server restart re-arms it on the first page anyone opens.
  */
 const TIMER_KEY = "__freyrAgentReminderPushTimer";
 export function armReminderPush(): void {
   if (process.env.AGENT_REMINDER_PUSH === "off") return;
   const g = globalThis as unknown as Record<string, ReturnType<typeof setInterval> | undefined>;
   if (g[TIMER_KEY]) return;
+  let lastMeetings = 0;
+  let lastDigest = Date.now();
+  let busy = false;
   g[TIMER_KEY] = setInterval(() => {
-    runReminderPush().catch((error) => console.error("[agent] reminder push failed", error));
-  }, 10 * 60_000);
+    if (busy) return;
+    busy = true;
+    const now = Date.now();
+    const meetings = now - lastMeetings >= 5 * 60_000 - 5_000;
+    if (meetings) lastMeetings = now;
+    const digest = now - lastDigest >= 10 * 60_000 - 5_000;
+    if (digest) lastDigest = now;
+    void (async () => {
+      try {
+        await runTimedReminders({ meetings });
+        if (digest) await runReminderPush();
+      } catch (error) {
+        console.error("[agent] reminder push failed", error);
+      } finally {
+        busy = false;
+      }
+    })();
+  }, 60_000);
   // Never keep a process alive just for this.
   (g[TIMER_KEY] as unknown as { unref?: () => void }).unref?.();
 }

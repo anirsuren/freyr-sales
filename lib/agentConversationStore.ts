@@ -308,6 +308,40 @@ export async function appendAgentExchange(
   return next;
 }
 
+/**
+ * Something the agent said first: a reminder sent at its minute, a heads-up
+ * before a meeting. It goes into the person's latest thread on that channel
+ * (one that moved in the last week, the same rule WhatsApp uses to carry a
+ * thread on), so their reply ("done", "remind me again in an hour") is read
+ * with it. No thread that recent: it starts one.
+ */
+export async function appendAgentNotice(
+  scope: WorkspaceMemberScope,
+  input: { channel: ConversationChannel; text: string; at?: number },
+): Promise<StoredConversation> {
+  const at = input.at ?? Date.now();
+  const current = (await readDurableConversations(scope)) ?? [];
+  const latest = current
+    .filter((c) => c.channel === input.channel)
+    .sort((a, b) => b.updated - a.updated)[0];
+  const before = latest && at - latest.updated < 7 * 86_400_000 ? latest : null;
+  const next: StoredConversation = before
+    ? { ...before, messages: [...before.messages], updated: at }
+    : {
+        id: `${input.channel === "whatsapp" ? "wa" : "c"}-${at.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        title: input.text.replace(/\s+/g, " ").trim().slice(0, 80),
+        messages: [],
+        updated: at,
+        channel: input.channel,
+      };
+  next.messages.push({ role: "agent", text: input.text.slice(0, MAX_TEXT_LENGTH), ts: at });
+  if (next.messages.length > MAX_MESSAGES_PER_CONVERSATION) {
+    next.messages = next.messages.slice(-MAX_MESSAGES_PER_CONVERSATION);
+  }
+  await writeDurableConversations(scope, [next], before ? [before] : []);
+  return next;
+}
+
 /** The most recent conversation that came through a channel, for continuing it. */
 export async function latestChannelConversation(
   scope: WorkspaceMemberScope,

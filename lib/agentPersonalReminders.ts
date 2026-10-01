@@ -24,6 +24,8 @@ export type PersonalReminder = {
   account?: { id: string; name: string };
   createdAt: string;
   doneAt?: string;
+  /** When it was sent to them at its minute (WhatsApp), so it goes out once. */
+  notifiedAt?: string;
 };
 
 const rowId = (scope: WorkspaceMemberScope) => `agent-personal-reminders:${scope.workspaceId}:${scope.userId}`;
@@ -34,7 +36,7 @@ function client() {
   return url && key ? createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } }) : null;
 }
 
-function clean(value: unknown): PersonalReminder | null {
+export function cleanPersonalReminder(value: unknown): PersonalReminder | null {
   const r = value as Partial<PersonalReminder> | null;
   if (!r || typeof r.id !== "string" || typeof r.text !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(String(r.day))) return null;
   return {
@@ -45,6 +47,7 @@ function clean(value: unknown): PersonalReminder | null {
     ...(r.account && typeof r.account.id === "string" && typeof r.account.name === "string" ? { account: { id: r.account.id, name: r.account.name } } : {}),
     createdAt: typeof r.createdAt === "string" ? r.createdAt : new Date(0).toISOString(),
     ...(typeof r.doneAt === "string" ? { doneAt: r.doneAt } : {}),
+    ...(typeof r.notifiedAt === "string" ? { notifiedAt: r.notifiedAt } : {}),
   };
 }
 
@@ -54,7 +57,7 @@ export async function readPersonalReminders(scope: WorkspaceMemberScope): Promis
   const { data, error } = await db.from("offering_catalog_state").select("catalog").eq("id", rowId(scope)).maybeSingle();
   if (error) throw new Error(error.message);
   const list = (data?.catalog as { reminders?: unknown[] } | null)?.reminders;
-  return Array.isArray(list) ? list.map(clean).filter((r): r is PersonalReminder => r !== null) : [];
+  return Array.isArray(list) ? list.map(cleanPersonalReminder).filter((r): r is PersonalReminder => r !== null) : [];
 }
 
 type Stored = { workspaceId: string; userId: string; reminders: PersonalReminder[]; updatedAt: string };
@@ -67,7 +70,7 @@ async function changePersonalReminders(
   const db = client();
   if (!db) throw new Error("The reminder store is not available on this server.");
   await changeRow<Stored>(db, rowId(scope), (current) => {
-    const list = (Array.isArray(current?.reminders) ? current.reminders : []).map(clean).filter((r): r is PersonalReminder => r !== null);
+    const list = (Array.isArray(current?.reminders) ? current.reminders : []).map(cleanPersonalReminder).filter((r): r is PersonalReminder => r !== null);
     const next = change(list);
     if (!next) return null;
     // Done reminders are kept a fortnight so "what did I tick off" still answers, then dropped.
@@ -166,4 +169,23 @@ export async function completePersonalReminder(scope: WorkspaceMemberScope, whic
   const done = { ...found.reminder, doneAt: new Date().toISOString() };
   await changePersonalReminders(scope, (list) => list.map((r) => (r.id === done.id ? done : r)));
   return { ok: true, reminder: done };
+}
+
+/**
+ * Claim one reminder for sending at its minute: marks it sent and returns it,
+ * or null when it is gone, done, or already claimed (another server, an
+ * earlier pass). Written only if nobody wrote in between, so it goes out once.
+ */
+export async function claimReminderNotice(scope: WorkspaceMemberScope, id: string): Promise<PersonalReminder | null> {
+  let claimed: PersonalReminder | null = null;
+  await changePersonalReminders(scope, (list) => {
+    claimed = null;
+    const i = list.findIndex((r) => r.id === id && !r.doneAt && !r.notifiedAt);
+    if (i < 0) return null;
+    const next = [...list];
+    next[i] = { ...list[i], notifiedAt: new Date().toISOString() };
+    claimed = next[i];
+    return next;
+  });
+  return claimed;
 }
