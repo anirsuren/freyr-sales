@@ -6,6 +6,9 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { getOnboardingState } from "@/lib/onboardingStore";
 import { readWorkspaceMemberProfiles } from "@/lib/memberProfile";
 import { currentUserNeedsPasskey } from "@/lib/passkeyStatus";
+import { requireServerMemberScope } from "@/lib/memberScope";
+import { whatsappConfig } from "@/lib/whatsapp";
+import { readWhatsAppLinkState } from "@/lib/whatsappLink";
 
 /**
  * THE THREE THINGS THAT ARE STILL MISSING FROM YOUR OWN ACCOUNT.
@@ -25,12 +28,14 @@ export type SetupNudges = {
   needsTour: boolean;
   needsPasskey: boolean;
   needsTitle: boolean;
+  needsPhone: boolean;
 };
 
 export const NO_SETUP_NUDGES: SetupNudges = {
   needsTour: false,
   needsPasskey: false,
   needsTitle: false,
+  needsPhone: false,
 };
 
 async function needsTour(): Promise<boolean> {
@@ -77,11 +82,28 @@ async function needsTitle(): Promise<boolean> {
   }
 }
 
+/**
+ * THE WHATSAPP AGENT, UNTIL IT IS CONNECTED (Anir, Oct 1: "the user doesn't
+ * even know that it exists"). A standing row while the workspace has a
+ * WhatsApp number and this person has no phone connected; it clears itself
+ * the moment they connect one.
+ */
+async function needsPhone(): Promise<boolean> {
+  try {
+    if (!whatsappConfig()) return false;
+    const { link } = await readWhatsAppLinkState(await requireServerMemberScope());
+    return !link;
+  } catch {
+    return false;
+  }
+}
+
 export async function currentUserSetupNudges(): Promise<SetupNudges> {
-  const [tour, passkey, title] = await Promise.all([
+  const [tour, passkey, title, phone] = await Promise.all([
     needsTour(),
     currentUserNeedsPasskey(),
     needsTitle(),
+    needsPhone(),
   ]);
-  return { needsTour: tour, needsPasskey: passkey, needsTitle: title };
+  return { needsTour: tour, needsPasskey: passkey, needsTitle: title, needsPhone: phone };
 }

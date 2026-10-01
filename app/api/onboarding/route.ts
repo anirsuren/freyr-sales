@@ -5,8 +5,11 @@ import {
   verifyAccessGrant,
 } from "@/lib/accessControl";
 import {
+  notStartedOnboardingState,
   OnboardingValidationError,
   parseOnboardingAction,
+  type OnboardingAction,
+  type OnboardingState,
 } from "@/lib/onboarding";
 import {
   getOnboardingState,
@@ -29,6 +32,45 @@ async function withTourAccess(response: OnboardingResponse) {
 }
 
 export const dynamic = "force-dynamic";
+
+/**
+ * LOCAL DEVELOPMENT ONLY. A server started without AUTH_MODE has no signed-in
+ * person and no access grant, so the tour answered 401 and could not be tried
+ * at all on a local persona. There it keeps the state in this process's
+ * memory, one tour per local persona, and never touches the database. Any
+ * deployment sets AUTH_MODE, so this branch cannot run there.
+ */
+function localTourEnabled(): boolean {
+  return !process.env.AUTH_MODE && process.env.NODE_ENV !== "production";
+}
+
+const localTours: Map<string, OnboardingState> = ((
+  globalThis as { __freyrLocalTours?: Map<string, OnboardingState> }
+).__freyrLocalTours ??= new Map());
+
+function localTourKey(): string {
+  return process.env.FREYR_LOCAL_IDENTITY_EMAIL?.trim().toLowerCase() || "local";
+}
+
+/** The same rules as the database store: finished or skipped stays that way until a reset. */
+function nextLocalTour(current: OnboardingState, action: OnboardingAction): OnboardingState {
+  if (action.action === "reset") return notStartedOnboardingState();
+  if (current.status === "completed" || current.status === "skipped") return current;
+  const now = new Date().toISOString();
+  const status =
+    action.action === "complete" ? "completed" : action.action === "skip" ? "skipped" : "in_progress";
+  return {
+    version: current.version,
+    status,
+    currentStep: action.currentStep ?? current.currentStep,
+    ...(status === "completed" ? { completedAt: now } : {}),
+    ...(status === "skipped" ? { skippedAt: now } : {}),
+  };
+}
+
+async function localTourResponse(state: OnboardingState) {
+  return withTourAccess({ state, role: (await getRole()) as OnboardingResponse["role"] });
+}
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, {
@@ -77,6 +119,9 @@ function storeFailure(error: unknown) {
 }
 
 export async function GET(request: NextRequest) {
+  if (localTourEnabled() && !(await authenticatedRequestPrincipal(request))) {
+    return json(await localTourResponse(localTours.get(localTourKey()) ?? notStartedOnboardingState()));
+  }
   const authorization = await authorizedContext(request);
   if ("response" in authorization) return authorization.response;
 
@@ -88,8 +133,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const authorization = await authorizedContext(request);
-  if ("response" in authorization) return authorization.response;
+  const local = localTourEnabled() && !(await authenticatedRequestPrincipal(request));
+  const authorization = local ? null : await authorizedContext(request);
+  if (authorization && "response" in authorization) return authorization.response;
 
   let action;
   try {
@@ -104,6 +150,13 @@ export async function PATCH(request: NextRequest) {
       },
       400
     );
+  }
+
+  if (!authorization) {
+    const key = localTourKey();
+    const next = nextLocalTour(localTours.get(key) ?? notStartedOnboardingState(), action);
+    localTours.set(key, next);
+    return json(await localTourResponse(next));
   }
 
   try {

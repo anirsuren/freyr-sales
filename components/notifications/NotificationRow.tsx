@@ -1,4 +1,4 @@
-import { Briefcase, Compass, Fingerprint, type LucideIcon } from "lucide-react";
+import { Briefcase, Compass, Fingerprint, Smartphone, type LucideIcon } from "lucide-react";
 import { NotificationMark } from "@/components/notifications/NotificationMark";
 import { DateText } from "@/components/ui/DateText";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,8 @@ export const SETUP_META: Record<SetupMark, { icon: LucideIcon; color: string }> 
   passkey: { icon: Fingerprint, color: "var(--ink-violet)" },
   // Who you are to the rest of the company.
   profile: { icon: Briefcase, color: "var(--ink-teal-deep)" },
+  // Your agent on your phone.
+  phone: { icon: Smartphone, color: "var(--ink-indigo)" },
 };
 
 /** Late is late: an overdue promise turns red wherever it appears. */

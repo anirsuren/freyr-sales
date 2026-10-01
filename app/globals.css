@@ -1031,47 +1031,46 @@ select:focus-visible {
   animation: backdropIn 0.18s ease-out both;
 }
 
-/* Guided tour — visually distinct from app cards, with quiet directional
-   motion between steps and an unmistakable arrival cue between pages. */
-@keyframes productTourCardIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+/* GUIDED TOUR MOTION (Anir, Oct 1: "Nice transition, nice animations
+   between the steps"). One highlight and one card for the whole tour: they
+   glide between targets instead of blinking, contents slide in the direction
+   of travel, and a page change presses the sidebar entry first. Everything
+   here stands still under prefers-reduced-motion. */
+:root {
+  --tour-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
-@keyframes productTourBackdropIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+@keyframes productTourFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes productTourSpotIn {
+  from { opacity: 0; transform: scale(1.06); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes productTourCardIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes productTourShowcaseIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.95); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes productTourStepForward {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; transform: translateX(22px); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes productTourStepBackward {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; transform: translateX(-22px); }
+  to { opacity: 1; transform: none; }
 }
-@keyframes productTourPageChange {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+@keyframes productTourRipple {
+  0% { opacity: 0.6; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(2.4); }
+}
+@keyframes productTourPressRing {
+  0% { transform: scale(1); }
+  35% { transform: scale(0.96); }
+  100% { transform: scale(1); }
 }
 @keyframes productTourFocus {
   0%,
@@ -1084,40 +1083,191 @@ select:focus-visible {
       0 0 0 4px rgba(0, 113, 227, 0.14);
   }
 }
+@keyframes tourRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tourSlideIn {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tourWelcomeIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.965); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tourWelcomeOut {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(8px) scale(0.975); }
+}
+@keyframes tourHalo {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0; transform: scale(1.45); }
+}
+@keyframes tourOrb {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-18px, 14px); }
+}
+@keyframes tourGlow {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.08); }
+}
+@keyframes tourFinishRing {
+  0% { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+@keyframes tourFinishBadge {
+  0% { opacity: 0; transform: scale(0.55); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes tourFinishCheck {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+
 /* Keep the tour distinguishable even over a white spotlight. Override the
    shared keyboard-focus shadow without removing keyboard focus elsewhere. */
 .product-tour-card,
 .product-tour-card:focus-visible {
-  border: 2px solid #70aaff;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.96),
-    0 22px 70px rgba(8, 15, 28, 0.48),
-    0 4px 16px rgba(8, 15, 28, 0.3);
+  border: 1px solid rgba(0, 113, 227, 0.24);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--white) 92%, transparent),
+    0 30px 80px -20px rgba(8, 15, 28, 0.55),
+    0 8px 24px rgba(8, 15, 28, 0.18);
 }
-/* Navigation must not fade the instructions or backdrop back in from zero.
-   Page animations remain intact; the measured spotlight follows their motion. */
 .product-tour-card {
   isolation: isolate;
+  animation: productTourCardIn 0.42s var(--tour-ease) both;
 }
-.product-tour-backdrop,
-.product-tour-step-forward,
-.product-tour-step-backward,
-.product-tour-page-change {
-  animation: none;
+.product-tour-card-glide {
+  transition:
+    top 0.52s var(--tour-ease),
+    left 0.52s var(--tour-ease),
+    width 0.3s ease;
+}
+.product-tour-card-pop {
+  animation: productTourShowcaseIn 0.5s var(--tour-ease) both;
+}
+.product-tour-backdrop {
+  animation: productTourFadeIn 0.32s ease-out both;
+}
+.product-tour-spotlight {
+  isolation: isolate;
+  /* backwards, not both: once in, the inline opacity must own the fade. */
+  animation: productTourSpotIn 0.38s var(--tour-ease) backwards;
+}
+.product-tour-spotlight-glide {
+  transition:
+    top 0.52s var(--tour-ease),
+    left 0.52s var(--tour-ease),
+    width 0.52s var(--tour-ease),
+    height 0.52s var(--tour-ease),
+    opacity 0.3s ease;
+}
+.product-tour-spotlight-press {
+  animation: productTourPressRing 0.62s ease-out both;
+}
+.product-tour-press {
+  animation: productTourRipple 0.62s ease-out forwards;
+}
+.product-tour-step-forward {
+  animation: productTourStepForward 0.42s var(--tour-ease) both;
+}
+.product-tour-step-backward {
+  animation: productTourStepBackward 0.42s var(--tour-ease) both;
+}
+.product-tour-fade {
+  animation: productTourFadeIn 0.3s ease-out both;
 }
 .product-tour-focus-label {
   animation: productTourFocus 1.9s ease-in-out infinite;
 }
-.product-tour-spotlight {
-  isolation: isolate;
+.product-tour-label-glide {
+  transition:
+    top 0.52s var(--tour-ease),
+    left 0.52s var(--tour-ease);
 }
+.tour-stagger > * {
+  animation: tourRise 0.45s var(--tour-ease) both;
+}
+.tour-stagger > *:nth-child(1) { animation-delay: 0.12s; }
+.tour-stagger > *:nth-child(2) { animation-delay: 0.2s; }
+.tour-stagger > *:nth-child(3) { animation-delay: 0.28s; }
+.tour-stagger > *:nth-child(4) { animation-delay: 0.36s; }
+.tour-whatsapp-glow {
+  animation: tourGlow 5s ease-in-out infinite;
+}
+
+/* The welcome and closing cards. */
+.tour-welcome-backdrop {
+  animation: productTourFadeIn 0.3s ease-out both;
+}
+.tour-welcome-card {
+  animation: tourWelcomeIn 0.55s var(--tour-ease) both;
+}
+.tour-welcome-root.is-leaving .tour-welcome-card {
+  animation: tourWelcomeOut 0.24s ease-in both;
+}
+.tour-welcome-root.is-leaving .tour-welcome-backdrop {
+  animation: productTourFadeIn 0.24s ease-in reverse both;
+}
+.tour-welcome-rise {
+  animation: tourRise 0.5s var(--tour-ease) both;
+}
+.tour-welcome-chapter {
+  animation: tourSlideIn 0.5s var(--tour-ease) both;
+}
+.tour-welcome-halo {
+  animation: tourHalo 2.8s ease-out infinite;
+}
+.tour-welcome-orb {
+  animation: tourOrb 12s ease-in-out infinite;
+}
+.tour-finish-ring {
+  animation: tourFinishRing 1.8s ease-out infinite;
+}
+.tour-finish-badge {
+  animation: tourFinishBadge 0.6s var(--tour-ease) both;
+}
+.tour-finish-check {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: tourFinishCheck 0.45s 0.3s ease-out forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .product-tour-card,
+  .product-tour-card-pop,
   .product-tour-backdrop,
+  .product-tour-spotlight,
+  .product-tour-spotlight-press,
+  .product-tour-press,
   .product-tour-step-forward,
   .product-tour-step-backward,
-  .product-tour-page-change,
-  .product-tour-focus-label {
+  .product-tour-fade,
+  .product-tour-focus-label,
+  .tour-stagger > *,
+  .tour-whatsapp-glow,
+  .tour-welcome-backdrop,
+  .tour-welcome-card,
+  .tour-welcome-root.is-leaving .tour-welcome-card,
+  .tour-welcome-root.is-leaving .tour-welcome-backdrop,
+  .tour-welcome-rise,
+  .tour-welcome-chapter,
+  .tour-welcome-halo,
+  .tour-welcome-orb,
+  .tour-finish-ring,
+  .tour-finish-badge {
     animation: none;
+  }
+  .tour-finish-check {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .product-tour-card-glide,
+  .product-tour-spotlight-glide,
+  .product-tour-label-glide {
+    transition: none;
   }
 }
 

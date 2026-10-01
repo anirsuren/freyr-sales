@@ -67,7 +67,7 @@ export const URGENCY_LABEL: Record<NotificationUrgency, string> = {
 };
 
 /** The account-setup rows each draw their own glyph. */
-export type SetupMark = "tour" | "passkey" | "profile";
+export type SetupMark = "tour" | "passkey" | "profile" | "phone";
 
 export interface AppNotification {
   id: string;
@@ -253,6 +253,10 @@ export function buildNotifications(input: {
    *  Aug 13: "their notification should be a third notification for putting
    *  their title instead of saying 'title not set'"). */
   needsTitle?: boolean;
+  /** True when the workspace has a WhatsApp number and this person has not
+   *  connected a phone to their agent (Anir, Oct 1: "the user doesn't even
+   *  know that it exists"). */
+  needsPhone?: boolean;
   /**
    * GOAL RESULTS THAT NEED SOMEBODY (Anir, Aug 20: "It should say that this
    * guy's profile picture sent this thing back... This should show up at the
@@ -283,6 +287,7 @@ export function buildNotifications(input: {
     needsPasskey = false,
     needsTour = false,
     needsTitle = false,
+    needsPhone = false,
     performance = null,
   } = input;
   const custById = Object.fromEntries(customers.map((c) => [c.id, c]));
@@ -498,6 +503,23 @@ export function buildNotifications(input: {
       href: "/settings?tab=profile",
       ts: new Date(nowMs).toISOString(),
       stamp: "Not set up",
+    });
+  }
+  if (needsPhone) {
+    securityRows.push({
+      id: "setup-whatsapp",
+      type: "security",
+      title: "Connect your phone to your agent",
+      body: "Text your Freyr agent on WhatsApp. One scan connects it.",
+      subject: "Connect your phone to your agent",
+      chip: "Your agent",
+      mark: "phone",
+      detail: "Ask about deals, send files and get reminders, from WhatsApp.",
+      urgency: "today",
+      // Integrations, with the phone pop-up already open on top of it.
+      href: "/settings?tab=integrations&setup=phone",
+      ts: new Date(nowMs).toISOString(),
+      stamp: "Not connected",
     });
   }
   if (needsTitle) {

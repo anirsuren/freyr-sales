@@ -10,8 +10,12 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ProductTourOverlay } from "./ProductTourOverlay";
+import { OnboardingWelcome } from "./OnboardingWelcome";
+import { OnboardingFinish } from "./OnboardingFinish";
 import {
   ONBOARDING_START_EVENT,
+  requestNotificationsPanel,
+  requestNotificationsRefresh,
   type OnboardingStartDetail,
 } from "./productTourEvents";
 import type {
@@ -23,12 +27,15 @@ import { TOUR_VERSION } from "@/lib/onboarding";
 import {
   getProductTourSteps,
   localTourIndexForCatalogStep,
+  tourChaptersOf,
+  type TourFeatures,
 } from "@/lib/productTourCatalog";
 import {
   addMockModePrefix,
   isMockModePath,
   stripMockModePrefix,
 } from "@/lib/modeUrl";
+import { useCurrentUserOrNull } from "@/components/auth/CurrentUserProvider";
 
 export {
   ONBOARDING_START_EVENT,
@@ -37,6 +44,10 @@ export {
 
 type LoadPhase = "idle" | "loading" | "ready" | "error";
 type StartRequest = OnboardingStartDetail & { id: number };
+type Welcome = { restart: boolean; firstRun: boolean };
+
+/** How long the sidebar "press" plays before the page changes. */
+const PRESS_MS = 620;
 
 function isOnboardingState(value: unknown): value is OnboardingState {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -87,7 +98,12 @@ function routeMatches(route: string, pathname: string): boolean {
   if (typeof window === "undefined") return false;
   const expected = new URL(route, window.location.origin);
   const currentPath = stripMockModePrefix(pathname);
-  if (expected.pathname !== currentPath && !(expected.pathname === "/performance" && currentPath.startsWith("/performance/"))) return false;
+  // A module may open on one of its own sub-pages (/admin lands on
+  // /admin/members, /performance on /performance/people); that is arrival.
+  const arrived =
+    expected.pathname === currentPath ||
+    (expected.pathname !== "/" && currentPath.startsWith(`${expected.pathname}/`));
+  if (!arrived) return false;
   const current = new URLSearchParams(window.location.search);
   return Array.from(expected.searchParams.entries()).every(
     ([key, value]) => current.get(key) === value
@@ -102,6 +118,27 @@ function providerEnabled(pathname: string): boolean {
   );
 }
 
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * THE GUIDED TOUR, START TO FINISH (Anir, Oct 1: "It has to be the best
+ * onboarding process ever, very premium... You can't just go straight into
+ * it... go through all the steps... Depending on different privileges and
+ * roles, make sure that's all good too").
+ *
+ * 1. A welcome card first: who you are signed in as, the stops YOUR access
+ *    gets, Begin or Not now. A first sign-in shows it by itself; Settings and
+ *    the bell's "Take the guided walkthrough" open it on request.
+ * 2. The steps: the same role- and access-filtered list the server checks
+ *    pages against, plus the WhatsApp agent when the workspace has a number.
+ * 3. A closing card with the three best first moves.
+ *
+ * Progress is saved on every step, so a reload or a second tab resumes at the
+ * same screen. Skipping (the X, Escape, Skip tour) is saved too, and the bell
+ * keeps a "Take the guided walkthrough" row until the tour is finished.
+ */
 export function ProductTourProvider({
   offeringsOnly,
   autoStart = true,
@@ -113,9 +150,12 @@ export function ProductTourProvider({
 }) {
   const pathname = usePathname() || "";
   const router = useRouter();
+  const user = useCurrentUserOrNull();
+  const firstName = /^freyr user$/i.test(user?.name ?? "") ? "" : (user?.name ?? "").trim().split(/\s+/)[0] ?? "";
   const enabled = providerEnabled(pathname);
   const [phase, setPhase] = useState<LoadPhase>("idle");
   const [snapshot, setSnapshot] = useState<OnboardingResponse | null>(null);
+  const [features, setFeatures] = useState<TourFeatures | null>(null);
   const [active, setActive] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [localStep, setLocalStep] = useState(0);
@@ -123,12 +163,15 @@ export function ProductTourProvider({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [startRequest, setStartRequest] = useState<StartRequest | null>(null);
+  const [welcome, setWelcome] = useState<Welcome | null>(null);
+  const [finished, setFinished] = useState(false);
   const mountedRef = useRef(false);
   const loadInFlightRef = useRef(false);
   const hydratedRef = useRef(false);
   const requestIdRef = useRef(0);
   const tourSessionRef = useRef(0);
   const loadFailuresRef = useRef(0);
+  const pressTimerRef = useRef<number | undefined>(undefined);
 
   const steps = useMemo(
     () =>
@@ -136,9 +179,13 @@ export function ProductTourProvider({
         offeringsOnly,
         role: snapshot?.role,
         allowedRoutes: snapshot?.tourRoutes,
+        features: features ?? {},
       }),
-    [offeringsOnly, snapshot?.role, snapshot?.tourRoutes]
+    [features, offeringsOnly, snapshot?.role, snapshot?.tourRoutes]
   );
+  const chapters = useMemo(() => tourChaptersOf(steps), [steps]);
+  const home = steps.find((step) => step.global)?.route ?? "/offerings";
+  const homeName = steps.find((step) => step.global)?.pageName ?? "Offerings";
 
   const navigateTo = useCallback(
     (route: string) => {
@@ -153,18 +200,37 @@ export function ProductTourProvider({
     [pathname, router]
   );
 
+  /* Whether the workspace has a WhatsApp number decides the WhatsApp stop.
+     Asked once per load; a failure leaves the stop out rather than showing a
+     button that cannot work. */
+  const loadFeatures = useCallback(async () => {
+    try {
+      const response = await fetch("/api/profile/whatsapp", {
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000),
+      });
+      const body = response.ok ? ((await response.json()) as { configured?: boolean }) : null;
+      if (mountedRef.current) setFeatures({ whatsapp: !!body?.configured });
+    } catch {
+      if (mountedRef.current) setFeatures({ whatsapp: false });
+    }
+  }, []);
+
   const loadOnboarding = useCallback(async () => {
     if (loadInFlightRef.current) return;
     loadInFlightRef.current = true;
     if (mountedRef.current) setPhase("loading");
     try {
-      const response = await fetch("/api/onboarding", {
-        method: "GET",
-        signal: AbortSignal.timeout(15000),
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: { Accept: "application/json" },
-      });
+      const [response] = await Promise.all([
+        fetch("/api/onboarding", {
+          method: "GET",
+          signal: AbortSignal.timeout(15000),
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        }),
+        loadFeatures(),
+      ]);
       if (!response.ok) {
         throw await responseError(response, "The product tour is unavailable.");
       }
@@ -184,7 +250,7 @@ export function ProductTourProvider({
     } finally {
       loadInFlightRef.current = false;
     }
-  }, []);
+  }, [loadFeatures]);
 
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   const patchOnboarding = useCallback(
@@ -222,12 +288,20 @@ export function ProductTourProvider({
     []
   );
 
+  const cancelPress = useCallback(() => {
+    if (pressTimerRef.current !== undefined) {
+      window.clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = undefined;
+    }
+  }, []);
+
   const beginTour = useCallback(
     async (restart = false) => {
       if (!snapshot || steps.length === 0) {
         return;
       }
 
+      cancelPress();
       const session = ++tourSessionRef.current;
       hydratedRef.current = true;
       const reset =
@@ -243,6 +317,7 @@ export function ProductTourProvider({
           : 0;
       const nextStep = steps[nextLocalStep];
 
+      setFinished(false);
       setPendingStep(null);
       setLocalStep(nextLocalStep);
       setLaunching(true);
@@ -274,18 +349,34 @@ export function ProductTourProvider({
           );
         }
       } finally {
-          if (mountedRef.current && session === tourSessionRef.current) setSaving(false);
+        if (mountedRef.current && session === tourSessionRef.current) setSaving(false);
       }
     },
-    [navigateTo, patchOnboarding, snapshot, steps]
+    [cancelPress, navigateTo, patchOnboarding, snapshot, steps]
   );
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      if (pressTimerRef.current !== undefined) window.clearTimeout(pressTimerRef.current);
     };
   }, []);
+
+  /* A link can ask for the tour: /onboarding and the bell's "Take the guided
+     walkthrough" land on ?onboarding=start, which opens the welcome card and
+     then tidies the address bar. */
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("onboarding") !== "start") return;
+    url.searchParams.delete("onboarding");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    requestIdRef.current += 1;
+    loadFailuresRef.current = 0;
+    setStartRequest({ id: requestIdRef.current, restart: true });
+    setPhase((current) => (current === "error" ? "idle" : current));
+  }, [enabled, pathname]);
 
   useEffect(() => {
     // Durable tour state is an authenticated feature. The unauthenticated
@@ -327,13 +418,19 @@ export function ProductTourProvider({
     const handleStart = (event: Event) => {
       const detail = (event as CustomEvent<OnboardingStartDetail>).detail;
       // Discard the previous tour before processing a new launch request.
+      if (pressTimerRef.current !== undefined) {
+        window.clearTimeout(pressTimerRef.current);
+        pressTimerRef.current = undefined;
+      }
       setActive(false);
+      setFinished(false);
       setPendingStep(null);
       requestIdRef.current += 1;
       loadFailuresRef.current = 0;
       setStartRequest({
         id: requestIdRef.current,
         restart: detail?.restart === true,
+        skipWelcome: detail?.skipWelcome === true,
       });
       setPhase((current) => (current === "error" ? "idle" : current));
     };
@@ -342,19 +439,23 @@ export function ProductTourProvider({
       window.removeEventListener(ONBOARDING_START_EVENT, handleStart);
   }, []);
 
-  // Explicit launch requests take precedence over first-use hydration.
+  // Explicit launch requests take precedence over first-use hydration. They
+  // open the welcome card unless the caller asked to go straight in.
   useEffect(() => {
-    if (!startRequest || phase !== "ready" || !snapshot) return;
+    if (!startRequest || phase !== "ready" || !snapshot || !features) return;
     const request = startRequest;
     setStartRequest(null);
-    void beginTour(request.restart);
-  }, [beginTour, phase, snapshot, startRequest]);
+    hydratedRef.current = true;
+    if (request.skipWelcome) void beginTour(request.restart);
+    else setWelcome({ restart: request.restart === true, firstRun: false });
+  }, [beginTour, features, phase, snapshot, startRequest]);
 
   useEffect(() => {
     if (
       hydratedRef.current ||
       phase !== "ready" ||
       !snapshot ||
+      !features ||
       steps.length === 0 ||
       startRequest
     ) {
@@ -375,19 +476,16 @@ export function ProductTourProvider({
       return;
     }
 
-    // Completed tours stay completed. Catalog indexes identify features, not
-    // display positions, so comparing the final index to a maximum would
-    // restart the reordered tour on the next visit.
+    // Completed tours stay completed. A first sign-in meets the welcome card,
+    // never a spotlight out of nowhere (Anir, Oct 1: "You can't just go
+    // straight into it").
     if (autoStart && snapshot.state.status === "not_started") {
-      hydratedRef.current = false;
-      void beginTour(false);
+      setWelcome({ restart: false, firstRun: true });
     }
   }, [
     autoStart,
-    beginTour,
+    features,
     navigateTo,
-    offeringsOnly,
-    pathname,
     phase,
     snapshot,
     startRequest,
@@ -422,19 +520,26 @@ export function ProductTourProvider({
           );
         }
       } finally {
-          if (mountedRef.current && session === tourSessionRef.current) setSaving(false);
+        if (mountedRef.current && session === tourSessionRef.current) setSaving(false);
       }
     },
     [navigateTo, patchOnboarding, steps]
   );
 
+  const closeTourChrome = useCallback(() => {
+    requestNotificationsPanel(false);
+  }, []);
+
   const finishTour = useCallback(async () => {
     const step = steps[localStep];
     if (!step) return;
+    cancelPress();
     const session = ++tourSessionRef.current;
     setSnapshot(previous => previous ? { ...previous, state: { ...previous.state, status: "completed", currentStep: step.catalogIndex } } : previous);
     setPendingStep(null);
     setActive(false);
+    setFinished(true);
+    closeTourChrome();
     setSaving(true);
     setError(null);
     try {
@@ -442,6 +547,8 @@ export function ProductTourProvider({
         action: "complete",
         currentStep: step.catalogIndex,
       });
+      // The bell's "Take the guided walkthrough" row goes with it.
+      requestNotificationsRefresh();
     } catch (cause) {
       if (mountedRef.current && session === tourSessionRef.current) {
         setError(
@@ -453,15 +560,17 @@ export function ProductTourProvider({
     } finally {
       if (mountedRef.current && session === tourSessionRef.current) setSaving(false);
     }
-  }, [localStep, patchOnboarding, steps]);
+  }, [cancelPress, closeTourChrome, localStep, patchOnboarding, steps]);
 
   const skipTour = useCallback(async () => {
     const step = steps[localStep];
     if (!step) return;
+    cancelPress();
     const session = ++tourSessionRef.current;
     setSnapshot(previous => previous ? { ...previous, state: { ...previous.state, status: "skipped", currentStep: step.catalogIndex } } : previous);
     setPendingStep(null);
     setActive(false);
+    closeTourChrome();
     setSaving(true);
     setError(null);
     try {
@@ -480,33 +589,56 @@ export function ProductTourProvider({
     } finally {
       if (mountedRef.current && session === tourSessionRef.current) setSaving(false);
     }
-  }, [localStep, patchOnboarding, steps]);
+  }, [cancelPress, closeTourChrome, localStep, patchOnboarding, steps]);
+
+  /* "Not now" on the welcome card. On a first sign-in it is saved as skipped,
+     so the card does not come back on every page; the bell keeps the
+     walkthrough row until it is taken. Declining a tour somebody asked for
+     changes nothing. */
+  const declineWelcome = useCallback(() => {
+    const current = welcome;
+    setWelcome(null);
+    if (!current?.firstRun) return;
+    setSnapshot(previous => previous ? { ...previous, state: { ...previous.state, status: "skipped" } } : previous);
+    void patchOnboarding({ action: "skip", currentStep: steps[0]?.catalogIndex ?? 0 }).catch(() => undefined);
+  }, [patchOnboarding, steps, welcome]);
+
+  const acceptWelcome = useCallback(() => {
+    const current = welcome;
+    setWelcome(null);
+    void beginTour(current?.restart ?? false);
+  }, [beginTour, welcome]);
 
   const retry = useCallback(() => {
     void persistLocalStep(localStep);
   }, [localStep, persistLocalStep]);
 
-  const requestStep = (next: number) => {
-    const index = clamp(next, 0, steps.length - 1);
-    const destination = steps[index];
-    if (!destination) return;
-    if (!routeMatches(destination.route, pathname)) {
-      // Stay on the current page until the person confirms the highlighted
-      // destination. Only confirmation changes the URL or saved progress.
+  /* One click per step. A step on another page first plays the press on the
+     sidebar entry (Anir, Sep 6: "show that we're clicking on this on the left
+     side"), then changes the page. Back during the press cancels it. */
+  const requestStep = useCallback(
+    (next: number) => {
+      const index = clamp(next, 0, steps.length - 1);
+      const destination = steps[index];
+      if (!destination) return;
+      cancelPress();
+      if (routeMatches(destination.route, pathname)) {
+        void persistLocalStep(index);
+        return;
+      }
       setPendingStep(index);
-    } else {
-      void persistLocalStep(index);
-    }
-  };
+      pressTimerRef.current = window.setTimeout(() => {
+        pressTimerRef.current = undefined;
+        void persistLocalStep(index);
+      }, prefersReducedMotion() ? 0 : PRESS_MS);
+    },
+    [cancelPress, pathname, persistLocalStep, steps]
+  );
 
   const currentStep = steps[localStep];
   const displayedStep = pendingStep === null ? currentStep : steps[pendingStep];
   const currentRoute = currentStep?.route || null;
-  // The URL is the source of truth. Keeping a second, cached "ready route"
-  // allowed the transition card to remain open even after the destination had
-  // visibly loaded (for example: "Opening Dashboard…" while already on
-  // /dashboard). A pathname change already re-renders this provider, so the
-  // current route can be checked directly.
+  // The URL is the source of truth for "has the page arrived".
   const [, refreshLocation] = useState(0);
   const routeReady = !!currentRoute && routeMatches(currentRoute, pathname);
   useEffect(() => {
@@ -520,9 +652,20 @@ export function ProductTourProvider({
     return () => window.clearInterval(timer);
   }, [active, currentRoute, routeReady]);
 
-  // Warm adjacent destinations while the current step is being read. Several
-  // introductory steps share one route; skip those instead of prefetching nothing.
-  // Resolve the URL exactly as navigateTo does, including the mock-mode prefix.
+  /* The notifications step opens the bell's panel and the next step closes
+     it again, so the panel is never left hanging open after the tour. */
+  const showingNotifications =
+    active &&
+    pendingStep === null &&
+    routeReady &&
+    currentStep?.enter === "open-notifications";
+  useEffect(() => {
+    if (!showingNotifications) return;
+    requestNotificationsPanel(true);
+    return () => requestNotificationsPanel(false);
+  }, [showingNotifications]);
+
+  // Warm adjacent destinations while the current step is being read.
   useEffect(() => {
     if (!active) return;
     const next = steps.slice(localStep + 1).find(step => step.route !== currentRoute);
@@ -558,21 +701,36 @@ export function ProductTourProvider({
           <button type="button" className="mt-3 font-semibold text-blue-primary" onClick={() => { loadFailuresRef.current = 0; setPhase("idle"); }}>Retry tour</button>
         </div>
       )}
+      {welcome && steps.length > 0 && (
+        <OnboardingWelcome
+          steps={steps}
+          role={snapshot?.role}
+          firstName={firstName}
+          returning={!welcome.firstRun && snapshot?.state.status !== "not_started"}
+          onBegin={acceptWelcome}
+          onDismiss={declineWelcome}
+        />
+      )}
       {active && displayedStep && !startRequest && (!launching || routeReady) && (
         <ProductTourOverlay
           step={displayedStep}
           currentStep={pendingStep ?? localStep}
           totalSteps={steps.length}
+          chapters={chapters}
           routeReady={routeReady}
           awaitingNavigation={pendingStep !== null}
           saving={saving}
           error={error}
           onBack={() => {
-            if (pendingStep !== null) setPendingStep(null);
-            else requestStep(localStep - 1);
+            if (pendingStep !== null) {
+              cancelPress();
+              setPendingStep(null);
+            } else requestStep(localStep - 1);
           }}
           onNext={() => {
             if (pendingStep !== null) {
+              // A second press while the first plays: go now.
+              cancelPress();
               void persistLocalStep(pendingStep);
             } else if (!routeReady) {
               navigateTo(currentStep.route);
@@ -582,8 +740,21 @@ export function ProductTourProvider({
               requestStep(localStep + 1);
             }
           }}
+          onJump={(index) => {
+            if (index === localStep && pendingStep === null) return;
+            requestStep(index);
+          }}
           onSkip={() => void skipTour()}
           onRetry={retry}
+        />
+      )}
+      {finished && (
+        <OnboardingFinish
+          firstName={firstName}
+          home={home}
+          homeName={homeName}
+          canOpenAgent={!snapshot?.tourRoutes || snapshot.tourRoutes.includes("/agent")}
+          onClose={() => setFinished(false)}
         />
       )}
     </>

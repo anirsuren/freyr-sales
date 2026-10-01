@@ -1556,6 +1556,7 @@ export function AgentDock({
         <button
           ref={launcherRef}
           data-agent-dock-launcher
+          data-tour="agent-dock"
           onClick={() => onOpenChange(!open)}
           aria-label={open ? "Close your agent" : "Open your agent"}
           className={cn(

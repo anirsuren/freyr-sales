@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FlaskConical } from "lucide-react";
 import { Sidebar } from "./Sidebar";
@@ -16,6 +16,7 @@ import type { PerformanceRoom } from "@/lib/performanceShared";
 import { isOfferingsOnly, isReleased, isReleasedOnly, isReleasedPath } from "@/lib/release";
 import { HOVER_HINT_DELAY_MS } from "@/lib/hoverPreferences";
 import { AutoTruncationTooltip } from "@/components/ui/AutoTruncationTooltip";
+import { PhoneSetupDialog } from "@/components/onboarding/PhoneSetupDialog";
 import { ProductTourProvider } from "@/components/onboarding/ProductTourProvider";
 import {
   CurrentUserProvider,
@@ -141,6 +142,16 @@ export function AppShell({
     pathname === "/auth/reset-password" ||
     pathname === "/access-pending";
   const restrictedPath = !standalonePublicPath && !isReleasedPath(pathname, dataMode);
+  /* ?setup=phone OPENS THE PHONE POP-UP ON ANY PAGE: the bell's "Connect
+     your phone" row links here. The guided tour introduces the WhatsApp
+     agent itself (Anir, Oct 1), so a new account no longer meets a separate
+     phone pop-up before the tour. */
+  const phoneSetupRequested = searchParams?.get("setup") === "phone";
+  const closePhoneSetup = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("setup");
+    router.replace(url.pathname + url.search);
+  }, [router]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const agentHiddenStorageKey = userScopedStorageKey(
@@ -586,6 +597,7 @@ export function AppShell({
           offeringsOnly={offeringsOnly}
         />
         )}
+        {phoneSetupRequested && <PhoneSetupDialog mode="settings" onClose={closePhoneSetup} />}
         <ProductTourProvider
           offeringsOnly={releasedOnly}
           // Mock mode is a review workspace. Opening a pasted mock link must

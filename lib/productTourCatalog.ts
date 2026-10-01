@@ -2,7 +2,35 @@ import { normalizeWorkspaceRole, type WorkspaceRole } from "./accessControl";
 import { canAccessModule } from "./moduleAccess";
 
 export type ProductTourPlacement = "auto" | "bottom" | "left" | "right" | "top";
-export type ProductTourStepKind = "feature" | "navigation" | "mode";
+/**
+ * feature: a highlight on the page. navigation: the sidebar. mode: the Real /
+ * Mock switch. showcase: no highlight, a large centred card with its own
+ * visual (the WhatsApp agent).
+ */
+export type ProductTourStepKind = "feature" | "navigation" | "mode" | "showcase";
+
+/**
+ * THE TOUR IN CHAPTERS (Anir, Oct 1: "go through all the steps. Make sure
+ * you're not forgetting anything"). A long tour reads as a list; chapters give
+ * it a shape, and the progress bar is drawn per chapter so a person can see
+ * where they are and jump ahead.
+ */
+export const TOUR_CHAPTERS = [
+  "Getting around",
+  "Your agent",
+  "Knowledge",
+  "Selling",
+  "Performance",
+  "Your team",
+  "Settings",
+] as const;
+export type TourChapter = (typeof TOUR_CHAPTERS)[number];
+
+/** Workspace features a step can depend on, answered at tour start. */
+export type TourFeatures = {
+  /** The workspace has a WhatsApp number people can connect to. */
+  whatsapp?: boolean;
+};
 
 export type ProductTourStep = {
   /** Stable, zero-based index persisted by the onboarding API. */
@@ -10,25 +38,37 @@ export type ProductTourStep = {
   id: string;
   route: string;
   kind: ProductTourStepKind;
+  chapter: TourChapter;
   eyebrow: string;
   title: string;
   description: string;
+  /** The same screen does a different job for some roles; say that job. */
+  roleDescriptions?: Partial<Record<WorkspaceRole, string>>;
   targets: readonly string[];
   /** What this screen is called, for the "Open X" label on the previous step. */
   pageName: string;
   nextLabel?: string;
   placement?: ProductTourPlacement;
+  /** Who the step was written for. Documentation; access decides inclusion. */
   roles?: readonly WorkspaceRole[];
+  /** Only these roles get the step, even where the route is open to all. */
+  onlyFor?: readonly WorkspaceRole[];
+  /** App-wide chrome: always offered, and shown on the person's home page. */
+  global?: boolean;
+  /** Offered only when the workspace has this switched on. */
+  requires?: keyof TourFeatures;
+  /** Something the tour does when the step opens. */
+  enter?: "open-notifications";
   availableInOfferingsOnly?: boolean;
   offeringsOnlyRoute?: string;
 };
 
 type ProductTourStepDefinition = Omit<ProductTourStep, "catalogIndex">;
 
-const ALL_ROLES: readonly WorkspaceRole[] = ["bd_member", "bd_owner", "admin"];
+const ALL_ROLES: readonly WorkspaceRole[] = ["bd_member", "bd_owner", "admin", "sol_member"];
 /** FDL Components, Customers, Reports, Performance and Market Intel are a
- *  manager-and-admin job (lib/moduleAccess). A rep must never be walked to a
- *  page they cannot open. */
+ *  manager-and-admin job by default (lib/moduleAccess). The route check below
+ *  decides inclusion; a person is never walked to a page they cannot open. */
 const MANAGERS: readonly WorkspaceRole[] = ["bd_owner", "admin"];
 
 /** Page overviews have one stable frame; never flash a smaller control while
@@ -37,47 +77,41 @@ function pageTargets(_primary: readonly string[] = []): readonly string[] {
   return ['[data-tour="page-content"]', "#main-content"];
 }
 
+/** A specific card first, the page frame when that card is not there. */
+function cardTargets(selector: string): readonly string[] {
+  return [selector, '[data-tour="page-content"]', "#main-content"];
+}
+
 /**
  * THE TOUR WALKS THE APP THAT EXISTS (Anir, Aug 13: "your entire guided
  * walkthrough is wrong… this is not showing anything… why is it only five
- * steps, bro?").
+ * steps, bro?"), and ALL of it (Oct 1: "You didn't even cover any of the
+ * settings", "the user doesn't even know that it [the WhatsApp agent]
+ * exists").
  *
- * Two things were wrong, and they had the same cause: the tour was written for
- * an older app. It walked people through Pipeline, Forecast, Contacts,
- * Sessions, Sequences, Campaigns, Voice, Tasks and Analytics — none of which
- * are released — and only five of its steps survived the release filter. It
- * also never mentioned FDL Components, Customers, Reports, Performance or
- * Market Intel, which are the modules people actually open. One step targeted
- * an element (`create-new`) that does not exist anywhere in the app, so its
- * highlight fell back to outlining the whole screen.
+ * One step per real screen, in the order a person meets them. Settings is not
+ * in the sidebar (it lives in the account menu), so its steps open from there.
  *
- * It now has one step per real screen, in the order you meet them, and no
- * filler: the old catalogue alternated "Open Team" cards with "Team" cards,
- * which doubled the length and said everything twice. Moving to the next screen
- * is what the Next button already does — so Next simply says where it goes.
+ * Persisted progress is the index in this list, so steps are only ever
+ * APPENDED: inserting one in the middle would move everybody's saved place.
+ * Display order is TOUR_DISPLAY_ORDER below.
  *
- * SETTINGS IS NOT IN THE SIDEBAR (Anir: "why are you saying 'open settings'?
- * The settings are up top in the top right"). It never was — it lives in the
- * account menu — so the old "Open Settings" step highlighted the sidebar and
- * pointed at nothing. The account menu is now its own step, taught up front
- * where you first look, and the Settings steps simply follow.
- *
- * Copy rule for every step below: one plain sentence a salesperson would say
- * out loud. No "leverage", no "workflow", no narrating what the reader can see.
+ * Copy rule for every step: one or two plain sentences a salesperson would
+ * say out loud. No "leverage", no "workflow", no narrating what is on screen.
  */
 const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
   {
     id: "top-search",
-    // Global chrome exists on every module. Start on Offerings because every
-    // approved workspace user can open it, while custom access profiles may
-    // legitimately deny Dashboard and redirect it back here.
+    // Global chrome exists on every module. It opens on the person's home
+    // page: Offerings for most, whatever they can open for the rest.
     route: "/offerings",
     kind: "feature",
+    chapter: "Getting around",
     pageName: "the app",
     eyebrow: "Top bar",
     title: "Search from anywhere",
     description:
-      "Type a company, a person, or the name of a page. Press Enter and the assistant answers instead.",
+      "Type a company, a person or the name of a page. Press Enter and the agent answers instead.",
     targets: [
       '[data-tour="global-search"]',
       '[data-tour="topbar"]',
@@ -85,59 +119,79 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     ],
     placement: "bottom",
     roles: ALL_ROLES,
+    global: true,
     availableInOfferingsOnly: true,
   },
   {
     id: "account-menu",
     route: "/offerings",
     kind: "feature",
+    chapter: "Getting around",
     pageName: "your account",
     eyebrow: "Top right",
     title: "Your account lives here",
     description:
-      "Settings, light or dark, switching to another account, and signing out. This is where Settings is. Not the sidebar.",
+      "Settings, light or dark mode and signing out are all in this menu. Settings is here, not in the sidebar.",
     targets: ['[data-tour="account-menu"]', '[data-tour="topbar"]'],
     placement: "bottom",
     roles: ALL_ROLES,
+    global: true,
     availableInOfferingsOnly: true,
   },
   {
     id: "notifications-bell",
     route: "/offerings",
     kind: "feature",
+    chapter: "Getting around",
     pageName: "notifications",
-    eyebrow: "Top bar",
+    eyebrow: "Notifications",
     title: "Anything waiting on you",
     description:
-      "Right now that means two things: finish this walkthrough, and set up Touch ID so you can sign in with your fingerprint.",
-    targets: ['[data-tour="notifications"]', '[data-tour="topbar"]'],
-    placement: "bottom",
+      "Setup steps, results sent back to you and approvals you owe land here. Each one clears itself once it is done.",
+    // The bell's panel opens for this step (Anir, Oct 1: "The notifications
+    // didn't even load until I clicked on it"): show what is in it, not the
+    // closed bell.
+    targets: [
+      '[data-tour="notifications-panel"]',
+      '[data-tour="notifications"]',
+      '[data-tour="topbar"]',
+    ],
+    placement: "left",
     roles: ALL_ROLES,
+    global: true,
+    enter: "open-notifications",
     availableInOfferingsOnly: true,
   },
   {
     id: "sidebar-modules",
     route: "/offerings",
     kind: "navigation",
+    chapter: "Getting around",
     pageName: "the menu",
     eyebrow: "Left side",
     title: "Everything you can open",
     description:
-      "The whole app is in this list, and it only shows what your account is allowed to open.",
+      "Every module your account can use, grouped by what it is for. If something is not here, your account does not have it yet.",
+    roleDescriptions: {
+      admin:
+        "Every module in the app, grouped by what it is for. As an admin you see all of them; everyone else sees only what their access allows.",
+    },
     targets: ['[data-tour="sidebar"]', "#main-content"],
     placement: "right",
     roles: ALL_ROLES,
+    global: true,
     availableInOfferingsOnly: true,
   },
   {
     id: "offerings-browser",
     route: "/offerings",
     kind: "feature",
+    chapter: "Knowledge",
     pageName: "Offerings",
     eyebrow: "Offerings",
     title: "Everything Freyr sells",
     description:
-      "The approved catalogue. Search it, narrow it by category or customer type, and open one to read the pitch and download the sales material.",
+      "The approved catalogue. Search it, filter by category or customer type, and open one for the pitch and the sales material.",
     targets: pageTargets([
       'input[aria-label="Search offerings"]',
       'input[placeholder="Search offerings…"]',
@@ -150,11 +204,12 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "agent-workspace",
     route: "/agent",
     kind: "feature",
-    pageName: "the assistant",
-    eyebrow: "Assistant",
+    chapter: "Your agent",
+    pageName: "Agent",
+    eyebrow: "The Agent page",
     title: "Ask instead of hunting",
     description:
-      "It has read the catalogue and the material uploaded to it. Ask what fits a customer, or what an offering actually does.",
+      "Ask about any customer, deal or offering. Drop in a PDF, a deck, a spreadsheet or a recording and it reads it. Ask it to draft an email, log a call or set a reminder, and it does it once you say yes.",
     targets: pageTargets([
       'textarea[aria-label="Message the agent"]',
       '[data-tour="agent-workspace"]',
@@ -166,6 +221,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "components-browser",
     route: "/components",
     kind: "feature",
+    chapter: "Knowledge",
     pageName: "FDL Components",
     eyebrow: "FDL Components",
     title: "The parts offerings are built from",
@@ -180,11 +236,16 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "customers-browser",
     route: "/customers",
     kind: "feature",
+    chapter: "Selling",
     pageName: "Customers",
     eyebrow: "Customers",
     title: "Every account in one place",
     description:
-      "Open an account to see its people, the offerings it already runs, and what happened the last time anyone spoke to them.",
+      "Open an account for its people, the offerings it already runs, its account plan and the last time anyone spoke to them.",
+    roleDescriptions: {
+      bd_member:
+        "Open an account for its people, the offerings it runs and the last time anyone spoke to them. The accounts you are part of are yours to update.",
+    },
     targets: pageTargets([
       'input[placeholder="Search customers…"]',
       'input[placeholder="Search customers..."]',
@@ -197,11 +258,12 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "team-roster",
     route: "/team",
     kind: "feature",
+    chapter: "Your team",
     pageName: "Team",
     eyebrow: "Team",
     title: "Who else is in here",
     description:
-      "Everyone with an account, what they are allowed to do, and how to reach them. Message anyone on Teams straight from their row.",
+      "Everyone with an account, what they do and how to reach them. Message anyone on Teams straight from their row.",
     targets: pageTargets(['input[placeholder="Search the floor…"]']),
     placement: "bottom",
     roles: ALL_ROLES,
@@ -211,11 +273,12 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "reports-revenue",
     route: "/reports",
     kind: "feature",
+    chapter: "Performance",
     pageName: "Reports",
     eyebrow: "Reports",
     title: "What each offering earns",
     description:
-      "Revenue by offering and contract type, when things come up for renewal, and the accounts sitting behind every number.",
+      "Revenue by offering and contract type, what comes up for renewal, and the accounts behind every number.",
     targets: pageTargets(),
     roles: MANAGERS,
     availableInOfferingsOnly: true,
@@ -224,11 +287,18 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "performance-goals",
     route: "/performance",
     kind: "feature",
+    chapter: "Performance",
     pageName: "Goals",
     eyebrow: "Goals",
     title: "Goals and how they are tracking",
     description:
-      "The goals the company set, who owns each one, and the numbers against them. Empty until targets are filled in. Nothing here is guessed.",
+      "The goals the company set, who carries each one, and the numbers against them. Nothing here is guessed: a result counts once it is verified.",
+    roleDescriptions: {
+      bd_member:
+        "Your goals, the results you log against them, and which ones are verified. A result counts once your group owner signs it off.",
+      bd_owner:
+        "Your group's goals, who carries each one, and the results waiting for your sign-off.",
+    },
     targets: pageTargets(['input[placeholder^="Search goals"]']),
     placement: "bottom",
     roles: MANAGERS,
@@ -238,11 +308,12 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "market-intel",
     route: "/market-intel",
     kind: "feature",
+    chapter: "Knowledge",
     pageName: "Market Intel",
     eyebrow: "Market Intel",
-    title: "What competitors are up to",
+    title: "What customers and competitors are up to",
     description:
-      "Follow customers, competitors and market updates. Search and filter tracked companies, then open a briefing for posts, news and signals.",
+      "Follow the companies that matter to you. Each briefing gathers their posts, news and signals in one place, refreshed every day.",
     targets: pageTargets(['input[placeholder^="Search customers or people"]']),
     placement: "bottom",
     roles: MANAGERS,
@@ -252,16 +323,13 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "settings-mock-mode",
     route: "/settings?tab=workspace",
     kind: "mode",
+    chapter: "Settings",
     pageName: "Settings",
-    eyebrow: "Settings",
-    title: "Finished, or still being built",
+    eyebrow: "Settings · Workspace",
+    title: "Real data, or the practice copy",
     description:
-      "The app ships in stages. This switch opens the complete review workspace so you can inspect every workflow without changing the released workspace.",
-    targets: pageTargets([
-      '[data-tour="settings-data-mode"]',
-      'div[aria-label="Workspace data mode"]',
-      'button[role="switch"][aria-label="Switch between real mode and mock mode"]',
-    ]),
+      "Real is your company's live data. Mock is a complete practice copy: try anything there and nothing real changes. Switch back whenever you like.",
+    targets: cardTargets('[data-tour="settings-data-mode"]'),
     roles: ALL_ROLES,
     availableInOfferingsOnly: true,
   },
@@ -269,15 +337,13 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "settings-replay",
     route: "/settings?tab=workspace",
     kind: "feature",
+    chapter: "Settings",
     pageName: "Settings",
-    eyebrow: "Settings",
-    title: "Run this again whenever",
+    eyebrow: "Settings · Workspace",
+    title: "Take this tour again any time",
     description:
-      "The walkthrough lives here. Nothing to remember. Come back and start it again any time.",
-    targets: pageTargets([
-      '[data-tour="settings-product-tour"]',
-      'a[href="/onboarding"]',
-    ]),
+      "The tour lives here. Come back whenever you want a refresher; it adapts to whatever your account can open by then.",
+    targets: cardTargets('[data-tour="settings-product-tour"]'),
     roles: ALL_ROLES,
     availableInOfferingsOnly: true,
   },
@@ -291,6 +357,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "pipeline-board",
     route: "/pipeline",
     kind: "feature",
+    chapter: "Selling",
     pageName: "Pipeline",
     eyebrow: "Pipeline",
     title: "Every open deal, by stage",
@@ -306,6 +373,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "forecast-summary",
     route: "/forecast",
     kind: "feature",
+    chapter: "Selling",
     pageName: "Forecast",
     eyebrow: "Forecast",
     title: "What is likely to land",
@@ -318,6 +386,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "contacts-browser",
     route: "/contacts",
     kind: "feature",
+    chapter: "Selling",
     pageName: "Contacts",
     eyebrow: "Contacts",
     title: "The people you sell to",
@@ -334,6 +403,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "sessions-browser",
     route: "/sessions",
     kind: "feature",
+    chapter: "Selling",
     pageName: "Sessions",
     eyebrow: "Sessions",
     title: "Every pitch you have run",
@@ -350,6 +420,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "sequences-timeline",
     route: "/sequences",
     kind: "feature",
+    chapter: "Selling",
     pageName: "Sequences",
     eyebrow: "Sequences",
     title: "Follow-up that does not get forgotten",
@@ -362,6 +433,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "campaigns-workflow",
     route: "/campaigns",
     kind: "feature",
+    chapter: "Selling",
     pageName: "Campaigns",
     eyebrow: "Campaigns",
     title: "One message, many accounts",
@@ -374,6 +446,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "voice-overview",
     route: "/voice",
     kind: "feature",
+    chapter: "Selling",
     pageName: "Voice agents",
     eyebrow: "Voice agents",
     title: "Calls made for you",
@@ -386,6 +459,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "tasks-queue",
     route: "/tasks",
     kind: "feature",
+    chapter: "Selling",
     pageName: "To-do",
     eyebrow: "To-do",
     title: "The next thing to do",
@@ -401,6 +475,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "analytics-growth",
     route: "/analytics",
     kind: "feature",
+    chapter: "Performance",
     pageName: "Analytics",
     eyebrow: "Analytics",
     title: "How the whole funnel is doing",
@@ -413,6 +488,7 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
     id: "activity-feed",
     route: "/activity",
     kind: "feature",
+    chapter: "Performance",
     pageName: "Activity",
     eyebrow: "Activity",
     title: "Everything that happened",
@@ -424,18 +500,202 @@ const PRODUCT_TOUR_STEP_DEFINITIONS: readonly ProductTourStepDefinition[] = [
 ];
 
 const SOLUTIONING_TOUR_STEP: ProductTourStepDefinition = {
-  id: "solutioning-requests", route: "/solutioning", kind: "feature",
-  pageName: "Solutioning", eyebrow: "Solutioning", title: "Your solutioning requests",
-  description: "Find submissions, presentations and meetings here. Open a request to see the brief, documents and latest activity.",
+  id: "solutioning-requests",
+  route: "/solutioning",
+  kind: "feature",
+  chapter: "Selling",
+  pageName: "Solutioning",
+  eyebrow: "Solutioning",
+  title: "Requests for the solutions team",
+  description:
+    "Ask for a submission, a presentation or a meeting. Each request carries its brief, its documents and who is working on what.",
+  roleDescriptions: {
+    sol_member:
+      "Submissions, presentations and meetings people have asked your team for. Open a request for the brief, the documents and the latest activity.",
+  },
   targets: pageTargets(['input[placeholder^="Search solutioning"]']),
-  roles: ["admin", "sol_member"], availableInOfferingsOnly: true, placement: "bottom",
+  roles: ["admin", "sol_member"],
+  availableInOfferingsOnly: true,
+  placement: "bottom",
 };
 
-export const PRODUCT_TOUR_STEPS: readonly ProductTourStep[] =
-  [...PRODUCT_TOUR_STEP_DEFINITIONS, SOLUTIONING_TOUR_STEP].map((step, catalogIndex) => ({
-    ...step,
-    catalogIndex,
-  }));
+/**
+ * ADDED OCT 1. Appended after everything above so saved progress keeps
+ * pointing at the same screens. Where each one APPEARS is TOUR_DISPLAY_ORDER.
+ */
+const ADDED_TOUR_STEPS: readonly ProductTourStepDefinition[] = [
+  {
+    id: "agent-dock",
+    route: "/offerings",
+    kind: "feature",
+    chapter: "Your agent",
+    pageName: "the agent bubble",
+    eyebrow: "The agent bubble",
+    title: "It follows you to every page",
+    description:
+      "This bubble opens the agent wherever you are, and it already knows which customer, deal or offering you are looking at.",
+    targets: ['[data-tour="agent-dock"]'],
+    placement: "left",
+    roles: ALL_ROLES,
+    global: true,
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "whatsapp-agent",
+    route: "/offerings",
+    kind: "showcase",
+    chapter: "Your agent",
+    pageName: "WhatsApp",
+    eyebrow: "Your agent on WhatsApp",
+    title: "And it lives in your pocket",
+    description:
+      "Text your agent from your own phone. Ask about a deal on the way to a meeting, send a voice note or a PDF, and get reminders at the minute you set. It answers with your access, nothing more.",
+    targets: [],
+    roles: ALL_ROLES,
+    global: true,
+    requires: "whatsapp",
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "leads-board",
+    route: "/leads",
+    kind: "feature",
+    chapter: "Selling",
+    pageName: "Leads",
+    eyebrow: "Leads",
+    title: "New interest starts here",
+    description:
+      "Every lead, where it came from and who is on it. Qualify the good ones and they become opportunities.",
+    targets: pageTargets(),
+    roles: ALL_ROLES,
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "opportunities-browser",
+    route: "/opportunities",
+    kind: "feature",
+    chapter: "Selling",
+    pageName: "Opportunities",
+    eyebrow: "Opportunities",
+    title: "The deals in play",
+    description:
+      "Each deal carries its customer, offering, value, stage and revenue schedule. Open one for its people, meetings and activity.",
+    roleDescriptions: {
+      bd_member:
+        "Each deal carries its customer, offering, value, stage and revenue schedule. The deals you are part of are yours to update; anything else you can see is read-only.",
+    },
+    targets: pageTargets(),
+    roles: ALL_ROLES,
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "contracts-browser",
+    route: "/contracts",
+    kind: "feature",
+    chapter: "Selling",
+    pageName: "Contracts",
+    eyebrow: "Contracts",
+    title: "Signed work",
+    description:
+      "Every signed contract: what it covers, what it is worth and when it comes up for renewal.",
+    targets: pageTargets(),
+    roles: ALL_ROLES,
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "admin-console",
+    route: "/admin",
+    kind: "feature",
+    chapter: "Your team",
+    pageName: "Admin",
+    eyebrow: "Admin",
+    title: "Who can do what",
+    description:
+      "Approve new sign-ups, invite people, put them in groups and set what each person can open, module by module.",
+    targets: pageTargets(),
+    roles: ["admin"],
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "settings-profile",
+    route: "/settings?tab=profile",
+    kind: "feature",
+    chapter: "Settings",
+    pageName: "Settings",
+    eyebrow: "Settings · Profile",
+    title: "How your team sees you",
+    description:
+      "Your photo, job title and phone number appear wherever your name does. Touch ID for signing in is set up here too.",
+    targets: cardTargets('[data-tour="settings-profile-card"]'),
+    roles: ALL_ROLES,
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "settings-appearance",
+    route: "/settings?tab=appearance",
+    kind: "feature",
+    chapter: "Settings",
+    pageName: "Settings",
+    eyebrow: "Settings · Appearance",
+    title: "Light, dark, and easy to read",
+    description:
+      "Pick light, dark or match your computer, and the font that is easiest on your eyes.",
+    targets: cardTargets('[data-tour="settings-appearance-card"]'),
+    roles: ALL_ROLES,
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "settings-notifications",
+    route: "/settings?tab=notifications",
+    kind: "feature",
+    chapter: "Settings",
+    pageName: "Settings",
+    eyebrow: "Settings · Notifications",
+    title: "Only the alerts you want",
+    description:
+      "Choose which alerts reach you and when the digest arrives.",
+    targets: pageTargets(),
+    roles: ALL_ROLES,
+  },
+  {
+    id: "settings-integrations",
+    route: "/settings?tab=integrations",
+    kind: "feature",
+    chapter: "Settings",
+    pageName: "Settings",
+    eyebrow: "Settings · Integrations",
+    title: "Your phone, connected",
+    description:
+      "This is where your phone connects to the agent. Come back any time to connect it, or to switch to a new phone.",
+    targets: cardTargets('[data-tour="settings-whatsapp-card"]'),
+    roles: ALL_ROLES,
+    availableInOfferingsOnly: true,
+  },
+  {
+    id: "settings-access",
+    route: "/settings?tab=access",
+    kind: "feature",
+    chapter: "Settings",
+    pageName: "Settings",
+    eyebrow: "Settings · Access",
+    title: "Who gets in",
+    description:
+      "Anyone with a company address joins on their own. Everyone else waits at a pending screen until an admin lets them in.",
+    targets: cardTargets('[data-tour="settings-access-card"]'),
+    roles: ["admin"],
+    onlyFor: ["admin"],
+    availableInOfferingsOnly: true,
+  },
+];
+
+export const PRODUCT_TOUR_STEPS: readonly ProductTourStep[] = [
+  ...PRODUCT_TOUR_STEP_DEFINITIONS,
+  SOLUTIONING_TOUR_STEP,
+  ...ADDED_TOUR_STEPS,
+].map((step, catalogIndex) => ({
+  ...step,
+  catalogIndex,
+}));
 
 export const ADMIN_TOUR_STEPS = PRODUCT_TOUR_STEPS.filter(
   (step) => !step.roles || step.roles.includes("admin")
@@ -471,23 +731,43 @@ export function localTourIndexForCatalogStep(
 // Display order is independent of persisted catalog indexes. Keep saved
 // progress attached to the same feature when the walkthrough is reorganized.
 const TOUR_DISPLAY_ORDER = [
+  // Getting around
   "top-search", "account-menu", "notifications-bell", "sidebar-modules",
-  "offerings-browser", "components-browser", "agent-workspace", "market-intel",
-  "customers-browser", "contacts-browser", "solutioning-requests",
+  // Your agent: the page, the bubble on every page, then the phone.
+  "agent-workspace", "agent-dock", "whatsapp-agent",
+  // Knowledge
+  "offerings-browser", "components-browser", "market-intel",
+  // Selling, in the order the work flows.
+  "leads-board", "opportunities-browser", "solutioning-requests",
+  "contracts-browser", "customers-browser", "contacts-browser",
   "pipeline-board", "forecast-summary", "sessions-browser", "sequences-timeline",
   "campaigns-workflow", "voice-overview", "tasks-queue",
+  // Performance
   "performance-goals", "reports-revenue", "analytics-growth", "activity-feed",
-  "team-roster", "settings-mock-mode", "settings-replay",
+  // Your team
+  "team-roster", "admin-console",
+  // Settings, tab by tab, ending where the tour can be found again.
+  "settings-profile", "settings-appearance", "settings-notifications",
+  "settings-integrations", "settings-access", "settings-mock-mode",
+  "settings-replay",
 ];
+
+const HOME_PAGE_NAMES: Record<string, string> = {
+  "/offerings": "Offerings",
+  "/solutioning": "Solutioning",
+  "/settings?tab=workspace": "Settings",
+};
 
 export function getProductTourSteps({
   offeringsOnly,
   role,
   allowedRoutes,
+  features = {},
 }: {
   offeringsOnly: boolean;
   role: WorkspaceRole | null | undefined;
   allowedRoutes?: readonly string[];
+  features?: TourFeatures;
 }): ProductTourStep[] {
   const normalizedRole = normalizeWorkspaceRole(role);
   const canOpen = (route: string) => allowedRoutes
@@ -496,18 +776,25 @@ export function getProductTourSteps({
   const home = canOpen("/offerings") ? "/offerings" : canOpen("/solutioning") ? "/solutioning" : "/settings?tab=workspace";
   const filtered = PRODUCT_TOUR_STEPS.filter((step) => {
     if (offeringsOnly && !step.availableInOfferingsOnly) return false;
-    if (step.catalogIndex < 4) return true;
+    if (step.onlyFor && (!normalizedRole || !step.onlyFor.includes(normalizedRole))) return false;
+    if (step.requires && !features[step.requires]) return false;
+    if (step.global) return true;
     return canOpen(step.route);
   }).map((step) => ({
     ...step,
+    description:
+      (normalizedRole && step.roleDescriptions?.[normalizedRole]) || step.description,
+    // App-wide chrome is shown on the home page, so "Open X" on the step
+    // before it names that page, not the bubble or the bell.
+    pageName: step.global ? HOME_PAGE_NAMES[home] ?? step.pageName : step.pageName,
     route:
-      step.catalogIndex < 4 ? home : offeringsOnly && step.offeringsOnlyRoute
+      step.global ? home : offeringsOnly && step.offeringsOnlyRoute
         ? step.offeringsOnlyRoute
         : step.route,
   }));
 
   /**
-   * "Next" names where it goes — computed AFTER filtering, so it can never
+   * "Next" names where it goes, computed AFTER filtering, so it can never
    * promise a screen this person's role or release does not have. A step that
    * stays on the same screen keeps the plain "Next"; only a real move earns
    * "Open Reports".
@@ -518,8 +805,24 @@ export function getProductTourSteps({
     if (step.nextLabel) return step;
     const next = filtered[index + 1];
     if (!next || next.route === step.route) return step;
-    return { ...step, nextLabel: `Open ${next.pageName}` };
+    // Between Settings tabs the page stays; name the tab, not "Settings".
+    const samePage = next.route.split("?")[0] === step.route.split("?")[0];
+    const tab = next.eyebrow.startsWith("Settings · ") ? next.eyebrow.slice("Settings · ".length) : next.pageName;
+    return { ...step, nextLabel: `Open ${samePage ? tab : next.pageName}` };
   });
+}
+
+/** The chapters a filtered tour actually has, with where each one starts. */
+export function tourChaptersOf(
+  steps: readonly ProductTourStep[]
+): { chapter: TourChapter; start: number; count: number }[] {
+  const chapters: { chapter: TourChapter; start: number; count: number }[] = [];
+  steps.forEach((step, index) => {
+    const last = chapters[chapters.length - 1];
+    if (last && last.chapter === step.chapter) last.count += 1;
+    else chapters.push({ chapter: step.chapter, start: index, count: 1 });
+  });
+  return chapters;
 }
 
 /**
@@ -527,20 +830,27 @@ export function getProductTourSteps({
  *
  * Anir, Sep 6, testing as a new rep: "whenever you're switching tabs, clearly
  * show that we're about to go to this tab... show that we're clicking on this
- * on the left side." The route transition now spotlights the sidebar entry it
- * is opening, so every page change is anchored to the thing a person would
+ * on the left side." The tour presses the sidebar entry it is opening before
+ * every page change, so each move is anchored to the thing a person would
  * actually click.
  *
  * The prefix selector covers nested nav ids (`/performance` lights
  * `nav-performance-org`, the first Performance entry in document order).
- * Settings has no sidebar entry at all — it opens from the account menu, which
- * the tour teaches up front — so its transitions point there instead. The
+ * Settings has no sidebar entry at all (it opens from the account menu, which
+ * the tour teaches up front), so its transitions point there instead. The
  * sidebar itself is the last resort so the pointer never lands on nothing.
  */
 export function navIntroSelectorsFor(route: string): readonly string[] {
-  const path = route.split("?")[0];
+  const [path, query = ""] = route.split("?");
   if (path.startsWith("/settings")) {
-    return ['[data-tour="account-menu"]', '[data-tour="topbar"]'];
+    // Already in Settings: press the tab itself. Anywhere else: the menu
+    // Settings opens from.
+    const tab = new URLSearchParams(query).get("tab");
+    return [
+      ...(tab ? [`[data-tour="settings-tab-${tab}"]`] : []),
+      '[data-tour="account-menu"]',
+      '[data-tour="topbar"]',
+    ];
   }
   const slug = path.slice(1).replaceAll("/", "-");
   if (!slug || slug === "dashboard") return ['[data-tour="sidebar"]'];

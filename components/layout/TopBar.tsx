@@ -32,6 +32,11 @@ import {
   subscribeNotifRead,
 } from "@/lib/notificationsRead";
 import { canSwitchWorkspaceMode } from "@/lib/release";
+import {
+  NOTIFICATIONS_PANEL_EVENT,
+  NOTIFICATIONS_REFRESH_EVENT,
+  type NotificationsPanelDetail,
+} from "@/components/onboarding/productTourEvents";
 
 /** How many alerts the bell panel shows before "View all notifications". */
 const PANEL_LIMIT = 6;
@@ -168,6 +173,7 @@ export function TopBar({
     currentUser.id
   );
 
+  const loadNotificationsRef = useRef<() => void>(() => {});
   useEffect(() => {
     setLoadedNotificationKey(null);
     setNotifs([]);
@@ -175,24 +181,60 @@ export function TopBar({
     setNotifOpen(false);
     setUserOpen(false);
     let on = true;
+    let failures = 0;
+    let retry: number | undefined;
+    /* A FAILED FIRST LOAD RETRIES IN SECONDS, NOT ON THE NEXT 15s TICK (Anir,
+       Oct 1: "The notifications didn't even load until I clicked on it").
+       Right after sign-in the session can land a moment after the shell
+       does, and an error answer used to blank the list until the next poll.
+       A failure now keeps what is showing and tries again at 1s, 2s, 4s. */
     const load = () =>
       fetch("/api/notifications", { cache: "no-store" })
-        .then((r) => r.json())
-        .then((d) => {
-          if (on) setNotifs(d.notifications || []);
+        .then((r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.json();
         })
-        .catch(() => {});
+        .then((d) => {
+          if (!on) return;
+          failures = 0;
+          setNotifs(d.notifications || []);
+        })
+        .catch(() => {
+          if (!on || failures >= 4) return;
+          failures += 1;
+          window.clearTimeout(retry);
+          retry = window.setTimeout(load, 1000 * 2 ** (failures - 1));
+        });
+    loadNotificationsRef.current = load;
     load();
     const timer = window.setInterval(load, 15_000);
     window.addEventListener("focus", load);
+    window.addEventListener(NOTIFICATIONS_REFRESH_EVENT, load);
     setReadIds(readNotifRead(notificationReadKey));
     setLoadedNotificationKey(notificationReadKey);
     return () => {
       on = false;
       window.clearInterval(timer);
+      window.clearTimeout(retry);
       window.removeEventListener("focus", load);
+      window.removeEventListener(NOTIFICATIONS_REFRESH_EVENT, load);
     };
   }, [notificationReadKey]);
+
+  /* The guided tour opens and closes the panel for its notifications step,
+     so a new person sees what is waiting instead of a closed bell. */
+  useEffect(() => {
+    const onPanel = (event: Event) => {
+      const open = (event as CustomEvent<NotificationsPanelDetail>).detail?.open === true;
+      if (open) {
+        setUserOpen(false);
+        loadNotificationsRef.current();
+      }
+      setNotifOpen(open);
+    };
+    window.addEventListener(NOTIFICATIONS_PANEL_EVENT, onPanel);
+    return () => window.removeEventListener(NOTIFICATIONS_PANEL_EVENT, onPanel);
+  }, []);
 
   /* The Notifications page writes this same key — "Mark all read" there has
      to empty the badge here, and the header never unmounts to re-read it. */
@@ -425,7 +467,11 @@ export function TopBar({
           <button
             data-tour="notifications"
             aria-label="Notifications"
-            onClick={() => setNotifOpen((o) => !o)}
+            onClick={() => {
+              // Opening the panel always shows the latest list.
+              if (!notifOpen) loadNotificationsRef.current();
+              setNotifOpen((o) => !o);
+            }}
             className="relative z-50 w-9 h-9 flex items-center justify-center rounded-full text-text-secondary hover:bg-surface transition-colors"
           >
             <Bell size={19} strokeWidth={1.5} />
@@ -441,7 +487,7 @@ export function TopBar({
               {/* A real drop shadow and a ring, not the flat card border: against a white
                   page the old panel had no visible bottom edge (Anir, Aug 13:
                   "I can't properly see where it ends"). */}
-              <div className={cn("popover-in absolute right-0 mt-2 w-[392px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl z-50 overflow-hidden", POPOVER_SURFACE)}>
+              <div data-tour="notifications-panel" className={cn("popover-in absolute right-0 mt-2 w-[392px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl z-50 overflow-hidden", POPOVER_SURFACE)}>
                 {/* The separators only exist to divide a list. With nothing in
                     the panel they drew two rules around an empty middle and
                     the whole thing read as a broken table (Anir, Aug 15: "you

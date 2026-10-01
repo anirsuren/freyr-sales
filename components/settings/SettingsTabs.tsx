@@ -27,6 +27,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ThemeSetting } from "@/components/settings/ThemeSetting";
 import { FontPresetSetting } from "@/components/settings/FontPresetSetting";
 import { WhatsAppCard } from "@/components/settings/WhatsAppCard";
+import { requestProductTourStart } from "@/components/onboarding/productTourEvents";
 import { CrmSyncCard } from "@/components/settings/CrmSyncCard";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -388,6 +389,15 @@ export function SettingsTabs({
       ? requestedTab
       : "workspace"
   );
+  /* FOLLOW THE ADDRESS BAR. A link can open another tab while Settings is
+     already showing: the Touch ID notification (?tab=profile) clicked on the
+     Workspace tab changed the URL and left Workspace up, and the guided tour
+     walks the tabs the same way. */
+  useEffect(() => {
+    if (!requestedTab || !TABS.some((item) => item.key === requestedTab)) return;
+    if (offeringsOnly && TABS_HIDDEN_IN_OFFERINGS_ONLY.has(requestedTab)) return;
+    setTab(requestedTab);
+  }, [requestedTab, offeringsOnly]);
   const [dataMode, setDataMode] = useState<"mock" | "live">(initialDataMode);
   const [modeBusy, setModeBusy] = useState(false);
   // Mock mode is a temporary viewer choice for this signed-in session. Every
@@ -1024,6 +1034,7 @@ export function SettingsTabs({
                 <button
                   key={item.key}
                   role="tab"
+                  data-tour={`settings-tab-${item.key}`}
                   aria-selected={selected}
                   onClick={() => {
                     setTab(item.key);
@@ -1142,8 +1153,9 @@ export function SettingsTabs({
                     </span>
                   </div>
                   <p className="mt-1 max-w-[650px] text-[12.5px] leading-relaxed text-text-secondary">
-                    Open the tour center to start, continue, or replay a guided
-                    walkthrough. Your progress is saved between visits.
+                    A walk through every screen your account can open, your
+                    agent on WhatsApp, and these settings. Stop whenever you
+                    like; it picks up where you left off.
                   </p>
                   <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10.5px] font-medium text-text-tertiary">
                     <span>Page-by-page guidance</span>
@@ -1155,7 +1167,8 @@ export function SettingsTabs({
                 </div>
               </div>
               <Button
-                onClick={() => router.push("/onboarding")}
+                // Straight into the tour's welcome card, wherever you are.
+                onClick={() => requestProductTourStart({ restart: true })}
                 className="shrink-0"
                 aria-label="Open guided product tour"
               >
@@ -1171,7 +1184,7 @@ export function SettingsTabs({
         <div className="space-y-4">
           {/* THREE CARDS, ONE PER KIND OF THING (Anir, Sep 27): the basics,
               LinkedIn on its own, and how you get in. */}
-          <Card className="tab-panel">
+          <Card className="tab-panel" data-tour="settings-profile-card">
             <h2 className="text-[15px] font-semibold text-text-primary">Basic info</h2>
             <p className="mb-5 mt-0.5 text-[12.5px] text-text-secondary">Your name, title and signature as the team and the agent see them.</p>
             <div className="flex items-center gap-4 mb-5">
@@ -1432,7 +1445,7 @@ export function SettingsTabs({
           endpoint, was one too many. */}
 
       {tab === "appearance" && (
-        <Card className="tab-panel">
+        <Card className="tab-panel" data-tour="settings-appearance-card">
           <div className="space-y-5">
             <ThemeSetting />
             <div className="border-t border-border-light pt-5">
@@ -1465,7 +1478,7 @@ export function SettingsTabs({
       {tab === "access" && (
         <div className="tab-panel stagger space-y-5">
           <div className="grid grid-cols-[1.15fr_0.85fr] gap-4">
-            <Card className="px-5 py-4">
+            <Card className="px-5 py-4" data-tour="settings-access-card">
               <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-success/10 text-success"><Lock size={18} /></span>
                 <div className="min-w-0 flex-1">
@@ -1647,7 +1660,7 @@ export function SettingsTabs({
             you stay in control of what syncs, and nothing goes out without your
             approval.
           </p>
-          <Card>
+          <Card data-tour="settings-whatsapp-card">
             <WhatsAppCard />
           </Card>
           {/* The connect/disconnect tiles are a Mock showroom; Real shows only
