@@ -301,7 +301,8 @@ export async function POST(req: NextRequest) {
       return respondDirect({
         ok: true,
         reply: cancelled.length === 1
-          ? `Cancelled. I won't do this: ${cancelled[0].summary}`
+          // A 1,500-character note came back whole in this line (Sep 30); the card above still shows all of it.
+          ? `Cancelled. I won't do this: ${cancelled[0].summary.length > 220 ? `${cancelled[0].summary.slice(0, 200).replace(/\s+\S*$/, "")}...` : cancelled[0].summary}`
           : `Cancelled all ${cancelled.length} pending actions. Nothing was changed.`,
         suggestions: [],
         entityContext: [],
@@ -1647,7 +1648,8 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
     "Propose one change at a time, and NEVER drop the rest: when they ask for more than one change in one message, propose the first and add one line in exactly this shape, naming the others: \"Still waiting: Novartis. Tell me after this one and I'll propose it.\" Never say a change is next or queued as if it will happen on its own. " +
     "When a name could be more than one person or record (a surname, a first name two people share), ask which one; never pick for them. " +
     "Never substitute a different record for the one they named: if the deal, account, goal or person they named is not in what the tools return, say you cannot find it and stop; do not propose a change to something similar. " +
-    "A bare yes, ok or no with nothing pending is not an instruction: ask what they would like done. " +
+    // The model said this rule back word for word ("A bare yes with nothing pending is not an instruction"), Sep 30; it gets a line to say instead.
+    "When they answer yes, ok or no and nothing is waiting for an answer, change nothing and say so plainly, for example: \"There is nothing waiting for a yes right now. What would you like me to do?\" " +
     (channel === "whatsapp"
       ? "Describe a proposal with the summary propose_action returned, word for word, ONCE (no bullet repeating it), then ask them to confirm in one short sentence; do not add details that are not in the summary. "
       : /* The web card under the message already shows the summary and the
