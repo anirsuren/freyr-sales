@@ -192,7 +192,8 @@ export function PhoneSetupDialog({
 
   return createPortal(
     <div
-      className="backdrop-in fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-6 backdrop-blur-[4px]"
+      className="backdrop-in fixed inset-0 z-[130] flex items-center justify-center bg-black/45 p-6 backdrop-blur-[4px]"
+      // Above the agent bubble (z-120), so its nudges never float over the pop-up.
       // A click outside closes it, and stops here so nothing underneath opens too.
       onClick={(event) => {
         event.stopPropagation();

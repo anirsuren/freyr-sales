@@ -478,8 +478,8 @@ export function SupabaseLoginForm({
                 At least {PASSWORD_MIN} characters: {PASSWORD_MIN - password.length} more to go.
               </span>
             ) : password.length >= PASSWORD_MIN ? (
-              <span className="inline-flex items-center gap-1 font-medium text-text-secondary">
-                <Check size={12} strokeWidth={2.6} className="text-success" aria-hidden="true" />
+              <span className="font-medium text-text-secondary">
+                <Check size={12} strokeWidth={2.6} className="mr-1 inline-block align-[-1px] text-success" aria-hidden="true" />
                 Long enough.
               </span>
             ) : (
