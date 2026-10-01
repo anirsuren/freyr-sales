@@ -196,11 +196,13 @@ export async function POST(req: NextRequest) {
       })()
     : "";
   let exactCurrentOpportunity: Record<string, unknown> | null = null;
+  let currentOpportunityLookedUp = false;
   if (currentOpportunityContext) {
     try {
       const result = JSON.parse(await readAgentWorkspace(actor, "opportunities", currentOpportunityContext)) as {records?: Array<Record<string, unknown>>};
       // The workspace query is substring-based, so do not trust the first hit.
       exactCurrentOpportunity = result.records?.find(record => record.id === currentOpportunityContext) ?? null;
+      currentOpportunityLookedUp = true;
     } catch {
       // A failed read is not evidence that the record or accrual plan is absent.
     }
@@ -985,6 +987,31 @@ export async function POST(req: NextRequest) {
   const healthQuestion = /\b(relationship health|health score|health status|at risk|healthy)\b/i.test(message);
   const teamQuestion = /\b(account team|team members?|who is on|who's on|open deals? does|owns? .* deals? here)\b/i.test(message);
   const customerIdOnPage = onPath.match(/^\/customers\/([^/?#]+)/)?.[1];
+  /* THE PAGE'S OWN RECORD IS MISSING. On a customer page whose account does
+     not exist, "what's the latest here?" got the person's own schedule, and a
+     missing deal page was answered by searching (found testing Sep 30). When
+     the record behind the page cannot be found, the answer says so. */
+  const missingRecordOnPage =
+    customerIdOnPage && moduleAccess.customers && /^[0-9a-f-]{20,}$/i.test(customerIdOnPage) && !customers.some((c) => c.id === customerIdOnPage)
+      ? { kind: "account", id: customerIdOnPage }
+      : currentOpportunityContext && !exactCurrentOpportunity && currentOpportunityLookedUp
+        ? { kind: "deal", id: currentOpportunityContext }
+        : null;
+  /* Asked about "this" or "here" on a page whose record is missing, the model
+     answered and then added the person's schedule anyway, twice, because
+     "what's the latest" also reads as a briefing (Sep 30). That question has
+     one true answer, so it is given without the model. */
+  if (missingRecordOnPage && /\b(?:this|here|it)\b/i.test(message) && channel === "web") {
+    const list = missingRecordOnPage.kind === "account" ? "[Customers](/customers)" : "[Opportunities](/opportunities)";
+    return respondDirect({
+      ok: true,
+      reply: `There is no ${missingRecordOnPage.kind} behind this page that you can see; it may have been deleted or the link is wrong. Find it by name on ${list}.`,
+      suggestions: [],
+      entityContext: [],
+      source: "page-missing",
+      pendingAction: null,
+    });
+  }
   const focusedCustomer = (healthQuestion || teamQuestion) && moduleAccess.customers
     ? findAccount(message, customers) || customers.find(c => c.id === customerIdOnPage)
     : null;
@@ -1168,6 +1195,9 @@ Freyr's PRODUCTS, not this app's own functionality.\nMANUAL:\n"""\n${manualFor(
             "its records, names or numbers into this answer. Answer only from the PAGE CONTENT below.\n\n"
           : "") +
         `WHERE THEY ARE. The person is on ${onPath || "the app"}${onSubject ? `, looking at ${onSubject}` : ""}. ` +
+        (missingRecordOnPage
+          ? `THE ${missingRecordOnPage.kind.toUpperCase()} THIS PAGE IS ABOUT DOES NOT EXIST: no ${missingRecordOnPage.kind} with id "${missingRecordOnPage.id}" is one they can see. For "this", "here" or "this ${missingRecordOnPage.kind}", say so in one line, suggest finding it by name, and stop there: nothing about their schedule, their own work or any other record. `
+          : "") +
         'Never ask them which page they are on, and never say you cannot see their screen: "this page" means ' +
         `${onPath || "the page named above"}. Answer for that page, using the MANUAL section for it.\n` +
         (pageContext
