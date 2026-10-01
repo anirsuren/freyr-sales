@@ -18,6 +18,8 @@ import { readMarketIntelBookmarks } from "@/lib/marketIntelBookmarks";
 import { readMarketIntelTracking } from "@/lib/marketIntelTracking";
 import { moduleCreateRefusal, moduleWriteRefusal, recordWriteRefusal } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
+import { privilegesForPerson, readPrivileges } from "@/lib/privileges";
+import { canAssignSolutioning } from "@/lib/solutioningValidation";
 import { opportunityChangeRefusal } from "@/lib/opportunityOwnership";
 import { addProposal, getProposal, updateProposal } from "@/lib/agentActionStore";
 import { addPersonalReminder, completePersonalReminder, findPersonalReminder } from "@/lib/agentPersonalReminders";
@@ -239,6 +241,15 @@ async function resolveMeeting(query: unknown) {
     "meeting",
     (m) => [m.plain]
   );
+}
+
+/* "Pick up the QA probe pricing deck request" was offered to a BD Owner and
+   failed after the yes: "Only a Solutioning Owner or Admin can change the
+   owner" (found testing Sep 30). The route's own rule, asked before the card. */
+async function solutioningOwnerRefusal(): Promise<string | null> {
+  const me = await getCurrentUser();
+  const held = privilegesForPerson(await readPrivileges(), me.name);
+  return canAssignSolutioning(me.role, held) ? null : "Only a Solutioning Owner or an admin can pick up or assign a solutioning request.";
 }
 
 async function resolveRequest(query: unknown) {
@@ -1718,7 +1729,8 @@ export const ACTIONS: ActionDef[] = [
       const req = await resolveRequest(params.request);
       if (!req.ok) return { error: req.error };
       const patch: Params = {}; const changes: string[] = [];
-      if (str(params.title, 200)) { patch.title = str(params.title, 200); changes.push(`retitle it "${patch.title}"`); }
+      // The model passes the title back unchanged with other edits; "retitle it" to its own name was noise (Sep 30).
+      if (str(params.title, 200) && str(params.title, 200) !== req.value.plain) { patch.title = str(params.title, 200); changes.push(`retitle it "${patch.title}"`); }
       if (str(params.details, 4000)) { patch.details = str(params.details, 4000); changes.push("replace the details"); }
       if (str(params.neededBy)) { const d = parseDay(params.neededBy, new Date(), ctx.timeZone); if (!d) return { error: "I could not read that date." }; patch.neededBy = d; changes.push(`move the needed-by date to ${readableDay(d)}`); }
       if (!changes.length) return { error: "Say what should change: the title, the details or the needed-by date." };
@@ -1736,6 +1748,8 @@ export const ACTIONS: ActionDef[] = [
     fields: { request: { type: "string", description: "Request title or id." }, owner: { type: "string", description: "Colleague's name, or 'me'." } },
     required: ["request", "owner"],
     async prepare(params, ctx) {
+      const refusal = await solutioningOwnerRefusal();
+      if (refusal) return { error: refusal };
       const req = await resolveRequest(params.request);
       if (!req.ok) return { error: req.error };
       const owner = await resolvePerson(params.owner, ctx);
@@ -1754,6 +1768,8 @@ export const ACTIONS: ActionDef[] = [
     fields: { request: { type: "string", description: "Request title or id." } },
     required: ["request"],
     async prepare(params, ctx) {
+      const refusal = await solutioningOwnerRefusal();
+      if (refusal) return { error: refusal };
       const req = await resolveRequest(params.request);
       if (!req.ok) return { error: req.error };
       return { summary: `Pick up the request "${req.value.plain}" as ${ctx.actorName}.`, params: { requestId: req.value.id, title: req.value.plain } };
@@ -1934,7 +1950,8 @@ export const ACTIONS: ActionDef[] = [
       const m = await resolveMeeting(params.meeting);
       if (!m.ok) return { error: m.error };
       const patch: Params = {}; const changes: string[] = [];
-      if (str(params.title, 200)) { patch.title = str(params.title, 200); changes.push(`retitle it "${patch.title}"`); }
+      // The model passes the title back unchanged with other edits; "retitle it" to its own name was noise (Sep 30).
+      if (str(params.title, 200) && str(params.title, 200) !== m.value.plain) { patch.title = str(params.title, 200); changes.push(`retitle it "${patch.title}"`); }
       if (str(params.type)) { const t = pickEnum(params.type, MEETING_TYPES, "meeting type"); if (!t.ok) return { error: t.error }; patch.type = t.value; changes.push(`make it a ${t.value}`); }
       if (str(params.when)) {
         /* "Move it to Monday at 10am" was "I could not read that date": only a
