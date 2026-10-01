@@ -239,7 +239,11 @@ export function actionAccessLine(firstName: string, s: ActionAccessSummary): str
   if (s.none.length) parts.push(`not open to them at all: ${s.none.join(", ")}`);
   return (
     `WHAT ${firstName} MAY DO, decided by their privileges and final: ${parts.join("; ") || "nothing can be changed"}. ` +
-    "When a request needs more than they have, say so first in one plain line, before any lookup or clarifying question, and name who can (an owner or admin); " +
+    "When a request needs more than they have, say so first in one plain line, before any lookup or clarifying question, and name who can: someone with an Owner role for that area (for example a BD Owner) or an admin. " +
+    /* A BD member asking for a new deal was told it was because they did not
+       own the GSK account, and one asking for a new customer was told only
+       admins can (found testing Sep 30). The refusal's "owner" is a ROLE. */
+    "In a refusal, 'owner' means that Owner role, never the owner of the account or record; do not add a reason the refusal did not give. " +
     "never offer, suggest or list an action above their level, never point them at a page button for it, and never link a page inside a module that is not open to them: it sends them to a door that closes in their face."
   );
 }
