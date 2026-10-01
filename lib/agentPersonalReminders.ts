@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { WorkspaceMemberScope } from "@/lib/types";
+import { changeRow } from "@/lib/agentRowCas";
 
 /**
  * "REMIND ME FRIDAY TO SEND PFIZER THE DECK."
@@ -56,23 +57,30 @@ export async function readPersonalReminders(scope: WorkspaceMemberScope): Promis
   return Array.isArray(list) ? list.map(clean).filter((r): r is PersonalReminder => r !== null) : [];
 }
 
-async function writePersonalReminders(scope: WorkspaceMemberScope, reminders: PersonalReminder[]): Promise<void> {
+type Stored = { workspaceId: string; userId: string; reminders: PersonalReminder[]; updatedAt: string };
+
+/** Change the list as it is NOW, written only if nobody wrote in between (two confirms at once lost one, Sep 30). */
+async function changePersonalReminders(
+  scope: WorkspaceMemberScope,
+  change: (list: PersonalReminder[]) => PersonalReminder[] | null,
+): Promise<void> {
   const db = client();
   if (!db) throw new Error("The reminder store is not available on this server.");
-  // Done reminders are kept a fortnight so "what did I tick off" still answers, then dropped.
-  const cutoff = Date.now() - 14 * 86_400_000;
-  const kept = reminders.filter((r) => !r.doneAt || Date.parse(r.doneAt) >= cutoff).slice(-200);
-  const { error } = await db
-    .from("offering_catalog_state")
-    .upsert({ id: rowId(scope), catalog: { workspaceId: scope.workspaceId, userId: scope.userId, reminders: kept, updatedAt: new Date().toISOString() } });
-  if (error) throw new Error(error.message);
+  await changeRow<Stored>(db, rowId(scope), (current) => {
+    const list = (Array.isArray(current?.reminders) ? current.reminders : []).map(clean).filter((r): r is PersonalReminder => r !== null);
+    const next = change(list);
+    if (!next) return null;
+    // Done reminders are kept a fortnight so "what did I tick off" still answers, then dropped.
+    const cutoff = Date.now() - 14 * 86_400_000;
+    const kept = next.filter((r) => !r.doneAt || Date.parse(r.doneAt) >= cutoff).slice(-200);
+    return { workspaceId: scope.workspaceId, userId: scope.userId, reminders: kept, updatedAt: new Date().toISOString() };
+  });
 }
 
 export async function addPersonalReminder(
   scope: WorkspaceMemberScope,
   input: { text: string; day: string; time?: string; account?: { id: string; name: string } },
 ): Promise<PersonalReminder> {
-  const current = await readPersonalReminders(scope);
   const reminder: PersonalReminder = {
     id: `rem-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     text: input.text.trim().slice(0, 500),
@@ -81,7 +89,7 @@ export async function addPersonalReminder(
     ...(input.account ? { account: input.account } : {}),
     createdAt: new Date().toISOString(),
   };
-  await writePersonalReminders(scope, [...current, reminder]);
+  await changePersonalReminders(scope, (list) => [...list, reminder]);
   return reminder;
 }
 
@@ -155,8 +163,7 @@ export async function findPersonalReminder(scope: WorkspaceMemberScope, which: s
 export async function completePersonalReminder(scope: WorkspaceMemberScope, which: string): Promise<Found> {
   const found = await findPersonalReminder(scope, which);
   if (!found.ok) return found;
-  const current = await readPersonalReminders(scope);
   const done = { ...found.reminder, doneAt: new Date().toISOString() };
-  await writePersonalReminders(scope, current.map((r) => (r.id === done.id ? done : r)));
+  await changePersonalReminders(scope, (list) => list.map((r) => (r.id === done.id ? done : r)));
   return { ok: true, reminder: done };
 }

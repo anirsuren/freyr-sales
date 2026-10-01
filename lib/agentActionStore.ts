@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { WorkspaceMemberScope } from "@/lib/types";
 import { PROPOSAL_TTL_MS, type ActionProposal } from "@/lib/agentActionsShared";
+import { changeRow } from "@/lib/agentRowCas";
 
 /**
  * WHAT THE AGENT HAS PROPOSED AND NOT YET BEEN TOLD TO DO, per member.
@@ -52,26 +53,30 @@ export async function readProposals(scope: WorkspaceMemberScope): Promise<Action
   return expire(Array.isArray(stored) ? (stored as ActionProposal[]) : []);
 }
 
-async function writeProposals(scope: WorkspaceMemberScope, proposals: ActionProposal[]): Promise<void> {
-  const trimmed = proposals.slice(-KEEP);
+type Stored = { workspaceId: string; userId: string; proposals: ActionProposal[]; updatedAt: string };
+
+/**
+ * Change the list as it is NOW. Two proposals made at the same moment used to
+ * read the same list and the second write erased the first, so its yes found
+ * nothing (found testing Sep 30). The change runs against a fresh read, and
+ * changeRow only writes if nobody wrote in between.
+ */
+async function changeProposals(
+  scope: WorkspaceMemberScope,
+  change: (list: ActionProposal[]) => ActionProposal[] | null,
+): Promise<void> {
   const db = client();
   if (!db) {
-    memory().set(rowId(scope), trimmed);
+    const next = change(expire(memory().get(rowId(scope)) ?? []));
+    if (next) memory().set(rowId(scope), next.slice(-KEEP));
     return;
   }
-  const { error } = await db.from("offering_catalog_state").upsert(
-    {
-      id: rowId(scope),
-      catalog: {
-        workspaceId: scope.workspaceId,
-        userId: scope.userId,
-        proposals: trimmed,
-        updatedAt: new Date().toISOString(),
-      },
-    },
-    { onConflict: "id" }
-  );
-  if (error) throw new Error(error.message);
+  await changeRow<Stored>(db, rowId(scope), (current) => {
+    const next = change(expire(Array.isArray(current?.proposals) ? current.proposals : []));
+    return next
+      ? { workspaceId: scope.workspaceId, userId: scope.userId, proposals: next.slice(-KEEP), updatedAt: new Date().toISOString() }
+      : null;
+  });
 }
 
 export async function addProposal(
@@ -84,12 +89,14 @@ export async function addProposal(
      first proposal is superseded, so the next bare yes means the newest one
      and never "which of these two?". Proposals from other conversations (the
      WhatsApp thread beside a web chat) stay open. */
-  const current = (await readProposals(scope)).map((p) =>
-    p.status === "proposed" && p.conversationId && p.conversationId === full.conversationId
-      ? { ...p, status: "cancelled" as const, decidedAt: now, error: "Superseded by a newer proposal." }
-      : p
-  );
-  await writeProposals(scope, [...current, full]);
+  await changeProposals(scope, (list) => [
+    ...list.map((p) =>
+      p.status === "proposed" && p.conversationId && p.conversationId === full.conversationId
+        ? { ...p, status: "cancelled" as const, decidedAt: now, error: "Superseded by a newer proposal." }
+        : p
+    ),
+    full,
+  ]);
   return full;
 }
 
@@ -98,12 +105,13 @@ export async function updateProposal(
   id: string,
   patch: Partial<ActionProposal>
 ): Promise<ActionProposal | null> {
-  const current = await readProposals(scope);
-  const index = current.findIndex((p) => p.id === id);
-  if (index === -1) return null;
-  const next = { ...current[index], ...patch };
-  current[index] = next;
-  await writeProposals(scope, current);
+  let next: ActionProposal | null = null;
+  await changeProposals(scope, (list) => {
+    const index = list.findIndex((p) => p.id === id);
+    if (index === -1) return null;
+    next = { ...list[index], ...patch };
+    return list.map((p, i) => (i === index ? next! : p));
+  });
   return next;
 }
 
