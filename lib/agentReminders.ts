@@ -198,13 +198,31 @@ export async function remindersFor(input: {
         .then((state) => {
           for (const r of state.requests ?? []) {
             if (r.status === "completed" || r.status === "cancelled") continue;
-            if (!namedOn(person, r.requestedBy, r.owner, r.attendees)) continue;
+            /* THE PEOPLE DOING THE WORK. A division lead, the primary assignee,
+               a contributor or the person a document is assigned to has the
+               needed-by date as their deadline too, and none of them were ever
+               reminded of it (found testing Sep 30: Anir leads Regulatory
+               Affairs on an RFP needed Friday and heard nothing). */
+            const workstreams = r.workstreams ?? [];
+            const working =
+              namedOn(person, r.owner) ||
+              workstreams.some((w) => namedOn(person, w.primaryAssignee, w.contributors)) ||
+              (r.docs ?? []).some((d) => namedOn(person, d.assignedTo));
+            const leads = workstreams.find((w) => namedOn(person, w.lead));
+            if (!working && !leads && !namedOn(person, r.requestedBy, r.attendees)) continue;
+            // An attendee who did not raise it used to be told "you raised".
+            const role = working
+              ? "you are working on it"
+              : leads
+                ? `you lead ${leads.division} on it`
+                : namedOn(person, r.requestedBy)
+                  ? "you raised it"
+                  : "you are on it";
             const href = `/solutioning/${encodeURIComponent(r.id)}`;
             const needed = dayOf(r.neededBy);
             if (needed) {
               const away = daysBetween(today, needed);
               if (away >= -14 && away <= horizon) {
-                const mine = namedOn(person, r.owner) ? "you are working on" : "you raised";
                 push({
                   id: `solutioning:${r.id}:needed:${needed}`,
                   kind: "solutioning",
@@ -212,8 +230,8 @@ export async function remindersFor(input: {
                   title: r.title,
                   line:
                     away < 0
-                      ? `The ${r.type || "request"} "${r.title}" ${mine} was needed ${whenWords(needed, away)} and is still ${String(r.status).replace(/_/g, " ")}.`
-                      : `The ${r.type || "request"} "${r.title}" ${mine} is needed ${whenWords(needed, away)}.`,
+                      ? `The ${r.type || "request"} "${r.title}" (${role}) was needed ${whenWords(needed, away)} and is still ${String(r.status).replace(/_/g, " ")}.`
+                      : `The ${r.type || "request"} "${r.title}" (${role}) is needed ${whenWords(needed, away)}.`,
                   href,
                 });
               }

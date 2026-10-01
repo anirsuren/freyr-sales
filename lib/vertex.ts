@@ -116,6 +116,14 @@ function addUsage(
   total.modelCalls += 1;
 }
 
+/**
+ * "thought\nYou have no upcoming meetings...": the model sometimes writes its
+ * reasoning channel's name as the first line of the visible answer, and a
+ * rep's briefing opened with the word "thought" (found testing Sep 30). Real
+ * thought parts are dropped by their flag; this is the label written as text.
+ */
+export const LEADING_THOUGHT_LABEL = /^\s*thought\s*\n/i;
+
 export function visibleResponseText(
   response: Awaited<ReturnType<GoogleGenAI["models"]["generateContent"]>>
 ): string {
@@ -123,6 +131,7 @@ export function visibleResponseText(
     .filter((part) => !part.thought && typeof part.text === "string")
     .map((part) => part.text)
     .join("")
+    .replace(LEADING_THOUGHT_LABEL, "")
     .trim();
 }
 
@@ -247,6 +256,15 @@ export async function vertexConverseAgentic(
       let text = "";
       let emitted = false;
       let last: Awaited<ReturnType<GoogleGenAI["models"]["generateContent"]>> | null = null;
+      // The opening words wait until a "thought" label can be told apart, so it never reaches the screen.
+      let head = "";
+      let headDone = false;
+      const emit = (piece: string) => {
+        if (!piece) return;
+        text += piece;
+        emitted = true;
+        onText(piece);
+      };
       for await (const chunk of stream) {
         last = chunk;
         for (const part of chunk.candidates?.[0]?.content?.parts || []) {
@@ -255,12 +273,19 @@ export async function vertexConverseAgentic(
           // Chunks are fragments, so their leading and trailing spaces are
           // real; trimming here glued adjacent words together.
           if (typeof part.text === "string" && part.text) {
-            text += part.text;
-            emitted = true;
-            onText(part.text);
+            if (headDone) {
+              emit(part.text);
+              continue;
+            }
+            head += part.text;
+            if (head.length < 12 && !head.includes("\n")) continue;
+            headDone = true;
+            emit(head.replace(LEADING_THOUGHT_LABEL, ""));
+            head = "";
           }
         }
       }
+      if (!headDone && head) emit(head.replace(LEADING_THOUGHT_LABEL, ""));
       if (last) addUsage(usage, last);
       return {
         text: text.trim(),
