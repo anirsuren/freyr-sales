@@ -40,7 +40,7 @@ import { PRIVILEGE_MODULES } from "./privileges";
 import { portfolioReport } from "./revenue";
 import { buildDeals, FORECAST_REFERENCE_QUOTA, STAGE_PROBABILITY } from "./pipeline";
 import { accountHealth } from "./health";
-import { opportunityValue, opportunityConfidence, signDateOf, sumEstimates } from "./opportunitiesShared";
+import { estimateOf, opportunityValue, opportunityConfidence, signDateOf, sumEstimates } from "./opportunitiesShared";
 import {
   resolveHeatMapCell,
   type HeatMapOpportunity,
@@ -599,6 +599,14 @@ export async function readAgentWorkspace(
         return counts;
       }, {}),
       estimatedTcvByCurrency: Object.fromEntries([...tcvByCurrency].map(([currency, deals]) => [currency, sumEstimates(deals, "tcv")])),
+      /* Beside the headline on purpose: "what's our open pipeline worth?"
+         came back $1,000,000 and EUR 200 short when the model worked it out
+         from the all-deals total instead (found testing Sep 30). */
+      openPipelineTcvByCurrency: Object.fromEntries([...tcvByCurrency].map(([currency, deals]) => [
+        currency,
+        sumEstimates(deals.filter((deal) => deal.status !== "Won" && deal.status !== "Lost"), "tcv"),
+      ])),
+      tcvNote: "estimatedTcvByCurrency counts every deal, Won included. Open pipeline value is openPipelineTcvByCurrency (not Won or Lost). Quote these; never subtract or add deal figures to get a total.",
       /* PER-CUSTOMER TOTALS, READY MADE. "Which customers have the most
          deals?" paged through all 104 records three times over and took 93
          seconds to count them (found testing Sep 30). The count by account,
@@ -627,6 +635,60 @@ export async function readAgentWorkspace(
           });
       })(),
       byCustomerNote: "Deal counts per account (top 25), open = not Won or Lost. Use this for most/fewest deals per customer instead of paging through every record.",
+      /* MONTHS, OWNERS AND THE TOP, ADDED UP HERE. "How many open deals sign
+         in November?" got 31, right, and a total $78,600 short: the model
+         added 31 numbers itself. "Our biggest open deal?" named one of three
+         tied at $1,000,000 (found testing Sep 30). Totals use the page's own
+         measure, per currency, with how many deals carried a figure. */
+      ...(() => {
+        const open = visibleOpportunities.filter((deal) => deal.status !== "Won" && deal.status !== "Lost");
+        const tcvOf = (deals: typeof visibleOpportunities) => {
+          const byCurrency = new Map<string, typeof visibleOpportunities>();
+          for (const deal of deals) byCurrency.set(deal.currency || "USD", [...(byCurrency.get(deal.currency || "USD") ?? []), deal]);
+          return Object.fromEntries([...byCurrency].map(([currency, list]) => [currency, sumEstimates(list, "tcv")]));
+        };
+        const months = new Map<string, typeof visibleOpportunities>();
+        for (const deal of open) {
+          const month = String(signDateOf(deal) ?? "").slice(0, 7);
+          if (/^\d{4}-\d{2}$/.test(month)) months.set(month, [...(months.get(month) ?? []), deal]);
+        }
+        const owners = new Map<string, typeof visibleOpportunities>();
+        for (const deal of visibleOpportunities) {
+          const owner = String(deal.owner ?? "").trim() || "Unassigned";
+          owners.set(owner, [...(owners.get(owner) ?? []), deal]);
+        }
+        const ranked = open
+          .map((deal) => ({ deal, tcv: estimateOf(deal, "tcv") }))
+          .filter((row): row is { deal: (typeof open)[number]; tcv: number } => typeof row.tcv === "number")
+          .sort((a, b) => b.tcv - a.tcv);
+        const topUsd = ranked.find((row) => (row.deal.currency || "USD") === "USD")?.tcv;
+        return {
+          openBySignMonth: [...months]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([month, deals]) => ({ month, openDeals: deals.length, estimatedTcvByCurrency: tcvOf(deals) })),
+          byOwner: [...owners]
+            .sort((a, b) => b[1].length - a[1].length)
+            .map(([owner, deals]) => {
+              const openDeals = deals.filter((deal) => deal.status !== "Won" && deal.status !== "Lost");
+              // Named apart: "3 open" beside the all-deals total read as $1,445,000 of open pipeline, Won deal included (Sep 30).
+              return { owner, deals: deals.length, open: openDeals.length, openDealsTcvByCurrency: tcvOf(openDeals), allDealsTcvByCurrency: tcvOf(deals) };
+            }),
+          largestOpen: ranked.slice(0, 8).map((row) => ({
+            name: row.deal.name,
+            customer: row.deal.customer,
+            owner: row.deal.owner || null,
+            status: row.deal.status || null,
+            estimatedTcv: row.tcv,
+            currency: row.deal.currency || "USD",
+            estSignDate: signDateOf(row.deal) ?? null,
+            url: `/opportunities/${encodeURIComponent(row.deal.id)}`,
+          })),
+          ...(typeof topUsd === "number"
+            ? { tiedAtTopUsd: ranked.filter((row) => (row.deal.currency || "USD") === "USD" && row.tcv === topUsd).length }
+            : {}),
+          totalsNote: "openBySignMonth, byOwner and largestOpen are computed from every deal in this read with the Opportunities page's own TCV measure; quote these totals rather than adding figures yourself. Pipeline or open value means the open-deal totals (not Won or Lost); estimatedTcvByCurrency and allDealsTcvByCurrency include Won deals. 'entered of' says how many deals carried a figure. When tiedAtTopUsd is more than 1, the biggest deal is a tie: name every deal at that value.",
+        };
+      })(),
       pageUrl: "/opportunities",
       ...(account ? { accountRule: `Only deals attached to ${account.name} by account id or exact company name, the same rule the account page uses. Similar names are different accounts.` } : {}),
       accrualAccess: !accrualsAllowed ? "denied" : accrualPlans ? "available" : "unavailable",
