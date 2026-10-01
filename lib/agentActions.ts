@@ -636,7 +636,7 @@ export const ACTIONS: ActionDef[] = [
         const day = parseDay(params.estSignDate, new Date(), ctx.timeZone);
         if (!day) return { error: "I could not read that signing date; use YYYY-MM-DD." };
         patch.estSignDate = day;
-        changes.push(`expected signing → ${day}`);
+        changes.push(`expected signing → ${readableDay(day)}`);
       }
       if (str(params.nextSteps)) {
         patch.nextSteps = str(params.nextSteps, 2000);
@@ -1936,7 +1936,17 @@ export const ACTIONS: ActionDef[] = [
       const patch: Params = {}; const changes: string[] = [];
       if (str(params.title, 200)) { patch.title = str(params.title, 200); changes.push(`retitle it "${patch.title}"`); }
       if (str(params.type)) { const t = pickEnum(params.type, MEETING_TYPES, "meeting type"); if (!t.ok) return { error: t.error }; patch.type = t.value; changes.push(`make it a ${t.value}`); }
-      if (str(params.when)) { const d = parseDay(params.when, new Date(), ctx.timeZone); if (!d) return { error: "I could not read that date." }; patch.meetingAt = d; changes.push(`move it to ${readableDay(d)}`); }
+      if (str(params.when)) {
+        /* "Move it to Monday at 10am" was "I could not read that date": only a
+           day was read, and a time would have been dropped anyway (Sep 30). A
+           move that names only a day keeps the meeting's own time. */
+        const parsed = splitDayTime(str(params.when, 60), ctx.timeZone);
+        if (!parsed) return { error: "I could not read that day. A day like Monday or Oct 5 works, with a time if you have one." };
+        const kept = /T(\d{2}:\d{2})/.exec(String(m.value.meetingAt ?? ""))?.[1] ?? "";
+        const time = parsed.time || kept;
+        patch.meetingAt = time ? `${parsed.day}T${time}` : parsed.day;
+        changes.push(`move it to ${readableDay(parsed.day)}${time ? ` at ${time}` : ""}`);
+      }
       if (str(params.customer)) { const c = await resolveCustomer(params.customer); if (!c.ok) return { error: c.error }; patch.customer = c.value.name; patch.customerId = c.value.id; changes.push(`put it under ${c.value.name}`); }
       if (!changes.length) return { error: "Say what should change: the title, the type, the time or the account." };
       return { summary: `On the meeting "${m.value.plain}": ${changes.join(", ")}.`, params: { id: m.value.id, title: m.value.plain, patch } };
