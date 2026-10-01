@@ -118,9 +118,9 @@ function todayLabel(zone: string): string {
   }
 }
 
-/** Does this text name a day or a time at all? "today", "Friday", "next week", "Oct 14", "14/10", "in 3 days", "3pm". */
+/** Does this text name a day or a time at all? "today", "Friday", "next week", "Oct 14", "14/10", "in 3 days", "3pm". A past day counts too ("yesterday"): the action says it has passed, which is the true answer, not "you have not said when" (Sep 30). */
 function saysADay(text: string): boolean {
-  return /\b(?:today|tonight|tomorrow|tmrw|tmr|mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|weekend|next (?:week|month)|this (?:week|month|morning|afternoon|evening)|end of (?:the )?(?:day|week|month|quarter)|eod|eow|eom|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|noon|midday|morning|afternoon|evening)\b|\bin (?:a|an|one|two|three|\d+) (?:days?|weeks?|months?|hours?|minutes?|mins?)\b|\b\d{1,2}[/.-]\d{1,2}\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}(?:st|nd|rd|th)\b|\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b\d{1,2}:\d{2}\b/i.test(text);
+  return /\b(?:today|tonight|tomorrow|tmrw|tmr|yesterday|last (?:week|month|night|mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)|\d+ (?:days?|weeks?) ago|mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|weekend|next (?:week|month)|this (?:week|month|morning|afternoon|evening)|end of (?:the )?(?:day|week|month|quarter)|eod|eow|eom|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|noon|midday|morning|afternoon|evening)\b|\bin (?:a|an|one|two|three|\d+) (?:days?|weeks?|months?|hours?|minutes?|mins?)\b|\b\d{1,2}[/.-]\d{1,2}\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}(?:st|nd|rd|th)\b|\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b\d{1,2}:\d{2}\b/i.test(text);
 }
 
 function backstopParams(action: string, params: unknown, text: string): Record<string, unknown> {
