@@ -22,3 +22,21 @@ test("a 'thought' label written as text never opens the answer", async () => {
   // A real thought part is dropped by its flag, not by its words.
   assert.equal(visibleResponseText({ candidates: [{ content: { parts: [{ text: "secret plan", thought: true }, { text: "Answer." }] } }] }), "Answer.");
 });
+
+test("a dash right after a link or bold name becomes a comma, never glue", () => {
+  assert.equal(withoutProseDashes("owns [A](/opportunities/a) and [B](/opportunities/b) — while the rest are unassigned."), "owns [A](/opportunities/a) and [B](/opportunities/b), while the rest are unassigned.");
+  assert.equal(withoutProseDashes("owns [B](/opportunities/b)—while the rest."), "owns [B](/opportunities/b), while the rest.");
+  assert.equal(withoutProseDashes("**Bold** — then text"), "**Bold**, then text");
+  assert.equal(withoutProseDashes("- **GRI — Haleon** — $500,000"), "- **GRI — Haleon**, $500,000");
+  // A dash used as a bullet at a real line start still goes cleanly.
+  assert.equal(withoutProseDashes("Two things:\n— first\n— second"), "Two things:\nfirst\nsecond");
+});
+
+test("a page path becomes a named link; other slashes stay", async () => {
+  const { linkBarePaths } = await import("../lib/agentProse.ts");
+  assert.equal(linkBarePaths("click the **People performance** tab at `/performance/people`."), "click the **People performance** tab at [People](/performance/people).");
+  assert.equal(linkBarePaths("**Group performance** (`/performance/groups`)"), "**Group performance** ([Groups](/performance/groups))");
+  assert.equal(linkBarePaths("open /settings?tab=integrations to connect"), "open [Integrations](/settings?tab=integrations) to connect");
+  assert.equal(linkBarePaths("see [Team](/team) and 24/7 support, and/or `/usr/bin`"), "see [Team](/team) and 24/7 support, and/or `/usr/bin`");
+  assert.equal(linkBarePaths("```\n/performance/people\n```"), "```\n/performance/people\n```");
+});

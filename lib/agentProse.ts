@@ -23,7 +23,52 @@ export function withoutProseDashes(text: string): string {
         .replace(/[ \t]*[—–][ \t]*/g, ", ")
         .replace(/,\s*,/g, ",")
         .replace(/\(,\s*/g, "(")
-        .replace(/^,\s*/gm, "");
+        // A comma left at the start of a LINE goes (a dash used as a bullet). The start of a
+        // segment after a link or bold name is not a line start: "[B](/x) — while" kept
+        // neither the comma nor the space and read "[B](/x)while" (found testing Sep 30).
+        .replace(index === 0 ? /^,[ \t]*/gm : /(?<=\n),[ \t]*/g, "");
     })
+    .join("");
+}
+
+/** The app's own top-level sections: only a path into one of these becomes a link. */
+const APP_SECTIONS = new Set([
+  "agent", "customers", "contacts", "opportunities", "meetings", "solutioning", "contracts", "leads",
+  "offerings", "performance", "market-intel", "team", "settings", "notifications", "admin", "reports",
+  "pipeline", "forecast", "sessions", "tasks", "campaigns", "sequences", "components", "revenue-accruals",
+]);
+
+const KEEP_AS_IS = /(```[\s\S]*?```|\[[^\]\n]*\]\([^)\s]*\))/g;
+const APP_PATH = String.raw`\/[a-z][a-z0-9-]*(?:\/[A-Za-z0-9._-]+)*(?:\?[A-Za-z0-9=&_-]+)?`;
+
+function pageLabel(path: string): string {
+  const [route, query = ""] = path.split("?");
+  const tab = /(?:^|&)tab=([A-Za-z0-9_-]+)/.exec(query)?.[1];
+  const parts = route.split("/").filter(Boolean);
+  const last = parts[parts.length - 1] ?? "";
+  // An id is not a name: "/customers/40a7a3c3-..." is the customer page.
+  const word = tab ?? (/\d/.test(last) && last.length > 12 ? parts[0] : last);
+  return word.split("-").map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(" ");
+}
+
+/**
+ * A PAGE IS A LINK, NEVER A PATH. "Click the People performance tab at
+ * `/performance/people`" showed the path as code (found testing Sep 30). A
+ * bare or code-formatted path into one of the app's own sections becomes a
+ * link named after it; links and fenced blocks pass through untouched, and a
+ * path outside the app's sections ("and/or", "24/7") is never touched.
+ */
+export function linkBarePaths(text: string): string {
+  const pattern = new RegExp(String.raw`\x60(${APP_PATH})\x60|(?<=^|[\s(])(${APP_PATH})(?=[\s).,;:!?]|$)`, "gm");
+  return text
+    .split(KEEP_AS_IS)
+    .map((segment, index) =>
+      index % 2 === 1
+        ? segment
+        : segment.replace(pattern, (all, inCode: string | undefined, bare: string | undefined) => {
+            const path = inCode ?? bare ?? "";
+            return APP_SECTIONS.has(path.split(/[/?]/)[1] ?? "") ? `[${pageLabel(path)}](${path})` : all;
+          }),
+    )
     .join("");
 }
