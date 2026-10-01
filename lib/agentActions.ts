@@ -694,7 +694,7 @@ export const ACTIONS: ActionDef[] = [
         status = picked.value;
       }
       return {
-        summary: `Open a new deal "${name}" at ${customer.value.name}: estimated TCV ${money(tcv)}, ${confidence}% confidence, signing by ${day}${status ? `, stage ${status}` : ""}.`,
+        summary: `Open a new deal "${name}" at ${customer.value.name}: estimated TCV ${money(tcv)}, ${confidence}% confidence, signing by ${readableDay(day)}${status ? `, stage ${status}` : ""}.`,
         params: { name, customer: customer.value.name, customerId: customer.value.id, estimatedTcv: tcv, confidence, estSignDate: day, ...(status ? { status } : {}) },
         customerId: customer.value.id,
         company: customer.value.name,
@@ -2328,6 +2328,39 @@ export function runActionTool() {
   };
 }
 
+/* The gate's own words name no module. A rep asking for a meeting was told
+   "You can change these, but only an owner can make a new one", with nothing
+   saying what "these" were or who counts as an owner (found testing Sep 30).
+   The same refusal, with the thing and who can. */
+const REFUSAL_NOUN: Record<string, string> = {
+  "/performance": "goals and groups",
+  "/opportunities": "deals",
+  "/customers": "accounts and contacts",
+  "/leads": "leads",
+  "/meetings": "meetings",
+  "/solutioning": "solutioning requests",
+  "/market-intel": "Market Intel stars",
+};
+
+export function refusalInWords(refusal: string, module: string): string {
+  const noun = REFUSAL_NOUN[module];
+  if (!noun) return refusal;
+  if (/only an owner can make a new one/i.test(refusal)) {
+    return `You can change existing ${noun}, but only someone with an Owner role for ${noun} (for example a BD Owner) or an admin can create new ones.`;
+  }
+  if (/look at this, but not change it/i.test(refusal)) return `You can look at ${noun}, but not change them.`;
+  if (/^not available on this account\.?$/i.test(refusal.trim())) return `${noun[0].toUpperCase()}${noun.slice(1)} are not open to your account.`;
+  return refusal;
+}
+
+/** The module gate alone, in the agent's words: what proposeAction asks first. */
+export async function actionGateRefusal(key: string): Promise<string | null> {
+  const def = ACTION_BY_KEY.get(key);
+  if (!def) return null;
+  const refusal = def.gate === "create" ? await moduleCreateRefusal(def.module) : await moduleWriteRefusal(def.module);
+  return refusal ? refusalInWords(refusal, def.module) : null;
+}
+
 export type ProposeResult = { ok: true; proposal: ActionProposal } | { ok: false; error: string };
 
 /** Resolve, ask the module question, store. The route decides the rest at execution. */
@@ -2340,7 +2373,7 @@ export async function proposeAction(key: string, rawParams: unknown, ctx: Action
       return { ok: false, error: `${def.title} needs ${field}.` };
     }
   }
-  const refusal = def.gate === "create" ? await moduleCreateRefusal(def.module) : await moduleWriteRefusal(def.module);
+  const refusal = await actionGateRefusal(key);
   if (refusal) return { ok: false, error: refusal };
   let prepared: Prepared | { error: string };
   try {
