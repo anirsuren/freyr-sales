@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import {
   ArrowRight,
+  Check,
   Eye,
   EyeOff,
   Loader2,
@@ -15,6 +16,10 @@ import {
 import { normalizeAuthEmail } from "@/lib/authEmailPolicy";
 import { friendlyAuthError } from "@/lib/authErrors";
 import { replaceAppBrowserUrl } from "@/lib/modeUrl";
+
+/** The bounds /api/auth/register enforces; the form says the same before anyone presses the button. */
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 128;
 
 /**
  * Email-first sign-in. A colleague never has to decide whether they are
@@ -240,6 +245,10 @@ export function SupabaseLoginForm({
       }
 
       if (step === "activate") {
+        if (!isFullName(name)) throw new Error(FULL_NAME_HINT);
+        if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) {
+          throw new Error(`Use a password of at least ${PASSWORD_MIN} characters.`);
+        }
         const response = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -363,6 +372,13 @@ export function SupabaseLoginForm({
   const inputClass =
     "mt-1.5 h-11 w-full rounded-md border border-border bg-white px-3 text-[14px] text-text-primary outline-none focus:border-blue-primary";
 
+  /* "Set password and continue" stays off until the form can succeed (Anir,
+     Oct 1: "why is it letting me do this if it says at least 8 characters?"):
+     a full name, and a password inside the bounds the server checks. The
+     field that is still wrong says so as it is typed. */
+  const passwordShort = password.length > 0 && password.length < PASSWORD_MIN;
+  const activateReady = isFullName(name) && password.length >= PASSWORD_MIN && password.length <= PASSWORD_MAX;
+
   return (
     <form onSubmit={submit} className="space-y-4">
       {step === "email" ? (
@@ -428,12 +444,17 @@ export function SupabaseLoginForm({
             <span className="relative block">
               <input
                 required
-                minLength={8}
+                minLength={PASSWORD_MIN}
+                maxLength={PASSWORD_MAX}
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className={`${inputClass} pr-11 [&::-ms-reveal]:hidden`}
+                aria-invalid={passwordShort || undefined}
+                aria-describedby="new-password-hint"
+                className={`${inputClass} pr-11 [&::-ms-reveal]:hidden ${
+                  passwordShort ? "!border-[color:var(--ink-orange)]" : ""
+                }`}
               />
               <button
                 type="button"
@@ -451,9 +472,20 @@ export function SupabaseLoginForm({
               </button>
             </span>
           </label>
-          <p className="-mt-2 text-[11px] text-text-tertiary">
-            At least 8 characters. We&apos;ll email you a confirmation link before your
-            first sign-in.
+          <p id="new-password-hint" className="-mt-2 text-[11px] text-text-tertiary">
+            {passwordShort ? (
+              <span className="font-medium text-[color:var(--ink-orange)]">
+                At least {PASSWORD_MIN} characters: {PASSWORD_MIN - password.length} more to go.
+              </span>
+            ) : password.length >= PASSWORD_MIN ? (
+              <span className="inline-flex items-center gap-1 font-medium text-text-secondary">
+                <Check size={12} strokeWidth={2.6} className="text-success" aria-hidden="true" />
+                Long enough.
+              </span>
+            ) : (
+              <>At least {PASSWORD_MIN} characters.</>
+            )}{" "}
+            We&apos;ll email you a confirmation link before your first sign-in.
           </p>
           <label className="block text-[12px] font-semibold text-text-secondary">
             LinkedIn profile <span className="font-normal text-text-tertiary">(optional)</span>
@@ -623,7 +655,7 @@ export function SupabaseLoginForm({
       {step !== "invite-only" && step !== "sent" && (
         <button
           type="submit"
-          disabled={busy || resetBusy}
+          disabled={busy || resetBusy || (step === "activate" && !activateReady)}
           className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-blue-primary text-[14px] font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? (
