@@ -387,3 +387,34 @@ export async function verifyVertexConnection(): Promise<{
     throw error;
   }
 }
+
+export type VertexReadPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+
+/**
+ * ONE MULTIMODAL READ: files in, text out. The agent's file reader uses it to
+ * read what text extraction cannot: scanned pages, photos, charts, slides and
+ * speech. Kept apart from the conversation loop so a file is read once and the
+ * text reused on every later question about it.
+ */
+export async function vertexReadParts(
+  parts: VertexReadPart[],
+  options: { maxOutputTokens?: number; timeoutMs?: number } = {},
+): Promise<{ text: string; inputTokens: number; outputTokens: number; finishReason?: string }> {
+  const { client, config } = getClient();
+  const response = await client.models.generateContent({
+    model: config.model,
+    contents: [{ role: "user", parts }],
+    config: {
+      maxOutputTokens: options.maxOutputTokens ?? 8192,
+      temperature: 0,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL, includeThoughts: false },
+      httpOptions: { timeout: options.timeoutMs ?? 180_000 },
+    },
+  });
+  return {
+    text: visibleResponseText(response),
+    inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
+    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+    finishReason: response.candidates?.[0]?.finishReason,
+  };
+}

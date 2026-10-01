@@ -22,6 +22,8 @@ export type StoredMessage = {
   ts: number;
   /** Door a user message came through; absent means the app itself. */
   via?: "whatsapp";
+  /** Files sent with a user message (lib/agentFiles). */
+  attachments?: { fileId: string; name: string; kind?: string; bytes?: number }[];
   suggestions?: string[];
   entityContext?: string[];
   /** A change the agent proposed under this message, and what became of it. */
@@ -97,6 +99,20 @@ export function sanitizeConversation(value: unknown): StoredConversation | null 
         ? { entityContext: message.entityContext.filter((v): v is string => typeof v === "string" && v.startsWith("/")).slice(0, 12).map((v) => v.slice(0, 200)) }
         : {}),
       ...(message.role === "user" && message.via === "whatsapp" ? { via: "whatsapp" as const } : {}),
+      // Files sent with the message, so the chip is still there after a reload (Sep 30).
+      ...(message.role === "user" && Array.isArray(message.attachments)
+        ? {
+            attachments: (message.attachments as unknown[])
+              .filter((a): a is Record<string, unknown> => !!a && typeof a === "object" && typeof (a as { fileId?: unknown }).fileId === "string")
+              .slice(0, 10)
+              .map((a) => ({
+                fileId: String(a.fileId).slice(0, 60),
+                name: String(a.name ?? "file").slice(0, 200),
+                ...(typeof a.kind === "string" ? { kind: a.kind.slice(0, 20) } : {}),
+                ...(typeof a.bytes === "number" ? { bytes: a.bytes } : {}),
+              })),
+          }
+        : {}),
       role: message.role,
       text,
       ts: typeof message.ts === "number" ? message.ts : Date.now(),
@@ -253,6 +269,8 @@ export async function appendAgentExchange(
     suggestions?: string[];
     entityContext?: string[];
     pendingAction?: StoredMessage["pendingAction"];
+    /** Files the person sent with this message (a photo, document or recording on WhatsApp). */
+    attachments?: StoredMessage["attachments"];
     at?: number;
   }
 ): Promise<StoredConversation> {
@@ -273,6 +291,7 @@ export async function appendAgentExchange(
     text: input.userText.slice(0, MAX_TEXT_LENGTH),
     ts: at,
     ...(input.channel === "whatsapp" ? { via: "whatsapp" as const } : {}),
+    ...(input.attachments?.length ? { attachments: input.attachments.slice(0, 10) } : {}),
   });
   next.messages.push({
     role: "agent",

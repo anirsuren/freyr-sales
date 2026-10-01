@@ -13,6 +13,7 @@ import {
   MessageSquareText,
   PanelRightOpen,
   PanelRightClose,
+  Paperclip,
 } from "lucide-react";
 import { cn, POPOVER_SURFACE } from "@/lib/utils";
 import { mergeConversationChanges } from "@/lib/conversationChanges";
@@ -35,6 +36,8 @@ import {
 } from "@/lib/agentEvents";
 import { AGENT_DOCK_ACTIVE_KEY } from "@/lib/agentNavigationHandoff";
 import { useAgentReminders, useAgentClosed, urgentReminders, reminderHeadline, reminderGreeting } from "@/components/agent/useAgentReminders";
+import { useAgentAttachments, type SentAttachment } from "@/components/agent/useAgentAttachments";
+import { PendingAttachmentChips, SentAttachmentChips } from "@/components/agent/AttachmentChips";
 
 /** Remembered dock size (device preference, not identity data). */
 const DOCK_SIZE_KEY = "freyr.agent.dock.size";
@@ -57,7 +60,7 @@ function clampDockSize(w: number, h: number): { w: number; h: number } {
 const CONVERSATIONS_KEY = "freyr.agent.conversations";
 const LEGACY_THREAD_KEY = "freyr.assistant.thread.v2";
 
-type Msg = { role: "user" | "agent"; text: string; ts: number; entityContext?: string[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp" };
+type Msg = { role: "user" | "agent"; text: string; ts: number; entityContext?: string[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp"; /** Files sent with a user message. */ attachments?: SentAttachment[] };
 type Convo = {
   id: string;
   title: string;
@@ -372,6 +375,9 @@ export function AgentDock({
   const messageContentRef = useRef<HTMLDivElement>(null);
   const followBottomRef = useRef(true);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Files for the agent, the same as on the Agent page (Sep 30).
+  const attach = useAgentAttachments();
+  const dockFileRef = useRef<HTMLInputElement>(null);
   const activeUserIdRef = useRef(currentUser.id);
   const historyBaseRef = useRef<Convo[] | null>(null);
   const historySaveChainRef = useRef<Promise<void>>(Promise.resolve());
@@ -777,14 +783,17 @@ export function AgentDock({
 
   async function ask(q?: string) {
     setReminderBubbleOn(false);
-    const text = (q ?? input).trim();
+    const typed = (q ?? input).trim();
+    // Files can be the whole message; never send while bytes are still going up (Sep 30).
+    if ((!typed && !attach.sendable) || attach.uploading) return;
     if (
-      !text ||
       busy ||
       !historyReady ||
       hydratedStorageKey !== conversationStorageKey
     )
       return;
+    const sentFiles = attach.takeForSend();
+    const text = typed || (sentFiles.length ? "What is in this file? Give me the key points." : "");
     const requestUserId = currentUser.id;
     const isNew = !active;
     const conversationId = active?.id ?? `c-${uid()}`;
@@ -822,7 +831,7 @@ export function AgentDock({
               title: conversation.title || smartTitle(text) || "New chat",
               messages: [
                 ...conversation.messages,
-                { role: "user" as const, text, ts: userTs },
+                { role: "user" as const, text, ts: userTs, ...(sentFiles.length ? { attachments: sentFiles } : {}) },
               ],
               updated: userTs,
             }
@@ -849,6 +858,7 @@ export function AgentDock({
           conversationId,
           stream: true,
           history: prior,
+          ...(sentFiles.length ? { attachments: sentFiles.map((f) => f.fileId) } : {}),
           excludeSources: active?.excludedSources ?? [],
           offeringId: requestOffering?.id,
           materialId: requestOffering?.material?.id,
@@ -1302,6 +1312,7 @@ export function AgentDock({
                       m.role === "agent" ? "items-start" : "items-end"
                     )}
                   >
+                    {m.role === "user" && m.attachments?.length ? <SentAttachmentChips files={m.attachments} /> : null}
                     <div
                       className={cn(
                         "w-fit max-w-[92%] px-3.5 py-2.5 text-[13px] leading-[1.55]",
@@ -1386,8 +1397,44 @@ export function AgentDock({
                 ))}
               </div>
             )}
-            <div className="flex items-center gap-2">
+            <PendingAttachmentChips files={attach.files} onRemove={attach.removeFile} />
+            <div
+              className="flex items-center gap-2"
+              onDragOver={(e) => {
+                if (Array.from(e.dataTransfer.types).includes("Files")) e.preventDefault();
+              }}
+              onDrop={(e) => {
+                if (!e.dataTransfer.files.length) return;
+                e.preventDefault();
+                attach.addFiles(e.dataTransfer.files);
+              }}
+            >
               <input
+                ref={dockFileRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.length) attach.addFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => dockFileRef.current?.click()}
+                aria-label="Add files"
+                title="Add a file: PDF, Office, picture, recording or video"
+                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-text-secondary hover:text-blue-primary hover:bg-blue-light/60 transition-colors"
+              >
+                <Paperclip size={16} strokeWidth={2} />
+              </button>
+              <input
+                onPaste={(e) => {
+                  if (e.clipboardData.files.length) {
+                    e.preventDefault();
+                    attach.addFiles(e.clipboardData.files);
+                  }
+                }}
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -1406,11 +1453,12 @@ export function AgentDock({
               />
               <button
                 onClick={() => ask()}
-                disabled={!input.trim() || busy}
+                disabled={(!input.trim() && !attach.sendable) || attach.uploading || busy}
                 aria-label="Send"
+                title={attach.uploading ? "Waiting for the upload to finish" : undefined}
                 className={cn(
                   "w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0",
-                  input.trim() && !busy
+                  (input.trim() || attach.sendable) && !attach.uploading && !busy
                     ? "bg-blue-primary text-white hover:bg-blue-hover"
                     : "bg-border-light text-text-tertiary"
                 )}

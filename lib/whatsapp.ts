@@ -88,9 +88,13 @@ export type InboundMessage = {
   type: string;
   /** Empty for anything that is not a text message. */
   text: string;
-  /** For a voice note (type "audio"): Meta's media id and the file's mime type. */
+  /** For any media (audio, image, video, document, sticker): Meta's media id and the file's mime type. */
   mediaId: string;
   mimeType: string;
+  /** A document's own file name. */
+  filename?: string;
+  /** True for a voice note recorded in WhatsApp; false for a forwarded recording. */
+  voice?: boolean;
   /** The words sent with a photo, video or file, when there are any. */
   caption?: string;
 };
@@ -132,8 +136,13 @@ export function parseInboundMessages(payload: unknown): InboundMessage[] {
           phoneNumberId,
           type,
           text: type === "text" ? String(text.body ?? "").trim() : "",
-          mediaId: type === "audio" ? String(audio.id ?? "") : "",
-          mimeType: type === "audio" ? String(audio.mime_type ?? "") : "",
+          // Every kind of media now: the agent reads photos, documents and videos too (Sep 30).
+          mediaId: ["audio", "image", "video", "document", "sticker"].includes(type) ? String(((message[type] ?? {}) as Record<string, unknown>).id ?? "") : "",
+          mimeType: ["audio", "image", "video", "document", "sticker"].includes(type) ? String(((message[type] ?? {}) as Record<string, unknown>).mime_type ?? "") : "",
+          ...(type === "document" && typeof ((message.document ?? {}) as Record<string, unknown>).filename === "string"
+            ? { filename: String((message.document as Record<string, unknown>).filename).slice(0, 200) }
+            : {}),
+          ...(type === "audio" ? { voice: audio.voice === true } : {}),
           ...(["image", "video", "document"].includes(type)
             ? { caption: String(((message[type] ?? {}) as Record<string, unknown>).caption ?? "").trim().slice(0, 2000) }
             : {}),

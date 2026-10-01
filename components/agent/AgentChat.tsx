@@ -19,6 +19,7 @@ import {
   MessageCircle,
   Smartphone,
   X,
+  Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,8 +45,10 @@ import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 import { firstNameForUser, userScopedStorageKey } from "@/lib/userIdentity";
 import { queueAgentNavigationHandoff } from "@/lib/agentNavigationHandoff";
 import { useAgentReminders } from "@/components/agent/useAgentReminders";
+import { useAgentAttachments, type SentAttachment } from "@/components/agent/useAgentAttachments";
+import { PendingAttachmentChips, SentAttachmentChips } from "@/components/agent/AttachmentChips";
 
-type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp" };
+type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp"; /** Files sent with a user message. */ attachments?: SentAttachment[] };
 type OfferingContext = { id: string; name: string };
 type Convo = {
   id: string;
@@ -210,6 +213,12 @@ export function AgentChat({
      else, and the dock is not shown here (one agent on screen, Jul 29), so the
      Agent page asked nothing and said nothing about tomorrow (Sep 30). */
   const comingUp = useAgentReminders(!offeringsOnly);
+  /* FILES (Anir, Sep 30: "it should be able to read files, videos, audio...
+     literally anything"). Picked, dropped or pasted; uploaded at once with real
+     progress; read on the server; sent with the next message. */
+  const attach = useAgentAttachments();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
   const comingUpCounts = (() => {
     const list = comingUp?.reminders ?? [];
     return {
@@ -498,8 +507,10 @@ export function AgentChat({
         offering?: OfferingContext | null;
       }
     ) => {
-      const text = raw.trim();
-      if (!text || sending || loadedStorageKey !== storageKey) return;
+      const typed = raw.trim();
+      if ((!typed && !attach.sendable) || attach.uploading || sending || loadedStorageKey !== storageKey) return;
+      const sentFiles = attach.takeForSend();
+      const text = typed || (sentFiles.length ? "What is in this file? Give me the key points." : "");
       const requestUserId = currentUser.id;
       setConnectionErrorId(null);
       setInput("");
@@ -542,7 +553,7 @@ export function AgentChat({
                 // Keep a meaningful title once we have one; until then, take it
                 // from the first message that isn't just a greeting.
                 title: c.title || derivedTitle,
-                messages: [...c.messages, { role: "user", text, ts: Date.now() }],
+                messages: [...c.messages, { role: "user", text, ts: Date.now(), ...(sentFiles.length ? { attachments: sentFiles } : {}) }],
                 updated: Date.now(),
               }
             : c
@@ -590,6 +601,7 @@ export function AgentChat({
             stream: true,
             conversationId: id,
             history: prior,
+            ...(sentFiles.length ? { attachments: sentFiles.map((f) => f.fileId) } : {}),
             // Empty means the whole knowledge base; a selection scopes THIS
             // chat to it without hiding anything from any other chat.
             excludeSources: excludedSources,
@@ -657,6 +669,7 @@ export function AgentChat({
       }
     },
     [
+      attach,
       activeId,
       sending,
       visibleConvos,
@@ -1018,6 +1031,7 @@ export function AgentChat({
                     )}
                     {msg.role === "user" ? (
                       <div className="flex flex-col items-end">
+                        {msg.attachments?.length ? <SentAttachmentChips files={msg.attachments} /> : null}
                         <div className="max-w-[78%] bg-blue-primary text-white rounded-2xl rounded-br-md px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap shadow-sm">
                           {msg.text}
                         </div>
@@ -1102,8 +1116,52 @@ export function AgentChat({
                 ))}
               </div>
             )}
-            <div className="flex items-end gap-3 bg-white border border-border rounded-2xl px-4 py-3 shadow-[0_4px_24px_-8px_rgba(20,45,80,0.2)] focus-within:border-blue-primary focus-within:shadow-[0_4px_24px_-8px_rgba(0,112,243,0.25)] transition-all">
+            <PendingAttachmentChips files={attach.files} onRemove={attach.removeFile} />
+            <div
+              onDragOver={(e) => {
+                if (Array.from(e.dataTransfer.types).includes("Files")) {
+                  e.preventDefault();
+                  setDragging(true);
+                }
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                if (!e.dataTransfer.files.length) return;
+                e.preventDefault();
+                setDragging(false);
+                attach.addFiles(e.dataTransfer.files);
+              }}
+              className={cn(
+                "flex items-end gap-3 bg-white border border-border rounded-2xl px-4 py-3 shadow-[0_4px_24px_-8px_rgba(20,45,80,0.2)] focus-within:border-blue-primary focus-within:shadow-[0_4px_24px_-8px_rgba(0,112,243,0.25)] transition-all",
+                dragging && "border-blue-primary bg-blue-light/40"
+              )}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.length) attach.addFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Add files"
+                title="Add a file: PDF, Office, picture, recording or video"
+                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-text-secondary hover:text-blue-primary hover:bg-blue-light/60 transition-colors"
+              >
+                <Paperclip size={16} strokeWidth={2} />
+              </button>
               <textarea
+                onPaste={(e) => {
+                  if (e.clipboardData.files.length) {
+                    e.preventDefault();
+                    attach.addFiles(e.clipboardData.files);
+                  }
+                }}
                 value={input}
                 autoFocus
                 onChange={(e) => setInput(e.target.value)}
@@ -1126,11 +1184,12 @@ export function AgentChat({
               />
               <button
                 onClick={() => send(input)}
-                disabled={!input.trim() || sending}
+                disabled={(!input.trim() && !attach.sendable) || attach.uploading || sending}
                 aria-label="Send"
+                title={attach.uploading ? "Waiting for the upload to finish" : undefined}
                 className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
-                  input.trim() && !sending
+                  (input.trim() || attach.sendable) && !attach.uploading && !sending
                     ? "bg-blue-primary text-white hover:bg-blue-hover"
                     : "bg-border-light text-text-tertiary"
                 )}
