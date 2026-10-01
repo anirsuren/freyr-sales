@@ -811,14 +811,16 @@ export async function readAgentWorkspace(
       const due = milestoneByNow(g, now);
       const months = fiscalMonthLabels(g.year).map((month, index) => {
         const range = fiscalRange(g.year, "month", index);
+        // Waiting and sent back, never overlapping: "70 pending, 70 sent back" was one batch read twice (Sep 30).
+        const monthSentBack = familyValue(scoped, g, { sentBackOnly: true, range });
         return {
           month,
           calendarYear: new Date(range[0]).getFullYear(),
           verified: familyValue(scoped, g, { verifiedOnly: true, range }),
-          pending: familyValue(scoped, g, { reportedOnly: true, range }),
-          sentBack: familyValue(scoped, g, { sentBackOnly: true, range }),
+          waiting: Math.max(0, familyValue(scoped, g, { reportedOnly: true, range }) - monthSentBack),
+          sentBack: monthSentBack,
         };
-      }).filter(month => month.verified !== 0 || month.pending !== 0 || month.sentBack !== 0);
+      }).filter(month => month.verified !== 0 || month.waiting !== 0 || month.sentBack !== 0);
       return {
         id: g.id,
         name: g.name,
@@ -832,20 +834,24 @@ export async function readAgentWorkspace(
         target: g.target > 0 ? g.target : null,
         targetVerified: g.verified,
         verifiedValue: verified,
-        pendingValue: pending,
+        /* The page's three states, never overlapping. "Pending" (waiting plus
+           sent back) told a rep "70 campaigns pending verification" about a
+           batch that had been sent back, twice over (found testing Sep 30). */
+        waitingValue: Math.max(0, pending - sentBack),
         sentBackValue: sentBack,
         months: query.trim() ? months.map(month => {
           const monthIndex = fiscalMonthLabels(g.year).indexOf(month.month);
           const range = fiscalRange(g.year, "month", monthIndex);
           const groups = state.groups.map(group => {
             const people = new Set([group.head, ...group.members]);
+            const groupSentBack = familyValue(scoped, g, {people, sentBackOnly:true, range});
             return {
               name: group.name,
               verified: familyValue(scoped, g, {people, verifiedOnly:true, range}),
-              pending: familyValue(scoped, g, {people, reportedOnly:true, range}),
-              sentBack: familyValue(scoped, g, {people, sentBackOnly:true, range}),
+              waiting: Math.max(0, familyValue(scoped, g, {people, reportedOnly:true, range}) - groupSentBack),
+              sentBack: groupSentBack,
             };
-          }).filter(group => group.verified !== 0 || group.pending !== 0 || group.sentBack !== 0);
+          }).filter(group => group.verified !== 0 || group.waiting !== 0 || group.sentBack !== 0);
           return {...month, groups};
         }) : months,
         omittedMonthsHaveZeroRecordedValues: true,
@@ -938,7 +944,7 @@ export async function readAgentWorkspace(
       metCount: rows.filter((r) => r.targetStatus === "met").length,
       laggingScheduledCount: rows.filter((r) => r.pace === "lagging").length,
       unscheduledCount: rows.filter((r) => r.pace === "unscheduled").length,
-      note: "Precomputed using the Goals page's rollup helpers. Fiscal months run April–March and each month carries its calendar year; months omitted from a goal's months array have zero recorded values for all statuses. Verified values count toward targets; pending includes unverified and sent-back entries. Sent-back is a subset of pending, never add it twice. An unset target is null; never mistake pending for a target. Total measures sum their recorded goal-family entries; level measures use the latest reading. Below annual target does not mean behind schedule. Only an explicit due milestone supports a pace verdict. Scoped personal shares have no organization schedule. Currency values use recorded workspace conversion rates; do not sum across units/currencies or count composite totals again alongside their components.",
+      note: "Precomputed using the Goals page's rollup helpers. Fiscal months run April–March and each month carries its calendar year; months omitted from a goal's months array have zero recorded values for all statuses. Verified values count toward targets. waitingValue is waiting for verification; sentBackValue was sent back and counts only once resubmitted; they never overlap (months/groups likewise: verified, waiting, sentBack). Never call sent-back entries pending. An unset target is null; never mistake pending for a target. Total measures sum their recorded goal-family entries; level measures use the latest reading. Below annual target does not mean behind schedule. Only an explicit due milestone supports a pace verdict. Scoped personal shares have no organization schedule. Currency values use recorded workspace conversion rates; do not sum across units/currencies or count composite totals again alongside their components.",
     };
   } else if (key === "reports") {
     const [

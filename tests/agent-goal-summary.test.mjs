@@ -89,9 +89,11 @@ test("verified and pending values are separate and no pace is invented", async (
     summary,
   } = await read();
   assert.equal(g.verifiedValue, 10);
-  assert.equal(g.pendingValue, 25);
+  // Waiting for verification and sent back never overlap, in the totals and in each month.
+  assert.equal(g.waitingValue, 20);
   assert.equal(g.sentBackValue, 5);
-  assert.deepEqual(g.months, [{ month: "August", calendarYear: 2026, verified: 10, pending: 25, sentBack: 5 }]);
+  assert.equal(g.pendingValue, undefined);
+  assert.deepEqual(g.months, [{ month: "August", calendarYear: 2026, verified: 10, waiting: 20, sentBack: 5 }]);
   assert.equal(g.omittedMonthsHaveZeroRecordedValues, true);
   assert.equal(g.percentMet, 10);
   assert.equal(g.targetGap, 90);
@@ -110,8 +112,8 @@ test("named organization goals expose their identity and monthly group values", 
   assert.equal(record.pickedForOrg,true);
   assert.equal(record.url,"/performance/goal/org");
   assert.deepEqual(record.months.find(month=>month.month==="June"),{
-    month:"June",calendarYear:2026,verified:7,pending:3,sentBack:0,
-    groups:[{name:"Growth Accounts",verified:7,pending:3,sentBack:0}],
+    month:"June",calendarYear:2026,verified:7,waiting:3,sentBack:0,
+    groups:[{name:"Growth Accounts",verified:7,waiting:3,sentBack:0}],
   });
 });
 test("organization pacing uses only recorded due milestones", async () => {
