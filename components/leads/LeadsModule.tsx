@@ -1313,25 +1313,30 @@ export function LeadsModule({
                 const number = parsed.number;
                 return (
                   <div className="flex items-center gap-1.5">
-                    <ColorSelect
-                      value={dialOptionValue(dial, editing.country)}
-                      ariaLabel="Country dialling code"
-                      collapsible={false}
-                      minWidth={104}
-                      triggerLabel={dialTriggerLabel(dial, editing.country)}
-                      onChange={(v) => {
-                        const nextDial = dialCodeFromOption(v);
-                        const nextCountry = countryFromDialOption(v);
-                        setEditing({
-                          ...editing,
-                          dialCode: nextDial,
-                          country: nextCountry?.name ?? editing.country,
-                          phone: joinPhone(nextDial, number),
-                        });
-                      }}
-                      options={dialOptions()}
-                    />
+                    {/* Same proportions as Add a contact (Anir, Oct 1): a
+                        fixed 108px code box, the number takes the rest. */}
+                    <div className="w-[108px] shrink-0">
+                      <ColorSelect
+                        value={dialOptionValue(dial, editing.country)}
+                        ariaLabel="Country dialling code"
+                        collapsible={false}
+                        fill
+                        triggerLabel={dialTriggerLabel(dial, editing.country)}
+                        onChange={(v) => {
+                          const nextDial = dialCodeFromOption(v);
+                          const nextCountry = countryFromDialOption(v);
+                          setEditing({
+                            ...editing,
+                            dialCode: nextDial,
+                            country: nextCountry?.name ?? editing.country,
+                            phone: joinPhone(nextDial, number),
+                          });
+                        }}
+                        options={dialOptions()}
+                      />
+                    </div>
                     <Input
+                      className="flex-1"
                       value={formatPhoneNumber(number)}
                       inputMode="tel"
                       onChange={(e) => {
@@ -1399,13 +1404,14 @@ export function LeadsModule({
                 </Field>;
               })()}
             </div>
+            {/* Source, Status and Owner are not dense: 13px with the standard
+                padding, like Company and Country above them. */}
             <Field label="Source">
               <ColorSelect
                 value={editing.source}
                 ariaLabel="Lead source"
                 className="w-full"
                 collapsible={false}
-                dense
                 onChange={(v) => setEditing({ ...editing, source: v })}
                 options={LEAD_SOURCES.map((s) => ({
                   value: s,
@@ -1421,7 +1427,6 @@ export function LeadsModule({
                 ariaLabel="Lead status"
                 className="w-full"
                 collapsible={false}
-                dense
                 onChange={(v) => setEditing({ ...editing, status: v })}
                 options={LEAD_STATUSES.map((s) => ({
                   value: s,
@@ -1437,7 +1442,6 @@ export function LeadsModule({
                 ariaLabel="Lead owner"
                 className="w-full"
                 collapsible={false}
-                dense
                 onChange={(v) => setEditing({ ...editing, owner: v })}
                 fill
                 options={[

@@ -4,7 +4,6 @@ import { AddCustomerDialog } from "./AddCustomerDialog";
 
 import { StatTile } from "@/components/ui/StatTile";
 import { fmtMoney } from "@/lib/currency";
-import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { Card } from "@/components/ui/Card";
 import { useStickyValue } from "@/lib/useStickyValue";
 import {
@@ -20,13 +19,12 @@ import {
 import { TabActions } from "./TabActions";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { PageToolbar } from "@/components/ui/PageToolbar";
-import { ViewSelect } from "@/components/ui/ViewSelect";
 import { PinnableTable, PinTableButton } from "@/components/ui/PinnableTable";
 import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { replaceAppBrowserUrl } from "@/lib/modeUrl";
-import { SearchX, Download, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload, Building2, Users, LayoutList, Table2, Layers, UserRound, History } from "lucide-react";
+import { SearchX, Download, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload, Building2, Users, LayoutGrid, LayoutList, Table2, Layers, UserRound, History } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
@@ -1269,20 +1267,42 @@ export function CustomersBrowser({
             {/* SUMMARY OR THE LIST — the same choice Opportunities offers, so
                 the two pages answer "what is this worth" and "show me the
                 rows" the same way. */}
-            <ViewSwitch
-              ariaLabel="How to show the customers"
-              className="flex"
+            {/* ONE DROPDOWN EACH, NOT BUTTON PAIRS (Anir, Oct 1: "instead of
+                summary and list being two separate buttons, can you just make
+                it one dropdown? Same thing for tile view or list view"). The
+                same ColorSelect and size as Sort and the page size beside
+                them, driving the same stored setters, so the saved choice,
+                ?view= and back navigation behave as the toggles did. The
+                second says Tiles and Rows so neither menu repeats "List".
+                Each floor is its longest label, so switching never resizes
+                the toolbar. */}
+            <ColorSelect
               value={shape}
-              onChange={setShape}
-              options={
-                [
-                { key: "summary", label: "Summary", icon: Table2 },
-                { key: "list", label: "List", icon: LayoutList },
-                ] as const
-              }
+              onChange={(next) => setShape(next === "list" ? "list" : "summary")}
+              ariaLabel="How to show the customers"
+              minWidth={117}
+              dense
+              collapsible={false}
+              className="shrink-0"
+              options={[
+                { value: "summary", label: "Summary", icon: Table2, color: "var(--ink-indigo)" },
+                { value: "list", label: "List", icon: LayoutList, color: "var(--ink-bright-blue)" },
+              ] satisfies ColorOption[]}
             />
             {shape === "list" && (
-              <ViewSelect value={view} onChange={setView} tileValue="grid" tableValue="table" />
+              <ColorSelect
+                value={view}
+                onChange={(next) => setView(next === "grid" ? "grid" : "table")}
+                ariaLabel="Tiles or rows"
+                minWidth={103}
+                dense
+                collapsible={false}
+                className="shrink-0"
+                options={[
+                  { value: "grid", label: "Tiles", icon: LayoutGrid, color: "var(--ink-violet-soft)" },
+                  { value: "table", label: "Rows", icon: Rows3, color: "var(--ink-blue-soft)" },
+                ] satisfies ColorOption[]}
+              />
             )}
           </span>
         }

@@ -427,14 +427,19 @@ export function AccrualPlanDialog({
    *  place instead of reloading the page under the person who just typed. */
   onSaved?: (state: RevenueAccrualsState) => void;
   /**
-   * THE SEAM FOR A DELETE, unused today. The module deletes from its own
-   * "Delete an accrual plan" list, which is where the control has lived since
-   * the deal rows came off the page, and putting a second one in here would
-   * change what the module looks like. Passing this renders a red button on
-   * the left of the footer and hands the confirmation to the caller, which is
-   * the app's rule for every delete that is not already inside one.
+   * DELETE THE PLAN THAT IS OPEN (Anir, Oct 1: "It should just be super easy
+   * to delete").
+   *
+   * This was a seam nothing passed. The module's own "Delete a plan" button
+   * came off its toolbar on Sep 1, which left a plan undeletable from
+   * anywhere. The Revenue accruals module passes this now: a red button on
+   * the left of the footer, offered only while a SAVED plan is on screen, and
+   * handed the deal it belongs to. The picker can switch deals, so the caller
+   * is told which plan rather than assuming the one it opened on. The caller
+   * asks before anything is removed, because a delete here cannot be undone
+   * by Cancel the way a dropped month can.
    */
-  onDelete?: () => void;
+  onDelete?: (opportunityId: string) => void;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -1746,14 +1751,16 @@ export function AccrualPlanDialog({
       {!inline && (
         dealId ? (
           <Field label="Deal" required>
-            <div className="flex h-11 items-center gap-2.5 rounded-md border border-border bg-surface px-3.5">
+            {/* The shared field box (40px, light border), grey because it is
+                read only. It copied the old 44px Input, which is gone. */}
+            <div className="flex h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface px-3">
               <EntityLink href={customerHref(null, dealById.get(editing.opportunityId)?.customer)} className="shrink-0" title={dealById.get(editing.opportunityId)?.customer}>
                 <CompanyLogo
                   name={dealById.get(editing.opportunityId)?.customer ?? "Deal"}
                   className="h-6 w-6 shrink-0 text-[8px]"
                 />
               </EntityLink>
-              <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-text-primary">
+              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text-primary">
                 {dealById.get(editing.opportunityId)?.name ?? "This deal"}
               </span>
               <span className="hidden shrink-0 text-[11.5px] font-medium text-text-tertiary sm:inline">
@@ -1974,10 +1981,9 @@ export function AccrualPlanDialog({
                     ? `Shown in ${dealCurrency} at the sign-date rate. Switch to USD to edit.`
                     : undefined
                 }
-                className={cn(
-                  "h-11 rounded-md border-border bg-surface text-[15px]",
-                  (deviating || followsDeal) && "opacity-60"
-                )}
+                /* MoneyInput's own box now: 40px, level with First month and
+                   Number of months, which follow the shared Input. */
+                className={deviating || followsDeal ? "opacity-60" : undefined}
                 onChange={(contractValue) => editFormula({ contractValue })}
               />
             </Field>
@@ -2054,12 +2060,11 @@ export function AccrualPlanDialog({
                 disabled={deviating}
                 aria-label="Number of months"
                 className={cn(
-                  /* h-11 and the shared box styling, so this sits level with
-                     Contract value and First month beside it (Anir, Sep 4:
-                     "make sure the text field boxes are same size"). It was
-                     h-10 with its own border colour and font size, so the row
-                     of three lined up at the top and not at the bottom. */
-                  "h-11 w-full rounded-md border border-border bg-surface px-3.5 text-[15px] tnum outline-none transition focus:border-blue-primary focus:shadow-focus disabled:opacity-60",
+                  /* The shared box styling, so this sits level with Contract
+                     value and First month beside it (Anir, Sep 4: "make sure
+                     the text field boxes are same size"). It copies the shared
+                     Input, which is 40px, white and 13px since Oct 1. */
+                  "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] tnum outline-none transition focus:border-blue-primary focus:shadow-input-focus disabled:opacity-60",
                   deviating && "opacity-60"
                 )}
                 /* THE BOX HOLDS WHAT YOU TYPE. Every keystroke used to go
@@ -2111,7 +2116,7 @@ export function AccrualPlanDialog({
                   <button
                     type="button"
                     onClick={applySpread}
-                    className="flex h-11 w-full cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-border bg-surface px-3 text-[13px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
+                    className="flex h-10 w-full cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border border-border-light bg-white px-3 text-[13px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light"
                   >
                     {editingRows.some((l) => l.pinned)
                       ? "Start over"
@@ -2310,12 +2315,14 @@ export function AccrualPlanDialog({
                                   onClick={() => setPendingDrop(line.month)}
                                   aria-label={`Remove ${monthLabel(line.month)} from the schedule`}
                                   title="Remove this month. Its share goes back to the others."
-                                  /* ALWAYS THERE, QUIETLY. Hover-only would
-                                     be tidier and would not exist at all on a
-                                     touch screen, and a control nobody can
-                                     find is the same as a control that is not
-                                     built. */
-                                  className="cursor-pointer rounded p-0.5 text-text-tertiary/60 transition-colors hover:text-[color:var(--status-red)] focus-visible:text-[color:var(--status-red)]"
+                                  /* ALWAYS THERE, AND RED AT REST. Hover-only
+                                     would be tidier and would not exist at
+                                     all on a touch screen, and a control
+                                     nobody can find is the same as a control
+                                     that is not built. It was grey until
+                                     hovered; every remove in the app is red
+                                     before you reach it (Anir, Aug 27). */
+                                  className="cursor-pointer rounded p-0.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
                                 >
                                   <X size={13} strokeWidth={2.4} />
                                 </button>
@@ -2833,13 +2840,13 @@ export function AccrualPlanDialog({
       {!draft && !deferSave && (
       <div className="mt-4 flex shrink-0 items-center gap-2 border-t border-border-light pt-3 [&>button]:shrink-0">
         {/* A DELETE STANDS APART FROM THE THING THAT SAVES, on the left, red,
-            and it asks the caller first. Nothing passes it today; see the prop
-            above for why. It is not offered mid-deviation: finish the change
-            or step out of it. */}
-        {onDelete && editing.opportunityId && !deviating ? (
+            and it asks the caller first. Only for a plan that has been saved:
+            a deal picked a moment ago has nothing stored to delete. It is not
+            offered mid-deviation: finish the change or step out of it. */}
+        {onDelete && savedPlan && !deviating ? (
           <button
             type="button"
-            onClick={onDelete}
+            onClick={() => onDelete(savedPlan.opportunityId)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-[color:rgba(220,38,38,0.35)] px-3.5 py-2 text-[13px] font-semibold text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
           >
             <Trash2 size={14} strokeWidth={2.2} /> Delete plan

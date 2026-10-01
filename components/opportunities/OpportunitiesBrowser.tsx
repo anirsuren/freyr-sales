@@ -1831,18 +1831,29 @@ export function OpportunitiesBrowser({
                                 >
                                   <Pencil size={13} strokeWidth={2.2} />
                                 </button>
-                                <button
-                                  type="button"
-                                  title={`Remove ${o.name}`}
-                                  aria-label={`Remove ${o.name}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setConfirmRemove(o);
-                                  }}
-                                  className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.10)]"
-                                >
-                                  <Trash2 size={13} strokeWidth={2.2} />
-                                </button>
+                                {/* ONLY FOR WHOEVER MAY DELETE. The pencil's
+                                    gate (write, and this row is yours or you
+                                    manage) drew this for every edit-only
+                                    member too, and /api/opportunities refuses
+                                    them: removing asks for the module's delete
+                                    right, which is the create level ("the
+                                    person who can create only can delete").
+                                    canCreate is that answer from the server,
+                                    and the editor's own Remove already asks it. */}
+                                {canCreate && (
+                                  <button
+                                    type="button"
+                                    title={`Remove ${o.name}`}
+                                    aria-label={`Remove ${o.name}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setConfirmRemove(o);
+                                    }}
+                                    className="cursor-pointer rounded-md p-1.5 text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)]"
+                                  >
+                                    <Trash2 size={13} strokeWidth={2.2} />
+                                  </button>
+                                )}
                               </>
                             )}
                             <button
@@ -3173,7 +3184,9 @@ export function OpportunitiesBrowser({
                      field states it rather than pretending to ask. */
                   const Icon = LEVEL_ICON[derived];
                   return (
-                    <div className="mt-1 space-y-1.5">
+                    /* No top margin: the box starts level with Status, Owner
+                       and Opportunity id in the same row, not 4px under them. */
+                    <div className="space-y-1.5">
                       <span
                         data-derived-revenue-type={derived}
                         className="flex h-10 w-full items-center gap-2 rounded-lg border border-border-light bg-surface px-3 text-[13px] font-semibold"
@@ -3217,7 +3230,8 @@ export function OpportunitiesBrowser({
                   collapsible={false}
                   className="w-full"
                   minWidth={110}
-                  dense
+                  /* Not dense: 13px with standard padding, like Owner beside
+                     it, so the row reads as one set of fields. */
                   /* Eight options sits under the automatic ten-option bar, but
                      this is a list people know the answer to before they open
                      it (Anir, Aug 21: "for the status, you definitely want to
@@ -3706,8 +3720,10 @@ export function OpportunitiesBrowser({
   );
 }
 
+/* 40px like the ColorSelect triggers it sits beside (Customer, Status,
+   Owner); at 38px every typed box in this dialog stood 2px short. */
 const inputCls =
-  "h-[38px] w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none focus:border-blue-subtle";
+  "h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] text-text-primary outline-none focus:border-blue-subtle";
 
 function Field({
   label,
@@ -3842,7 +3858,7 @@ function MoneyInput({
         inputMode="numeric"
         aria-label={ariaLabel}
         placeholder={placeholder}
-        className="h-[38px] w-full rounded-lg border border-border-light bg-white pl-6 pr-3 text-[13px] font-semibold text-text-primary outline-none transition-colors placeholder:font-normal placeholder:text-text-tertiary focus:border-blue-primary"
+        className="h-10 w-full rounded-lg border border-border-light bg-white pl-6 pr-3 text-[13px] font-semibold text-text-primary outline-none transition-colors placeholder:font-normal placeholder:text-text-tertiary focus:border-blue-primary"
       />
     </span>
   );

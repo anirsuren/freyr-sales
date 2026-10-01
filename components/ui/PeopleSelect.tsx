@@ -49,8 +49,14 @@ export function PeopleSelect({
     const onDoc = (e: PointerEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    /* Escape closes THIS menu and stops there, as ColorSelect's does. Left
+       to bubble, it reached the Modal's own Escape too and threw away the
+       whole dialog the picker sits in. */
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      setOpen(false);
     };
     document.addEventListener("pointerdown", onDoc, true);
     document.addEventListener("keydown", onKey);
@@ -86,7 +92,9 @@ export function PeopleSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
-        className="w-full flex items-center gap-2 bg-white border border-border-light rounded-lg pl-1.5 pr-2 py-1.5 text-[13px] text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-colors"
+        /* h-10, not padding: 40px like every other field and dropdown in a
+           form (it came out 38px). The chevron sits 12px in, as ColorSelect's. */
+        className="w-full h-10 flex items-center gap-2 bg-white border border-border-light rounded-lg pl-2 pr-3 text-[13px] text-text-primary hover:border-blue-subtle focus:outline-none focus:border-blue-primary focus:shadow-input-focus transition-colors"
       >
         {value ? (
           <Avatar name={value} className="w-6 h-6 text-[10px] shrink-0" />

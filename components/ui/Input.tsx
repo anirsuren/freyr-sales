@@ -16,7 +16,15 @@ export const Input = forwardRef<
          and renders a couple of pixels taller than a plain text box, so three
          fields in a row lined up at the top and not at the bottom. A fixed
          height settles it for every variant. */
-      "h-11 min-w-0 w-full bg-surface border border-border rounded-md px-3.5 py-0 text-[15px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-focus",
+      /* AND THE SAME BOX AS EVERY DROPDOWN (Anir, Oct 1, on Add a contact:
+         "a lot of inconsistencies with the size of the dropdown and the text
+         boxes... It should all be the same"). This was 44px, grey, 15px text
+         with a darker border, beside ColorSelect triggers that are 40px,
+         white, 13px with the light border. One shape now: the trigger's, the
+         one CLAUDE.md fixes at 40px. Callers cannot shrink this with a plain
+         h-10 (cn does not merge and .h-11 sorts later), so the default has
+         to be right. */
+      "h-10 min-w-0 w-full bg-white border border-border-light rounded-lg px-3 py-0 text-[13px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-input-focus",
       className
     )}
     {...rest}

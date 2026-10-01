@@ -741,7 +741,9 @@ export function ColorSelect({
             collapsed={compact}
             // `detailed` keeps the button's own flex gap; the compact shape
             // trades that gap for a collapsing margin so the glyph centres.
-            gap={showDetailedTrigger ? false : dense ? "ml-1.5" : "ml-2"}
+            // No mark drawn (a flag rides in the label), no gap: the label
+            // starts at the padding, level with the text in a typed field.
+            gap={showDetailedTrigger || !selected || selected.noMark ? false : dense ? "ml-1.5" : "ml-2"}
             className="min-w-0 text-left"
             // Same as `flex-1`, with the grow factor animated rather than
             // switched, so the slack drains smoothly instead of vanishing.

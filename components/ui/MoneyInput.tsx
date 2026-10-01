@@ -64,8 +64,11 @@ export function MoneyInput({
         title={title}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
+        /* 40px, the height of every other field and dropdown in a form. It was
+           38px, and the callers that passed h-10 to fix that never got it:
+           cn does not merge, and .h-[38px] sorts after .h-10 in the CSS. */
         className={cn(
-          "h-[38px] w-full rounded-lg border border-border-light bg-white pl-7 pr-3 text-[13px] font-semibold tnum text-text-primary outline-none transition-colors placeholder:font-normal placeholder:text-text-tertiary focus:border-blue-primary disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-tertiary",
+          "h-10 w-full rounded-lg border border-border-light bg-white pl-7 pr-3 text-[13px] font-semibold tnum text-text-primary outline-none transition-colors placeholder:font-normal placeholder:text-text-tertiary focus:border-blue-primary disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-tertiary",
           className
         )}
       />

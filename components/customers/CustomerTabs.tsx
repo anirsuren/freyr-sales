@@ -37,7 +37,6 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Maximize2,
-  ExternalLink,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -616,7 +615,20 @@ export function CustomerTabs({
   const cityChoices = [...new Set([aboutCity, ...(COMMON_CITIES[aboutCountry] ?? [])].filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const [aboutSaving, setAboutSaving] = useState(false);
   const [aboutError, setAboutError] = useState("");
-  const [editingAccount, setEditingAccount] = useState(false);
+  /* The Account card's Edit pop-up: owner and competitor, saved together. */
+  const [accountEditorOpen, setAccountEditorOpen] = useState(false);
+  const [accountDraft, setAccountDraft] = useState({ owner: "", competitor: "" });
+  const [accountSaving, setAccountSaving] = useState(false);
+  const [accountError, setAccountError] = useState("");
+  // "Unassigned" is what the card prints for nobody, never an owner's name.
+  const accountOwner = owner === "Unassigned" ? "" : owner;
+  const accountOwnerChoices =
+    accountOwner && !ownerOptions.includes(accountOwner)
+      ? [accountOwner, ...ownerOptions]
+      : ownerOptions;
+  const accountDirty =
+    accountDraft.owner.trim() !== accountOwner ||
+    accountDraft.competitor.trim() !== competitor.trim();
   const [noteNext, setNoteNext] = useState("");
   const [noteFollow, setNoteFollow] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
@@ -726,7 +738,9 @@ export function CustomerTabs({
     setKeyOverrides({});
     setContactOverrides({});
     setEditingAbout(false);
-    setEditingAccount(false);
+    setAccountEditorOpen(false);
+    setAccountSaving(false);
+    setAccountError("");
     setContactBusy(false);
     setContactForm({
       fullName: "",
@@ -1094,44 +1108,90 @@ export function CustomerTabs({
     }
   }
 
-  async function removeContact() {
-    if (!removingContact || removeBusy) return;
+  /* ONE DELETE, TWO DOORS: the card's trash, which asks first, and the edit
+     dialog's Remove, which is already a pop-up and so acts. Both say the same
+     thing when it works and show the route's own words when it does not. */
+  async function deleteContact(target: { id: string; name: string }): Promise<boolean> {
+    if (removeBusy) return false;
     setRemoveBusy(true);
     try {
       const response = await fetch(
-        `/api/contacts/${encodeURIComponent(removingContact.id)}`,
+        `/api/contacts/${encodeURIComponent(target.id)}`,
         { method: "DELETE" }
       );
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         toast(data?.error || "Could not remove the contact.", "error");
-        return;
+        return false;
       }
-      toast(`${removingContact.name} removed from this account.`);
-      setRemovingContact(null);
+      toast(`${target.name} removed from this account.`);
       router.refresh();
+      return true;
     } catch {
       toast("Could not remove the contact.", "error");
+      return false;
     } finally {
       setRemoveBusy(false);
     }
   }
 
-  async function changeAccountOwner(nextOwner: string) {
-    const previousOwner = owner;
-    setOwner(nextOwner);
-    const updated = await patchCustomer({
-      owner: nextOwner,
-      owner_user_id:
+  async function removeContact() {
+    if (!removingContact) return;
+    if (await deleteContact(removingContact)) setRemovingContact(null);
+  }
+
+  /* REMOVE FROM THE EDIT DIALOG (Anir, Oct 1: "It should just be super easy
+     to delete"). Whoever opens a person to fix them is the one most likely to
+     find they should not be on the account at all, and the dialog had only
+     Save. It is already a pop-up, so it acts without a second one, the
+     standing rule for a delete inside a dialog. */
+  async function removeEditingContact() {
+    if (!editingContact) return;
+    const removed = await deleteContact({
+      id: editingContact.id,
+      name: editingContact.full_name,
+    });
+    if (removed) closeContactModal();
+  }
+
+  function openAccountEditor() {
+    setAccountDraft({ owner: accountOwner, competitor });
+    setAccountError("");
+    setAccountEditorOpen(true);
+  }
+
+  /* ONE SAVE FOR THE ACCOUNT CARD. Same PATCH and the same payloads the
+     inline editor sent (owner with its member id when it is you, competitor
+     as typed), only the fields that changed, in one request. */
+  async function saveAccountEditor() {
+    const nextOwner = accountDraft.owner.trim();
+    const nextCompetitor = accountDraft.competitor.trim();
+    const ownerChanged = nextOwner !== accountOwner;
+    const competitorChanged = nextCompetitor !== competitor.trim();
+    if (!ownerChanged && !competitorChanged) return;
+    const payload: Record<string, unknown> = {};
+    if (ownerChanged) {
+      payload.owner = nextOwner;
+      payload.owner_user_id =
         nextOwner === currentUser.name
           ? currentUser.memberId || undefined
-          : undefined,
-    });
+          : undefined;
+    }
+    if (competitorChanged) payload.competitor = nextCompetitor;
+    setAccountSaving(true);
+    setAccountError("");
+    const updated = await patchCustomer(payload);
+    setAccountSaving(false);
     if (!updated) {
-      setOwner(previousOwner);
+      setAccountError("The account was not saved. Please try again.");
       return;
     }
-    toast(nextOwner ? `Account assigned to ${nextOwner}.` : "Account owner cleared.");
+    if (ownerChanged)
+      setOwner(typeof updated.owner === "string" ? updated.owner : nextOwner);
+    if (competitorChanged)
+      setCompetitor(typeof updated.competitor === "string" ? updated.competitor : nextCompetitor);
+    setAccountEditorOpen(false);
+    toast("Account updated.");
   }
 
   async function addDeal() {
@@ -2451,6 +2511,8 @@ export function CustomerTabs({
                   )}
                   {canDeleteContacts && (
                     <Tooltip label={`Remove ${c.full_name}`}>
+                      {/* Red at rest, not grey until hovered: every delete
+                          in the app reads as one before you reach it. */}
                       <button
                         type="button"
                         aria-label={`Remove ${c.full_name}`}
@@ -2459,7 +2521,7 @@ export function CustomerTabs({
                           e.stopPropagation();
                           setRemovingContact({ id: c.id, name: c.full_name });
                         }}
-                        className="relative z-10 flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-red-50 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error"
+                        className="relative z-10 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
                       >
                         <Trash2 size={15} />
                       </button>
@@ -3218,19 +3280,21 @@ export function CustomerTabs({
             <h3 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               Account
             </h3>
+            {/* A POP-UP, NOT A MODE (Anir, Oct 1: "When I press Edit on the
+                account... I was expecting a pop-up, and then I can change the
+                owner"). The pencil used to flip this card into inline editing:
+                the owner box became a picker that saved on every pick and the
+                competitor opened a second dialog of its own. It now opens one
+                dialog with both, and nothing saves until Save. Same
+                canEditFacts gate as before. */}
             {canEditFacts && (
-              <Tooltip label={editingAccount ? "Finish editing account details" : "Edit account details"}>
+              <Tooltip label="Edit account">
                 <button
                   type="button"
-                  onClick={() => setEditingAccount(value => !value)}
-                  aria-label={editingAccount ? "Finish editing account details" : "Edit account details"}
-                  aria-pressed={editingAccount}
-                  className={cn(
-                    "flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border transition-colors",
-                    editingAccount
-                      ? "border-blue-primary bg-blue-primary text-white"
-                      : "border-border-light bg-white text-text-secondary hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
-                  )}
+                  onClick={openAccountEditor}
+                  aria-label="Edit account"
+                  aria-haspopup="dialog"
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border-light bg-white text-text-secondary transition-colors hover:border-blue-subtle hover:bg-blue-light hover:text-blue-primary"
                 >
                   <Pencil size={14} strokeWidth={2.1} />
                 </button>
@@ -3239,57 +3303,28 @@ export function CustomerTabs({
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
+              <p className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                 Owner
-              </label>
-              {editingAccount ? (
-                <PeopleSelect
-                  value={owner}
-                  options={ownerOptions}
-                  onChange={changeAccountOwner}
-                  placeholder="Choose an owner"
-                  ariaLabel="Account owner"
+              </p>
+              <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
+                {/* The owner is a door to their profile (Anir, Sep 28); "Unassigned" is not. */}
+                <PersonLink
+                  name={owner || "Unassigned"}
+                  avatarClassName="h-7 w-7 shrink-0"
+                  className="gap-2.5"
+                  nameClassName={cn("text-[13px] font-semibold", owner ? "text-text-primary" : "text-text-tertiary")}
                 />
-              ) : (
-                <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
-                  {/* The owner is a door to their profile (Anir, Sep 28); "Unassigned" is not. */}
-                  <PersonLink
-                    name={owner || "Unassigned"}
-                    avatarClassName="h-7 w-7 shrink-0"
-                    className="gap-2.5"
-                    nameClassName={cn("text-[13px] font-semibold", owner ? "text-text-primary" : "text-text-tertiary")}
-                  />
-                </div>
-              )}
+              </div>
             </div>
             <div>
-              {editingAccount ? (
-                <EditableFact
-                  label="Competitor / incumbent"
-                  value={competitor}
-                  placeholder="None recorded"
-                  stacked
-                  canEdit
-                  asDialog
-                  onSave={async (next) => {
-                    const updated = await patchCustomer({ competitor: next });
-                    if (!updated) return "That didn't save.";
-                    setCompetitor(next.trim());
-                    return null;
-                  }}
-                />
-              ) : (
-                <>
-                  <label className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary mb-1.5">
-                    Competitor / incumbent
-                    <InfoHint text="Who they use for this work today, or who you are up against to win it. Knowing that changes how you pitch." />
-                  </label>
-                  <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
-                    <Swords size={15} strokeWidth={1.7} className="shrink-0 text-text-tertiary" />
-                    <span className={cn("min-w-0 break-words text-[13px] font-medium", competitor ? "text-text-primary" : "text-text-tertiary")}>{competitor || "None recorded"}</span>
-                  </div>
-                </>
-              )}
+              <p className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-tertiary">
+                Competitor / incumbent
+                <InfoHint text="Who they use for this work today, or who you are up against to win it. Knowing that changes how you pitch." />
+              </p>
+              <div className="flex min-h-10 items-center gap-2.5 rounded-lg border border-border-light bg-surface/55 px-3 py-2">
+                <Swords size={15} strokeWidth={1.7} className="shrink-0 text-text-tertiary" />
+                <span className={cn("min-w-0 break-words text-[13px] font-medium", competitor ? "text-text-primary" : "text-text-tertiary")}>{competitor || "None recorded"}</span>
+              </div>
             </div>
           </div>
         </Card>
@@ -3424,7 +3459,7 @@ export function CustomerTabs({
               <Input maxLength={120} value={aboutDraft.ownership} onChange={(event) => setAboutDraft((draft) => ({ ...draft, ownership: event.target.value }))} placeholder="Public or private" />
             </Field>
             <Field label="Revenue">
-              <MoneyInput ariaLabel="Revenue" value={aboutDraft.revenue} onChange={(value) => setAboutDraft((draft) => ({ ...draft, revenue: value }))} className="h-11" />
+              <MoneyInput ariaLabel="Revenue" value={aboutDraft.revenue} onChange={(value) => setAboutDraft((draft) => ({ ...draft, revenue: value }))} />
             </Field>
           </div>
           <Field label="Account description">
@@ -3433,13 +3468,61 @@ export function CustomerTabs({
               onChange={(event) => setAboutDraft((draft) => ({ ...draft, enrichment_summary: event.target.value }))}
               maxLength={4000}
               rows={4}
-              className="w-full resize-y rounded-lg border border-border bg-surface px-3.5 py-3 text-[14px] leading-relaxed text-text-primary outline-none transition focus:border-blue-primary focus:shadow-focus"
+              className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] leading-relaxed text-text-primary outline-none transition focus:border-blue-primary focus:shadow-input-focus"
             />
           </Field>
           {aboutError && <p role="alert" className="text-[12px] font-medium text-error">{aboutError}</p>}
           <div className="flex justify-end gap-2 border-t border-border-light pt-4">
             <Button type="button" variant="secondary" onClick={() => setEditingAbout(false)} disabled={aboutSaving}>Cancel</Button>
             <Button type="submit" loading={aboutSaving}>Save changes</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT ACCOUNT: the Account card's two facts in one pop-up. A fixed
+          height, so opening the owner list never resizes the dialog: the list
+          drops over the empty body, and Cancel and Save stay on the bottom
+          edge. */}
+      <Modal
+        open={accountEditorOpen}
+        onClose={() => { if (!accountSaving) setAccountEditorOpen(false); }}
+        title="Edit account"
+        size="wide"
+        dialogClassName="h-[min(460px,calc(100vh-2rem))]"
+        bodyClassName="flex flex-col"
+      >
+        <form
+          onSubmit={(event) => { event.preventDefault(); void saveAccountEditor(); }}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
+            {/* Not a <label>: the picker's open list lives inside it, and a
+                click on the list's padding would reach the trigger. */}
+            <div className="min-w-0">
+              <p className="mb-1.5 flex items-center gap-1 text-[13px] font-medium text-text-primary">
+                Owner <OptionalMark />
+              </p>
+              <PeopleSelect
+                value={accountDraft.owner}
+                options={accountOwnerChoices}
+                onChange={(next) => setAccountDraft((draft) => ({ ...draft, owner: next }))}
+                placeholder="Unassigned"
+                ariaLabel="Account owner"
+              />
+            </div>
+            <Field label="Competitor / incumbent" hint="Who they use for this work today, or who you are up against to win it.">
+              <Input
+                value={accountDraft.competitor}
+                maxLength={200}
+                onChange={(event) => setAccountDraft((draft) => ({ ...draft, competitor: event.target.value }))}
+                placeholder="None recorded"
+              />
+            </Field>
+          </div>
+          {accountError && <p role="alert" className="mt-4 text-[12px] font-medium text-error">{accountError}</p>}
+          <div className="mt-auto flex justify-end gap-2 border-t border-border-light pt-4">
+            <Button type="button" variant="secondary" onClick={() => setAccountEditorOpen(false)} disabled={accountSaving}>Cancel</Button>
+            <Button type="submit" loading={accountSaving} disabled={!accountDirty}>Save</Button>
           </div>
         </form>
       </Modal>
@@ -3746,19 +3829,27 @@ export function CustomerTabs({
                 const { dial: storedDial, number } = splitPhone(contactForm.phone);
                 const countryDial = findCountry(contactForm.country)?.dial;
                 const dial = storedDial || (countryDial ? `+${countryDial}` : "+1");
+                /* THE CODE IS SMALL, THE NUMBER GETS THE ROOM (Anir, Oct 1:
+                   "it's literally just two numbers... the phone number field,
+                   not the prefix, the suffix, can be bigger"). The code box is
+                   a fixed 108px, enough for a flag, +353 and the chevron, so it
+                   no longer grows with the code it shows; the number takes the
+                   rest of the same column. Same picker, same list. */
                 return <div className="flex items-center gap-2">
-                  <ColorSelect
-                    value={dialOptionValue(dial, contactForm.country)}
-                    ariaLabel="Phone country and dialing code"
-                    minWidth={105}
-                    triggerLabel={dialTriggerLabel(dial, contactForm.country)}
-                    options={dialOptions()}
-                    onChange={(value) => {
-                      const nextDial = dialCodeFromOption(value);
-                      const country = countryFromDialOption(value);
-                      setContactForm((form) => ({ ...form, phone: joinPhone(nextDial, number), country: country?.name ?? form.country }));
-                    }}
-                  />
+                  <div className="w-[108px] shrink-0">
+                    <ColorSelect
+                      value={dialOptionValue(dial, contactForm.country)}
+                      ariaLabel="Phone country and dialing code"
+                      fill
+                      triggerLabel={dialTriggerLabel(dial, contactForm.country)}
+                      options={dialOptions()}
+                      onChange={(value) => {
+                        const nextDial = dialCodeFromOption(value);
+                        const country = countryFromDialOption(value);
+                        setContactForm((form) => ({ ...form, phone: joinPhone(nextDial, number), country: country?.name ?? form.country }));
+                      }}
+                    />
+                  </div>
                   <Input
                     type="tel"
                     inputMode="tel"
@@ -3769,6 +3860,7 @@ export function CustomerTabs({
                       phone: joinPhone(dial, phoneDigits(event.target.value).slice(0, nationalDigitBudget(dial))),
                     }))}
                     placeholder="Phone number"
+                    className="flex-1"
                   />
                 </div>;
               })()}
@@ -3797,12 +3889,11 @@ export function CustomerTabs({
             <Field label="City">
               <Input value={contactForm.city} onChange={(event) => setContactForm((form) => ({ ...form, city: event.target.value }))} placeholder="e.g. New Brunswick" maxLength={120} />
             </Field>
-            {(contactForm.city.trim() || contactForm.country) && <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([contactForm.city.trim(), contactForm.country].filter(Boolean).join(", "))}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="self-end inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border-light bg-white px-3 text-[13px] font-semibold text-blue-primary transition-colors hover:border-blue-subtle hover:bg-blue-light/40"
-            ><MapPin size={15} /> View on Google Maps <ExternalLink size={13} /></a>}
+            {/* No "View on Google Maps" button here (Anir, Oct 1: "Why is there
+                a View on Google Maps button? ... Remove that"). It appeared in
+                the third cell only once a city or country was entered, so the
+                row changed shape as you typed. Country and City now end the
+                grid the same way Department and Buying role end the one above. */}
             </div>
           </div>
           <div>
@@ -3810,19 +3901,33 @@ export function CustomerTabs({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="min-w-0">
                 <label htmlFor="contact-background" className="mb-1.5 block text-[13px] font-medium text-text-primary">Professional background <OptionalMark /></label>
-                <textarea id="contact-background" value={contactForm.background} onChange={(event) => setContactForm((form) => ({ ...form, background: event.target.value }))} placeholder="Experience, expertise, and relevant history" maxLength={2000} rows={3} className="w-full resize-y rounded-md border border-border bg-surface px-3.5 py-2.5 text-[14px] text-text-primary outline-none transition focus:border-blue-primary focus:shadow-focus" />
+                <textarea id="contact-background" value={contactForm.background} onChange={(event) => setContactForm((form) => ({ ...form, background: event.target.value }))} placeholder="Experience, expertise, and relevant history" maxLength={2000} rows={3} className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-input-focus" />
               </div>
               <div className="min-w-0">
                 <label htmlFor="contact-relationship" className="mb-1.5 block text-[13px] font-medium text-text-primary">Relationship notes <OptionalMark /></label>
-                <textarea id="contact-relationship" value={contactForm.relationshipNotes} onChange={(event) => setContactForm((form) => ({ ...form, relationshipNotes: event.target.value }))} placeholder="What your team knows about working with this person" maxLength={2000} rows={3} className="w-full resize-y rounded-md border border-border bg-surface px-3.5 py-2.5 text-[14px] text-text-primary outline-none transition focus:border-blue-primary focus:shadow-focus" />
+                <textarea id="contact-relationship" value={contactForm.relationshipNotes} onChange={(event) => setContactForm((form) => ({ ...form, relationshipNotes: event.target.value }))} placeholder="What your team knows about working with this person" maxLength={2000} rows={3} className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-input-focus" />
               </div>
             </div>
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4">
+            {/* Far left, red, and only for a person who already exists and
+                only when the route would let you remove them: the same
+                canDeleteContacts the card's trash is drawn on. */}
+            {editingContact && canDeleteContacts && (
+              <button
+                type="button"
+                onClick={() => void removeEditingContact()}
+                disabled={removeBusy || contactBusy}
+                className="mr-auto inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[rgba(220,38,38,0.35)] bg-white px-3.5 py-2 text-[13px] font-semibold text-[color:var(--status-red)] transition-colors hover:bg-[rgba(220,38,38,0.08)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Trash2 size={14} strokeWidth={2} />
+                {removeBusy ? "Removing…" : "Remove contact"}
+              </button>
+            )}
             <Button
               onClick={addContact}
               loading={contactBusy}
-              disabled={!contactForm.fullName.trim()}
+              disabled={!contactForm.fullName.trim() || removeBusy}
             >
               {editingContact ? "Save changes" : "Add contact"}
             </Button>
@@ -3892,7 +3997,7 @@ export function CustomerTabs({
               rows={4}
               autoFocus
               /* The Input component's own look, at textarea height. */
-              className="min-h-[300px] w-full min-w-0 resize-y rounded-md border border-border bg-surface px-3.5 py-2.5 text-[15px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-focus"
+              className="min-h-[300px] w-full min-w-0 resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-input-focus"
             />
           </Field>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -3904,9 +4009,13 @@ export function CustomerTabs({
               />
             </Field>
             <Field label="Follow-up date">
+              {/* Level with Next step beside it: 40px, 13px, the light border.
+                  The open state keeps its blue edge through aria-expanded,
+                  because a plain border class here would sort after it. */}
               <DateField
                 value={noteFollow}
                 onChange={(e) => setNoteFollow(e)}
+                className="h-10 border-border-light text-[13px] aria-expanded:border-blue-primary"
               />
               <DateEcho value={noteFollow} />
             </Field>
