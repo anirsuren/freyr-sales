@@ -33,7 +33,7 @@ import { isVertexConfigured, vertexReadParts, type VertexReadPart } from "@/lib/
  * comes back with a plain note saying so, which the agent passes on.
  */
 
-export type FileKind = "pdf" | "image" | "audio" | "video" | "word" | "slides" | "sheet" | "text" | "archive" | "unknown";
+export type FileKind = "pdf" | "image" | "audio" | "video" | "word" | "slides" | "sheet" | "text" | "archive" | "email" | "unknown";
 
 export type FileReading = {
   kind: FileKind;
@@ -71,7 +71,7 @@ const EXT_MIME: Record<string, string> = {
   xls: "application/vnd.ms-excel", ods: "application/vnd.oasis.opendocument.spreadsheet",
   csv: "text/csv", tsv: "text/tab-separated-values", txt: "text/plain", md: "text/markdown", json: "application/json",
   html: "text/html", htm: "text/html", xml: "application/xml", rtf: "application/rtf", log: "text/plain", yml: "text/yaml", yaml: "text/yaml",
-  zip: "application/zip",
+  zip: "application/zip", eml: "message/rfc822", msg: "application/vnd.ms-outlook",
 };
 
 const extOf = (name: string) => (name.split(".").pop() || "").toLowerCase();
@@ -85,6 +85,7 @@ export function fileKind(name: string, head: Buffer, mime = ""): FileKind {
   if (sig[0] === 0xff && sig[1] === 0xd8) return "image";
   if (ascii.startsWith("\x89PNG") || ascii.startsWith("GIF8") || (ascii.startsWith("RIFF") && ascii.slice(8, 12) === "WEBP")) return "image";
   if (["png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "bmp", "tif", "tiff"].includes(ext)) return "image";
+  if (["eml", "msg"].includes(ext) || mime === "message/rfc822" || mime === "application/vnd.ms-outlook") return "email";
   if (["docx", "doc", "odt"].includes(ext)) return "word";
   if (["pptx", "ppt", "odp"].includes(ext)) return "slides";
   if (["xlsx", "xlsm", "xls", "ods", "csv", "tsv"].includes(ext)) return "sheet";
@@ -687,6 +688,95 @@ async function readArchive(buf: Buffer, name: string, depth: number, notes: stri
   return `${listed}\n\n${read.join("\n\n")}`;
 }
 
+type Mail = { from?: string; to?: string; cc?: string; date?: string; subject?: string; body: string; attachments: { name: string; bytes: Buffer; inline: boolean }[] };
+
+const person = (name?: string, address?: string) => (name && address && name !== address ? `${name} <${address}>` : name || address || "");
+
+/** An Outlook .msg: a compound file of message properties, read by msgreader. */
+async function outlookMail(buf: Buffer): Promise<Mail> {
+  const { default: MsgReader } = await import("@kenjiuno/msgreader");
+  const reader = new MsgReader(new DataView(buf.buffer, buf.byteOffset, buf.byteLength));
+  const data = reader.getFileData();
+  if (data.error) throw new Error(data.error);
+  const people = (type: "to" | "cc") =>
+    (data.recipients ?? []).filter((r) => (r.recipType ?? "to") === type).map((r) => person(r.name, r.smtpAddress ?? r.email)).filter(Boolean).join(", ");
+  const attachments: Mail["attachments"] = [];
+  for (const a of (data.attachments ?? []).slice(0, 12)) {
+    try {
+      const got = reader.getAttachment(a);
+      if (got?.content?.length) attachments.push({ name: got.fileName || a.fileName || "attachment", bytes: Buffer.from(got.content), inline: Boolean(a.attachmentHidden || a.pidContentId) });
+    } catch {
+      // One unreadable attachment never loses the email itself.
+    }
+  }
+  return {
+    from: person(data.senderName, data.senderSmtpAddress ?? data.senderEmail),
+    to: people("to"),
+    cc: people("cc"),
+    date: data.messageDeliveryTime ?? data.clientSubmitTime,
+    subject: data.subject,
+    body: data.body || (data.bodyHtml ? extractFileContent(Buffer.from(data.bodyHtml), "body.html").text : ""),
+    attachments,
+  };
+}
+
+/** A saved .eml (MIME), read by postal-mime: every charset and encoding, nested parts and attachments. */
+async function mimeMail(buf: Buffer): Promise<Mail> {
+  const { default: PostalMime } = await import("postal-mime");
+  const mail = await PostalMime.parse(buf);
+  const one = (a: { name: string; address?: string; group?: { name: string; address: string }[] } | undefined): string =>
+    !a ? "" : a.group ? a.group.map((m) => person(m.name, m.address)).join(", ") : person(a.name, a.address);
+  return {
+    from: one(mail.from),
+    to: (mail.to ?? []).map(one).filter(Boolean).join(", "),
+    cc: (mail.cc ?? []).map(one).filter(Boolean).join(", "),
+    date: mail.date,
+    subject: mail.subject,
+    body: mail.text || (mail.html ? extractFileContent(Buffer.from(mail.html), "body.html").text : ""),
+    attachments: mail.attachments.slice(0, 12).map((a) => ({
+      name: a.filename || `attachment.${a.mimeType.split("/").pop() || "bin"}`,
+      bytes: typeof a.content === "string" ? Buffer.from(a.content) : Buffer.from(a.content instanceof ArrayBuffer ? new Uint8Array(a.content) : a.content),
+      inline: Boolean(a.related || a.contentId) && a.mimeType.startsWith("image/"),
+    })),
+  };
+}
+
+/**
+ * An email forwarded or saved as a file (Outlook .msg, or .eml): who wrote to
+ * whom and when, what it says, and each attachment read like any other file.
+ * A sales team's most common file after decks and PDFs, and the agent used to
+ * answer "cannot open" (Oct 1).
+ */
+async function readEmail(buf: Buffer, name: string, depth: number, notes: string[], readBy: string[]): Promise<string> {
+  let mail: Mail;
+  try {
+    mail = extOf(name) === "msg" || buf.subarray(0, 4).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0])) ? await outlookMail(buf) : await mimeMail(buf);
+  } catch {
+    notes.push("This email could not be opened.");
+    return "";
+  }
+  const head = [
+    mail.from && `From: ${mail.from}`,
+    mail.to && `To: ${mail.to}`,
+    mail.cc && `Cc: ${mail.cc}`,
+    mail.date && `Date: ${mail.date}`,
+    mail.subject && `Subject: ${mail.subject}`,
+  ].filter(Boolean).join("\n");
+  readBy.push("text");
+  // Signature logos and pasted-in icons are pictures inside the message, not attachments anyone sent.
+  const sent = mail.attachments.filter((a) => !(a.inline && a.bytes.length < 60_000));
+  const listed = sent.length ? `\n\nAttachments: ${sent.map((a) => a.name).join(", ")}` : "";
+  if (depth >= 1 || !sent.length) return `${head}\n\n${mail.body.trim()}${listed}`;
+  const read = await inParallel(sent.slice(0, 10), 2, async (a) => {
+    if (a.bytes.length > 50 * 1024 * 1024) return `--- Attachment: ${a.name} ---\n(too large to open inside an email)`;
+    const inner = await readFileForAgentInternal({ bytes: a.bytes, name: a.name }, depth + 1);
+    inner.readBy.forEach((r) => readBy.includes(r) || readBy.push(r));
+    return `--- Attachment: ${a.name} (${inner.kind}) ---\n${inner.text || inner.notes.join(" ") || "(nothing readable)"}`;
+  });
+  if (sent.length > 10) notes.push(`Only the first 10 of ${sent.length} attachments were opened.`);
+  return `${head}\n\n${mail.body.trim()}${listed}\n\n${read.join("\n\n")}`;
+}
+
 /* ---------------------------------------------------------------- the whole file */
 
 const SUMMARISE = "Summarise this file for a sales team in three to five plain sentences: what it is, who and what it is about, " +
@@ -774,6 +864,8 @@ async function readFileForAgentInternal(
       if (text) readBy.push("text");
     } else if (kind === "archive") {
       text = await readArchive(bytes, name, depth, notes, readBy);
+    } else if (kind === "email") {
+      text = await readEmail(bytes, name, depth, notes, readBy);
     } else if (kind === "audio" || kind === "video") {
       const dir = await mkdtemp(path.join(tmpdir(), "agent-file-"));
       try {
@@ -798,7 +890,7 @@ async function readFileForAgentInternal(
         await rm(dir, { recursive: true, force: true }).catch(() => undefined);
       }
     } else {
-      notes.push(`This is a .${extOf(name) || "unknown"} file, which the agent cannot open. Send it as a PDF, an Office file, a picture, a recording or text.`);
+      notes.push(`This is a .${extOf(name) || "unknown"} file, which the agent cannot open. Send it as a PDF, an Office file, an email, a picture, a recording or text.`);
     }
   } catch (error) {
     notes.push(`Reading stopped part way: ${error instanceof Error ? error.message.slice(0, 160) : "unknown error"}.`);

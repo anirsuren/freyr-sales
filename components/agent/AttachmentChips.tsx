@@ -9,6 +9,7 @@ import {
   Film,
   Image as ImageIcon,
   Loader2,
+  Mail,
   Music,
   Presentation,
   X,
@@ -16,16 +17,18 @@ import {
 import { cn } from "@/lib/utils";
 import type { PendingAttachment, SentAttachment } from "@/components/agent/useAgentAttachments";
 
-/* Each kind has its own mark and tint (category chips are colour plus icon). */
+/* Each kind has its own mark and tint (category chips are colour plus icon), never a status colour:
+   red, green and yellow mean something else in this app. */
 const KIND: Record<string, { icon: typeof FileIcon; tint: string; label: string }> = {
-  pdf: { icon: FileText, tint: "bg-rose-50 text-rose-600", label: "PDF" },
+  pdf: { icon: FileText, tint: "bg-pink-50 text-pink-600", label: "PDF" },
   word: { icon: FileText, tint: "bg-blue-light text-blue-primary", label: "Document" },
-  slides: { icon: Presentation, tint: "bg-orange-50 text-orange-600", label: "Slides" },
-  sheet: { icon: FileSpreadsheet, tint: "bg-emerald-50 text-emerald-700", label: "Spreadsheet" },
+  slides: { icon: Presentation, tint: "bg-fuchsia-50 text-fuchsia-600", label: "Slides" },
+  sheet: { icon: FileSpreadsheet, tint: "bg-teal-50 text-teal-700", label: "Spreadsheet" },
   image: { icon: ImageIcon, tint: "bg-violet-50 text-violet-600", label: "Picture" },
   audio: { icon: Music, tint: "bg-sky-50 text-sky-600", label: "Recording" },
   video: { icon: Film, tint: "bg-indigo-50 text-indigo-600", label: "Video" },
-  archive: { icon: FileArchive, tint: "bg-amber-50 text-amber-700", label: "Archive" },
+  archive: { icon: FileArchive, tint: "bg-purple-50 text-purple-600", label: "Archive" },
+  email: { icon: Mail, tint: "bg-cyan-50 text-cyan-700", label: "Email" },
   text: { icon: FileText, tint: "bg-blue-light text-blue-primary", label: "Text" },
 };
 
@@ -40,6 +43,7 @@ export function guessKind(name: string, type = ""): string {
   if (["pptx", "ppt", "odp"].includes(ext)) return "slides";
   if (["xlsx", "xls", "csv", "tsv", "ods"].includes(ext)) return "sheet";
   if (ext === "zip") return "archive";
+  if (ext === "eml" || ext === "msg") return "email";
   if (["txt", "md", "json", "html", "xml"].includes(ext)) return "text";
   return "file";
 }

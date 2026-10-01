@@ -15,6 +15,9 @@ test("a file's kind comes from its first bytes before its name", () => {
   assert.equal(fileKind("demo.mov", Buffer.alloc(8)), "video");
   assert.equal(fileKind("pipeline.xlsx", Buffer.from("PK\u0003\u0004")), "sheet");
   assert.equal(fileKind("random.bin", Buffer.from([1, 2, 3])), "unknown");
+  assert.equal(fileKind("recap.eml", Buffer.from("From: a")), "email");
+  assert.equal(fileKind("budget.msg", Buffer.from([0xd0, 0xcf, 0x11, 0xe0])), "email");
+  assert.equal(fileKind("forwarded", Buffer.from("Received:"), "message/rfc822"), "email");
 });
 
 test("a piece's timestamps move to its place in the whole recording", () => {
@@ -41,6 +44,19 @@ test("read_file finds a time, a page, or the passage that matches", () => {
   const pdf = record({ name: "msa.pdf", kind: "pdf", reading: { kind: "pdf", summary: "", notes: [], readBy: ["gemini"], text: "--- Page 1 ---\nTerm: 24 months\n--- Page 2 ---\nGoverning law: Delaware" } });
   assert.match(searchFile(pdf, { at: "page 2" }), /Delaware/);
   assert.doesNotMatch(searchFile(pdf, { at: "2" }), /24 months/);
+});
+
+test("a passage found by words says which page or slide it sits on", () => {
+  const filler = (n) => Array.from({ length: n }, (_, i) => `Clause ${i}: the supplier performs the services with care.`).join("\n");
+  const pdf = record({ name: "msa.pdf", kind: "pdf", reading: { kind: "pdf", summary: "", notes: [], readBy: ["gemini"],
+    text: `--- Page 1 ---\n${filler(40)}\n--- Page 40 ---\n${filler(40)}\nSigned for Kestrel by Henrik Lund, CFO.\n${filler(10)}` } });
+  const passageWith = (result, words) => result.split("\n...\n").find((p) => p.includes(words)) ?? "";
+  assert.match(passageWith(searchFile(pdf, { query: "who signed for Kestrel" }), "Henrik Lund"), /^\[page 40\]/);
+  // Small words never outscore the words that matter: "for" inside every "performs" once buried page 40.
+  assert.match(searchFile(pdf, { query: "who signed for Kestrel" }).split("\n...\n")[0], /Henrik Lund/);
+  const deck = record({ name: "deck.pptx", kind: "slides", reading: { kind: "slides", summary: "", notes: [], readBy: ["text"],
+    text: `Slide 1: Q3 review\n\nSlide 2: ${filler(60)}\n\nPicture on slide 17: ${filler(30)} Renewal date for Halvorsen: 31 January 2027` } });
+  assert.match(passageWith(searchFile(deck, { query: "Halvorsen renewal" }), "31 January 2027"), /^\[slide 17\]/);
 });
 
 test("the files block: content as data, never links, honest about gaps and readings in progress", () => {
