@@ -1275,7 +1275,7 @@ export const ACTIONS: ActionDef[] = [
         return { interactionId: interaction.id };
       },
     }),
-    done: (p) => ({ text: `Follow-up with ${p.customer} set for ${p.when}.`, link: `/customers/${encodeURIComponent(String(p.customerId))}` }),
+    done: (p) => ({ text: `Follow-up with ${p.customer} set for ${readableDay(String(p.when))}.`, link: `/customers/${encodeURIComponent(String(p.customerId))}` }),
   },
   {
     key: "set_reminder",
