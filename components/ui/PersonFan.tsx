@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import { PersonHoverCard } from "@/components/ui/PersonHoverCard";
 import { HoverCard } from "@/components/ui/HoverCard";
@@ -52,9 +53,15 @@ export function PersonFan({
   if (people.length === 0) return null;
   const visible = people.slice(0, max);
   const hidden = Math.max(people.length - visible.length, 0);
+  // The white ring only separates overlapping faces; a lone face has none.
+  const stacked = visible.length > 1 || hidden > 0;
   return (
     <span
-      className="inline-flex items-center rounded-lg px-1 py-0.5 transition-colors duration-200 hover:bg-surface focus-within:bg-surface"
+      // NO BOX BEHIND THE CIRCLES (Anir, Oct 1: "I don't know why you're
+      // doing this white thing... It should hover over the actual circle").
+      // The wrapper only fans the marks apart; the hovered circle itself
+      // lifts and takes a blue ring.
+      className="inline-flex items-center px-1 py-0.5"
       onMouseEnter={() => setExpanded(true)}
       onMouseLeave={() => setExpanded(false)}
       onFocusCapture={() => setExpanded(true)}
@@ -80,7 +87,10 @@ export function PersonFan({
             phone={p.phone}
           >
             <span
-              className="relative isolate inline-flex overflow-hidden rounded-full bg-[var(--surface)] outline-none ring-2 ring-[color:var(--white)] transition-[transform,filter] duration-150 hover:z-20 hover:-translate-y-0.5 hover:scale-110 hover:drop-shadow-md"
+              className={cn(
+                "relative isolate inline-flex overflow-hidden rounded-full bg-[var(--surface)] outline-none transition-[transform,box-shadow] duration-150 hover:z-20 hover:-translate-y-0.5 hover:scale-110 hover:ring-2 hover:ring-blue-primary/55",
+                stacked && "ring-2 ring-[color:var(--white)]"
+              )}
             >
               <EntityLink href={teammateHref(p.name)} className="block rounded-full" title={p.name}>
                 <Avatar

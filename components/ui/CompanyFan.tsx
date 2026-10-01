@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { HoverCard } from "@/components/ui/HoverCard";
 
@@ -44,9 +45,19 @@ export function CompanyFan({
   }
   const visible = companies.slice(0, max);
   const hidden = Math.max(companies.length - visible.length, 0);
+  // The white ring only separates overlapping marks; a lone mark has none.
+  const stacked = visible.length > 1 || hidden > 0;
+  const circle = cn(
+    "relative inline-flex rounded-full transition-[transform,box-shadow] duration-150 hover:z-20 hover:-translate-y-0.5 hover:scale-110 hover:ring-2 hover:ring-blue-primary/55",
+    stacked && "ring-2 ring-white"
+  );
   return (
     <span
-      className="inline-flex items-center rounded-lg px-1 py-0.5 transition-colors duration-200 hover:bg-surface focus-within:bg-surface"
+      // NO BOX BEHIND THE CIRCLES (Anir, Oct 1: "I don't know why you're
+      // doing this white thing... It should hover over the actual circle").
+      // The wrapper only fans the marks apart; the hovered circle itself
+      // lifts and takes a blue ring.
+      className="inline-flex items-center px-1 py-0.5"
       onMouseEnter={() => setExpanded(true)}
       onMouseLeave={() => setExpanded(false)}
       onFocusCapture={() => setExpanded(true)}
@@ -90,14 +101,14 @@ export function CompanyFan({
                 href={`/customers/${c.id}`}
                 onClick={(e) => e.stopPropagation()}
                 aria-label={c.name}
-                className="inline-flex rounded-full ring-2 ring-white transition-transform hover:scale-105"
+                className={circle}
               >
                 <CompanyLogo name={c.name} className={logoClassName} />
               </Link>
             ) : (
               <span
                 aria-label={c.name}
-                className="inline-flex rounded-full ring-2 ring-white"
+                className={circle}
               >
                 <CompanyLogo name={c.name} className={logoClassName} />
               </span>
